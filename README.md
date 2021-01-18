@@ -17,3 +17,13 @@ Will enable claiming of FFLR from a pre allocated pool for FFLR. Users will be e
 - F assest holdings.
 - Supplying FTSO price feeds.
 
+## voting power
+Since no token locking is planed for f assets. Each vote campiagn will define vote power pwer address according to a semi random chosen block.
+
+## Package Manager
+We use `yarn` as the package manager. You may use `npm` and `npx` instead, but commands in bash scripts may have to be changed accordingly.
+
+## Setup
+1. Clone this repo
+2. `yarn`
+
