@@ -4,18 +4,13 @@ pragma solidity 0.7.6;
 import "./utils/IERC20.sol";
 
 
-interface IFasset is IERC20 {
+interface IDelegateToken {
 
     /// @notice An event thats emitted when an account changes its delegation data
     event DelegationUpdate(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
 
     /// @notice An event thats emitted when a delegate account's vote balance changes
     event VotePowerUpdated(address indexed delegate, uint previousVotePower, uint newVotePower);
-
-    struct DelegationData {
-        address to;
-        uint256 howMuch;
-    }
 
     /// @notice delegate percentage of vote power. up to x addresses. 
     /// any undelegated vote power is seen as delegated to self.
@@ -31,13 +26,13 @@ interface IFasset is IERC20 {
     /// @notice. for any cotracts wishing to share rewards with depositers, this
     ///     function enables to check how much of the contracts vote power came 
     ///     from this delegator.
-    function votePowerFromHimtoMeAtBlock(address me, address him, uint256 blockNumber) 
+    function votePowerFromToAtBlock(address me, address him, uint256 blockNumber) 
         external view returns (uint256 votePower);
 
     function votePowerOfAt (address who, uint256 blockNumber) external view 
         returns (uint256 votePower);
 
     /// @returns array of address delegating to me at this block
-    function getDelegatingTo (address who) external view
-        returns(address[] delegations);
+    function getDelegationsOf (address who) external view
+        returns(address[] delegations, uint256[] percent);
 }
