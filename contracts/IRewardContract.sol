@@ -20,8 +20,6 @@ pragma solidity 0.7.6;
 ///     - user claims. reduce balance and send tokens.
 ///     - if not enough balance pull from Inflation contract.
 interface IRewardContract {
-    ///@dev will be triggered by Flare Keeper for reward distribution.
-    function keeperTrigger() external returns(bool success);
 
     ///@dev sender claims his reward
     function claimReward(address to, uint256 amountTwei) external returns(bool succeess);

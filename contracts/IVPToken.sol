@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./utils/IERC20.sol";
 
-
-interface IDelegationToken {
+interface IVPToken {
 
     /// @notice An event thats emitted when an account changes its delegation data
     event DelegationUpdate(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
@@ -26,8 +24,11 @@ interface IDelegationToken {
     /// @notice. for any cotracts wishing to share rewards with depositers, this
     ///     function enables to check how much of the contracts vote power came 
     ///     from this delegator.
-    function votePowerFromToAtBlock(address me, address him, uint256 blockNumber) 
+    function votePowerAtBlock(address me, address him, uint256 blockNumber) 
         external view returns (uint256 votePower);
+
+    /// vote power for current block
+    function votePower(address who) external view returns (uint256 votePower);
 
     function votePowerOfAt (address who, uint256 blockNumber) external view 
         returns (uint256 votePower);

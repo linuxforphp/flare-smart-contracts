@@ -4,12 +4,12 @@ pragma abicoder v2;
 
 import "../IFAsset.sol"; 
 import "../utils/FlareUtils.sol";
-import "./DelegationToken.sol";
+import "./VPToken.sol";
 
 ///contract to handle fasset miting / redmption / auction.
-/// delegation and vote power inherited form Delegationtoken which
+/// delegation and vote power inherited form VPToken which
 /// inherits ERC20 for transfer functionality
-contract FAsset is DelegationToken, IFAsset, FlareUtils {
+contract FAsset is VPToken, IFAsset, FlareUtils {
 
     string immutable name;
 
