@@ -1,8 +1,12 @@
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
-const {constants} = require('@openzeppelin/test-helpers');
+const {constants, expectRevert} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
+
+const ALREADY_DELEGATED_EXPLICT_MSG = "Already delegated explicitly";
+const ALREADY_DELEGATED_PERCENT_MSG = "Already delegated by percentage";
+
 
 contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, async accounts => {
   // contains a fresh contract for each test
@@ -125,5 +129,25 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     let account1balance = await vpToken.balanceOfAt(accounts[1], await web3.eth.getBlockNumber());
     assert.equal(account1balance, 45);
+  });
+
+  it("Should revert delegating by percent when already delegated explicit", async() => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.delegateExplicit(accounts[2], 50, {from: accounts[1]});
+    // Act
+    let delegatePromise = vpToken.delegate(accounts[2], 1000, {from: accounts[1]});
+    // Assert
+    expectRevert(delegatePromise, ALREADY_DELEGATED_EXPLICT_MSG);
+  });
+
+  it("Should revert delegating explicit when already delegated by percent", async() => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.delegate(accounts[2], 1000, {from: accounts[1]});
+    // Act
+    let delegatePromise = vpToken.delegateExplicit(accounts[2], 50, {from: accounts[1]});
+    // Assert
+    expectRevert(delegatePromise, ALREADY_DELEGATED_PERCENT_MSG);
   });
 });

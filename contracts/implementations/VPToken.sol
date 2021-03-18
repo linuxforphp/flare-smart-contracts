@@ -15,23 +15,32 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     using SafeMath for uint256;
     using SafePct for uint256;
 
+    string constant private ALREADY_EXPLICIT_MSG = "Already delegated explicitly";
+    string constant private ALREADY_PERCENT_MSG = "Already delegated by percentage";
+
     constructor(
         string memory name_, 
         string memory symbol_) ERC20(name_, symbol_) {
     }
+    
+    modifier onlyPercent {
+        // If a delegate cannot be added by percentage, revert.
+        require(_canDelegateByPct(_msgSender()), ALREADY_EXPLICIT_MSG);
+        _;
+    }
 
-    string constant private ALREADY_EXPLICIT_MSG = "Already delegated explicitly";
-    string constant private ALREADY_PERCENT_MSG = "Already delegated by percentage";
+    modifier onlyExplicit {
+        // If a delegate cannot be added by explicit amount, revert.
+        require(_canDelegateByAmount(_msgSender()), ALREADY_PERCENT_MSG);
+        _;
+    }
 
     /**
      * @notice Delegate `pct` of voting power to `to` from `msg.sender`
      * @param to The address of the recipient
      * @param bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent)
      **/
-    function delegate(address to, uint16 bips) external override {
-        // If a delegate cannot be added by percentage, revert.
-        require(_canDelegateByPct(_msgSender()), ALREADY_EXPLICIT_MSG);
-
+    function delegate(address to, uint16 bips) external override onlyPercent {
         // Get the current balance of sender and delegate by percentage to recipient
         _delegateByPercentage(to, balanceOf(_msgSender()), bips);
     }
@@ -41,10 +50,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @param to The address of the recipient
      * @param votePower An explicit votePower amount to be delegated
      **/    
-    function delegateExplicit(address to, uint256 votePower) external override {
-        // If a delegate cannot be added by amount, revert.
-        require(_canDelegateByAmount(_msgSender()), ALREADY_PERCENT_MSG);
-
+    function delegateExplicit(address to, uint256 votePower) external override onlyExplicit {
         _delegateByAmount(to, balanceOf(_msgSender()), votePower);
     }
 
