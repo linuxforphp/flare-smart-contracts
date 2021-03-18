@@ -1,0 +1,22 @@
+### Stages
+stages:
+    - test
+
+### Variables
+variables:
+    TEST_HARDHAT: "testHH"
+    TEST_LINTER: "lint"
+
+### Templates
+.yarn-setup: &yarn-setup
+    image: node:latest
+    before_script:
+        - yarn install --frozen-lockfile
+        
+### Jobs
+test-contract:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn $TEST_LINTER
+        - yarn $TEST_HARDHAT

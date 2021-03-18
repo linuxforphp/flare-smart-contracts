@@ -15,5 +15,5 @@ interface IFlareKeeper {
     function keep() external;
 
     /// register a contract to be triggered per block
-    function registerContractToKeep(KeptContract _toKeep) external;
+    // function registerContractToKeep(KeptContract _toKeep) external;
 }
