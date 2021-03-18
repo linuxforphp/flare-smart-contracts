@@ -20,11 +20,11 @@ library Delegation {
         AMOUNT
     }
 
-    uint public constant MAX_DELEGATES = 100;
+    uint8 public constant MAX_DELEGATES_BY_PERCENT = 100;
+    uint16 public constant MAX_BIPS = 10000;
     string private constant MAX_DELEGATES_MSG = "Max delegates exceeded";
     string private constant MAX_BIPS_MSG = "Max delegation bips exceeded";
-    uint16 public constant MAX_BIPS = 10000;
-
+    
     /**
      * @dev `DelegationState` is the state structure used by this library to contain/manage
      *  a grouing of delegates (a Delegation) for a delegator.
@@ -33,36 +33,6 @@ library Delegation {
         DelegationMode mode;
         uint256 total;
         EnumerableAddressToUintMap.AddressToUintMap delegates;
-    }
-
-    /**
-     * @notice Add or replace an existing delegate with allocated vote power in basis points.
-     * @param self A DelegationState instance to manage.
-     * @param delegate The address of the delegate to add/replace
-     * @param bips Allocation of the delegation specified in basis points (1/100 of 1 percent)
-     * @dev If you send a `bips` of zero, `delegate` will be deleted if one
-     *  exists in the delegation; if zero and `delegate` does not exist, it will not be added.
-     */
-    function addReplaceDelegateByPercent(
-        DelegationState storage self, 
-        address delegate, 
-        uint16 bips) internal {
-
-        // Check for max delegation basis points
-        assert(bips <= MAX_BIPS);
-
-        // Delegation mode must be able to accept percentages
-        assert(self.mode == DelegationMode.PERCENTAGE || self.mode == DelegationMode.NOTSET);
-
-        // Put the delegate in the map
-        addReplaceDelegate(self, delegate, bips);
-
-        // Make sure the mode is set
-        if (self.delegates.length() == 0) {
-            self.mode = DelegationMode.NOTSET;
-        } else if (self.mode != DelegationMode.PERCENTAGE){
-            self.mode = DelegationMode.PERCENTAGE;
-        }
     }
 
     /**
@@ -93,6 +63,41 @@ library Delegation {
     }
 
     /**
+     * @notice Add or replace an existing delegate with allocated vote power in basis points.
+     * @param self A DelegationState instance to manage.
+     * @param delegate The address of the delegate to add/replace
+     * @param bips Allocation of the delegation specified in basis points (1/100 of 1 percent)
+     * @dev If you send a `bips` of zero, `delegate` will be deleted if one
+     *  exists in the delegation; if zero and `delegate` does not exist, it will not be added.
+     */
+    function addReplaceDelegateByPercent(
+        DelegationState storage self, 
+        address delegate, 
+        uint16 bips) internal {
+
+        // Check for max delegation basis points
+        assert(bips <= MAX_BIPS);
+
+        // Delegation mode must be able to accept percentages
+        assert(self.mode == DelegationMode.PERCENTAGE || self.mode == DelegationMode.NOTSET);
+
+        // Put the delegate in the map
+        addReplaceDelegate(self, delegate, bips);
+
+        uint256 delegateCount = self.delegates.length();
+
+        // Check total count cap
+        require(delegateCount <= MAX_DELEGATES_BY_PERCENT, MAX_DELEGATES_MSG);
+
+        // Make sure the mode is set
+        if (delegateCount == 0) {
+            self.mode = DelegationMode.NOTSET;
+        } else if (self.mode != DelegationMode.PERCENTAGE){
+            self.mode = DelegationMode.PERCENTAGE;
+        }
+    }
+
+    /**
      * @notice Add or replace an existing VotingDelegate from the delgation.
      * @param self A DelegationState instance to manage.
      * @param delegate The address of the delegate to add/replace
@@ -117,10 +122,8 @@ library Delegation {
                 updateTotal(self, oldValue, false);
             }
             // Add/update a delegate
-            if (self.delegates.set(delegate, amountOrBips)) {
-                // If added, check total count cap
-                require(self.delegates.length() < MAX_DELEGATES, MAX_DELEGATES_MSG);
-            }
+            self.delegates.set(delegate, amountOrBips);
+
             // Add new value to the total
             updateTotal(self, amountOrBips, true);
         }
@@ -131,7 +134,7 @@ library Delegation {
      * @param self A DelegationState instance to manage.
      * @return count The total number of delegates.
      */
-    function getDelegationCount(
+    function getDelegateCount(
         DelegationState storage self) internal view returns (uint256 count) {
 
         return self.delegates.length();
@@ -140,10 +143,10 @@ library Delegation {
     /**
      * @notice Get the total of the explicit vote power delegation amount or bips of all delegates.
      * @param self A DelegationState instance to manage.
-     * @return total The total vote power amount or bips delegated.
+     * @return totalAmountOrBips The total vote power amount or bips delegated.
      */
-    function getDelegationTotal(
-        DelegationState storage self) internal view returns (uint256 total) {
+    function getDelegateTotal(
+        DelegationState storage self) internal view returns (uint256 totalAmountOrBips) {
 
         return self.total;
     }

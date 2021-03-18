@@ -58,7 +58,7 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     // Act
     await delegation.addReplaceDelegateByPercent(accounts[2], 5000);
     // Assert
-    assert.equal(await delegation.getDelegationTotal(), 10000);
+    assert.equal(await delegation.getDelegateTotal(), 10000);
   });
 
   it("Should add multiple delegates by amount", async() => {
@@ -67,7 +67,7 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     // Act
     await delegation.addReplaceDelegateByAmount(accounts[2], 200);
     // Assert
-    assert.equal(await delegation.getDelegationTotal(), 300);
+    assert.equal(await delegation.getDelegateTotal(), 300);
   });
 
   it("Should should not find a delegate", async() => {
@@ -131,31 +131,21 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     assert(!result.found);
   });  
 
-// TODO: Will need a bunch of addresses to do this test
-/*  
-  it("Should allow no more than 5 delegates", async() => {
-    // Assemble
-    let delegate = {
-      delegate: accounts[1], 
-      pct: 0,
-      amount: 100
-    };
-    await delegation.addReplaceDelegate(delegate);
-    delegate.delegate = accounts[2];
-    await delegation.addReplaceDelegate(delegate);
-    delegate.delegate = accounts[3];
-    await delegation.addReplaceDelegate(delegate);
-    delegate.delegate = accounts[4];
-    await delegation.addReplaceDelegate(delegate);
-    delegate.delegate = accounts[5];
-    await delegation.addReplaceDelegate(delegate);
-    // Act
-    delegate.delegate = accounts[6];
-    let addPromise = delegation.addReplaceDelegate(delegate);
-    // Assert
-    await expectRevert(addPromise, "Max delegates exceeded");
+  it("Should allow no more than 100 delegates", async() => {
+    if (accounts.length > 100) {
+      // Assemble
+      // Add 100 delegates with 50 bips each
+      for(var i = 1; i <= 100; i++) {
+        await delegation.addReplaceDelegateByPercent(accounts[i], 50);
+      }
+      // Act
+      let addPromise = delegation.addReplaceDelegateByPercent(accounts[101], 50);
+      // Assert
+      await expectRevert(addPromise, "Max delegates exceeded");
+    } else {
+      console.log("Not enough accounts; test skipped.");
+    }
   });
-*/
 
   it("Should not allow single delegation by percent > 10000 bips", async() => {
     // Assemble

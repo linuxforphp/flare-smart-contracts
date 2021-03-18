@@ -25,8 +25,8 @@ contract DelegationMock {
         _self.addReplaceDelegateByAmount(delegate, amount);
     }
 
-    function getDelegationTotal() public view returns (uint256 totalAmount) {
-        return _self.getDelegationTotal();
+    function getDelegateTotal() public view returns (uint256 totalAmount) {
+        return _self.getDelegateTotal();
     }
 
     function getDelegationMode() public view returns(Delegation.DelegationMode delegationMode) {
