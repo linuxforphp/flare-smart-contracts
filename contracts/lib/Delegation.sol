@@ -20,7 +20,7 @@ library Delegation {
         AMOUNT
     }
 
-    uint8 public constant MAX_DELEGATES_BY_PERCENT = 100;
+    uint8 public constant MAX_DELEGATES_BY_PERCENT = 5;
     uint16 public constant MAX_BIPS = 10000;
     string private constant MAX_DELEGATES_MSG = "Max delegates exceeded";
     string private constant MAX_BIPS_MSG = "Max delegation bips exceeded";
