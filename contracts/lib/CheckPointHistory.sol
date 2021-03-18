@@ -57,12 +57,14 @@ library CheckPointHistory {
      * @return value The value at `blockNumber`     
      **/
     function valueAt(CheckPointHistoryState storage self, uint256 blockNumber) internal view returns (uint256 value) {
+        uint256 historyCount = self.values.length;
+
         // No checkpoints, return 0
-        if (self.values.length == 0) return 0;
+        if (historyCount == 0) return 0;
 
         // Shortcut for the actual value
-        if (blockNumber >= self.values[self.values.length.sub(1)].fromBlock)
-            return self.values[self.values.length.sub(1)].value;
+        if (blockNumber >= self.values[historyCount - 1].fromBlock)
+            return self.values[historyCount - 1].value;
         if (blockNumber < self.values[0].fromBlock) return 0;
 
         // Find the block with number less than or equal to block given
@@ -88,13 +90,15 @@ library CheckPointHistory {
      * @param blockNumber The block at which to write.
      **/
     function writeValueAt(CheckPointHistoryState storage self, uint256 value, uint256 blockNumber) internal {
-        if (self.values.length == 0) {
+        uint256 historyCount = self.values.length;
+
+        if (historyCount == 0) {
             // values array empty, push new CheckPoint
             self.values.push(CheckPoint({fromBlock: blockNumber, value: value}));
-        } else if (blockNumber == self.values[self.values.length.sub(1)].fromBlock) {
+        } else if (blockNumber == self.values[historyCount - 1].fromBlock) {
             // If last check point is blockNumber input, just update
-            self.values[self.values.length.sub(1)].value = value;
-        } else if (blockNumber > self.values[self.values.length.sub(1)].fromBlock) {
+            self.values[historyCount - 1].value = value;
+        } else if (blockNumber > self.values[historyCount - 1].fromBlock) {
             // If last check point block is before
             self.values.push(CheckPoint({fromBlock: blockNumber, value: value}));
         } else {
