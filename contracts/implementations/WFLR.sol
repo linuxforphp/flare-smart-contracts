@@ -38,12 +38,12 @@ contract WFLR is VPToken {
      * `amount`.
      */
     function withdrawFrom(address spender, uint256 amount) public {
+        // Reduce spenders allowance
+        decreaseAllowance(spender, amount);
         // Burn the spenders balance
         _burn(spender, amount);
         // Move value to sender
         msg.sender.transfer(amount);
-        // Reduce spenders allowance
-        decreaseAllowance(spender, amount);
         // Emit withdraw event
         emit Withdrawal(spender, amount);
     }
