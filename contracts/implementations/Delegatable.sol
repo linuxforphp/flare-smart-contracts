@@ -44,7 +44,7 @@ abstract contract Delegatable is IDelegatable {
         // Only proceed if we have a delegation by percentage
         if (delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE) {
             // Iterate over the delegates
-            for (uint i = 0; i < delegation.getDelegationCount(); i++) {      // Permissive use: length capped
+            for (uint i = 0; i < delegation.getDelegateCount(); i++) {      // Permissive use: length capped
                 // Get the delegate address and their allocation
                 (address delegate, uint256 bips) = delegation.getDelegateAt(i);
                 // Compute the delegated vote power for the delegate
@@ -218,7 +218,7 @@ abstract contract Delegatable is IDelegatable {
         delegation = _delegations[owner];
 
         Delegation.DelegationMode mode = delegation.getDelegationMode();
-        count = delegation.getDelegationCount();
+        count = delegation.getDelegateCount();
 
         // Allocate array sizes
         delegateAddresses = new address[](count);
@@ -350,7 +350,7 @@ abstract contract Delegatable is IDelegatable {
         assert(delegation.getDelegationMode() == Delegation.DelegationMode.AMOUNT);
 
         // Iterate over the delegates
-        for (uint i = 0; i < delegation.getDelegationCount(); i++) {      // Permissive use: length capped
+        for (uint i = 0; i < delegation.getDelegateCount(); i++) {      // Permissive use: length capped
             (address delegate, uint256 amount) = delegation.getDelegateAt(i);
             // Transmit vote power back to owner
             _votePower.undelegate(who, delegate, amount);
@@ -384,7 +384,7 @@ abstract contract Delegatable is IDelegatable {
         assert(delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE);
 
         // Iterate over the delegates
-        for (uint i = 0; i < delegation.getDelegationCount(); i++) {      // Permissive use: length capped
+        for (uint i = 0; i < delegation.getDelegateCount(); i++) {      // Permissive use: length capped
             (address delegate, uint256 bips) = delegation.getDelegateAt(i);
             // Compute vote power to be reversed for the delegate
             uint256 reverseVotePower = senderCurrentBalance.mulDiv(bips, Delegation.MAX_BIPS);
@@ -422,11 +422,11 @@ abstract contract Delegatable is IDelegatable {
             bool overflow;
             uint256 result;
             // Return zero if negative
-            (overflow, result) = ownerCurrentBalance.trySub(delegation.getDelegationTotal());
+            (overflow, result) = ownerCurrentBalance.trySub(delegation.getDelegateTotal());
             return result;
         } else if (delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE) {
             return ownerCurrentBalance.mulDiv(
-                uint(Delegation.MAX_BIPS).sub(delegation.getDelegationTotal()), 
+                uint(Delegation.MAX_BIPS).sub(delegation.getDelegateTotal()), 
                 Delegation.MAX_BIPS
             );
         } else {
