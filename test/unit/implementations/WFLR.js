@@ -1,7 +1,10 @@
 const calcGasCost = require('../../utils/eth').calcGasCost;
+const {expectRevert} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const WFLR = artifacts.require("WFLR");
+
+const ALLOWANCE_EXCEEDED_MSG = "ERC20: decreased allowance below zero";
 
 contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
   // a fresh contract for each test
@@ -102,6 +105,17 @@ contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
     // TODO: Why is this passing? Isn't accounts[2] supposed to pay some gas?
     assert(a2FlrClosingBalance.sub(a2FlrOpeningBalance), 30);
     assert.equal(a1FlrOpeningBalance.sub(a1FlrClosingBalance), 0);
+  });
+
+  it("Should revert when withdrawn to another address without allowance.", async () => {
+    // Assemble
+    await wflr.deposit({value: 50, from:accounts[1]});
+    await wflr.increaseAllowance(accounts[1], 20, {from: accounts[2]})
+    // Act
+    // A1 spending by burning WFLR and moving FLR to A2, but allowance too low
+    let withdrawPromise = wflr.withdrawFrom(accounts[1], 30, {from: accounts[2]});
+    // Assert
+    await expectRevert(withdrawPromise, ALLOWANCE_EXCEEDED_MSG);
   });
 
   // TODO: Test Deposit and Withdrawal events
