@@ -54,4 +54,7 @@ contract DelegatableMock is Delegatable {
     function undelegatedVotePowerOf(address owner) public view override returns(uint256 votePower) {
         return _undelegatedVotePowerOf(owner, _senderBalances[owner]);
     }
+
+    function votePower() public view override returns(uint256) {return 0;}
+    function votePowerAt(uint blockNumber) public view override returns(uint256) {return 0;}
 }

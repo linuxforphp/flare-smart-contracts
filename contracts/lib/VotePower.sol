@@ -25,8 +25,6 @@ library VotePower {
         // `votePowerByAddress` is the map that tracks the voting power balance
         //  of each address, by block.
         CheckPointsByAddress.CheckPointsByAddressState votePowerByAddress;
-        // `votePower` contains to total vote power supply by block.
-        CheckPointHistory.CheckPointHistoryState votePower;
     }
 
     /**
@@ -58,9 +56,6 @@ library VotePower {
 
         // Cannot burn the zero address
         assert(owner != address(0));
-
-        // Burn total vote power
-        self.votePower.writeValueAtNow(self.votePower.valueAtNow().sub(amount));
 
         // Burn vote power for address
         self.votePowerByAddress.transmitAtNow(owner, address(0), amount);
@@ -110,9 +105,6 @@ library VotePower {
 
         // Cannot mint the zero address
         assert(owner != address(0));
-
-        // Mint total vote power
-        self.votePower.writeValueAtNow(self.votePower.valueAtNow().add(amount));
 
         // Mint vote power for address
         self.votePowerByAddress.transmitAtNow(address(0), owner, amount);
@@ -187,32 +179,6 @@ library VotePower {
             delegatee, 
             delegatedVotePower.valueOfAtNow(delegatee).sub(amount, "amount too big")
         );
-    }
-
-    /**
-     * @notice Get the vote power at `blockNumber`.
-     * @param self A VotePowerState instance to manage.
-     * @param blockNumber Block number of the block to fetch vote power.
-     * @return votePower The fetched vote power.
-     */
-    function votePowerAt(
-        VotePowerState storage self, 
-        uint256 blockNumber)
-        internal view returns(uint256 votePower) {
-
-        return self.votePower.valueAt(blockNumber);
-    }
-
-    /**
-     * @notice Get the current vote power.
-     * @param self A VotePowerState instance to manage.
-     * @return votePower The fetched vote power.
-     */
-    function votePowerAtNow(
-        VotePowerState storage self)
-        internal view returns(uint256 votePower) {
-
-        return self.votePower.valueAt(block.number);
     }
 
     /**

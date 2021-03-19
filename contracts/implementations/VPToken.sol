@@ -70,6 +70,23 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
         _undelegateAll(balanceOf(_msgSender()));
     }
 
+    /**
+     * @notice Get the current vote power.
+     * @return The current vote power.
+     */
+    function votePower() public view override returns(uint256) {
+        return totalSupply();
+    }
+
+    /**
+    * @notice Get the vote power at block `blockNumber`
+    * @param blockNumber The block number at which to fetch.
+    * @return The vote power at the block.
+    */
+    function votePowerAt(uint blockNumber) public view override returns(uint256) {
+        return totalSupplyAt(blockNumber);
+    }
+
     // Update vote power and balance checkpoints before balances are modified. This is implemented
     // in the _beforeTokenTransfer hook, which is executed for _mint, _burn, and _transfer operations.
     function _beforeTokenTransfer(

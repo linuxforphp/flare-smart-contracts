@@ -150,4 +150,48 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     expectRevert(delegatePromise, ALREADY_DELEGATED_PERCENT_MSG);
   });
+
+  it("Should sum minted vote power", async() => {
+    // Assemble
+    // Act
+    await vpToken.mint(accounts[1], 10);
+    await vpToken.mint(accounts[2], 20);
+    // Assert
+    assert.equal(await vpToken.votePower(), 30);
+  });  
+
+  it("Should net total vote power", async() => {
+    // Assemble
+    await vpToken.mint(accounts[1], 10);
+    await vpToken.mint(accounts[2], 20);
+    // Act
+    await vpToken.burn(5, {from: accounts[1]});
+    // Assert
+    assert.equal(await vpToken.votePower(), 25);
+  });
+
+  it("Should record historic vote power", async() => {
+    // Assemble
+    const b = [];
+    let blockAfterFirstMinting = 0;
+
+    await vpToken.mint(accounts[1], 10);
+    await vpToken.mint(accounts[2], 20);
+    b[blockAfterFirstMinting] = await web3.eth.getBlockNumber();
+
+    // Act
+    await vpToken.mint(accounts[2], 50);
+
+    // Assert
+    assert.equal(await vpToken.votePowerAt(b[blockAfterFirstMinting]), 30);
+  });
+
+  it("Should leave total vote power alone when delegating", async() => {
+    // Assemble
+    await vpToken.mint(accounts[1], 20);
+    // Act
+    await vpToken.delegate(accounts[2], 5, {from: accounts[1]});
+    // Assert
+    assert.equal(await vpToken.votePower(), 20);
+  });  
 });

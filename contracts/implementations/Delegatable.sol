@@ -435,23 +435,6 @@ abstract contract Delegatable is IDelegatable {
     }
     
     /**
-     * @notice Get the current vote power.
-     * @return The current vote power.
-     */
-    function votePower() public view override returns(uint256) {
-        return _votePower.votePowerAtNow();
-    }
-
-    /**
-    * @notice Get the vote power at block `blockNumber`
-    * @param blockNumber The block number at which to fetch.
-    * @return The vote power at the block.
-    */
-    function votePowerAt(uint blockNumber) public view override returns(uint256) {
-        return _votePower.votePowerAt(blockNumber);
-    }
-
-    /**
     * @notice Get current delegated vote power `from` delegator delegated `to` delegatee.
     * @param from Address of delegator
     * @param to Address of delegatee
