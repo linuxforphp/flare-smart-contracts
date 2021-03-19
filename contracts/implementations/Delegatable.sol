@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 import {Delegation} from "../lib/Delegation.sol";
 import {IDelegatable} from "../IDelegatable.sol";
+import {IVotePower} from "../IVotePower.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../lib/SafePct.sol";
 import {VotePower} from "../lib/VotePower.sol";
@@ -9,11 +10,10 @@ import {VotePower} from "../lib/VotePower.sol";
 /**
  * @title Delegateable ERC20 behavior
  * @notice An ERC20 Delegateable behavior to delegate voting power
- *  of a token to delegates.
- * @dev Future enhancement might include scaling factor (so that power could be scaled
- *  at some factor other than 1).
+ *  of a token to delegates. This contract orchestrates interaction between
+ *  managing a delegation and the vote power allocations that result.
  **/
-abstract contract Delegatable is IDelegatable {
+abstract contract Delegatable is IDelegatable, IVotePower {
     using Delegation for Delegation.DelegationState;
     using SafeMath for uint256;
     using SafePct for uint256;

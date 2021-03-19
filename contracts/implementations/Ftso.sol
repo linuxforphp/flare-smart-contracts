@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../IFtso.sol";
-import "../IVPToken.sol";
+import "../IVotePower.sol";
 import "../interfaces/IRewardManager.sol";
 import "./WeightedMedian.sol";
 
@@ -41,9 +41,9 @@ contract Ftso is IFtso {
     uint256 internal immutable fAssetDecimals;
     bool internal immutable randomizedPivot;
     bool internal immutable relinkResults;
-    IVPToken public immutable fFlr;                 // wrapped FLR
-    IVPToken public immutable fAsset;               // wrapped asset
-    IRewardContract public rewardManager;            // reward manager contract
+    IVotePower public immutable fFlr;                   // wrapped FLR
+    IVotePower public immutable fAsset;                 // wrapped asset
+    IRewardContract public rewardManager;               // reward manager contract
     uint256 public immutable minVotePower;    
     uint256 public firstEpochStartTimestamp;
     uint256 public epochPeriod;
@@ -62,8 +62,8 @@ contract Ftso is IFtso {
     event EpochId(uint _epochId);   // event to communicate epoch with price submitter, see submitPrice
 
     constructor(
-        IVPToken _fFlr,
-        IVPToken _fAsset,
+        IVotePower _fFlr,
+        IVotePower _fAsset,
         uint256 _fAssetDecimals,
         IRewardContract _rewardManager,
         uint256 _minVotePower,

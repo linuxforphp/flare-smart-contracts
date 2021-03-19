@@ -18,11 +18,4 @@ interface IDelegatable {
         uint256 count, 
         uint8 delegationMode);
     function delegationModeOf(address who) external view returns(uint8);
-    function undelegatedVotePowerOf(address owner) external view returns(uint256);
-    function votePower() external view returns(uint256);
-    function votePowerAt(uint blockNumber) external view returns(uint256);
-    function votePowerFromTo(address from, address to) external view returns(uint256);
-    function votePowerFromToAt(address from, address to, uint blockNumber) external view returns(uint256);
-    function votePowerOf(address owner) external view returns(uint256);
-    function votePowerOfAt(address owner, uint256 _blockNumber) external view returns(uint256);
 }
