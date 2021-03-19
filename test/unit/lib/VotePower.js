@@ -54,41 +54,6 @@ contract(`VotePower.sol; ${getTestFile(__filename)}; Vote power unit tests`, asy
     await expectRevert(burnPromise, "SafeMath: subtraction overflow");
   });
 
-  it("Should sum minted vote power", async() => {
-    // Assemble
-    // Act
-    await votePower._mint(accounts[1], 10);
-    await votePower._mint(accounts[2], 20);
-    // Assert
-    assert.equal(await votePower.votePowerAtNow(), 30);
-  });  
-
-  it("Should net total vote power", async() => {
-    // Assemble
-    await votePower._mint(accounts[1], 10);
-    await votePower._mint(accounts[2], 20);
-    // Act
-    await votePower._burn(accounts[1], 5);
-    // Assert
-    assert.equal(await votePower.votePowerAtNow(), 25);
-  });
-
-  it("Should record historic vote power", async() => {
-    // Assemble
-    const b = [];
-    let blockAfterFirstMinting = 0;
-
-    await votePower._mint(accounts[1], 10);
-    await votePower._mint(accounts[2], 20);
-    b[blockAfterFirstMinting] = await web3.eth.getBlockNumber();
-
-    // Act
-    await votePower._mint(accounts[2], 50);
-
-    // Assert
-    assert.equal(await votePower.votePowerAt(b[blockAfterFirstMinting]), 30);
-  });
-
   it("Should record historic vote power for an address", async() => {
     // Assemble
     const b = [];
@@ -166,13 +131,4 @@ contract(`VotePower.sol; ${getTestFile(__filename)}; Vote power unit tests`, asy
     // Assert
     assert.equal(await votePower.votePowerFromToAt(accounts[1], accounts[2], b[blockAfterFirstDelegate]), 0);
   });
-
-  it("Should leave total vote power alone when delegating", async() => {
-    // Assemble
-    await votePower._mint(accounts[1], 20);
-    // Act
-    await votePower.delegate(accounts[1], accounts[2], 5);
-    // Assert
-    assert.equal(await votePower.votePowerAtNow(), 20);
-  });  
 });
