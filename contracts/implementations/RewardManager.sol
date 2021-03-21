@@ -6,6 +6,7 @@ import "../interfaces/IFlareKeep.sol";
 import "../IFtso.sol";
 import "./Governed.sol";
 
+import "hardhat/console.sol";
 
     /* 
     Reward manager (better name?) in charge of a few operations:
@@ -79,6 +80,7 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
 
         currentRewardEpoch = 0;
         currentRewardEpochEnds = _currentRewardEpochStartTs + _rewardEpochDurationMs;
+        currentPriceEpochEnds  += _firstEpochStartTs + _priceEpochDruationMs;
     }
 
     // function claimReward for claiming reward by data providers
@@ -100,6 +102,14 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         });
     }
 
+    function activate() external onlyGovernance {
+      active = true;
+    }
+
+    function dactivate() external onlyGovernance {
+      active = false;
+    }
+
     function keep() external override {
         // flare keeper trigger. once every block
         if (!active) return;
@@ -107,6 +117,9 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         if (currentRewardEpochEnds < block.timestamp) {
             finalizeRewardEpoch();
         }
+
+console.log("currentPriceEpochEnds is %s", currentPriceEpochEnds);
+console.log("block.timestamp is %s", block.timestamp);
 
         if (currentPriceEpochEnds < block.timestamp) {
             finalizePriceEpoch();

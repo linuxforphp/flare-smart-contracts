@@ -63,6 +63,20 @@ contract Inflation is IInflation, Governed, IFlareKeep {
         }
     }
 
+    function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {
+
+        if (lastFundsWithdrawTs + fundWithdrawTimeLockMs < block.timestamp) {
+            // can send funds
+            lastFundsWithdrawTs = block.timestamp;  // Set state before transfer to avoid re-entrancy problems
+            // TODO: move to WFLR?
+            (payable(address(rewardManager))).transfer(dailyWithdrawAmountTwei);
+        }
+
+        emit WithDrawRewardFunds(block.timestamp, dailyWithdrawAmountTwei);
+
+        return lastFundsWithdrawTs + fundWithdrawTimeLockMs;
+    }
+
     function currentAnnumEndsTs() public view returns (uint256 endTs) {
         endTs = flareAnnumData[currentFlareAnnum].startTimeStamp + (1 days * 356);
     }
@@ -83,19 +97,5 @@ contract Inflation is IInflation, Governed, IFlareKeep {
 
         dailyWithdrawAmountTwei = newAnum.totalInflationWei * 2 / 356; // 2 days worth of funds
         rewardManager.setDailyRewardAmount(newAnum.totalInflationWei / 356);
-    }
-
-    function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {
-
-        if (lastFundsWithdrawTs + fundWithdrawTimeLockMs < block.timestamp) {
-            // can send funds
-            // TODO: move to WFLR?
-            (payable(address(rewardManager))).transfer(dailyWithdrawAmountTwei);
-            lastFundsWithdrawTs = block.timestamp;
-        }
-
-        emit WithDrawRewardFunds(block.timestamp, dailyWithdrawAmountTwei);
-
-        return lastFundsWithdrawTs + fundWithdrawTimeLockMs;
     }
 }
