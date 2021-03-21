@@ -13,6 +13,6 @@ interface IInflation {
     /// can only be called by the reward contract.
     function withdrawRewardFunds() external returns (uint256 nextWithdrawTimestamp);
 
-    /// reward contract adress can only be updated by the governance contract
+    /// reward contract address can only be updated by the governance contract
     function setRewardContract(IRewardContract rewardContract) external;
 }
