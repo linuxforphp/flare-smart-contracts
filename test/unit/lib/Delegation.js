@@ -131,15 +131,16 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     assert(!result.found);
   });  
 
-  it("Should allow no more than 100 delegates", async() => {
-    if (accounts.length > 100) {
+  it("Should allow no more than n delegates by percent", async() => {
+    let maxDelegateCount = await delegation.MAX_DELEGATES_BY_PERCENT;
+    if (accounts.length > maxDelegateCount) {
       // Assemble
-      // Add 100 delegates with 50 bips each
-      for(var i = 1; i <= 100; i++) {
+      // Add maxDelegateCount delegates with 50 bips each
+      for(var i = 1; i <= maxDelegateCount; i++) {
         await delegation.addReplaceDelegateByPercent(accounts[i], 50);
       }
       // Act
-      let addPromise = delegation.addReplaceDelegateByPercent(accounts[101], 50);
+      let addPromise = delegation.addReplaceDelegateByPercent(accounts[maxDelegateCount+1], 50);
       // Assert
       await expectRevert(addPromise, "Max delegates exceeded");
     } else {
