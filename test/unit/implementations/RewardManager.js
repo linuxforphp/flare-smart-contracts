@@ -28,7 +28,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
     await time.advanceBlock();
     // Get the timestamp for the just mined block
     startTs = await time.latest();
-    console.log(`startTs: ${startTs}`);
 
     rewardManager = await RewardManager.new(
       accounts[0],
@@ -43,6 +42,18 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
   it("Should init price epoch start and not finalize", async() => {
     // Assemble
     await rewardManager.activate();
+    // Act
+    await rewardManager.keep();
+    // Assert
+    assert(startTs.eq(await rewardManager.firstPriceEpochStartTs()));
+  });
+
+  it("Should finalize a price epoch", async() => {
+    // Assemble
+    await rewardManager.activate();
+    // Time travel 120 seconds
+    await timeIncreaseTo((await time.latest()).addn(1200));
+    await time.advanceBlock();
     // Act
     await rewardManager.keep();
     // Assert

@@ -45,12 +45,12 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
     // TODO: consider enabling duration updates
     // reward Epoch data
     uint256 public currentRewardEpoch;
-    uint256 immutable public rewardEpochDurationMs;
+    uint256 immutable public rewardEpochDurationSec;
     uint256 internal currentRewardEpochEnds;
 
     // price epoch data
     uint256 immutable public firstPriceEpochStartTs;
-    uint256 immutable public priceEpochDurationMs;
+    uint256 immutable public priceEpochDurationSec;
     uint256 public currentPriceEpoch;
     uint256 internal currentPriceEpochEnds;
 
@@ -62,25 +62,25 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
     constructor(
         address _governance,
         address _inflation,
-        uint256 _rewardEpochDurationMs,
-        uint256 _priceEpochDruationMs,
+        uint256 _rewardEpochDurationSec,
+        uint256 _priceEpochDruationSec,
         uint256 _firstEpochStartTs,
         uint256 _currentRewardEpochStartTs
     ) Governed(_governance) 
     {
-        require(_rewardEpochDurationMs > 0, "reward duration 0");
-        require(_priceEpochDruationMs > 0, "price duration 0");
+        require(_rewardEpochDurationSec > 0, "reward duration 0");
+        require(_priceEpochDruationSec > 0, "price duration 0");
         require(_firstEpochStartTs > 0, "first epoch ts 0");
         require(_inflation != address(0), "inflation 0");
 
         firstPriceEpochStartTs = _firstEpochStartTs;
-        rewardEpochDurationMs = _rewardEpochDurationMs;
-        priceEpochDurationMs = _priceEpochDruationMs;
+        rewardEpochDurationSec = _rewardEpochDurationSec;
+        priceEpochDurationSec = _priceEpochDruationSec;
         inflationContract = _inflation;
 
         currentRewardEpoch = 0;
-        currentRewardEpochEnds = _currentRewardEpochStartTs + _rewardEpochDurationMs;
-        currentPriceEpochEnds  += _firstEpochStartTs + _priceEpochDruationMs;
+        currentRewardEpochEnds = _currentRewardEpochStartTs + _rewardEpochDurationSec;
+        currentPriceEpochEnds  += _firstEpochStartTs + _priceEpochDruationSec;
     }
 
     // function claimReward for claiming reward by data providers
@@ -117,9 +117,6 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         if (currentRewardEpochEnds < block.timestamp) {
             finalizeRewardEpoch();
         }
-
-console.log("currentPriceEpochEnds is %s", currentPriceEpochEnds);
-console.log("block.timestamp is %s", block.timestamp);
 
         if (currentPriceEpochEnds < block.timestamp) {
             finalizePriceEpoch();
