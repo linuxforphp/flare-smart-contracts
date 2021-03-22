@@ -3,6 +3,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const RewardManager = artifacts.require("RewardManager");
 const Inflation = artifacts.require("InflationMock");
+const FTSO = artifacts.require("FtsoMock");
 
 async function timeIncreaseTo (seconds) {
     const delay = 1000 - new Date().getMilliseconds();
@@ -100,5 +101,24 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
     let tx = await rewardManager.keep();
     // Assert
     expectEvent(tx, "RewardEpochFinalized");
+  });
+
+  it("Should sucessfully add an FTSO", async() => {
+    // Assemble
+    let anFTSO = await FTSO.new();
+    // Act
+    let tx = await rewardManager.addFtso(anFTSO.address);
+    // Assert
+    expectEvent(tx, "FtsoAdded");
+    assert.equal(anFTSO.address, await rewardManager.ftsos(0));
+  });
+
+  it("Should not add an FTSO if not from governance", async() => {
+    // Assemble
+    let anFTSO = await FTSO.new();
+    // Act
+    let addPromise = rewardManager.addFtso(anFTSO.address, {from: accounts[1]});
+    // Assert
+    expectRevert(addPromise, "only governance");
   });
 });

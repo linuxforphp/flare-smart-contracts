@@ -143,7 +143,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         uint256 len = ftsos.length;
 
         for (uint256 i = 0; i < len; i++) {
-            if (ftso == ftsos[i]) {
+            if (address(ftso) == address(ftsos[i])) {
                 return; // already registered
             }
         }
@@ -158,8 +158,8 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         uint256 len = ftsos.length;
 
         for (uint256 i = 0; i < len; ++i) {
-            if (ftso == ftsos[i]) {
-                ftsos[i] = ftsos[len -1];
+            if (address(ftso) == address(ftsos[i])) {
+                ftsos[i] = ftsos[len - 1];
                 ftsos.pop();
                 emit FtsoAdded (ftso, false);
                 return;
@@ -209,7 +209,8 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         }
 
         // TODO: This line was reordered. Is it important?
-        currentRewardEpochEnds = block.timestamp + rewardEpochDurationSec;
+        // Also, changed to advance from last end per issue #97
+        currentRewardEpochEnds += rewardEpochDurationSec;
 
         // TODO: Add appropriate event data
         emit RewardEpochFinalized();
