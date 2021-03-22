@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../implementations/Ftso.sol";
+import "../IVotePower.sol";
 
 contract MockFtso is Ftso {
 
@@ -18,8 +19,8 @@ contract MockFtso is Ftso {
     event FinalizeEpochResults(address[] eligibleAddresses, uint64[] flrWeights, uint256 flrWeightsSum);
     
     constructor(
-        IVPToken _fFlr,
-        IVPToken _fAsset,
+        IVotePower _fFlr,
+        IVotePower _fAsset,
         IRewardContract _rewardManager,
         uint256 _minVotePower, 
         uint256 _startTimestamp,
