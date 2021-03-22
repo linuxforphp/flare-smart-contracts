@@ -8,6 +8,7 @@ import '@typechain/hardhat';
 import '@typechain/ethers-v5'
 import * as dotenv from "dotenv";
 import 'solidity-coverage';
+import "hardhat-gas-reporter"
 import { HardhatUserConfig } from "hardhat/config";
 
 dotenv.config();
@@ -187,6 +188,10 @@ const config: HardhatUserConfig = {
     outDir: 'typechain',
     target: 'ethers-v5',
   },  
+  gasReporter: {
+    showTimeSpent: true,
+    outputFile: "gas-report.txt"
+  }  
 };
 
 export default config;
