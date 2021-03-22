@@ -14,5 +14,5 @@ interface IInflation {
     function withdrawRewardFunds() external returns (uint256 nextWithdrawTimestamp);
 
     /// reward contract address can only be updated by the governance contract
-    function setRewardContract(IRewardContract rewardContract) external;
+    function setRewardContract(IRewardManager rewardManager) external;
 }

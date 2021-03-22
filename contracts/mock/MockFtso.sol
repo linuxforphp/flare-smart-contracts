@@ -19,9 +19,9 @@ contract MockFtso is Ftso {
     event FinalizeEpochResults(address[] eligibleAddresses, uint64[] flrWeights, uint256 flrWeightsSum);
     
     constructor(
-        IVotePower _fFlr,
-        IVotePower _fAsset,
-        IRewardContract _rewardManager,
+        IVPToken _fFlr,
+        IVPToken _fAsset,
+        IRewardManager _rewardManager,
         uint256 _minVotePower, 
         uint256 _startTimestamp,
         uint256 _epochPeriod,

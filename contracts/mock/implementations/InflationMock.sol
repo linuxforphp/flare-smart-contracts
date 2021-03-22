@@ -15,5 +15,5 @@ contract InflationMock is IInflation, Governed {
     function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {}
 
     /// reward contract address can only be updated by the governance contract
-    function setRewardContract(IRewardContract rewardContract) external override {}
+    function setRewardContract(IRewardManager rewardManager) external override {}
 }
