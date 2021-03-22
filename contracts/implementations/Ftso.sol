@@ -38,19 +38,33 @@ contract Ftso is IFtso {
         uint32 voteCount;                       // number of votes in epoch
     }
 
+    bool internal active;
+
     uint256 internal immutable fAssetDecimals;
+
     bool internal immutable randomizedPivot;
     bool internal immutable relinkResults;
-    IVPToken public immutable fFlr;                 // wrapped FLR
-    IVPToken public immutable fAsset;               // wrapped asset
-    IRewardContract public rewardManager;            // reward manager contract
+    
+    
     uint256 public immutable minVotePower;    
     uint256 public firstEpochStartTimestamp;
     uint256 public epochPeriod;
     uint256 public revealPeriod;
 
+    // initialization settings
+    IVPToken public immutable fFlr;             // wrapped FLR
+    IVPToken public immutable fAsset;           // wrapped asset
+    IRewardContract public rewardManager;       // reward manager contract
+    
+    // activation settings
+    
+    // configurable settings
+    uint256 public minVotePowerDenomination;    // value that determines if vote power is sufficient to vote
+    uint256 public maxVotePowerDenomination;    // value that determines what is the largest possible vote power
+
+    // state
     uint256 internal voteId;
-    uint256 internal currentVotepowerBlock;
+    uint256 internal votePowerBlock;
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
     mapping(uint256 => Vote) internal votes;
     mapping(uint256 => uint256) internal nextVoteId;
@@ -84,6 +98,11 @@ contract Ftso is IFtso {
         _;
     }
 
+    modifier whenActive {
+        require(active, "Ftso not activated");
+        _;
+    }
+
     function submitPrice(bytes32 _hash) external {
         require(firstEpochStartTimestamp > 0, "Ftso not initialized");
         // TODO: check if msg.sender has required vote power (minVotePower): needs to be discussed
@@ -92,8 +111,8 @@ contract Ftso is IFtso {
         emit EpochId(epochId);
     }
 
-    function setCurrentVotepowerBlock(uint256 _votepowerBlock) external override onlyRewardManager {
-        currentVotepowerBlock = _votepowerBlock;
+    function setCurrentVotepowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
+        votePowerBlock = _votePowerBlock;
     }
 
     function revealPrice(uint256 _epochId, uint128 _price, uint256 _random) external {
@@ -112,7 +131,7 @@ contract Ftso is IFtso {
             epoch.firstVoteId = voteId;
             epoch.lastVoteId = voteId;
             epoch.voteCount = 1;
-            epoch.votePowerBlock = currentVotepowerBlock;
+            epoch.votePowerBlock = votePowerBlock;
         } else {
             // epoch already contains votes, add a new one to the list
             nextVoteId[epoch.lastVoteId] = voteId;
@@ -329,15 +348,19 @@ contract Ftso is IFtso {
         return firstEpochStartTimestamp + (_epochId + 1) * epochPeriod;
     }
 
-    function getFlrWeight(uint256 votePowerBlock) internal view returns (uint64) {
+    function getFlrWeight(uint256 _votePowerBlock) internal view returns (uint64) {
         // TODO: check for overflows
         // TODO: divide?
-        return uint64(fFlr.votePowerOfAt(msg.sender, votePowerBlock));
+        return uint64(fFlr.votePowerOfAt(msg.sender, _votePowerBlock));
     }
 
-    function getAssetWeight(uint256 votePowerBlock) internal view returns (uint64) {
+    function getAssetWeight(uint256 _votePowerBlock) internal view returns (uint64) {
         // TODO: check for overflows
-        return uint64(fAsset.votePowerOfAt(msg.sender, votePowerBlock) / fAssetDecimals);
+        return uint64(fAsset.votePowerOfAt(msg.sender, _votePowerBlock) / fAssetDecimals);
+    }
+
+    function getWeight(uint64 _flrWeight, uint64 _assetWeight, uint256 _assetVotePower) internal view returns (uint256) {
+        
     }
 
 }
