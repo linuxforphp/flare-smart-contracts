@@ -32,6 +32,7 @@ export interface VoteInfo {
     runningSumAsset?: number;
     runningPct?: number;
     weight?: number;
+    address?: string;
 }
 
 export interface VoteList {
@@ -101,6 +102,12 @@ export interface EpochResult {
     medians: MediansInfo;
     prices: PriceInfo;
     weights: WeightSumInfo;
+    rewardedVotes?: RewardedVoteInfo[];
+}
+
+export interface RewardedVoteInfo {
+    weightFlr: number;
+    address: string;
 }
 
 /**
@@ -322,11 +329,12 @@ export function priceToRandom(price: number) {
  * @param data 
  * @returns 
  */
-export function resultsFromTestData(data: TestExample): EpochResult {
+export function resultsFromTestData(data: TestExample, addresses: string[]): EpochResult {
     let votes: VoteInfo[] = [];
     let len = data.prices.length;
     if (len != data.weightsFlr.length) throw Error(`Wrong FLR weights length: ${ data.weightsFlr.length }. Should be ${ len }`);
     if (len != data.weightsAsset.length) throw Error(`Wrong FLR weights length: ${ data.weightsAsset.length }. Should be ${ len }`);
+    if (len != addresses.length) throw Error(`Wrong addresses length: ${ addresses.length }. Should be ${ len }`);
     let flrSum = 0;
     let assetSum = 0;
     for (let i = 0; i < len; i++) {
@@ -337,6 +345,7 @@ export function resultsFromTestData(data: TestExample): EpochResult {
             price: data.prices[i],
             weightFlr: data.weightsFlr[i],
             weightAsset: data.weightsAsset[i],
+            address: addresses[i],
             runningSumFlr: flrSum,
             runningSumAsset: assetSum
         })
@@ -422,6 +431,13 @@ export function resultsFromTestData(data: TestExample): EpochResult {
         medianPrice = Math.floor((medianPrice + votes[medianIndex + 1].price) / 2);
     }
 
+    let rewardedVotes: RewardedVoteInfo[] = [];
+    for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
+        let voteInfo = votes[i];
+        rewardedVotes.push({weightFlr: voteInfo.weightFlr, address: voteInfo.address!} as RewardedVoteInfo);
+    }
+    rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
+
     return {
         epoch: 0,
         votes,
@@ -441,8 +457,29 @@ export function resultsFromTestData(data: TestExample): EpochResult {
             lowWeightSum,
             rewardedWeightSum: totalSum - lowWeightSum - highWeightSum,
             highWeightSum
-        }
+        },
+        rewardedVotes
     } as EpochResult
+}
+
+/**
+ * Update EpochResult with rewardedVotes from finalizePriceEpochWithResult
+ * @param epochResult 
+ * @param data 
+ * @returns 
+ */
+export function updateWithRewardedVotesInfo(epochResult: EpochResult, data: any): EpochResult {
+    if (data.eligibleAddresses?.length != data.flrWeights?.length) {
+        throw Error(`FLR weights length (${ data.flrWeights?.length }) and addresses length (${ data.flrWeights?.length }) should match.`);
+    }
+
+    let rewardedVotes: RewardedVoteInfo[] = [];
+    for (let i = 0; i < data.eligibleAddresses.length; i++) {
+        rewardedVotes.push({weightFlr: data.flrWeights[i], address: data.eligibleAddresses[i]} as RewardedVoteInfo);
+    }
+    rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
+
+    return {...epochResult, rewardedVotes };
 }
 
 // 
@@ -485,6 +522,22 @@ export function compareEpochResults(test: EpochResult, target: EpochResult): boo
         console.error(`High weight sums do not match: ${ test.weights.highWeightSum } vs. ${ target.weights.highWeightSum }`);
         return false;
     }
+    if (test.rewardedVotes!.length != target.rewardedVotes!.length) {
+        console.error(`Rewarded votes lengths do not match: ${ test.rewardedVotes!.length } vs. ${ target.rewardedVotes!.length }`);
+        return false;
+    }
+
+    for (let i = 0; i < test.rewardedVotes!.length; i++) {
+        if (test.rewardedVotes![i].weightFlr != target.rewardedVotes![i].weightFlr) {
+            console.error(`Rewarded votes FLR weights at position ${ i } do not match: ${ test.rewardedVotes![i].weightFlr } vs. ${ target.rewardedVotes![i].weightFlr }`);
+            return false;
+        }
+        if (test.rewardedVotes![i].address != target.rewardedVotes![i].address) {
+            console.error(`Rewarded votes addresses at position ${ i } do not match: ${ test.rewardedVotes![i].address } vs. ${ target.rewardedVotes![i].address }`);
+            return false;
+        }
+    }
+
     return true;
 }
 
