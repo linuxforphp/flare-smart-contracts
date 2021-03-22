@@ -1,4 +1,4 @@
-const {constants, expectRevert, time} = require('@openzeppelin/test-helpers');
+const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const RewardManager = artifacts.require("RewardManager");
@@ -32,31 +32,73 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
     rewardManager = await RewardManager.new(
       accounts[0],
       inflation.address,
-      172800000,                      // Reward epoch 2 days
-      120000,                         // Price epoch 2 minutes
+      172800,                      // Reward epoch 2 days
+      120,                         // Price epoch 2 minutes
       startTs,
       startTs
     );
   });
 
-  it("Should init price epoch start and not finalize", async() => {
+  it("Should init price epoch start and not finalize anything", async() => {
     // Assemble
     await rewardManager.activate();
     // Act
-    await rewardManager.keep();
+    let tx = await rewardManager.keep();
     // Assert
     assert(startTs.eq(await rewardManager.firstPriceEpochStartTs()));
+    expectEvent.notEmitted(tx, "PriceEpochFinalized");
+    expectEvent.notEmitted(tx, "RewardEpochFinalized");
   });
 
-  it("Should finalize a price epoch", async() => {
+  it("Should finalize a price epoch only", async() => {
     // Assemble
     await rewardManager.activate();
     // Time travel 120 seconds
-    await timeIncreaseTo((await time.latest()).addn(1200));
-    await time.advanceBlock();
+    await time.increaseTo(startTs.addn(120));
     // Act
-    await rewardManager.keep();
+    let tx = await rewardManager.keep();
     // Assert
-    assert(startTs.eq(await rewardManager.firstPriceEpochStartTs()));
+    expectEvent(tx, "PriceEpochFinalized");
+    expectEvent.notEmitted(tx, "RewardEpochFinalized");
+  });
+
+  it("Should finalize a price epoch at the configured interval", async() => {
+    // Assemble
+    await rewardManager.activate();
+    // Time travel 120 seconds
+    await time.increaseTo(startTs.addn(120));
+    await rewardManager.keep();
+    // Time travel another 120 seconds
+    await time.increaseTo(startTs.addn(120 * 2));
+    // Act
+    let tx = await rewardManager.keep();
+    // Assert
+    expectEvent(tx, "PriceEpochFinalized");
+    expectEvent.notEmitted(tx, "RewardEpochFinalized");
+  });
+
+  it("Should finalize a reward epoch", async() => {
+    // Assemble
+    await rewardManager.activate();
+    // Time travel 120 seconds
+    await time.increaseTo(startTs.addn(172800));
+    // Act
+    let tx = await rewardManager.keep();
+    // Assert
+    expectEvent(tx, "RewardEpochFinalized");
+  });
+
+  it("Should finalize a reward epoch at the configured interval", async() => {
+    // Assemble
+    await rewardManager.activate();
+    // Time travel 2 days
+    await time.increaseTo(startTs.addn(172800));
+    await rewardManager.keep();
+    // Time travel another 2 days
+    await time.increaseTo(startTs.addn(172800 * 2));
+    // Act
+    let tx = await rewardManager.keep();
+    // Assert
+    expectEvent(tx, "RewardEpochFinalized");
   });
 });
