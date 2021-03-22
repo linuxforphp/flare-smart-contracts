@@ -54,17 +54,6 @@ contract VotePowerMock {
         _self.undelegate(delegator, delegatee, amount);
     }
 
-    function votePowerAt(
-        uint256 blockNumber)
-        public view returns(uint256 votePower) {
-        return _self.votePowerAt(blockNumber);
-    }
-
-    function votePowerAtNow()
-        public view returns(uint256 votePower) {
-        return _self.votePowerAtNow();
-    }
-
     function votePowerFromToAt(
         address from, 
         address to, 
