@@ -16,6 +16,14 @@ contract Ftso is IFtso {
     
     struct Epoch {                              // struct holding epoch votes and results
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
+        uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
+        uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
+        uint256 minVotePowerFlr;                // min FLR vote power required for voting
+        uint256 minVotePowerAsset;              // min asset vote power required for voting
+        uint256 maxVotePowerFlr;                // max FLR vote power required for voting
+        uint256 maxVotePowerAsset;              // max asset vote power required for voting
+        uint256 accumulatedVotePowerFlr;        // total FLR vote power accumulated from votes in epoch
+        uint256 accumulatedVotePowerAsset;      // total asset vote power accumulated from votes in epoch
         uint256 weightFlrSum;                   // sum of all FLR weights in epoch votes
         uint256 weightAssetSum;                 // sum of all asset weights in epoch votes
         uint256 firstVoteId;                    // id of the first vote in epoch
@@ -38,6 +46,10 @@ contract Ftso is IFtso {
         uint32 voteCount;                       // number of votes in epoch
     }
 
+    uint64 internal constant MAX_UINT64 = 2**64 - 1;
+    uint128 internal constant MAX_UINT128 = 2**128 - 1;
+    uint192 internal constant MAX_UINT192 = 2**192 - 1;
+
     bool internal active;
 
     uint256 internal immutable fAssetDecimals;
@@ -58,8 +70,14 @@ contract Ftso is IFtso {
     // activation settings
     
     // configurable settings
-    uint256 public minVotePowerDenomination;    // value that determines if vote power is sufficient to vote
-    uint256 public maxVotePowerDenomination;    // value that determines what is the largest possible vote power
+    uint256 public epochMaxVoteCount;
+    uint256 public minVotePowerFlrDenomination;     // value that determines if FLR vote power is sufficient to vote
+    uint256 public maxVotePowerFlrDenomination;     // value that determines what is the largest possible FLR vote power
+    uint256 public minVotePowerAssetDenomination;   // value that determines if asset vote power is sufficient to vote
+    uint256 public maxVotePowerAssetDenomination;   // value that determines what is the largest possible asset vote power
+    uint256 public lowAssetUSDThreshold;            // threshold for low asset vote power
+    uint256 public highAssetUSDThreshold;           // threshold for high asset vote power
+    uint256 public highAssetTurnoutThreshold;       // threshold for high asset turnout
 
     // state
     uint256 internal voteId;
@@ -102,7 +120,7 @@ contract Ftso is IFtso {
         _;
     }
 
-    function submitPrice(bytes32 _hash) external {
+    function submitPrice(bytes32 _hash) external whenActive {
         require(firstEpochStartTimestamp > 0, "Ftso not initialized");
         // TODO: check if msg.sender has required vote power (minVotePower): needs to be discussed
         uint256 epochId = getCurrentEpoch();
@@ -114,35 +132,60 @@ contract Ftso is IFtso {
         votePowerBlock = _votePowerBlock;
     }
 
-    function revealPrice(uint256 _epochId, uint128 _price, uint256 _random) external {
+    function revealPrice(uint256 _epochId, uint128 _price, uint256 _random) external whenActive {
         require(canRevealPriceForEpoch(_epochId), "Price reveal for epoch not possible");
         require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encodePacked(_price, _random)),
-            "Price already revealed or not valid");        
+            "Price already revealed or not valid");
+        
+        Epoch storage epoch = epochs[_epochId];
+        require(epoch.voteCount < epochMaxVoteCount, "Maximal number of votes in epoch reached"); 
+        if (epoch.voteCount == 0) {
+            // first vote
+            epoch.votePowerBlock = votePowerBlock;
+            epoch.votePowerFlr = fFlr.votePowerAt(votePowerBlock);
+            epoch.votePowerAsset = fAsset.votePowerAt(votePowerBlock);
+            epoch.minVotePowerFlr = epoch.votePowerFlr / minVotePowerFlrDenomination;
+            epoch.minVotePowerAsset = epoch.votePowerAsset / minVotePowerAssetDenomination;
+            epoch.maxVotePowerFlr = epoch.votePowerFlr / maxVotePowerFlrDenomination;
+            epoch.maxVotePowerAsset = epoch.votePowerAsset / maxVotePowerAssetDenomination;
+        }
+
+        uint256 votePowerFlr = fFlr.votePowerOfAt(msg.sender, epoch.votePowerBlock);
+        require(votePowerFlr >= epoch.minVotePowerFlr, "Insufficient FLR vote power to create vote");        
+        
+        uint256 votePowerAsset = fAsset.votePowerOfAt(msg.sender, epoch.votePowerBlock);
+        require(votePowerAsset >= epoch.minVotePowerAsset, "Insufficient asset vote power to create vote");
+        
+        if (votePowerFlr > epoch.maxVotePowerFlr) {
+            votePowerFlr = epoch.maxVotePowerFlr;
+        }
+        
+        if (votePowerAsset > epoch.maxVotePowerAsset) {
+            votePowerAsset = epoch.maxVotePowerAsset;
+        }
 
         voteId++;
         
         epochRandom[_epochId] += _random;
         voterEpochPrice[msg.sender][_epochId] = _price;
 
-        Epoch storage epoch = epochs[_epochId];
         if (epoch.firstVoteId == 0) {
             // first vote in epoch
             epoch.firstVoteId = voteId;
             epoch.lastVoteId = voteId;
             epoch.voteCount = 1;
-            epoch.votePowerBlock = votePowerBlock;
         } else {
             // epoch already contains votes, add a new one to the list
             nextVoteId[epoch.lastVoteId] = voteId;
             epoch.lastVoteId = voteId;
             epoch.voteCount += 1;
         }
+        epoch.accumulatedVotePowerFlr += votePowerFlr;
 
         Vote storage vote = votes[voteId];
         vote.price = _price;
-        vote.weightFlr = getFlrWeight(epoch.votePowerBlock);
-        vote.weightAsset = getAssetWeight(epoch.votePowerBlock);
-        // TODO: check weights?
+        vote.weightFlr = getVoteWeight(votePowerFlr, epoch.maxVotePowerFlr, epoch.votePowerFlr);
+        vote.weightAsset = getVoteWeight(votePowerAsset, epoch.maxVotePowerAsset, epoch.votePowerAsset);        
         voteSender[voteId] = msg.sender;
         
         delete epochVoterHash[_epochId][msg.sender];
@@ -347,19 +390,57 @@ contract Ftso is IFtso {
         return firstEpochStartTimestamp + (_epochId + 1) * epochPeriod;
     }
 
-    function getFlrWeight(uint256 _votePowerBlock) internal view returns (uint64) {
-        // TODO: check for overflows
-        // TODO: divide?
-        return uint64(fFlr.votePowerOfAt(msg.sender, _votePowerBlock));
+    function getVoteWeight(uint256 votePower, uint256 maxVotePower, uint256 totalVotePower) internal pure returns (uint64) {
+        uint64 weight;
+        if (maxVotePower <= MAX_UINT64) {
+            weight = uint64(votePower);
+        } else {
+            assert(votePower < MAX_UINT192);
+            weight = uint64((votePower * MAX_UINT64) / totalVotePower);
+        }
+        return weight;
     }
 
-    function getAssetWeight(uint256 _votePowerBlock) internal view returns (uint64) {
-        // TODO: check for overflows
-        return uint64(fAsset.votePowerOfAt(msg.sender, _votePowerBlock) / fAssetDecimals);
-    }
-
-    function getWeight(uint64 _flrWeight, uint64 _assetWeight, uint256 _assetVotePower) internal view returns (uint256) {
+    function getAssetVsFlrWeightRatio(
+        uint256 _assetVotePower,
+        uint256 _assetAccumulatedVotePower,
+        uint128 _assetPrice
+    ) internal view returns (uint256)
+    {
+        // TODO: safe math, integer division errors
+        assert(_assetVotePower <= MAX_UINT128);
+        uint256 votePowerPrice = _assetVotePower * _assetPrice;
         
+        uint256 baseWeightRatio;
+        if (votePowerPrice <= lowAssetUSDThreshold) {
+            baseWeightRatio = 50;
+        } else if (votePowerPrice >= highAssetUSDThreshold) {
+            baseWeightRatio = 500;
+        } else {
+            baseWeightRatio = (450 * (votePowerPrice - lowAssetUSDThreshold)) /
+                (highAssetUSDThreshold - lowAssetUSDThreshold) + 50;
+        }
+
+        uint256 weightRatio;
+        uint256 turnout = (1000 * _assetAccumulatedVotePower) / _assetVotePower;
+        if (turnout >= highAssetTurnoutThreshold) {
+            weightRatio = baseWeightRatio;
+        } else {
+            weightRatio = (baseWeightRatio * turnout) / highAssetTurnoutThreshold;
+        }
+
+        return weightRatio;
+    }
+
+    function getWeight(
+        uint64 _flrWeight,
+        uint256 _flrWeightSum,
+        uint64 _assetWeight,
+        uint256 _assetWeightSum,
+        uint256 _weightRatio
+    ) internal pure returns (uint256)
+    {
+        return _weightRatio * _flrWeightSum * _assetWeight + (1000 - _weightRatio) * _assetWeightSum * _flrWeight;
     }
 
 }
