@@ -41,8 +41,8 @@ contract Ftso is IFtso {
     uint256 internal immutable fAssetDecimals;
     bool internal immutable randomizedPivot;
     bool internal immutable relinkResults;
-    IVPToken public immutable fFlr;                 // wrapped FLR
-    IVPToken public immutable fAsset;               // wrapped asset
+    IVotePower public immutable fFlr;                 // wrapped FLR
+    IVotePower public immutable fAsset;               // wrapped asset
     IRewardManager public rewardManager;            // reward manager contract
     uint256 public immutable minVotePower;    
     uint256 public firstEpochStartTimestamp;
