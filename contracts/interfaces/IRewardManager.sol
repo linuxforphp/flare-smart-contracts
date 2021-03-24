@@ -3,11 +3,11 @@ pragma solidity 0.7.6;
 
 import "../IFtso.sol";
 
-/// @title IRewardContract igh level
-/// The reward contract handles price submission rewards
+/// @title IRewardManager high level
+/// The reward manager distributes price submission rewards for FLR vote power holders
 /// Reward flow:
 ///     - trigger: reveal period ended.
-///     - Per epock, Randomly choose next FTSO to reward.
+///     - Per epoch, Randomly choose next FTSO to reward.
 ///     - Call FTSO to get list of eligible data providers and relative weight.
 ///     - Update reward balance on the contract
 ///     - data provider rewards: x% for delegated vote power + own balance reward
@@ -21,7 +21,7 @@ import "../IFtso.sol";
 /// ClaimReward:
 ///     - user claims. reduce balance and send tokens.
 ///     - if not enough balance pull from Inflation contract.
-interface IRewardContract {
+interface IRewardManager {
 
     event FtsoAdded(IFtso ftso, bool add);
     event RewardClaimed(
@@ -30,6 +30,8 @@ interface IRewardContract {
         uint256 indexed rewardEpoch, 
         uint256 amount
     );
+    event PriceEpochFinalized();
+    event RewardEpochFinalized();
 
     ///@dev sender claims his reward
     function claimReward(address payable to, uint256 rewardEpoch) external returns(uint256 rewardAmount);
