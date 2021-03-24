@@ -56,7 +56,7 @@ contract Ftso is IFtso {
 
     bool internal immutable randomizedPivot;
     bool internal immutable relinkResults;
-    
+
     uint256 public immutable minVotePower;    
     uint256 public firstEpochStartTimestamp;
     uint256 public epochPeriod;
@@ -65,7 +65,7 @@ contract Ftso is IFtso {
     // initialization settings
     IVotePower public immutable fFlr;           // wrapped FLR
     IVotePower public immutable fAsset;         // wrapped asset
-    IRewardContract public rewardManager;       // reward manager contract
+    IRewardManager public rewardManager;       // reward manager contract
     
     // activation settings
     
@@ -96,7 +96,7 @@ contract Ftso is IFtso {
         IVotePower _fFlr,
         IVotePower _fAsset,
         uint256 _fAssetDecimals,
-        IRewardContract _rewardManager,
+        IRewardManager _rewardManager,
         uint256 _minVotePower,
         bool _randomizedPivot,
         bool _relinkResults

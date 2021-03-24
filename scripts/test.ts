@@ -6,9 +6,10 @@ import { readTestData, resultsFromTestData } from "../test/utils/FTSO-test-utils
 
 async function test() {
     let fname = "small-4.json";
-    let testExample = await readTestData(`../test-utils/FTSO-cases/${fname}`);
+    let testExample = await readTestData(`../test-cases/FTSO-cases/${fname}`);
+    let addresses: string[] = [...Array(testExample.prices.length)].map(_=> Math.random().toString(36).substring(2));
     console.log(testExample);
-    console.log(resultsFromTestData(testExample))
+    console.log(resultsFromTestData(testExample, addresses))
 }
 
 test()

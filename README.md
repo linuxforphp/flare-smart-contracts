@@ -17,12 +17,12 @@ Will enable users to supply F-Asset price feeds and some extra data. FTSO will g
 ## Claim contracts
 
 Will enable claiming of FFlr from a pre allocated pool for FFlr. Users will be eligible to claim tokens based on:
-- F assest holdings.
+- F asset holdings.
 - Supplying FTSO price feeds.
 
 ## voting power
 
-Since no token locking is planed for f assets. Each vote campiagn will define vote power pwer address according to a semi random chosen block.
+Since no token locking is planed for f assets. Each vote campaign will define vote power power address according to a semi random chosen block.
 
 ## Package Manager
 
@@ -31,7 +31,8 @@ We use `yarn` as the package manager. You may use `npm` and `npx` instead, but c
 ## Setup
 
 1. Clone this repo
-2. `yarn`
+2. Make sure gsed is installed `brew install gnu-sed`
+3. `yarn`
 
 
 ## Compilation

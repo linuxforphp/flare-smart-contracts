@@ -6,6 +6,7 @@ import "../interfaces/IFlareKeep.sol";
 import "../IFtso.sol";
 import "./Governed.sol";
 
+import "hardhat/console.sol";
 
     /* 
     Reward manager (better name?) in charge of a few operations:
@@ -18,7 +19,7 @@ import "./Governed.sol";
         - trigger finalize price reveal epoch
         - distribute rewards
     */
-contract RewardManager is IRewardContract, IFlareKeep, Governed {
+contract RewardManager is IRewardManager, IFlareKeep, Governed {
 
     struct RewardEpochData {
         uint256 votepowerBlock;
@@ -30,6 +31,14 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         uint32 rewardEpochId;
     }
 
+    // TODO: Note that there are leap seconds (last one was Dec 31, 2016).
+    // NOTE: They are not deterministic. IERS notifies the public in advance.
+    // In order to be technically correct, the governance contract would need to
+    // have a way to flip SECONDS_PER_DAY from 86400 to 86401 at the next June 30
+    // or Dec 31 (the only two days in a year when a leap second can be added).
+    // This assumes that the underlying operating system follows IERS recommendation,
+    // which Unix does not. Instead, it slows the clock down. Is this OS universal? Dunno.
+    uint32 constant private SECONDS_PER_DAY = 86400;
     bool internal active;
 
     RewardEpochData[] public rewardEpochs;
@@ -44,12 +53,12 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
     // TODO: consider enabling duration updates
     // reward Epoch data
     uint256 public currentRewardEpoch;
-    uint256 immutable public rewardEpochDurationMs;
+    uint256 immutable public rewardEpochDurationSec;
     uint256 internal currentRewardEpochEnds;
 
     // price epoch data
     uint256 immutable public firstPriceEpochStartTs;
-    uint256 immutable public priceEpochDurationMs;
+    uint256 immutable public priceEpochDurationSec;
     uint256 public currentPriceEpoch;
     uint256 internal currentPriceEpochEnds;
 
@@ -61,24 +70,25 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
     constructor(
         address _governance,
         address _inflation,
-        uint256 _rewardEpochDurationMs,
-        uint256 _priceEpochDruationMs,
+        uint256 _rewardEpochDurationSec,
+        uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
         uint256 _currentRewardEpochStartTs
     ) Governed(_governance) 
     {
-        require(_rewardEpochDurationMs > 0, "reward duration 0");
-        require(_priceEpochDruationMs > 0, "price duration 0");
+        require(_rewardEpochDurationSec > 0, "reward duration 0");
+        require(_priceEpochDurationSec > 0, "price duration 0");
         require(_firstEpochStartTs > 0, "first epoch ts 0");
         require(_inflation != address(0), "inflation 0");
 
         firstPriceEpochStartTs = _firstEpochStartTs;
-        rewardEpochDurationMs = _rewardEpochDurationMs;
-        priceEpochDurationMs = _priceEpochDruationMs;
+        rewardEpochDurationSec = _rewardEpochDurationSec;
+        priceEpochDurationSec = _priceEpochDurationSec;
         inflationContract = _inflation;
 
         currentRewardEpoch = 0;
-        currentRewardEpochEnds = _currentRewardEpochStartTs + _rewardEpochDurationMs;
+        currentRewardEpochEnds = _currentRewardEpochStartTs + _rewardEpochDurationSec;
+        currentPriceEpochEnds  = _firstEpochStartTs + _priceEpochDurationSec;
     }
 
     // function claimReward for claiming reward by data providers
@@ -98,6 +108,14 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
             rewardEpoch: rewardEpoch,
             amount: rewardAmount
         });
+    }
+
+    function activate() external onlyGovernance {
+      active = true;
+    }
+
+    function dactivate() external onlyGovernance {
+      active = false;
     }
 
     function keep() external override {
@@ -125,12 +143,12 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         uint256 len = ftsos.length;
 
         for (uint256 i = 0; i < len; i++) {
-            if (ftso == ftsos[i]) {
+            if (address(ftso) == address(ftsos[i])) {
                 return; // already registered
             }
         }
 
-        ftso.initPriceEpochData(firstPriceEpochStartTs, priceEpochDurationMs, rewardEpochDurationMs);
+        ftso.initPriceEpochData(firstPriceEpochStartTs, priceEpochDurationSec, rewardEpochDurationSec);
 
         ftsos.push(ftso);
         emit FtsoAdded(ftso, true);
@@ -140,8 +158,8 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         uint256 len = ftsos.length;
 
         for (uint256 i = 0; i < len; ++i) {
-            if (ftso == ftsos[i]) {
-                ftsos[i] = ftsos[len -1];
+            if (address(ftso) == address(ftsos[i])) {
+                ftsos[i] = ftsos[len - 1];
                 ftsos.pop();
                 emit FtsoAdded (ftso, false);
                 return;
@@ -161,67 +179,82 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
 
     function finalizeRewardEpoch() internal {
 
-        uint256 lastRandom = uint256(keccak256(abi.encode(
-            block.timestamp,
-            ftsos[0].getFreshRandom()
-        )));
-
-        // @dev when considering block boundary for vote power block:
-        // - if far from now, it doesn't reflect last vote power changes
-        // - if too small, possible loan attacks.
-        uint256 votepowerBlockBoundary = 
-            (block.number - rewardEpochs[getCurrentRewardEpoch()].startBlock) / 7;
-
-        RewardEpochData memory epochData = RewardEpochData({
-            votepowerBlock: block.number - (votepowerBlockBoundary % lastRandom), 
-            startBlock: block.number
-        });
-
-        rewardEpochs.push(epochData);
-        currentRewardEpoch = rewardEpochs.length - 1;
-
-        currentRewardEpochEnds = block.timestamp + rewardEpochDurationMs;
-
         uint numFtsos = ftsos.length;
 
-        for (uint i; i < numFtsos; ++i) {
-            ftsos[i].setCurrentVotepowerBlock(epochData.votepowerBlock);
+        // Are there any FTSOs to process?
+        if (numFtsos > 0) {
+
+            uint256 lastRandom = uint256(keccak256(abi.encode(
+                block.timestamp,
+                ftsos[0].getFreshRandom()
+            )));
+
+            // @dev when considering block boundary for vote power block:
+            // - if far from now, it doesn't reflect last vote power changes
+            // - if too small, possible loan attacks.
+            uint256 votepowerBlockBoundary = 
+                (block.number - rewardEpochs[getCurrentRewardEpoch()].startBlock) / 7;
+
+            RewardEpochData memory epochData = RewardEpochData({
+                votepowerBlock: block.number - (votepowerBlockBoundary % lastRandom), 
+                startBlock: block.number
+            });
+
+            rewardEpochs.push(epochData);
+            currentRewardEpoch = rewardEpochs.length - 1;
+
+            for (uint i; i < numFtsos; ++i) {
+                ftsos[i].setCurrentVotepowerBlock(epochData.votepowerBlock);
+            }
         }
-        // TODO: Add event
+
+        // TODO: This line was reordered. Is it important?
+        // Also, changed to advance from last end per issue #97
+        currentRewardEpochEnds += rewardEpochDurationSec;
+
+        // TODO: Add appropriate event data
+        emit RewardEpochFinalized();
     }
 
     function finalizePriceEpoch() internal {
 
         uint numFtsos = ftsos.length;
 
-        // choose winning ftso
-        uint256 rewardedFtsoId = 
-            uint256(keccak256(abi.encode(
-                priceEpochs[currentPriceEpoch].chosenFtso.getFreshRandom()
-            ))) % numFtsos;
+        // Are there any FTSOs to process?
+        if(numFtsos > 0) {
 
-        bool wasDistributed = distributeRewards(ftsos[rewardedFtsoId]);
+            // choose winning ftso
+            uint256 rewardedFtsoId = 
+                uint256(keccak256(abi.encode(
+                    priceEpochs[currentPriceEpoch].chosenFtso.getFreshRandom()
+                ))) % numFtsos;
 
-        for (uint i; i < numFtsos; ++i) {
-            if (i == rewardedFtsoId) continue;
+            bool wasDistributed = distributeRewards(ftsos[rewardedFtsoId]);
 
-            if (wasDistributed) {
-                ftsos[i].finalizePriceEpoch(currentPriceEpoch, false);
-            } else {
-                wasDistributed = distributeRewards(ftsos[i]);
-                rewardedFtsoId = i;
+            for (uint i; i < numFtsos; ++i) {
+                if (i == rewardedFtsoId) continue;
+
+                if (wasDistributed) {
+                    ftsos[i].finalizePriceEpoch(currentPriceEpoch, false);
+                } else {
+                    wasDistributed = distributeRewards(ftsos[i]);
+                    rewardedFtsoId = i;
+                }
             }
+
+            priceEpochs[currentRewardEpoch] = PriceEpochData (
+                ftsos[rewardedFtsoId],
+                uint32(currentRewardEpoch)
+            );
+
+            currentPriceEpoch++;
         }
 
-        priceEpochs[currentRewardEpoch] = PriceEpochData (
-            ftsos[rewardedFtsoId],
-            uint32(currentRewardEpoch)
-        );
+        // Advance to next price epoch
+        currentPriceEpochEnds  += priceEpochDurationSec;
 
-        currentPriceEpoch++;
-        currentPriceEpochEnds  += priceEpochDurationMs;
-
-        //TODO: add event
+        //TODO: Add appropriate event data
+        emit PriceEpochFinalized();
     }
 
     function distributeRewards(IFtso ftso) internal returns (bool wasDistirubted) {
@@ -230,7 +263,7 @@ contract RewardManager is IRewardContract, IFlareKeep, Governed {
         uint64[] memory weights;
         uint256 totalWeight; 
 
-        uint256 totalPriceEpochRewardTwei = dailyRewardAmountTwei * priceEpochDurationMs / 1 days;
+        uint256 totalPriceEpochRewardTwei = dailyRewardAmountTwei * priceEpochDurationSec / SECONDS_PER_DAY;
         uint256 distributedSoFar = 0;
 
         (addresses, weights, totalWeight) = ftso.finalizePriceEpoch(currentPriceEpoch, true);

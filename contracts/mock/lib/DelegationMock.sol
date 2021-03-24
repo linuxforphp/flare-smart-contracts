@@ -13,6 +13,8 @@ contract DelegationMock {
 
     Delegation.DelegationState private _self;
 
+    uint8 public MAX_DELEGATES_BY_PERCENT = Delegation.MAX_DELEGATES_BY_PERCENT;
+
     function addReplaceDelegateByPercent(
         address delegate, 
         uint16 bips) public {
