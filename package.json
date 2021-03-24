@@ -12,12 +12,12 @@
   "directories": {},
   "scripts": {
     "pretest": "yarn accounts 1000",
-    "test": "yarn hardhat test 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
-    "test-with-coverage": "yarn hardhat coverage 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
+    "test": "yarn hardhat test 2>&1 | sed -e '/Warning: Visibility for constructor is ignored./,+2d'",
+    "test-with-coverage": "yarn hardhat coverage 2>&1 | sed -e '/Warning: Visibility for constructor is ignored./,+2d'",
     "pretestHH": "yarn accounts 1000",
     "testHH": "yarn hardhat test --network hardhat",
-    "compile": "yarn hardhat compile 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
-    "c": "yarn hardhat compile 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
+    "compile": "yarn hardhat compile 2>&1 | sed -e '/Warning: Visibility for constructor is ignored./,+2d'",
+    "c": "yarn hardhat compile 2>&1 | sed -e '/Warning: Visibility for constructor is ignored./,+2d'",
     "lint": "yarn solhint 'contracts/**/*.sol'",
     "gas": "cat gas-report.txt; echo \n",
     "accounts": "node scripts/generate-accounts.ts"

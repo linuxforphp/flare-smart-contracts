@@ -80,6 +80,19 @@ contract MockFtso is Ftso {
         }
     }
 
+    function getWeightRatio(uint256 _epochId) external view returns (uint256) {
+        Epoch storage epoch = epochs[_epochId];
+        uint256 weightRatio = 50;
+        if (_epochId > 0) {
+            weightRatio = getAssetVsFlrWeightRatio(
+                epoch.votePowerAsset,
+                epoch.accumulatedVotePowerAsset,
+                epochs[_epochId - 1].medianPrice
+            );
+        }
+        return weightRatio;
+    }
+
     function getEpochResult(uint256 _epochId)
         external view 
         returns (

@@ -118,6 +118,7 @@ export interface TestExample {
     prices: number[];
     weightsFlr: number[];
     weightsAsset: number[];
+    weightRatio: number,
     priceAverage?: number;
     priceSD?: number;
     weightFlrAverage?: number;
@@ -345,7 +346,7 @@ export function resultsFromTestData(data: TestExample): EpochResult {
     let totalPreSum = assetSum + flrSum;
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
-        let weight = assetSum * v.weightFlr + flrSum * v.weightAsset;
+        let weight = (1000 - data.weightRatio) * assetSum * v.weightFlr + data.weightRatio * flrSum * v.weightAsset;
         v.weight = weight;
         totalSum += weight;
         v.runningPct = weight / totalPreSum;

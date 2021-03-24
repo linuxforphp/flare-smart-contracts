@@ -21,9 +21,9 @@ library WeightedMedian {
         uint256 medianWeight;
         uint256 lowWeightSum;
         uint256 rewardedWeightSum;
-        uint256 highWeightSum;
-        uint256 finalMedianPrice;
+        uint256 highWeightSum;        
         uint256 totalSum;
+        uint128 finalMedianPrice;
     }
 
     struct QSVariables {

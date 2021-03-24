@@ -126,6 +126,7 @@ describe("FTSO contract - test cases from files", () => {
                     prices: [],
                     weightsFlr: [],
                     weightsAsset: [],
+                    weightRatio: 0,
                     priceAverage: testExample.priceAverage,
                     priceSD: testExample.priceSD,
                     weightFlrAverage: testExample.weightFlrAverage,
@@ -166,6 +167,7 @@ describe("FTSO contract - test cases from files", () => {
             // Print epoch submission prices
             for (let epoch of uniqueEpochs) {
                 let res = await ftso.getVoteInfo(epoch);
+                testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
                 prettyPrintVoteInfo(res, logger)
             }
 
