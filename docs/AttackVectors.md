@@ -16,8 +16,12 @@ please only add high value resources and write a few words about is the added va
 
 ## Reviewed Attacks
 
-A list of attacks one of the devs researched with existing code base. Please add any required comments.
+A list of attacks one of the devs reviewed against existing code base.
 
-### Re Entrancy attack
+
+### Re Entrancy attack - Alen
 
 ### 
+
+## Non reviewed attacks + Reason
+If any attack is skipped. please list it here and state why.
