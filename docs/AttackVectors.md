@@ -9,7 +9,7 @@ This file will be used for any research around attack vectors.
 
 - Consensys [known attacks] list (https://consensys.github.io/smart-contract-best-practices/known_attacks/). Well maintained list with many relevant neauncens per attack.
 
-please only add high value resources and write a few words about is the added value of this resource.
+please only add high value resources and write a short orientation note stating the contents and added value of this resource.
 
 ## Best practice lists
 - Consensys security best practices [here] (https://consensys.github.io/smart-contract-best-practices/recommendations/)
