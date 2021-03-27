@@ -2,7 +2,8 @@
  * Contains misc functions for testing FTSO oracle results.
  */
 
-import { BigNumber } from "ethers";
+import { HardhatEthersHelpers } from "@nomiclabs/hardhat-ethers/types";
+import { BigNumber, ethers, Signer } from "ethers";
 
 const { exec } = require("child_process");
 
@@ -81,7 +82,7 @@ export interface WeightSumInfo {
     highWeightSum: number;
     FLRlowWeightSum: number;
     FLRrewardedWeightSum: number;
-    FLRhighWeightSum: number;    
+    FLRhighWeightSum: number;
 }
 
 /**
@@ -121,7 +122,7 @@ export interface TestExample {
      * if this is > 0, then weightsFlr and weightsAsset should be empty [], and this number of pricess/weights is 
      * generated acording to *Averate and *SD parameters, which should be provided 
      */
-    randomizedDataCount?: number; 
+    randomizedDataCount?: number;
     prices: number[];
     weightsFlr: number[];
     weightsAsset: number[];
@@ -129,9 +130,9 @@ export interface TestExample {
     priceAverage?: number;
     priceSD?: number;
     weightFlrAverage?: number;
-    weightFlrSD?: number;    
+    weightFlrSD?: number;
     weightAssetAverage?: number;
-    weightAssetSD?: number;    
+    weightAssetSD?: number;
 }
 
 export interface TestCase {
@@ -149,10 +150,10 @@ export interface TestCase {
  * @param voteList 
  * @returns 
  */
-export function toVoteList(voteList: VoteListRaw): VoteList {    
-    
+export function toVoteList(voteList: VoteListRaw): VoteList {
+
     let votes: VoteInfo[] = [];
-    for(let i = 0; i < voteList.prices.length; i++) {
+    for (let i = 0; i < voteList.prices.length; i++) {
         votes.push({
             id: i,
             price: voteList.prices[i].toNumber(),
@@ -162,7 +163,7 @@ export function toVoteList(voteList: VoteListRaw): VoteList {
     }
 
     return {
-        epoch: voteList.epochId.toNumber(),        
+        epoch: voteList.epochId.toNumber(),
         votes
     }
 }
@@ -174,7 +175,7 @@ export function toVoteList(voteList: VoteListRaw): VoteList {
  */
 export function toEpochResult(epochResultRaw: EpochResultRaw): EpochResult {
     let votes: VoteInfo[] = [];
-    for(let i = 0; i < epochResultRaw.votePrices.length; i++) {
+    for (let i = 0; i < epochResultRaw.votePrices.length; i++) {
         votes.push({
             id: i,
             price: epochResultRaw.votePrices[i].toNumber(),
@@ -231,7 +232,7 @@ export function toEpochResult(epochResultRaw: EpochResultRaw): EpochResult {
  * @param logger logger object implementing function log(string). Could be `console` as well.
  */
 export function prettyPrintVoteInfo(voteListRaw: VoteListRaw, logger?: any) {
-    if(!logger) {
+    if (!logger) {
         logger = console;
     }
     let voteList = toVoteList(voteListRaw);
@@ -266,7 +267,7 @@ function marker(i: number, minfo: MediansInfo) {
  * @param logger logger object implementing function log(string). Could be `console` as well.
  */
 export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, logger?: any) {
-    if(!logger) {
+    if (!logger) {
         logger = console;
     }
     let epochResult = toEpochResult(rawEpochResult);
@@ -275,7 +276,7 @@ export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, logger?: 
     // let totalSum = totalSumFlr + totalSumAsset;
     let totalSum = 0;
     epochResult.votes.forEach(vote => {
-        totalSum += totalSumAsset*vote.weightFlr + totalSumFlr*vote.weightAsset;
+        totalSum += totalSumAsset * vote.weightFlr + totalSumFlr * vote.weightAsset;
     })
     logger.log(
         `ID\tPRICE\tWFLR\tWASSET\tWEIGHT\n` +
@@ -292,7 +293,7 @@ export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, logger?: 
         `Lower FLR excluded weight: ${ epochResult.weights.FLRlowWeightSum } (${ (epochResult.weights.FLRlowWeightSum / totalSumFlr * 100).toFixed(1) }%)\n` +
         `Rewarded FLR weight: ${ epochResult.weights.FLRrewardedWeightSum } (${ (epochResult.weights.FLRrewardedWeightSum / totalSumFlr * 100).toFixed(1) }%)\n` +
         `Higher FLR excluded weight: ${ epochResult.weights.FLRhighWeightSum } (${ (epochResult.weights.FLRhighWeightSum / totalSumFlr * 100).toFixed(1) }%)\n` +
-        `Total FLR weight: ${ totalSumFlr }\n`        
+        `Total FLR weight: ${ totalSumFlr }\n`
     )
 }
 
@@ -351,7 +352,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
             runningSumAsset: assetSum
         })
     }
-    votes.sort((a: VoteInfo, b: VoteInfo) => a.price < b.price ? -1 : (a.price > b.price ? 1 : 0));    
+    votes.sort((a: VoteInfo, b: VoteInfo) => a.price < b.price ? -1 : (a.price > b.price ? 1 : 0));
     let totalPreSum = assetSum + flrSum;
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
@@ -360,20 +361,20 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
         totalSum += weight;
         v.runningPct = weight / totalPreSum;
     })
-    
+
     let sm = 0
     votes.forEach((v: VoteInfo) => {
         sm += v.weight!;
         v.runningPct = sm / totalSum;
     })
-    
+
 
     let medianWeight = Math.floor(totalSum / 2) + totalSum % 2;
     // console.log("SORTED VOTES:", votes, "SUMS", assetSum, flrSum, totalSum, "MV", medianWeight);
     let medianIndex = 0;
     let medianSum = 0;
 
-    while(medianIndex < len) {
+    while (medianIndex < len) {
         let weight = votes[medianIndex].weight || 0;
         medianSum += weight;
         if (medianSum >= medianWeight) break;
@@ -385,7 +386,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     let firstQuartileSum = 0;
     // console.log("MI:", medianIndex, len, votes[medianIndex], medianWeight, "FKW", firstQuartileWeight);
 
-    while(true) {
+    while (true) {
         if (firstQuartileSum >= firstQuartileWeight || firstQuartileIndex == 0) break;
         firstQuartileIndex--
         let weight = votes[firstQuartileIndex].weight || 0;
@@ -405,18 +406,18 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
 
     let truncatedFirstQuartileIndex = firstQuartileIndex;
 
-    while(truncatedFirstQuartileIndex > 0) {
+    while (truncatedFirstQuartileIndex > 0) {
         if (votes[truncatedFirstQuartileIndex - 1].price != votes[firstQuartileIndex].price) break;
         truncatedFirstQuartileIndex--;
     }
 
     let truncatedLastQuartileIndex = lastQuartileIndex;
 
-    while(truncatedLastQuartileIndex < len - 1) {
+    while (truncatedLastQuartileIndex < len - 1) {
         if (votes[truncatedLastQuartileIndex + 1].price != votes[lastQuartileIndex].price) break;
         truncatedLastQuartileIndex++;
     }
-    
+
     let lowWeightSum = 0
     let highWeightSum = 0;
 
@@ -435,7 +436,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     let rewardedVotes: RewardedVoteInfo[] = [];
     for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
         let voteInfo = votes[i];
-        rewardedVotes.push({weightFlr: voteInfo.weightFlr, address: voteInfo.address!} as RewardedVoteInfo);
+        rewardedVotes.push({ weightFlr: voteInfo.weightFlr, address: voteInfo.address! } as RewardedVoteInfo);
     }
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
 
@@ -476,11 +477,11 @@ export function updateWithRewardedVotesInfo(epochResult: EpochResult, data: any)
 
     let rewardedVotes: RewardedVoteInfo[] = [];
     for (let i = 0; i < data.eligibleAddresses.length; i++) {
-        rewardedVotes.push({weightFlr: data.flrWeights[i], address: data.eligibleAddresses[i]} as RewardedVoteInfo);
+        rewardedVotes.push({ weightFlr: data.flrWeights[i], address: data.eligibleAddresses[i] } as RewardedVoteInfo);
     }
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
 
-    return {...epochResult, rewardedVotes };
+    return { ...epochResult, rewardedVotes };
 }
 
 // 
@@ -548,7 +549,7 @@ export function compareEpochResults(test: EpochResult, target: EpochResult): boo
  * @returns 
  */
 export function checkTestCase(testCase: TestCase): boolean {
-    if(testCase.testResult) {
+    if (testCase.testResult) {
         return compareEpochResults(testCase.testResult, testCase.targetResult);
     }
     return false;
@@ -565,20 +566,20 @@ export function checkTestCase(testCase: TestCase): boolean {
  */
 export async function generateAccounts(n: number) {
     return new Promise((resolve: any, reject: any) => {
-        exec(`yarn accounts ${n}`, (error: any, stdout: any, stderr: any) => {
+        exec(`yarn accounts ${ n }`, (error: any, stdout: any, stderr: any) => {
             if (error) {
                 reject(error);
                 return;
             }
             if (stderr) {
-                console.log(`stderr: ${stderr}`);
+                console.log(`stderr: ${ stderr }`);
                 reject(stderr)
                 return;
-            }            
-            console.log(`stdout: ${stdout}`);
+            }
+            console.log(`stdout: ${ stdout }`);
             resolve(true);
-        })    
-    })    
+        })
+    })
 }
 
 /**
@@ -593,7 +594,7 @@ export function readTestData(fname: string): TestExample {
 
 export function randomizeExampleGenerator(testExample: TestExample) {
     let len = testExample.randomizedDataCount
-    if(!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
+    if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
     testExample.prices = [];
     testExample.weightsAsset = []
     testExample.weightsFlr = []
@@ -603,4 +604,73 @@ export function randomizeExampleGenerator(testExample: TestExample) {
         testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
     }
 
+}
+
+/**
+ * Helper function for instantiating and deploying a contract by using factory.
+ * @param name Name of the contract
+ * @param signer signer
+ * @param args Constructor params
+ * @returns deployed contract instance (promise)
+ */
+export async function newContract<T>(eth: HardhatEthersHelpers, name: string, signer: Signer, ...args: any[]) {
+    const factory = await eth.getContractFactory(name, signer);
+    let contractInstance = (await factory.deploy(...args));
+    await contractInstance.deployed();
+    return contractInstance as unknown as T;
+}
+
+/**
+ * Sets parameters for shifting time to future. Note: seems like 
+ * no block is mined after this call, but the next mined block has
+ * the the timestamp equal time + 1 
+ * @param time 
+ */
+export async function increaseTimeTo(eth: HardhatEthersHelpers, time: number) {
+    await eth.provider.send("evm_mine", [time]);
+}
+
+/**
+ * given current epoch it moves blockchain time (hardhat) to the (approx) beginning of the next epoch, given
+ * the curent one.
+ * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
+ * @param epochPeriod - epoch period, must match to the one set in the FTSO contract
+ * @param currentEpoch - current epoch
+ */
+export async function moveToNextEpochStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, currentEpoch: number) {
+    let nextEpochTimestamp = (currentEpoch + 1) * epochPeriod + epochStartTimestamp;
+    await increaseTimeTo(eth, nextEpochTimestamp);
+}
+
+/**
+ * Helper shifting time to the beggining of the next epoch
+ * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
+ * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
+ */
+export async function moveFromCurrentToNextEpochStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number) {
+    let blockInfo = await eth.provider.getBlock(await eth.provider.getBlockNumber());
+    let currentEpoch = Math.floor((blockInfo.timestamp - epochStartTimestamp) / epochPeriod);
+    await moveToNextEpochStart(eth, epochStartTimestamp, epochPeriod, currentEpoch);
+}
+
+/**
+ * Given an epoch it shifts blockchain time to the begining of the reveal period.
+ * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
+ * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
+ * @param epoch - epoch number
+ */
+export async function moveToRevealStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, epoch: number) {
+    await moveToNextEpochStart(eth, epochStartTimestamp, epochPeriod, epoch);
+}
+
+/**
+ * 
+ * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
+ * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
+ * @param revealPeriod - reveal period in seconds, must match to the one set in the FTSO contract
+ * @param epoch 
+ */
+export async function moveToFinalizeStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, epoch: number) {
+    let finalizeTimestamp = (epoch + 1) * epochPeriod + epochStartTimestamp + revealPeriod + 1;
+    await increaseTimeTo(eth, finalizeTimestamp);
 }
