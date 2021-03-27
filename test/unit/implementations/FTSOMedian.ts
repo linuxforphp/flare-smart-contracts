@@ -52,7 +52,7 @@ describe("FTSO contract - test cases from files", () => {
             )
             let ftso = await newContract<MockFtso>(ethers, "MockFtso", signers[0],
                 flrToken.address, assetToken.address, signers[0].address,  // address _fFlr, address _fAsset,
-                0, epochStartTimestamp, // uint256 _minVotePower,  uint256 _startTimestamp
+                epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod //uint256 _epochPeriod, uint256 _revealPeriod
             )
 
@@ -69,7 +69,7 @@ describe("FTSO contract - test cases from files", () => {
                 let random = priceToRandom(price);
                 // TODO: try to the use correct hash from ethers.utils.keccak256
                 // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint128", "uint256" ], [ price, random ]))
-                let hash = soliditySha3({ type: 'uint128', value: price }, random);
+                let hash = soliditySha3(price, random);
                 promises.push((await ftso.connect(signers[i]).submitPrice(hash)).wait(1));
             }
             (await Promise.all(promises)).forEach(res => {

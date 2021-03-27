@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-library WeightedMedian {
+library FtsoMedian {
 
     struct Data {
         uint32 medianIndex;
@@ -194,7 +194,7 @@ library WeightedMedian {
             (p.pos, s.newLeftSum, s.newRightSum) = partition(
                 p.left,
                 p.right,
-                true ? (random)%(p.right - p.left + 1) + p.left : p.right, // pivot randomization
+                (random % (p.right - p.left + 1)) + p.left, // pivot randomization
                 s.leftSum,
                 s.rightSum,
                 index,

@@ -6,6 +6,8 @@ import "../IVotePower.sol";
 
 contract MockFtso is Ftso {
 
+    using FtsoEpoch for FtsoEpoch.State;
+
     struct ResultVars {
         uint256 id;
         uint32 len;
@@ -22,7 +24,6 @@ contract MockFtso is Ftso {
         IVotePower _fFlr,
         IVotePower _fAsset,
         IRewardManager _rewardManager,
-        uint256 _minVotePower, 
         uint256 _startTimestamp,
         uint256 _epochPeriod,
         uint256 _revealPeriod
@@ -30,13 +31,31 @@ contract MockFtso is Ftso {
         _fFlr,
         _fAsset,
         1,
-        _rewardManager,
-        _minVotePower,
-        true,
-        true
+        _rewardManager
     )
     {
         initPriceEpochData(_startTimestamp, _epochPeriod, _revealPeriod);
+        configureEpoch(2000, 1e5, 1e5, 1, 1, 1000, 10000, 50);
+    }
+
+    function configureEpoch(
+        uint256 _maxVoteCount,
+        uint256 _minVotePowerFlrDenomination,
+        uint256 _minVotePowerAssetDenomination,
+        uint256 _maxVotePowerFlrDenomination,
+        uint256 _maxVotePowerAssetDenomination,
+        uint256 _lowAssetUSDThreshold,
+        uint256 _highAssetUSDThreshold,
+        uint256 _highAssetTurnoutThreshold
+    ) internal {
+        epochs.maxVoteCount = _maxVoteCount;
+        epochs.minVotePowerFlrDenomination = _minVotePowerFlrDenomination;
+        epochs.minVotePowerAssetDenomination = _minVotePowerAssetDenomination;
+        epochs.maxVotePowerFlrDenomination = _maxVotePowerFlrDenomination;
+        epochs.maxVotePowerAssetDenomination = _maxVotePowerAssetDenomination;
+        epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
+        epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
+        epochs.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
     }
 
     function finalizePriceEpochWithResult(uint256 _epochId) external onlyRewardManager
@@ -51,7 +70,7 @@ contract MockFtso is Ftso {
     }
 
     function epochCount(uint256 _epochId) external view returns (uint256) {
-        Epoch storage epoch = epochs[_epochId];
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         return epoch.voteCount;
     }
 
@@ -64,7 +83,7 @@ contract MockFtso is Ftso {
             uint64[] memory weightsAsset
         )
     {
-        Epoch storage epoch = epochs[_epochId];
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         uint id = epoch.firstVoteId;
         uint32 len = epoch.voteCount;
         epochId = _epochId;
@@ -72,23 +91,19 @@ contract MockFtso is Ftso {
         weightsFlr = new uint64[](len);
         weightsAsset = new uint64[](len);
         for (uint32 cnt = 0; cnt < len; cnt++) {
-            Vote storage vote = votes[id];
+            FtsoVote.Instance storage vote = votes.instance[id];
             prices[cnt] = vote.price;
             weightsFlr[cnt] = vote.weightFlr;
             weightsAsset[cnt] = vote.weightAsset;
-            id = nextVoteId[id];
+            id = epochs.nextVoteId[id];
         }
     }
 
     function getWeightRatio(uint256 _epochId) external view returns (uint256) {
-        Epoch storage epoch = epochs[_epochId];
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         uint256 weightRatio = 50;
         if (_epochId > 0) {
-            weightRatio = getAssetVsFlrWeightRatio(
-                epoch.votePowerAsset,
-                epoch.accumulatedVotePowerAsset,
-                epochs[_epochId - 1].medianPrice
-            );
+            weightRatio = epochs._getWeightRatio(epoch, epochs.instance[_epochId - 1].medianPrice);
         }
         return weightRatio;
     }
@@ -105,7 +120,7 @@ contract MockFtso is Ftso {
             uint256[] memory weights
         )
     {
-        Epoch storage epoch = epochs[_epochId];        
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];        
         ResultVars memory r = ResultVars(0,0,0,0,0,0,0);
 
         epochId = _epochId;
@@ -116,7 +131,7 @@ contract MockFtso is Ftso {
         r.id = epoch.firstVoteId;
         
         for(uint32 cnt = 0; cnt < r.len; cnt++) {
-            Vote storage vote = votes[r.id];
+            FtsoVote.Instance storage vote = votes.instance[r.id];
             votePrices[cnt] = vote.price;
             weightsFlr[cnt] = vote.weightFlr;
             weightsAsset[cnt] = vote.weightAsset;
@@ -135,7 +150,7 @@ contract MockFtso is Ftso {
             if(r.id == epoch.truncatedLastQuartileVoteId) {
                 r.truncatedLastQuartileIndex = cnt;
             }
-            r.id = nextVoteId[r.id];            
+            r.id = epochs.nextVoteId[r.id];            
 
         }
         medians = new uint32[](5);
@@ -192,7 +207,8 @@ contract MockFtso is Ftso {
         ));
     }
 
-    function markers2(uint id, Epoch memory epoch) internal pure returns (string memory _markerString2) {
+    /*
+    function markers2(uint id, FtsoEpoch.Instance memory epoch) internal pure returns (string memory _markerString2) {
         return string(abi.encodePacked(
                 id == epoch.firstQuartileVoteId ? "\t<1": "",
                 id == epoch.truncatedFirstQuartileVoteId ? "\t<1-": "",                
@@ -201,5 +217,6 @@ contract MockFtso is Ftso {
                 id == epoch.truncatedLastQuartileVoteId ? "\t<3+": ""
         ));
     }
+    */
 
 }
