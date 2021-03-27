@@ -121,15 +121,9 @@ contract Ftso is IFtso {
     }
 
     function submitPrice(bytes32 _hash) external whenActive {
-        require(firstEpochStartTimestamp > 0, "Ftso not initialized");
-        // TODO: check if msg.sender has required vote power (minVotePower): needs to be discussed
         uint256 epochId = getCurrentEpoch();
-        epochVoterHash[epochId][msg.sender] = _hash;    // TODO: reuse slots? (in discussion)
+        epochVoterHash[epochId][msg.sender] = _hash;
         emit EpochId(epochId);
-    }
-
-    function setCurrentVotepowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
-        votePowerBlock = _votePowerBlock;
     }
 
     function revealPrice(uint256 _epochId, uint128 _price, uint256 _random) external whenActive {
@@ -189,6 +183,10 @@ contract Ftso is IFtso {
         voteSender[voteId] = msg.sender;
         
         delete epochVoterHash[_epochId][msg.sender];
+    }
+
+    function setCurrentVotepowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
+        votePowerBlock = _votePowerBlock;
     }
 
     function epochPrice(uint256 _epochId) external view returns (uint128) {
