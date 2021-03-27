@@ -73,7 +73,7 @@ describe("FTSO contract - test cases from files", () => {
                 promises.push((await ftso.connect(signers[i]).submitPrice(hash)).wait(1));
             }
             (await Promise.all(promises)).forEach(res => {
-                epochs.push((res.events![0].args![0] as BigNumber).toNumber());
+                epochs.push((res.events![0].args![1] as BigNumber).toNumber());
             })
             uniqueEpochs = [...(new Set(epochs))];
             expect(uniqueEpochs.length, `Too short epoch for the test. Increase epochPeriod ${ epochPeriod }.`).to.equal(1)
@@ -97,7 +97,7 @@ describe("FTSO contract - test cases from files", () => {
             moveToFinalizeStart(ethers, epochStartTimestamp, epochPeriod, revealPeriod, epoch);
             let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
             logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
-            let epochFinalizeResponse = resFinalizePrice.events![0].args;
+            let epochFinalizeResponse = resFinalizePrice.events![1].args;
 
             // Print results                
             let res = await ftso.getEpochResult(epoch);

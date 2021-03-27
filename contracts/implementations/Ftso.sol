@@ -24,7 +24,9 @@ contract Ftso is IFtso {
     IVotePower public immutable fAsset;     // wrapped asset
     IRewardManager public rewardManager;    // reward manager contract
 
-    event EpochId(uint _epochId);   // event to communicate epoch with price submitter, see submitPrice
+    event PriceSubmission(address submitter, uint256 epochId);
+    event PriceReveal(address voter, uint256 epochId, uint256 price);
+    event PriceConsensus(uint256 epochId, uint256 price);
 
     constructor(
         IVotePower _fFlr,
@@ -51,7 +53,7 @@ contract Ftso is IFtso {
     function submitPrice(bytes32 _hash) external whenActive {
         uint256 epochId = getCurrentEpochId();
         epochVoterHash[epochId][msg.sender] = _hash;
-        emit EpochId(epochId);
+        emit PriceSubmission(msg.sender, epochId);
     }
 
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
@@ -87,6 +89,8 @@ contract Ftso is IFtso {
         epochs._submitVote(epoch, voteId, votePowerFlr, votePowerAsset, _random, price);
         
         delete epochVoterHash[_epochId][msg.sender];
+
+        emit PriceReveal(msg.sender, _epochId, _price);
     }
 
     function setCurrentVotepowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
@@ -120,12 +124,7 @@ contract Ftso is IFtso {
         require(block.timestamp > epochs._epochEndTime(_epochId) + epochs.revealPeriod, "Epoch not ready for finalization");
 
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-
-        // check if epoch has sufficient number of votes
-        if (epoch.voteCount < epochs.minVoteCount && _epochId > 0) {
-            epoch.medianPrice = epochs.instance[_epochId - 1].medianPrice;
-            return (eligibleAddresses, flrWeights, flrWeightsSum);
-        }
+        require(epoch.voteCount > epochs.minVoteCount, "Epoch has insufficient number of votes");
 
         // extract data from epoch votes to memory
         uint256[] memory vote;
@@ -147,6 +146,8 @@ contract Ftso is IFtso {
         if (_returnRewardData) {
             (eligibleAddresses, flrWeights, flrWeightsSum) = readRewardData(epoch, data, index, weightFlr, vote);
         }
+
+        emit PriceConsensus(_epochId, epoch.medianPrice);
     }
 
     function initPriceEpochData(
