@@ -171,7 +171,21 @@ const config: HardhatUserConfig = {
           }
         }
       }
-    ]
+    ],
+    overrides: {
+      "contracts/mock/Imports.sol": {
+        version: "0.6.12",
+        settings: { }
+      },
+      "contracts/mock/implementations/InflationMock.sol": {
+        version: "0.6.12",
+        settings: { }
+      },
+      "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
+        version: "0.6.12",
+        settings: { }
+      }
+    }    
   },
 
   paths: {

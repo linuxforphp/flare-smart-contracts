@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity ^0.6.0;
 
-import "../../implementations/Governed.sol";
-import "../../interfaces/IInflation.sol";
-import "../../interfaces/IRewardManager.sol";
+import "@gnosis.pm/mock-contract/contracts/MockContract.sol";
+/**
+ * @title Inflation mock contract
+ * @notice A contract to call the reward manager for setting daily reward amounts for unit testing.
+ * @dev TODO: Can we get rid of this by calling web3 api from one contract on behalf of another?
+ **/
+contract InflationMock is MockContract {
+    address private _rewardManager;
 
+    function setRewardManager(address rewardManager) public {
+        _rewardManager = rewardManager;
+    }
 
-contract InflationMock is IInflation, Governed {
-    constructor(address _governance) Governed(_governance) {}
-
-    /// Allocating new batch of FLR for rewarding users.
-    /// Allocation will be bounded for X FLR per hour/day
-    /// can only be called by the reward contract.
-    function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {}
-
-    /// reward contract address can only be updated by the governance contract
-    function setRewardContract(IRewardManager rewardManager) external override {}
+    function setRewardManagerDailyRewardAmount(uint256 amount) public {
+        // This low level call is being done because of mixed Solidity version requirements between
+        // this project and the MockContract component.
+        bytes memory payload = abi.encodeWithSignature("setDailyRewardAmount(uint256)", amount);
+        (bool success, ) = _rewardManager.call(payload);
+        require(success);
+    }
 }
