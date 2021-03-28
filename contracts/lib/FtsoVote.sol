@@ -1,26 +1,41 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+/**
+ * @title A library used for FTSO vote management
+ * @dev Every vote corresponds to a specific FTSO epoch
+ */
 library FtsoVote {
 
-    struct State {
+    struct State {                              // struct holding storage related to votes
 
         // storage
-        uint256 voteId;
-        mapping(uint256 => Instance) instance;
-        mapping(uint256 => address) sender;
+        uint256 voteId;                         // vote id counter
+        mapping(uint256 => Instance) instance;  // mapping from vote id to instance
+        mapping(uint256 => address) sender;     // mapping from vote id to vote sender address
     }
 
-    struct Instance {                               // struct holding vote data
-        uint128 price;                          // submitted price
-        uint64 weightFlr;                       // flare weight
+    struct Instance {                           // struct holding vote data
+
+        uint128 price;                          // submitted price in USD
+        uint64 weightFlr;                       // FLR weight
         uint64 weightAsset;                     // asset weight
     }
 
     uint256 internal constant MAX_UINT64 = 2**64 - 1;
-    uint256 internal constant MAX_UINT128 = 2**128 - 1;
-    uint256 internal constant MAX_UINT192 = 2**192 - 1;
 
+    /**
+     * @notice Creates a vote instance and stores data associated with the vote
+     * @param _state                Vote state
+     * @param _votePowerFlr         FLR Vote power 
+     * @param _votePowerAsset       Asset vote power
+     * @param _maxVotePowerFlr      Max FLR vote power acceptable in epoch
+     * @param _maxVotePowerAsset    Max asset vote power acceptable in epoch
+     * @param _totalVotePowerFlr    Total FLR vote power in epoch
+     * @param _totalVotePowerAsset  Total asset vote power in epoch
+     * @param _price                Price in USD submitted in a vote
+     * @return Vote id
+     */
     function _createInstance(
         State storage _state,
         uint256 _votePowerFlr,
@@ -41,13 +56,20 @@ library FtsoVote {
         return voteId;
     }
 
-    function _getWeight(uint256 votePower, uint256 maxVotePower, uint256 totalVotePower) private pure returns (uint64) {
+    /**
+     * @notice Returns the vote weight (FLR or asset) computed based on vote power
+     * @param _votePower            Vote power
+     * @param _maxVotePower         Max vote power in epoch
+     * @param _totalVotePower       Total vote power in epoch
+     * @return Vote weight
+     * @dev Vote power is adjusted to uint64
+     */
+    function _getWeight(uint256 _votePower, uint256 _maxVotePower, uint256 _totalVotePower) private pure returns (uint64) {
         uint64 weight;
-        if (maxVotePower <= MAX_UINT64) {
-            weight = uint64(votePower);
+        if (_maxVotePower <= MAX_UINT64) {
+            weight = uint64(_votePower);
         } else {
-            assert(votePower < MAX_UINT192);
-            weight = uint64((votePower * MAX_UINT64) / totalVotePower);
+            weight = uint64((_votePower * MAX_UINT64) / _totalVotePower);
         }
         return weight;
     }

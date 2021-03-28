@@ -1,33 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+/**
+ * @title A library used for FTSO epoch management
+ */
 library FtsoEpoch {
 
-    struct State {
+    struct State {                              // struct holding storage and settings related to epochs
 
         // storage        
-        mapping(uint256 => Instance) instance;
-        mapping(uint256 => uint256) nextVoteId;
+        mapping(uint256 => Instance) instance;  // mapping from epoch id to instance
+        mapping(uint256 => uint256) nextVoteId; // mapping from id to id storing the connection between votes in epoch
         
         // immutable settings
-        uint256 firstEpochStartTime;
-        uint256 submissionPeriod;
-        uint256 revealPeriod;
+        uint256 firstEpochStartTime;            // start time of the first epoch instance
+        uint256 submissionPeriod;               // duration of price submission for an epoch instance
+        uint256 revealPeriod;                   // duration of price reveal for an apoch instance
         
         // configurable settings
-        uint256 minVoteCount;
-        uint256 maxVoteCount;
-        uint256 votePowerBlock;
+        uint256 minVoteCount;                   // minimal number of votes required in epoch
+        uint256 maxVoteCount;                   // maximal number of votes allowed in epoch
+        uint256 votePowerBlock;                 // current block at which the vote power is checked
         uint256 minVotePowerFlrDenomination;    // value that determines if FLR vote power is sufficient to vote
         uint256 maxVotePowerFlrDenomination;    // value that determines what is the largest possible FLR vote power
         uint256 minVotePowerAssetDenomination;  // value that determines if asset vote power is sufficient to vote
         uint256 maxVotePowerAssetDenomination;  // value that determines what is the largest possible asset vote power
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power
         uint256 highAssetUSDThreshold;          // threshold for high asset vote power
-        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout
+        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout        
     }
 
     struct Instance {                           // struct holding epoch votes and results
+        
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
@@ -64,11 +68,12 @@ library FtsoEpoch {
     uint256 internal constant MAX_UINT128 = 2**128 - 1;    
 
     /**
-     * @dev Initializes a new epoch instance with instance specific settings
-     * @param _state Epoch state
-     * @param _instance Epoch instance
-     * @param _votePowerFlr Epoch FLR vote power
-     * @param _votePowerAsset Epoch asset vote power
+     * @notice Initializes a new epoch instance with instance specific settings
+     * @param _state                Epoch state
+     * @param _instance             Epoch instance
+     * @param _votePowerFlr         Epoch FLR vote power
+     * @param _votePowerAsset       Epoch asset vote power
+     * @dev _votePowerFlr and _votePowerAsset are assumed to be smaller than 2**128 to avoid overflows in computations
      */
     function _initializeInstance(
         State storage _state,
@@ -88,6 +93,16 @@ library FtsoEpoch {
         _instance.maxVotePowerAsset = _votePowerAsset / _state.maxVotePowerAssetDenomination;
     }
 
+    /**
+     * @notice Adds a vote to the linked list representing an epoch instance
+     * @param _state                Epoch state
+     * @param _instance             Epoch instance
+     * @param _voteId               Id of the vote to add
+     * @param _votePowerFlr         Vote power for FLR
+     * @param _votePowerAsset       Vote power for asset
+     * @param _random               Random number associated with the vote
+     * @param _price                Price associated with the vote
+     */
     function _submitVote(
         State storage _state,
         Instance storage _instance,
@@ -115,19 +130,45 @@ library FtsoEpoch {
         _instance.voterPrice[msg.sender] = _price;
     }
 
-    function _getEpochId(State storage _state, uint256 timestamp) internal view returns (uint256) {
-        return (timestamp - _state.firstEpochStartTime) / _state.submissionPeriod;
+    /**
+     * @notice Returns the id of the epoch opened for price submission at the given timestamp
+     * @param _state                Epoch state
+     * @param _timestamp            Timestamp as seconds since unix epoch
+     * @return Epoch id
+     */
+    function _getEpochId(State storage _state, uint256 _timestamp) internal view returns (uint256) {
+        return (_timestamp - _state.firstEpochStartTime) / _state.submissionPeriod;
     }
 
+    /**
+     * @notice Returns end time of price submission for an epoch instance
+     * @param _state                Epoch state
+     * @param _epochId              Id of epoch instance
+     * @return Timestamp as seconds since unix epoch
+     */
     function _epochEndTime(State storage _state, uint256 _epochId) internal view returns (uint256) {
         return _state.firstEpochStartTime + (_epochId + 1) * _state.submissionPeriod;
     }
 
+    /**
+     * @notice Determines if the epoch with the given id is currently in the reveal process
+     * @param _state                Epoch state
+     * @param _epochId              Id of epoch
+     * @return True if epoch reveal is in process and false otherwise
+     */
     function _epochRevealInProcess(State storage _state, uint256 _epochId) internal view returns (bool) {
         uint256 endTime = _epochEndTime(_state, _epochId);
         return endTime < block.timestamp && block.timestamp <= endTime + _state.revealPeriod;
     }
 
+    /**
+     * @notice Computes the weight ratio between FLR and asset weight that specifies a unified vote weight
+     * @param _state                Epoch state
+     * @param _instance             Epoch instance
+     * @param _assetPriceUSD        Price of the asset in USD
+     * @return Weight ratio for asset (a number between 0 and 1000)
+     * @dev Weight ratio for FLR is supposed to be 1000 - weight ratio for asset
+     */
     function _getWeightRatio(
         State storage _state,
         Instance storage _instance,
@@ -156,5 +197,4 @@ library FtsoEpoch {
 
         return weightRatio;
     }
-
 }
