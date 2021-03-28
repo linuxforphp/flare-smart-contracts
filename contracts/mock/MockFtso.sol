@@ -21,7 +21,7 @@ contract MockFtso is Ftso {
     constructor(
         IVotePower _fFlr,
         IVotePower _fAsset,
-        IRewardContract _rewardManager,
+        IRewardManager _rewardManager,
         uint256 _minVotePower, 
         uint256 _startTimestamp,
         uint256 _epochPeriod,

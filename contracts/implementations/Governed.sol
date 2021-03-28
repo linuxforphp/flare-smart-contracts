@@ -4,10 +4,10 @@ pragma solidity 0.7.6;
 
 contract Governed {
 
-    event GovernanceUdpated (address oldGovernance, address newGoveranance);
-
     address public governance;
     address public proposedGovernance;
+
+    event GovernanceUdpated (address oldGovernance, address newGoveranance);
 
     modifier onlyGovernance () {
         require (msg.sender == governance, "only governance");

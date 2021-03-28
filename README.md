@@ -31,7 +31,8 @@ The air dropped Flare will be distributed gradually through a dedicated contract
 ## Setup
 
 1. Clone this repo
-2. `yarn`
+2. Make sure gsed is installed `brew install gnu-sed`
+3. `yarn`
 
 
 ## Compilation

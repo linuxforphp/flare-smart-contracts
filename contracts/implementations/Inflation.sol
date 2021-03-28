@@ -23,20 +23,20 @@ contract Inflation is IInflation, Governed, IFlareKeep {
     /// fund withdrawls by reward contract
     uint256 public lastFundsWithdrawTs;
     uint256 public dailyWithdrawAmountTwei; // withdraw daily limit
-    uint256 public fundWithdrawTimeLockMs;
+    uint256 public fundWithdrawTimeLockSec;
 
-    IRewardContract public rewardManager;
+    IRewardManager public rewardManager;
 
-    event RewardContractUpdated (IRewardContract newContract, IRewardContract oldContract);
+    event RewardContractUpdated (IRewardManager newContract, IRewardManager oldContract);
 
     constructor(
         address _governance,
-        uint256 _fundWithdrawTimeLockMs,
+        uint256 _fundWithdrawTimeLockSec,
         uint256 totalFlrSupply
     ) 
         Governed(_governance)
     {
-        fundWithdrawTimeLockMs = _fundWithdrawTimeLockMs;
+        fundWithdrawTimeLockSec = _fundWithdrawTimeLockSec;
 
         AnnumData memory newAnum = AnnumData({
             initialSupplyWei: totalFlrSupply,
@@ -47,11 +47,12 @@ contract Inflation is IInflation, Governed, IFlareKeep {
         flareAnnumData.push(newAnum);
     }
 
-    function setRewardContract(IRewardContract _rewardManager) external override onlyGovernance {
+    function setRewardContract(IRewardManager _rewardManager) external override onlyGovernance {
 
         emit RewardContractUpdated(rewardManager, _rewardManager);
         rewardManager = _rewardManager;
 
+        // TODO: Bug. Fix.
         rewardManager.setDailyRewardAmount(
             flareAnnumData[flareAnnumData.length - 1].totalInflationWei / 356
         );
@@ -63,7 +64,23 @@ contract Inflation is IInflation, Governed, IFlareKeep {
         }
     }
 
+    function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {
+
+        if (lastFundsWithdrawTs + fundWithdrawTimeLockSec < block.timestamp) {
+            // can send funds
+            lastFundsWithdrawTs = block.timestamp;  // Set state before transfer to avoid re-entrancy problems
+            // TODO: move to WFLR?
+            (payable(address(rewardManager))).transfer(dailyWithdrawAmountTwei);
+        }
+
+        emit WithDrawRewardFunds(block.timestamp, dailyWithdrawAmountTwei);
+
+        return lastFundsWithdrawTs + fundWithdrawTimeLockSec;
+    }
+
     function currentAnnumEndsTs() public view returns (uint256 endTs) {
+        // TODO: So broken - leap years not accounted for. Days do not convert to seconds.
+        // And number of days is wrong.
         endTs = flareAnnumData[currentFlareAnnum].startTimeStamp + (1 days * 356);
     }
 
@@ -81,21 +98,8 @@ contract Inflation is IInflation, Governed, IFlareKeep {
             startTimeStamp: block.timestamp
         });
 
+        // TODO: Broken again. Fix. 
         dailyWithdrawAmountTwei = newAnum.totalInflationWei * 2 / 356; // 2 days worth of funds
         rewardManager.setDailyRewardAmount(newAnum.totalInflationWei / 356);
-    }
-
-    function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {
-
-        if (lastFundsWithdrawTs + fundWithdrawTimeLockMs < block.timestamp) {
-            // can send funds
-            // TODO: move to WFLR?
-            (payable(address(rewardManager))).transfer(dailyWithdrawAmountTwei);
-            lastFundsWithdrawTs = block.timestamp;
-        }
-
-        emit WithDrawRewardFunds(block.timestamp, dailyWithdrawAmountTwei);
-
-        return lastFundsWithdrawTs + fundWithdrawTimeLockMs;
     }
 }

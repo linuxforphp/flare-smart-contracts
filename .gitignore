@@ -34,3 +34,7 @@ yarn-error.log
 
 ## npm package file
 package-lock.json
+
+## gas report
+gas-report.txt
+gasReporterOutput.json
