@@ -27,9 +27,6 @@ Users will be eligible to claim tokens based on:
 
 ## Distribution contracts
 The air dropped Flare will be distributed gradually through a dedicated contract.
-## Package Manager
-
-We use `yarn` as the package manager. You may use `npm` and `npx` instead, but commands in bash scripts may have to be changed accordingly.
 
 ## Setup
 
