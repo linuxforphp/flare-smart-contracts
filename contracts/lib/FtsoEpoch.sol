@@ -22,8 +22,8 @@ library FtsoEpoch {
         uint256 maxVoteCount;                   // maximal number of votes allowed in epoch
         uint256 votePowerBlock;                 // current block at which the vote power is checked
         uint256 minVotePowerFlrDenomination;    // value that determines if FLR vote power is sufficient to vote
-        uint256 maxVotePowerFlrDenomination;    // value that determines what is the largest possible FLR vote power
         uint256 minVotePowerAssetDenomination;  // value that determines if asset vote power is sufficient to vote
+        uint256 maxVotePowerFlrDenomination;    // value that determines what is the largest possible FLR vote power
         uint256 maxVotePowerAssetDenomination;  // value that determines what is the largest possible asset vote power
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power
         uint256 highAssetUSDThreshold;          // threshold for high asset vote power
@@ -103,7 +103,7 @@ library FtsoEpoch {
      * @param _random               Random number associated with the vote
      * @param _price                Price associated with the vote
      */
-    function _submitVote(
+    function _addVote(
         State storage _state,
         Instance storage _instance,
         uint256 _voteId,

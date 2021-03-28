@@ -8,62 +8,94 @@ import "../lib/FtsoEpoch.sol";
 import "../lib/FtsoVote.sol";
 import "../lib/FtsoMedian.sol";
 
+/**
+ * @title A contract implementing Flare Time Series Oracle
+ */
 contract Ftso is IFtso {
 
     using FtsoEpoch for FtsoEpoch.State;
     using FtsoVote for FtsoVote.State;
 
-    uint256 internal immutable fAssetDecimals;
+    // errors
+    string public constant ERR_NOT_ACTIVE = "FTSO not active";
+    string public constant ERR_ALREADY_ACTIVATED = "FTSO already activated";
+    string public constant ERR_NO_ACCESS = "Access denied";
+    string public constant ERR_PRICE_TOO_HIGH = "Price too high";
+    string public constant ERR_PRICE_REVEAL_FAILURE = "Price reveal for epoch not possible";
+    string public constant ERR_PRICE_INVALID = "Price already revealed or not valid";
+    string public constant ERR_EPOCH_FULL = "Maximal number of votes in epoch reached";
+    string public constant ERR_EPOCH_FINALIZATION_FAILURE = "Epoch not ready for finalization";
+    string public constant ERR_EPOCH_INSUFFICIENT_VOTES = "Epoch has insufficient number of votes";
 
-    bool internal active;
+    uint256 public immutable fAssetUSDDecimals; // number of decimal places in FAsset USD price
+
+    // storage    
+    bool internal active;                       // activation status of FTSO
+    uint128 public fAssetPriceUSD;              // current FAsset USD price
+    FtsoEpoch.State internal epochs;            // epoch storage
+    FtsoVote.State internal votes;              // vote storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
-    FtsoEpoch.State internal epochs;
-    FtsoVote.State internal votes;
 
-    IVotePower public immutable fFlr;       // wrapped FLR
-    IVotePower public immutable fAsset;     // wrapped asset
-    IRewardManager public rewardManager;    // reward manager contract
+    // external contracts
+    IVotePower public immutable fFlr;           // wrapped FLR
+    IVotePower public immutable fAsset;         // wrapped asset
+    IRewardManager public rewardManager;        // reward manager contract
 
+    // events
     event PriceSubmission(address submitter, uint256 epochId);
     event PriceReveal(address voter, uint256 epochId, uint256 price);
     event PriceConsensus(uint256 epochId, uint256 price);
 
     constructor(
+        uint256 _fAssetUSDDecimals,
         IVotePower _fFlr,
         IVotePower _fAsset,
-        uint256 _fAssetDecimals,
         IRewardManager _rewardManager
     ) {
+        fAssetUSDDecimals = _fAssetUSDDecimals;
         fFlr = _fFlr;
         fAsset = _fAsset;
-        fAssetDecimals = _fAssetDecimals;
         rewardManager = _rewardManager;
     }
 
-    modifier onlyRewardManager {
-        require(msg.sender == address(rewardManager), "Access denied");
-        _;
-    }
-
     modifier whenActive {
-        require(active, "Ftso not activated");
+        require(active, ERR_NOT_ACTIVE);
         _;
     }
 
+    modifier onlyRewardManager {
+        require(msg.sender == address(rewardManager), ERR_NO_ACCESS);
+        _;
+    }
+
+    /**
+     * @notice Submits price hash for current epoch
+     * @param _hash                 Hashed price and random number
+     * @notice Emits PriceSubmission event
+     */
     function submitPrice(bytes32 _hash) external whenActive {
         uint256 epochId = getCurrentEpochId();
         epochVoterHash[epochId][msg.sender] = _hash;
         emit PriceSubmission(msg.sender, epochId);
     }
 
+    /**
+     * @notice Reveals submitted price during epoch reveal period
+     * @param _epochId              Id of the epoch in which the price hash was submitted
+     * @param _price                Submitted price in USD
+     * @param _random               Submitted random number
+     * @notice The hash of _price and _random must be equal to the submitted hash
+     * @notice Emits PriceReveal event
+     */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
-        require(_price < 2**128, "Price too high");
-        require(canRevealPriceForEpoch(_epochId), "Price reveal for epoch not possible");
+        require(_price < 2**128, ERR_PRICE_TOO_HIGH);
+        require(canRevealPriceForEpoch(_epochId), ERR_PRICE_REVEAL_FAILURE);
         require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encodePacked(_price, _random)),
-            "Price already revealed or not valid");
+            ERR_PRICE_INVALID);
         
+        // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.voteCount < epochs.maxVoteCount, "Maximal number of votes in epoch reached");
+        require(epoch.voteCount < epochs.maxVoteCount, ERR_EPOCH_FULL);
         if (epoch.voteCount == 0) {
             epochs._initializeInstance(
                 epoch,
@@ -72,10 +104,9 @@ contract Ftso is IFtso {
             );
         }
 
+        // register vote
         (uint256 votePowerFlr, uint256 votePowerAsset) = getVotePower(epoch);
-
         uint128 price = uint128(_price);
-
         uint256 voteId = votes._createInstance(
             votePowerFlr,
             votePowerAsset,
@@ -85,53 +116,40 @@ contract Ftso is IFtso {
             epoch.votePowerAsset,
             price
         );
-
-        epochs._submitVote(epoch, voteId, votePowerFlr, votePowerAsset, _random, price);
+        epochs._addVote(epoch, voteId, votePowerFlr, votePowerAsset, _random, price);
         
+        // make sure price submission is be revealed twice
         delete epochVoterHash[_epochId][msg.sender];
 
+        // inform about price reveal result
         emit PriceReveal(msg.sender, _epochId, _price);
     }
 
-    function setCurrentVotepowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
-        epochs.votePowerBlock = _votePowerBlock;
-    }
-
-    function epochPrice(uint256 _epochId) external view returns (uint128) {
-        return epochs.instance[_epochId].medianPrice;
-    }
-
-    function epochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256) {
-        return epochs.instance[_epochId].voterPrice[_voter];
-    }
-
-    function getFreshRandom() external view override returns (uint256) {
-        return epochs.instance[getCurrentEpochId()].random;
-    }
-
-    function getEpochData() external view override returns (uint256, uint256, uint256) {
-        // TODO: not sure the output is set correctly
-        uint256 epochId = getCurrentEpochId();
-        uint256 nextPriceSubmitEndTs = epochs._epochEndTime(epochId);
-        return (epochId, nextPriceSubmitEndTs, nextPriceSubmitEndTs + epochs.revealPeriod);
-    }
-
-    function finalizePriceEpoch(uint256 _epochId, bool _returnRewardData) public override onlyRewardManager returns (
-        address[] memory eligibleAddresses,
-        uint64[] memory flrWeights,
-        uint256 flrWeightsSum
+    /**
+     * @notice Computes epoch price based on gathered votes
+     * @param _epochId              Id of the epoch
+     * @param _returnRewardData     Parameter that determines if the reward data is returned
+     */
+    function finalizePriceEpoch(
+        uint256 _epochId,
+        bool _returnRewardData
+    ) public override onlyRewardManager returns(
+        address[] memory _eligibleAddresses,
+        uint64[] memory _flrWeights,
+        uint256 _flrWeightsSum
     ) {
-        require(block.timestamp > epochs._epochEndTime(_epochId) + epochs.revealPeriod, "Epoch not ready for finalization");
+        require(block.timestamp > epochs._epochEndTime(_epochId) + epochs.revealPeriod, ERR_EPOCH_FINALIZATION_FAILURE);
 
+        // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.voteCount > epochs.minVoteCount, "Epoch has insufficient number of votes");
+        require(epoch.voteCount > epochs.minVoteCount, ERR_EPOCH_INSUFFICIENT_VOTES);
 
         // extract data from epoch votes to memory
         uint256[] memory vote;
         uint128[] memory price;
         uint256[] memory weight;
         uint64[] memory weightFlr;
-        (vote, price, weight, weightFlr) = readVotes(_epochId, epoch);
+        (vote, price, weight, weightFlr) = readVotes(epoch);
 
         // compute weighted median and truncated quartiles
         uint32[] memory index;
@@ -144,9 +162,10 @@ contract Ftso is IFtso {
 
         // return reward data if requested
         if (_returnRewardData) {
-            (eligibleAddresses, flrWeights, flrWeightsSum) = readRewardData(epoch, data, index, weightFlr, vote);
+            (_eligibleAddresses, _flrWeights, _flrWeightsSum) = readRewardData(epoch, data, index, weightFlr, vote);
         }
 
+        // inform about epoch result
         emit PriceConsensus(_epochId, epoch.medianPrice);
     }
 
@@ -154,18 +173,19 @@ contract Ftso is IFtso {
         uint256 _firstEpochStartTime,
         uint256 _submissionPeriod,
         uint256 _revealPeriod
-    )
-        public override onlyRewardManager
+    ) external override onlyRewardManager
     {
-        require(!active, "Ftso already activated");
+        require(!active, ERR_ALREADY_ACTIVATED);
         epochs.firstEpochStartTime = _firstEpochStartTime;
         epochs.submissionPeriod = _submissionPeriod;
         epochs.revealPeriod = _revealPeriod;
         active = true;
     }
 
-    function configure(
-        uint256 _epochMaxVoteCount,
+    function configureEpochs(
+        uint256 _minVoteCount,
+        uint256 _maxVoteCount,
+        uint256 _votePowerBlock,
         uint256 _minVotePowerFlrDenomination,
         uint256 _minVotePowerAssetDenomination,
         uint256 _maxVotePowerFlrDenomination,
@@ -173,8 +193,11 @@ contract Ftso is IFtso {
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThreshold
-    ) public onlyRewardManager {
-        epochs.maxVoteCount = _epochMaxVoteCount;
+    ) external onlyRewardManager
+    {
+        epochs.minVoteCount = _minVoteCount;
+        epochs.maxVoteCount = _maxVoteCount;
+        epochs.votePowerBlock = _votePowerBlock;
         epochs.minVotePowerFlrDenomination = _minVotePowerFlrDenomination;
         epochs.minVotePowerAssetDenomination = _minVotePowerAssetDenomination;
         epochs.maxVotePowerFlrDenomination = _maxVotePowerFlrDenomination;
@@ -182,6 +205,52 @@ contract Ftso is IFtso {
         epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
         epochs.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
+    }
+
+    function setCurrentVotepowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
+        epochs.votePowerBlock = _votePowerBlock;
+    }
+
+    /**
+     * @notice Returns current FAsset price
+     * @return Price in USD multiplied by fAssetUSDDecimals
+     */
+    function price() external view returns (uint128) {
+        return fAssetPriceUSD;
+    }
+
+    /**
+     * @notice Returns FAsset price consented in specific epoch
+     * @param _epochId              Id of the epoch
+     * @return Price in USD multiplied by fAssetUSDDecimals
+     */
+    function epochPrice(uint256 _epochId) external view returns (uint128) {
+        return epochs.instance[_epochId].medianPrice;
+    }
+
+    /**
+     * @notice Returns FAsset price submitted by voter in specific epoch
+     * @param _epochId              Id of the epoch
+     * @param _voter                Address of the voter
+     * @return Price in USD multiplied by fAssetUSDDecimals
+     */
+    function epochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256) {
+        return epochs.instance[_epochId].voterPrice[_voter];
+    }
+
+    /**
+     * @notice Returns random number of the current epoch
+     * @return Random number
+     */
+    function getFreshRandom() external view override returns (uint256) {
+        return epochs.instance[getCurrentEpochId()].random;
+    }
+
+    function getEpochData() external view override returns (uint256, uint256, uint256) {
+        // TODO: not sure the output is set correctly
+        uint256 epochId = getCurrentEpochId();
+        uint256 nextPriceSubmitEndTs = epochs._epochEndTime(epochId);
+        return (epochId, nextPriceSubmitEndTs, nextPriceSubmitEndTs + epochs.revealPeriod);
     }
 
     function getCurrentEpochId() public view returns (uint256) {
@@ -196,7 +265,7 @@ contract Ftso is IFtso {
         return epochs._epochRevealInProcess(_epochId);
     }
 
-    function readVotes(uint256 _epochId, FtsoEpoch.Instance storage _epoch) internal returns (
+    function readVotes(FtsoEpoch.Instance storage _epoch) internal returns (
         uint256[] memory vote,
         uint128[] memory price,
         uint256[] memory weight,
@@ -224,14 +293,13 @@ contract Ftso is IFtso {
             id = epochs.nextVoteId[id];
         }
 
-        weight = computeWeights(_epochId, _epoch, weightFlr, weightAsset, weightFlrSum, weightAssetSum, length);
+        weight = computeWeights(_epoch, weightFlr, weightAsset, weightFlrSum, weightAssetSum, length);
 
         _epoch.weightFlrSum = weightFlrSum;
         _epoch.weightAssetSum = weightAssetSum;
     }
 
     function computeWeights(
-        uint256 _epochId,
         FtsoEpoch.Instance storage _epoch,
         uint64[] memory weightFlr,
         uint64[] memory weightAsset,
@@ -240,11 +308,7 @@ contract Ftso is IFtso {
         uint256 length
     ) internal view returns (uint256[] memory weight)
     {
-        uint256 weightRatio = 50;
-        if (_epochId > 0) {
-            weightRatio = epochs._getWeightRatio(_epoch, epochs.instance[_epochId - 1].medianPrice);
-        }
-
+        uint256 weightRatio = epochs._getWeightRatio(_epoch, fAssetPriceUSD);
         uint256 flrShare = (1000 - weightRatio) * weightAssetSum;
         uint256 assetShare = weightRatio * weightFlrSum;
 
@@ -310,6 +374,9 @@ contract Ftso is IFtso {
         epoch.lowWeightSum = data.lowWeightSum;
         epoch.highWeightSum = data.highWeightSum;
         epoch.rewardedWeightSum = data.rewardedWeightSum;
+
+        // update price
+        fAssetPriceUSD = data.finalMedianPrice;
     }
 
     function readRewardData(

@@ -25,17 +25,30 @@ contract MockFtso is Ftso {
         IVotePower _fAsset,
         IRewardManager _rewardManager,
         uint256 _startTimestamp,
-        uint256 _epochPeriod,
+        uint256 _submissionPeriod,
         uint256 _revealPeriod
     ) Ftso(
+        1,
         _fFlr,
         _fAsset,
-        1,
         _rewardManager
     )
     {
-        initPriceEpochData(_startTimestamp, _epochPeriod, _revealPeriod);
+        initEpoch(_startTimestamp, _submissionPeriod, _revealPeriod);
         configureEpoch(2000, 1e5, 1e5, 1, 1, 1000, 10000, 50);
+    }
+
+    function initEpoch(
+        uint256 _firstEpochStartTime,
+        uint256 _submissionPeriod,
+        uint256 _revealPeriod
+    ) public
+    {
+        require(!active, ERR_ALREADY_ACTIVATED);
+        epochs.firstEpochStartTime = _firstEpochStartTime;
+        epochs.submissionPeriod = _submissionPeriod;
+        epochs.revealPeriod = _revealPeriod;
+        active = true;
     }
 
     function configureEpoch(
@@ -58,13 +71,11 @@ contract MockFtso is Ftso {
         epochs.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
     }
 
-    function finalizePriceEpochWithResult(uint256 _epochId) external onlyRewardManager
-        returns (
-            address[] memory eligibleAddresses,
-            uint64[] memory flrWeights,
-            uint256 flrWeightsSum
-        )
-    {
+    function finalizePriceEpochWithResult(uint256 _epochId) external returns (
+        address[] memory eligibleAddresses,
+        uint64[] memory flrWeights,
+        uint256 flrWeightsSum
+    ) {
         (eligibleAddresses, flrWeights, flrWeightsSum) = finalizePriceEpoch(_epochId, true);
         emit FinalizeEpochResults(eligibleAddresses, flrWeights, flrWeightsSum);
     }
@@ -100,12 +111,7 @@ contract MockFtso is Ftso {
     }
 
     function getWeightRatio(uint256 _epochId) external view returns (uint256) {
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        uint256 weightRatio = 50;
-        if (_epochId > 0) {
-            weightRatio = epochs._getWeightRatio(epoch, epochs.instance[_epochId - 1].medianPrice);
-        }
-        return weightRatio;
+        return epochs._getWeightRatio(epochs.instance[_epochId], fAssetPriceUSD);
     }
 
     function getEpochResult(uint256 _epochId)
