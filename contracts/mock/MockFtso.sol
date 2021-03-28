@@ -18,7 +18,7 @@ contract MockFtso is Ftso {
         uint32 truncatedLastQuartileIndex;
     }
 
-    event FinalizeEpochResults(address[] eligibleAddresses, uint64[] flrWeights, uint256 flrWeightsSum);
+    event FinalizeEpochResults(address[] eligibleAddresses, uint256[] flrWeights, uint256 flrWeightsSum);
     
     constructor(
         IVotePower _fFlr,
@@ -73,7 +73,7 @@ contract MockFtso is Ftso {
 
     function finalizePriceEpochWithResult(uint256 _epochId) external returns (
         address[] memory eligibleAddresses,
-        uint64[] memory flrWeights,
+        uint256[] memory flrWeights,
         uint256 flrWeightsSum
     ) {
         (eligibleAddresses, flrWeights, flrWeightsSum) = finalizePriceEpoch(_epochId, true);
@@ -89,18 +89,18 @@ contract MockFtso is Ftso {
         external view 
         returns (
             uint256 epochId,
-            uint128[] memory prices,
-            uint64[] memory weightsFlr,
-            uint64[] memory weightsAsset
+            uint256[] memory prices,
+            uint256[] memory weightsFlr,
+            uint256[] memory weightsAsset
         )
     {
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         uint id = epoch.firstVoteId;
         uint32 len = epoch.voteCount;
         epochId = _epochId;
-        prices = new uint128[](len);
-        weightsFlr = new uint64[](len);
-        weightsAsset = new uint64[](len);
+        prices = new uint256[](len);
+        weightsFlr = new uint256[](len);
+        weightsAsset = new uint256[](len);
         for (uint32 cnt = 0; cnt < len; cnt++) {
             FtsoVote.Instance storage vote = votes.instance[id];
             prices[cnt] = vote.price;
@@ -118,11 +118,11 @@ contract MockFtso is Ftso {
         external view 
         returns (
             uint256 epochId,
-            uint128[] memory votePrices,
-            uint64[] memory weightsFlr, 
-            uint64[] memory weightsAsset,
+            uint256[] memory votePrices,
+            uint256[] memory weightsFlr, 
+            uint256[] memory weightsAsset,
             uint32[] memory medians, 
-            uint128[] memory prices,
+            uint256[] memory prices,
             uint256[] memory weights
         )
     {
@@ -131,9 +131,9 @@ contract MockFtso is Ftso {
 
         epochId = _epochId;
         r.len = epoch.voteCount;
-        votePrices = new uint128[](r.len);
-        weightsFlr = new uint64[](r.len);
-        weightsAsset = new uint64[](r.len);
+        votePrices = new uint256[](r.len);
+        weightsFlr = new uint256[](r.len);
+        weightsAsset = new uint256[](r.len);
         r.id = epoch.firstVoteId;
         
         for(uint32 cnt = 0; cnt < r.len; cnt++) {
@@ -160,7 +160,7 @@ contract MockFtso is Ftso {
 
         }
         medians = new uint32[](5);
-        prices = new uint128[](3);
+        prices = new uint256[](3);
         weights = new uint256[](6);
 
         medians[0] = r.truncatedFirstQuartileIndex;
@@ -169,9 +169,9 @@ contract MockFtso is Ftso {
         medians[3] = r.lastQuartileIndex;
         medians[4] = r.truncatedLastQuartileIndex;  
 
-        prices[0] = uint128(epoch.lowRewardedPrice);
-        prices[1] = uint128(epoch.medianPrice);
-        prices[2] = uint128(epoch.highRewardedPrice);
+        prices[0] = uint256(epoch.lowRewardedPrice);
+        prices[1] = uint256(epoch.medianPrice);
+        prices[2] = uint256(epoch.highRewardedPrice);
 
         weights[0] = epoch.lowWeightSum;
         weights[1] = epoch.rewardedWeightSum;

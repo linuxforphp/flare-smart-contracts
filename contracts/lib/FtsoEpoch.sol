@@ -27,7 +27,7 @@ library FtsoEpoch {
         uint256 maxVotePowerAssetDenomination;  // value that determines what is the largest possible asset vote power
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power
         uint256 highAssetUSDThreshold;          // threshold for high asset vote power
-        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout        
+        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout
     }
 
     struct Instance {                           // struct holding epoch votes and results
@@ -50,7 +50,7 @@ library FtsoEpoch {
         uint256 lastQuartileVoteId;             // vote id corresponding to the last quartile
         uint256 truncatedLastQuartileVoteId;    // last vote id eligible for reward
         uint256 lastVoteId;                     // id of the last vote in epoch
-        uint128 medianPrice;                    // consented epoch asset price
+        uint256 medianPrice;                    // consented epoch asset price
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
         uint256 lowWeightSum;                   // sum of (mixed) weights on votes with price too low for reward
@@ -62,7 +62,7 @@ library FtsoEpoch {
         uint256 random;                         // random number associated with the epoch
         uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint32 voteCount;                       // number of votes in epoch
-        mapping(address => uint128) voterPrice; // price submitted by a voter in epoch 
+        mapping(address => uint256) voterPrice; // price submitted by a voter in epoch 
     }
 
     uint256 internal constant MAX_UINT128 = 2**128 - 1;    
@@ -110,7 +110,7 @@ library FtsoEpoch {
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,        
         uint256 _random,
-        uint128 _price
+        uint256 _price
     ) internal
     {
         if (_instance.voteCount == 0) {
@@ -172,7 +172,7 @@ library FtsoEpoch {
     function _getWeightRatio(
         State storage _state,
         Instance storage _instance,
-        uint128 _assetPriceUSD
+        uint256 _assetPriceUSD
     ) internal view returns (uint256)
     {
         uint256 votePowerUSD = _instance.votePowerAsset * _assetPriceUSD;

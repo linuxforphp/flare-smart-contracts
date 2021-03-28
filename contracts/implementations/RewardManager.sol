@@ -148,7 +148,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
             }
         }
 
-        ftso.initPriceEpochData(firstPriceEpochStartTs, priceEpochDurationSec, rewardEpochDurationSec);
+        ftso.initializeEpochs(firstPriceEpochStartTs, priceEpochDurationSec, rewardEpochDurationSec);
 
         ftsos.push(ftso);
         emit FtsoAdded(ftso, true);
@@ -186,7 +186,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
 
             uint256 lastRandom = uint256(keccak256(abi.encode(
                 block.timestamp,
-                ftsos[0].getFreshRandom()
+                ftsos[0].getCurrentRandom()
             )));
 
             // @dev when considering block boundary for vote power block:
@@ -204,7 +204,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
             currentRewardEpoch = rewardEpochs.length - 1;
 
             for (uint i; i < numFtsos; ++i) {
-                ftsos[i].setCurrentVotepowerBlock(epochData.votepowerBlock);
+                ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
         }
 
@@ -226,7 +226,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
             // choose winning ftso
             uint256 rewardedFtsoId = 
                 uint256(keccak256(abi.encode(
-                    priceEpochs[currentPriceEpoch].chosenFtso.getFreshRandom()
+                    priceEpochs[currentPriceEpoch].chosenFtso.getCurrentRandom()
                 ))) % numFtsos;
 
             bool wasDistributed = distributeRewards(ftsos[rewardedFtsoId]);
@@ -260,7 +260,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     function distributeRewards(IFtso ftso) internal returns (bool wasDistirubted) {
 
         address[] memory addresses;
-        uint64[] memory weights;
+        uint256[] memory weights;
         uint256 totalWeight; 
 
         uint256 totalPriceEpochRewardTwei = dailyRewardAmountTwei * priceEpochDurationSec / SECONDS_PER_DAY;

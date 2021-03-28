@@ -44,14 +44,14 @@ library FtsoVote {
         uint256 _maxVotePowerAsset,
         uint256 _totalVotePowerFlr,
         uint256 _totalVotePowerAsset,
-        uint128 _price
+        uint256 _price
     ) internal returns (uint256)
     {
         uint256 voteId = _state.voteId++;
         Instance storage vote = _state.instance[voteId];
         vote.weightFlr = _getWeight(_votePowerFlr, _maxVotePowerFlr, _totalVotePowerFlr);
         vote.weightAsset = _getWeight(_votePowerAsset, _maxVotePowerAsset, _totalVotePowerAsset);
-        vote.price = _price;
+        vote.price = uint128(_price);
         _state.sender[voteId] = msg.sender;
         return voteId;
     }

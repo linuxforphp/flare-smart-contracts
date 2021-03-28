@@ -23,7 +23,7 @@ library FtsoMedian {
         uint256 rewardedWeightSum;
         uint256 highWeightSum;        
         uint256 totalSum;
-        uint128 finalMedianPrice;
+        uint256 finalMedianPrice;
     }
 
     struct QSVariables {
@@ -44,7 +44,7 @@ library FtsoMedian {
     }
 
     function compute(
-        uint128[] memory price,
+        uint256[] memory price,
         uint256[] memory weight
     ) internal view returns (
         uint32[] memory index,
@@ -137,7 +137,7 @@ library FtsoMedian {
         uint256 leftSum0, 
         uint256 rightSum0,
         uint32[] memory index,
-        uint128[] memory price, 
+        uint256[] memory price, 
         uint256[] memory weight
     )
         internal pure
@@ -172,7 +172,7 @@ library FtsoMedian {
         uint256 leftSumInit,
         uint256 rightSumInit,
         uint32[] memory index,
-        uint128[] memory price, 
+        uint256[] memory price, 
         uint256[] memory weight
      )
         internal view
@@ -256,7 +256,7 @@ library FtsoMedian {
         int8 direction,
         uint256 sumInit,
         uint32[] memory index,
-        uint128[] memory price,
+        uint256[] memory price,
         uint256[] memory weight
     )
         internal pure
@@ -282,7 +282,7 @@ library FtsoMedian {
         uint32 start,
         uint32 end,
         uint32[] memory index,
-        uint128[] memory price
+        uint256[] memory price
     )
         internal pure returns (uint32)
     {

@@ -13,18 +13,30 @@ interface IFtso {
     /// Allocate reward for any price submission which is same as a "winning" submission
     function finalizePriceEpoch(uint256 epochId, bool returnRewardData) external returns(
         address[] memory eligibleAddresses,
-        uint64[] memory flrWeights,
+        uint256[] memory flrWeights,
         uint256 totalFlrWeight
     );
 
     /// init price epoch data will be called by reward manager once epoch is added 
     /// before this init is done. FTSO can't run.
-    function initPriceEpochData(uint256 firstEpochStartTs, uint256 epochPeriod, uint256 revealPeriod) external;
+    function initializeEpochs(uint256 firstEpochStartTs, uint256 epochPeriod, uint256 revealPeriod) external;
+
+    function configureEpochs(
+        uint256 minVoteCount,
+        uint256 maxVoteCount,
+        uint256 minVotePowerFlrDenomination,
+        uint256 minVotePowerAssetDenomination,
+        uint256 maxVotePowerFlrDenomination,
+        uint256 maxVotePowerAssetDenomination,
+        uint256 lowAssetUSDThreshold,
+        uint256 highAssetUSDThreshold,
+        uint256 highAssetTurnoutThreshold
+    ) external;
 
     // current vote power block will update per reward epoch. 
     // the FTSO doesn't have notion of reward epochs.
     // reward manager only can set this data. 
-    function setCurrentVotepowerBlock(uint256 blockNumber) external;
+    function setVotePowerBlock(uint256 blockNumber) external;
 
     /// function getRandom()
     /// per epoch all submitted random numbers should be accumulated
@@ -32,7 +44,7 @@ interface IFtso {
     /// this API should return the result
     /// @param random is the random number
     /// TODO: consider returning randomTs = the time stamp this random was created.
-    function getFreshRandom() external view returns (uint256 random);
+    function getCurrentRandom() external view returns (uint256 random);
 
     /// function getPriceRevealEndTimestamp()
     /// should return end timestamp for next price reveal period
@@ -41,4 +53,8 @@ interface IFtso {
         uint256 nextPriceSubmitEndsTs,
         uint256 nextPriceRevealEndTs
     );
+
+    function getCurrentPrice() external view returns (uint256);
+    function getEpochPrice(uint256 epochId) external view returns (uint256);
+    function getEpochPriceForVoter(uint256 epochId, address voter) external view returns (uint256);
 }
