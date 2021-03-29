@@ -22,6 +22,7 @@ contract MockFtso is Ftso {
         IVotePower _fFlr,
         IVotePower _fAsset,
         IRewardManager _rewardManager,
+        bool _randomizedPivot,
         uint256 _minVotePower, 
         uint256 _startTimestamp,
         uint256 _epochPeriod,
@@ -32,7 +33,7 @@ contract MockFtso is Ftso {
         1,
         _rewardManager,
         _minVotePower,
-        true,
+        _randomizedPivot,
         true
     )
     {

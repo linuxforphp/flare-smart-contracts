@@ -2,10 +2,16 @@
  * Contains misc functions for testing FTSO oracle results.
  */
 
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { HardhatEthersHelpers } from "@nomiclabs/hardhat-ethers/types";
-import { BigNumber, ethers, Signer } from "ethers";
+import { expect } from "chai";
+import { BigNumber, Signer } from "ethers";
+import { ethers } from "hardhat";
+import { MockFtso, MockVPToken } from "../../typechain";
+import { TestExampleLogger } from "./TestExampleLogger";
 
 const { exec } = require("child_process");
+const { soliditySha3 } = require("web3-utils");
 
 ////////////////////////////////////////////////////////////
 //// INTERFACES
@@ -483,7 +489,15 @@ export function updateWithRewardedVotesInfo(epochResult: EpochResult, data: any)
     return { ...epochResult, rewardedVotes };
 }
 
-// 
+/**
+ * Checks test case with target and test results.
+ * @param testCase 
+ * @returns 
+ */
+export function checkTestCase(testCase: TestCase) {
+    expect(testCase.testResult).to.exist;
+    compareEpochResults(testCase.testResult!, testCase.targetResult);
+}
 
 /**
  * Evaluates test result against target result.
@@ -491,67 +505,79 @@ export function updateWithRewardedVotesInfo(epochResult: EpochResult, data: any)
  * @param target 
  * @returns 
  */
-export function compareEpochResults(test: EpochResult, target: EpochResult): boolean {
-    if (test.votes.length != target.votes.length) {
-        console.error(`Vote numbers do not match: ${ test.votes.length } vs. ${ target.votes.length }`);
-        return false;
-    }
+export function compareEpochResults(test: EpochResult, target: EpochResult) {
+    expect(test.votes.length, "Vote numbers do not match").to.equal(target.votes.length);
+    // firstQuartileIndex, medianIndex and lastQuartileIndex should not be included in tests as sorting may produce different permutiations of votes (indexes) with equal prices
+    // expect(test.medians.firstQuartileIndex, "Median first quartile indexes do not match").to.equal(target.medians.firstQuartileIndex);
+    // expect(test.medians.medianIndex, "Median indexes do not match").to.equal(target.medians.medianIndex);
+    // expect(test.medians.lastQuartileIndex, "Median last quartile indexes do not match").to.equal(target.medians.lastQuartileIndex);
+    expect(test.medians.truncatedFirstQuartileIndex, "Median truncated first quartile indexes do not match").to.equal(target.medians.truncatedFirstQuartileIndex);
+    expect(test.medians.truncatedLastQuartileIndex, "Median truncated last quartile indexes do not match").to.equal(target.medians.truncatedLastQuartileIndex);
 
-    if (test.prices.medianPrice != target.prices.medianPrice) {
-        console.error(`Median prices do not match: ${ test.prices.medianPrice } vs. ${ target.prices.medianPrice }`);
-        return false;
-    }
-    if (test.prices.lowRewardedPrice != target.prices.lowRewardedPrice) {
-        console.error(`Low rewarded prices do not match: ${ test.prices.lowRewardedPrice } vs. ${ target.prices.lowRewardedPrice }`);
-        console.log(test.prices, target.prices);
-        return false;
-    }
-    if (test.prices.highRewardedPrice != target.prices.highRewardedPrice) {
-        console.error(`Low rewarded prices do not match: ${ test.prices.highRewardedPrice } vs. ${ target.prices.highRewardedPrice }`);
-        return false;
-    }
+    checkVotePricesSort(test);
+    checkVotePricesSort(target);
 
-    if (test.weights.lowWeightSum != target.weights.lowWeightSum) {
-        console.error(`Low weight sums do not match: ${ test.weights.lowWeightSum } vs. ${ target.weights.lowWeightSum }`);
-        return false;
-    }
-    if (test.weights.rewardedWeightSum != target.weights.rewardedWeightSum) {
-        console.error(`Rewarded weight sums do not match: ${ test.weights.rewardedWeightSum } vs. ${ target.weights.rewardedWeightSum }`);
-        return false;
-    }
-    if (test.weights.highWeightSum != target.weights.highWeightSum) {
-        console.error(`High weight sums do not match: ${ test.weights.highWeightSum } vs. ${ target.weights.highWeightSum }`);
-        return false;
-    }
-    if (test.rewardedVotes!.length != target.rewardedVotes!.length) {
-        console.error(`Rewarded votes lengths do not match: ${ test.rewardedVotes!.length } vs. ${ target.rewardedVotes!.length }`);
-        return false;
-    }
-
+    expect(test.prices.medianPrice, "Median prices do not match").to.equal(target.prices.medianPrice);
+    expect(test.prices.lowRewardedPrice, "Low rewarded prices do not match").to.equal(target.prices.lowRewardedPrice);
+    expect(test.prices.highRewardedPrice, "High rewarded prices do not match").to.equal(target.prices.highRewardedPrice);
+    expect(test.weights.lowWeightSum, "Low weight sums do not match").to.equal(target.weights.lowWeightSum);
+    expect(test.weights.rewardedWeightSum, "Rewarded weight sums do not match").to.equal(target.weights.rewardedWeightSum);
+    expect(test.weights.highWeightSum, "High weight sums do not match").to.equal(target.weights.highWeightSum);
+    expect(test.rewardedVotes!.length, "Rewarded votes lengths do not match").to.equal(target.rewardedVotes!.length);
     for (let i = 0; i < test.rewardedVotes!.length; i++) {
-        if (test.rewardedVotes![i].weightFlr != target.rewardedVotes![i].weightFlr) {
-            console.error(`Rewarded votes FLR weights at position ${ i } do not match: ${ test.rewardedVotes![i].weightFlr } vs. ${ target.rewardedVotes![i].weightFlr }`);
-            return false;
-        }
-        if (test.rewardedVotes![i].address != target.rewardedVotes![i].address) {
-            console.error(`Rewarded votes addresses at position ${ i } do not match: ${ test.rewardedVotes![i].address } vs. ${ target.rewardedVotes![i].address }`);
-            return false;
-        }
+        expect(test.rewardedVotes![i].weightFlr, `Rewarded votes FLR weights at position ${ i } do not match`).to.equal(target.rewardedVotes![i].weightFlr);
+        expect(test.rewardedVotes![i].address, `Rewarded votes addresses at position ${ i } do not match:`).to.equal(target.rewardedVotes![i].address);
     }
-
-    return true;
 }
 
 /**
- * Checks test case with target and test results.
+ * Checks vote prices sorting results.
  * @param testCase 
  * @returns 
  */
-export function checkTestCase(testCase: TestCase): boolean {
-    if (testCase.testResult) {
-        return compareEpochResults(testCase.testResult, testCase.targetResult);
+export function checkVotePricesSort(result: EpochResult) {
+    const truncatedFirstQuartileIndex = result.medians.truncatedFirstQuartileIndex;
+    const firstQuartileIndex = result.medians.firstQuartileIndex;
+    const medianIndex = result.medians.medianIndex;
+    const lastQuartileIndex = result.medians.lastQuartileIndex;
+    const truncatedLastQuartileIndex = result.medians.truncatedLastQuartileIndex;
+
+    expect(truncatedFirstQuartileIndex).to.be.lte(firstQuartileIndex);
+    expect(firstQuartileIndex).to.be.lte(medianIndex);
+    expect(medianIndex).to.be.lte(lastQuartileIndex);
+    expect(lastQuartileIndex).to.be.lte(truncatedLastQuartileIndex);
+
+    const truncatedFirstQuartilePrice = result.votes[truncatedFirstQuartileIndex].price;
+    const firstQuartilePrice = result.votes[firstQuartileIndex].price;
+    const medianPrice = result.votes[medianIndex].price;
+    const lastQuartilePrice = result.votes[lastQuartileIndex].price;
+    const truncatedLastQuartilePrice = result.votes[truncatedLastQuartileIndex].price;
+
+    expect(truncatedFirstQuartilePrice).to.be.equal(firstQuartilePrice);
+    expect(firstQuartilePrice).to.be.lte(medianPrice);
+    expect(medianPrice).to.be.lte(lastQuartilePrice);
+    expect(lastQuartilePrice).to.be.equal(truncatedLastQuartilePrice);
+
+    for (let i = 0; i < truncatedFirstQuartileIndex; i++) {
+        expect(result.votes[i].price).to.be.lt(truncatedFirstQuartilePrice);
     }
-    return false;
+    for (let i = truncatedFirstQuartileIndex; i <= firstQuartileIndex; i++) {
+        expect(result.votes[i].price).to.be.equal(truncatedFirstQuartilePrice);
+    }
+    for (let i = firstQuartileIndex; i <= medianIndex; i++) {
+        expect(result.votes[i].price).to.be.gte(truncatedFirstQuartilePrice);
+        expect(result.votes[i].price).to.be.lte(medianPrice);
+    }
+    for (let i = medianIndex; i <= lastQuartileIndex; i++) {
+        expect(result.votes[i].price).to.be.gte(medianPrice);
+        expect(result.votes[i].price).to.be.lte(truncatedLastQuartilePrice);
+    }
+    for (let i = lastQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
+        expect(result.votes[i].price).to.be.equal(truncatedLastQuartilePrice);
+    }
+    for (let i = truncatedLastQuartileIndex+1; i < result.votes.length; i++) {
+        expect(result.votes[i].price).to.be.gt(truncatedLastQuartilePrice);
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -602,7 +628,15 @@ export function randomizeExampleGenerator(testExample: TestExample) {
         testExample.weightsAsset.push(normal(testExample.weightAssetAverage!, testExample.weightAssetSD!));
         testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
     }
+}
 
+export function randomizePriceGenerator(testExample: TestExample) {
+    let len = testExample.randomizedDataCount
+    if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
+    testExample.prices = [];
+    for (let i = 0; i < len; i++) {
+        testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
+    }
 }
 
 /**
@@ -672,4 +706,128 @@ export async function moveToRevealStart(eth: HardhatEthersHelpers, epochStartTim
 export async function moveToFinalizeStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, epoch: number) {
     let finalizeTimestamp = (epoch + 1) * epochPeriod + epochStartTimestamp + revealPeriod + 1;
     await increaseTimeTo(eth, finalizeTimestamp);
+}
+
+/**
+ * get epoch period
+ * @param len 
+ * @returns 
+ */
+export function getEpochPeriod(len: number): number {
+    return len + 2;
+}
+
+/**
+ * get reveal period
+ * @param len 
+ * @returns 
+ */
+export function getRevealPeriod(len: number): number {
+    return len + 2;
+}
+
+/**
+ * test ftso median process - init data and deploy contracts
+ * @param epochStartTimestamp
+ * @param signers 
+ * @param testExample 
+ * @returns 
+ */
+export async function testFTSOInitContracts(epochStartTimestamp: number, signers: readonly SignerWithAddress[], testExample: TestExample): Promise<MockFtso> {
+    // init, data preparation
+    let isRandomized = !!testExample.randomizedDataCount
+    let len = isRandomized ? testExample.randomizedDataCount! : testExample.prices.length;
+    let epochPeriod = getEpochPeriod(len);
+    let revealPeriod = getRevealPeriod(len);
+    if (len == 0) {
+        throw Error(`Bad example file ${ testExample.fileName }. Length 0.`);
+    }
+    if (isRandomized) {
+        randomizeExampleGenerator(testExample)
+    }
+    if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
+
+    // Contract deployment
+    let flrToken = await newContract<MockVPToken>(ethers, "MockVPToken", signers[0],
+        signers.slice(0, len).map(signer => signer.address), testExample.weightsFlr
+    )
+    let assetToken = await newContract<MockVPToken>(ethers, "MockVPToken", signers[0],
+        signers.slice(0, len).map(signer => signer.address), testExample.weightsAsset
+    )
+    let ftso = await newContract<MockFtso>(ethers, "MockFtso", signers[0],
+        flrToken.address, assetToken.address, signers[0].address,  // address _fFlr, address _fAsset,
+        testExample.randomizedPivot, // bool _randomizedPivot
+        0, epochStartTimestamp, // uint256 _minVotePower,  uint256 _startTimestamp
+        epochPeriod, revealPeriod //uint256 _epochPeriod, uint256 _revealPeriod
+    )
+
+    return ftso;
+}
+
+/**
+ * test ftso median process - submit price, reveal price, finalize and check results
+ * @param epochStartTimestamp
+ * @param signers 
+ * @param ftso 
+ * @param testExample 
+ * @returns 
+ */
+export async function testFTSOMedian(epochStartTimestamp: number, signers: readonly SignerWithAddress[], ftso: MockFtso, testExample: TestExample): Promise<TestCase> {
+    let logger = new TestExampleLogger(testExample);
+    
+    let len = testExample.prices.length;
+    let epochPeriod = getEpochPeriod(len);
+    let revealPeriod = getRevealPeriod(len);
+    
+    // Price hash submission
+    await moveFromCurrentToNextEpochStart(ethers, epochStartTimestamp, epochPeriod);
+    logger.log(`SUBMIT PRICE ${ len }`)
+    
+    let promises = [];
+    let epochs: number[] = [];
+    for (let i = 0; i < len; i++) {
+        let price = testExample.prices[i];
+        let random = priceToRandom(price);
+        // TODO: try to the use correct hash from ethers.utils.keccak256
+        // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint128", "uint256" ], [ price, random ]))
+        let hash = soliditySha3({ type: 'uint128', value: price }, random);
+        promises.push((await ftso.connect(signers[i]).submitPrice(hash)).wait(1));
+    }
+    (await Promise.all(promises)).forEach(res => {
+        epochs.push((res.events![0].args![0] as BigNumber).toNumber());
+    })
+    let uniqueEpochs: number[] = [...(new Set(epochs))];
+    expect(uniqueEpochs.length, `Too short epoch for the test. Increase epochPeriod ${ epochPeriod }.`).to.equal(1)
+
+    // Reveal price
+    const epoch = uniqueEpochs[0];
+    await moveToRevealStart(ethers, epochStartTimestamp, epochPeriod, epoch);
+    logger.log(`REVEAL PRICE ${ len }`)
+    let epochPromises = [];
+    for (let i = 0; i < len; i++) {
+        epochPromises.push(ftso.connect(signers[i]).revealPrice(epoch, testExample.prices[i], priceToRandom(testExample.prices[i])))
+    }
+    await Promise.all(epochPromises);
+
+    // Print epoch submission prices
+    let resVoteInfo = await ftso.getVoteInfo(epoch);
+    prettyPrintVoteInfo(resVoteInfo, logger);
+
+    // Finalize
+    moveToFinalizeStart(ethers, epochStartTimestamp, epochPeriod, revealPeriod, epoch);
+    let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
+    logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
+    let epochFinalizeResponse = resFinalizePrice.events![0].args;
+    
+    // Print results                
+    let res = await ftso.getEpochResult(epoch);
+    prettyPrintEpochResult(res, logger);
+    let voterRes = toEpochResult(res);
+    let testCase = {
+        example: testExample,
+        targetResult: resultsFromTestData(testExample, signers.slice(0, len).map(signer => signer.address)),
+        testResult: updateWithRewardedVotesInfo(voterRes, epochFinalizeResponse)
+    } as TestCase;
+    
+    return testCase;
 }
