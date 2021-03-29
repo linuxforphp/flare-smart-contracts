@@ -9,6 +9,7 @@ import '@typechain/ethers-v5'
 import * as dotenv from "dotenv";
 import 'solidity-coverage';
 import "hardhat-gas-reporter"
+import 'hardhat-deploy';
 import { HardhatUserConfig } from "hardhat/config";
 
 dotenv.config();
@@ -190,9 +191,12 @@ const config: HardhatUserConfig = {
 
   paths: {
     sources: "./contracts/",
-    tests: "./test/",
+    tests: process.env.TEST_PATH || "./test/",
     cache: "./cache",
-    artifacts: "./artifacts"
+    artifacts: "./artifacts",
+    deploy: 'deploy',
+    deployments: 'deployments',
+    imports: 'imports'
   },
 
   mocha: {

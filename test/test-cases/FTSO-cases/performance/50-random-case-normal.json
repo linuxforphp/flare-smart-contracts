@@ -1,6 +1,6 @@
 {
     "description": "Random 50 prices and weights",
-    "randomizePivot": true,
+    "randomizedPivot": true,
     "randomizedDataCount": 50,
     "prices":       [],
     "weightsFlr":   [],
