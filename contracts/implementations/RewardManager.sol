@@ -44,9 +44,12 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     RewardEpochData[] public rewardEpochs;
     PriceEpochData[] public priceEpochs;
 
-    // reward
-    // TODO: consider splitting into data providers rewards and delegators rewards
-    mapping(uint256 => mapping(address => uint256)) public rewardsPerRewardEpoch;
+    /**
+     * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed
+     *  rewards.
+     * TODO: consider splitting into data providers rewards and delegators rewards
+     */
+    mapping(uint256 => mapping(address => uint256)) public unclaimedRewardsPerRewardEpoch;
     uint256 public dailyRewardAmountTwei;
     uint256 public distributedSoFarTwei;
 
@@ -94,10 +97,10 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     // function claimReward for claiming reward by data providers
     function claimReward(address payable to, uint256 rewardEpoch) external override returns(uint256 rewardAmount) {
         require(rewardEpoch > currentRewardEpoch, "Epoch not finalised");
-        require (rewardsPerRewardEpoch[rewardEpoch][msg.sender] > 0, "no rewards");
+        require (unclaimedRewardsPerRewardEpoch[rewardEpoch][msg.sender] > 0, "no rewards");
 
-        rewardAmount = rewardsPerRewardEpoch[rewardEpoch][msg.sender];
-        rewardsPerRewardEpoch[rewardEpoch][msg.sender] = 0;
+        rewardAmount = unclaimedRewardsPerRewardEpoch[rewardEpoch][msg.sender];
+        unclaimedRewardsPerRewardEpoch[rewardEpoch][msg.sender] = 0;
 
         to.call{value: rewardAmount}("");
         distributedSoFarTwei += rewardAmount;
@@ -173,10 +176,6 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         // ALEN: added while merging. Was missing implementation.
     }  
 
-    function getCurrentRewardEpoch() public view returns (uint256) {
-        return currentRewardEpoch;
-    }
-
     function finalizeRewardEpoch() internal {
 
         uint numFtsos = ftsos.length;
@@ -193,7 +192,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
             // - if far from now, it doesn't reflect last vote power changes
             // - if too small, possible loan attacks.
             uint256 votepowerBlockBoundary = 
-                (block.number - rewardEpochs[getCurrentRewardEpoch()].startBlock) / 7;
+                (block.number - rewardEpochs[currentRewardEpoch].startBlock) / 7;
 
             RewardEpochData memory epochData = RewardEpochData({
                 votepowerBlock: block.number - (votepowerBlockBoundary % lastRandom), 
@@ -224,13 +223,26 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         if(numFtsos > 0) {
 
             // choose winning ftso
-            uint256 rewardedFtsoId = 
-                uint256(keccak256(abi.encode(
-                    priceEpochs[currentPriceEpoch].chosenFtso.getCurrentRandom()
-                ))) % numFtsos;
+            uint256 rewardedFtsoId;
+            if (priceEpochs.length == 0) {
+              // Pump not yet primed; start with first ftso?
+              rewardedFtsoId = 
+                  uint256(keccak256(abi.encode(
+                      ftsos[0].getCurrentRandom()
+                  ))) % numFtsos;
+            } else {
+              rewardedFtsoId = 
+                  uint256(keccak256(abi.encode(
+                      priceEpochs[currentPriceEpoch].chosenFtso.getCurrentRandom()
+                  ))) % numFtsos;
+            }
 
             bool wasDistributed = distributeRewards(ftsos[rewardedFtsoId]);
 
+            // On the off chance that the winning FTSO does not have any
+            // recipient within the truncated price distribution to
+            // receive rewards, find the next FTSO that does have reward
+            // recipients and declare it the winner.
             for (uint i; i < numFtsos; ++i) {
                 if (i == rewardedFtsoId) continue;
 
@@ -242,10 +254,10 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
                 }
             }
 
-            priceEpochs[currentRewardEpoch] = PriceEpochData (
-                ftsos[rewardedFtsoId],
-                uint32(currentRewardEpoch)
-            );
+            priceEpochs.push(PriceEpochData({
+                chosenFtso: ftsos[rewardedFtsoId],
+                rewardEpochId: uint32(currentRewardEpoch)
+            }));
 
             currentPriceEpoch++;
         }
@@ -273,12 +285,12 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         for (uint i = addresses.length - 1; i > 0; i--) {
             uint256 rewardAmount = totalPriceEpochRewardTwei * weights[i] / totalWeight;
             distributedSoFar += rewardAmount;
-            rewardsPerRewardEpoch[currentRewardEpoch][addresses[i]] +=
+            unclaimedRewardsPerRewardEpoch[currentRewardEpoch][addresses[i]] +=
                 rewardAmount;
         }
 
         // give remaining amount to last address.
-        rewardsPerRewardEpoch[currentRewardEpoch][addresses[0]] += 
+        unclaimedRewardsPerRewardEpoch[currentRewardEpoch][addresses[0]] += 
             totalPriceEpochRewardTwei - distributedSoFar;
 
         // TODO: Add event.

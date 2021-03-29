@@ -2,31 +2,31 @@
 
 Contracts will cover a few building blocks of the network:
 
-1. F asset, including Wrapped FLR.
-3. FTSO - oracle contracts.
-4. Claim contracts.
+1. Token contracts.
+2. fAsset contracts for minting fAssets
+3. FTSO - the oracle
+4. Reward contracts.
+5. FLR distribution contracts.
 
-## F Asset contracts 
+## Token contracts 
 
-Includes both wrapped FLR (F-FLR) and any F Asset minted on flare network. Contracts will hold balances, vote power delegations and actual vote power of each address per block. Will support minting of new F assets.
+Will be used for wrapped FLR (F-FLR) and fAssets minted on flare network. These tokens will expose delegate API and query votePower API. The vote power is checkpointed, meaning votePower for previous blocks can be queried.
 
 ## FTSO 
 
-Will enable users to supply F-Asset price feeds and some extra data. FTSO will get actual vote power of each address from the F asset contracts.
+Will enable users to supply $ <> fAsset price feeds. The FTSO will determine the vote power of each address by calling vote power API on the token contract.Some minimal vote power is required to submint price feeds onto the ftso.
 
-## Claim contracts
+## fAsset
+These contract/s will handle the process of minting && redemption of fAssets, checking collateral levels and liquidating (auctioning) defaulting agents will lower collateral levels.
+## Reward contracts
 
-Will enable claiming of FFlr from a pre allocated pool for FFlr. Users will be eligible to claim tokens based on:
-- F asset holdings.
-- Supplying FTSO price feeds.
+Will enable claiming of Flr rewards.
+Users will be eligible to claim tokens based on:
+- fAssest holdings. from a dedicated pool
+- Supplying FTSO price feeds. This actually Flr mining and will be rewards from flare inflation.
 
-## voting power
-
-Since no token locking is planed for f assets. Each vote campaign will define vote power power address according to a semi random chosen block.
-
-## Package Manager
-
-We use `yarn` as the package manager. You may use `npm` and `npx` instead, but commands in bash scripts may have to be changed accordingly.
+## Distribution contracts
+The air dropped Flare will be distributed gradually through a dedicated contract.
 
 ## Setup
 
