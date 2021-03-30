@@ -1,7 +1,7 @@
 {
-    "description": "Random 50 prices and weights",
-    "randomizePivot": true,
-    "randomizedDataCount": 50,
+    "description": "Random 200 prices and weights",
+    "randomizedPivot": true,
+    "randomizedDataCount": 200,
     "prices":       [],
     "weightsFlr":   [],
     "weightsAsset": [],
