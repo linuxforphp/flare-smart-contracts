@@ -21,8 +21,9 @@
     "compile": "yarn hardhat compile 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
     "c": "yarn hardhat compile 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
     "lint": "yarn solhint 'contracts/**/*.sol'",
-    "gas": "cat gas-report.txt; echo \n",
-    "accounts": "node scripts/generate-accounts.ts"
+    "gas-snapshot": "ts-node scripts/process-gas-report.ts; cat .gas-report.txt",
+    "gas": "cat .gas-report.txt",
+    "accounts": "ts-node scripts/generate-accounts.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
