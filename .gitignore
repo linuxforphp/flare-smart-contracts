@@ -36,5 +36,5 @@ yarn-error.log
 package-lock.json
 
 ## gas report
-gas-report.txt
+.gas-report.txt
 gasReporterOutput.json
