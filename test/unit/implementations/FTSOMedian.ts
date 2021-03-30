@@ -21,7 +21,6 @@ let testExamples = files.map(fname => {
 describe("FTSO contract - unit test cases from files", () => {
     testExamples.forEach(testExample => {
         it(`${ testExample.fileName }: ${ testExample.description }`, async function () {
-            
             const epochStartTimestamp: number = 1;
             const signers: SignerWithAddress[] = await ethers.getSigners();
             const ftso: MockFtso = await testFTSOInitContracts(epochStartTimestamp, signers, testExample);

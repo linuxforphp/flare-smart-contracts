@@ -11,6 +11,7 @@ let testExample: TestExample = {
     prices: [],
     weightsFlr: [],
     weightsAsset: [],
+    weightRatio: 0,
     priceAverage: 10000,
     priceSD: 6000,
     weightFlrAverage: 100000,

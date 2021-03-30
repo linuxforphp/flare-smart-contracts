@@ -30,13 +30,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         mockFtso = await MockFtso.new();
         inflation = await Inflation.new();
         ftsoInterface = await Ftso.new(
-            constants.ZERO_ADDRESS,
-            constants.ZERO_ADDRESS,
             0,
             constants.ZERO_ADDRESS,
-            0,
-            false,
-            false
+            constants.ZERO_ADDRESS,
+            constants.ZERO_ADDRESS
         );
 
         // Force a block in order to get most up to date time
@@ -138,12 +135,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
     it("Should finalize price epoch for winning ftso with no reward recipients", async() => {
         // Assemble
         // stub randomizer
-        const getFreshRandom = ftsoInterface.contract.methods.getFreshRandom().encodeABI();
-        await mockFtso.givenMethodReturnUint(getFreshRandom, 0);
+        const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
+        await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
         // stub finalizer
         const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
         const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
-        ['address[]', 'uint64[]', 'uint256'], 
+        ['address[]', 'uint256[]', 'uint256'], 
         [[], [], '0']);
         await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
     
@@ -165,12 +162,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
     it("Should finalize price epoch and distribute unclaimed rewards", async() => {
         // Assemble
         // stub ftso randomizer
-        const getFreshRandom = ftsoInterface.contract.methods.getFreshRandom().encodeABI();
-        await mockFtso.givenMethodReturnUint(getFreshRandom, 0);
+        const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
+        await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
         // stub ftso finalizer
         const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
         const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
-        ['address[]', 'uint64[]', 'uint256'], 
+        ['address[]', 'uint256[]', 'uint256'], 
         [[accounts[1], accounts[2]], [25, 75], 100]);
         await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
         // set the daily reward amount
@@ -201,18 +198,18 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         // Assemble
         // Force the first FTSO random number generator to yield FTSO 0 as reward FTSO
         const mockFtsoNoAccounts = await MockFtso.new();
-        const getFreshRandom = ftsoInterface.contract.methods.getFreshRandom().encodeABI();
-        await mockFtsoNoAccounts.givenMethodReturnUint(getFreshRandom, 0);
+        const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
+        await mockFtsoNoAccounts.givenMethodReturnUint(getCurrentRandom, 0);
         // Rig FTSO0 to yield no accounts
         const finalizePriceEpochFtso0 = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
         const finalizePriceEpochReturnFtso0 = web3.eth.abi.encodeParameters(
-            ['address[]', 'uint64[]', 'uint256'], 
+            ['address[]', 'uint256[]', 'uint256'], 
             [[], [], 100]);
         await mockFtsoNoAccounts.givenMethodReturn(finalizePriceEpochFtso0, finalizePriceEpochReturnFtso0);
         // stub FTSO1 to actually contain rewardable accounts
         const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
         const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
-        ['address[]', 'uint64[]', 'uint256'], 
+        ['address[]', 'uint256[]', 'uint256'], 
         [[accounts[1], accounts[2]], [25, 75], 100]);
         await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
         // set the daily reward amount

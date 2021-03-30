@@ -7,8 +7,8 @@
     "weightsAsset": [],
     "priceAverage": 10000,
     "priceSD": 6000,
-    "weightFlrAverage": 100000,
-    "weightFlrSD": 50000,
-    "weightAssetAverage": 100000,
-    "weightAssetSD": 50000   
+    "weightFlrAverage": 10000,
+    "weightFlrSD": 5000,
+    "weightAssetAverage": 10000,
+    "weightAssetSD": 5000   
 }

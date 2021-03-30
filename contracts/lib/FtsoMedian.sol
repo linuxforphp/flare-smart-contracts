@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-library WeightedMedian {
+library FtsoMedian {
 
     struct Data {
         uint32 medianIndex;
@@ -21,9 +21,9 @@ library WeightedMedian {
         uint256 medianWeight;
         uint256 lowWeightSum;
         uint256 rewardedWeightSum;
-        uint256 highWeightSum;
-        uint256 finalMedianPrice;
+        uint256 highWeightSum;        
         uint256 totalSum;
+        uint256 finalMedianPrice;
     }
 
     struct QSVariables {
@@ -44,7 +44,7 @@ library WeightedMedian {
     }
 
     function compute(
-        uint128[] memory price,
+        uint256[] memory price,
         uint256[] memory weight
     ) internal view returns (
         uint32[] memory index,
@@ -137,7 +137,7 @@ library WeightedMedian {
         uint256 leftSum0, 
         uint256 rightSum0,
         uint32[] memory index,
-        uint128[] memory price, 
+        uint256[] memory price, 
         uint256[] memory weight
     )
         internal pure
@@ -172,7 +172,7 @@ library WeightedMedian {
         uint256 leftSumInit,
         uint256 rightSumInit,
         uint32[] memory index,
-        uint128[] memory price, 
+        uint256[] memory price, 
         uint256[] memory weight
      )
         internal view
@@ -194,7 +194,7 @@ library WeightedMedian {
             (p.pos, s.newLeftSum, s.newRightSum) = partition(
                 p.left,
                 p.right,
-                true ? (random)%(p.right - p.left + 1) + p.left : p.right, // pivot randomization
+                (random % (p.right - p.left + 1)) + p.left, // pivot randomization
                 s.leftSum,
                 s.rightSum,
                 index,
@@ -256,7 +256,7 @@ library WeightedMedian {
         int8 direction,
         uint256 sumInit,
         uint32[] memory index,
-        uint128[] memory price,
+        uint256[] memory price,
         uint256[] memory weight
     )
         internal pure
@@ -282,7 +282,7 @@ library WeightedMedian {
         uint32 start,
         uint32 end,
         uint32[] memory index,
-        uint128[] memory price
+        uint256[] memory price
     )
         internal pure returns (uint32)
     {

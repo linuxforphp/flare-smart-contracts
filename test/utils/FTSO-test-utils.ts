@@ -132,6 +132,7 @@ export interface TestExample {
     prices: number[];
     weightsFlr: number[];
     weightsAsset: number[];
+    weightRatio: number,
     priceAverage?: number;
     priceSD?: number;
     weightFlrAverage?: number;
@@ -361,7 +362,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     let totalPreSum = assetSum + flrSum;
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
-        let weight = assetSum * v.weightFlr + flrSum * v.weightAsset;
+        let weight = (1000 - data.weightRatio) * assetSum * v.weightFlr + data.weightRatio * flrSum * v.weightAsset;
         v.weight = weight;
         totalSum += weight;
         v.runningPct = weight / totalPreSum;
@@ -756,8 +757,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
     )
     let ftso = await newContract<MockFtso>(ethers, "MockFtso", signers[0],
         flrToken.address, assetToken.address, signers[0].address,  // address _fFlr, address _fAsset,
-        testExample.randomizedPivot, // bool _randomizedPivot
-        0, epochStartTimestamp, // uint256 _minVotePower,  uint256 _startTimestamp
+        // testExample.randomizedPivot, // bool _randomizedPivot
+        epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod //uint256 _epochPeriod, uint256 _revealPeriod
     )
 
@@ -789,12 +790,12 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
         let price = testExample.prices[i];
         let random = priceToRandom(price);
         // TODO: try to the use correct hash from ethers.utils.keccak256
-        // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint128", "uint256" ], [ price, random ]))
-        let hash = soliditySha3({ type: 'uint128', value: price }, random);
+        // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price, random ]))
+        let hash = soliditySha3(price, random);
         promises.push((await ftso.connect(signers[i]).submitPrice(hash)).wait(1));
     }
     (await Promise.all(promises)).forEach(res => {
-        epochs.push((res.events![0].args![0] as BigNumber).toNumber());
+        epochs.push((res.events![0].args![1] as BigNumber).toNumber());
     })
     let uniqueEpochs: number[] = [...(new Set(epochs))];
     expect(uniqueEpochs.length, `Too short epoch for the test. Increase epochPeriod ${ epochPeriod }.`).to.equal(1)
@@ -811,13 +812,14 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
 
     // Print epoch submission prices
     let resVoteInfo = await ftso.getVoteInfo(epoch);
+    testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
     prettyPrintVoteInfo(resVoteInfo, logger);
 
     // Finalize
     moveToFinalizeStart(ethers, epochStartTimestamp, epochPeriod, revealPeriod, epoch);
     let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
     logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
-    let epochFinalizeResponse = resFinalizePrice.events![0].args;
+    let epochFinalizeResponse = resFinalizePrice.events![1].args;
     
     // Print results                
     let res = await ftso.getEpochResult(epoch);
