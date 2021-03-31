@@ -23,17 +23,18 @@ A list of attacks one of the devs reviewed against existing code base.
 
 #### Default Visiblities - Chuck
 
-## References
-List of good references.
-
-- https://swcregistry.io/
-- https://medium.com/coinmonks/common-attacks-in-solidity-and-how-to-defend-against-them-9bc3994c7c18
-
 #### UnExpected Ether (FLR) - Jan
 
 #### Arithmentic over / under flow - Bostjan
 
 
 #### DelegateCall - Ilan
+
+## References
+List of good references.
+
+- https://swcregistry.io/
+- https://medium.com/coinmonks/common-attacks-in-solidity-and-how-to-defend-against-them-9bc3994c7c18
+
 ## Non reviewed attacks + Reason
 If any attack is skipped. please list it here and state why.
