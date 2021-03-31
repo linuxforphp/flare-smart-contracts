@@ -715,7 +715,7 @@ export async function moveToFinalizeStart(eth: HardhatEthersHelpers, epochStartT
  * @returns 
  */
 export function getEpochPeriod(len: number): number {
-    return len + 2;
+    return len + 3;
 }
 
 /**
@@ -724,7 +724,7 @@ export function getEpochPeriod(len: number): number {
  * @returns 
  */
 export function getRevealPeriod(len: number): number {
-    return len + 2;
+    return len + 3;
 }
 
 /**
