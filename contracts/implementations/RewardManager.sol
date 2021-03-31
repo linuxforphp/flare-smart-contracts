@@ -70,6 +70,9 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     IFtso[] public ftsos;
     address public inflationContract;
 
+    // flags
+    bool private justStarted;
+
     constructor(
         address _governance,
         address _inflation,
@@ -92,18 +95,21 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         currentRewardEpoch = 0;
         currentRewardEpochEnds = _currentRewardEpochStartTs + _rewardEpochDurationSec;
         currentPriceEpochEnds  = _firstEpochStartTs + _priceEpochDurationSec;
+        justStarted = true;
     }
+
+    receive() external payable {}
 
     // function claimReward for claiming reward by data providers
     function claimReward(address payable to, uint256 rewardEpoch) external override returns(uint256 rewardAmount) {
-        require(rewardEpoch > currentRewardEpoch, "Epoch not finalised");
+        require(rewardEpoch < currentRewardEpoch, "Epoch not finalised");
         require (unclaimedRewardsPerRewardEpoch[rewardEpoch][msg.sender] > 0, "no rewards");
 
         rewardAmount = unclaimedRewardsPerRewardEpoch[rewardEpoch][msg.sender];
         unclaimedRewardsPerRewardEpoch[rewardEpoch][msg.sender] = 0;
-
-        to.call{value: rewardAmount}("");
         distributedSoFarTwei += rewardAmount;
+        to.transfer(rewardAmount);
+//        to.call{value: rewardAmount}("");
 
         emit RewardClaimed ({
             whoClaimed: msg.sender,
@@ -124,6 +130,28 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     function keep() external override {
         // flare keeper trigger. once every block
         if (!active) return;
+        // If RewardManager just started...
+        if (justStarted) {
+            // And the reward epoch has now started...
+            if (block.timestamp >= currentRewardEpochEnds - rewardEpochDurationSec) {
+                // Prime the reward epoch array with a new reward epoch
+                // TODO: Randomize? What if there are no FTSOs here? Can't use same algo.
+                RewardEpochData memory epochData = RewardEpochData({
+                    votepowerBlock: block.number - 1, 
+                    startBlock: block.number
+                });
+
+                rewardEpochs.push(epochData);
+
+                // Set up vote power block for each ftso
+                uint256 numFtsos = ftsos.length;
+                for (uint i; i < numFtsos; ++i) {
+                    ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
+                }
+
+                justStarted = false;
+            }
+        }
 
         if (currentRewardEpochEnds < block.timestamp) {
             finalizeRewardEpoch();
@@ -137,6 +165,7 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     function setDailyRewardAmount(uint256 rewardAmountTwei) external override {
         require(msg.sender == inflationContract, "only inflation");
 
+        // TODO: Accounting of FLR in contract vs. this number needs to be reconciled
         dailyRewardAmountTwei = rewardAmountTwei;
         // TODO: add event
     }
@@ -153,6 +182,12 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
 
         ftso.initializeEpochs(firstPriceEpochStartTs, priceEpochDurationSec, rewardEpochDurationSec);
 
+        // Set the vote power block
+        if (priceEpochs.length > 0) {
+            ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
+        }
+
+        // Add the ftso
         ftsos.push(ftso);
         emit FtsoAdded(ftso, true);
     }
@@ -176,7 +211,9 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         // ALEN: added while merging. Was missing implementation.
     }  
 
+    // The point of the finalization is to tell the FTSOs the new vote power block.
     function finalizeRewardEpoch() internal {
+        assert(!justStarted);
 
         uint numFtsos = ftsos.length;
 
@@ -225,16 +262,18 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
             // choose winning ftso
             uint256 rewardedFtsoId;
             if (priceEpochs.length == 0) {
-              // Pump not yet primed; start with first ftso?
-              rewardedFtsoId = 
-                  uint256(keccak256(abi.encode(
-                      ftsos[0].getCurrentRandom()
-                  ))) % numFtsos;
+                // Pump not yet primed; start with first ftso?
+                rewardedFtsoId = 
+                    uint256(keccak256(abi.encode(
+                        ftsos[0].getCurrentRandom()
+                    ))) % numFtsos;
             } else {
-              rewardedFtsoId = 
-                  uint256(keccak256(abi.encode(
-                      priceEpochs[currentPriceEpoch].chosenFtso.getCurrentRandom()
-                  ))) % numFtsos;
+                // TODO: Note that the currentPriceEpoch id does not have an entry until
+                // finalized. This feels wrong, but go with it for now.
+                rewardedFtsoId = 
+                    uint256(keccak256(abi.encode(
+                        priceEpochs[currentPriceEpoch-1].chosenFtso.getCurrentRandom()
+                    ))) % numFtsos;
             }
 
             bool wasDistributed = distributeRewards(ftsos[rewardedFtsoId]);
