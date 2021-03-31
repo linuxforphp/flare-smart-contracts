@@ -35,7 +35,7 @@ contract MockFtso is Ftso {
     )
     {
         initEpoch(_startTimestamp, _submissionPeriod, _revealPeriod);
-        configureEpoch(2000, 1e5, 1e5, 1, 1, 1000, 10000, 50);
+        configureEpoch(2000, 1e10, 1e10, 1, 1, 1000, 10000, 50);
     }
 
     function initEpoch(
