@@ -4,7 +4,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
 
-const ALREADY_DELEGATED_EXPLICT_MSG = "Already delegated explicitly";
+const ALREADY_DELEGATED_EXPLICIT_MSG = "Already delegated explicitly";
 const ALREADY_DELEGATED_PERCENT_MSG = "Already delegated by percentage";
 
 
@@ -68,12 +68,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
   it("Should be explicitly delegatable", async() => {
     // Assemble
     await vpToken.mint(accounts[1], 100);
-    await vpToken.delegateExplicit(accounts[2], 50, {from: accounts[1]});
+    await vpToken.delegateExplicit(accounts[2], 75, {from: accounts[1]});
     // Act
     const { delegateAddresses, amountOrBips, } = await vpToken.delegatesOf(accounts[1]);
     // Assert
     assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 50);
+    assert.equal(amountOrBips[0], 75);
   });
 
   it("Should retrieve undelegated vote power", async() => {
@@ -138,7 +138,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     let delegatePromise = vpToken.delegate(accounts[2], 1000, {from: accounts[1]});
     // Assert
-    expectRevert(delegatePromise, ALREADY_DELEGATED_EXPLICT_MSG);
+    expectRevert(delegatePromise, ALREADY_DELEGATED_EXPLICIT_MSG);
   });
 
   it("Should revert delegating explicit when already delegated by percent", async() => {

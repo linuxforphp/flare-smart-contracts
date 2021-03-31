@@ -139,12 +139,12 @@ abstract contract Delegatable is IDelegatable, IVotePower {
             emit Delegate(to, msg.sender, oldAmount, block.number);
         }
 
-        // Add/replace delegate
-        delegation.addReplaceDelegateByAmount(to, amount);
-
         // Is there enough undelegated vote power?
         require(_undelegatedVotePowerOf(msg.sender, senderCurrentBalance) >= amount, 
             UNDELEGATED_VP_TOO_SMALL_MSG);
+
+        // Add/replace delegate
+        delegation.addReplaceDelegateByAmount(to, amount);
 
         // Update vote power
         _votePower.delegate(msg.sender, to, amount);
