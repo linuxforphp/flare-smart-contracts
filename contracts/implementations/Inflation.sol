@@ -5,9 +5,12 @@ import "./Governed.sol";
 import "../interfaces/IFlareKeep.sol";
 import "../interfaces/IInflation.sol";
 import "../interfaces/IRewardManager.sol";
+import "../lib/DateTimeLibrary.sol";
 
+import "hardhat/console.sol";
 
 contract Inflation is IInflation, Governed, IFlareKeep {
+    using BokkyPooBahsDateTimeLibrary for uint256;
 
     struct AnnumData {
         uint256 initialSupplyWei;
@@ -16,6 +19,7 @@ contract Inflation is IInflation, Governed, IFlareKeep {
     }
 
     ///annual data
+    // TODO: Make settable by governance?
     uint256 constant public ANNUAL_INFLATION_PERCENT = 10;
     AnnumData[] public flareAnnumData;
     uint256 public currentFlareAnnum; // Flare year
@@ -38,13 +42,16 @@ contract Inflation is IInflation, Governed, IFlareKeep {
     {
         fundWithdrawTimeLockSec = _fundWithdrawTimeLockSec;
 
-        AnnumData memory newAnum = AnnumData({
+        AnnumData memory newAnnum = AnnumData({
             initialSupplyWei: totalFlrSupply,
             totalInflationWei: totalFlrSupply * ANNUAL_INFLATION_PERCENT / 100,
             startTimeStamp: block.timestamp
         });
 
-        flareAnnumData.push(newAnum);
+        dailyWithdrawAmountTwei = newAnnum.totalInflationWei * 2 / 
+            newAnnum.startTimeStamp.getDaysInYear(); // 2 days worth of funds
+
+        flareAnnumData.push(newAnnum);
     }
 
     function setRewardContract(IRewardManager _rewardManager) external override onlyGovernance {
@@ -52,9 +59,9 @@ contract Inflation is IInflation, Governed, IFlareKeep {
         emit RewardContractUpdated(rewardManager, _rewardManager);
         rewardManager = _rewardManager;
 
-        // TODO: Bug. Fix.
         rewardManager.setDailyRewardAmount(
-            flareAnnumData[flareAnnumData.length - 1].totalInflationWei / 356
+            flareAnnumData[currentFlareAnnum].totalInflationWei / 
+                flareAnnumData[currentFlareAnnum].startTimeStamp.getDaysInYear()
         );
     }
 
@@ -64,8 +71,11 @@ contract Inflation is IInflation, Governed, IFlareKeep {
         }
     }
 
+    // TODO: Who is supposed to call this function? Why wouldn't keeper, or is this to be a pull from RM?
+    // TODO: Why not protected with onlyGovernance?
     function withdrawRewardFunds() external override returns (uint256 nextWithdrawTimestamp) {
-
+        // TODO: Should this not keep the amount withdrawn?
+        // TODO: Should this also validate amount withdrawn does not exceed annual inflation amount?
         if (lastFundsWithdrawTs + fundWithdrawTimeLockSec < block.timestamp) {
             // can send funds
             lastFundsWithdrawTs = block.timestamp;  // Set state before transfer to avoid re-entrancy problems
@@ -79,27 +89,28 @@ contract Inflation is IInflation, Governed, IFlareKeep {
     }
 
     function currentAnnumEndsTs() public view returns (uint256 endTs) {
-        // TODO: So broken - leap years not accounted for. Days do not convert to seconds.
-        // And number of days is wrong.
-        endTs = flareAnnumData[currentFlareAnnum].startTimeStamp + (1 days * 356);
+        endTs = flareAnnumData[currentFlareAnnum].startTimeStamp.addYears(1).subSeconds(1);
     }
 
     function initNewAnnum() internal {
-        currentFlareAnnum++;
-
         //TODO: account for token burns?
         uint256 initialSupplyWei = 
                 flareAnnumData[currentFlareAnnum].initialSupplyWei + 
                 flareAnnumData[currentFlareAnnum].totalInflationWei;
 
-        AnnumData memory newAnum = AnnumData({
+        AnnumData memory newAnnum = AnnumData({
             initialSupplyWei: initialSupplyWei,
             totalInflationWei: initialSupplyWei * ANNUAL_INFLATION_PERCENT / 100,
             startTimeStamp: block.timestamp
         });
 
-        // TODO: Broken again. Fix. 
-        dailyWithdrawAmountTwei = newAnum.totalInflationWei * 2 / 356; // 2 days worth of funds
-        rewardManager.setDailyRewardAmount(newAnum.totalInflationWei / 356);
+        flareAnnumData.push(newAnnum);
+
+        currentFlareAnnum++;
+
+        uint256 daysInYear = newAnnum.startTimeStamp.getDaysInYear();
+
+        dailyWithdrawAmountTwei = newAnnum.totalInflationWei * 2 / daysInYear; // 2 days worth of funds
+        rewardManager.setDailyRewardAmount(newAnnum.totalInflationWei / daysInYear);
     }
 }
