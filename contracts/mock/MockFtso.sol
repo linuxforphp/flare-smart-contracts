@@ -25,28 +25,27 @@ contract MockFtso is Ftso {
         IVotePower _fAsset,
         IRewardManager _rewardManager,
         uint256 _startTimestamp,
-        uint256 _submissionPeriod,
+        uint256 _submitPeriod,
         uint256 _revealPeriod
     ) Ftso(
-        1,
         _fFlr,
         _fAsset,
         _rewardManager
     )
     {
-        initEpoch(_startTimestamp, _submissionPeriod, _revealPeriod);
+        initEpoch(_startTimestamp, _submitPeriod, _revealPeriod);
         configureEpoch(2000, 1e10, 1e10, 1, 1, 1000, 10000, 50);
     }
 
     function initEpoch(
         uint256 _firstEpochStartTime,
-        uint256 _submissionPeriod,
+        uint256 _submitPeriod,
         uint256 _revealPeriod
     ) public
     {
         require(!active, ERR_ALREADY_ACTIVATED);
         epochs.firstEpochStartTime = _firstEpochStartTime;
-        epochs.submissionPeriod = _submissionPeriod;
+        epochs.submitPeriod = _submitPeriod;
         epochs.revealPeriod = _revealPeriod;
         active = true;
     }

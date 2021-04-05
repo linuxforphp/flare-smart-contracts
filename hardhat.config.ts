@@ -9,6 +9,7 @@ import '@typechain/ethers-v5'
 import * as dotenv from "dotenv";
 import 'solidity-coverage';
 import "hardhat-gas-reporter"
+import "hardhat-contract-sizer";
 import 'hardhat-deploy';
 import { HardhatUserConfig } from "hardhat/config";
 

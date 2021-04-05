@@ -30,7 +30,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         mockFtso = await MockFtso.new();
         inflation = await Inflation.new();
         ftsoInterface = await Ftso.new(
-            0,
             constants.ZERO_ADDRESS,
             constants.ZERO_ADDRESS,
             constants.ZERO_ADDRESS
