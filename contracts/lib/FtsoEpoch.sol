@@ -14,7 +14,7 @@ library FtsoEpoch {
         
         // immutable settings
         uint256 firstEpochStartTime;            // start time of the first epoch instance
-        uint256 submissionPeriod;               // duration of price submission for an epoch instance
+        uint256 submitPeriod;                   // duration of price submission for an epoch instance
         uint256 revealPeriod;                   // duration of price reveal for an apoch instance
         
         // configurable settings
@@ -25,9 +25,9 @@ library FtsoEpoch {
         uint256 minVotePowerAssetDenomination;  // value that determines if asset vote power is sufficient to vote
         uint256 maxVotePowerFlrDenomination;    // value that determines what is the largest possible FLR vote power
         uint256 maxVotePowerAssetDenomination;  // value that determines what is the largest possible asset vote power
-        uint256 lowAssetUSDThreshold;           // threshold for low asset vote power
-        uint256 highAssetUSDThreshold;          // threshold for high asset vote power
-        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout
+        uint256 lowAssetUSDThreshold;           // threshold for low asset vote power (in scaled USD)
+        uint256 highAssetUSDThreshold;          // threshold for high asset vote power (in scaled USD)
+        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout (in vote power units)
     }
 
     struct Instance {                           // struct holding epoch votes and results
@@ -137,7 +137,7 @@ library FtsoEpoch {
      * @return Epoch id
      */
     function _getEpochId(State storage _state, uint256 _timestamp) internal view returns (uint256) {
-        return (_timestamp - _state.firstEpochStartTime) / _state.submissionPeriod;
+        return (_timestamp - _state.firstEpochStartTime) / _state.submitPeriod;
     }
 
     /**
@@ -146,8 +146,18 @@ library FtsoEpoch {
      * @param _epochId              Id of epoch instance
      * @return Timestamp as seconds since unix epoch
      */
-    function _epochEndTime(State storage _state, uint256 _epochId) internal view returns (uint256) {
-        return _state.firstEpochStartTime + (_epochId + 1) * _state.submissionPeriod;
+    function _epochSubmitEndTime(State storage _state, uint256 _epochId) internal view returns (uint256) {
+        return _state.firstEpochStartTime + (_epochId + 1) * _state.submitPeriod;
+    }
+
+    /**
+     * @notice Returns end time of price reveal for an epoch instance
+     * @param _state                Epoch state
+     * @param _epochId              Id of epoch instance
+     * @return Timestamp as seconds since unix epoch
+     */
+    function _epochRevealEndTime(State storage _state, uint256 _epochId) internal view returns (uint256) {
+        return _epochSubmitEndTime(_state, _epochId) + _state.revealPeriod;
     }
 
     /**
@@ -157,7 +167,7 @@ library FtsoEpoch {
      * @return True if epoch reveal is in process and false otherwise
      */
     function _epochRevealInProcess(State storage _state, uint256 _epochId) internal view returns (bool) {
-        uint256 endTime = _epochEndTime(_state, _epochId);
+        uint256 endTime = _epochSubmitEndTime(_state, _epochId);
         return endTime < block.timestamp && block.timestamp <= endTime + _state.revealPeriod;
     }
 

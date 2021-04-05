@@ -4,6 +4,11 @@ pragma solidity 0.7.6;
 
 interface IFtso {
 
+    // events
+    event PriceSubmitted(address indexed submitter, uint256 epochId);
+    event PriceRevealed(address indexed voter, uint256 epochId, uint256 price);
+    event PriceFinalized(uint256 epochId, uint256 price);
+
     /// function finalizePriceReveal
     /// called by reward manager only on correct timing.
     /// if price reveal period for epoch x ended. finalize.
@@ -46,12 +51,16 @@ interface IFtso {
     /// TODO: consider returning randomTs = the time stamp this random was created.
     function getCurrentRandom() external view returns (uint256 random);
 
-    /// function getPriceRevealEndTimestamp()
-    /// should return end timestamp for next price reveal period
+    /**
+     * @notice Returns current epoch data
+     * @return _epochId             Current epoch id
+     * @return _epochSubmitEndTime  End time of the current epoch price submission as seconds from unix epoch
+     * @return _epochRevealEndTime  End time of the current epoch price reveal as seconds from unix epoch
+     */
     function getEpochData() external view returns (
-        uint256 currentEpoch,
-        uint256 nextPriceSubmitEndsTs,
-        uint256 nextPriceRevealEndTs
+        uint256 _epochId,
+        uint256 _epochSubmitEndTime,
+        uint256 _epochRevealEndTime
     );
 
     function getCurrentPrice() external view returns (uint256);

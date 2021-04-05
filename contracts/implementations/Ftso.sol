@@ -16,18 +16,20 @@ contract Ftso is IFtso {
     using FtsoEpoch for FtsoEpoch.State;
     using FtsoVote for FtsoVote.State;
 
-    // errors
-    string public constant ERR_NOT_ACTIVE = "FTSO not active";
-    string public constant ERR_ALREADY_ACTIVATED = "FTSO already activated";
-    string public constant ERR_NO_ACCESS = "Access denied";
-    string public constant ERR_PRICE_TOO_HIGH = "Price too high";
-    string public constant ERR_PRICE_REVEAL_FAILURE = "Price reveal for epoch not possible";
-    string public constant ERR_PRICE_INVALID = "Price already revealed or not valid";
-    string public constant ERR_EPOCH_FULL = "Maximal number of votes in epoch reached";
-    string public constant ERR_EPOCH_FINALIZATION_FAILURE = "Epoch not ready for finalization";
-    string public constant ERR_EPOCH_INSUFFICIENT_VOTES = "Epoch has insufficient number of votes";
+    // number of decimal places in FAsset USD price
+    // note that the real USD price is the integer value divided by 10^FASSET_USD_DECIMALS 
+    uint256 public constant FASSET_USD_DECIMALS = 5;
 
-    uint256 public immutable fAssetUSDDecimals; // number of decimal places in FAsset USD price
+    // errors
+    string internal constant ERR_NOT_ACTIVE = "FTSO not active";
+    string internal constant ERR_ALREADY_ACTIVATED = "FTSO already activated";
+    string internal constant ERR_NO_ACCESS = "Access denied";
+    string internal constant ERR_PRICE_TOO_HIGH = "Price too high";
+    string internal constant ERR_PRICE_REVEAL_FAILURE = "Price reveal for epoch not possible";
+    string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
+    string internal constant ERR_EPOCH_FULL = "Maximal number of votes in epoch reached";
+    string internal constant ERR_EPOCH_FINALIZATION_FAILURE = "Epoch not ready for finalization";
+    string internal constant ERR_EPOCH_INSUFFICIENT_VOTES = "Epoch has insufficient number of votes";
 
     // storage    
     bool internal active;                       // activation status of FTSO
@@ -41,18 +43,11 @@ contract Ftso is IFtso {
     IVotePower public immutable fAsset;         // wrapped asset
     IRewardManager public rewardManager;        // reward manager contract
 
-    // events
-    event PriceSubmission(address submitter, uint256 epochId);
-    event PriceReveal(address voter, uint256 epochId, uint256 price);
-    event PriceConsensus(uint256 epochId, uint256 price);
-
     constructor(
-        uint256 _fAssetUSDDecimals,
         IVotePower _fFlr,
         IVotePower _fAsset,
         IRewardManager _rewardManager
     ) {
-        fAssetUSDDecimals = _fAssetUSDDecimals;
         fFlr = _fFlr;
         fAsset = _fAsset;
         rewardManager = _rewardManager;
@@ -76,7 +71,7 @@ contract Ftso is IFtso {
     function submitPrice(bytes32 _hash) external whenActive {
         uint256 epochId = getCurrentEpochId();
         epochVoterHash[epochId][msg.sender] = _hash;
-        emit PriceSubmission(msg.sender, epochId);
+        emit PriceSubmitted(msg.sender, epochId);
     }
 
     /**
@@ -89,7 +84,7 @@ contract Ftso is IFtso {
      */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
-        require(canRevealPriceForEpoch(_epochId), ERR_PRICE_REVEAL_FAILURE);
+        require(epochs._epochRevealInProcess(_epochId), ERR_PRICE_REVEAL_FAILURE);
         require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encodePacked(_price, _random)),
             ERR_PRICE_INVALID);
         
@@ -121,13 +116,16 @@ contract Ftso is IFtso {
         delete epochVoterHash[_epochId][msg.sender];
 
         // inform about price reveal result
-        emit PriceReveal(msg.sender, _epochId, _price);
+        emit PriceRevealed(msg.sender, _epochId, _price);
     }
 
     /**
      * @notice Computes epoch price based on gathered votes
      * @param _epochId              Id of the epoch
      * @param _returnRewardData     Parameter that determines if the reward data is returned
+     * @return _eligibleAddresses   List of addresses eligible for reward
+     * @return _flrWeights          List of FLR weights corresponding to the eligible addresses
+     * @return _flrWeightsSum       Sum of weights in _flrWeights
      */
     function finalizePriceEpoch(
         uint256 _epochId,
@@ -137,7 +135,7 @@ contract Ftso is IFtso {
         uint256[] memory _flrWeights,
         uint256 _flrWeightsSum
     ) {
-        require(block.timestamp > epochs._epochEndTime(_epochId) + epochs.revealPeriod, ERR_EPOCH_FINALIZATION_FAILURE);
+        require(block.timestamp > epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
 
         // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
@@ -165,25 +163,25 @@ contract Ftso is IFtso {
         }
 
         // inform about epoch result
-        emit PriceConsensus(_epochId, epoch.medianPrice);
+        emit PriceFinalized(_epochId, epoch.medianPrice);
     }
 
     /**
      * @notice Initializes epoch immutable settings and activates oracle
      * @param _firstEpochStartTime  Timestamp of the first epoch as seconds from unix epoch
-     * @param _submissionPeriod     Duration of epoch submission period in seconds
+     * @param _submitPeriod     Duration of epoch submission period in seconds
      * @param _revealPeriod         Duration of epoch reveal period in seconds
      * @dev This method can only be called once
      */
     function initializeEpochs(
         uint256 _firstEpochStartTime,
-        uint256 _submissionPeriod,
+        uint256 _submitPeriod,
         uint256 _revealPeriod
     ) external override onlyRewardManager
     {
         require(!active, ERR_ALREADY_ACTIVATED);
         epochs.firstEpochStartTime = _firstEpochStartTime;
-        epochs.submissionPeriod = _submissionPeriod;
+        epochs.submitPeriod = _submitPeriod;
         epochs.revealPeriod = _revealPeriod;
         active = true;
     }
@@ -268,12 +266,18 @@ contract Ftso is IFtso {
 
     /**
      * @notice Returns current epoch data
+     * @return _epochId             Current epoch id
+     * @return _epochSubmitEndTime  End time of the current epoch price submission as seconds from unix epoch
+     * @return _epochRevealEndTime  End time of the current epoch price reveal as seconds from unix epoch
      */
-    function getEpochData() external view override returns (uint256, uint256, uint256) {
-        // TODO: not sure the output is set correctly
-        uint256 epochId = getCurrentEpochId();
-        uint256 nextPriceSubmitEndTs = epochs._epochEndTime(epochId);
-        return (epochId, nextPriceSubmitEndTs, nextPriceSubmitEndTs + epochs.revealPeriod);
+    function getEpochData() external view override returns (
+        uint256 _epochId,
+        uint256 _epochSubmitEndTime,
+        uint256 _epochRevealEndTime
+    ) {
+        _epochId = getCurrentEpochId();
+        _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);
+        _epochRevealEndTime = _epochSubmitEndTime + epochs.revealPeriod;
     }
 
     /**
@@ -292,11 +296,17 @@ contract Ftso is IFtso {
     }
 
     /**
-     * @notice Determines if price reveal for the given epoch is in process
+     * @notice Returns time left (in seconds) for price reveal in the given epoch, otherwise zero
      * @param _epochId              Id of the epoch
      */
-    function canRevealPriceForEpoch(uint256 _epochId) public view returns (bool) {
-        return epochs._epochRevealInProcess(_epochId);
+    function getEpochRevealTimeLeft(uint256 _epochId) external view returns (uint256) {
+        uint256 submitEndTime = epochs._epochRevealEndTime(_epochId);
+        uint256 revealEndTime = submitEndTime + epochs.revealPeriod;
+        if (submitEndTime < block.timestamp && block.timestamp < revealEndTime) {
+            return revealEndTime - block.timestamp;
+        } else {
+            return 0;
+        }
     }
 
     /**
