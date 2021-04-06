@@ -1,12 +1,15 @@
 // Unit tests for Delegatable behavior library, revoke vote power activity
 
+import { DelegatableMockContract, DelegatableMockInstance } from "../../../../typechain-truffle";
+import { toBN } from "../../../utils/test-helpers";
+
 const {getTestFile} = require('../../../utils/constants');
 
-const Delegatable = artifacts.require("DelegatableMock");
+const Delegatable = artifacts.require("DelegatableMock") as DelegatableMockContract;
 
 contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit tests`, async accounts => {
   // a fresh contract for each test
-  let delegatable;
+  let delegatable: DelegatableMockInstance;
 
   // Mimic FAsset spec test case names
   let bob = accounts[1];
@@ -15,7 +18,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
   let joe = accounts[4];
 
   // Store block numbers
-  const b = [];
+  const b: number[] = [];
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
@@ -95,9 +98,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     let bobVotePowerPastBlock = await delegatable.votePowerOfAt(bob, b[blockAfterBobDelegateToEd]);
     let edVotePowerNow = await delegatable.votePowerOf(ed);
     let bobVotePowerNow = await delegatable.votePowerOf(bob);
-    assert.equal(edVotePowerPastBlock, 50);
-    assert.equal(bobVotePowerPastBlock, 100);
-    assert.equal(edVotePowerNow, 65);
-    assert.equal(bobVotePowerNow, 135);
+    assert.equal(edVotePowerPastBlock as any, 50);
+    assert.equal(bobVotePowerPastBlock as any, 100);
+    assert.equal(edVotePowerNow as any, 65);
+    assert.equal(bobVotePowerNow as any, 135);
   });
 });

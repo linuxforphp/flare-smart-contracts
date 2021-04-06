@@ -1,17 +1,20 @@
 // Unit tests for Delegatable behavior library, vote power calculations
 
+import { DelegatableMockContract, DelegatableMockInstance } from "../../../../typechain-truffle";
+import { toBN } from "../../../utils/test-helpers";
+
 const {expectRevert} = require('@openzeppelin/test-helpers');
 const {log} = require('../../../utils/log');
 const {sumGas} = require('../../../utils/eth');
 const {getTestFile} = require('../../../utils/constants');
 
-const Delegatable = artifacts.require("DelegatableMock");
+const Delegatable = artifacts.require("DelegatableMock") as DelegatableMockContract;
 
 const UNDELEGATED_VP_TOO_SMALL_MSG = "Undelegated vote power too small";
 
 contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation unit tests`, async accounts => {
   // a fresh contract for each test
-  let delegatable;
+  let delegatable: DelegatableMockInstance;
 
   // Mimic FAsset spec test case names
   let bob = accounts[1];
@@ -19,7 +22,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
   let ed = accounts[3];
 
   // Store block numbers
-  const b = [];
+  const b: number[] = [];
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
@@ -48,9 +51,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfLucyPriorToDelegation = await delegatable.votePowerOfAt(lucy, b[blockAfterGeneration]);
     let votePowerOfLucyAfterLucyDelegation = await delegatable.votePowerOfAt(lucy, b[blockAfterLucyDelegation]);
     let votePowerOfLucyAfterEdDelegation = await delegatable.votePowerOfAt(lucy, b[blockAfterEdDelegation]);
-    assert.equal(votePowerOfLucyPriorToDelegation, 10);
-    assert.equal(votePowerOfLucyAfterLucyDelegation, 20);
-    assert.equal(votePowerOfLucyAfterEdDelegation, 20);
+    assert.equal(votePowerOfLucyPriorToDelegation as any, 10);
+    assert.equal(votePowerOfLucyAfterLucyDelegation as any, 20);
+    assert.equal(votePowerOfLucyAfterEdDelegation as any, 20);
   });
 
   // Third FAsset token stage 1 unit test
@@ -69,9 +72,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfEd = await delegatable.votePowerOf(ed);
     let votePowerOfLucy =  await delegatable.votePowerOf(lucy);
     let votePowerOfBob =  await delegatable.votePowerOf(bob);
-    assert.equal(votePowerOfEd, 10);
-    assert.equal(votePowerOfLucy, 10);
-    assert.equal(votePowerOfBob, 10);
+    assert.equal(votePowerOfEd as any, 10);
+    assert.equal(votePowerOfLucy as any, 10);
+    assert.equal(votePowerOfBob as any, 10);
   });
 
   it("Should transmit vote power when vote power delegated by percent", async () => {
@@ -113,9 +116,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfBob = await delegatable.votePowerOf(bob);
     let votePowerOfLucy = await delegatable.votePowerOf(lucy);
     let votePowerOfEd = await delegatable.votePowerOf(ed);
-    assert.equal(votePowerOfBob, 5);
-    assert.equal(votePowerOfLucy, 5);
-    assert.equal(votePowerOfEd, 25);
+    assert.equal(votePowerOfBob as any, 5);
+    assert.equal(votePowerOfLucy as any, 5);
+    assert.equal(votePowerOfEd as any, 25);
   });
 
   it("Should undelegate all vote power", async () => {
@@ -131,9 +134,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfBob = await delegatable.votePowerOf(bob);
     let votePowerOfLucy = await delegatable.votePowerOf(lucy);
     let votePowerOfEd = await delegatable.votePowerOf(ed);
-    assert.equal(votePowerOfBob, 0);
-    assert.equal(votePowerOfLucy, 50);
-    assert.equal(votePowerOfEd, 0);
+    assert.equal(votePowerOfBob as any, 0);
+    assert.equal(votePowerOfLucy as any, 50);
+    assert.equal(votePowerOfEd as any, 0);
   });
 
   it("Should delegate when minting tokens", async () => {
@@ -145,8 +148,8 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     // Assert
     let account2VotePower = await delegatable.votePowerOf(accounts[2]);
     let account3VotePower = await delegatable.votePowerOf(accounts[3]);
-    assert.equal(account2VotePower, 500);
-    assert.equal(account3VotePower, 500);
+    assert.equal(account2VotePower as any, 500);
+    assert.equal(account3VotePower as any, 500);
   });
 
   it("Should revert when existing delegation is explicit by amount", async () => {
@@ -171,8 +174,8 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let undelegatedBob = await delegatable.undelegatedVotePowerOf(bob);
     let undelegatedLucy = await delegatable.undelegatedVotePowerOf(lucy);
     // Assert
-    assert.equal(undelegatedBob, 10);
-    assert.equal(undelegatedLucy, 10);
+    assert.equal(undelegatedBob as any, 10);
+    assert.equal(undelegatedLucy as any, 10);
   });
 
   it("Should explicitly delegate vote power, with retrievable history", async () => {
@@ -198,10 +201,10 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfLucyAfterLucyDelegation = await delegatable.votePowerOfAt(lucy, b[blockAfterLucyDelegation]);
     let votePowerOfLucyAfterEdDelegation = await delegatable.votePowerOfAt(lucy, b[blockAfterEdDelegation]);
     let votePowerOfBobAfterEdDelegation = await delegatable.votePowerOfAt(bob, b[blockAfterEdDelegation]);
-    assert.equal(votePowerOfLucyPriorToDelegation, 100);
-    assert.equal(votePowerOfLucyAfterLucyDelegation, 150);
-    assert.equal(votePowerOfLucyAfterEdDelegation, 150);
-    assert.equal(votePowerOfBobAfterEdDelegation, 125);
+    assert.equal(votePowerOfLucyPriorToDelegation as any, 100);
+    assert.equal(votePowerOfLucyAfterLucyDelegation as any, 150);
+    assert.equal(votePowerOfLucyAfterEdDelegation as any, 150);
+    assert.equal(votePowerOfBobAfterEdDelegation as any, 125);
   });
 
   it("Should transfer undelegated vote power when some explicitly delegated", async () => {
@@ -215,9 +218,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfBob = await delegatable.votePowerOf(bob);
     let votePowerOfLucy =  await delegatable.votePowerOf(lucy);
     let votePowerOfEd =  await delegatable.votePowerOf(ed);
-    assert.equal(votePowerOfBob, 0);
-    assert.equal(votePowerOfLucy, 20);
-    assert.equal(votePowerOfEd, 10);
+    assert.equal(votePowerOfBob as any, 0);
+    assert.equal(votePowerOfLucy as any, 20);
+    assert.equal(votePowerOfEd as any, 10);
   });
 
   it("Given being delegated to, should not transmit vote power with explicit delegations > undelegated amount", async () => {
@@ -247,9 +250,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfBob = await delegatable.votePowerOf(bob);
     let votePowerOfLucy = await delegatable.votePowerOf(lucy);
     let votePowerOfEd = await delegatable.votePowerOf(ed);
-    assert.equal(votePowerOfBob, 0);
-    assert.equal(votePowerOfLucy, 500);
-    assert.equal(votePowerOfEd, 0);
+    assert.equal(votePowerOfBob as any, 0);
+    assert.equal(votePowerOfLucy as any, 500);
+    assert.equal(votePowerOfEd as any, 0);
   });
 
   it("Should not explicitly delegate if not enough vote power", async () => {
@@ -269,8 +272,8 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let undelegatedBob = await delegatable.undelegatedVotePowerOf(bob);
     let undelegatedLucy = await delegatable.undelegatedVotePowerOf(lucy);
     // Assert
-    assert.equal(undelegatedBob, 10);
-    assert.equal(undelegatedLucy, 10);
+    assert.equal(undelegatedBob as any, 10);
+    assert.equal(undelegatedLucy as any, 10);
   });
 
   it("Should burn vote power", async () => {
@@ -286,9 +289,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let votePowerOfBob = await delegatable.votePowerOf(bob);
     let votePowerOfLucy = await delegatable.votePowerOf(lucy);
     let votePowerOfEd = await delegatable.votePowerOf(ed);
-    assert.equal(votePowerOfBob, 12);
-    assert.equal(votePowerOfLucy, 12);
-    assert.equal(votePowerOfEd, 16);
+    assert.equal(votePowerOfBob as any, 12);
+    assert.equal(votePowerOfLucy as any, 12);
+    assert.equal(votePowerOfEd as any, 16);
   });
 
   it("Should not burn vote power when explicitly delegated and undelegated amount < amount to burn", async () => {

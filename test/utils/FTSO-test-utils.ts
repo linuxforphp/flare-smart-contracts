@@ -3,15 +3,16 @@
  */
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { HardhatEthersHelpers } from "@nomiclabs/hardhat-ethers/types";
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, web3 } from "hardhat";
 import { MockFtso, MockVPToken } from "../../typechain";
+import { FlareBlock, increaseTimeTo, newContract, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 
 const { exec } = require("child_process");
 const { soliditySha3 } = require("web3-utils");
+
 
 ////////////////////////////////////////////////////////////
 //// INTERFACES
@@ -576,7 +577,7 @@ export function checkVotePricesSort(result: EpochResult) {
     for (let i = lastQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
         expect(result.votes[i].price).to.be.equal(truncatedLastQuartilePrice);
     }
-    for (let i = truncatedLastQuartileIndex+1; i < result.votes.length; i++) {
+    for (let i = truncatedLastQuartileIndex + 1; i < result.votes.length; i++) {
         expect(result.votes[i].price).to.be.gt(truncatedLastQuartilePrice);
     }
 }
@@ -640,29 +641,7 @@ export function randomizePriceGenerator(testExample: TestExample) {
     }
 }
 
-/**
- * Helper function for instantiating and deploying a contract by using factory.
- * @param name Name of the contract
- * @param signer signer
- * @param args Constructor params
- * @returns deployed contract instance (promise)
- */
-export async function newContract<T>(eth: HardhatEthersHelpers, name: string, signer: Signer, ...args: any[]) {
-    const factory = await eth.getContractFactory(name, signer);
-    let contractInstance = (await factory.deploy(...args));
-    await contractInstance.deployed();
-    return contractInstance as unknown as T;
-}
 
-/**
- * Sets parameters for shifting time to future. Note: seems like 
- * no block is mined after this call, but the next mined block has
- * the the timestamp equal time + 1 
- * @param time 
- */
-export async function increaseTimeTo(eth: HardhatEthersHelpers, time: number) {
-    await eth.provider.send("evm_mine", [time]);
-}
 
 /**
  * given current epoch it moves blockchain time (hardhat) to the (approx) beginning of the next epoch, given
@@ -671,9 +650,9 @@ export async function increaseTimeTo(eth: HardhatEthersHelpers, time: number) {
  * @param epochPeriod - epoch period, must match to the one set in the FTSO contract
  * @param currentEpoch - current epoch
  */
-export async function moveToNextEpochStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, currentEpoch: number) {
-    let nextEpochTimestamp = (currentEpoch + 1) * epochPeriod + epochStartTimestamp;
-    await increaseTimeTo(eth, nextEpochTimestamp);
+export async function moveToNextEpochStart(epochStartTimestamp: number, epochPeriod: number, currentEpoch: number, offset = 0) {
+    let nextEpochTimestamp = (currentEpoch + 1) * epochPeriod + epochStartTimestamp + offset;
+    await increaseTimeTo(nextEpochTimestamp);
 }
 
 /**
@@ -681,10 +660,10 @@ export async function moveToNextEpochStart(eth: HardhatEthersHelpers, epochStart
  * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
  * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
  */
-export async function moveFromCurrentToNextEpochStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number) {
-    let blockInfo = await eth.provider.getBlock(await eth.provider.getBlockNumber());
+export async function moveFromCurrentToNextEpochStart(epochStartTimestamp: number, epochPeriod: number) {
+    let blockInfo = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
     let currentEpoch = Math.floor((blockInfo.timestamp - epochStartTimestamp) / epochPeriod);
-    await moveToNextEpochStart(eth, epochStartTimestamp, epochPeriod, currentEpoch);
+    await moveToNextEpochStart(epochStartTimestamp, epochPeriod, currentEpoch);
 }
 
 /**
@@ -693,8 +672,8 @@ export async function moveFromCurrentToNextEpochStart(eth: HardhatEthersHelpers,
  * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
  * @param epoch - epoch number
  */
-export async function moveToRevealStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, epoch: number) {
-    await moveToNextEpochStart(eth, epochStartTimestamp, epochPeriod, epoch);
+export async function moveToRevealStart(epochStartTimestamp: number, epochPeriod: number, epoch: number) {
+    await moveToNextEpochStart(epochStartTimestamp, epochPeriod, epoch);
 }
 
 /**
@@ -704,9 +683,9 @@ export async function moveToRevealStart(eth: HardhatEthersHelpers, epochStartTim
  * @param revealPeriod - reveal period in seconds, must match to the one set in the FTSO contract
  * @param epoch 
  */
-export async function moveToFinalizeStart(eth: HardhatEthersHelpers, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, epoch: number) {
+export async function moveToFinalizeStart(epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, epoch: number) {
     let finalizeTimestamp = (epoch + 1) * epochPeriod + epochStartTimestamp + revealPeriod + 1;
-    await increaseTimeTo(eth, finalizeTimestamp);
+    await increaseTimeTo(finalizeTimestamp);
 }
 
 /**
@@ -749,13 +728,13 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
     if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
 
     // Contract deployment
-    let flrToken = await newContract<MockVPToken>(ethers, "MockVPToken", signers[0],
+    let flrToken = await newContract<MockVPToken>("MockVPToken", signers[0],
         signers.slice(0, len).map(signer => signer.address), testExample.weightsFlr
     )
-    let assetToken = await newContract<MockVPToken>(ethers, "MockVPToken", signers[0],
+    let assetToken = await newContract<MockVPToken>("MockVPToken", signers[0],
         signers.slice(0, len).map(signer => signer.address), testExample.weightsAsset
     )
-    let ftso = await newContract<MockFtso>(ethers, "MockFtso", signers[0],
+    let ftso = await newContract<MockFtso>("MockFtso", signers[0],
         flrToken.address, assetToken.address, signers[0].address,  // address _fFlr, address _fAsset,
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
@@ -775,38 +754,50 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
  */
 export async function testFTSOMedian(epochStartTimestamp: number, signers: readonly SignerWithAddress[], ftso: MockFtso, testExample: TestExample): Promise<TestCase> {
     let logger = new TestExampleLogger(testExample);
-    
+
     let len = testExample.prices.length;
     let epochPeriod = getEpochPeriod(len);
     let revealPeriod = getRevealPeriod(len);
-    
+
     // Price hash submission
-    await moveFromCurrentToNextEpochStart(ethers, epochStartTimestamp, epochPeriod);
+    await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
+    logger.log(`EPOCH 1: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`SUBMIT PRICE ${ len }`)
-    
+
     let promises = [];
     let epochs: number[] = [];
     for (let i = 0; i < len; i++) {
         let price = testExample.prices[i];
         let random = priceToRandom(price);
         // TODO: try to the use correct hash from ethers.utils.keccak256
-        // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price, random ]))
+        // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint128", "uint256" ], [ price, random ]))
+        // let hash = soliditySha3({ type: 'uint128', value: price }, random);
         let hash = soliditySha3(price, random);
-        promises.push((await ftso.connect(signers[i]).submitPrice(hash)).wait(1));
+        promises.push(waitFinalize(signers[i], async () =>
+            ftso.connect(signers[i]).submitPrice(hash)
+        ))
     }
     (await Promise.all(promises)).forEach(res => {
         epochs.push((res.events![0].args![1] as BigNumber).toNumber());
-    })
+    });
+
     let uniqueEpochs: number[] = [...(new Set(epochs))];
     expect(uniqueEpochs.length, `Too short epoch for the test. Increase epochPeriod ${ epochPeriod }.`).to.equal(1)
 
     // Reveal price
     const epoch = uniqueEpochs[0];
-    await moveToRevealStart(ethers, epochStartTimestamp, epochPeriod, epoch);
+    await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
+    logger.log(`EPOCH 2: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`REVEAL PRICE ${ len }`)
     let epochPromises = [];
     for (let i = 0; i < len; i++) {
-        epochPromises.push(ftso.connect(signers[i]).revealPrice(epoch, testExample.prices[i], priceToRandom(testExample.prices[i])))
+        epochPromises.push(
+            waitFinalize(signers[i], async () => {
+                let res = await ftso.connect(signers[i]).revealPrice(epoch, testExample.prices[i], priceToRandom(testExample.prices[i]))
+                // console.log("I:", i);
+                return res
+            })
+        )
     }
     await Promise.all(epochPromises);
 
@@ -816,11 +807,10 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
     prettyPrintVoteInfo(resVoteInfo, logger);
 
     // Finalize
-    moveToFinalizeStart(ethers, epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-    let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
+    await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
+    let resFinalizePrice = await waitFinalize(signers[0], () => ftso.connect(signers[0]).finalizePriceEpochWithResult(epoch))
     logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
     let epochFinalizeResponse = resFinalizePrice.events![1].args;
-    
     // Print results                
     let res = await ftso.getEpochResult(epoch);
     prettyPrintEpochResult(res, logger);
@@ -830,6 +820,8 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
         targetResult: resultsFromTestData(testExample, signers.slice(0, len).map(signer => signer.address)),
         testResult: updateWithRewardedVotesInfo(voterRes, epochFinalizeResponse)
     } as TestCase;
-    
+
     return testCase;
 }
+
+

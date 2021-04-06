@@ -1,85 +1,88 @@
+import { DelegationMockContract, DelegationMockInstance } from "../../../typechain-truffle";
+import { toBN } from "../../utils/test-helpers";
+
 // Unit tests for Delegation through DelegationMock contract
-const {expectRevert, constants} = require('@openzeppelin/test-helpers');
+const { expectRevert, constants } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const Delegation = artifacts.require("DelegationMock");
+const Delegation = artifacts.require("DelegationMock") as DelegationMockContract;
 
 const MAX_TOTAL_PCT_MSG = 'Max delegation bips exceeded';
 
-contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, async accounts => {
+contract(`Delegation.sol; ${ getTestFile(__filename) }; Delegation unit tests`, async accounts => {
   // contains a fresh contract for each test
-  let delegation;
+  let delegation: DelegationMockInstance;
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
     delegation = await Delegation.new();
   });
 
-  it("Should add a delegate by percentage", async() => {
+  it("Should add a delegate by percentage", async () => {
     // Assemble
     // Act
     await delegation.addReplaceDelegateByPercent(accounts[1], 5000);
     // Assert
-    const {found} = await delegation.tryFindDelegate(accounts[1]);
+    const { found } = await delegation.tryFindDelegate(accounts[1]) as any;
     assert(found);
   });
 
-  it("Should add a delegate by amount", async() => {
+  it("Should add a delegate by amount", async () => {
     // Assemble
     // Act
     await delegation.addReplaceDelegateByAmount(accounts[1], 1000);
     // Assert
-    const {found} = await delegation.tryFindDelegate(accounts[1]);
+    const { found } = await delegation.tryFindDelegate(accounts[1]) as any;
     assert(found);
   });
 
-  it("Should update a delegate by percentage", async() => {
+  it("Should update a delegate by percentage", async () => {
     // Assemble
     await delegation.addReplaceDelegateByPercent(accounts[1], 5000);
     // Act
     await delegation.addReplaceDelegateByPercent(accounts[1], 10000);
     // Assert
-    const {found, amountOrBips} = await delegation.tryFindDelegate(accounts[1]);
+    const { found, amountOrBips } = await delegation.tryFindDelegate(accounts[1]) as any;
     assert.equal(amountOrBips, 10000);
-  });  
+  });
 
-  it("Should update a delegate by amount", async() => {
+  it("Should update a delegate by amount", async () => {
     await delegation.addReplaceDelegateByAmount(accounts[1], 500);
     // Act
     await delegation.addReplaceDelegateByAmount(accounts[1], 1000);
     // Assert
-    const {found, amountOrBips} = await delegation.tryFindDelegate(accounts[1]);
+    const { found, amountOrBips } = await delegation.tryFindDelegate(accounts[1]) as any;
     assert.equal(amountOrBips, 1000);
   });
 
-  it("Should add multiple delegates by percentage", async() => {
+  it("Should add multiple delegates by percentage", async () => {
     // Assemble
     await delegation.addReplaceDelegateByPercent(accounts[1], 5000);
     // Act
     await delegation.addReplaceDelegateByPercent(accounts[2], 5000);
     // Assert
-    assert.equal(await delegation.getDelegateTotal(), 10000);
+    assert.equal(await delegation.getDelegateTotal() as any, 10000);
   });
 
-  it("Should add multiple delegates by amount", async() => {
+  it("Should add multiple delegates by amount", async () => {
     // Assemble
     await delegation.addReplaceDelegateByAmount(accounts[1], 100);
     // Act
     await delegation.addReplaceDelegateByAmount(accounts[2], 200);
     // Assert
-    assert.equal(await delegation.getDelegateTotal(), 300);
+    assert.equal(await delegation.getDelegateTotal() as any, 300);
   });
 
-  it("Should should not find a delegate", async() => {
+  it("Should should not find a delegate", async () => {
     // Assemble
     // Act
     await delegation.addReplaceDelegateByPercent(accounts[1], 5000);
     // Assert
-    const {found} = await delegation.tryFindDelegate(accounts[2]);
+    const { found } = await delegation.tryFindDelegate(accounts[2]) as any;
     assert(!found);
   });
 
-  it("Should not allow delegate by amount if already delegated by percentage", async() => {
+  it("Should not allow delegate by amount if already delegated by percentage", async () => {
     // Assemble
     await delegation.addReplaceDelegateByPercent(accounts[1], 5000);
     // Act
@@ -88,7 +91,7 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     await expectRevert.assertion(addPromise);
   });
 
-  it("Should not allow delegate by percentage if already delegated by amount", async() => {
+  it("Should not allow delegate by percentage if already delegated by amount", async () => {
     // Assemble
     await delegation.addReplaceDelegateByAmount(accounts[1], 1000);
     // Act
@@ -97,50 +100,50 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     await expectRevert.assertion(addPromise);
   });
 
-  it("Should remove delegate if zeroed", async() => {
+  it("Should remove delegate if zeroed", async () => {
     // Assemble
     await delegation.addReplaceDelegateByPercent(accounts[1], 5000);
     // Act
     await delegation.addReplaceDelegateByPercent(accounts[1], 0);
     // Assert
-    const {found} = await delegation.tryFindDelegate(accounts[1]);
+    const { found } = await delegation.tryFindDelegate(accounts[1]) as any;
     assert(!found);
   });
-  
-  it("Should remove delegate", async() => {
+
+  it("Should remove delegate", async () => {
     // Assemble
     await delegation.addReplaceDelegateByAmount(accounts[1], 1000);
     // Act
     let found = await delegation.tryRemoveDelegate(accounts[1]);
     // Assert
     assert(found);
-    result = await delegation.tryFindDelegate(accounts[1]);
+    let result = await delegation.tryFindDelegate(accounts[1]) as any;
     assert(!result.found);
   });
 
-  it("Should clear delegates", async() => {
+  it("Should clear delegates", async () => {
     // Assemble
     await delegation.addReplaceDelegateByAmount(accounts[1], 100);
     await delegation.addReplaceDelegateByAmount(accounts[2], 200);
     // Act
     await delegation.clear();
     // Assert
-    let result = await delegation.tryFindDelegate(accounts[1]);
+    let result = await delegation.tryFindDelegate(accounts[1]) as any;
     assert(!result.found);
-    result = await delegation.tryFindDelegate(accounts[2]);
+    result = await delegation.tryFindDelegate(accounts[2]) as any;
     assert(!result.found);
-  });  
+  });
 
-  it("Should allow no more than n delegates by percent", async() => {
+  it("Should allow no more than n delegates by percent", async () => {
     let maxDelegateCount = await delegation.MAX_DELEGATES_BY_PERCENT();
-    if (accounts.length > maxDelegateCount) {
+    if (accounts.length > maxDelegateCount.toNumber()) {
       // Assemble
       // Add maxDelegateCount delegates with 50 bips each
-      for(var i = 1; i <= maxDelegateCount; i++) {
+      for (var i = 1; i <= maxDelegateCount.toNumber(); i++) {
         await delegation.addReplaceDelegateByPercent(accounts[i], 50);
       }
       // Act
-      let addPromise = delegation.addReplaceDelegateByPercent(accounts[maxDelegateCount+1], 50);
+      let addPromise = delegation.addReplaceDelegateByPercent(accounts[maxDelegateCount.toNumber() + 1], 50);
       // Assert
       await expectRevert(addPromise, "Max delegates exceeded");
     } else {
@@ -148,7 +151,7 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     }
   });
 
-  it("Should not allow single delegation by percent > 10000 bips", async() => {
+  it("Should not allow single delegation by percent > 10000 bips", async () => {
     // Assemble
     // Act
     let addPromise = delegation.addReplaceDelegateByPercent(accounts[1], 10001);
@@ -163,5 +166,5 @@ contract(`Delegation.sol; ${getTestFile(__filename)}; Delegation unit tests`, as
     let delegatePromise = delegation.addReplaceDelegateByPercent(accounts[2], 9000);
     // Assert
     await expectRevert(delegatePromise, MAX_TOTAL_PCT_MSG);
-  });  
+  });
 });

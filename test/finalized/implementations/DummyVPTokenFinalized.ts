@@ -4,6 +4,7 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { DummyVPToken } from "../../../typechain";
 import { solidity } from "ethereum-waffle";
+import { waitFinalize } from "../../utils/test-helpers";
 
 chai.use(solidity);
 
@@ -47,14 +48,15 @@ describe("DummyVPToken", () => {
           signers[1].address, approveAmount,
           { gasLimit: 3000000, gasPrice: ethers.utils.parseUnits("1", "gwei") }
         )
-      ).wait(1);
-      await (await dummyToken
-        .connect(signers[0])
-        .transfer(
-          signers[1].address, transferAmount,
-          { gasLimit: 3000000, gasPrice: ethers.utils.parseUnits("1", "gwei") }
-        )
-      ).wait(1);
+      ).wait();
+
+      await waitFinalize(signers[0], async () =>
+        dummyToken.connect(signers[0]).approve(signers[1].address, approveAmount, { gasLimit: 3000000 })
+      );
+
+      await waitFinalize(signers[0], async () =>
+        dummyToken.connect(signers[0]).transfer(signers[1].address, transferAmount, { gasLimit: 3000000})
+      );
       let balanceOf1 = await dummyToken.balanceOf(signers[1].address);
       expect(balanceOf1).to.equal(transferAmount);
     });

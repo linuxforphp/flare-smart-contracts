@@ -1,8 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { deployments, ethers } from "hardhat";
-import path from "path";
 import { MockFtso } from "../../../typechain";
-import { checkTestCase, randomizePriceGenerator, readTestData, TestCase, TestExample, testFTSOInitContracts, testFTSOMedian } from "../../utils/FTSO-test-utils";
+import { checkTestCase, randomizePriceGenerator, TestCase, TestExample, testFTSOInitContracts, testFTSOMedian } from "../../utils/FTSO-test-utils";
 
 let testExample: TestExample = {
     description: "Random 20 prices and weights",
@@ -24,6 +23,7 @@ describe("Test fixture - multiple random FTSO median tests", () => {
     const epochStartTimestamp: number = 1;
     let ftsoFixture: () => Promise<MockFtso>;
     let signers: SignerWithAddress[];
+    
     before(async function () {
         signers = await ethers.getSigners();
         let ftsoContract: MockFtso = await testFTSOInitContracts(epochStartTimestamp, signers, testExample);
@@ -32,6 +32,7 @@ describe("Test fixture - multiple random FTSO median tests", () => {
             return await ethers.getContractAt("MockFtso", ftsoContract.address, signers[0]) as MockFtso;
         });
     });
+
     for (let i = 0; i < 5; i++) {
         it(`${ testExample.description } - ${ i+1 }`, async function () {
             randomizePriceGenerator(testExample);

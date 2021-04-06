@@ -1,12 +1,15 @@
+import { CheckPointableMockContract, CheckPointableMockInstance } from "../../../typechain-truffle";
+import { toBN } from "../../utils/test-helpers";
+
 // Unit tests for CheckPointable through CheckPointableMock contract
 const {expectRevert, constants} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const CheckPointable = artifacts.require("CheckPointableMock");
+const CheckPointable = artifacts.require("CheckPointableMock") as CheckPointableMockContract;
 
 contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit tests`, async accounts => {
   // contains a fresh contract for each test
-  let checkPointable;
+  let checkPointable: CheckPointableMockInstance;
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
@@ -22,7 +25,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
     // Act
     let value = await checkPointable.balanceOfAt(accounts[1], b[0]);
     // Assert
-    assert.equal(value, 10);
+    assert.equal(value as any, 10);
   });
 
   it("Should store historic supply", async() => {
@@ -35,7 +38,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
     // Act
     let value = await checkPointable.totalSupplyAt(b[0]);
     // Assert
-    assert.equal(value, 30);
+    assert.equal(value as any, 30);
   });
 
   it("Should transmit value now for historic retrieval", async() => {
@@ -51,7 +54,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
     // Assert
     let account2PastValue = await checkPointable.balanceOfAt(accounts[2], b[0]);
     let account2Value = await checkPointable.balanceOfAt(accounts[2], b[1]);
-    assert.equal(account2PastValue, 10);
-    assert.equal(account2Value, 0);
+    assert.equal(account2PastValue as any, 10);
+    assert.equal(account2Value as any, 0);
   });
 });

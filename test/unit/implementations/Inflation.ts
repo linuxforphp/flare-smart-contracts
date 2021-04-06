@@ -1,22 +1,18 @@
+import { InflationContract, InflationInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
+
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const RewardManager = artifacts.require("RewardManager");
-const MockRewardManager = artifacts.require("MockContract");
-const Inflation = artifacts.require("Inflation");
-
-async function timeIncreaseTo (seconds) {
-    const delay = 1000 - new Date().getMilliseconds();
-    await new Promise(resolve => setTimeout(resolve, delay));
-    await time.increaseTo(seconds);
-}
+const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
+const MockRewardManager = artifacts.require("MockContract") as MockContractContract;
+const Inflation = artifacts.require("Inflation") as InflationContract;
 
 contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, async accounts => {
     // contains a fresh contract for each test
-    let mockRewardManager;
-    let rewardManagerInterface;
-    let inflation;
-    let startTs;
+    let mockRewardManager: MockContractInstance;
+    let rewardManagerInterface: RewardManagerInstance;
+    let inflation: InflationInstance;
+    let startTs: BN;
 
     beforeEach(async() => {
         mockRewardManager = await MockRewardManager.new();
@@ -45,7 +41,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     it("Should init annum inflation amount", async() => {
         // Assemble
         // Act
-        const { totalInflationWei } = await inflation.flareAnnumData(0);
+        const { totalInflationWei } = await inflation.flareAnnumData(0) as any;
         // Assert
         assert.equal(totalInflationWei, 100000);
     });
@@ -68,7 +64,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         let endTs = await inflation.currentAnnumEndsTs();
         // Assert
         // +365 days - 1 second less than start (no leap year)
-        const { startTimeStamp } = await inflation.flareAnnumData(0);
+        const { startTimeStamp } = await inflation.flareAnnumData(0) as any;
         let endTsExpected = startTimeStamp.toNumber() + 365*86400 - 1;
         assert.equal(endTs.toNumber(), endTsExpected);
     });
@@ -84,7 +80,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await inflation.keep();
         // Assert
         // Check annum inflation amount
-        const { totalInflationWei } = await inflation.flareAnnumData(1);
+        const { totalInflationWei } = await inflation.flareAnnumData(1) as any;
         assert.equal(totalInflationWei.toNumber(), 110000);
         // Check new reward manager daily reward amount
         const invocationCount = await mockRewardManager.invocationCountForCalldata.call(setDailyRewardAmount);
