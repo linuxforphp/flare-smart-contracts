@@ -8,6 +8,7 @@
 # Typescript 
 dist
 typechain
+typechain-truffle
 
 # Testing
 test_logs

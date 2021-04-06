@@ -19,6 +19,7 @@ let testExamples = files.map(fname => {
 })
 
 describe("FTSO contract - unit test cases from files", () => {
+
     testExamples.forEach(testExample => {
         it(`${ testExample.fileName }: ${ testExample.description }`, async function () {
             const epochStartTimestamp: number = 1;

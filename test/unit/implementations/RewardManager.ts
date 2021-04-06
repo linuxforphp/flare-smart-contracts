@@ -1,38 +1,29 @@
+import { FtsoContract, FtsoInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
+
 const {deployMockContract} = require("@ethereum-waffle/mock-contract");
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const RewardManager = artifacts.require("RewardManager");
-const Inflation = artifacts.require("InflationMock");
-const Ftso = artifacts.require("Ftso");
-const MockFtso = artifacts.require("MockContract");
-
-async function timeIncreaseTo (seconds) {
-    const delay = 1000 - new Date().getMilliseconds();
-    await new Promise(resolve => setTimeout(resolve, delay));
-    await time.increaseTo(seconds);
-}
-
-// TODO: OK, I tried really hard to write this in TS, BUT OZ helpers, which are very helpful to
-// advance time and blocks, do not have TS bindings. See: 
-// https://github.com/OpenZeppelin/openzeppelin-test-helpers/pull/141/checks?check_run_id=1415297312
-// Back to Javascript...
+const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
+const Inflation = artifacts.require("InflationMock") as InflationMockContract;
+const Ftso = artifacts.require("Ftso") as FtsoContract;
+const MockFtso = artifacts.require("MockContract") as MockContractContract;
 
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tests`, async accounts => {
     // contains a fresh contract for each test
-    let rewardManager;
-    let inflation;
-    let startTs;
-    let mockFtso;
-    let ftsoInterface;
+    let rewardManager: RewardManagerInstance;
+    let inflation: InflationMockInstance;
+    let startTs: BN;
+    let mockFtso: MockContractInstance;
+    let ftsoInterface: FtsoInstance;
 
     beforeEach(async() => {
         mockFtso = await MockFtso.new();
         inflation = await Inflation.new();
         ftsoInterface = await Ftso.new(
             constants.ZERO_ADDRESS,
-            constants.ZERO_ADDRESS,
-            constants.ZERO_ADDRESS
+            constants.ZERO_ADDRESS as any,
+            constants.ZERO_ADDRESS as any
         );
 
         // Force a block in order to get most up to date time
@@ -232,7 +223,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         await rewardManager.keep();
 
         // Assert
-        const {chosenFtso} = await rewardManager.priceEpochs(0);
+        const {chosenFtso} = await rewardManager.priceEpochs(0) as any;
         // Should equal FTOS 1, the next eligible ftso in the list
         assert.equal(chosenFtso, mockFtso.address);
     });
@@ -250,7 +241,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         // Force another block
         await rewardManager.keep();
         // Assert
-        const {votepowerBlock, startBlock} = await rewardManager.rewardEpochs(0);
+        const {votepowerBlock, startBlock} = await rewardManager.rewardEpochs(0) as any;
         assert.equal(votepowerBlock.toNumber(), b[0]);
         assert.equal(startBlock.toNumber(), b[0] + 1);
     });
@@ -296,7 +287,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         // votepowerBlock: 522
 
         // Get the new reward epoch
-        const {votepowerBlock, startBlock} = await rewardManager.rewardEpochs(1);
+        const {votepowerBlock, startBlock} = await rewardManager.rewardEpochs(1) as any;
         assert.equal(votepowerBlock.toNumber(), 522);
         assert.equal(startBlock.toNumber(), 583);
 

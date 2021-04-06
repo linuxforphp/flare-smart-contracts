@@ -1,9 +1,12 @@
+import { CheckPointHistoryMockContract, CheckPointHistoryMockInstance } from "../../../typechain-truffle";
+import { toBN } from "../../utils/test-helpers";
+
 const getTestFile = require('../../utils/constants').getTestFile;
-const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock");
+const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock") as CheckPointHistoryMockContract;
 
 contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => {
   // a fresh contract for each test
-  let checkPointHistoryMock;
+  let checkPointHistoryMock: CheckPointHistoryMockInstance;
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
@@ -16,7 +19,7 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
     await checkPointHistoryMock.writeValueAtNow(10);
     // Assert
     let value = await checkPointHistoryMock.valueAtNow();
-    assert.equal(value, 10);
+    assert.equal(value as any, 10);
   });
 
   it("Should store values at checkpoints", async() => {
@@ -35,10 +38,10 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
     let balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
     let balanceAtBlock3 = await checkPointHistoryMock.valueAt(b[3]);
     // Assert
-    assert.equal(balanceAtBlock0, 0);
-    assert.equal(balanceAtBlock1, 50);
-    assert.equal(balanceAtBlock2, 10);
-    assert.equal(balanceAtBlock3, 5);
+    assert.equal(balanceAtBlock0 as any, 0);
+    assert.equal(balanceAtBlock1 as any, 50);
+    assert.equal(balanceAtBlock2 as any, 10);
+    assert.equal(balanceAtBlock3 as any, 5);
   });
 
   it("Should modify checkpoints created in the past", async() => {
@@ -55,6 +58,6 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
     await checkPointHistoryMock.writeValueAt(20, b[2]);
     let balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
     // Assert
-    assert.equal(balanceAtBlock2, 20);
+    assert.equal(balanceAtBlock2 as any, 20);
   })
 });

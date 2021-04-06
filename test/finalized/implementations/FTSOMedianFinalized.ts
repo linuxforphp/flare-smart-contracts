@@ -3,10 +3,11 @@ import { ethers } from "hardhat";
 import path from "path";
 import { MockFtso } from "../../../typechain";
 import { checkTestCase, readTestData, TestCase, testFTSOInitContracts, testFTSOMedian } from "../../utils/FTSO-test-utils";
+import { advanceBlock } from "../../utils/test-helpers";
 
 const fs = require('fs');
 
-const testCasesPath = 'test/test-cases/FTSO-cases/performance'
+const testCasesPath = 'test/test-cases/FTSO-cases/unit'
 
 // Importing test cases
 // Note: this snippet cannot be defined in `before`- needs to exist even before `before`
@@ -18,11 +19,10 @@ let testExamples = files.map(fname => {
     return data;
 })
 
-describe("FTSO contract - performance test cases from files", () => {
+describe("FTSO contract - unit test cases from files", () => {
 
     testExamples.forEach(testExample => {
         it(`${ testExample.fileName }: ${ testExample.description }`, async function () {
-
             const epochStartTimestamp: number = 1;
             const signers: SignerWithAddress[] = await ethers.getSigners();
             const ftso: MockFtso = await testFTSOInitContracts(epochStartTimestamp, signers, testExample);

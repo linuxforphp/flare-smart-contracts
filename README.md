@@ -46,6 +46,19 @@ For running tests against a local flare chain.
 now run your work on a flare local chain.
 
 ## Test
-`yarn test` # local flare chain
 
-`yarn testHH` # local hardhat chain
+Note: be sure to compile (`yarn c`) after any solidity code changes or on a clean project as Typescript stubs need to be generated as part of the compilation. 
+
+Then one can run different types of test.
+
+- `yarn testHH` - all tests in hardhat environment
+- `yarn testUnitHH` - only unit tests in hardhat environment
+- `yarn testPerformanceHH` - only performance tests in hardhat environment
+- `yarn testTimeShift` - all tests on local test Flare chain if ran in multipass virtual machine with time shifting
+- `yarn testTimeWait` - all test on local test Flare chain with no time shifting but time waiting instead
+
+Each of these calls can have additional parameters, namely paths to specific files with tests. Also glob expressions can be used, but note that glob expressions are expanded in `bash` to a sequence of space separated path. Also by default, glob expressions in bash containing `/**/` do not by default expand to all files, so one can switch on full expansion by setting `shopt -s globstar` and if needed, later switched off by `shopt -u globstar`.
+
+## Running tests VM with time-shifts
+
+See [`scripts/local-flare-chain-vm/README.md`](scripts/local-flare-chain-vm/README.md).
