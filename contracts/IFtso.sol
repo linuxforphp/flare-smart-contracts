@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "./IVotePower.sol";
 
 interface IFtso {
 
@@ -27,21 +28,24 @@ interface IFtso {
     function initializeEpochs(uint256 firstEpochStartTs, uint256 epochPeriod, uint256 revealPeriod) external;
 
     function configureEpochs(
-        uint256 minVoteCount,
-        uint256 maxVoteCount,
-        uint256 minVotePowerFlrDenomination,
-        uint256 minVotePowerAssetDenomination,
-        uint256 maxVotePowerFlrDenomination,
-        uint256 maxVotePowerAssetDenomination,
-        uint256 lowAssetUSDThreshold,
-        uint256 highAssetUSDThreshold,
-        uint256 highAssetTurnoutThreshold
+        uint256 _minVoteCount,
+        uint256 _minVotePowerFlrThreshold,
+        uint256 _minVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThreshold,
+        uint256 _maxVotePowerAssetThreshold,
+        uint256 _lowAssetUSDThreshold,
+        uint256 _highAssetUSDThreshold,
+        uint256 _highAssetTurnoutThreshold
     ) external;
+
+    function setFAssetFtsos(IFtso[] memory _fAssetFtsos) external;
 
     // current vote power block will update per reward epoch. 
     // the FTSO doesn't have notion of reward epochs.
     // reward manager only can set this data. 
     function setVotePowerBlock(uint256 blockNumber) external;
+
+    function getFAsset() external view returns (IVotePower);
 
     /// function getRandom()
     /// per epoch all submitted random numbers should be accumulated

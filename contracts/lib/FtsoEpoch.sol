@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../IVotePower.sol";
+
 /**
  * @title A library used for FTSO epoch management
  */
@@ -19,12 +21,11 @@ library FtsoEpoch {
         
         // configurable settings
         uint256 minVoteCount;                   // minimal number of votes required in epoch
-        uint256 maxVoteCount;                   // maximal number of votes allowed in epoch
         uint256 votePowerBlock;                 // current block at which the vote power is checked
-        uint256 minVotePowerFlrDenomination;    // value that determines if FLR vote power is sufficient to vote
-        uint256 minVotePowerAssetDenomination;  // value that determines if asset vote power is sufficient to vote
-        uint256 maxVotePowerFlrDenomination;    // value that determines what is the largest possible FLR vote power
-        uint256 maxVotePowerAssetDenomination;  // value that determines what is the largest possible asset vote power
+        uint256 minVotePowerFlrThreshold;       // low threshold for FLR vote power per voter
+        uint256 minVotePowerAssetThreshold;     // low threshold for asset vote power per voter
+        uint256 maxVotePowerFlrThreshold;       // high threshold for FLR vote power per voter
+        uint256 maxVotePowerAssetThreshold;     // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power (in scaled USD)
         uint256 highAssetUSDThreshold;          // threshold for high asset vote power (in scaled USD)
         uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout (in vote power units)
@@ -43,6 +44,7 @@ library FtsoEpoch {
         uint256 accumulatedVotePowerAsset;      // total asset vote power accumulated from votes in epoch
         uint256 weightFlrSum;                   // sum of all FLR weights in epoch votes
         uint256 weightAssetSum;                 // sum of all asset weights in epoch votes
+        uint256 baseWeightRatio;                // base weight ratio between asset and FLR used to combine the weights
         uint256 firstVoteId;                    // id of the first vote in epoch
         uint256 truncatedFirstQuartileVoteId;   // first vote id eligible for reward
         uint256 firstQuartileVoteId;            // vote id corresponding to the first quartile
@@ -62,35 +64,49 @@ library FtsoEpoch {
         uint256 random;                         // random number associated with the epoch
         uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint32 voteCount;                       // number of votes in epoch
+        IVotePower[] assets;                    // list of assets
+        uint256[] assetShares;                  // contributions of assets to the asset vote power
         mapping(address => uint256) voterPrice; // price submitted by a voter in epoch 
     }
 
-    uint256 internal constant MAX_UINT128 = 2**128 - 1;    
+    uint256 internal constant MAX_UINT128 = 2**128 - 1;         // max number in uin128
+    uint256 internal constant BIPS100 = 1e3;                    // 100% in basis points
+    uint256 internal constant BIPS50 = BIPS100 / 2;             // 50% in basis points
+    uint256 internal constant BIPS45 = (45 * BIPS100) / 100;    // 45% in basis points
+    uint256 internal constant BIPS5 = (5 * BIPS100) / 100;      // 5% in basis points
 
     /**
      * @notice Initializes a new epoch instance with instance specific settings
      * @param _state                Epoch state
      * @param _instance             Epoch instance
      * @param _votePowerFlr         Epoch FLR vote power
-     * @param _votePowerAsset       Epoch asset vote power
-     * @dev _votePowerFlr and _votePowerAsset are assumed to be smaller than 2**128 to avoid overflows in computations
+     * @param _assets               List of assets
+     * @param _assetVotePowers      List of asset vote powers
+     * @param _assetVotePowersUSD   List of asset vote powers in USD
+     * @dev _votePowerFlr is assumed to be smaller than 2**128 to avoid overflows in computations
+     * @dev computed votePowerAsset is assumed to be smaller than 2**128 to avoid overflows in computations
      */
     function _initializeInstance(
         State storage _state,
         Instance storage _instance,
         uint256 _votePowerFlr,
-        uint256 _votePowerAsset
+        IVotePower[] memory _assets,
+        uint256[] memory _assetVotePowers,
+        uint256[] memory _assetVotePowersUSD
     ) internal
     {
         assert(_votePowerFlr <= MAX_UINT128);
-        assert(_votePowerAsset <= MAX_UINT128);
+
+        _setAssets(_state, _instance, _assets, _assetVotePowers, _assetVotePowersUSD);
+        uint256 votePowerAsset = _instance.votePowerAsset;
+        assert(votePowerAsset <= MAX_UINT128);
+
         _instance.votePowerBlock = _state.votePowerBlock;
         _instance.votePowerFlr = _votePowerFlr;
-        _instance.votePowerAsset = _votePowerAsset;
-        _instance.minVotePowerFlr = _votePowerFlr / _state.minVotePowerFlrDenomination;
-        _instance.minVotePowerAsset = _votePowerAsset / _state.minVotePowerAssetDenomination;
-        _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrDenomination;
-        _instance.maxVotePowerAsset = _votePowerAsset / _state.maxVotePowerAssetDenomination;
+        _instance.minVotePowerFlr = _votePowerFlr / _state.minVotePowerFlrThreshold;
+        _instance.minVotePowerAsset = votePowerAsset / _state.minVotePowerAssetThreshold;
+        _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrThreshold;
+        _instance.maxVotePowerAsset = votePowerAsset / _state.maxVotePowerAssetThreshold;
     }
 
     /**
@@ -108,7 +124,7 @@ library FtsoEpoch {
         Instance storage _instance,
         uint256 _voteId,
         uint256 _votePowerFlr,
-        uint256 _votePowerAsset,        
+        uint256 _votePowerAsset,
         uint256 _random,
         uint256 _price
     ) internal
@@ -172,39 +188,104 @@ library FtsoEpoch {
     }
 
     /**
+     * @notice Sets epoch instance data related to assets
+     * @param _state                Epoch state
+     * @param _instance             Epoch instance
+     * @param _assets               List of assets
+     * @param _assetVotePowers      List of asset vote powers
+     * @param _assetVotePowersUSD   List of asset vote powers in USD
+     */
+    function _setAssets(
+        State storage _state,
+        Instance storage _instance,
+        IVotePower[] memory _assets,
+        uint256[] memory _assetVotePowers,
+        uint256[] memory _assetVotePowersUSD
+    ) internal
+    {
+        _instance.assets = _assets;
+        uint256 count = _assets.length;
+
+        // compute sum of vote power in USD
+        uint256 votePowerSumUSD = 0;
+        for (uint256 i = 0; i < count; i++) {
+            votePowerSumUSD += _assetVotePowersUSD[i];
+        }
+
+        // determine asset shares
+        uint256[] memory shares = new uint256[](count);
+        if (votePowerSumUSD > 0) {
+            // determine shares based on asset vote powers in USD
+            for (uint256 i = 0; i < count; i++) {
+                shares[i] = (BIPS100 * _assetVotePowersUSD[i]) / votePowerSumUSD;
+            }
+        } else {
+            // consider assets equally
+            uint256 share = BIPS100 / count;
+            for (uint256 i = 0; i < count; i++) {
+                shares[i] = share;
+            }
+        }
+        _instance.assetShares = shares;
+
+        // compute vote power
+        uint256 votePower = 0;
+        uint256 votePowerUSD = 0;
+        for (uint256 i = 0; i < count; i++) {
+            votePower += (shares[i] * _assetVotePowers[i]) / BIPS100;
+            votePowerUSD += (shares[i] * _assetVotePowersUSD[i]) / BIPS100;
+        }
+        _instance.votePowerAsset = votePower;
+
+        // compute base weight ratio between asset and FLR
+        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePowerUSD);
+    }
+
+    /**
+     * @notice Computes the base asset weight ratio
+     * @param _state                Epoch state
+     * @param _assetVotePowerUSD    Price of the asset in USD
+     * @return Base weight ratio for asset in BIPS (a number between 0 and BIPS)
+     */
+    function _getAssetBaseWeightRatio(
+        State storage _state,
+        uint256 _assetVotePowerUSD
+    ) internal view returns (uint256)
+    {        
+        uint256 ratio;
+        if (_assetVotePowerUSD < _state.lowAssetUSDThreshold) {
+            // 0 %
+            ratio = 0;
+        } else if (_assetVotePowerUSD >= _state.highAssetUSDThreshold) {
+            // 50 %
+            ratio = BIPS50;
+        } else {
+            // between 5% and 50% (linear function)
+            ratio = (BIPS45 * (_assetVotePowerUSD - _state.lowAssetUSDThreshold)) /
+                (_state.highAssetUSDThreshold - _state.lowAssetUSDThreshold) + BIPS5;
+        }
+        return ratio;
+    }
+
+    /**
      * @notice Computes the weight ratio between FLR and asset weight that specifies a unified vote weight
      * @param _state                Epoch state
      * @param _instance             Epoch instance
-     * @param _assetPriceUSD        Price of the asset in USD
-     * @return Weight ratio for asset (a number between 0 and 1000)
-     * @dev Weight ratio for FLR is supposed to be 1000 - weight ratio for asset
+     * @return Weight ratio for asset in BIPS (a number between 0 and BIPS)
+     * @dev Weight ratio for FLR is supposed to be (BIPS - weight ratio for asset)
      */
     function _getWeightRatio(
         State storage _state,
-        Instance storage _instance,
-        uint256 _assetPriceUSD
+        Instance storage _instance
     ) internal view returns (uint256)
     {
-        uint256 votePowerUSD = _instance.votePowerAsset * _assetPriceUSD;
-        
-        uint256 baseWeightRatio;
-        if (votePowerUSD <= _state.lowAssetUSDThreshold) {
-            baseWeightRatio = 50;
-        } else if (votePowerUSD >= _state.highAssetUSDThreshold) {
-            baseWeightRatio = 500;
-        } else {
-            baseWeightRatio = (450 * (votePowerUSD - _state.lowAssetUSDThreshold)) /
-                (_state.highAssetUSDThreshold - _state.lowAssetUSDThreshold) + 50;
-        }
-
         uint256 weightRatio;
-        uint256 turnout = (1000 * _instance.accumulatedVotePowerAsset) / _instance.votePowerAsset;
+        uint256 turnout = (BIPS100 * _instance.accumulatedVotePowerAsset) / _instance.votePowerAsset;
         if (turnout >= _state.highAssetTurnoutThreshold) {
-            weightRatio = baseWeightRatio;
+            weightRatio = _instance.baseWeightRatio;
         } else {
-            weightRatio = (baseWeightRatio * turnout) / _state.highAssetTurnoutThreshold;
+            weightRatio = (_instance.baseWeightRatio * turnout) / _state.highAssetTurnoutThreshold;
         }
-
         return weightRatio;
     }
 }

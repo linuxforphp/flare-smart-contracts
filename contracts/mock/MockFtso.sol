@@ -34,7 +34,7 @@ contract MockFtso is Ftso {
     )
     {
         initEpoch(_startTimestamp, _submitPeriod, _revealPeriod);
-        configureEpoch(2000, 1e10, 1e10, 1, 1, 1000, 10000, 50);
+        configureEpoch(0, 1e10, 1e10, 1, 1, 1000, 10000, 50);
     }
 
     function initEpoch(
@@ -51,20 +51,20 @@ contract MockFtso is Ftso {
     }
 
     function configureEpoch(
-        uint256 _maxVoteCount,
-        uint256 _minVotePowerFlrDenomination,
-        uint256 _minVotePowerAssetDenomination,
-        uint256 _maxVotePowerFlrDenomination,
-        uint256 _maxVotePowerAssetDenomination,
+        uint256 _minVoteCount,
+        uint256 _minVotePowerFlrThreshold,
+        uint256 _minVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThreshold,
+        uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThreshold
     ) internal {
-        epochs.maxVoteCount = _maxVoteCount;
-        epochs.minVotePowerFlrDenomination = _minVotePowerFlrDenomination;
-        epochs.minVotePowerAssetDenomination = _minVotePowerAssetDenomination;
-        epochs.maxVotePowerFlrDenomination = _maxVotePowerFlrDenomination;
-        epochs.maxVotePowerAssetDenomination = _maxVotePowerAssetDenomination;
+        epochs.minVoteCount = _minVoteCount;
+        epochs.minVotePowerFlrThreshold = _minVotePowerFlrThreshold;
+        epochs.minVotePowerAssetThreshold = _minVotePowerAssetThreshold;
+        epochs.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;
+        epochs.maxVotePowerAssetThreshold = _maxVotePowerAssetThreshold;
         epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
         epochs.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
@@ -110,7 +110,7 @@ contract MockFtso is Ftso {
     }
 
     function getWeightRatio(uint256 _epochId) external view returns (uint256) {
-        return epochs._getWeightRatio(epochs.instance[_epochId], fAssetPriceUSD);
+        return epochs._getWeightRatio(epochs.instance[_epochId]);
     }
 
     function getEpochResult(uint256 _epochId)

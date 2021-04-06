@@ -27,9 +27,11 @@ contract Ftso is IFtso {
     string internal constant ERR_PRICE_TOO_HIGH = "Price too high";
     string internal constant ERR_PRICE_REVEAL_FAILURE = "Price reveal for epoch not possible";
     string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
-    string internal constant ERR_EPOCH_FULL = "Maximal number of votes in epoch reached";
     string internal constant ERR_EPOCH_FINALIZATION_FAILURE = "Epoch not ready for finalization";
     string internal constant ERR_EPOCH_INSUFFICIENT_VOTES = "Epoch has insufficient number of votes";
+    string internal constant ERR_VOTEPOWER_INSUFFICIENT = "Insufficient vote power to submit vote";
+    string internal constant ERR_FASSET_SINGLE = "Single asset FTSO";
+    string internal constant ERR_FASSET_INVALID = "Invalid asset";
 
     // storage    
     bool internal active;                       // activation status of FTSO
@@ -40,7 +42,8 @@ contract Ftso is IFtso {
 
     // external contracts
     IVotePower public immutable fFlr;           // wrapped FLR
-    IVotePower public immutable fAsset;         // wrapped asset
+    IVotePower public fAsset;                   // wrapped asset (for a single-asset FTSO)
+    IFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
     IRewardManager public rewardManager;        // reward manager contract
 
     constructor(
@@ -49,7 +52,11 @@ contract Ftso is IFtso {
         IRewardManager _rewardManager
     ) {
         fFlr = _fFlr;
-        fAsset = _fAsset;
+        if (address(_fAsset) != address(0)) {
+            // single-asset FTSO
+            fAsset = _fAsset;
+            fAssetFtsos = [ IFtso(this) ];
+        }
         rewardManager = _rewardManager;
     }
 
@@ -90,12 +97,17 @@ contract Ftso is IFtso {
         
         // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.voteCount < epochs.maxVoteCount, ERR_EPOCH_FULL);
         if (epoch.voteCount == 0) {
+            IVotePower[] memory assets;
+            uint256[] memory assetVotePowers;
+            uint256[] memory assetVotePowersUSD;
+            (assets, assetVotePowers, assetVotePowersUSD) = getAssetData();
             epochs._initializeInstance(
                 epoch,
-                fFlr.votePowerAt(epochs.votePowerBlock),
-                fAsset.votePowerAt(epochs.votePowerBlock)
+                getVotePower(fFlr, epochs.votePowerBlock),
+                assets,
+                assetVotePowers,
+                assetVotePowersUSD
             );
         }
 
@@ -139,7 +151,7 @@ contract Ftso is IFtso {
 
         // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.voteCount > epochs.minVoteCount, ERR_EPOCH_INSUFFICIENT_VOTES);
+        require(epoch.voteCount >= epochs.minVoteCount, ERR_EPOCH_INSUFFICIENT_VOTES);
 
         // extract data from epoch votes to memory
         uint256[] memory vote;
@@ -189,33 +201,30 @@ contract Ftso is IFtso {
     /**
      * @notice Sets configurable settings related to epochs
      * @param _minVoteCount                     minimal number of votes required in epoch
-     * @param _maxVoteCount                     maximal number of votes allowed in epoch
-     * @param _minVotePowerFlrDenomination      value that determines if FLR vote power is sufficient to vote
-     * @param _minVotePowerAssetDenomination    value that determines if asset vote power is sufficient to vote
-     * @param _maxVotePowerFlrDenomination      value that determines what is the largest possible FLR vote power
-     * @param _maxVotePowerAssetDenomination    value that determines what is the largest possible asset vote power
+     * @param _minVotePowerFlrThreshold         low threshold for FLR vote power per voter
+     * @param _minVotePowerAssetThreshold       low threshold for asset vote power per voter
+     * @param _maxVotePowerFlrThreshold         high threshold for FLR vote power per voter
+     * @param _maxVotePowerAssetThreshold       high threshold for FLR vote power per voter
      * @param _lowAssetUSDThreshold             threshold for low asset vote power
      * @param _highAssetUSDThreshold            threshold for high asset vote power
      * @param _highAssetTurnoutThreshold        threshold for high asset turnout
      */
     function configureEpochs(
         uint256 _minVoteCount,
-        uint256 _maxVoteCount,
-        uint256 _minVotePowerFlrDenomination,
-        uint256 _minVotePowerAssetDenomination,
-        uint256 _maxVotePowerFlrDenomination,
-        uint256 _maxVotePowerAssetDenomination,
+        uint256 _minVotePowerFlrThreshold,
+        uint256 _minVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThreshold,
+        uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThreshold
     ) external override onlyRewardManager
     {
         epochs.minVoteCount = _minVoteCount;
-        epochs.maxVoteCount = _maxVoteCount;
-        epochs.minVotePowerFlrDenomination = _minVotePowerFlrDenomination;
-        epochs.minVotePowerAssetDenomination = _minVotePowerAssetDenomination;
-        epochs.maxVotePowerFlrDenomination = _maxVotePowerFlrDenomination;
-        epochs.maxVotePowerAssetDenomination = _maxVotePowerAssetDenomination;
+        epochs.minVotePowerFlrThreshold = _minVotePowerFlrThreshold;
+        epochs.minVotePowerAssetThreshold = _minVotePowerAssetThreshold;
+        epochs.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;
+        epochs.maxVotePowerAssetThreshold = _maxVotePowerAssetThreshold;
         epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
         epochs.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
@@ -227,6 +236,24 @@ contract Ftso is IFtso {
      */
     function setVotePowerBlock(uint256 _votePowerBlock) external override onlyRewardManager {
         epochs.votePowerBlock = _votePowerBlock;
+    }
+
+    /**
+     * @notice Sets FTSOs for multi-asset FTSO
+     * @param _fAssetFtsos          List of FTSOs
+     * @dev FTSOs implicitly determine the FTSO assets
+     */
+    function setFAssetFtsos(IFtso[] memory _fAssetFtsos) external override onlyRewardManager {
+        require(!isSingleAssetFtso(), ERR_FASSET_SINGLE);
+        fAssetFtsos = _fAssetFtsos;
+    }
+
+    /**
+     * @notice Returns the FTSO asset
+     * @dev fAsset is null in case of multi-asset FTSO
+     */
+    function getFAsset() external view override returns (IVotePower) {
+        return fAsset;
     }
 
     /**
@@ -363,8 +390,8 @@ contract Ftso is IFtso {
         uint256 weightAssetSum
     ) internal view returns (uint256[] memory weight)
     {
-        uint256 weightRatio = epochs._getWeightRatio(epoch, fAssetPriceUSD);
-        uint256 flrShare = (1000 - weightRatio) * weightAssetSum;
+        uint256 weightRatio = epochs._getWeightRatio(epoch);
+        uint256 flrShare = (FtsoEpoch.BIPS100 - weightRatio) * weightAssetSum;
         uint256 assetShare = weightRatio * weightFlrSum;
 
         weight = new uint256[](epoch.voteCount);
@@ -484,6 +511,40 @@ contract Ftso is IFtso {
     }
 
     /**
+     * @notice Returns the list of assets and its vote powers
+     * @return _assets              List of assets
+     * @return _votePowers          List of vote powers
+     * @return _votePowersUSD       List of vote powers in USD
+     */
+    function getAssetData() internal view returns (
+        IVotePower[] memory _assets,
+        uint256[] memory _votePowers,
+        uint256[] memory _votePowersUSD
+    ) {
+        // gather assets
+        if (isSingleAssetFtso()) {
+            _assets = new IVotePower[](1);
+            _assets[0] = fAsset;
+        } else {
+            // read assets from FTSOs
+            _assets = new IVotePower[](fAssetFtsos.length);
+            for (uint256 i = 0; i < fAssetFtsos.length; i++) {
+                _assets[i] = fAssetFtsos[i].getFAsset();
+                require(address(_assets[i]) != address(0), ERR_FASSET_INVALID);
+            }
+        }
+
+        // compute vote power for each epoch
+        _votePowers = new uint256[](_assets.length);
+        _votePowersUSD = new uint256[](_assets.length);
+        for (uint256 i = 0; i < _assets.length; i++) {
+            uint256 priceUSD = fAssetFtsos[i].getCurrentPrice();
+            _votePowers[i] = getVotePower(_assets[i], epochs.votePowerBlock);            
+            _votePowersUSD[i] = _votePowers[i] * priceUSD;
+        }
+    }
+
+    /**
      * @notice Returns FLR and asset vote power for epoch
      * @param _epoch                Epoch instance
      * @dev Checks if vote power is sufficient and adjusts vote power if it is too large
@@ -492,11 +553,20 @@ contract Ftso is IFtso {
         uint256 votePowerFlr,
         uint256 votePowerAsset
     ) {
-        votePowerFlr = fFlr.votePowerOfAt(msg.sender, _epoch.votePowerBlock);
-        require(votePowerFlr >= _epoch.minVotePowerFlr, "Insufficient FLR vote power to create vote");        
+        votePowerFlr = getVotePowerOf(fFlr, _epoch.votePowerBlock, msg.sender);
         
-        votePowerAsset = fAsset.votePowerOfAt(msg.sender, _epoch.votePowerBlock);
-        require(votePowerAsset >= _epoch.minVotePowerAsset, "Insufficient asset vote power to create vote");
+        votePowerAsset = 0;
+        for (uint256 i = 0; i < _epoch.assets.length; i++) {            
+            votePowerAsset += (
+                getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, msg.sender) * _epoch.assetShares[i]
+            );
+        }
+        votePowerAsset /= 1000;
+        
+        require(
+            votePowerFlr >= _epoch.minVotePowerFlr || votePowerAsset >= _epoch.minVotePowerAsset,
+            ERR_VOTEPOWER_INSUFFICIENT
+        );
         
         if (votePowerFlr > _epoch.maxVotePowerFlr) {
             votePowerFlr = _epoch.maxVotePowerFlr;
@@ -505,6 +575,42 @@ contract Ftso is IFtso {
         if (votePowerAsset > _epoch.maxVotePowerAsset) {
             votePowerAsset = _epoch.maxVotePowerAsset;
         }
+    }
+
+    /**
+     * @notice Returns vote power of the given token at the specified block
+     * @param _vp                   Vote power token
+     * @param _vpBlock              Vote power block
+     * @dev Returns 0 if vote power token is null
+     */
+    function getVotePower(IVotePower _vp, uint256 _vpBlock) internal view returns (uint256) {
+        if (address(_vp) == address(0)) {
+            return 0;
+        } else {
+            return _vp.votePowerAt(_vpBlock);
+        }
+    }
+
+    /**
+     * @notice Returns vote power of the given token at the specified block and for the specified owner
+     * @param _vp                   Vote power token
+     * @param _vpBlock              Vote power block
+     * @param _owner                Owner address
+     * @dev Returns 0 if vote power token is null
+     */
+    function getVotePowerOf(IVotePower _vp, uint256 _vpBlock, address _owner) internal view returns (uint256) {
+        if (address(_vp) == address(0)) {
+            return 0;
+        } else {
+            return _vp.votePowerOfAt(_owner, _vpBlock);
+        }
+    }
+
+    /**
+     * @notice Determines if the FTSO has a single asset
+     */
+    function isSingleAssetFtso() internal view returns (bool) {
+        return address(fAsset) != address(0);
     }
 
 }
