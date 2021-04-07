@@ -6,6 +6,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, web3 } from "hardhat";
+import { brotliCompressSync } from "node:zlib";
 import { MockFtso, MockVPToken } from "../../typechain";
 import { FlareBlock, increaseTimeTo, newContract, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
@@ -363,7 +364,17 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     let totalPreSum = assetSum + flrSum;
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
-        let weight = (1000 - data.weightRatio) * assetSum * v.weightFlr + data.weightRatio * flrSum * v.weightAsset;
+        let weight;
+        if (assetSum == 0) {
+            weight = v.weightFlr;
+        } else if (flrSum == 0) {
+            weight = v.weightAsset;
+        } else {
+            let BIPS = 1e4;
+            let flrShare = Math.floor(((BIPS - data.weightRatio) * assetSum) / BIPS);
+            let assetShare = Math.floor((data.weightRatio * flrSum) / BIPS);
+            weight = Math.floor((flrShare * v.weightFlr + assetShare * v.weightAsset) / BIPS);
+        }
         v.weight = weight;
         totalSum += weight;
         v.runningPct = weight / totalPreSum;
@@ -694,7 +705,7 @@ export async function moveToFinalizeStart(epochStartTimestamp: number, epochPeri
  * @returns 
  */
 export function getEpochPeriod(len: number): number {
-    return len + 3;
+    return len + 10;
 }
 
 /**
@@ -703,7 +714,7 @@ export function getEpochPeriod(len: number): number {
  * @returns 
  */
 export function getRevealPeriod(len: number): number {
-    return len + 3;
+    return len + 10;
 }
 
 /**
@@ -739,7 +750,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod //uint256 _epochPeriod, uint256 _revealPeriod
-    )
+    );
 
     return ftso;
 }
@@ -754,6 +765,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
  */
 export async function testFTSOMedian(epochStartTimestamp: number, signers: readonly SignerWithAddress[], ftso: MockFtso, testExample: TestExample): Promise<TestCase> {
     let logger = new TestExampleLogger(testExample);
+
+    await ftso.setCurrentPrice(1);
 
     let len = testExample.prices.length;
     let epochPeriod = getEpochPeriod(len);

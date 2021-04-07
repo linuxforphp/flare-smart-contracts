@@ -70,6 +70,10 @@ contract MockFtso is Ftso {
         epochs.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
     }
 
+    function setCurrentPrice(uint256 _price) external {
+        fAssetPriceUSD = _price;
+    }
+
     function finalizePriceEpochWithResult(uint256 _epochId) external returns (
         address[] memory eligibleAddresses,
         uint256[] memory flrWeights,
