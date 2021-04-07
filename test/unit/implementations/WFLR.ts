@@ -7,7 +7,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const WFLR = artifacts.require("WFLR") as WFLRContract;
 
-const ALLOWANCE_EXCEEDED_MSG = "WFLR: decreased allowance below zero";
+const ALLOWANCE_EXCEEDED_MSG = "allowance below zero";
 
 contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
   // a fresh contract for each test
