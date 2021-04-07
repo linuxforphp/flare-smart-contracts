@@ -100,19 +100,19 @@ contract Ftso is IFtso {
         if (epoch.voteCount == 0) {
             IVotePower[] memory assets;
             uint256[] memory assetVotePowers;
-            uint256[] memory assetVotePowersUSD;
-            (assets, assetVotePowers, assetVotePowersUSD) = getAssetData();
+            uint256[] memory assetPrices;
+            (assets, assetVotePowers, assetPrices) = getAssetData();
             epochs._initializeInstance(
                 epoch,
                 getVotePower(fFlr, epochs.votePowerBlock),
                 assets,
                 assetVotePowers,
-                assetVotePowersUSD
+                assetPrices
             );
         }
 
         // register vote
-        (uint256 votePowerFlr, uint256 votePowerAsset) = getVotePower(epoch);
+        (uint256 votePowerFlr, uint256 votePowerAsset) = getVotePowerOf(epoch, msg.sender);
         uint256 voteId = votes._createInstance(
             votePowerFlr,
             votePowerAsset,
@@ -124,7 +124,7 @@ contract Ftso is IFtso {
         );
         epochs._addVote(epoch, voteId, votePowerFlr, votePowerAsset, _random, _price);
         
-        // make sure price submission is be revealed twice
+        // prevent price submission from being revealed twice
         delete epochVoterHash[_epochId][msg.sender];
 
         // inform about price reveal result
@@ -368,36 +368,10 @@ contract Ftso is IFtso {
             id = epochs.nextVoteId[id];
         }
 
-        weight = computeWeights(_epoch, weightFlr, weightAsset, weightFlrSum, weightAssetSum);
+        weight = epochs.computeWeights(_epoch, weightFlr, weightAsset, weightFlrSum, weightAssetSum);
 
         _epoch.weightFlrSum = weightFlrSum;
         _epoch.weightAssetSum = weightAssetSum;
-    }
-
-    /**
-     * @notice Computes vote weights in epoch
-     * @param epoch                 Epoch instance
-     * @param weightFlr             Array of FLR weights
-     * @param weightAsset           Array of asset weights
-     * @param weightFlrSum          Sum of all FLR weights
-     * @param weightAssetSum        Sum of all asset weights
-     */
-    function computeWeights(
-        FtsoEpoch.Instance storage epoch,
-        uint256[] memory weightFlr,
-        uint256[] memory weightAsset,
-        uint256 weightFlrSum,
-        uint256 weightAssetSum
-    ) internal view returns (uint256[] memory weight)
-    {
-        uint256 weightRatio = epochs._getWeightRatio(epoch);
-        uint256 flrShare = (FtsoEpoch.BIPS100 - weightRatio) * weightAssetSum;
-        uint256 assetShare = weightRatio * weightFlrSum;
-
-        weight = new uint256[](epoch.voteCount);
-        for (uint32 i = 0; i < epoch.voteCount; i++) {            
-            weight[i] = flrShare * weightFlr[i] + assetShare * weightAsset[i];
-        }
     }
 
     /**
@@ -412,8 +386,7 @@ contract Ftso is IFtso {
         FtsoMedian.Data memory data,
         uint32[] memory index,
         uint256[] memory weightFlr
-    )
-        internal
+    ) internal
     {
         uint32 voteRewardCount = 0;
         uint256 flrRewardedWeightSum = 0;
@@ -514,54 +487,46 @@ contract Ftso is IFtso {
      * @notice Returns the list of assets and its vote powers
      * @return _assets              List of assets
      * @return _votePowers          List of vote powers
-     * @return _votePowersUSD       List of vote powers in USD
+     * @return _prices              List of asset prices
      */
     function getAssetData() internal view returns (
         IVotePower[] memory _assets,
         uint256[] memory _votePowers,
-        uint256[] memory _votePowersUSD
+        uint256[] memory _prices
     ) {
         // gather assets
-        if (isSingleAssetFtso()) {
-            _assets = new IVotePower[](1);
-            _assets[0] = fAsset;
-        } else {
-            // read assets from FTSOs
-            _assets = new IVotePower[](fAssetFtsos.length);
-            for (uint256 i = 0; i < fAssetFtsos.length; i++) {
-                _assets[i] = fAssetFtsos[i].getFAsset();
-                require(address(_assets[i]) != address(0), ERR_FASSET_INVALID);
-            }
+        _assets = new IVotePower[](fAssetFtsos.length);
+        for (uint256 i = 0; i < fAssetFtsos.length; i++) {
+            _assets[i] = fAssetFtsos[i].getFAsset();
         }
 
         // compute vote power for each epoch
         _votePowers = new uint256[](_assets.length);
-        _votePowersUSD = new uint256[](_assets.length);
+        _prices = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
-            uint256 priceUSD = fAssetFtsos[i].getCurrentPrice();
             _votePowers[i] = getVotePower(_assets[i], epochs.votePowerBlock);            
-            _votePowersUSD[i] = _votePowers[i] * priceUSD;
+            _prices[i] = fAssetFtsos[i].getCurrentPrice();
         }
     }
 
     /**
      * @notice Returns FLR and asset vote power for epoch
      * @param _epoch                Epoch instance
+     * @param _owner                Owner address
      * @dev Checks if vote power is sufficient and adjusts vote power if it is too large
      */
-    function getVotePower(FtsoEpoch.Instance storage _epoch) internal view returns (
+    function getVotePowerOf(FtsoEpoch.Instance storage _epoch, address _owner) internal view returns (
         uint256 votePowerFlr,
         uint256 votePowerAsset
     ) {
-        votePowerFlr = getVotePowerOf(fFlr, _epoch.votePowerBlock, msg.sender);
+        votePowerFlr = getVotePowerOf(fFlr, _epoch.votePowerBlock, _owner);
         
         votePowerAsset = 0;
         for (uint256 i = 0; i < _epoch.assets.length; i++) {            
             votePowerAsset += (
-                getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, msg.sender) * _epoch.assetShares[i]
-            );
+                getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, _owner) * _epoch.assetWeightedPrices[i]
+            ) / FtsoEpoch.BIPS100;
         }
-        votePowerAsset /= 1000;
         
         require(
             votePowerFlr >= _epoch.minVotePowerFlr || votePowerAsset >= _epoch.minVotePowerAsset,
