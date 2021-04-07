@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {VPToken} from "./VPToken.sol";
 
 /**
@@ -9,6 +10,7 @@ import {VPToken} from "./VPToken.sol";
  * @dev Attribution: https://rinkeby.etherscan.io/address/0xc778417e063141139fce010982780140aa0cd5ab#code 
  */
 contract WFLR is VPToken {
+    using SafeMath for uint256;
     event  Deposit(address indexed dst, uint amount);
     event  Withdrawal(address indexed src, uint amount);
 
@@ -27,25 +29,25 @@ contract WFLR is VPToken {
     }
 
     /**
-     * @notice Withdraw from a spender to msg.sender given an allowance.
-     * @param spender An address spending the Flare tokens.
+     * @notice Withdraw WFLR from an owner and send FLR to msg.sender given an allowance.
+     * @param owner An address spending the Flare tokens.
      * @param amount The amount to spend.
      *
      * Requirements:
      *
-     * - `spender` must have a balance of at least `amount`.
-     * - the caller must have allowance for ``spenders``'s tokens of at least
+     * - `owner` must have a balance of at least `amount`.
+     * - the caller must have allowance for `owners`'s tokens of at least
      * `amount`.
      */
-    function withdrawFrom(address spender, uint256 amount) public {
-        // Reduce spenders allowance
-        decreaseAllowance(spender, amount);
-        // Burn the spenders balance
-        _burn(spender, amount);
+    function withdrawFrom(address owner, uint256 amount) public {
+        // Reduce senders allowance
+        _approve(owner, msg.sender, allowance(owner, msg.sender).sub(amount, "allowance below zero"));
+        // Burn the owners balance
+        _burn(owner, amount);
         // Move value to sender
         msg.sender.transfer(amount);
         // Emit withdraw event
-        emit Withdrawal(spender, amount);
+        emit Withdrawal(owner, amount);
     }
 
     /**

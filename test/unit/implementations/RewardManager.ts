@@ -283,16 +283,18 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         // blockTimeStamp: 1610352789
         // lastRandom: 33477408647911858043435212757800905465596441501019447121012751689213337316928
         // votepowerBlockBoundary: 61
-        // startBlock 583
-        // votepowerBlock: 522
+        // startBlock 674
+        // votepowerBlock: 613
 
         // Get the new reward epoch
         const {votepowerBlock, startBlock} = await rewardManager.rewardEpochs(1) as any;
-        assert.equal(votepowerBlock.toNumber(), 522);
-        assert.equal(startBlock.toNumber(), 583);
+        const VOTEPOWERBLOCK = 613;
+        const STARTBLOCK = 674;
+        assert.equal(votepowerBlock.toNumber(), VOTEPOWERBLOCK);
+        assert.equal(startBlock.toNumber(), STARTBLOCK);
 
         // Get the invocation count for setting new vote power block on mocked FTSO
-        const setVotePowerBlock = ftsoInterface.contract.methods.setVotePowerBlock(522).encodeABI();
+        const setVotePowerBlock = ftsoInterface.contract.methods.setVotePowerBlock(VOTEPOWERBLOCK).encodeABI();
         const invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
         const invocationCountToFinalize = await mockFtso.invocationCountForCalldata.call(setVotePowerBlock);
         // Should be 2 invocations; 1 during FTSO init, 1 during FTSO finalize - for 1 FTSO

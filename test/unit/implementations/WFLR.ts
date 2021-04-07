@@ -7,7 +7,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const WFLR = artifacts.require("WFLR") as WFLRContract;
 
-const ALLOWANCE_EXCEEDED_MSG = "ERC20: decreased allowance below zero";
+const ALLOWANCE_EXCEEDED_MSG = "WFLR: decreased allowance below zero";
 
 contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
   // a fresh contract for each test
@@ -91,9 +91,11 @@ contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
   it("Should burn WFLR when FLR withdrawn to another address with allowance.", async () => {
     // Assemble
     await wflr.deposit({value: toBN(50), from:accounts[1]});
+    // Allow A2 to withdraw 30 from A1
+    await wflr.increaseAllowance(accounts[2], 30, {from: accounts[1]})
+    // Get the opening balances
     let a1FlrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
     let a2FlrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[2]));
-    await wflr.increaseAllowance(accounts[1], 30, {from: accounts[2]})
     // Act
     // A1 spending by burning WFLR and moving FLR to A2
     let withdrawResult = await wflr.withdrawFrom(accounts[1], 30, {from: accounts[2]});
@@ -104,10 +106,9 @@ contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
     let a1FlrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
     let a2FlrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[2]));
     let a1Wflrbalance = await wflr.balanceOf(accounts[1]);
-    assert.equal(a1Wflrbalance as any, 20);
-    // TODO: Why is this passing? Isn't accounts[2] supposed to pay some gas?
-    assert.equal(a2FlrClosingBalance.sub(a2FlrOpeningBalance) as any, 30);
-    assert.equal(a1FlrOpeningBalance.sub(a1FlrClosingBalance) as any, 0);
+    assert.equal(a1Wflrbalance.toNumber(), 20);
+    assert.equal(a2FlrClosingBalance.sub(a2FlrOpeningBalance).add(txCost).toNumber(), 30);
+    assert.equal(a1FlrOpeningBalance.sub(a1FlrClosingBalance).toNumber(), 0);
   });
 
   it("Should revert when withdrawn to another address without allowance.", async () => {
