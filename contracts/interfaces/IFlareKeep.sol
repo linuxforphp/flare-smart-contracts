@@ -7,5 +7,5 @@ pragma solidity 0.7.6;
 interface IFlareKeep {
 
     /// implement this function for recieving a trigger from FlareKeeper
-    function keep() external;
+    function keep() external returns(bool);
 }

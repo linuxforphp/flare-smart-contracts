@@ -1,6 +1,4 @@
 import { FtsoContract, FtsoInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
-
-const {deployMockContract} = require("@ethereum-waffle/mock-contract");
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
