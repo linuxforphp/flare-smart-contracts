@@ -65,10 +65,11 @@ contract Inflation is IInflation, Governed, IFlareKeep {
         );
     }
 
-    function keep() external override {
+    function keep() external override returns(bool) {
         if (currentAnnumEndsTs() < block.timestamp) {
             initNewAnnum();
         }
+        return true;
     }
 
     // TODO: Who is supposed to call this function? Why wouldn't keeper, or is this to be a pull from RM?

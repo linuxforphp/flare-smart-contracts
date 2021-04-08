@@ -6,9 +6,7 @@ import "../interfaces/IFlareKeep.sol";
 import "../IFtso.sol";
 import "./Governed.sol";
 
-import "hardhat/console.sol";
-
-    /* 
+/** 
     Reward manager (better name?) in charge of a few operations:
 
     - keep track of all FTSO contracts. 
@@ -18,7 +16,7 @@ import "hardhat/console.sol";
         - randomly choose one FTSO for rewarding.
         - trigger finalize price reveal epoch
         - distribute rewards
-    */
+*/
 contract RewardManager is IRewardManager, IFlareKeep, Governed {
 
     struct RewardEpochData {
@@ -120,16 +118,16 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
     }
 
     function activate() external onlyGovernance {
-      active = true;
+        active = true;
     }
 
     function dactivate() external onlyGovernance {
-      active = false;
+        active = false;
     }
 
-    function keep() external override {
+    function keep() external override returns(bool) {
         // flare keeper trigger. once every block
-        if (!active) return;
+        if (!active) return false;
         // If RewardManager just started...
         if (justStarted) {
             // And the reward epoch has now started...
@@ -160,6 +158,8 @@ contract RewardManager is IRewardManager, IFlareKeep, Governed {
         if (currentPriceEpochEnds < block.timestamp) {
             finalizePriceEpoch();
         }
+
+        return true;
     }
 
     function setDailyRewardAmount(uint256 rewardAmountTwei) external override {

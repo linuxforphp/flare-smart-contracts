@@ -6,8 +6,9 @@ contract Governed {
 
     address public governance;
     address public proposedGovernance;
+    bool private initialised;
 
-    event GovernanceUdpated (address oldGovernance, address newGoveranance);
+    event GovernanceUpdated (address oldGovernance, address newGoveranance);
 
     modifier onlyGovernance () {
         require (msg.sender == governance, "only governance");
@@ -15,6 +16,16 @@ contract Governed {
     }
 
     constructor(address _governance) {
+        if (_governance != address(0)) {
+            initialise(_governance);
+        }
+    }
+
+    function initialise(address _governance) public {
+        require(initialised == false, "initialised != false");
+
+        initialised = true;
+        emit GovernanceUpdated(governance, _governance);
         governance = _governance;
     }
 
@@ -23,9 +34,9 @@ contract Governed {
     }
 
     function claimGovernance() external {
-        require(msg.sender == proposedGovernance, "invalid address");
+        require(msg.sender == proposedGovernance, "not claimaint");
 
-        emit GovernanceUdpated(governance, proposedGovernance);
+        emit GovernanceUpdated(governance, proposedGovernance);
         governance = proposedGovernance;
     }
 }

@@ -15,6 +15,7 @@
     "test-with-coverage": "yarn hardhat coverage 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
     "testHH": "yarn hardhat test --network hardhat",
     "testUnitHH": "env TEST_PATH=./test/unit yarn hardhat test --network hardhat",
+    "testSystemSCDev": "env TEST_PATH=./test/system yarn hardhat test --network scdev",
     "testPerformanceHH": "env TEST_PATH=./test/performance-tests yarn hardhat test --network hardhat",
     "testTimeShift": "env VM_FLARE_TEST=shift yarn hardhat test --network develop",
     "testTimeWait": "env VM_FLARE_TEST=real yarn hardhat test --network develop",
