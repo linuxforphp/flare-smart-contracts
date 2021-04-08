@@ -19,6 +19,7 @@
     "testPerformanceHH": "env TEST_PATH=./test/performance-tests yarn hardhat test --network hardhat",
     "testTimeShift": "env VM_FLARE_TEST=shift yarn hardhat test --network develop",
     "testTimeWait": "env VM_FLARE_TEST=real yarn hardhat test --network develop",
+    "deploySCDev": "yarn hardhat compile && yarn postcompile && yarn hardhat run ./scripts/deploy.ts --network scdev",
     "compile": "yarn hardhat compile 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
     "postcompile": "yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
     "c": "yarn hardhat compile 2>&1 | gsed -e '/Warning: Visibility for constructor is ignored./,+2d'",
