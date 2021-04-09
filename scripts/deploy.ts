@@ -56,7 +56,8 @@ async function main() {
     const fxrp = await VPToken.new("FXRP", "FXRP");
     console.log("FXRP contract: ", fxrp.address);
 
-    // Register an initial FTSO...what is supposed to be the composition of these for the private beta?
+    // Register an initial FTSO
+    // TODO: what is supposed to be the composition of these for the private beta?
     const ftsoFXRPFLR = await Ftso.new(wflr.address, fxrp.address, rewardManager.address);
     console.log("FTSO FXRP/FLR contract: ", ftsoFXRPFLR.address);
 
