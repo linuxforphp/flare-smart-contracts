@@ -6,9 +6,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, web3 } from "hardhat";
-import { brotliCompressSync } from "node:zlib";
-import { MockFtso, MockVPToken } from "../../typechain";
-import { FlareBlock, increaseTimeTo, newContract, waitFinalize } from "./test-helpers";
+import { Ftso, MockFtso, MockVPToken } from "../../typechain";import { FlareBlock, increaseTimeTo, newContract, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 
 const { exec } = require("child_process");
@@ -124,8 +122,8 @@ export interface RewardedVoteInfo {
  */
 export interface TestExample {
     fileName?: string;
-    description: string;
-    randomizedPivot: boolean;
+    description?: string;
+    randomizedPivot?: boolean;
     /**
      * if this is > 0, then weightsFlr and weightsAsset should be empty [], and this number of pricess/weights is 
      * generated acording to *Averate and *SD parameters, which should be provided 
@@ -134,7 +132,7 @@ export interface TestExample {
     prices: number[];
     weightsFlr: number[];
     weightsAsset: number[];
-    weightRatio: number,
+    weightRatio?: number,
     priceAverage?: number;
     priceSD?: number;
     weightFlrAverage?: number;
@@ -239,7 +237,7 @@ export function toEpochResult(epochResultRaw: EpochResultRaw): EpochResult {
  * @param voteListRaw 
  * @param logger logger object implementing function log(string). Could be `console` as well.
  */
-export function prettyPrintVoteInfo(voteListRaw: VoteListRaw, logger?: any) {
+export function prettyPrintVoteInfo(voteListRaw: VoteListRaw, weightRatio: number, logger?: any) {
     if (!logger) {
         logger = console;
     }
@@ -248,10 +246,26 @@ export function prettyPrintVoteInfo(voteListRaw: VoteListRaw, logger?: any) {
     voteList.votes.forEach((a: VoteInfo) => { totalSumFlr += a.weightFlr });
     let totalSumAsset = 0;
     voteList.votes.forEach((a: VoteInfo) => { totalSumAsset += a.weightAsset });
+    
     logger.log(
         `EPOCH ${ voteList.epoch }\nID\tPRICE\tWFLR\tWASSET\tWEIGHT\n` +
-        voteList.votes.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ totalSumAsset! * vote.weightFlr + totalSumFlr! * vote.weightAsset }`).join("\n")
+        voteList.votes.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset) }`).join("\n")
     );
+}
+
+function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumFlr: number, totalSumAsset: number): number {
+    let weight;
+    if (totalSumAsset == 0) {
+        weight = vote.weightFlr;
+    } else if (totalSumFlr == 0) {
+        weight = vote.weightAsset;
+    } else {
+        let BIPS100 = 1e4;
+        let flrShare = Math.floor(((BIPS100 - weightRatio) * totalSumAsset) / BIPS100);
+        let assetShare = Math.floor((weightRatio * totalSumFlr) / BIPS100);            
+        weight = Math.floor((flrShare * vote.weightFlr + assetShare * vote.weightAsset) / BIPS100);
+    }
+    return weight;
 }
 
 /**
@@ -274,7 +288,7 @@ function marker(i: number, minfo: MediansInfo) {
  * @param rawEpochResult 
  * @param logger logger object implementing function log(string). Could be `console` as well.
  */
-export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, logger?: any) {
+export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, weightRatio: number, logger?: any) {
     if (!logger) {
         logger = console;
     }
@@ -284,11 +298,11 @@ export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, logger?: 
     // let totalSum = totalSumFlr + totalSumAsset;
     let totalSum = 0;
     epochResult.votes.forEach(vote => {
-        totalSum += totalSumAsset * vote.weightFlr + totalSumFlr * vote.weightAsset;
+        totalSum += calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset);
     })
     logger.log(
         `ID\tPRICE\tWFLR\tWASSET\tWEIGHT\n` +
-        epochResult.votes.map((vote, i) => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ totalSumAsset * vote.weightFlr + totalSumFlr * vote.weightAsset }\t${ vote.runningSumFlr! + vote.runningSumFlr! }\t${ (vote.runningPct! * 100).toFixed(1) }\t${ marker(i, epochResult.medians) }`).join("\n") +
+        epochResult.votes.map((vote, i) => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset) }\t${ vote.runningSumFlr! + vote.runningSumAsset! }\t${ (vote.runningPct! * 100).toFixed(1) }\t${ marker(i, epochResult.medians) }`).join("\n") +
         "\n" +
         `Epoch ${ epochResult.epoch }\n` +
         `Lower price: ${ epochResult.prices.lowRewardedPrice }\n` +
@@ -343,7 +357,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     let votes: VoteInfo[] = [];
     let len = data.prices.length;
     if (len != data.weightsFlr.length) throw Error(`Wrong FLR weights length: ${ data.weightsFlr.length }. Should be ${ len }`);
-    if (len != data.weightsAsset.length) throw Error(`Wrong FLR weights length: ${ data.weightsAsset.length }. Should be ${ len }`);
+    if (len != data.weightsAsset.length) throw Error(`Wrong Asset weights length: ${ data.weightsAsset.length }. Should be ${ len }`);
     if (len != addresses.length) throw Error(`Wrong addresses length: ${ addresses.length }. Should be ${ len }`);
     let flrSum = 0;
     let assetSum = 0;
@@ -361,23 +375,11 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
         })
     }
     votes.sort((a: VoteInfo, b: VoteInfo) => a.price < b.price ? -1 : (a.price > b.price ? 1 : 0));
-    let totalPreSum = assetSum + flrSum;
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
-        let weight;
-        if (assetSum == 0) {
-            weight = v.weightFlr;
-        } else if (flrSum == 0) {
-            weight = v.weightAsset;
-        } else {
-            let BIPS = 1e4;
-            let flrShare = Math.floor(((BIPS - data.weightRatio) * assetSum) / BIPS);
-            let assetShare = Math.floor((data.weightRatio * flrSum) / BIPS);
-            weight = Math.floor((flrShare * v.weightFlr + assetShare * v.weightAsset) / BIPS);
-        }
+        let weight = calculateWeight(v, data.weightRatio!, flrSum, assetSum);
         v.weight = weight;
         totalSum += weight;
-        v.runningPct = weight / totalPreSum;
     })
 
     let sm = 0
@@ -454,7 +456,9 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     let rewardedVotes: RewardedVoteInfo[] = [];
     for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
         let voteInfo = votes[i];
-        rewardedVotes.push({ weightFlr: voteInfo.weightFlr, address: voteInfo.address! } as RewardedVoteInfo);
+        if (voteInfo.weightFlr > 0) {
+            rewardedVotes.push({ weightFlr: voteInfo.weightFlr, address: voteInfo.address! } as RewardedVoteInfo);
+        }
     }
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
 
@@ -470,7 +474,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
         },
         prices: {
             lowRewardedPrice: votes[truncatedFirstQuartileIndex].price,
-            medianPrice: votes[medianIndex].price,
+            medianPrice,
             highRewardedPrice: votes[truncatedLastQuartileIndex].price
         },
         weights: {
@@ -757,76 +761,59 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
 
 /**
  * test ftso median process - submit price, reveal price, finalize and check results
- * @param epochStartTimestamp
+ * @param epochStartTimestamp 
  * @param signers 
  * @param ftso 
  * @param testExample 
  * @returns 
  */
-export async function testFTSOMedian(epochStartTimestamp: number, signers: readonly SignerWithAddress[], ftso: MockFtso, testExample: TestExample): Promise<TestCase> {
-    let logger = new TestExampleLogger(testExample);
+export async function testFTSOMedian(epochStartTimestamp: number, signers: readonly SignerWithAddress[], ftso: Ftso, testExample: TestExample): Promise<TestCase> {
+    let len = testExample.prices.length;
+    return testFTSOMedian2(epochStartTimestamp, getEpochPeriod(len), getRevealPeriod(len), signers, ftso, testExample);
+}
 
+/**
+ * test ftso median process - submit price, reveal price, finalize and check results
+ * @param epochStartTimestamp 
+ * @param epochPeriod 
+ * @param revealPeriod 
+ * @param signers 
+ * @param ftso 
+ * @param testExample 
+ * @returns 
+ */
+export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, signers: readonly SignerWithAddress[], ftso: Ftso, testExample: TestExample): Promise<TestCase> {
+    let logger = new TestExampleLogger(testExample);
     await ftso.setCurrentPrice(1);
 
     let len = testExample.prices.length;
-    let epochPeriod = getEpochPeriod(len);
-    let revealPeriod = getRevealPeriod(len);
 
-    // Price hash submission
+    // Submit price
     await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
     logger.log(`EPOCH 1: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
-    logger.log(`SUBMIT PRICE ${ len }`)
-
-    let promises = [];
-    let epochs: number[] = [];
-    for (let i = 0; i < len; i++) {
-        let price = testExample.prices[i];
-        let random = priceToRandom(price);
-        // TODO: try to the use correct hash from ethers.utils.keccak256
-        // let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint128", "uint256" ], [ price, random ]))
-        // let hash = soliditySha3({ type: 'uint128', value: price }, random);
-        let hash = soliditySha3(price, random);
-        promises.push(waitFinalize(signers[i], async () =>
-            ftso.connect(signers[i]).submitPrice(hash)
-        ))
-    }
-    (await Promise.all(promises)).forEach(res => {
-        epochs.push((res.events![0].args![1] as BigNumber).toNumber());
-    });
-
-    let uniqueEpochs: number[] = [...(new Set(epochs))];
-    expect(uniqueEpochs.length, `Too short epoch for the test. Increase epochPeriod ${ epochPeriod }.`).to.equal(1)
+    logger.log(`SUBMIT PRICE ${ len }`);
+    const { epoch } = await submitPrice(signers, ftso, testExample.prices);
 
     // Reveal price
-    const epoch = uniqueEpochs[0];
     await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
     logger.log(`EPOCH 2: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`REVEAL PRICE ${ len }`)
-    let epochPromises = [];
-    for (let i = 0; i < len; i++) {
-        epochPromises.push(
-            waitFinalize(signers[i], async () => {
-                let res = await ftso.connect(signers[i]).revealPrice(epoch, testExample.prices[i], priceToRandom(testExample.prices[i]))
-                // console.log("I:", i);
-                return res
-            })
-        )
-    }
-    await Promise.all(epochPromises);
+    await revealPrice(signers, ftso, testExample.prices, epoch);
 
     // Print epoch submission prices
     let resVoteInfo = await ftso.getVoteInfo(epoch);
     testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
-    prettyPrintVoteInfo(resVoteInfo, logger);
+    prettyPrintVoteInfo(resVoteInfo, testExample.weightRatio!, logger);
 
     // Finalize
     await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
     let resFinalizePrice = await waitFinalize(signers[0], () => ftso.connect(signers[0]).finalizePriceEpochWithResult(epoch))
     logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
     let epochFinalizeResponse = resFinalizePrice.events![1].args;
+    
     // Print results                
     let res = await ftso.getEpochResult(epoch);
-    prettyPrintEpochResult(res, logger);
+    prettyPrintEpochResult(res, testExample.weightRatio!, logger);
     let voterRes = toEpochResult(res);
     let testCase = {
         example: testExample,
@@ -837,4 +824,40 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
     return testCase;
 }
 
+export async function submitPrice(signers: readonly SignerWithAddress[], ftso: Ftso, prices: number[]): Promise<{ epoch: number; }> {
+    const len = prices.length;
+    let promises = [];
+    let epochs: number[] = [];
+    for (let i = 0; i < len; i++) {
+        let price = prices[i];
+        let random = priceToRandom(price);
+        // TODO: try to the use correct hash from ethers.utils.keccak256
+        //let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price, random ]))
+        let hash = soliditySha3(price, random);
+        promises.push(waitFinalize(signers[i], async () =>
+            ftso.connect(signers[i]).submitPrice(hash)
+        ));
+    }
+    (await Promise.all(promises)).forEach(res => {
+        epochs.push((res.events![0].args![1] as BigNumber).toNumber());
+    });
+    let uniqueEpochs: number[] = [...(new Set(epochs))];
+    expect(uniqueEpochs.length, `Too short epoch for the test. Increase epochPeriod.`).to.equal(1);
 
+    return { epoch: uniqueEpochs[0] };
+}
+
+export async function revealPrice(signers: readonly SignerWithAddress[], ftso: Ftso, prices: number[], epoch: number) {
+    const len = prices.length;
+    let epochPromises = [];
+    for (let i = 0; i < len; i++) {
+        epochPromises.push(
+            waitFinalize(signers[i], async () => {
+                let res = await ftso.connect(signers[i]).revealPrice(epoch, prices[i], priceToRandom(prices[i]))
+                // console.log("I:", i);
+                return res
+            })
+        )
+    }
+    await Promise.all(epochPromises);
+}

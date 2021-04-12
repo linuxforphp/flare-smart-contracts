@@ -117,7 +117,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Reward manager unit tes
         // Act
         let addPromise = rewardManager.addFtso(mockFtso.address, {from: accounts[1]});
         // Assert
-        expectRevert(addPromise, "only governance");
+        await expectRevert(addPromise, "only governance");
     });
 
     it("Should finalize price epoch for winning ftso with no reward recipients", async() => {
