@@ -38,7 +38,7 @@ library SignedSafePct {
       uint256 c = y.div(z);
       uint256 d = y.mod(z); // y = c * z + d
       
-      uint256 ir = (a.mul(b).mul(z)).add(a.mul(d)).add(b.mul(c)).add(b.mul(d).div(z));
+      uint256 ir = (a.mul(c).mul(z)).add(a.mul(d)).add(b.mul(c)).add(b.mul(d).div(z));
       return xi >= 0 ? int(ir) : int(ir) * -1;  // Permissive use: intermediate result always contained within xi
     }
 

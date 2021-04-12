@@ -141,7 +141,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     let delegatePromise = vpToken.delegate(accounts[2], 1000, {from: accounts[1]});
     // Assert
-    expectRevert(delegatePromise, ALREADY_DELEGATED_EXPLICIT_MSG);
+    await expectRevert(delegatePromise, ALREADY_DELEGATED_EXPLICIT_MSG);
   });
 
   it("Should revert delegating explicit when already delegated by percent", async() => {
@@ -151,7 +151,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     let delegatePromise = vpToken.delegateExplicit(accounts[2], 50, {from: accounts[1]});
     // Assert
-    expectRevert(delegatePromise, ALREADY_DELEGATED_PERCENT_MSG);
+    await expectRevert(delegatePromise, ALREADY_DELEGATED_PERCENT_MSG);
   });
 
   it("Should sum minted vote power", async() => {

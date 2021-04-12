@@ -284,20 +284,18 @@ library FtsoMedian {
         uint32[] memory index,
         uint256[] memory price
     )
-        internal pure returns (uint32)
+        internal pure returns (uint256)
     {
-        if (start == end) return start;
         uint closestPrice = price[index[start + 1]];
         uint newPrice;
         for (uint32 i = start + 2; i <= end; i++) {
             newPrice = price[index[i]];
             // assumes all the elements to the right of start are greater or equal 
             if (newPrice < closestPrice) {
-                swap(start + 1, i, index);
                 closestPrice = newPrice;
             }
         }
-        return start + 1;
+        return closestPrice;
     }
 
 }

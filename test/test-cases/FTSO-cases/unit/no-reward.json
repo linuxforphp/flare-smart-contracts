@@ -1,0 +1,7 @@
+{
+    "description": "No reward weights",
+    "randomizedPivot": false,
+    "prices":       [5,2,5,5,5,5,6,5,2,8],
+    "weightsFlr":   [0,1e5,0,0,0,0,1e5,0,1e5,1e5],
+    "weightsAsset": [1000e5,0,1100e5,1400e5,1700e5,1900e5,0,1300e5,0,0]
+}

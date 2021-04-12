@@ -3,12 +3,40 @@ import "@nomiclabs/hardhat-ethers";
 // Use also truffle and web3 for backward compatibility
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
+import { task } from "hardhat/config";
+import {
+  TASK_COMPILE,
+} from 'hardhat/builtin-tasks/task-names';
 import * as dotenv from "dotenv";
 import 'solidity-coverage';
 import "hardhat-gas-reporter"
 import "hardhat-contract-sizer";
 import 'hardhat-deploy';
 import { HardhatUserConfig } from "hardhat/config";
+const intercept = require('intercept-stdout');
+
+// Override solc compile task and filter out useless warnings
+task(TASK_COMPILE)
+  .setAction(async (args, hre, runSuper) => {
+    intercept((text: any) => {
+      if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text)) && 
+        /Warning: Function state mutability can be restricted to pure/.test(text)) return '';
+      if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text)) && 
+        /Warning: Unused function parameter/.test(text)) return '';
+      if ((/Ownable.sol/.test(text) || /ERC20.sol/.test(text)) &&
+        /Warning: Visibility for constructor is ignored/.test(text)) return '';
+      if (text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
+      if ((/DelegatableMock.sol/.test(text)) && 
+        /Warning: This declaration shadows an existing declaration/.test(text)) return '';
+      if (/MockContract.sol/.test(text) && 
+        /Warning: This contract has a payable fallback function, but no receive ether function/.test(text)) return '';
+      if (/VPToken.sol/.test(text) &&
+        /Warning: This declaration shadows an existing declaration/.test(text) && 
+        /votePower/.test(text)) return '';
+      return text;
+    });
+    await runSuper(args);
+  });
 
 dotenv.config();
 
