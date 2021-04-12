@@ -1,0 +1,7 @@
+{
+    "description": "Test middle price",
+    "randomizedPivot": false,
+    "prices": [1,1,2,2,40,40,50,50],
+    "weightsFlr": [1e5,1e5,1e5,1e5,1e5,1e5,1e5,1e5],
+    "weightsAsset": [1e5,1e5,1e5,1e5,1e5,1e5,1e5,1e5]
+}

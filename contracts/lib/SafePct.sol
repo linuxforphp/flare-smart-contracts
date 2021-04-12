@@ -36,6 +36,6 @@ library SafePct {
         uint256 c = y.div(z);
         uint256 d = y.mod(z); // y = c * z + d
 
-        return (a.mul(b).mul(z)).add(a.mul(d)).add(b.mul(c)).add(b.mul(d).div(z));
+        return (a.mul(c).mul(z)).add(a.mul(d)).add(b.mul(c)).add(b.mul(d).div(z));
     }
 }

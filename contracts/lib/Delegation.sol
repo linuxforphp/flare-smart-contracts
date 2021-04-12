@@ -48,7 +48,7 @@ library Delegation {
         address delegate, 
         uint256 amount) internal {
 
-        // Delegation mode must be able to accept percentages
+        // Delegation mode must be able to accept amount
         assert(self.mode == DelegationMode.AMOUNT || self.mode == DelegationMode.NOTSET);
 
         // Put the delegate in the map
