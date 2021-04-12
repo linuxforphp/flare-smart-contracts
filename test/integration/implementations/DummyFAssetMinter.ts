@@ -15,7 +15,7 @@ contract(`DummyFAssetMinter.sol; ${getTestFile(__filename)}; Dummy FAsset minter
   let fassetToken: FAssetTokenInstance;
 
   beforeEach(async() => {
-    fassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK");
+    fassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK", 18);
     dummyFAssetMinter = await DummyFAssetMinter.new(fassetToken.address, 1000);
   });
 
@@ -36,6 +36,6 @@ contract(`DummyFAssetMinter.sol; ${getTestFile(__filename)}; Dummy FAsset minter
     await dummyFAssetMinter.mintRequest(10, accounts[2], constants.ZERO_ADDRESS);
     // Assert
     let balance = await fassetToken.balanceOf(accounts[2]);
-    assert.equal(balance.toNumber(), 10000);
+    assert.equal(balance.toNumber(), 10);
   });
 });

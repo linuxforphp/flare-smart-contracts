@@ -12,7 +12,7 @@ contract(`FAssetToken.sol; ${getTestFile(__filename)}; FAsset token unit tests`,
   let fassetToken: FAssetTokenInstance;
 
   beforeEach(async() => {
-    fassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK");
+    fassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK", 18);
   });
 
   it("Should not mint if not from governance", async() => {
@@ -49,5 +49,14 @@ contract(`FAssetToken.sol; ${getTestFile(__filename)}; FAsset token unit tests`,
     // Assert
     let balance = await fassetToken.balanceOf(accounts[2]);
     assert.equal(balance.toNumber(), 3);
-  });  
+  });
+
+  it("Should set decimals", async() => {
+    // Assemble
+    const anotherFassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK", 6);
+    // Act
+    const decimals = await anotherFassetToken.decimals();
+    // Assert
+    assert.equal(decimals.toNumber(), 6);
+  });
 });
