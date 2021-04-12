@@ -69,7 +69,7 @@ contract DummyFAssetMinter is ICollateralizable {
     ){
         require(mintAmountTwei <= maxMintRequestTwei || maxMintRequestTwei == 0, "max exceeded");
 
-        mintableToken.mint(mintDestination, mintAmountTwei.mul(1000));
+        mintableToken.mint(mintDestination, mintAmountTwei);
 
         return (0, agents, assetAmounts, assetAddress);
     }

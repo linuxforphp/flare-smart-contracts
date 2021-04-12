@@ -18,9 +18,10 @@ contract FAssetToken is Governed, VPToken {
     constructor(
         address governance_,
         string memory name_, 
-        string memory symbol_) Governed(governance_) VPToken(name_, symbol_)
-
-    { }
+        string memory symbol_,
+        uint8 decimals_) Governed(governance_) VPToken(name_, symbol_) {
+        _setupDecimals(decimals_);
+    }
 
     function mint(address to, uint256 amount) external onlyGovernance {
         _mint(to, amount);

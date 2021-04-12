@@ -22,7 +22,7 @@ contract(`DummyFAssetMinter.sol; ${getTestFile(__filename)}; Dummy FAsset minter
 
   beforeEach(async() => {
     mockFAssetToken = await MockFAssetToken.new();
-    fassetTokenInterface = await FAssetToken.new(constants.ZERO_ADDRESS, "A Token", "ATOK");
+    fassetTokenInterface = await FAssetToken.new(constants.ZERO_ADDRESS, "A Token", "ATOK", 18);
     dummyFAssetMinter = await DummyFAssetMinter.new(mockFAssetToken.address, 1000);
   });
 
