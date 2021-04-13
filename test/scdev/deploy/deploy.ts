@@ -32,6 +32,7 @@ class Contracts {
   public static readonly FXDG = "Fxdg";
   public static readonly DUMMY_FXDG_MINTER = "DummyFxdgMinter";
   public static readonly FTSO_FXDG_WFLR = "FtsoFxdgWflr";
+  public static readonly FTSO_WFLR = "FtsoWflr";
 
   constructor() {
     this.contracts = new Map<string, string>();
@@ -81,7 +82,7 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.FTSO_MANAGER, async() => {
     it("Should by kept by keeper", async() => {
         // Assemble
-        const FtsoManager = artifacts.require("FtsoManager")
+        const FtsoManager = artifacts.require("FtsoManager");
         const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
         // Act
         const startBlock = (await ftsoManager.rewardEpochs(0))[0];
@@ -89,6 +90,20 @@ contract(`deploy.ts system tests`, async accounts => {
         // If the keeper is calling keep on the RewardManager, then there should be
         // an active reward epoch.
         assert(startBlock.toNumber() != 0);
+    });
+  });
+
+  describe(Contracts.INFLATION, async() => {
+    it("Should know the reward manager", async() => {
+        // Assemble
+        const Inflation = artifacts.require("Inflation");
+        const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
+        // Act
+        const rewardManager = await inflation.rewardManager();
+        // Assert
+        // If the keeper is calling keep on the RewardManager, then there should be
+        // an active reward epoch.
+        assert.equal(rewardManager, contracts.getContractAddress(Contracts.REWARD_MANAGER));
     });
   });
 
