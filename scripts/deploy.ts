@@ -14,6 +14,10 @@ import { pascalCase } from "pascal-case";
 const BN = web3.utils.toBN;
 const { time } = require('@openzeppelin/test-helpers');
 
+// XRP: 1 drop = 0.000001 XRP
+// LTC: 1 litoshi = 0.00000001 LTC
+// XDG: 1 shibe = 0.00000001 XDG (smallest unit name is uncertain; 10^-8 seems correct )
+// Mint max is roughly set to $10,000 per coin
 const serializedParameters = `{
   "flareKeeperAddress": "0x1000000000000000000000000000000000000002",
   "deployerPrivateKey": "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122",
@@ -26,19 +30,19 @@ const serializedParameters = `{
     "fAssetName": "Flare Asset XRP",
     "fAssetSymbol": "FXRP",
     "fAssetDecimals": 6,
-    "dummyFAssetMinterMax": 1000
+    "dummyFAssetMinterMax": 7000000000
   },
   "LTC": {
     "fAssetName": "Flare Asset Litecoin",
     "fAssetSymbol": "FLTC",
-    "fAssetDecimals": 6,
-    "dummyFAssetMinterMax": 1000
+    "fAssetDecimals": 8,
+    "dummyFAssetMinterMax": 4000000000
   },
   "XDG": {
     "fAssetName": "Flare Asset Dogecoin",
     "fAssetSymbol": "FXDG",
-    "fAssetDecimals": 6,
-    "dummyFAssetMinterMax": 1000
+    "fAssetDecimals": 8,
+    "dummyFAssetMinterMax": 13000000000000
   }
 }`;
 
@@ -126,7 +130,8 @@ async function main(parameters: any) {
     rewardManager.address, 
     wflr.address, 
     parameters.XRP.fAssetName, 
-    parameters.XRP.fAssetSymbol, 
+    parameters.XRP.fAssetSymbol,
+    parameters.XRP. fAssetDecimals,
     parameters.XRP.dummyFAssetMinterMax);
 
   // Deploy FAsset, minter, and ftso for LTC
@@ -138,6 +143,7 @@ async function main(parameters: any) {
     wflr.address, 
     parameters.LTC.fAssetName, 
     parameters.LTC.fAssetSymbol, 
+    parameters.LTC. fAssetDecimals,
     parameters.LTC.dummyFAssetMinterMax);
 
   // Deploy FAsset, minter, and ftso for XDG
@@ -149,6 +155,7 @@ async function main(parameters: any) {
     wflr.address, 
     parameters.XDG.fAssetName, 
     parameters.XDG.fAssetSymbol, 
+    parameters.XDG. fAssetDecimals,
     parameters.XDG.dummyFAssetMinterMax);
 
   // Activate the reward manager
@@ -174,7 +181,8 @@ async function deployNewFAsset(
   rewardManagerAddress: string,
   wflrAddress: string, 
   name: string, 
-  symbol: string, 
+  symbol: string,
+  decimals: number, 
   maxMintRequestTwei: number):
   Promise<{fAssetToken: FAssetTokenInstance, 
     dummyFAssetMinter: DummyFAssetMinterInstance, 
@@ -185,7 +193,7 @@ async function deployNewFAsset(
   const Ftso = artifacts.require("Ftso") as FtsoContract;
 
   // Deploy FAsset
-  const fAssetToken = await FAssetToken.new(deployerAccountAddress, name, symbol);
+  const fAssetToken = await FAssetToken.new(deployerAccountAddress, name, symbol, decimals);
   spewNewContractInfo(contracts, symbol, fAssetToken.address);
 
   // Deploy dummy FAsset minter
