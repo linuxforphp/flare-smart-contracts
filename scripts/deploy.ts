@@ -158,7 +158,7 @@ async function main(parameters: any) {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new(wflr.address, constants.ZERO_ADDRESS, rewardManager.address);
+  const ftsoWflr = await Ftso.new(wflr.address, constants.ZERO_ADDRESS, ftsoManager.address);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address);
 
   // Deploy FAsset, minter, and ftso for XRP
@@ -166,7 +166,7 @@ async function main(parameters: any) {
   const [, ,ftsoFxrpWflr] = await deployNewFAsset(
     contracts,
     deployerAccount.address, 
-    rewardManager.address, 
+    ftsoManager.address, 
     wflr.address, 
     parameters.XRP.fAssetName, 
     parameters.XRP.fAssetSymbol,
@@ -178,7 +178,7 @@ async function main(parameters: any) {
   const [, ,ftsoFltcWflr] = await deployNewFAsset(
     contracts,
     deployerAccount.address, 
-    rewardManager.address, 
+    ftsoManager.address, 
     wflr.address, 
     parameters.LTC.fAssetName, 
     parameters.LTC.fAssetSymbol, 
@@ -190,7 +190,7 @@ async function main(parameters: any) {
   const [, ,ftsoFxdgWflr] = await deployNewFAsset(
     contracts,
     deployerAccount.address, 
-    rewardManager.address, 
+    ftsoManager.address, 
     wflr.address, 
     parameters.XDG.fAssetName, 
     parameters.XDG.fAssetSymbol, 
@@ -240,7 +240,7 @@ async function main(parameters: any) {
 async function deployNewFAsset(
   contracts: Contracts,
   deployerAccountAddress: string,
-  rewardManagerAddress: string,
+  ftsoManagerAddress: string,
   wflrAddress: string, 
   name: string, 
   symbol: string,
@@ -267,7 +267,7 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(wflrAddress, fAssetToken.address, rewardManagerAddress);
+  const ftso = await Ftso.new(wflrAddress, fAssetToken.address, ftsoManagerAddress);
   spewNewContractInfo(contracts, `FTSO ${symbol}/WFLR`, ftso.address);
 
   return [fAssetToken, dummyFAssetMinter, ftso];

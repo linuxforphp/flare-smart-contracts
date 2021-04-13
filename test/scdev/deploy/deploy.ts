@@ -20,6 +20,7 @@ class Contracts {
   private contracts: Map<string, string>;
   public static readonly INFLATION = "Inflation";
   public static readonly REWARD_MANAGER = "RewardManager";
+  public static readonly FTSO_MANAGER = "FtsoManager";
   public static readonly FLARE_KEEPER = "FlareKeeper";
   public static readonly WFLR = "Wflr";
   public static readonly FXRP = "Fxrp";
@@ -77,13 +78,13 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.REWARD_MANAGER, async() => {
+  describe(Contracts.FTSO_MANAGER, async() => {
     it("Should by kept by keeper", async() => {
         // Assemble
-        const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
-        const rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+        const FtsoManager = artifacts.require("FtsoManager")
+        const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
         // Act
-        const startBlock = (await rewardManager.rewardEpochs(0))[0];
+        const startBlock = (await ftsoManager.rewardEpochs(0))[0];
         // Assert
         // If the keeper is calling keep on the RewardManager, then there should be
         // an active reward epoch.
