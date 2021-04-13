@@ -3,16 +3,25 @@ pragma solidity 0.7.6;
 
 import "../IVotePower.sol";
 
+// import "hardhat/console.sol";
+
 contract MockVPToken is IVotePower {
 
     mapping(address => uint64) internal addressWeight;
-    uint256 totalWeight;
+    uint256 public totalWeight;
+    uint256 public addressCount;
     
+    // In case weights.length = 0, FLR balance is returned for one of the addresses.
     constructor(address[] memory addresses, uint64[] memory weights) {
-        assert(addresses.length == weights.length);
+        require(addresses.length == weights.length || weights.length == 0, "Error in parameters");
+        addressCount = addresses.length;
         for (uint256 i = 0; i < addresses.length; i++) {
-            addressWeight[addresses[i]] = weights[i];
-            totalWeight += weights[i];
+            addressWeight[addresses[i]] = weights.length > 0 ? weights[i] : uint64(addresses[i].balance);
+            if(weights.length > 0) {
+                totalWeight += weights[i];
+            } else {
+                totalWeight += uint64(addresses[i].balance);
+            }
         }
     }
 

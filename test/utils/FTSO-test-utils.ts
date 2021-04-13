@@ -794,6 +794,8 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     logger.log(`SUBMIT PRICE ${ len }`);
     const { epoch } = await submitPrice(signers, ftso, testExample.prices);
 
+    await ftso.initializeCurrentEpochStateForReveal();
+
     // Reveal price
     await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
     logger.log(`EPOCH 2: ${ (await ftso.getCurrentEpochId()).toNumber() }`);

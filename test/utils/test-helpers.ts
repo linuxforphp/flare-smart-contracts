@@ -156,3 +156,27 @@ export async function advanceBlock(): Promise<FlareBlock> {
 export function toBN(n: number | string) {
     return web3.utils.toBN(n);
 }
+
+export function numberedKeyedObjectToList<T>(obj: any) {
+    let lst: any[] = []
+    for (let i = 0; ; i++) {
+        if (i in obj) {
+            lst.push(obj[i])
+        } else {
+            break;
+        }
+    }
+    return lst as T[];
+}
+
+export function doBNListsMatch(lst1: BN[], lst2: BN[]) {
+    if (lst1.length != lst2.length) return false;
+    for (let i = 0; i < lst1.length; i++) {
+        if (!lst1[i].eq(lst2[i])) return false;
+    }
+    return true;
+}
+
+export function lastOf(lst: any[]) {
+    return lst[lst.length-1];
+}

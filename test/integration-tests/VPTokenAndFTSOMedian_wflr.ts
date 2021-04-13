@@ -172,6 +172,8 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, prices);
 
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 5`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, prices.slice(0, 5), epoch);
@@ -238,6 +240,8 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, testExample.prices);
 
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, testExample.prices, epoch);
@@ -268,6 +272,8 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
     
         // Test results
         checkTestCase(testCase);
+
+        await ftso.initializeCurrentEpochStateForReveal();
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
@@ -333,6 +339,8 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, testExample.prices);
         
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, testExample.prices, epoch);
@@ -377,6 +385,8 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
     
         // Test results
         checkTestCase(testCase);
+
+        await ftso.initializeCurrentEpochStateForReveal();
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
