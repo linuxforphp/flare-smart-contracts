@@ -30,11 +30,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
         rewardManagerInterface = await RewardManager.new(
             accounts[0],
-            inflation.address,
-            172800,                      // Reward epoch 2 days
-            120,                         // Price epoch 2 minutes
-            startTs,
-            startTs
+            inflation.address
         );
     });
 

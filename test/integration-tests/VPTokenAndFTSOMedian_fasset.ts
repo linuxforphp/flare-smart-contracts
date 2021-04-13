@@ -172,6 +172,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, prices);
 
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 5`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, prices.slice(0, 5), epoch);
@@ -239,6 +241,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, testExample.prices);
 
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, testExample.prices, epoch);
@@ -274,6 +278,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         for (let i = 0; i < testExample2.weightsAsset.length; i++) {
             testExample2.weightsAsset[i] *= 5;
         }
+
+        await ftso.initializeCurrentEpochStateForReveal();
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
@@ -340,6 +346,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, testExample.prices);
         
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, testExample.prices, epoch);
@@ -390,6 +398,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
             testExample2.weightsAsset[i] *= 5;
         }
         
+        await ftso.initializeCurrentEpochStateForReveal();
+
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
         await revealPrice(signers, ftso, testExample2.prices, epoch+1);

@@ -24,7 +24,7 @@ abstract contract CheckPointable is ICheckPointable {
      * @param blockNumber The block number when the balance is queried.
      * @return balance The balance at `blockNumber`.
      **/
-    function balanceOfAt(address owner, uint blockNumber) public override view returns (uint256 balance) {
+    function balanceOfAt(address owner, uint blockNumber) public view override returns (uint256 balance) {
         return _balanceHistory.valueOfAt(owner, blockNumber);
     }
 
@@ -56,7 +56,7 @@ abstract contract CheckPointable is ICheckPointable {
      * @param blockNumber The block number when the totalSupply is queried
      * @return totalSupply The total amount of tokens at `blockNumber`
      **/
-    function totalSupplyAt(uint blockNumber) public override view returns(uint256 totalSupply) {
+    function totalSupplyAt(uint blockNumber) public view override returns(uint256 totalSupply) {
         return _totalSupply.valueAt(blockNumber);
     }
 

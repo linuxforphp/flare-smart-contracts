@@ -39,3 +39,7 @@ package-lock.json
 ## gas report
 .gas-report.txt
 gasReporterOutput.json
+
+## Fake multiplatform /dev/null. On Win `1> nul` does not create a file
+## On Unix systems it creates a file 
+nul

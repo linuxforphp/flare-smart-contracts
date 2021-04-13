@@ -7,7 +7,7 @@ import "../interfaces/IInflation.sol";
 import "../interfaces/IRewardManager.sol";
 import "../lib/DateTimeLibrary.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract Inflation is IInflation, Governed, IFlareKeep {
     using BokkyPooBahsDateTimeLibrary for uint256;
