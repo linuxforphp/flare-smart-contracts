@@ -8,7 +8,7 @@ interface IFtso {
     // events
     event PriceSubmitted(address indexed submitter, uint256 epochId);
     event PriceRevealed(address indexed voter, uint256 epochId, uint256 price);
-    event PriceFinalized(uint256 epochId, uint256 price);
+    event PriceFinalized(uint256 epochId, uint256 price, bool forced);
 
     /// function finalizePriceReveal
     /// called by reward manager only on correct timing.
@@ -22,6 +22,8 @@ interface IFtso {
         uint256[] memory flrWeights,
         uint256 totalFlrWeight
     );
+
+    function forceFinalizePriceEpoch(uint256 epochId) external;
 
     /// init price epoch data will be called by reward manager once epoch is added 
     /// before this init is done. FTSO can't run.
@@ -44,6 +46,19 @@ interface IFtso {
     // the FTSO doesn't have notion of reward epochs.
     // reward manager only can set this data. 
     function setVotePowerBlock(uint256 blockNumber) external;
+
+    function initializeCurrentEpochStateForReveal() external returns (uint256 currentEpochId);
+
+    function epochsConfiguration() external view returns (
+        uint256 minVoteCount,
+        uint256 minVotePowerFlrThreshold,
+        uint256 minVotePowerAssetThreshold,
+        uint256 maxVotePowerFlrThreshold,
+        uint256 maxVotePowerAssetThreshold,
+        uint256 lowAssetUSDThreshold,
+        uint256 highAssetUSDThreshold,
+        uint256 highAssetTurnoutThreshold
+    );
 
     function getFAsset() external view returns (IVotePower);
 

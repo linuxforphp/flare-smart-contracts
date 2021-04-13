@@ -20,6 +20,10 @@ A list of attacks one of the devs reviewed against existing code base.
 
 #### Re Entrancy attack - Alen
 
+One of problematic things with reentry attacks is discrepancy between the actuall system currency amount on the contract and the balance maintained in the variable(s) in the contract (e.g. DAO hack).
+One efficient remedy is verification differences before and the end of an execution of a sensitive API call.
+See (https://www.frontiersin.org/articles/10.3389/fcomp.2021.598780/full)
+
 #### Default Visiblities - Chuck
 
 #### UnExpected Ether (FLR) - Jan

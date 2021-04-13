@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../IFtso.sol";
+import "./IFtsoManager.sol";
 
 /// @title IRewardManager high level
 /// The reward manager distributes price submission rewards for FLR vote power holders
@@ -23,20 +24,33 @@ import "../IFtso.sol";
 ///     - if not enough balance pull from Inflation contract.
 interface IRewardManager {
 
-    event FtsoAdded(IFtso ftso, bool add);
     event RewardClaimed(
         address indexed whoClaimed,
         address indexed sentTo,
         uint256 indexed rewardEpoch, 
         uint256 amount
     );
-    event PriceEpochFinalized();
-    event RewardEpochFinalized();
+    
+    event RewardDistributedByFtso(
+        address ftso,
+        uint256 indexed epochId,
+        address[] addresses,
+        uint256[] rewards
+    );
 
     ///@dev sender claims his reward
     function claimReward(address payable to, uint256 rewardEpoch) external returns(uint256 rewardAmount);
-
+    function distributeRewards(
+        address[] memory addresses,
+        uint256[] memory weights,
+        uint256 totalWeight,
+        uint256 epochId,
+        address ftso,
+        uint256 priceEpochDurationSec,
+        uint256 currentRewardEpoch
+    ) external returns (bool);
     function setDailyRewardAmount(uint256 rewardAmountTwei) external;
+    function setFTSOManager(IFtsoManager _ftsoManager) external;
 
     ///@dev each data provider can update sharing percentage of rewards
     /// if not set, a default percentage is used
