@@ -19,6 +19,7 @@ contract(`FlareKeeper system tests`, async accounts => {
         try {
             await flareKeeper.initialise(accounts[1]);
         } catch (e) {
+            console.log("Error caught initializing FlareKeeper; already initialized?: %s", e.message);
             // keep going
         }
     });

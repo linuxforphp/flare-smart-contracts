@@ -3,8 +3,6 @@ pragma solidity 0.7.6;
 
 import "../interfaces/IFtsoManager.sol";
 import "../interfaces/IRewardManager.sol";
-import "../interfaces/IFlareKeep.sol";
-import "../IFtso.sol";
 import "./Governed.sol";
 
 

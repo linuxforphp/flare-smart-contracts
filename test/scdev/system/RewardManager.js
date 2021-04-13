@@ -1,5 +1,5 @@
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
-const getTestFile = require('../utils/constants').getTestFile;
+const getTestFile = require('../../utils/constants').getTestFile;
 
 const FlareKeeper = artifacts.require("FlareKeeper");
 const RewardManager = artifacts.require("RewardManager");
