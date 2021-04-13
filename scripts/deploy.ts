@@ -123,7 +123,7 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, WFLR.contractName, wflr.address);
 
   // Deploy FAsset, minter, and ftso for XRP
-  console.log("Rigging XRP...");
+  console.error("Rigging XRP...");
   await deployNewFAsset(
     contracts,
     deployerAccount.address, 
@@ -135,7 +135,7 @@ async function main(parameters: any) {
     parameters.XRP.dummyFAssetMinterMax);
 
   // Deploy FAsset, minter, and ftso for LTC
-  console.log("Rigging LTC...");
+  console.error("Rigging LTC...");
   await deployNewFAsset(
     contracts,
     deployerAccount.address, 
@@ -147,7 +147,7 @@ async function main(parameters: any) {
     parameters.LTC.dummyFAssetMinterMax);
 
   // Deploy FAsset, minter, and ftso for XDG
-  console.log("Rigging XDG...");
+  console.error("Rigging XDG...");
   await deployNewFAsset(
     contracts,
     deployerAccount.address, 
@@ -159,20 +159,20 @@ async function main(parameters: any) {
     parameters.XDG.dummyFAssetMinterMax);
 
   // Activate the reward manager
-  console.log("Activating reward manager...");
+  console.error("Activating reward manager...");
   await rewardManager.activate();
 
   // Turn over governance
-  console.log("Transfering governance...");
+  console.error("Transfering governance...");
   await flareKeeper.proposeGovernance(governanceAccount.address);
   await rewardManager.proposeGovernance(governanceAccount.address);
   await inflation.proposeGovernance(governanceAccount.address);
 
-  console.log("Contracts in JSON:");
+  console.error("Contracts in JSON:");
 
   console.log(contracts.serialize());
 
-  console.log("Deploy complete.");
+  console.error("Deploy complete.");
 }
 
 async function deployNewFAsset(
@@ -212,7 +212,7 @@ async function deployNewFAsset(
 }
 
 function spewNewContractInfo(contracts: Contracts, name: string, address: string) {
-  console.log(`${name} contract: `, address);
+  console.error(`${name} contract: `, address);
   contracts.add(new Contract(pascalCase(name), address));
 }
 
