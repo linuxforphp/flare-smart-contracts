@@ -84,6 +84,12 @@ const config: HardhatUserConfig = {
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
+    ftsomvp: {
+      url: "http://127.0.0.1:9670/ext/bc/C/rpc",
+      gas: 10000000,
+      timeout: 40000,
+      accounts: accounts.map((x: any) => x.privateKey)
+    },
     hardhat: {
       accounts,
       initialDate: "2021-01-01",  // no time - get UTC @ 00:00:00
