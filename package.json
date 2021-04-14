@@ -22,6 +22,7 @@
     "testTimeShift": "env VM_FLARE_TEST=shift yarn hardhat test --network develop",
     "testTimeWait": "env VM_FLARE_TEST=real yarn hardhat test --network develop",
     "testDeploySCDev": "yarn compile && x=$(yarn --silent hardhat run ./scripts/deploy.ts --network scdev) && echo $x | yarn hardhat test --network scdev ./test/scdev/deploy/deploy.ts",
+    "testDeployFtsoMvp": "yarn compile && x=$(yarn --silent hardhat run ./scripts/deploy.ts --network ftsomvp) && echo $x | yarn hardhat test --network ftsomvp ./test/scdev/deploy/deploy.ts",
     "compile": "yarn hardhat compile && yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
     "c": "yarn compile",
     "lint": "yarn solhint 'contracts/**/*.sol'",
