@@ -62,3 +62,47 @@ Each of these calls can have additional parameters, namely paths to specific fil
 ## Running tests VM with time-shifts
 
 See [`scripts/local-flare-chain-vm/README.md`](scripts/local-flare-chain-vm/README.md).
+
+## Deployment on SC private test network
+
+### Configure Metamask
+Open Metamask, click on network and choose Custom RPC.
+Use the following configuration:
+- Network name: Coston SC Team
+- New RPC url: https://coston-sc-team.flare.rocks/ext/bc/C/rpc
+- Chain ID: 20210413
+- Currency symbol: FLR
+
+When you are connected, you can add account.
+Click on account avatar, choose Create Account. In Create tab name the account `Ftso MVP 0`. Select Import tab. Paste the first private key from `test-1020-accounts.json` to relevant field. Press Create button. Do this for the next 2 private keys to have, say 3 accounts. FLR balance should appear.
+
+### Testing with Remix
+
+Important: you must work in a browser that has Metamask installed and configured to the network stated above and have the first account from `test-1020-accounts.json` configured in it. The metamask should also be connected to that network (Coston SC Team).
+Link to Remix: [https://remix.ethereum.org/](https://remix.ethereum.org/)
+
+### Configuring compiler
+
+Choose `Solidity compiler` icon on the left (the second one) and set the following:
+
+- Compiler: 0.7.6+commit ...
+- Tick the checkboxes:
+   - Autocompile
+   - Enable optimization. Also set 100000 (the number should match the one in `hardhat.config.ts` for number of runs of the optimizer)
+
+### Configuring deployment
+
+Choose `Deploy & run transactions` icon on the left (the third one)
+Set as `Environment`: `Injected Web3`. This will open Metamask. Select the account `Ftso MVP 0`.
+The account number should appear selected in Account dropdown in Remix.
+
+### Deploying contract
+
+For a particular contract run a script, for example:
+
+`./scripts/flatten.sh contracts/implementations/Ftso.sol`
+
+This generates a flattened contract in the relevant subfolder of `flattened` folder.
+
+Then open Remix at `https://remix.ethereum.org/`
+
