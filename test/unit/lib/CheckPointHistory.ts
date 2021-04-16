@@ -59,5 +59,20 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
     let balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
     // Assert
     assert.equal(balanceAtBlock2 as any, 20);
-  })
+  });
+
+  it("Should perform O(log(n)) search on checkpoints", async() => {
+    // Assemble
+    const b = [];
+    for (let i = 0; i < 200; i++) {
+      b[i] = await web3.eth.getBlockNumber();
+      await checkPointHistoryMock.writeValueAtNow(i);      
+    }
+    // Act
+    const valueAt = checkPointHistoryMock.contract.methods.valueAt(b[100]).encodeABI();
+    const gas = await web3.eth.estimateGas({to: checkPointHistoryMock.address, data: valueAt});
+    // Assert
+    // This is actually 300000+ if checkpoints specifier is memory vs storage
+    assert(gas < 75000);
+  });
 });
