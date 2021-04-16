@@ -34,8 +34,8 @@ library CheckPointHistory {
      * @param blockNumber The block number to search for.
      */
     function indexOfGreatestBlockLessThan(
-        CheckPoint[] memory checkpoints, 
-        uint256 blockNumber) private pure returns (uint256 index) {
+        CheckPoint[] storage checkpoints, 
+        uint256 blockNumber) private view returns (uint256 index) {
         // Binary search of the value by given block number in the array
         uint256 min = 0;
         uint256 max = checkpoints.length.sub(1);
