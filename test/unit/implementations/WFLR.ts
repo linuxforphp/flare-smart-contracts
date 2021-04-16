@@ -122,5 +122,13 @@ contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
     await expectRevert(withdrawPromise, ALLOWANCE_EXCEEDED_MSG);
   });
 
+  it("Should not receive either without calling deposit", async() => {
+    // Assemble
+    // Act
+    let callPromise = web3.eth.call({to: wflr.address, value: toBN(50)});
+    // Assert
+    await expectRevert(callPromise, "function selector was not recognized and there's no fallback nor receive function");    
+  });
+
   // TODO: Test Deposit and Withdrawal events
 });

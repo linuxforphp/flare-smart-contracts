@@ -21,14 +21,6 @@ contract WFLR is VPToken {
     }
 
     /**
-     * Fallback function that will deposit Flare and issue
-     * WFLR in return.
-     */
-    receive() external payable {
-        deposit();
-    }
-
-    /**
      * @notice Withdraw WFLR from an owner and send FLR to msg.sender given an allowance.
      * @param owner An address spending the Flare tokens.
      * @param amount The amount to spend.
