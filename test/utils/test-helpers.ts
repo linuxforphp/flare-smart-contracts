@@ -180,3 +180,17 @@ export function doBNListsMatch(lst1: BN[], lst2: BN[]) {
 export function lastOf(lst: any[]) {
     return lst[lst.length-1];
 }
+
+export function compareNumberArrays(a: BN[], b: number[]) {
+    expect(a.length).to.equals(b.length);
+    for (let i = 0; i < a.length; i++) {
+        expect(a[i].toNumber()).to.equals(b[i]);
+    }
+}
+
+export function compareArrays<T>(a: T[], b: T[]) {
+    expect(a.length).to.equals(b.length);
+    for (let i = 0; i < a.length; i++) {
+        expect(a[i]).to.equals(b[i]);
+    }
+}

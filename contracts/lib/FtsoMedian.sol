@@ -286,6 +286,10 @@ library FtsoMedian {
     )
         internal pure returns (uint256)
     {
+        if (start == end) {
+            return price[index[start]];
+        }
+
         uint closestPrice = price[index[start + 1]];
         uint newPrice;
         for (uint32 i = start + 2; i <= end; i++) {

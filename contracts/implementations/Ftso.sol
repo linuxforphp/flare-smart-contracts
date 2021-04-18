@@ -133,7 +133,7 @@ contract Ftso is IFtso {
     function finalizePriceEpoch(
         uint256 _epochId,
         bool _returnRewardData
-    ) public override onlyFtsoManager returns(
+    ) external override onlyFtsoManager returns(
         address[] memory _eligibleAddresses,
         uint256[] memory _flrWeights,
         uint256 _flrWeightsSum
@@ -341,11 +341,15 @@ contract Ftso is IFtso {
     }
 
     /**
-     * @notice Returns random number of the current epoch
+     * @notice Returns current random number
      * @return Random number
      */
     function getCurrentRandom() external view override returns (uint256) {
-        return epochs.instance[getCurrentEpochId()].random;
+        uint256 currentEpochId = getCurrentEpochId();
+        if (currentEpochId == 0) {
+            return 0;
+        }
+        return epochs.instance[currentEpochId -1].random;
     }
 
     /**
@@ -474,7 +478,7 @@ contract Ftso is IFtso {
      * @param _epochId              Id of the epoch
      */
     function getEpochRevealTimeLeft(uint256 _epochId) external view returns (uint256) {
-        uint256 submitEndTime = epochs._epochRevealEndTime(_epochId);
+        uint256 submitEndTime = epochs._epochSubmitEndTime(_epochId);
         uint256 revealEndTime = submitEndTime + epochs.revealPeriod;
         if (submitEndTime < block.timestamp && block.timestamp < revealEndTime) {
             return revealEndTime - block.timestamp;

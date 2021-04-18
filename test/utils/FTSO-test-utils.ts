@@ -263,7 +263,7 @@ function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumFlr: number
         let BIPS100 = 1e4;
         let flrShare = Math.floor(((BIPS100 - weightRatio) * totalSumAsset) / BIPS100);
         let assetShare = Math.floor((weightRatio * totalSumFlr) / BIPS100);            
-        weight = Math.floor((flrShare * vote.weightFlr + assetShare * vote.weightAsset) / BIPS100);
+        weight = flrShare * vote.weightFlr + assetShare * vote.weightAsset;
     }
     return weight;
 }
@@ -493,13 +493,13 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
  * @returns 
  */
 export function updateWithRewardedVotesInfo(epochResult: EpochResult, data: any): EpochResult {
-    if (data.eligibleAddresses?.length != data.flrWeights?.length) {
-        throw Error(`FLR weights length (${ data.flrWeights?.length }) and addresses length (${ data.flrWeights?.length }) should match.`);
+    if (data._eligibleAddresses?.length != data._flrWeights?.length) {
+        throw Error(`FLR weights length (${ data._flrWeights?.length }) and addresses length (${ data._flrWeights?.length }) should match.`);
     }
 
     let rewardedVotes: RewardedVoteInfo[] = [];
-    for (let i = 0; i < data.eligibleAddresses.length; i++) {
-        rewardedVotes.push({ weightFlr: data.flrWeights[i], address: data.eligibleAddresses[i] } as RewardedVoteInfo);
+    for (let i = 0; i < data._eligibleAddresses.length; i++) {
+        rewardedVotes.push({ weightFlr: data._flrWeights[i], address: data._eligibleAddresses[i] } as RewardedVoteInfo);
     }
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
 
@@ -674,11 +674,13 @@ export async function moveToNextEpochStart(epochStartTimestamp: number, epochPer
  * Helper shifting time to the beggining of the next epoch
  * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
  * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
+ * @returns new epochId
  */
-export async function moveFromCurrentToNextEpochStart(epochStartTimestamp: number, epochPeriod: number) {
+export async function moveFromCurrentToNextEpochStart(epochStartTimestamp: number, epochPeriod: number, offset = 0): Promise<number> {
     let blockInfo = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
     let currentEpoch = Math.floor((blockInfo.timestamp - epochStartTimestamp) / epochPeriod);
-    await moveToNextEpochStart(epochStartTimestamp, epochPeriod, currentEpoch);
+    await moveToNextEpochStart(epochStartTimestamp, epochPeriod, currentEpoch, offset);
+    return currentEpoch + 1;
 }
 
 /**
@@ -809,9 +811,8 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
 
     // Finalize
     await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-    let resFinalizePrice = await waitFinalize(signers[0], () => ftso.connect(signers[0]).finalizePriceEpochWithResult(epoch))
-    logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
-    let epochFinalizeResponse = resFinalizePrice.events![1].args;
+    let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+    logger.log(`epoch finalization, ${ len }`);
     
     // Print results                
     let res = await ftso.getEpochResult(epoch);
@@ -862,4 +863,17 @@ export async function revealPrice(signers: readonly SignerWithAddress[], ftso: F
         )
     }
     await Promise.all(epochPromises);
+}
+
+/**
+ * Use call to get result and then send transaction as it does not emit an event
+ * @param signer reward manager
+ * @param ftso contract
+ * @param epochId epoch id
+ * @returns finalize price epoch result (_eligibleAddresses, _flrWeights, _flrWeightsSum)
+ */
+export async function finalizePriceEpochWithResult(signer: SignerWithAddress, ftso: Ftso, epochId: number): Promise<{ _eligibleAddresses: string[]; _flrWeights: BigNumber[]; _flrWeightsSum: BigNumber; }> {
+    let epochFinalizeResponse = await ftso.connect(signer).callStatic.finalizePriceEpoch(epochId, true);
+    await waitFinalize(signer, () => ftso.connect(signer).finalizePriceEpoch(epochId, true));
+    return epochFinalizeResponse;
 }
