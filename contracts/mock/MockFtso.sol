@@ -75,21 +75,6 @@ contract MockFtso is Ftso {
         fAssetPriceUSD = _price;
     }
 
-    function finalizePriceEpochWithResult(uint256 _epochId)
-        external
-        returns (
-            address[] memory eligibleAddresses,
-            uint256[] memory flrWeights,
-            uint256 flrWeightsSum
-        )
-    {
-        (eligibleAddresses, flrWeights, flrWeightsSum) = finalizePriceEpoch(
-            _epochId,
-            true
-        );
-        emit FinalizeEpochResults(eligibleAddresses, flrWeights, flrWeightsSum);
-    }
-
     function epochCount(uint256 _epochId) external view returns (uint256) {
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         return epoch.voteCount;

@@ -338,7 +338,7 @@ library FtsoEpoch {
             uint256 flrShare = ((BIPS100 - _weightRatio) * _weightsAssetSum) / BIPS100;
             uint256 assetShare = (_weightRatio * _weightsFlrSum) / BIPS100;            
             for (uint32 i = 0; i < _instance.voteCount; i++) {
-                _weights[i] = (flrShare * _weightsFlr[i] + assetShare * _weightsAsset[i]) / BIPS100;
+                _weights[i] = flrShare * _weightsFlr[i] + assetShare * _weightsAsset[i];
             }
         }
     }
@@ -354,7 +354,7 @@ library FtsoEpoch {
         uint256 weight;
         if (_instance.weightAssetSum == 0) {
             weight = _weightFlr;
-        } else if (_instance.weightAssetSum == 0) {
+        } else if (_instance.weightFlrSum == 0) {
             weight = _weightAsset;
         } else {
             // combine FLR and asset weight
@@ -362,7 +362,7 @@ library FtsoEpoch {
             uint256 flrShare = ((BIPS100 - weightRatio) * _instance.weightAssetSum) / BIPS100;
             uint256 assetShare = (weightRatio * _instance.weightFlrSum) / BIPS100;            
             for (uint32 i = 0; i < _instance.voteCount; i++) {
-                weight = (flrShare * _weightFlr + assetShare * _weightAsset) / BIPS100;
+                weight = flrShare * _weightFlr + assetShare * _weightAsset;
             }
         }
         return weight;

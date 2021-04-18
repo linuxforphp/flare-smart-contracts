@@ -64,7 +64,12 @@ library FtsoVote {
      * @return Vote weight
      * @dev Vote power is adjusted to uint64
      */
-    function _getWeight(uint256 _votePower, uint256 _maxVotePower, uint256 _totalVotePower) private pure returns (uint64) {
+    function _getWeight(
+        uint256 _votePower,
+        uint256 _maxVotePower,
+        uint256 _totalVotePower
+    ) private pure returns (uint64)
+    {
         uint64 weight;
         if (_maxVotePower <= MAX_UINT64) {
             weight = uint64(_votePower);

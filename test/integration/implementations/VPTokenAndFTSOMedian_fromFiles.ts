@@ -1,9 +1,9 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import path from "path";
-import { MockFtso, VPTokenMock, WFLR } from "../../typechain";
-import { checkTestCase, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../utils/FTSO-test-utils";
-import { newContract } from "../utils/test-helpers";
+import { MockFtso, VPTokenMock, WFLR } from "../../../typechain";
+import { checkTestCase, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
+import { newContract } from "../../utils/test-helpers";
 
 const fs = require('fs');
 

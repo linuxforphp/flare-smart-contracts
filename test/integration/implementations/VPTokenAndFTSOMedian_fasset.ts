@@ -1,10 +1,9 @@
-import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { MockFtso, VPTokenMock, WFLR } from "../../typechain";
-import { checkTestCase, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../utils/FTSO-test-utils";
-import { newContract } from "../utils/test-helpers";
-import { TestExampleLogger } from "../utils/TestExampleLogger";
+import { MockFtso, VPTokenMock, WFLR } from "../../../typechain";
+import { checkTestCase, finalizePriceEpochWithResult, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
+import { newContract } from "../../utils/test-helpers";
+import { TestExampleLogger } from "../../utils/TestExampleLogger";
 
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
@@ -185,9 +184,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
 
         // Finalize
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-        let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
-        logger.log(`epoch finalization, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
-        let epochFinalizeResponse = resFinalizePrice.events![1].args;
+        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+        logger.log(`epoch finalization, ${ len }`);
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
@@ -257,9 +255,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
 
         // Finalize
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-        let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
-        logger.log(`epoch finalization 1, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
-        let epochFinalizeResponse = resFinalizePrice.events![1].args;
+        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+        logger.log(`epoch finalization, ${ len }`);
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
@@ -292,9 +289,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
 
         // Finalize 2
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch+1);
-        let resFinalizePrice2 = await (await ftso.finalizePriceEpochWithResult(epoch+1)).wait(1);
-        logger.log(`epoch finalization 2, ${ len }, gas used: ${ resFinalizePrice2.gasUsed }`);
-        let epochFinalizeResponse2 = resFinalizePrice2.events![1].args;
+        let epochFinalizeResponse2 = await finalizePriceEpochWithResult(signers[0], ftso, epoch+1);
+        logger.log(`epoch finalization 2, ${ len }`);
         
         // Print results 2
         let res2 = await ftso.getEpochResult(epoch+1);
@@ -376,9 +372,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
 
         // Finalize
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-        let resFinalizePrice = await (await ftso.finalizePriceEpochWithResult(epoch)).wait(1);
-        logger.log(`epoch finalization 1, ${ len }, gas used: ${ resFinalizePrice.gasUsed }`);
-        let epochFinalizeResponse = resFinalizePrice.events![1].args;
+        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+        logger.log(`epoch finalization 1, ${ len }`);
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
@@ -411,9 +406,8 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
 
         // Finalize 2
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch+1);
-        let resFinalizePrice2 = await (await ftso.finalizePriceEpochWithResult(epoch+1)).wait(1);
-        logger.log(`epoch finalization 2, ${ len }, gas used: ${ resFinalizePrice2.gasUsed }`);
-        let epochFinalizeResponse2 = resFinalizePrice2.events![1].args;
+        let epochFinalizeResponse2 = await finalizePriceEpochWithResult(signers[0], ftso, epoch+1);
+        logger.log(`epoch finalization 2, ${ len }`);
         
         // Print results 2
         let res2 = await ftso.getEpochResult(epoch+1);
