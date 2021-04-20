@@ -7,8 +7,12 @@ interface IFtso {
 
     // events
     event PriceSubmitted(address indexed submitter, uint256 epochId);
-    event PriceRevealed(address indexed voter, uint256 epochId, uint256 price);
+    event PriceRevealed(
+        address indexed voter, uint256 epochId, uint256 price, 
+        uint256 votePowerFlr, uint256 votePowerAsset
+    );
     event PriceFinalized(uint256 epochId, uint256 price, bool forced);
+    event PriceEpochInitializedOnFtso(uint256 epochId, uint256 endTime);
 
     /// function finalizePriceReveal
     /// called by reward manager only on correct timing.
@@ -80,6 +84,12 @@ interface IFtso {
         uint256 _epochId,
         uint256 _epochSubmitEndTime,
         uint256 _epochRevealEndTime
+    );
+
+    function getPriceEpochConfiguration() external view returns (
+        uint256 firstEpochStartTime,
+        uint256 submitPeriod,
+        uint256 revealPeriod
     );
 
     function getCurrentPrice() external view returns (uint256);

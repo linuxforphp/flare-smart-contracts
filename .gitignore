@@ -9,6 +9,7 @@
 dist
 typechain
 typechain-truffle
+typechain-web3
 
 # Testing
 test_logs
@@ -46,3 +47,10 @@ nul
 
 ## Flattened contracts
 flattened
+
+## Annoying .DS_Store on mac
+.DS_Store
+
+## Test deploys info
+deploys/*
+!deploys/ftsoMvpNetwork.json

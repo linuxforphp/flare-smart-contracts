@@ -20,7 +20,7 @@ import { DummyFAssetMinterContract,
 
 import { pascalCase } from "pascal-case";
 
-import { serializedParameters } from "./DeploymentParameters";
+// import { serializedParameters } from "./DeploymentParameters";
 
 const BN = web3.utils.toBN;
 const { constants, time } = require('@openzeppelin/test-helpers');
@@ -47,11 +47,12 @@ class Contracts {
   }
 
   serialize(): string {
-    return JSON.stringify(this.collection);
+    return JSON.stringify(this.collection, null, 2);
   }
 }
 
-const parameters = JSON.parse(serializedParameters);
+// const parameters = JSON.parse(serializedParameters);
+const parameters = require(`./chain-config/${process.env.CHAIN_CONFIG}.json`)
 
 async function main(parameters: any) {
   // Define repository for created contracts

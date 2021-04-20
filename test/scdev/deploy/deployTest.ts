@@ -15,10 +15,12 @@ import { DummyFAssetMinterContract,
   FtsoManagerContract,
   FtsoManagerInstance } from "../../../typechain-truffle";
 
-import { serializedParameters } from "../../../scripts/DeploymentParameters";
+// import { serializedParameters } from "../../../scripts/DeploymentParameters";
 
-const parameters = JSON.parse(serializedParameters);
+// console.log(process.argv)
+// // const parameters = JSON.parse(serializedParameters);
 
+const parameters = require(`../../../scripts/chain-config/${process.env.CHAIN_CONFIG}.json`)
 const BN = web3.utils.toBN;
 
 class Contracts {

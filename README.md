@@ -52,10 +52,10 @@ Note: be sure to compile (`yarn c`) after any solidity code changes or on a clea
 Then one can run different types of test.
 
 - `yarn testHH` - all tests in hardhat environment
-- `yarn testUnitHH` - only unit tests in hardhat environment
-- `yarn testPerformanceHH` - only performance tests in hardhat environment
-- `yarn testTimeShift` - all tests on local test Flare chain if ran in multipass virtual machine with time shifting
-- `yarn testTimeWait` - all test on local test Flare chain with no time shifting but time waiting instead
+- `yarn test_unit_hh` - only unit tests in hardhat environment
+- `yarn test_performance_hh` - only performance tests in hardhat environment
+- `yarn test_timeshift` - all tests on local test Flare chain if ran in multipass virtual machine with time shifting
+- `yarn test_timewait` - all test on local test Flare chain with no time shifting but time waiting instead
 
 Each of these calls can have additional parameters, namely paths to specific files with tests. Also glob expressions can be used, but note that glob expressions are expanded in `bash` to a sequence of space separated path. Also by default, glob expressions in bash containing `/**/` do not by default expand to all files, so one can switch on full expansion by setting `shopt -s globstar` and if needed, later switched off by `shopt -u globstar`.
 
@@ -79,7 +79,7 @@ Click on account avatar, choose Create Account. In Create tab name the account `
 ### Testing with Remix
 
 Important: you must work in a browser that has Metamask installed and configured to the network stated above and have the first account from `test-1020-accounts.json` configured in it. The metamask should also be connected to that network (Coston SC Team).
-Link to Remix: [https://remix.ethereum.org/](https://remix.ethereum.org/)
+Link to Remix: (https://remix.ethereum.org/)
 
 ### Configuring compiler
 
@@ -104,5 +104,5 @@ For a particular contract run a script, for example:
 
 This generates a flattened contract in the relevant subfolder of `flattened` folder.
 
-Then open Remix at `https://remix.ethereum.org/`
+Chose `File explorers` icon on the left (the first one). Load a flattened file into workspace. 
 
