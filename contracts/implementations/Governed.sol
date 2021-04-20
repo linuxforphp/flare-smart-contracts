@@ -21,7 +21,7 @@ contract Governed {
         }
     }
 
-    function initialise(address _governance) public {
+    function initialise(address _governance) public virtual {
         require(initialised == false, "initialised != false");
 
         initialised = true;
