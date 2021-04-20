@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../IFtso.sol";
-import "../IVotePower.sol";
+import "../interfaces/IFAsset.sol";
 import "../interfaces/IFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
 import "../lib/FtsoVote.sol";
@@ -45,14 +45,14 @@ contract Ftso is IFtso {
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
 
     // external contracts
-    IVotePower public immutable fFlr;           // wrapped FLR
-    IVotePower public fAsset;                   // wrapped asset (for a single-asset FTSO)
+    IFAsset public immutable fFlr;              // wrapped FLR
+    IFAsset public fAsset;                      // wrapped asset (for a single-asset FTSO)
     IFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
-    IFtsoManager public ftsoManager;        // reward manager contract
+    IFtsoManager public ftsoManager;            // FTSO manager contract
 
     constructor(
-        IVotePower _fFlr,
-        IVotePower _fAsset,
+        IFAsset _fFlr,
+        IFAsset _fAsset,
         IFtsoManager _ftsoManager
     ) {
         fFlr = _fFlr;
@@ -107,8 +107,6 @@ contract Ftso is IFtso {
         uint256 voteId = votes._createInstance(
             votePowerFlr,
             votePowerAsset,
-            epoch.maxVotePowerFlr,
-            epoch.maxVotePowerAsset,
             epoch.votePowerFlr,
             epoch.votePowerAsset,
             _price
@@ -263,7 +261,7 @@ contract Ftso is IFtso {
         uint256 epochId = getCurrentEpochId();
         FtsoEpoch.Instance storage epoch = epochs.instance[epochId];
 
-        IVotePower[] memory assets;
+        IFAsset[] memory assets;
         uint256[] memory assetVotePowers;
         uint256[] memory assetPrices;
         (assets, assetVotePowers, assetPrices) = getAssetData();
@@ -309,7 +307,7 @@ contract Ftso is IFtso {
      * @notice Returns the FTSO asset
      * @dev fAsset is null in case of multi-asset FTSO
      */
-    function getFAsset() external view override returns (IVotePower) {
+    function getFAsset() external view override returns (IFAsset) {
         return fAsset;
     }
 
@@ -350,6 +348,15 @@ contract Ftso is IFtso {
             return 0;
         }
         return epochs.instance[currentEpochId -1].random;
+    }
+
+    /**
+     * @notice Returns random number of the specified epoch
+     * @param _epochId              Id of the epoch
+     * @return Random number
+     */
+    function getRandom(uint256 _epochId) external view returns (uint256) {
+        return epochs.instance[_epochId].random;
     }
 
     /**
@@ -460,8 +467,7 @@ contract Ftso is IFtso {
             _voters[i] = votes.sender[id];
             _prices[i] = vote.price;
             _weightsFlr[i] = vote.weightFlr;
-            _weightsAsset[i] = vote.weightAsset;
-            _weights[i] = FtsoEpoch._getWeight(epoch, _weightsFlr[i], _weightsAsset[i]);
+            _weightsAsset[i] = vote.weightAsset;            
             if (id == firstIdEligibleForReward) {
                 eligibleForReward = true;
             }
@@ -471,6 +477,7 @@ contract Ftso is IFtso {
             }
             id = epochs.nextVoteId[id];
         }
+        _weights = FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);        
     }
 
     /**
@@ -484,6 +491,20 @@ contract Ftso is IFtso {
             return revealEndTime - block.timestamp;
         } else {
             return 0;
+        }
+    }
+
+    /**
+     * @notice Forces finalization of the epoch by initializing the median price to the one of the 
+     * previous block or 0 (for initial _epochId == 0)
+     */
+    function _forceFinalizePriceEpoch(uint256 _epochId) internal {
+        if (_epochId > 0) {
+            epochs.instance[_epochId].medianPrice = epochs.instance[_epochId - 1].medianPrice;
+            emit PriceFinalized(_epochId, epochs.instance[_epochId - 1].medianPrice, true);
+        } else {
+            epochs.instance[_epochId].medianPrice = 0;
+            emit PriceFinalized(_epochId, 0, true);
         }
     }
 
@@ -519,11 +540,8 @@ contract Ftso is IFtso {
             id = epochs.nextVoteId[id];
         }
 
-        (weight, _epoch.weightRatio) = epochs.computeWeights(
-            _epoch, weightFlr, weightAsset, weightFlrSum, weightAssetSum);
-
-        _epoch.weightFlrSum = weightFlrSum;
-        _epoch.weightAssetSum = weightAssetSum;
+        epochs._setWeightsParameters(_epoch, weightFlrSum, weightAssetSum);
+        weight = FtsoEpoch._computeWeights(_epoch, weightFlr, weightAsset);
     }
 
     /**
@@ -578,13 +596,13 @@ contract Ftso is IFtso {
     ) internal
     {
         // relink results
-        for (uint32 i = 0; i < data.length - 1; i++) {
+        for (uint32 i = 0; i < index.length - 1; i++) {
             epochs.nextVoteId[vote[index[i]]] = vote[index[i + 1]];
         }
 
         // store data
         epoch.firstVoteId = vote[index[0]];
-        epoch.lastVoteId = vote[index[data.length - 1]];
+        epoch.lastVoteId = vote[index[index.length - 1]];
         epoch.truncatedFirstQuartileVoteId = vote[index[data.quartile1Index]];
         epoch.truncatedLastQuartileVoteId = vote[index[data.quartile3Index]];
         epoch.firstQuartileVoteId = vote[index[data.quartile1IndexOriginal]];
@@ -642,12 +660,12 @@ contract Ftso is IFtso {
      * @return _prices              List of asset prices
      */
     function getAssetData() internal view returns (
-        IVotePower[] memory _assets,
+        IFAsset[] memory _assets,
         uint256[] memory _votePowers,
         uint256[] memory _prices
     ) {
         // gather assets
-        _assets = new IVotePower[](fAssetFtsos.length);
+        _assets = new IFAsset[](fAssetFtsos.length);
         for (uint256 i = 0; i < fAssetFtsos.length; i++) {
             _assets[i] = fAssetFtsos[i].getFAsset();
         }
@@ -656,7 +674,7 @@ contract Ftso is IFtso {
         _votePowers = new uint256[](_assets.length);
         _prices = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
-            _votePowers[i] = getVotePower(_assets[i], epochs.votePowerBlock);            
+            _votePowers[i] = getVotePower(_assets[i], epochs.votePowerBlock);
             _prices[i] = fAssetFtsos[i].getCurrentPrice();
         }
     }
@@ -668,29 +686,28 @@ contract Ftso is IFtso {
      * @dev Checks if vote power is sufficient and adjusts vote power if it is too large
      */
     function getVotePowerOf(FtsoEpoch.Instance storage _epoch, address _owner) internal view returns (
-        uint256 votePowerFlr,
-        uint256 votePowerAsset
+        uint256 _votePowerFlr,
+        uint256 _votePowerAsset
     ) {
-        votePowerFlr = getVotePowerOf(fFlr, _epoch.votePowerBlock, _owner);
+        _votePowerFlr = getVotePowerOf(fFlr, _epoch.votePowerBlock, _owner);
         
-        votePowerAsset = 0;
+        uint256[] memory votePowersAsset = new uint256[](_epoch.assets.length);
         for (uint256 i = 0; i < _epoch.assets.length; i++) {            
-            votePowerAsset += (
-                getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, _owner) * _epoch.assetWeightedPrices[i]
-            ) / FtsoEpoch.BIPS100;
+            votePowersAsset[i] = getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, _owner);
         }
+        _votePowerAsset = FtsoEpoch._getAssetVotePower(_epoch, votePowersAsset);
         
         require(
-            votePowerFlr >= _epoch.minVotePowerFlr || votePowerAsset >= _epoch.minVotePowerAsset,
+            _votePowerFlr >= _epoch.minVotePowerFlr || _votePowerAsset >= _epoch.minVotePowerAsset,
             ERR_VOTEPOWER_INSUFFICIENT
         );
         
-        if (votePowerFlr > _epoch.maxVotePowerFlr) {
-            votePowerFlr = _epoch.maxVotePowerFlr;
+        if (_votePowerFlr > _epoch.maxVotePowerFlr) {
+            _votePowerFlr = _epoch.maxVotePowerFlr;
         }
         
-        if (votePowerAsset > _epoch.maxVotePowerAsset) {
-            votePowerAsset = _epoch.maxVotePowerAsset;
+        if (_votePowerAsset > _epoch.maxVotePowerAsset) {
+            _votePowerAsset = _epoch.maxVotePowerAsset;
         }
     }
 
@@ -700,7 +717,7 @@ contract Ftso is IFtso {
      * @param _vpBlock              Vote power block
      * @dev Returns 0 if vote power token is null
      */
-    function getVotePower(IVotePower _vp, uint256 _vpBlock) internal view returns (uint256) {
+    function getVotePower(IFAsset _vp, uint256 _vpBlock) internal view returns (uint256) {
         if (address(_vp) == address(0)) {
             return 0;
         } else {
@@ -715,7 +732,7 @@ contract Ftso is IFtso {
      * @param _owner                Owner address
      * @dev Returns 0 if vote power token is null
      */
-    function getVotePowerOf(IVotePower _vp, uint256 _vpBlock, address _owner) internal view returns (uint256) {
+    function getVotePowerOf(IFAsset _vp, uint256 _vpBlock, address _owner) internal view returns (uint256) {
         if (address(_vp) == address(0)) {
             return 0;
         } else {
@@ -728,20 +745,6 @@ contract Ftso is IFtso {
      */
     function isSingleAssetFtso() internal view returns (bool) {
         return address(fAsset) != address(0);
-    }
-
-    /**
-     * @notice Forces finalization of the epoch by initializing the median price to the one of the 
-     * previous block or 0 (for initial _epochId == 0)
-     */
-    function _forceFinalizePriceEpoch(uint256 _epochId) internal {
-        if (_epochId > 0) {
-            epochs.instance[_epochId].medianPrice = epochs.instance[_epochId - 1].medianPrice;
-            emit PriceFinalized(_epochId, epochs.instance[_epochId - 1].medianPrice, true);
-        } else {
-            epochs.instance[_epochId].medianPrice = 0;
-            emit PriceFinalized(_epochId, 0, true);
-        }
     }
 
 }

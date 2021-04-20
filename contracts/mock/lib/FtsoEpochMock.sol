@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "../../lib/FtsoEpoch.sol";
-import "../../IVotePower.sol";
+import "../../interfaces/IFAsset.sol";
 
 /**
  * @title Ftso Vote mock contract
@@ -47,7 +47,7 @@ contract FtsoEpochMock {
         uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint32 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
-        IVotePower[] assets;                    // list of assets
+        IFAsset[] assets;                    // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
     }
 
@@ -65,7 +65,7 @@ contract FtsoEpochMock {
     function _initializeInstance(
         uint256 epochId,
         uint256 _votePowerFlr,
-        IVotePower[] memory _assets,
+        IFAsset[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices) public {
         FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
@@ -159,7 +159,7 @@ contract FtsoEpochMock {
     }
 
     function _setAssets(uint256 epochId, 
-        IVotePower[] memory _assets,
+        IFAsset[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices) public {
         FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
@@ -177,15 +177,21 @@ contract FtsoEpochMock {
         return _state._getWeightRatio(_epoch);
     }
 
+    function _setWeightsParameters(
+        uint256 epochId,
+        uint256 _weightFlrSum,
+        uint256 _weightAssetSum
+    ) public {
+        FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
+        _state._setWeightsParameters(_epoch, _weightFlrSum, _weightAssetSum);
+    }
+
     function computeWeights(
         uint256 epochId,
         uint256[] memory _weightsFlr,
-        uint256[] memory _weightsAsset,
-        uint256 _weightsFlrSum,
-        uint256 _weightsAssetSum) public view returns (uint256[] memory _weights, uint256 _weightRatio) {
+        uint256[] memory _weightsAsset) public view returns (uint256[] memory _weights) {
         FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
-        (_weights, _weightRatio) = 
-            _state.computeWeights(_epoch, _weightsFlr, _weightsAsset, _weightsFlrSum, _weightsAssetSum); 
+        _weights = FtsoEpoch._computeWeights(_epoch, _weightsFlr, _weightsAsset);
     }
 
     function _getEpochId(uint256 _timestamp) public view returns (uint256) {
@@ -206,24 +212,5 @@ contract FtsoEpochMock {
 
     function _epochRevealInProcess(uint256 _epochId) public view returns (bool) {
         return _state._epochRevealInProcess(_epochId);
-    }
-
-    function setWeightDataForEpoch(
-        uint256 epochId,
-        uint256 weightFlrSum,
-        uint256 weightAssetSum,
-        uint256 weightRatio) public {
-        FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
-        _epoch.weightFlrSum = weightFlrSum;
-        _epoch.weightAssetSum = weightAssetSum;
-        _epoch.weightRatio = weightRatio;
-    }
-
-    function _getWeight(
-        uint256 epochId,
-        uint256 _weightFlr,
-        uint256 _weightAsset ) public view returns (uint256) {
-        FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
-        return FtsoEpoch._getWeight(_epoch, _weightFlr, _weightAsset);
     }
 }

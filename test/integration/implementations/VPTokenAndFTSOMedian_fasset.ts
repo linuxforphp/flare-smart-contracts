@@ -11,6 +11,7 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
 
     let flrToken: WFLR = await newContract<WFLR>("WFLR", signer);
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, "fAsset", "FASSET");
+    await assetToken.setDecimals(0);
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
         flrToken.address, assetToken.address, signer.address,  // address _fFlr, address _fAsset,
         epochStartTimestamp, // uint256 _startTimestamp
@@ -176,16 +177,16 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         logger.log(`REVEAL PRICE 5`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, prices.slice(0, 5), epoch);
+        
+        // Finalize
+        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
+        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+        logger.log(`epoch finalization, ${ len }`);
 
         // Print epoch submission prices
         let resVoteInfo = await ftso.getVoteInfo(epoch);
         testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
         prettyPrintVoteInfo(resVoteInfo, testExample.weightRatio!, logger);
-
-        // Finalize
-        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
-        logger.log(`epoch finalization, ${ len }`);
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
@@ -193,7 +194,7 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         let voterRes = toEpochResult(res);
         let testCase = {
             example: testExample,
-            targetResult: resultsFromTestData(testExample, signers.slice(0, len).map(signer => signer.address)),
+            targetResult: resultsFromTestData(testExample, signers.slice(0, len).map(signer => signer.address), 0, 113e5),
             testResult: updateWithRewardedVotesInfo(voterRes, epochFinalizeResponse)
         } as TestCase;
     
@@ -244,19 +245,19 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
         await revealPrice(signers, ftso, testExample.prices, epoch);
+        
+        logger.log(`SUBMIT PRICE 2 - 10`)
+        await submitPrice(signers, ftso, testExample2.prices);
+        
+        // Finalize
+        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
+        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+        logger.log(`epoch finalization, ${ len }`);
 
         // Print epoch submission prices
         let resVoteInfo = await ftso.getVoteInfo(epoch);
         testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
         prettyPrintVoteInfo(resVoteInfo, testExample.weightRatio!, logger);
-
-        logger.log(`SUBMIT PRICE 2 - 10`)
-        await submitPrice(signers, ftso, testExample2.prices);
-
-        // Finalize
-        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-        let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
-        logger.log(`epoch finalization, ${ len }`);
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
@@ -281,16 +282,16 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
         await revealPrice(signers, ftso, testExample2.prices, epoch+1);
+        
+        // Finalize 2
+        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch+1);
+        let epochFinalizeResponse2 = await finalizePriceEpochWithResult(signers[0], ftso, epoch+1);
+        logger.log(`epoch finalization 2, ${ len }`);
 
         // Print epoch submission prices
         let resVoteInfo2 = await ftso.getVoteInfo(epoch+1);
         testExample2.weightRatio = (await ftso.getWeightRatio(epoch+1)).toNumber();
         prettyPrintVoteInfo(resVoteInfo2, testExample2.weightRatio!, logger);
-
-        // Finalize 2
-        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch+1);
-        let epochFinalizeResponse2 = await finalizePriceEpochWithResult(signers[0], ftso, epoch+1);
-        logger.log(`epoch finalization 2, ${ len }`);
         
         // Print results 2
         let res2 = await ftso.getEpochResult(epoch+1);
@@ -362,18 +363,19 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         
         const prices2: number[] = [6, 10, 8, 5, 9, 5, 4, 3, 6, 5];
         let testExample2: TestExample = {prices: prices2, weightsAsset: fassetWeights2, weightsFlr: [0,0,0,0,0,0,0,0,0,0]};
-        // Print epoch submission prices
-        let resVoteInfo = await ftso.getVoteInfo(epoch);
-        testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
-        prettyPrintVoteInfo(resVoteInfo, testExample.weightRatio!, logger);
-
+        
         logger.log(`SUBMIT PRICE 2 - 10`)
         await submitPrice(signers, ftso, testExample2.prices);
-
+        
         // Finalize
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
         let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
         logger.log(`epoch finalization 1, ${ len }`);
+
+        // Print epoch submission prices
+        let resVoteInfo = await ftso.getVoteInfo(epoch);
+        testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
+        prettyPrintVoteInfo(resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
@@ -398,16 +400,16 @@ describe("VPToken and FTSO contract - integration tests - fasset", () => {
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
         await revealPrice(signers, ftso, testExample2.prices, epoch+1);
+        
+        // Finalize 2
+        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch+1);
+        let epochFinalizeResponse2 = await finalizePriceEpochWithResult(signers[0], ftso, epoch+1);
+        logger.log(`epoch finalization 2, ${ len }`);
 
         // Print epoch submission prices
         let resVoteInfo2 = await ftso.getVoteInfo(epoch+1);
         testExample2.weightRatio = (await ftso.getWeightRatio(epoch+1)).toNumber();
         prettyPrintVoteInfo(resVoteInfo2, testExample2.weightRatio!, logger);
-
-        // Finalize 2
-        await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch+1);
-        let epochFinalizeResponse2 = await finalizePriceEpochWithResult(signers[0], ftso, epoch+1);
-        logger.log(`epoch finalization 2, ${ len }`);
         
         // Print results 2
         let res2 = await ftso.getEpochResult(epoch+1);

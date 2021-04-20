@@ -254,18 +254,27 @@ export function prettyPrintVoteInfo(voteListRaw: VoteListRaw, weightRatio: numbe
 }
 
 function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumFlr: number, totalSumAsset: number): number {
-    let weight;
-    if (totalSumAsset == 0) {
-        weight = vote.weightFlr;
-    } else if (totalSumFlr == 0) {
-        weight = vote.weightAsset;
-    } else {
-        let BIPS100 = 1e4;
-        let flrShare = Math.floor(((BIPS100 - weightRatio) * totalSumAsset) / BIPS100);
-        let assetShare = Math.floor((weightRatio * totalSumFlr) / BIPS100);            
-        weight = flrShare * vote.weightFlr + assetShare * vote.weightAsset;
+    let TERA = 1e12;
+    let BIPS100 = 1e4;
+
+    // set weight distribution according to weight sums and weight ratio
+    let weightFlrShare = 0;
+    let weightAssetShare = weightRatio;        
+    if (totalSumFlr > 0) {
+        weightFlrShare = BIPS100 - weightAssetShare;
     }
-    return weight;
+
+    let weightFlr = 0;
+    if (weightFlrShare > 0) {
+        weightFlr = Math.floor((weightFlrShare * TERA * vote.weightFlr) / (totalSumFlr * BIPS100));
+    }
+
+    let weightAsset = 0;
+    if (weightAssetShare > 0) {
+        weightAsset = Math.floor((weightAssetShare * TERA * vote.weightAsset) / (totalSumAsset * BIPS100));
+    }
+
+    return weightFlr + weightAsset;
 }
 
 /**
@@ -353,7 +362,7 @@ export function priceToRandom(price: number) {
  * @param data 
  * @returns 
  */
-export function resultsFromTestData(data: TestExample, addresses: string[]): EpochResult {
+export function resultsFromTestData(data: TestExample, addresses: string[], flrSumOverride: number = 0, assetSumOverride: number = 0): EpochResult {
     let votes: VoteInfo[] = [];
     let len = data.prices.length;
     if (len != data.weightsFlr.length) throw Error(`Wrong FLR weights length: ${ data.weightsFlr.length }. Should be ${ len }`);
@@ -364,20 +373,39 @@ export function resultsFromTestData(data: TestExample, addresses: string[]): Epo
     for (let i = 0; i < len; i++) {
         flrSum += data.weightsFlr[i];
         assetSum += data.weightsAsset[i];
+    }
+    let TERA = 1e12;
+    let flrWeightSum = 0;
+    let assetWeightSum = 0;    
+    for (let i = 0; i < len; i++) {
+        let flrWeight: number;
+        if (flrSumOverride > 0) {
+            flrWeight = Math.floor((data.weightsFlr[i] * TERA) / flrSumOverride);
+        } else {
+            flrWeight = flrSum == 0 ? 0 : Math.floor((data.weightsFlr[i] * TERA) / flrSum);
+        }
+        flrWeightSum += flrWeight;
+        let assetWeight: number;
+        if (assetSumOverride > 0) {
+            assetWeight = Math.floor((data.weightsAsset[i] * TERA) / assetSumOverride);
+        } else {
+            assetWeight = assetSum == 0 ? 0 : Math.floor((data.weightsAsset[i] * TERA) / assetSum);
+        }
+        assetWeightSum += assetWeight
         votes.push({
             id: i,
             price: data.prices[i],
-            weightFlr: data.weightsFlr[i],
-            weightAsset: data.weightsAsset[i],
+            weightFlr: flrWeight,
+            weightAsset: assetWeight,
             address: addresses[i],
-            runningSumFlr: flrSum,
-            runningSumAsset: assetSum
+            runningSumFlr: flrWeightSum,
+            runningSumAsset: assetWeightSum
         })
     }
     votes.sort((a: VoteInfo, b: VoteInfo) => a.price < b.price ? -1 : (a.price > b.price ? 1 : 0));
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
-        let weight = calculateWeight(v, data.weightRatio!, flrSum, assetSum);
+        let weight = calculateWeight(v, data.weightRatio!, flrWeightSum, assetWeightSum);
         v.weight = weight;
         totalSum += weight;
     })
@@ -804,16 +832,16 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     logger.log(`REVEAL PRICE ${ len }`)
     await revealPrice(signers, ftso, testExample.prices, epoch);
 
+    // Finalize
+    await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
+    let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+    logger.log(`epoch finalization, ${ len }`);
+        
     // Print epoch submission prices
     let resVoteInfo = await ftso.getVoteInfo(epoch);
     testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
     prettyPrintVoteInfo(resVoteInfo, testExample.weightRatio!, logger);
 
-    // Finalize
-    await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-    let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
-    logger.log(`epoch finalization, ${ len }`);
-    
     // Print results                
     let res = await ftso.getEpochResult(epoch);
     prettyPrintEpochResult(res, testExample.weightRatio!, logger);
