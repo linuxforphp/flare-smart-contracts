@@ -2,9 +2,9 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/IFlareKeep.sol";
-import "./Governed.sol";
+import {GovernedAtGenesis} from "./GovernedAtGenesis.sol";
 
-contract FlareKeeper is Governed {
+contract FlareKeeper is GovernedAtGenesis {
 
     //====================================================================
     // Data Structures
@@ -20,7 +20,7 @@ contract FlareKeeper is Governed {
     // Constructor for pre-compiled code
     //====================================================================
 
-    constructor() Governed(address(0)) {
+    constructor() GovernedAtGenesis(address(0)) {
         /* empty block */
     }
 

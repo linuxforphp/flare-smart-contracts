@@ -21,7 +21,7 @@ task(TASK_COMPILE)
     intercept((text: any) => {
       if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text)) && 
         /Warning: Function state mutability can be restricted to pure/.test(text)) return '';
-      if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text)) && 
+      if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text) || /GovernedAtGenesis.sol/.test(text)) && 
         /Warning: Unused function parameter/.test(text)) return '';
       if ((/Ownable.sol/.test(text) || /ERC20.sol/.test(text)) &&
         /Warning: Visibility for constructor is ignored/.test(text)) return '';

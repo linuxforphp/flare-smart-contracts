@@ -61,6 +61,7 @@ async function main(parameters: any) {
   // Define accounts in play for the deployment process
   const deployerAccount = web3.eth.accounts.privateKeyToAccount(parameters.deployerPrivateKey);
   const governanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.governancePrivateKey);
+  const genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.genesisGovernancePrivateKey);
 
   // Wire up the default account that will do the deployment
   web3.eth.defaultAccount = deployerAccount.address;
@@ -109,7 +110,9 @@ async function main(parameters: any) {
   // Initialize the keeper
   const flareKeeper = await FlareKeeper.at(parameters.flareKeeperAddress);
   spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address);
-  await flareKeeper.initialise(deployerAccount.address);
+  await flareKeeper.initialiseFixedAddress();
+  await flareKeeper.proposeGovernance(deployerAccount.address, {from: genesisGovernanceAccount.address});
+  await flareKeeper.claimGovernance({from: deployerAccount.address});
 
   // Register kept contracts to the keeper
   await flareKeeper.registerToKeep(inflation.address);

@@ -1,6 +1,7 @@
 import { GovernedInstance } from "../../../typechain-truffle";
 
 const {constants, expectRevert, expectEvent} = require('@openzeppelin/test-helpers');
+const getTestFile = require('../../utils/constants').getTestFile;
 
 const Governed = artifacts.require("Governed");
 
@@ -10,7 +11,7 @@ const NOT_CLAIMAINT = "not claimaint";
 
 const GOVERNANCEUPDATED_EVENT = "GovernanceUpdated";
 
-contract(`Governed unit tests`, async accounts => {
+contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async accounts => {
     // contains a fresh contract for each test
     let governed: GovernedInstance;
 
