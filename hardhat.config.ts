@@ -96,7 +96,7 @@ const config: HardhatUserConfig = {
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
-    costonSCTeam: {
+    ftsoMvpNetwork: {
       url: "https://coston-sc-team.flare.rocks/ext/bc/C/rpc",
       gas: 10000000,
       timeout: 40000,
