@@ -7,4 +7,4 @@ bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/bins
 ```
 3. From root of project, `yarn`.
 4. To start the chain used by the system tests (scdev), `yarn start1`. Or if you are starting the validator multiple times and do not want to recompile the validator each time, `yarn start1-existing`.
-5. From this project's root, `yarn testSystemSCDev`.
+5. From this project's root, `yarn test_system_scdev`.

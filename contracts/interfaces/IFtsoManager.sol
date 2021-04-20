@@ -8,6 +8,8 @@ interface IFtsoManager {
     event FtsoAdded(IFtso ftso, bool add);
     event RewardEpochFinalized(uint256 votepowerBlock, uint256 startBlock);
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
+    // TODO: Remove these two events for production
+    event KeepTrigger(uint256 blockNumber);  // for monitoring keep() calls
     
     function setGovernanceParameters(
         uint256 _minVoteCount,

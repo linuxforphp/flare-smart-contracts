@@ -119,7 +119,7 @@ contract Ftso is IFtso {
         delete epochVoterHash[_epochId][msg.sender];
 
         // inform about price reveal result
-        emit PriceRevealed(msg.sender, _epochId, _price);
+        emit PriceRevealed(msg.sender, _epochId, _price, votePowerFlr, votePowerAsset);
     }
 
     /**
@@ -203,6 +203,19 @@ contract Ftso is IFtso {
         active = true;
     }
 
+    function getPriceEpochConfiguration() external view override returns (
+        uint256 firstEpochStartTime,
+        uint256 submitPeriod,
+        uint256 revealPeriod
+    ) 
+    {
+        return (
+            epochs.firstEpochStartTime, 
+            epochs.submitPeriod,
+            epochs.revealPeriod
+        );
+    }
+
     /**
      * @notice Sets configurable settings related to epochs
      * @param _minVoteCount                     minimal number of votes required in epoch
@@ -277,6 +290,7 @@ contract Ftso is IFtso {
         );
 
         epoch.initializedForReveal = true;
+        emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId));
         return epochId;
     }
 

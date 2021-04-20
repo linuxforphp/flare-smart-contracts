@@ -126,6 +126,9 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      */
     function keep() external override returns(bool){
         // flare keeper trigger. once every block
+        
+        // TODO: remove this eventafter testing phase
+        emit KeepTrigger(block.number);
         if (!active) return false;
             
         if (justStarted) {
@@ -194,7 +197,12 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // NOTE: even block.number can become votePowerBlock in this setting 
         // if  lastRandom % votepowerBlockBoundary == 0  
         uint256 votepowerBlockBoundary = 
-            (block.number - rewardEpochs[currentRewardEpoch].startBlock) / votePowerBoundaryFraction;
+            (block.number - rewardEpochs[currentRewardEpoch].startBlock) / 
+              (votePowerBoundaryFraction == 0 ? 1 : votePowerBoundaryFraction);  
+        // additional notice: if someone sets votePowerBoundaryFraction to 0
+        // this would cause division by 0 and effectively revert would halt the
+        // system
+ 
         if(votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
         }
@@ -499,7 +507,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // TODO: match setting this with remediation approach
         settings.changed = false;
    
-        currentPriceEpochEnds = getCurrentPriceEpochEndTime();        
+        currentPriceEpochEnds = getCurrentPriceEpochEndTime();    
     }
 
     /**
