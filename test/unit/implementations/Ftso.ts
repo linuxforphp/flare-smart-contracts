@@ -546,8 +546,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(data._eligibleAddresses.length).to.equals(1);
             expect(data._eligibleAddresses[0]).to.equals(accounts[2]);
             expect(data._flrWeights.length).to.equals(1);
-            expect(data._flrWeights[0]).to.equals('5000');
-            expect(data._flrWeightsSum).to.equals('5000');
+            expect(data._flrWeights[0]).to.equals('100000000000');
+            expect(data._flrWeightsSum).to.equals('100000000000');
             await ftso.finalizePriceEpoch(epochId, true, {from: accounts[10]});
             
             // round 2 - current fasset price = 250
@@ -582,9 +582,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(data3._eligibleAddresses[id1]).to.equals(accounts[1]);
             expect(data3._eligibleAddresses[id2]).to.equals(accounts[2]);
             expect(data3._flrWeights.length).to.equals(2);
-            expect(data3._flrWeights[id1]).to.equals('4000');
-            expect(data3._flrWeights[id2]).to.equals('3000');
-            expect(data3._flrWeightsSum).to.equals('7000');
+            expect(data3._flrWeights[id1]).to.equals('200000000000');
+            expect(data3._flrWeights[id2]).to.equals('150000000000');
+            expect(data3._flrWeightsSum).to.equals('350000000000');
             await ftso.finalizePriceEpoch(epochId+2, true, {from: accounts[10]});
         });
 
@@ -948,8 +948,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(calcEpochId4.toNumber()).to.equals(0);
         });
 
-        // TODO check underflow
-        it.skip("Should get epoch id - no underflow - TODO", async() => {
+        it("Should get epoch id - no underflow", async() => {
             ftso = await Ftso.new(
                 mockWflr.address,
                 mockVpToken.address,
@@ -1088,17 +1087,17 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(data[4].length).to.equals(3);
 
             let prices = [500, 250, 400];
-            let weights = [1000, 5000, 0];
-
+            let weightsFlr = [20000000000, 100000000000, 0];
+            
             compareArrays<string>(data[0], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays(data[1], prices);
-            compareNumberArrays(data[2], weights);
-            compareNumberArrays(data[3], weights);
+            compareNumberArrays(data[2], [0,0,0]); // always 0 before _setWeightsParameters is called
+            compareNumberArrays(data[3], weightsFlr);
             compareNumberArrays(data[4], [0, 0, 0]); // always 0 after first price finalization, as current price was 0
             compareArrays<boolean>(data[5], [true, false, false]); // TODO should not return true for first address before finalization???
-
+            
             await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}); // finalize price -> epochId price = 250
-
+            
             // after price finalization
             data = await ftso.getEpochVotes(epochId);
             expect(data[0].length).to.equals(3);
@@ -1106,15 +1105,15 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(data[2].length).to.equals(3);
             expect(data[3].length).to.equals(3);
             expect(data[4].length).to.equals(3);
-
+            
             let id1 = data[0].indexOf(accounts[1]);
             let id2 = data[0].indexOf(accounts[2]);
             let id3 = data[0].indexOf(accounts[3]);
-
+            
             compareArrays<string>([data[0][id1], data[0][id2], data[0][id3]], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays([data[1][id1], data[1][id2], data[1][id3]], prices);
-            compareNumberArrays([data[2][id1], data[2][id2], data[2][id3]], weights);
-            compareNumberArrays([data[3][id1], data[3][id2], data[3][id3]], weights);
+            compareNumberArrays([data[2][id1], data[2][id2], data[2][id3]], [166666666666, 833333333333, 0]);
+            compareNumberArrays([data[3][id1], data[3][id2], data[3][id3]], weightsFlr);
             compareNumberArrays([data[4][id1], data[4][id2], data[4][id3]], [0, 0, 0]); // always 0 after first price finalization, as current price was 0
             compareArrays<boolean>([data[5][id1], data[5][id2], data[5][id3]], [false, true, false]);
 
@@ -1141,12 +1140,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(data[4].length).to.equals(3);
 
             let prices2 = [300, 400, 200];
-            let flrWeights = [2000, 2000, 2000];
-            let assetWeights = [0, 20000000, 2500000];
+            let flrWeights = [100000000000, 100000000000, 100000000000];
+            let assetWeights = [0, 800000000000, 100000000000];
 
             compareArrays<string>(data[0], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays(data[1], prices2);
-            compareNumberArrays(data[2], flrWeights); // TODO check - real weights not computed yet as instance.weightRatio = 0
+            compareNumberArrays(data[2], [0, 0, 0]);
             compareNumberArrays(data[3], flrWeights);
             compareNumberArrays(data[4], assetWeights);
             compareArrays<boolean>(data[5], [false, false, false]);
@@ -1167,7 +1166,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             compareArrays<string>([data[0][id1], data[0][id2], data[0][id3]], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays([data[1][id1], data[1][id2], data[1][id3]], prices2);
-            compareNumberArrays([data[2][id1], data[2][id2], data[2][id3]], [22500000000, 82500000000, 30000000000]);
+            compareNumberArrays([data[2][id1], data[2][id2], data[2][id3]], [166666666666, 611111111110, 222222222221]);
             compareNumberArrays([data[3][id1], data[3][id2], data[3][id3]], flrWeights);
             compareNumberArrays([data[4][id1], data[4][id2], data[4][id3]], assetWeights);
             compareArrays<boolean>([data[5][id1], data[5][id2], data[5][id3]], [true, true, false]);
@@ -1230,6 +1229,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 accounts[10]
             );
 
+            const decimals_vpToken = vpTokenInterface.contract.methods.decimals().encodeABI();
+            const decimals3Return_vpToken = web3.eth.abi.encodeParameter('uint256', 3);
+            await mockVpTokens[0].givenMethodReturn(decimals_vpToken, decimals3Return_vpToken);
+            const decimals1Return_vpToken = web3.eth.abi.encodeParameter('uint256', 1);
+            await mockVpTokens[1].givenMethodReturn(decimals_vpToken, decimals1Return_vpToken); 
+
             await ftso.setFAssetFtsos([mockFtsos[0].address, mockFtsos[1].address, mockFtsos[2].address], {from: accounts[10]});
             await ftso.configureEpochs(0, 1e10, 1e10, 1, 1, 1000, 10000, 50, {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
@@ -1248,7 +1253,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.submitPrice(soliditySha3(250, 124), {from: accounts[2]});
             await ftso.submitPrice(soliditySha3(400, 125), {from: accounts[3]});
 
-            await setMockVotePowerAtMultiple(10, 50000, [5000000, 200000, 7500], [1000, 300, 800000]);
+            await setMockVotePowerAtMultiple(10, 50000, [5000000, 200000, 7500], [1000, 3, 800]);
             await ftso.initializeCurrentEpochStateForReveal({from: accounts[10]});
 
             await time.increaseTo((epochId + 1) * 120); // reveal period start
@@ -1276,9 +1281,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             compareArrays<string>([data[0][id1], data[0][id2], data[0][id3]], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays([data[1][id1], data[1][id2], data[1][id3]], [500, 250, 400]);
-            compareNumberArrays([data[2][id1], data[2][id2], data[2][id3]], [3214574550000, 10591012050000, 8488560000000]);
-            compareNumberArrays([data[3][id1], data[3][id2], data[3][id3]], [1000, 5000, 0]);
-            compareNumberArrays([data[4][id1], data[4][id2], data[4][id3]], [452243000, 433928100, 2829520000]);
+            compareNumberArrays([data[2][id1], data[2][id2], data[2][id3]], [144189142620, 475057955734, 380752901644]);
+            compareNumberArrays([data[3][id1], data[3][id2], data[3][id3]], [20000000000, 100000000000, 0]);
+            compareNumberArrays([data[4][id1], data[4][id2], data[4][id3]], [82006377077, 78685307539, 513084393928]);
             compareArrays<boolean>([data[5][id1], data[5][id2], data[5][id3]], [false, true, true]);
 
         });

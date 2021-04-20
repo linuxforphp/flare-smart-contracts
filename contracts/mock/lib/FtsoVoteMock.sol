@@ -17,18 +17,14 @@ contract FtsoVoteMock {
     function _createInstance(
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,
-        uint256 _maxVotePowerFlr,
-        uint256 _maxVotePowerAsset,
         uint256 _totalVotePowerFlr,
         uint256 _totalVotePowerAsset,
         uint256 _price) public returns(uint256) {
         return _state._createInstance(
-            _votePowerFlr, 
-            _votePowerAsset, 
-            _maxVotePowerFlr, 
-            _maxVotePowerAsset, 
-            _totalVotePowerFlr, 
-            _totalVotePowerAsset, 
+            _votePowerFlr,
+            _votePowerAsset,
+            _totalVotePowerFlr,
+            _totalVotePowerAsset,
             _price);
     }
 

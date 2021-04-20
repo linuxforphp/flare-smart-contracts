@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./IVotePower.sol";
+import "./interfaces/IFAsset.sol";
 
 interface IFtso {
 
@@ -64,7 +64,7 @@ interface IFtso {
         uint256 highAssetTurnoutThreshold
     );
 
-    function getFAsset() external view returns (IVotePower);
+    function getFAsset() external view returns (IFAsset);
 
     /// function getRandom()
     /// per epoch all submitted random numbers should be accumulated

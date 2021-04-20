@@ -9,7 +9,6 @@ library FtsoMedian {
         uint32 quartile3Index;
         uint32 quartile1IndexOriginal;
         uint32 quartile3IndexOriginal;
-        uint32 length;
         uint256 leftSum1;
         uint256 rightSum1;
         uint256 leftSum2;
@@ -50,17 +49,17 @@ library FtsoMedian {
         uint32[] memory index,
         Data memory d)
     {
-        d.length = uint32(price.length);
+        uint32 count = uint32(price.length);
 
-        index = new uint32[](d.length);
-        for (uint32 i = 0; i < d.length; i++) {
+        index = new uint32[](count);
+        for (uint32 i = 0; i < count; i++) {
             index[i] = i;
         }
 
         (d.medianIndex, d.leftSum2, d.rightSum2) = quickSelect(
             2,
             0,
-            d.length - 1,
+            count - 1,
             0,
             0,
             index,
@@ -90,7 +89,7 @@ library FtsoMedian {
             );
         }
 
-        if (d.medianIndex == d.length - 1) {
+        if (d.medianIndex == count - 1) {
             (d.quartile3Index, d.leftSum3, d.rightSum3) = (d.medianIndex, d.leftSum2, 0);
         } else if (d.rightSum2 <= d.totalSum / 4) { 
             (d.quartile3Index, d.leftSum3, d.rightSum3) = (d.medianIndex, d.leftSum2, d.rightSum2);
@@ -98,7 +97,7 @@ library FtsoMedian {
             (d.quartile3Index, d.leftSum3, d.rightSum3) = quickSelect(
                 3,
                 d.medianIndex + 1,
-                d.length - 1,
+                count - 1,
                 d.leftSum2 + d.medianWeight,
                 0,
                 index,
@@ -110,7 +109,7 @@ library FtsoMedian {
         d.finalMedianPrice = price[index[d.medianIndex]];
         if (d.leftSum2 + d.medianWeight == d.totalSum / 2 && d.totalSum % 2 == 0) {
             d.finalMedianPrice =
-                (d.finalMedianPrice + closestPriceFix(d.medianIndex, d.length - 1, index, price)) / 2;
+                (d.finalMedianPrice + closestPriceFix(d.medianIndex, count - 1, index, price)) / 2;
         }
 
         d.quartile1IndexOriginal = d.quartile1Index;
@@ -119,7 +118,7 @@ library FtsoMedian {
         (d.quartile1Index, d.lowWeightSum) = samePriceFix(
             d.quartile1Index, 0, -1, d.leftSum1, index, price, weight);
         (d.quartile3Index, d.highWeightSum) = samePriceFix(
-            d.quartile3Index, d.length - 1, 1, d.rightSum3, index, price, weight);
+            d.quartile3Index, count - 1, 1, d.rightSum3, index, price, weight);
         d.rewardedWeightSum = d.leftSum2 + d.rightSum2 + d.medianWeight - d.lowWeightSum - d.highWeightSum;
     }
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../interfaces/IFAsset.sol";
 import "../interfaces/IFtsoManager.sol";
 import "../implementations/Ftso.sol";
-import "../IVotePower.sol";
 
 contract MockFtso is Ftso {
     using FtsoEpoch for FtsoEpoch.State;
@@ -25,8 +25,8 @@ contract MockFtso is Ftso {
     );
 
     constructor(
-        IVotePower _fFlr,
-        IVotePower _fAsset,
+        IFAsset _fFlr,
+        IFAsset _fAsset,
         IFtsoManager _ftsoManager,
         uint256 _startTimestamp,
         uint256 _submitPeriod,

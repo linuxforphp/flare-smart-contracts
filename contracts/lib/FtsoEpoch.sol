@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../IVotePower.sol";
+import "../interfaces/IFAsset.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./SafePct.sol";
 // import "hardhat/console.sol";
+
 /**
  * @title A library used for FTSO epoch management
  */
 library FtsoEpoch {
+
+    using SafeMath for uint256;
+    using SafePct for uint256;
 
     struct State {                              // struct holding storage and settings related to epochs
 
@@ -66,17 +72,17 @@ library FtsoEpoch {
         uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint32 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
-        IVotePower[] assets;                    // list of assets
+        IFAsset[] assets;                       // list of assets
+        uint256[] assetNormalizations;          // list of asset normalizations (determined by asset decimals)
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) voterPrice; // price submitted by a voter in epoch 
     }
 
-    uint256 internal constant MAX_UINT128 = 2**128 - 1;         // max number in uint128
-    uint256 internal constant MAX_UINT104 = 2**104 - 1;         // max number in uint104
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
     uint256 internal constant BIPS50 = BIPS100 / 2;             // 50% in basis points
     uint256 internal constant BIPS45 = (45 * BIPS100) / 100;    // 45% in basis points
     uint256 internal constant BIPS5 = (5 * BIPS100) / 100;      // 5% in basis points
+    uint256 internal constant TERA = 10**12;                    // 10^12
 
     /**
      * @notice Initializes a new epoch instance with instance specific settings
@@ -93,7 +99,7 @@ library FtsoEpoch {
         State storage _state,
         Instance storage _instance,
         uint256 _votePowerFlr,
-        IVotePower[] memory _assets,
+        IFAsset[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
     ) internal
@@ -152,7 +158,11 @@ library FtsoEpoch {
      * @return Epoch id
      */
     function _getEpochId(State storage _state, uint256 _timestamp) internal view returns (uint256) {
-        return (_timestamp - _state.firstEpochStartTime) / _state.submitPeriod;
+        if (_timestamp < _state.firstEpochStartTime) {
+            return 0;
+        } else {
+            return (_timestamp - _state.firstEpochStartTime) / _state.submitPeriod;
+        }
     }
 
     /**
@@ -207,7 +217,7 @@ library FtsoEpoch {
     function _setAssets(
         State storage _state,
         Instance storage _instance,
-        IVotePower[] memory _assets,
+        IFAsset[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
     ) internal
@@ -217,38 +227,51 @@ library FtsoEpoch {
 
         // compute sum of vote powers in USD
         uint256 votePowerSumUSD = 0;
+        uint256[] memory normalizations = new uint256[](count);
+        uint256[] memory values = new uint256[](count); // array of values which eventually contains weighted prices
         for (uint256 i = 0; i < count; i++) {
-            assert(_assetVotePowers[i] < MAX_UINT104);
-            assert(_assetPrices[i] < MAX_UINT128);
-            votePowerSumUSD += _assetVotePowers[i] * _assetPrices[i];
+            normalizations[i] = 10**_assets[i].decimals();
+            uint256 votePowerUSD = _assetVotePowers[i].mulDiv(_assetPrices[i], normalizations[i]);
+            values[i] = votePowerUSD;
+            votePowerSumUSD = votePowerSumUSD.add(votePowerUSD);
         }
+        _instance.assetNormalizations = normalizations;
 
         // determine asset weighted prices
-        uint256[] memory weightedPrices = new uint256[](count);
         if (votePowerSumUSD > 0) {
             // determine shares based on asset vote powers in USD
             for (uint256 i = 0; i < count; i++) {
-                uint256 share = (_assetVotePowers[i] * _assetPrices[i] * BIPS100) / votePowerSumUSD;
-                weightedPrices[i] = share * _assetPrices[i];
-            }
-        } else {
-            // consider assets equally
-            uint256 share = BIPS100 / count;
-            for (uint256 i = 0; i < count; i++) {
-                weightedPrices[i] = share * _assetPrices[i];
+                // overriding/reusing array slots
+                values[i] = values[i].mulDiv(_assetPrices[i].mul(BIPS100), votePowerSumUSD);
             }
         }
-        _instance.assetWeightedPrices = weightedPrices;
+        _instance.assetWeightedPrices = values;
 
         // compute vote power
-        uint256 votePowerUSD = 0;
-        for (uint256 i = 0; i < count; i++) {
-            votePowerUSD += (weightedPrices[i] * _assetVotePowers[i]) / BIPS100;
-        }
-        _instance.votePowerAsset = votePowerUSD;
+        uint256 votePower = _getAssetVotePower(_instance, _assetVotePowers);        
+        _instance.votePowerAsset = votePower;
 
         // compute base weight ratio between asset and FLR
-        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePowerUSD);
+        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePower);
+    }
+
+    /**
+     * @notice Returns combined asset vote power
+     * @param _instance             Epoch instance
+     * @param _votePowers           Array of asset vote powers
+     * @dev Asset vote power is specified in USD and weighted among assets
+     */
+    function _getAssetVotePower(
+        FtsoEpoch.Instance storage _instance,
+        uint256[] memory _votePowers
+    ) internal view returns (uint256) {
+        uint256 votePower = 0;
+        for (uint256 i = 0; i < _instance.assets.length; i++) {
+            votePower = votePower.add(
+                _instance.assetWeightedPrices[i].mulDiv(_votePowers[i], _instance.assetNormalizations[i]) / BIPS100
+            );
+        }
+        return votePower;
     }
 
     /**
@@ -289,83 +312,77 @@ library FtsoEpoch {
         Instance storage _instance
     ) internal view returns (uint256)
     {
-        if (_instance.votePowerAsset == 0) {
+        if (_instance.weightAssetSum == 0) {
             return 0;
+        } else if (_instance.weightFlrSum == 0) {
+            return BIPS100;
         }
-        uint256 turnout = (BIPS100 * _instance.accumulatedVotePowerAsset) / _instance.votePowerAsset;
+        
+        uint256 turnout = _instance.weightAssetSum.mulDiv(BIPS100, TERA);
         if (turnout >= _state.highAssetTurnoutThreshold) {
             return _instance.baseWeightRatio;
         } else {
-            return (_instance.baseWeightRatio * turnout) / _state.highAssetTurnoutThreshold;
+            return _instance.baseWeightRatio.mulDiv(turnout, _state.highAssetTurnoutThreshold);
         }
+    }
+
+    /**
+     * @notice Sets weights parameters in epoch instance
+     * @param _state                Epoch state
+     * @param _instance             Epoch instance
+     * @param _weightFlrSum         Sum of all FLR weights
+     * @param _weightAssetSum       Sum of all asset weights
+     * @dev All weight parameters and variables are in BIPS
+     */
+    function _setWeightsParameters(
+        FtsoEpoch.State storage _state,
+        FtsoEpoch.Instance storage _instance,
+        uint256 _weightFlrSum,
+        uint256 _weightAssetSum
+    ) internal
+    {
+        _instance.weightFlrSum = _weightFlrSum;
+        _instance.weightAssetSum = _weightAssetSum;
+        _instance.weightRatio = _getWeightRatio(_state, _instance);
     }
 
     /**
      * @notice Computes vote weights in epoch
-     * @param _state                Epoch state
      * @param _instance             Epoch instance
      * @param _weightsFlr           Array of FLR weights
      * @param _weightsAsset         Array of asset weights
-     * @param _weightsFlrSum        Sum of all FLR weights
-     * @param _weightsAssetSum      Sum of all asset weights
      * @return _weights              Array of combined weights
-     * @return _weightRatio         Weight ratio used to combine FLR and asset weights
-     * @dev All parameters and variables are in BIPS
+     * @dev All weight parameters and variables are in BIPS
      */
-    function computeWeights(
-        FtsoEpoch.State storage _state,
+    function _computeWeights(
         FtsoEpoch.Instance storage _instance,
         uint256[] memory _weightsFlr,
-        uint256[] memory _weightsAsset,
-        uint256 _weightsFlrSum,
-        uint256 _weightsAssetSum
-    ) internal view returns (uint256[] memory _weights, uint256 _weightRatio)
+        uint256[] memory _weightsAsset
+    ) internal view returns (uint256[] memory _weights)
     {
         _weights = new uint256[](_instance.voteCount);
-        if (_weightsAssetSum == 0) {
-            // no votes with asset vote power present, use FLR weights
-            for (uint256 i = 0; i < _instance.voteCount; i++) {
-                _weights[i] = _weightsFlr[i];
-            }
-        } else if (_weightsFlrSum == 0) {
-            // no votes with FLR vote power present, use asset weights
-            for (uint256 i = 0; i < _instance.voteCount; i++) {
-                _weights[i] = _weightsAsset[i];
-            }
-        } else {
-            // combine FLR and asset weight
-            _weightRatio = _getWeightRatio(_state, _instance);
-            uint256 flrShare = ((BIPS100 - _weightRatio) * _weightsAssetSum) / BIPS100;
-            uint256 assetShare = (_weightRatio * _weightsFlrSum) / BIPS100;            
-            for (uint32 i = 0; i < _instance.voteCount; i++) {
-                _weights[i] = flrShare * _weightsFlr[i] + assetShare * _weightsAsset[i];
-            }
-        }
-    }
 
-    /**
-     * @dev Consider incorporating this logic into computeWeights to avoid code duplication
-     */
-    function _getWeight(
-        FtsoEpoch.Instance storage _instance,
-        uint256 _weightFlr,
-        uint256 _weightAsset
-    ) internal view returns (uint256) {
-        uint256 weight;
-        if (_instance.weightAssetSum == 0) {
-            weight = _weightFlr;
-        } else if (_instance.weightFlrSum == 0) {
-            weight = _weightAsset;
-        } else {
-            // combine FLR and asset weight
-            uint256 weightRatio = _instance.weightRatio;
-            uint256 flrShare = ((BIPS100 - weightRatio) * _instance.weightAssetSum) / BIPS100;
-            uint256 assetShare = (weightRatio * _instance.weightFlrSum) / BIPS100;            
-            for (uint32 i = 0; i < _instance.voteCount; i++) {
-                weight = flrShare * _weightFlr + assetShare * _weightAsset;
-            }
+        uint256 weightFlrSum = _instance.weightFlrSum;
+        uint256 weightAssetSum = _instance.weightAssetSum;
+        
+        // set weight distribution according to weight sums and weight ratio
+        uint256 weightFlrShare = 0;
+        uint256 weightAssetShare = _instance.weightRatio;
+        if (weightFlrSum > 0) {
+            weightFlrShare = BIPS100 - weightAssetShare;
         }
-        return weight;
+
+        for (uint32 i = 0; i < _instance.voteCount; i++) {
+            uint256 weightFlr = 0;
+            if (weightFlrShare > 0) {
+                weightFlr = weightFlrShare.mulDiv(TERA * _weightsFlr[i], weightFlrSum * BIPS100);
+            }
+            uint256 weightAsset = 0;
+            if (weightAssetShare > 0) {
+                weightAsset = weightAssetShare.mulDiv(TERA * _weightsAsset[i], weightAssetSum * BIPS100);
+            }
+            _weights[i] = weightFlr + weightAsset;
+        }
     }
 
 }
