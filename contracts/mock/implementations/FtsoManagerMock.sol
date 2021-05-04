@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity ^0.6.0; // note. don't update version.
 
 import "@gnosis.pm/mock-contract/contracts/MockContract.sol";
+
+
 /**
  * @title Inflation mock contract
  * @notice A contract to call the reward manager for setting daily reward amounts for unit testing.
