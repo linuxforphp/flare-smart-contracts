@@ -8,7 +8,6 @@ import {VPToken} from "../../implementations/VPToken.sol";
  * @notice A contract to stub minting and burning for testing purposes.
  **/
 contract VPTokenMock is VPToken {
-    uint8 private _decimals = 18; // as in ERC20
 
     constructor(
         string memory name_, 
@@ -23,11 +22,7 @@ contract VPTokenMock is VPToken {
         _burn(_msgSender(), amount);
     }
 
-    function setDecimals(uint8 decimalsValue) public {
-        _decimals = decimalsValue;
-    }
-
-    function decimals() public override view returns(uint8) {
-        return _decimals;
+    function setDecimals(uint8 decimals) public {
+        _setupDecimals(decimals);
     }
 }

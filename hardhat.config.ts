@@ -126,6 +126,10 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
+      "contracts/mock/implementations/FtsoManagerMock.sol": {
+        version: "0.6.12",
+        settings: { }
+      },
       "contracts/mock/implementations/InflationMock.sol": {
         version: "0.6.12",
         settings: { }

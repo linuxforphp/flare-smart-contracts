@@ -19,7 +19,7 @@ contract Ftso is IFtso {
     using FtsoVote for FtsoVote.State;
 
     // number of decimal places in FAsset USD price
-    // note that the real USD price is the integer value divided by 10^FASSET_USD_DECIMALS 
+    // note that the actual USD price is the integer value divided by 10^FASSET_USD_DECIMALS 
     uint256 public constant FASSET_USD_DECIMALS = 5;
 
     // errors
@@ -32,36 +32,34 @@ contract Ftso is IFtso {
     string internal constant ERR_EPOCH_FINALIZATION_FAILURE = "Epoch not ready for finalization";
     string internal constant ERR_EPOCH_INSUFFICIENT_VOTES = "Epoch has insufficient number of votes";
     string internal constant ERR_VOTEPOWER_INSUFFICIENT = "Insufficient vote power to submit vote";
-    string internal constant ERR_FASSET_SINGLE = "Single asset FTSO";
     string internal constant ERR_FASSET_INVALID = "Invalid asset";
     string internal constant ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL = "Epoch not initialized for reveal";
     string internal constant ERR_EPOCH_UNKNOWN = "Unknown epoch";
 
     // storage    
-    bool internal active;                       // activation status of FTSO
+    bool public active;                         // activation status of FTSO
     uint256 public fAssetPriceUSD;              // current FAsset USD price
+    string public symbol;                      // asset symbol that identifies FTSO
     FtsoEpoch.State internal epochs;            // epoch storage
     FtsoVote.State internal votes;              // vote storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
 
     // external contracts
     IFAsset public immutable fFlr;              // wrapped FLR
-    IFAsset public fAsset;                      // wrapped asset (for a single-asset FTSO)
+    IFAsset[] public fAssets;                   // array of assets
     IFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
     IFtsoManager public ftsoManager;            // FTSO manager contract
 
     constructor(
+        string memory _symbol,
         IFAsset _fFlr,
-        IFAsset _fAsset,
-        IFtsoManager _ftsoManager
+        IFtsoManager _ftsoManager,
+        uint256 _initialPriceUSD
     ) {
+        symbol = _symbol;
         fFlr = _fFlr;
-        if (address(_fAsset) != address(0)) {
-            // single-asset FTSO
-            fAsset = _fAsset;
-            fAssetFtsos = [ IFtso(this) ];
-        }
         ftsoManager = _ftsoManager;
+        fAssetPriceUSD = _initialPriceUSD;
     }
 
     modifier whenActive {
@@ -255,13 +253,27 @@ contract Ftso is IFtso {
     }
 
     /**
-     * @notice Sets FTSOs for multi-asset FTSO
-     * @param _fAssetFtsos          List of FTSOs
+     * @notice Sets asset for FTSO to operate as single-asset oracle
+     * @param _fAsset               Asset
+     */
+    function setFAsset(IFAsset _fAsset) external override onlyFtsoManager {
+        symbol = _fAsset.symbol();
+        fAssetFtsos = [ IFtso(this) ];
+        fAssets = [ _fAsset ];
+        epochs.assetNorm[_fAsset] = 10**_fAsset.decimals();
+    }
+
+    /**
+     * @notice Sets an array of FTSOs for FTSO to operate as multi-asset oracle
+     * @param _fAssetFtsos          Array of FTSOs
      * @dev FTSOs implicitly determine the FTSO assets
      */
     function setFAssetFtsos(IFtso[] memory _fAssetFtsos) external override onlyFtsoManager {
-        require(!isSingleAssetFtso(), ERR_FASSET_SINGLE);
+        assert(_fAssetFtsos.length > 0);
+        assert(_fAssetFtsos.length > 1 || _fAssetFtsos[0] != this);
         fAssetFtsos = _fAssetFtsos;
+        fAssets = new IFAsset[](_fAssetFtsos.length);
+        refreshAssets();
     }
 
     /**
@@ -322,7 +334,8 @@ contract Ftso is IFtso {
      * @dev fAsset is null in case of multi-asset FTSO
      */
     function getFAsset() external view override returns (IFAsset) {
-        return fAsset;
+        return fAssets.length == 1 && fAssetFtsos.length == 1 && fAssetFtsos[0] == this ?
+            fAssets[0] : IFAsset(address(0));
     }
 
     /**
@@ -509,8 +522,53 @@ contract Ftso is IFtso {
     }
 
     /**
-     * @notice Forces finalization of the epoch by initializing the median price to the one of the 
-     * previous block or 0 (for initial _epochId == 0)
+     * @notice Returns the list of assets and its vote powers
+     * @return _assets              List of assets
+     * @return _votePowers          List of vote powers
+     * @return _prices              List of asset prices
+     */
+    function getAssetData() internal returns (
+        IFAsset[] memory _assets,
+        uint256[] memory _votePowers,
+        uint256[] memory _prices
+    ) {
+        refreshAssets();
+        _assets = fAssets;
+
+        // compute vote power for each epoch
+        _votePowers = new uint256[](_assets.length);
+        _prices = new uint256[](_assets.length);
+        for (uint256 i = 0; i < _assets.length; i++) {
+            _votePowers[i] = getVotePower(_assets[i], epochs.votePowerBlock);
+            _prices[i] = fAssetFtsos[i].getCurrentPrice();
+        }
+    }
+    
+    /**
+     * @notice Refreshes epoch state assets if FTSO is in multi-asset mode
+     * @dev Assets are determined by other single-asset FTSOs on which the asset may change at any time
+     */
+    function refreshAssets() internal {
+        if (fAssetFtsos.length == 1 && fAssetFtsos[0] == this) {
+            return;
+        } else {
+            for (uint256 i = 0; i < fAssetFtsos.length; i++) {
+                IFAsset asset = fAssetFtsos[i].getFAsset();
+                if (asset == fAssets[i]) {
+                    continue;
+                }
+                fAssets[i] = asset;
+                if (address(asset) != address(0)) {
+                    epochs.assetNorm[asset] = 10**asset.decimals();
+                }
+            }
+        }
+    }
+
+    /**
+     * @notice Forces finalization of the epoch
+     * @param _epochId              Epoch id
+     * @dev Sets the median price to be equal to the price from the previous epoch (if epoch id is 0, price is 0)
      */
     function _forceFinalizePriceEpoch(uint256 _epochId) internal {
         if (_epochId > 0) {
@@ -668,32 +726,6 @@ contract Ftso is IFtso {
     }
 
     /**
-     * @notice Returns the list of assets and its vote powers
-     * @return _assets              List of assets
-     * @return _votePowers          List of vote powers
-     * @return _prices              List of asset prices
-     */
-    function getAssetData() internal view returns (
-        IFAsset[] memory _assets,
-        uint256[] memory _votePowers,
-        uint256[] memory _prices
-    ) {
-        // gather assets
-        _assets = new IFAsset[](fAssetFtsos.length);
-        for (uint256 i = 0; i < fAssetFtsos.length; i++) {
-            _assets[i] = fAssetFtsos[i].getFAsset();
-        }
-
-        // compute vote power for each epoch
-        _votePowers = new uint256[](_assets.length);
-        _prices = new uint256[](_assets.length);
-        for (uint256 i = 0; i < _assets.length; i++) {
-            _votePowers[i] = getVotePower(_assets[i], epochs.votePowerBlock);
-            _prices[i] = fAssetFtsos[i].getCurrentPrice();
-        }
-    }
-
-    /**
      * @notice Returns FLR and asset vote power for epoch
      * @param _epoch                Epoch instance
      * @param _owner                Owner address
@@ -709,10 +741,14 @@ contract Ftso is IFtso {
         for (uint256 i = 0; i < _epoch.assets.length; i++) {            
             votePowersAsset[i] = getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, _owner);
         }
-        _votePowerAsset = FtsoEpoch._getAssetVotePower(_epoch, votePowersAsset);
+        _votePowerAsset = epochs._getAssetVotePower(_epoch, votePowersAsset);
+        
+        // console.log("Vote power   flr: %s of %s", _votePowerFlr, _epoch.minVotePowerFlr);
+        // console.log("           asset: %s of %s", _votePowerAsset, _epoch.minVotePowerAsset);
         
         require(
-            _votePowerFlr >= _epoch.minVotePowerFlr || _votePowerAsset >= _epoch.minVotePowerAsset,
+            (_votePowerFlr > 0 && _votePowerFlr >= _epoch.minVotePowerFlr) || 
+                (_votePowerAsset > 0 && _votePowerAsset >= _epoch.minVotePowerAsset),
             ERR_VOTEPOWER_INSUFFICIENT
         );
         
@@ -752,13 +788,6 @@ contract Ftso is IFtso {
         } else {
             return _vp.votePowerOfAt(_owner, _vpBlock);
         }
-    }
-
-    /**
-     * @notice Determines if the FTSO has a single asset
-     */
-    function isSingleAssetFtso() internal view returns (bool) {
-        return address(fAsset) != address(0);
     }
 
 }

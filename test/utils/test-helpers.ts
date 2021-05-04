@@ -182,15 +182,15 @@ export function lastOf(lst: any[]) {
 }
 
 export function compareNumberArrays(a: BN[], b: number[]) {
-    expect(a.length).to.equals(b.length);
+    expect(a.length, `Expected array length ${a.length} to equal ${b.length}`).to.equals(b.length);
     for (let i = 0; i < a.length; i++) {
-        expect(a[i].toNumber()).to.equals(b[i]);
+        expect(a[i].toNumber(), `Expected ${a[i].toNumber()} to equal ${b[i]} at index ${i}`).to.equals(b[i]);
     }
 }
 
 export function compareArrays<T>(a: T[], b: T[]) {
-    expect(a.length).to.equals(b.length);
+    expect(a.length, `Expected array length ${a.length} to equal ${b.length}`).to.equals(b.length);
     for (let i = 0; i < a.length; i++) {
-        expect(a[i]).to.equals(b[i]);
+        expect(a[i], `Expected ${a[i]} to equal ${b[i]} at index ${i}`).to.equals(b[i]);
     }
 }

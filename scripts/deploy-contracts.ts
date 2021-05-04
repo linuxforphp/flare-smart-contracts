@@ -16,7 +16,8 @@ import { DummyFAssetMinterContract,
   FtsoInstance,
   InflationContract,
   RewardManagerContract,
-  WFLRContract} from "../typechain-truffle";
+  WFLRContract,
+  FtsoManagerInstance} from "../typechain-truffle";
 
 import { pascalCase } from "pascal-case";
 
@@ -124,7 +125,7 @@ async function main(parameters: any) {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new(wflr.address, constants.ZERO_ADDRESS, ftsoManager.address);
+  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, parameters.initialWflrPrice);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address);
 
   // Deploy FAsset, minter, and ftso for XRP
@@ -132,36 +133,39 @@ async function main(parameters: any) {
   const [, ,ftsoFxrpWflr] = await deployNewFAsset(
     contracts,
     deployerAccount.address, 
-    ftsoManager.address, 
+    ftsoManager, 
     wflr.address, 
     parameters.XRP.fAssetName, 
     parameters.XRP.fAssetSymbol,
     parameters.XRP.fAssetDecimals,
-    parameters.XRP.dummyFAssetMinterMax);
+    parameters.XRP.dummyFAssetMinterMax,
+    parameters.XRP.initialPrice);
 
   // Deploy FAsset, minter, and ftso for LTC
   console.error("Rigging LTC...");
   const [, ,ftsoFltcWflr] = await deployNewFAsset(
     contracts,
     deployerAccount.address, 
-    ftsoManager.address, 
+    ftsoManager, 
     wflr.address, 
     parameters.LTC.fAssetName, 
     parameters.LTC.fAssetSymbol, 
     parameters.LTC.fAssetDecimals,
-    parameters.LTC.dummyFAssetMinterMax);
+    parameters.LTC.dummyFAssetMinterMax,
+    parameters.LTC.initialPrice);
 
   // Deploy FAsset, minter, and ftso for XDG
   console.error("Rigging XDG...");
   const [, ,ftsoFxdgWflr] = await deployNewFAsset(
     contracts,
     deployerAccount.address, 
-    ftsoManager.address, 
+    ftsoManager, 
     wflr.address, 
     parameters.XDG.fAssetName, 
     parameters.XDG.fAssetSymbol, 
     parameters.XDG.fAssetDecimals,
-    parameters.XDG.dummyFAssetMinterMax);
+    parameters.XDG.dummyFAssetMinterMax,
+    parameters.XDG.initialPrice);
 
   // Setup governance parameters for the ftso manager
   console.error("Setting FTSO manager governance parameters...");
@@ -173,9 +177,12 @@ async function main(parameters: any) {
     parameters.maxVotePowerAssetThreshold,
     parameters.lowAssetUSDThreshold,
     parameters.highAssetUSDThreshold,
-    parameters.highAssetTurnoutThreshold,
-    [ftsoFxrpWflr.address, ftsoFltcWflr.address, ftsoFxdgWflr.address]
+    parameters.highAssetTurnoutThreshold
   );
+
+  // Set FTSOs to multi FAsset WFLR contract
+  await ftsoManager.setFtsoFAssetFtsos(ftsoWflr.address,
+    [ftsoFxrpWflr.address, ftsoFltcWflr.address, ftsoFxdgWflr.address]);
 
   // Add ftsos to the ftso manager
   console.error("Adding FTSOs to manager...");
@@ -206,12 +213,13 @@ async function main(parameters: any) {
 async function deployNewFAsset(
   contracts: Contracts,
   deployerAccountAddress: string,
-  ftsoManagerAddress: string,
+  ftsoManager: FtsoManagerInstance,
   wflrAddress: string, 
   name: string, 
   symbol: string,
   decimals: number, 
-  maxMintRequestTwei: number):
+  maxMintRequestTwei: number,
+  initialPrice: number):
   Promise<[fAssetToken: FAssetTokenInstance, 
     dummyFAssetMinter: DummyFAssetMinterInstance, 
     ftso: FtsoInstance]> {
@@ -233,7 +241,8 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(wflrAddress, fAssetToken.address, ftsoManagerAddress);
+  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, initialPrice);
+  await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${symbol}/WFLR`, ftso.address);
 
   return [fAssetToken, dummyFAssetMinter, ftso];

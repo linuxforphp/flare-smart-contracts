@@ -32,7 +32,8 @@
 - Then API `setFTSOManager(ftsoManagerAddress)` is called to fully link `FTSOManager` contract with `RewardManager` contract.
 - Then reward manager is activated.
 - Then, before adding any FTSO, governance must at least once initialize governance parameters for FTSOs by calling API `setGovernanceParameters(...)`.
-- Typically then FTSO contracts are deployed and added to `FTSOManager` contract by calling API `addFtso(ftso)`.
+- Typically then FTSO contracts are deployed and FAsset can be added to single asset FTSO by calling `setFtsoFAsset(fAsset)` or a list of FTSOs can be added to multi asset FTSO by calling `setFtsoFAssetFtsos(fAssetFtsos)`.
+- Then FTSO contracts are added to `FTSOManager` contract by calling API `addFtso(ftso)`.
 - Then everything is ready to activate `FTSOManager` contract by calling API `activate()`. This starts applying triggering to `FTSOManager` contract by `Keeper` contract.
 - Later new FTSO contracts can be deployed and added to `FTSOManager` contract. Some can be also removed by calling API `removeFtso(ftso)`)
 

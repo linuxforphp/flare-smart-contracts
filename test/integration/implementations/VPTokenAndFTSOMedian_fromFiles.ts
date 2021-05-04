@@ -45,6 +45,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             }
 
             let assetToken = await newContract<VPTokenMock>("VPTokenMock", signers[0], "fAsset", "FASSET");
+            await assetToken.setDecimals(0);
             for (let i = 0; i < testExample.weightsAsset.length; i++) {
                 await assetToken.mint(signers[i].address, testExample.weightsAsset[i])
             }
@@ -52,10 +53,12 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             let blockNumber = await ethers.provider.getBlockNumber();
 
             let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signers[0],
-                flrToken.address, assetToken.address, signers[0].address,  // address _fFlr, address _fAsset,
+                "FASSET", flrToken.address, signers[0].address,  // symbol, address _fFlr, address _ftsoManager,
                 epochStartTimestamp, // uint256 _startTimestamp
-                epochPeriod, revealPeriod //uint256 _epochPeriod, uint256 _revealPeriod
+                epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
+                0 //uint256 _initialPrice
             )
+            await ftso.connect(signers[0]).setFAsset(assetToken.address);
 
             await ftso.setVotePowerBlock(blockNumber);
             const testCase: TestCase = await testFTSOMedian2(epochStartTimestamp, epochPeriod, revealPeriod, signers, ftso, testExample);

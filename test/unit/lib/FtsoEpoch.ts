@@ -24,16 +24,13 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         // uint256 submitPeriod,
         // uint256 revealPeriod
         ftsoEpoch = await FtsoEpoch.new(5, 120, 60);
-        let vpTokenInterface = await VpToken.new("A token", "ATOK");
         mockVpToken = await MockVpToken.new();
         mockVpToken2 = await MockVpToken.new();
         mockVpToken3 = await MockVpToken.new();
 
-        const decimals_vpToken = vpTokenInterface.contract.methods.decimals().encodeABI();
-        const decimalsReturn_vpToken = web3.eth.abi.encodeParameter('uint256', 3);
-        await mockVpToken.givenMethodReturn(decimals_vpToken, decimalsReturn_vpToken);
-        await mockVpToken2.givenMethodReturn(decimals_vpToken, decimalsReturn_vpToken);
-        await mockVpToken3.givenMethodReturn(decimals_vpToken, decimalsReturn_vpToken);
+        ftsoEpoch.setAssetNorm(mockVpToken.address, 3);
+        ftsoEpoch.setAssetNorm(mockVpToken2.address, 3);
+        ftsoEpoch.setAssetNorm(mockVpToken3.address, 3);
 
         await ftsoEpoch.setVotePowerBlock(1);
 

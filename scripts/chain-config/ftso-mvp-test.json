@@ -17,22 +17,26 @@
     "lowAssetUSDThreshold": 200000000,
     "highAssetUSDThreshold": 3000000000,
     "highAssetTurnoutThreshold": 100,
+    "initialWflrPrice": 0,
     "XRP": {
         "fAssetName": "Flare Asset XRP",
         "fAssetSymbol": "FXRP",
         "fAssetDecimals": 6,
-        "dummyFAssetMinterMax": 7000000000
+        "dummyFAssetMinterMax": 7000000000,
+        "initialPrice": 0
     },
     "LTC": {
         "fAssetName": "Flare Asset Litecoin",
         "fAssetSymbol": "FLTC",
         "fAssetDecimals": 8,
-        "dummyFAssetMinterMax": 4000000000
+        "dummyFAssetMinterMax": 4000000000,
+        "initialPrice": 0
     },
     "XDG": {
         "fAssetName": "Flare Asset Dogecoin",
         "fAssetSymbol": "FXDG",
         "fAssetDecimals": 8,
-        "dummyFAssetMinterMax": 13000000000000
+        "dummyFAssetMinterMax": 13000000000000,
+        "initialPrice": 0
     }
 }

@@ -19,9 +19,7 @@ interface IFtsoManager {
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold,
-        // address[] memory _fAssetFtsos
-        IFtso[] memory _fAssetFtsos
+        uint256 _highAssetTurnoutThreshold
     ) external;
 
     function getCurrentRewardEpoch() external view returns (uint256);

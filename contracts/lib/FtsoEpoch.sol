@@ -19,7 +19,8 @@ library FtsoEpoch {
         // storage        
         mapping(uint256 => Instance) instance;  // mapping from epoch id to instance
         mapping(uint256 => uint256) nextVoteId; // mapping from id to id storing the connection between votes in epoch
-        
+        mapping(IFAsset => uint256) assetNorm;  // mapping from asset address to its normalization
+
         // immutable settings
         uint256 firstEpochStartTime;            // start time of the first epoch instance
         uint256 submitPeriod;                   // duration of price submission for an epoch instance
@@ -73,7 +74,6 @@ library FtsoEpoch {
         uint32 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         IFAsset[] assets;                       // list of assets
-        uint256[] assetNormalizations;          // list of asset normalizations (determined by asset decimals)
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) voterPrice; // price submitted by a voter in epoch 
     }
@@ -227,15 +227,15 @@ library FtsoEpoch {
 
         // compute sum of vote powers in USD
         uint256 votePowerSumUSD = 0;
-        uint256[] memory normalizations = new uint256[](count);
         uint256[] memory values = new uint256[](count); // array of values which eventually contains weighted prices
         for (uint256 i = 0; i < count; i++) {
-            normalizations[i] = 10**_assets[i].decimals();
-            uint256 votePowerUSD = _assetVotePowers[i].mulDiv(_assetPrices[i], normalizations[i]);
+            if (address(_assets[i]) == address(0)) {
+                continue;
+            }
+            uint256 votePowerUSD = _assetVotePowers[i].mulDiv(_assetPrices[i], _state.assetNorm[_assets[i]]);
             values[i] = votePowerUSD;
             votePowerSumUSD = votePowerSumUSD.add(votePowerUSD);
         }
-        _instance.assetNormalizations = normalizations;
 
         // determine asset weighted prices
         if (votePowerSumUSD > 0) {
@@ -248,7 +248,7 @@ library FtsoEpoch {
         _instance.assetWeightedPrices = values;
 
         // compute vote power
-        uint256 votePower = _getAssetVotePower(_instance, _assetVotePowers);        
+        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);        
         _instance.votePowerAsset = votePower;
 
         // compute base weight ratio between asset and FLR
@@ -257,18 +257,26 @@ library FtsoEpoch {
 
     /**
      * @notice Returns combined asset vote power
+     * @param _state                Epoch state
      * @param _instance             Epoch instance
      * @param _votePowers           Array of asset vote powers
      * @dev Asset vote power is specified in USD and weighted among assets
      */
     function _getAssetVotePower(
+        FtsoEpoch.State storage _state,
         FtsoEpoch.Instance storage _instance,
         uint256[] memory _votePowers
     ) internal view returns (uint256) {
         uint256 votePower = 0;
         for (uint256 i = 0; i < _instance.assets.length; i++) {
+            if (address(_instance.assets[i]) == address(0)) {
+                continue;
+            }
             votePower = votePower.add(
-                _instance.assetWeightedPrices[i].mulDiv(_votePowers[i], _instance.assetNormalizations[i]) / BIPS100
+                _instance.assetWeightedPrices[i].mulDiv(
+                    _votePowers[i],
+                    _state.assetNorm[_instance.assets[i]]
+                ) / BIPS100
             );
         }
         return votePower;

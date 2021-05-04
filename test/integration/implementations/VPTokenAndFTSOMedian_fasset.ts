@@ -13,10 +13,12 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, "fAsset", "FASSET");
     await assetToken.setDecimals(0);
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
-        flrToken.address, assetToken.address, signer.address,  // address _fFlr, address _fAsset,
+        "FASSET", flrToken.address, signer.address,  // symbol, address _fFlr, address _ftsoManager,
         epochStartTimestamp, // uint256 _startTimestamp
-        epochPeriod, revealPeriod //uint256 _epochPeriod, uint256 _revealPeriod
+        epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
+        0 //uint256 _initialPrice
     )
+    await ftso.connect(signer).setFAsset(assetToken.address);
 
     return {flrToken, assetToken, ftso};
 }
