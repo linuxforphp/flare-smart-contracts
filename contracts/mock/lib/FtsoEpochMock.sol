@@ -47,7 +47,7 @@ contract FtsoEpochMock {
         uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint32 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
-        IFAsset[] assets;                    // list of assets
+        IFAsset[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
     }
 
@@ -60,6 +60,10 @@ contract FtsoEpochMock {
         _state.firstEpochStartTime = firstEpochStartTime;
         _state.submitPeriod = submitPeriod;
         _state.revealPeriod = revealPeriod;
+    }
+
+    function setAssetNorm(IFAsset fasset, uint8 decimals) public {
+        _state.assetNorm[fasset] = 10**decimals;
     }
 
     function _initializeInstance(

@@ -44,6 +44,8 @@ interface IFtso {
         uint256 _highAssetTurnoutThreshold
     ) external;
 
+    function setFAsset(IFAsset _fAsset) external;
+
     function setFAssetFtsos(IFtso[] memory _fAssetFtsos) external;
 
     // current vote power block will update per reward epoch. 

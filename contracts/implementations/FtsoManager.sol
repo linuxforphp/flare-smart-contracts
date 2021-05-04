@@ -7,7 +7,7 @@ import "../interfaces/IFlareKeep.sol";
 import "../IFtso.sol";
 import "./Governed.sol";
 
-import "../lib/RewardManagerSettings.sol";
+import "../lib/FtsoManagerSettings.sol";
 // import "hardhat/console.sol";
 /**
  * FtsoManager is in charge of:
@@ -20,7 +20,7 @@ import "../lib/RewardManagerSettings.sol";
  *    - determines addresses and reward weights and triggers rewardDistribution on RewardManager
  */    
 contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
-    using RewardManagerSettings for RewardManagerSettings.State;
+    using FtsoManagerSettings for FtsoManagerSettings.State;
 
     struct PriceEpochData {
         address chosenFtso;
@@ -42,7 +42,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     RewardEpochData[] public rewardEpochs;
 
     mapping(uint256 => PriceEpochData) public priceEpochs;
-    RewardManagerSettings.State public settings;
+    FtsoManagerSettings.State public settings;
 
     // price epoch data
     uint256 immutable internal firstPriceEpochStartTs;
@@ -259,11 +259,6 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             settings.highAssetUSDThreshold,
             settings.highAssetTurnoutThreshold
         );
-
-        // Set ftsos for multi asset only
-        if(address(ftso.getFAsset()) == address(0)) {
-            ftso.setFAssetFtsos(settings.fAssetFtsos);
-        }                
         
         // create epoch state (later this is done at the end finalizeEpochPrice)
         ftso.initializeCurrentEpochStateForReveal();
@@ -271,6 +266,20 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         ftsos.push(ftso);
 
         emit FtsoAdded(ftso, true);
+    }
+
+    /**
+     * @notice Set FAsset for FTSO
+     */
+    function setFtsoFAsset(IFtso ftso, IFAsset fAsset) external onlyGovernance {
+        ftso.setFAsset(fAsset);
+    }
+
+    /**
+     * @notice Set FAsset FTSOs for FTSO
+     */
+    function setFtsoFAssetFtsos(IFtso ftso, IFtso[] memory fAssetFtsos) external onlyGovernance {
+        ftso.setFAssetFtsos(fAssetFtsos);
     }
 
     /**
@@ -303,8 +312,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold,
-        IFtso[] memory _fAssetFtsos
+        uint256 _highAssetTurnoutThreshold
     ) external override onlyGovernance 
     {
         settings._setState(
@@ -315,8 +323,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             _maxVotePowerAssetThreshold, 
             _lowAssetUSDThreshold, 
             _highAssetUSDThreshold, 
-            _highAssetTurnoutThreshold,
-            _fAssetFtsos
+            _highAssetTurnoutThreshold
         );
     } 
 
@@ -419,7 +426,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // TODO: we should assure that in case we are here, totalWeight > 0. Please verify.
         rewardManager.distributeRewards(
             addresses, weights, totalWeight, 
-            lastUnprocessedPriceEpoch, address(this), 
+            lastUnprocessedPriceEpoch, address(ftso), 
             priceEpochDurationSec, currentRewardEpoch
         ); 
          
@@ -486,13 +493,6 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
                     settings.highAssetUSDThreshold,
                     settings.highAssetTurnoutThreshold
                 );
-                if(address(ftsos[i].getFAsset()) == address(0)) {
-                    IFtso[] memory fAssetFtsos = new IFtso[](settings.fAssetFtsos.length);
-                    for(uint j = 0; j < settings.fAssetFtsos.length; j++) {
-                        fAssetFtsos[j] = IFtso(settings.fAssetFtsos[j]);
-                    }
-                    ftsos[i].setFAssetFtsos(fAssetFtsos);
-                }                
             }
                
             // TODO: take care that these functions do no revert

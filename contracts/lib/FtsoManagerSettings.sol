@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../IFtso.sol";
-
 /**
- * @title A library used for Reward Manager settings management
+ * @title A library used for Ftso Manager settings management
  */
-library RewardManagerSettings {
+library FtsoManagerSettings {
     struct State {
         // struct holding settings related to FTSOs
         // configurable settings
@@ -19,7 +17,6 @@ library RewardManagerSettings {
         uint256 lowAssetUSDThreshold; // threshold for low asset vote power (in scaled USD)
         uint256 highAssetUSDThreshold; // threshold for high asset vote power (in scaled USD)
         uint256 highAssetTurnoutThreshold; // threshold for high asset turnout (in vote power units)
-        IFtso[] fAssetFtsos;
         bool changed;
         bool initialized;
     }
@@ -33,8 +30,7 @@ library RewardManagerSettings {
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold,
-        IFtso[] memory _fAssetFtsos
+        uint256 _highAssetTurnoutThreshold
     ) internal {
         if(_state.minVoteCount != _minVoteCount) {
             _state.changed = true;
@@ -68,17 +64,7 @@ library RewardManagerSettings {
             _state.changed = true;
             _state.highAssetTurnoutThreshold = _highAssetTurnoutThreshold;
         }
-        if(_state.fAssetFtsos.length != _fAssetFtsos.length) {            
-            _state.fAssetFtsos = _fAssetFtsos;
-            _state.changed = true;        
-        } else {
-            for(uint i = 0; i < _fAssetFtsos.length; i++) {
-                if(_state.fAssetFtsos[i] != _fAssetFtsos[i]) {
-                    _state.changed = true;
-                    _state.fAssetFtsos[i] = _fAssetFtsos[i];
-                }
-            }
-        }
+        
         _state.initialized = true;
     }
 }

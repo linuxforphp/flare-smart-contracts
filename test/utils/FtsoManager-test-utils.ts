@@ -29,7 +29,7 @@ export function toNumberify(rewardEpochData: RewardEpochData): RewardEpochData {
  * @param ftsoManager 
  * @param rewardManager 
  */
-export async function settingWithOneFTSO_1(accounts: Truffle.Accounts, ftsoInterface: FtsoInstance, mockFtso: MockContractInstance, inflation: InflationMockInstance, ftsoManager: FtsoManagerInstance, rewardManager: RewardManagerInstance) {
+export async function settingWithOneFTSO_1(accounts: Truffle.Accounts, ftsoInterface: FtsoInstance, mockFtso: MockContractInstance, ftsoManager: FtsoManagerInstance) {
     const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
     await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
     // stub ftso finalizer
@@ -39,27 +39,17 @@ export async function settingWithOneFTSO_1(accounts: Truffle.Accounts, ftsoInter
         [[accounts[1], accounts[2]], [25, 75], 100]);
     await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
     // give reward manager some flr to distribute
-    await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
-    await inflation.setRewardManagerDailyRewardAmount(1000000);
+    // await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
+    // await inflation.setRewardManagerDailyRewardAmount(1000000);
 
     await setDefaultGovernanceParameters(ftsoManager);
     // add fakey ftso
     await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-    // activte reward manager
+    // activte ftso manager
     await ftsoManager.activate();
 }
 
-// export async function fassets3(accounts: Truffle.Accounts) {
-//     const MockVPToken = artifacts.require("MockVPToken") as MockVPTokenContract;
-//     let fasset1Token = await MockVPToken.new(accounts.slice(0, 10), [1,1,1,1,1,1,1,1,1,1]) as MockVPTokenInstance;
-//     let fasset2Token = await MockVPToken.new(accounts.slice(0, 10), [2,2,2,2,2,2,2,2,2,2]) as MockVPTokenInstance;
-//     let fasset3Token = await MockVPToken.new(accounts.slice(0, 10), [3,3,3,3,3,3,3,3,3,3]) as MockVPTokenInstance;
-//     return [fasset1Token, fasset2Token, fasset3Token];
-// }
-
-
-export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, inflation: InflationMockInstance, 
-    ftsoManager: FtsoManagerInstance, rewardManager: RewardManagerInstance) {
+export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManager: FtsoManagerInstance) {
 
     const Ftso = artifacts.require("MockFtso") as MockFtsoContract;
     const MockVPToken = artifacts.require("MockVPToken") as MockVPTokenContract;
@@ -69,27 +59,30 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, inflation:
     let fasset2Token = await MockVPToken.new(accounts.slice(0, 10), [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]) as MockVPTokenInstance;
     
     let ftso1 = await Ftso.new(
-        flrToken.address, fasset1Token.address, ftsoManager.address,  // address _fFlr, address _fAsset,
+        "FA1", flrToken.address, ftsoManager.address,  // _symbol, address _fFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
-        0, 0 //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0 //uint256 _initialPrice
     ) as MockFtsoInstance;
+    await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
 
     let ftso2 = await Ftso.new(
-        flrToken.address, fasset2Token.address, ftsoManager.address,  // address _fFlr, address _fAsset,
+        "FA2", flrToken.address, ftsoManager.address,  // _symbol, address _fFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
-        0, 0 //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0 //uint256 _initialPrice
     ) as MockFtsoInstance;
+    await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
 
-    await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
-    await inflation.setRewardManagerDailyRewardAmount(1000000);
+    // await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
+    // await inflation.setRewardManagerDailyRewardAmount(1000000);
 
-    // activte reward manager
+    // activte ftso manager
     // await ftsoManager.activate();    
     return [ftso1, ftso2];
 }
 
-export async function settingWithFourFTSOs(accounts: Truffle.Accounts, inflation: InflationMockInstance, 
-    ftsoManager: FtsoManagerInstance, rewardManager: RewardManagerInstance, flrContract=false) {
+export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManager: FtsoManagerInstance, flrContract=false) {
 
     const Ftso = artifacts.require("MockFtso") as MockFtsoContract;
     const MockVPToken = artifacts.require("MockVPToken") as MockVPTokenContract;
@@ -101,33 +94,43 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, inflation
     let fasset4Token = await MockVPToken.new(accounts.slice(0, 10), [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]) as MockVPTokenInstance;
     
     let ftso1 = await Ftso.new(
-        flrToken.address, flrContract ? constants.ZERO_ADDRESS : fasset1Token.address, ftsoManager.address,  // address _fFlr, address _fAsset,
+        flrContract ? "FLR" : "FA1", flrToken.address, ftsoManager.address,  // _symbol, address _fFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
-        0, 0 //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0 //uint256 _initialPrice
     ) as MockFtsoInstance;
+    if (!flrContract) {
+        await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
+    }
 
     let ftso2 = await Ftso.new(
-        flrToken.address, fasset2Token.address, ftsoManager.address,  // address _fFlr, address _fAsset,
+        "FA2", flrToken.address, ftsoManager.address,  // _symbol, address _fFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
-        0, 0 //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0 //uint256 _initialPrice
     ) as MockFtsoInstance;
+    await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
 
     let ftso3 = await Ftso.new(
-        flrToken.address, fasset3Token.address, ftsoManager.address,  // address _fFlr, address _fAsset,
+        "FA3", flrToken.address, ftsoManager.address,  // _symbol, address _fFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
-        0, 0 //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0 //uint256 _initialPrice
     ) as MockFtsoInstance;
+    await ftsoManager.setFtsoFAsset(ftso3.address, fasset3Token.address);
 
     let ftso4 = await Ftso.new(
-        flrToken.address, fasset4Token.address, ftsoManager.address,  // address _fFlr, address _fAsset,
+        "FA4", flrToken.address, ftsoManager.address,  // _symbol, address _fFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
-        0, 0 //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        0 //uint256 _initialPrice
     ) as MockFtsoInstance;
+    await ftsoManager.setFtsoFAsset(ftso4.address, fasset4Token.address);
 
-    await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
-    await inflation.setRewardManagerDailyRewardAmount(1000000);
+    // await web3.eth.sendTransaction({ from: accounts[0], to: rewardManagerAddress, value: 1000000 });
+    // await inflation.setRewardManagerDailyRewardAmount(1000000);
 
-    // activte reward manager
+    // activte ftso manager
     // await ftsoManager.activate();    
     return [ftso1, ftso2, ftso3, ftso4];
 }
@@ -136,7 +139,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, inflation
 export async function setDefaultGovernanceParameters(ftsoManager: FtsoManagerInstance) {
     let paramList = [0, 1e10, 1e10, 1, 1, 1000, 10000, 50];
     let paramListBN = paramList.map(x => toBN(x));
-    await (ftsoManager.setGovernanceParameters as any)(...paramListBN, []);   
+    await (ftsoManager.setGovernanceParameters as any)(...paramListBN);   
     return paramListBN 
 }
 
