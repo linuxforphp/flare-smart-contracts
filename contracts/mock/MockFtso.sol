@@ -76,7 +76,7 @@ contract MockFtso is Ftso {
         fAssetPriceUSD = _price;
     }
 
-    function epochCount(uint256 _epochId) external view returns (uint256) {
+    function epochCount(uint256 _epochId) external view returns (uint256 voteCount) {
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         return epoch.voteCount;
     }

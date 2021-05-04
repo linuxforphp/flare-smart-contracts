@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../IFtso.sol";
+import "../interfaces/internal/IIFtso.sol";
 import "../interfaces/IFAsset.sol";
 import "../interfaces/IFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
@@ -13,7 +13,7 @@ import "../lib/FtsoMedian.sol";
 /**
  * @title A contract implementing Flare Time Series Oracle
  */
-contract Ftso is IFtso {
+contract Ftso is IIFtso {
 
     using FtsoEpoch for FtsoEpoch.State;
     using FtsoVote for FtsoVote.State;
@@ -37,9 +37,9 @@ contract Ftso is IFtso {
     string internal constant ERR_EPOCH_UNKNOWN = "Unknown epoch";
 
     // storage    
-    bool public active;                         // activation status of FTSO
-    uint256 public fAssetPriceUSD;              // current FAsset USD price
-    string public symbol;                      // asset symbol that identifies FTSO
+    bool public override active;                // activation status of FTSO
+    string public override symbol;              // asset symbol that identifies FTSO
+    uint256 internal fAssetPriceUSD;            // current FAsset USD price
     FtsoEpoch.State internal epochs;            // epoch storage
     FtsoVote.State internal votes;              // vote storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
@@ -47,7 +47,7 @@ contract Ftso is IFtso {
     // external contracts
     IFAsset public immutable fFlr;              // wrapped FLR
     IFAsset[] public fAssets;                   // array of assets
-    IFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
+    IIFtso[] public fAssetFtsos;                // FTSOs for assets (for a multi-asset FTSO)
     IFtsoManager public ftsoManager;            // FTSO manager contract
 
     constructor(
@@ -75,12 +75,12 @@ contract Ftso is IFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _hash                 Hashed price and random number
-     * @notice Emits PriceSubmission event
+     * @notice Emits PriceSubmitted event
      */
-    function submitPrice(bytes32 _hash) external whenActive {
+    function submitPrice(bytes32 _hash) external override whenActive {
         uint256 epochId = getCurrentEpochId();
         epochVoterHash[epochId][msg.sender] = _hash;
-        emit PriceSubmitted(msg.sender, epochId);
+        emit PriceSubmitted(msg.sender, epochId, _hash, block.timestamp);
     }
 
     /**
@@ -89,13 +89,13 @@ contract Ftso is IFtso {
      * @param _price                Submitted price in USD
      * @param _random               Submitted random number
      * @notice The hash of _price and _random must be equal to the submitted hash
-     * @notice Emits PriceReveal event
+     * @notice Emits PriceRevealed event
      */
-    function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
+    function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external override whenActive {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
         require(epochs._epochRevealInProcess(_epochId), ERR_PRICE_REVEAL_FAILURE);
-        require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encodePacked(_price, _random)),
-            ERR_PRICE_INVALID);
+        require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encode(_price, _random)), ERR_PRICE_INVALID);
+
         // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         require(epoch.initializedForReveal, ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL);
@@ -115,7 +115,7 @@ contract Ftso is IFtso {
         delete epochVoterHash[_epochId][msg.sender];
 
         // inform about price reveal result
-        emit PriceRevealed(msg.sender, _epochId, _price, votePowerFlr, votePowerAsset);
+        emit PriceRevealed(msg.sender, _epochId, _price, _random, block.timestamp, votePowerFlr, votePowerAsset);
     }
 
     /**
@@ -164,10 +164,14 @@ contract Ftso is IFtso {
         // return reward data if requested
         if (_returnRewardData) {
             (_eligibleAddresses, _flrWeights, _flrWeightsSum) = readRewardData(epoch, data, index, weightFlr, vote);
+            if (_eligibleAddresses.length > 0) {
+                epoch.rewardedFtso = true;
+            }
         }
 
         // inform about epoch result
-        emit PriceFinalized(_epochId, epoch.medianPrice, false);
+        emit PriceFinalized(_epochId, epoch.medianPrice, epoch.rewardedFtso, 
+            epoch.lowRewardedPrice, epoch.highRewardedPrice, false);
     }
 
     /**
@@ -258,7 +262,7 @@ contract Ftso is IFtso {
      */
     function setFAsset(IFAsset _fAsset) external override onlyFtsoManager {
         symbol = _fAsset.symbol();
-        fAssetFtsos = [ IFtso(this) ];
+        fAssetFtsos = [ IIFtso(this) ];
         fAssets = [ _fAsset ];
         epochs.assetNorm[_fAsset] = 10**_fAsset.decimals();
     }
@@ -268,7 +272,7 @@ contract Ftso is IFtso {
      * @param _fAssetFtsos          Array of FTSOs
      * @dev FTSOs implicitly determine the FTSO assets
      */
-    function setFAssetFtsos(IFtso[] memory _fAssetFtsos) external override onlyFtsoManager {
+    function setFAssetFtsos(IIFtso[] memory _fAssetFtsos) external override onlyFtsoManager {
         assert(_fAssetFtsos.length > 0);
         assert(_fAssetFtsos.length > 1 || _fAssetFtsos[0] != this);
         fAssetFtsos = _fAssetFtsos;
@@ -382,7 +386,7 @@ contract Ftso is IFtso {
      * @param _epochId              Id of the epoch
      * @return Random number
      */
-    function getRandom(uint256 _epochId) external view returns (uint256) {
+    function getRandom(uint256 _epochId) external override view returns (uint256) {
         return epochs.instance[_epochId].random;
     }
 
@@ -392,7 +396,7 @@ contract Ftso is IFtso {
      * @return _epochSubmitEndTime  End time of the current epoch price submission as seconds from unix epoch
      * @return _epochRevealEndTime  End time of the current epoch price reveal as seconds from unix epoch
      */
-    function getEpochData() external view override returns (
+    function getPriceEpochData() external view override returns (
         uint256 _epochId,
         uint256 _epochSubmitEndTime,
         uint256 _epochRevealEndTime
@@ -405,7 +409,7 @@ contract Ftso is IFtso {
     /**
      * @notice Returns current epoch id
      */
-    function getCurrentEpochId() public view returns (uint256) {
+    function getCurrentEpochId() public override view returns (uint256) {
         return getEpochId(block.timestamp);
     }
 
@@ -413,7 +417,7 @@ contract Ftso is IFtso {
      * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
      * @param _timestamp            Timestamp as seconds from unix epoch
      */
-    function getEpochId(uint256 _timestamp) public view returns (uint256) {
+    function getEpochId(uint256 _timestamp) public override view returns (uint256) {
         return epochs._getEpochId(_timestamp);
     }
 
@@ -430,7 +434,7 @@ contract Ftso is IFtso {
      * @return _numberOfVotes           Number of votes in epoch
      * @return _votePowerBlock          Block used for vote power inspection
      */
-    function getEpoch(uint256 _epochId) external view returns (
+    function getFullEpochReport(uint256 _epochId) external override view returns (
         uint256 _epochSubmitStartTime,
         uint256 _epochSubmitEndTime,
         uint256 _epochRevealStartTime,
@@ -439,7 +443,8 @@ contract Ftso is IFtso {
         uint256 _lowRewardPrice,
         uint256 _highRewardPrice,
         uint256 _numberOfVotes,
-        uint256 _votePowerBlock
+        uint256 _votePowerBlock,
+        bool _rewardedFtso
     ) {
         require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
@@ -452,6 +457,7 @@ contract Ftso is IFtso {
         _highRewardPrice = epoch.highRewardedPrice;
         _numberOfVotes = epoch.voteCount;
         _votePowerBlock = epoch.votePowerBlock;
+        _rewardedFtso = epoch.rewardedFtso;
     }
 
     /**
@@ -465,7 +471,7 @@ contract Ftso is IFtso {
      * @return _eligibleForReward   Array of boolean values that specify which votes are eligible for reward
      * @notice Data for a single vote is determined by values in a specific position of the arrays
      */
-    function getEpochVotes(uint256 _epochId) external view returns (
+    function getEpochVotes(uint256 _epochId) external override view returns (
         address[] memory _voters,
         uint256[] memory _prices,
         uint256[] memory _weights,
@@ -505,20 +511,6 @@ contract Ftso is IFtso {
             id = epochs.nextVoteId[id];
         }
         _weights = FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);        
-    }
-
-    /**
-     * @notice Returns time left (in seconds) for price reveal in the given epoch, otherwise zero
-     * @param _epochId              Id of the epoch
-     */
-    function getEpochRevealTimeLeft(uint256 _epochId) external view returns (uint256) {
-        uint256 submitEndTime = epochs._epochSubmitEndTime(_epochId);
-        uint256 revealEndTime = submitEndTime + epochs.revealPeriod;
-        if (submitEndTime < block.timestamp && block.timestamp < revealEndTime) {
-            return revealEndTime - block.timestamp;
-        } else {
-            return 0;
-        }
     }
 
     /**
@@ -573,10 +565,10 @@ contract Ftso is IFtso {
     function _forceFinalizePriceEpoch(uint256 _epochId) internal {
         if (_epochId > 0) {
             epochs.instance[_epochId].medianPrice = epochs.instance[_epochId - 1].medianPrice;
-            emit PriceFinalized(_epochId, epochs.instance[_epochId - 1].medianPrice, true);
+            emit PriceFinalized(_epochId, epochs.instance[_epochId - 1].medianPrice, false, 0, 0, true);
         } else {
             epochs.instance[_epochId].medianPrice = 0;
-            emit PriceFinalized(_epochId, 0, true);
+            emit PriceFinalized(_epochId, 0, false, 0, 0, true);
         }
     }
 

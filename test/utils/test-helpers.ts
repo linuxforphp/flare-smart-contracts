@@ -194,3 +194,7 @@ export function compareArrays<T>(a: T[], b: T[]) {
         expect(a[i], `Expected ${a[i]} to equal ${b[i]} at index ${i}`).to.equals(b[i]);
     }
 }
+
+export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber): string {
+    return ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price.toString(), random.toString() ]);
+}

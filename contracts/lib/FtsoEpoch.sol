@@ -73,6 +73,7 @@ library FtsoEpoch {
         uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint32 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
+        bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
         IFAsset[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) voterPrice; // price submitted by a voter in epoch 

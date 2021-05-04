@@ -186,7 +186,7 @@ library FtsoMedian {
         QSPositions memory p;
         p.left = start;
         p.right = end;
-        uint32 random = uint32(uint256(keccak256(abi.encodePacked(block.difficulty, block.timestamp))));
+        uint32 random = uint32(uint256(keccak256(abi.encode(block.difficulty, block.timestamp))));
         uint256 totalSum; 
         while (true) {
             // guarantee: pos is in [left,right] and newLeftSum >= leftSum, newRightSum >= rightSum !!!
