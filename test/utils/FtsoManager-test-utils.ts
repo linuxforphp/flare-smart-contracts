@@ -1,9 +1,7 @@
 import { FtsoInstance, FtsoManagerInstance, InflationMockInstance, MockContractInstance, MockFtsoContract, MockFtsoInstance, MockVPTokenContract, MockVPTokenInstance, RewardManagerInstance } from "../../typechain-truffle";
-import { toBN } from "./test-helpers";
+import { submitPriceHash, toBN } from "./test-helpers";
 
 const { constants } = require('@openzeppelin/test-helpers');
-
-const { soliditySha3 } = require("web3-utils");
 
 export interface RewardEpochData {
     votepowerBlock: BN | number,
@@ -146,7 +144,7 @@ export async function setDefaultGovernanceParameters(ftsoManager: FtsoManagerIns
 export async function submitSomePrices(ftso: MockFtsoInstance, n: number, accounts: Truffle.Accounts) {
     let epoch!: BN;;
     for(let i = 0; i < n; i++) {        
-        let hash = soliditySha3(i, i);
+        let hash = submitPriceHash(i, i);
         let res = await ftso.submitPrice(hash, {from: accounts[i]});
         epoch = res.logs[0].args![1] as BN
     }

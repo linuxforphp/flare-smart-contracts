@@ -6,11 +6,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, web3 } from "hardhat";
-import { Ftso, MockFtso, MockVPToken } from "../../typechain";import { FlareBlock, increaseTimeTo, newContract, waitFinalize } from "./test-helpers";
+import { Ftso, MockFtso, MockVPToken } from "../../typechain";import { FlareBlock, increaseTimeTo, newContract, submitPriceHash, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 
 const { exec } = require("child_process");
-const { soliditySha3 } = require("web3-utils");
 
 
 ////////////////////////////////////////////////////////////
@@ -864,9 +863,7 @@ export async function submitPrice(signers: readonly SignerWithAddress[], ftso: F
     for (let i = 0; i < len; i++) {
         let price = prices[i];
         let random = priceToRandom(price);
-        // TODO: try to the use correct hash from ethers.utils.keccak256
-        //let hash = ethers.utils.keccak256(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price, random ]))
-        let hash = soliditySha3(price, random);
+        let hash = submitPriceHash(price, random);
         promises.push(waitFinalize(signers[i], async () =>
             ftso.connect(signers[i]).submitPrice(hash)
         ));

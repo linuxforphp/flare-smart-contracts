@@ -5,8 +5,8 @@ import "@gnosis.pm/mock-contract/contracts/MockContract.sol";
 
 
 /**
- * @title Inflation mock contract
- * @notice A contract to call the reward manager for setting daily reward amounts for unit testing.
+ * @title Ftso manager mock contract
+ * @notice A contract to call the reward manager to distribute rewards for unit testing.
  * @dev TODO: Can we get rid of this by calling web3 api from one contract on behalf of another?
  **/
 contract FtsoManagerMock is MockContract {

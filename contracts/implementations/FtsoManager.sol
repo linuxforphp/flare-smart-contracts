@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "../interfaces/IFtsoManager.sol";
 import "../interfaces/IRewardManager.sol";
 import "../interfaces/IFlareKeep.sol";
-import "../IFtso.sol";
+import "../interfaces/internal/IIFtso.sol";
 import "./Governed.sol";
 
 import "../lib/FtsoManagerSettings.sol";
@@ -61,7 +61,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     uint256 internal votePowerBoundaryFraction;
 
     // list of ftsos eligible for reward
-    IFtso[] internal ftsos;
+    IIFtso[] internal ftsos;
     IRewardManager internal rewardManager;
 
     // flags
@@ -228,7 +228,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Adds FTSO to the list of rewarded FTSOs
      */
-    function addFtso(IFtso ftso) external onlyGovernance {
+    function addFtso(IIFtso ftso) external onlyGovernance {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
         uint256 len = ftsos.length;
 
@@ -271,21 +271,21 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Set FAsset for FTSO
      */
-    function setFtsoFAsset(IFtso ftso, IFAsset fAsset) external onlyGovernance {
+    function setFtsoFAsset(IIFtso ftso, IFAsset fAsset) external onlyGovernance {
         ftso.setFAsset(fAsset);
     }
 
     /**
      * @notice Set FAsset FTSOs for FTSO
      */
-    function setFtsoFAssetFtsos(IFtso ftso, IFtso[] memory fAssetFtsos) external onlyGovernance {
+    function setFtsoFAssetFtsos(IIFtso ftso, IIFtso[] memory fAssetFtsos) external onlyGovernance {
         ftso.setFAssetFtsos(fAssetFtsos);
     }
 
     /**
      * @notice Removes FTSO from the list of the rewarded FTSOs
      */
-    function removeFtso(IFtso ftso) external onlyGovernance {
+    function removeFtso(IIFtso ftso) external onlyGovernance {
         // TODO: Handle case where you want to remove a FTSO that is in a fAssetFtsos of FLR FTSO (multiasset)?
         uint256 len = ftsos.length;
 
@@ -404,7 +404,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Determines rewards for a chosen FTSO and notifies RewardManager.
      */
-    function determineRewards(IFtso ftso) internal returns (bool wasDistirubted) {
+    function determineRewards(IIFtso ftso) internal returns (bool wasDistirubted) {
 
         address[] memory addresses;
         uint256[] memory weights;
@@ -513,7 +513,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Returns the list of rewarded FTSOs
      */
-    function getFtsos() external view override returns (IFtso[] memory _ftsos) {
+    function getFtsos() external view override returns (IIFtso[] memory _ftsos) {
         return (ftsos);
     }
 

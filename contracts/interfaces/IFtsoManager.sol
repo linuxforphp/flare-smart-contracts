@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../IFtso.sol";
+import "../interfaces/internal/IIFtso.sol";
 
 interface IFtsoManager {
 
-    event FtsoAdded(IFtso ftso, bool add);
+    event FtsoAdded(IIFtso ftso, bool add);
     event RewardEpochFinalized(uint256 votepowerBlock, uint256 startBlock);
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
     // TODO: Remove these two events for production
@@ -31,7 +31,7 @@ interface IFtsoManager {
             uint256 priceEpochRevealEndTimestamp, 
             uint256 currentTimestamp
         );        
-    function getFtsos() external view returns (IFtso[] memory ftsos);
+    function getFtsos() external view returns (IIFtso[] memory ftsos);
     function getPriceEpochConfiguration() external view returns 
         (uint256 firstPriceEpochStartTs, uint256 priceEpochDurationSec, uint256 revealEpochDurationSec);
 }
