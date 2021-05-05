@@ -14,7 +14,7 @@ library FtsoVote {
     struct State {                              // struct holding storage related to votes
 
         // storage
-        uint256 voteId;                         // vote id counter
+        uint256 voteId;                         // vote id counter - starts from 1
         mapping(uint256 => Instance) instance;  // mapping from vote id to instance
         mapping(uint256 => address) sender;     // mapping from vote id to vote sender address
     }
@@ -47,7 +47,7 @@ library FtsoVote {
         uint256 _price
     ) internal returns (uint256)
     {
-        uint256 voteId = _state.voteId++;
+        uint256 voteId = ++_state.voteId;
         Instance storage vote = _state.instance[voteId];
         vote.weightFlr = _getWeight(_votePowerFlr, _totalVotePowerFlr);
         vote.weightAsset = _getWeight(_votePowerAsset, _totalVotePowerAsset);

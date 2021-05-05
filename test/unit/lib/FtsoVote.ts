@@ -18,7 +18,7 @@ contract(`FtsoVote.sol; ${getTestFile(__filename)};  Ftso vote unit tests`, asyn
     it(`Should create new vote`, async () => {
         await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         const voteId = await ftsoVote.getLastVoteId();
-        expect(voteId.toNumber()).to.equals(0);
+        expect(voteId.toNumber()).to.equals(1);
     });
 
     it(`Last vote should be created vote`, async () => {
@@ -51,7 +51,7 @@ contract(`FtsoVote.sol; ${getTestFile(__filename)};  Ftso vote unit tests`, asyn
         await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         const voteId = await ftsoVote.getLastVoteId();
-        expect(voteId.toNumber()).to.equals(1);
+        expect(voteId.toNumber()).to.equals(2);
     });
 });
 

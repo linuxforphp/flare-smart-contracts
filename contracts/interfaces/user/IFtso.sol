@@ -4,21 +4,27 @@ pragma solidity 0.7.6;
 import "../IFAsset.sol";
 
 interface IFtso {
+    enum PriceFinalizationType {
+        NOT_FINALIZED,
+        MEDIAN,
+        TRUSTED_ADDRESSES,
+        PREVIOUS_PRICE_COPIED
+    }
 
     // events
     event PriceSubmitted(
-        address indexed submitter, uint256 epochId, bytes32 hash, uint256 timestamp
+        address indexed submitter, uint256 indexed epochId, bytes32 hash, uint256 timestamp
     );
     event PriceRevealed(
-        address indexed voter, uint256 epochId, uint256 price, uint256 random, uint256 timestamp,
+        address indexed voter, uint256 indexed epochId, uint256 price, uint256 random, uint256 timestamp,
         uint256 votePowerFlr, uint256 votePowerAsset
     );
     event PriceFinalized(
-        uint256 epochId, uint256 price, bool rewardedFtso,
-        uint256 lowRewardPrice, uint256 highRewardPrice, bool forced
+        uint256 indexed epochId, uint256 price, bool rewardedFtso,
+        uint256 lowRewardPrice, uint256 highRewardPrice, PriceFinalizationType finalizationType
     );
     event PriceEpochInitializedOnFtso(
-        uint256 epochId, uint256 endTime
+        uint256 indexed epochId, uint256 endTime
     );
 
     /**
@@ -53,11 +59,13 @@ interface IFtso {
      * @return _epochId                 Current epoch id
      * @return _epochSubmitEndTime      End time of the current epoch price submission as seconds from unix epoch
      * @return _epochRevealEndTime      End time of the current epoch price reveal as seconds from unix epoch
+     * @return _timestamp               Timestamp as seconds from unix epoch
      */
     function getPriceEpochData() external view returns (
         uint256 _epochId,
         uint256 _epochSubmitEndTime,
-        uint256 _epochRevealEndTime
+        uint256 _epochRevealEndTime,
+        uint256 _timestamp
     );
 
     /**
@@ -71,6 +79,14 @@ interface IFtso {
         uint256 _submitPeriod,
         uint256 _revealPeriod
     );
+    
+    /**
+     * @notice Returns FAsset price submitted by voter in specific epoch
+     * @param _epochId              Id of the epoch
+     * @param _voter                Address of the voter
+     * @return Price in USD multiplied by fAssetUSDDecimals
+     */
+    function getEpochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256);
 
     /**
      * @notice Returns current FAsset price

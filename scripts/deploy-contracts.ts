@@ -170,15 +170,15 @@ async function main(parameters: any) {
   // Setup governance parameters for the ftso manager
   console.error("Setting FTSO manager governance parameters...");
   await ftsoManager.setGovernanceParameters(
-    parameters.minVoteCount,
     parameters.minVotePowerFlrThreshold,
     parameters.minVotePowerAssetThreshold,
     parameters.maxVotePowerFlrThreshold,
     parameters.maxVotePowerAssetThreshold,
     parameters.lowAssetUSDThreshold,
     parameters.highAssetUSDThreshold,
-    parameters.highAssetTurnoutThreshold
-  );
+    parameters.highAssetTurnoutBIPSThreshold,
+    parameters.lowFlrTurnoutBIPSThreshold,
+    parameters.trustedAddresses);
 
   // Set FTSOs to multi FAsset WFLR contract
   await ftsoManager.setFtsoFAssetFtsos(ftsoWflr.address,

@@ -1,6 +1,5 @@
-import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, MockVPTokenContract, MockVPTokenInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
-import { revealSomePrices, RewardEpochData, setDefaultGovernanceParameters, settingWithFourFTSOs, settingWithOneFTSO_1, settingWithTwoFTSOs, submitSomePrices, toNumberify } from "../../utils/FtsoManager-test-utils";
-import { doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN } from "../../utils/test-helpers";
+import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
+import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;

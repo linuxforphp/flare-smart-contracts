@@ -29,11 +29,11 @@ contract FtsoVoteMock {
     }
 
     function getLastVoteId() public view returns(uint256) {
-        return _state.voteId-1;
+        return _state.voteId;
     }
 
     function getLastVote() public view returns(FtsoVote.Instance memory) {
-        return _state.instance[_state.voteId-1];
+        return _state.instance[_state.voteId];
     }
 
     function getVote(uint256 voteId) public view returns(FtsoVote.Instance memory) {

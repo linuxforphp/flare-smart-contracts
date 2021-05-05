@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/IFAsset.sol";
+import "../interfaces/user/IFtso.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./SafePct.sol";
 // import "hardhat/console.sol";
@@ -10,7 +11,6 @@ import "./SafePct.sol";
  * @title A library used for FTSO epoch management
  */
 library FtsoEpoch {
-
     using SafeMath for uint256;
     using SafePct for uint256;
 
@@ -27,7 +27,6 @@ library FtsoEpoch {
         uint256 revealPeriod;                   // duration of price reveal for an apoch instance
         
         // configurable settings
-        uint256 minVoteCount;                   // minimal number of votes required in epoch
         uint256 votePowerBlock;                 // current block at which the vote power is checked
         uint256 minVotePowerFlrThreshold;       // low threshold for FLR vote power per voter
         uint256 minVotePowerAssetThreshold;     // low threshold for asset vote power per voter
@@ -35,12 +34,17 @@ library FtsoEpoch {
         uint256 maxVotePowerAssetThreshold;     // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power (in scaled USD)
         uint256 highAssetUSDThreshold;          // threshold for high asset vote power (in scaled USD)
-        uint256 highAssetTurnoutThreshold;      // threshold for high asset turnout (in vote power units)
+        uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
+        uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
+        address[] trustedAddresses;             // trusted addresses - use their prices if low turnout is not achieved
     }
 
     struct Instance {                           // struct holding epoch votes and results
         
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
+        uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
+        uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
+        uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
         uint256 minVotePowerFlr;                // min FLR vote power required for voting
@@ -52,7 +56,6 @@ library FtsoEpoch {
         uint256 weightFlrSum;                   // sum of all FLR weights in epoch votes
         uint256 weightAssetSum;                 // sum of all asset weights in epoch votes
         uint256 baseWeightRatio;                // base weight ratio between asset and FLR used to combine weights
-        uint256 weightRatio;                    // weight ratio between asset and FLR used to combine weights
         uint256 firstVoteId;                    // id of the first vote in epoch
         uint256 truncatedFirstQuartileVoteId;   // first vote id eligible for reward
         uint256 firstQuartileVoteId;            // vote id corresponding to the first quartile
@@ -61,6 +64,7 @@ library FtsoEpoch {
         uint256 truncatedLastQuartileVoteId;    // last vote id eligible for reward
         uint256 lastVoteId;                     // id of the last vote in epoch
         uint256 medianPrice;                    // consented epoch asset price
+        IFtso.PriceFinalizationType finalizationType; // finalization type
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
         uint256 lowWeightSum;                   // sum of (mixed) weights on votes with price too low for reward
@@ -76,7 +80,8 @@ library FtsoEpoch {
         bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
         IFAsset[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
-        mapping(address => uint256) voterPrice; // price submitted by a voter in epoch 
+        mapping(address => uint256) votes;      // address to vote id mapping
+        address[] trustedAddresses;             // trusted addresses - set only if low flr turnout is not achieved
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
@@ -87,18 +92,19 @@ library FtsoEpoch {
 
     /**
      * @notice Initializes a new epoch instance with instance specific settings
-     * @param _state                Epoch state
-     * @param _instance             Epoch instance
-     * @param _votePowerFlr         Epoch FLR vote power
-     * @param _assets               List of assets
-     * @param _assetVotePowers      List of asset vote powers
-     * @param _assetPrices          List of asset prices
+     * @param _state                    Epoch state
+     * @param _instance                 Epoch instance
+     * @param _votePowerFlr             Epoch FLR vote power
+     * @param _assets                   List of assets
+     * @param _assetVotePowers          List of asset vote powers
+     * @param _assetPrices              List of asset prices
      * @dev _votePowerFlr is assumed to be smaller than 2**128 to avoid overflows in computations
      * @dev computed votePowerAsset is assumed to be smaller than 2**128 to avoid overflows in computations
      */
     function _initializeInstance(
         State storage _state,
         Instance storage _instance,
+        // uint256 _circulatingSupplyFlr,
         uint256 _votePowerFlr,
         IFAsset[] memory _assets,
         uint256[] memory _assetVotePowers,
@@ -108,6 +114,9 @@ library FtsoEpoch {
         // TODO: check somewhere that we never divide with 0  
         _setAssets(_state, _instance, _assets, _assetVotePowers, _assetPrices);
         _instance.votePowerBlock = _state.votePowerBlock;
+        _instance.highAssetTurnoutBIPSThreshold = _state.highAssetTurnoutBIPSThreshold;
+        _instance.lowFlrTurnoutBIPSThreshold = _state.lowFlrTurnoutBIPSThreshold;
+        _instance.circulatingSupplyFlr = _votePowerFlr; // TODO _circulatingSupplyFlr;
         _instance.votePowerFlr = _votePowerFlr;
         _instance.minVotePowerFlr = _votePowerFlr / _state.minVotePowerFlrThreshold;
         _instance.minVotePowerAsset = _instance.votePowerAsset / _state.minVotePowerAssetThreshold;
@@ -123,7 +132,6 @@ library FtsoEpoch {
      * @param _votePowerFlr         Vote power for FLR
      * @param _votePowerAsset       Vote power for asset
      * @param _random               Random number associated with the vote
-     * @param _price                Price associated with the vote
      */
     function _addVote(
         State storage _state,
@@ -131,8 +139,7 @@ library FtsoEpoch {
         uint256 _voteId,
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,
-        uint256 _random,
-        uint256 _price
+        uint256 _random
     ) internal
     {
         if (_instance.voteCount == 0) {
@@ -149,7 +156,7 @@ library FtsoEpoch {
         _instance.accumulatedVotePowerFlr += _votePowerFlr;
         _instance.accumulatedVotePowerAsset += _votePowerAsset;
         _instance.random += _random;
-        _instance.voterPrice[msg.sender] = _price;
+        _instance.votes[msg.sender] = _voteId;
     }
 
     /**
@@ -311,13 +318,11 @@ library FtsoEpoch {
 
     /**
      * @notice Computes the weight ratio between FLR and asset weight that specifies a unified vote weight
-     * @param _state                Epoch state
      * @param _instance             Epoch instance
      * @return Weight ratio for asset in BIPS (a number between 0 and BIPS)
      * @dev Weight ratio for FLR is supposed to be (BIPS - weight ratio for asset)
      */
     function _getWeightRatio(
-        State storage _state,
         Instance storage _instance
     ) internal view returns (uint256)
     {
@@ -328,31 +333,11 @@ library FtsoEpoch {
         }
         
         uint256 turnout = _instance.weightAssetSum.mulDiv(BIPS100, TERA);
-        if (turnout >= _state.highAssetTurnoutThreshold) {
+        if (turnout >= _instance.highAssetTurnoutBIPSThreshold) {
             return _instance.baseWeightRatio;
         } else {
-            return _instance.baseWeightRatio.mulDiv(turnout, _state.highAssetTurnoutThreshold);
+            return _instance.baseWeightRatio.mulDiv(turnout, _instance.highAssetTurnoutBIPSThreshold);
         }
-    }
-
-    /**
-     * @notice Sets weights parameters in epoch instance
-     * @param _state                Epoch state
-     * @param _instance             Epoch instance
-     * @param _weightFlrSum         Sum of all FLR weights
-     * @param _weightAssetSum       Sum of all asset weights
-     * @dev All weight parameters and variables are in BIPS
-     */
-    function _setWeightsParameters(
-        FtsoEpoch.State storage _state,
-        FtsoEpoch.Instance storage _instance,
-        uint256 _weightFlrSum,
-        uint256 _weightAssetSum
-    ) internal
-    {
-        _instance.weightFlrSum = _weightFlrSum;
-        _instance.weightAssetSum = _weightAssetSum;
-        _instance.weightRatio = _getWeightRatio(_state, _instance);
     }
 
     /**
@@ -376,7 +361,7 @@ library FtsoEpoch {
         
         // set weight distribution according to weight sums and weight ratio
         uint256 weightFlrShare = 0;
-        uint256 weightAssetShare = _instance.weightRatio;
+        uint256 weightAssetShare = _getWeightRatio(_instance);
         if (weightFlrSum > 0) {
             weightFlrShare = BIPS100 - weightAssetShare;
         }
