@@ -26,14 +26,15 @@ interface IIFtso is IFtso {
     function initializeEpochs(uint256 _firstEpochStartTs, uint256 _epochPeriod, uint256 _revealPeriod) external;
 
     function configureEpochs(
-        uint256 _minVoteCount,
         uint256 _minVotePowerFlrThreshold,
         uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold
+        uint256 _highAssetTurnoutBIPSThreshold,
+        uint256 _lowFlrTurnoutBIPSThreshold,
+        address[] memory _trustedAddresses
     ) external;
 
     function setFAsset(IFAsset _fAsset) external;
@@ -66,6 +67,8 @@ interface IIFtso is IFtso {
      * @return _highRewardPrice         The highest submitted price eligible for reward
      * @return _numberOfVotes           Number of votes in epoch
      * @return _votePowerBlock          Block used for vote power inspection
+     * @return _finalizationType        Finalization type for epoch
+     * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
      * @return _rewardedFtso            Whether current epoch instance was a rewarded ftso
      */
     function getFullEpochReport(uint256 _epochId) external view returns (
@@ -78,38 +81,34 @@ interface IIFtso is IFtso {
         uint256 _highRewardPrice,
         uint256 _numberOfVotes,
         uint256 _votePowerBlock,
+        PriceFinalizationType _finalizationType,
+        address[] memory _trustedAddresses,
         bool _rewardedFtso
     );
     
     /**
      * @notice Returns current configuration of epoch state
-     * @return _minVoteCount                    Minimal number of votes required in epoch
      * @return _minVotePowerFlrThreshold        Low threshold for FLR vote power per voter
      * @return _minVotePowerAssetThreshold      Low threshold for asset vote power per voter
      * @return _maxVotePowerFlrThreshold        High threshold for FLR vote power per voter
      * @return _maxVotePowerAssetThreshold      High threshold for FLR vote power per voter
      * @return _lowAssetUSDThreshold            Threshold for low asset vote power
      * @return _highAssetUSDThreshold           Threshold for high asset vote power
-     * @return _highAssetTurnoutThreshold       Threshold for high asset turnout
+     * @return _highAssetTurnoutBIPSThreshold   Threshold for high asset turnout
+     * @return _lowFlrTurnoutBIPSThreshold      Threshold for low flr turnout
+     * @return _trustedAddresses                Trusted addresses - use their prices if low flr turnout is not achieved
      */
     function epochsConfiguration() external view returns (
-        uint256 _minVoteCount,
         uint256 _minVotePowerFlrThreshold,
         uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold
+        uint256 _highAssetTurnoutBIPSThreshold,
+        uint256 _lowFlrTurnoutBIPSThreshold,
+        address[] memory _trustedAddresses
     );
-
-        /**
-     * @notice Returns FAsset price submitted by voter in specific epoch
-     * @param _epochId              Id of the epoch
-     * @param _voter                Address of the voter
-     * @return Price in USD multiplied by fAssetUSDDecimals
-     */
-    function getEpochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256);
 
     /**
      * @notice Provides summary of epoch votes

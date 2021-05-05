@@ -12,14 +12,15 @@ interface IFtsoManager {
     event KeepTrigger(uint256 blockNumber);  // for monitoring keep() calls
     
     function setGovernanceParameters(
-        uint256 _minVoteCount,
         uint256 _minVotePowerFlrThreshold,
         uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold
+        uint256 _highAssetTurnoutBIPSThreshold,
+        uint256 _lowFlrTurnoutBIPSThreshold,
+        address[] memory _trustedAddresses
     ) external;
 
     function getCurrentRewardEpoch() external view returns (uint256);

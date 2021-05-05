@@ -250,14 +250,15 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
         // Configure 
         ftso.configureEpochs(
-            settings.minVoteCount,
             settings.minVotePowerFlrThreshold,
             settings.minVotePowerAssetThreshold,
             settings.maxVotePowerFlrThreshold,
             settings.maxVotePowerAssetThreshold,
             settings.lowAssetUSDThreshold,
             settings.highAssetUSDThreshold,
-            settings.highAssetTurnoutThreshold
+            settings.highAssetTurnoutBIPSThreshold,
+            settings.lowFlrTurnoutBIPSThreshold,
+            settings.trustedAddresses
         );
         
         // create epoch state (later this is done at the end finalizeEpochPrice)
@@ -305,25 +306,27 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * @notice Sets governance parameters for FTSOs
      */
     function setGovernanceParameters(
-        uint256 _minVoteCount,
         uint256 _minVotePowerFlrThreshold,
         uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThreshold
-    ) external override onlyGovernance 
+        uint256 _highAssetTurnoutBIPSThreshold,
+        uint256 _lowFlrTurnoutBIPSThreshold,
+        address[] memory _trustedAddresses
+    ) external override onlyGovernance
     {
         settings._setState(
-            _minVoteCount, 
             _minVotePowerFlrThreshold, 
             _minVotePowerAssetThreshold, 
             _maxVotePowerFlrThreshold, 
             _maxVotePowerAssetThreshold, 
             _lowAssetUSDThreshold, 
             _highAssetUSDThreshold, 
-            _highAssetTurnoutThreshold
+            _highAssetTurnoutBIPSThreshold,
+            _lowFlrTurnoutBIPSThreshold,
+            _trustedAddresses
         );
     } 
 
@@ -484,14 +487,15 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         for (uint i = 0; i < numFtsos; i++) {
             if(settings.changed) {
                 ftsos[i].configureEpochs(
-                    settings.minVoteCount,
                     settings.minVotePowerFlrThreshold,
                     settings.minVotePowerAssetThreshold,
                     settings.maxVotePowerFlrThreshold,
                     settings.maxVotePowerAssetThreshold,
                     settings.lowAssetUSDThreshold,
                     settings.highAssetUSDThreshold,
-                    settings.highAssetTurnoutThreshold
+                    settings.highAssetTurnoutBIPSThreshold,
+                    settings.lowFlrTurnoutBIPSThreshold,
+                    settings.trustedAddresses
                 );
             }
                

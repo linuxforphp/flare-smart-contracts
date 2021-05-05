@@ -1,6 +1,6 @@
 import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance, MockVPTokenContract, MockVPTokenInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
 import { revealSomePrices, RewardEpochData, setDefaultGovernanceParameters, settingWithFourFTSOs, settingWithOneFTSO_1, settingWithTwoFTSOs, submitSomePrices, toNumberify } from "../../utils/FtsoManager-test-utils";
-import { doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN } from "../../utils/test-helpers";
+import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN } from "../../utils/test-helpers";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -170,11 +170,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             // init reward epoch
-            let paramList = [0, 1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50];
+            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500];
             let paramListBN = paramList.map(x => toBN(x));
 
+            let trustedAddresses = [accounts[8], accounts[9]]
             // setup governance parameters
-            await (ftsoManager.setGovernanceParameters as any)(...paramListBN);
+            await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
             
             // add ftsos, parameters should be set by FTSOManager
             await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
@@ -186,16 +187,26 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.activate();
             // await ftsoManager.keep();
 
-            let ftso1Params = numberedKeyedObjectToList<BN>(await ftso1.epochsConfiguration());
-            let ftso2Params = numberedKeyedObjectToList<BN>(await ftso2.epochsConfiguration());
-            let ftso3Params = numberedKeyedObjectToList<BN>(await ftso2.epochsConfiguration());
-            let ftso4Params = numberedKeyedObjectToList<BN>(await ftso2.epochsConfiguration());
+            let ftso1Params = numberedKeyedObjectToList(await ftso1.epochsConfiguration());
+            let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
+            let ftso3Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
+            let ftso4Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
+            
+            let trustedAddresses1  = ftso1Params.pop();
+            let trustedAddresses2  = ftso2Params.pop();
+            let trustedAddresses3  = ftso3Params.pop();
+            let trustedAddresses4  = ftso4Params.pop();
 
             // numeric epoch configuration should match the set one
-            assert(doBNListsMatch(paramListBN, ftso1Params), "Wrong FTSO 1 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso2Params), "Wrong FTSO 2 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso3Params), "Wrong FTSO 3 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso4Params), "Wrong FTSO 4 governance parameters");
+            assert(doBNListsMatch(paramListBN, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
+            assert(doBNListsMatch(paramListBN, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
+            assert(doBNListsMatch(paramListBN, ftso3Params as BN[]), "Wrong FTSO 3 governance parameters");
+            assert(doBNListsMatch(paramListBN, ftso4Params as BN[]), "Wrong FTSO 4 governance parameters");
+
+            compareArrays(trustedAddresses, trustedAddresses1 as string[]);
+            compareArrays(trustedAddresses, trustedAddresses2 as string[]);
+            compareArrays(trustedAddresses, trustedAddresses3 as string[]);
+            compareArrays(trustedAddresses, trustedAddresses4 as string[]);
         });
 
         it("Should governance set FTSO parameters after two price finalizations", async () => {
@@ -242,9 +253,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            let paramList = [0, 1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50];
+            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500];
             let paramListBN = paramList.map(x => toBN(x));
-            await (ftsoManager.setGovernanceParameters as any)(...paramListBN);
+
+            let trustedAddresses = [accounts[8], accounts[9]];
+            await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
 
             await time.increaseTo(startTs.addn(120 * 3));
             tx = await ftsoManager.keep();
@@ -257,12 +270,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             expectEvent(tx, "PriceEpochFinalized");
 
-            let ftso1Params = numberedKeyedObjectToList<BN>(await ftso1.epochsConfiguration());
-            let ftso2Params = numberedKeyedObjectToList<BN>(await ftso2.epochsConfiguration());
+            let ftso1Params = numberedKeyedObjectToList(await ftso1.epochsConfiguration());
+            let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
 
-            assert(doBNListsMatch(paramListBN, ftso1Params), "Wrong FTSO 1 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso2Params), "Wrong FTSO 2 governance parameters");
+            let trustedAddresses1  = ftso1Params.pop();
+            let trustedAddresses2  = ftso2Params.pop();
+
+            assert(doBNListsMatch(paramListBN, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
+            assert(doBNListsMatch(paramListBN, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
             assert(!doBNListsMatch(paramListBN, defaultParamListBN), "Changed parameters should not match the default ones.");
+            compareArrays(trustedAddresses, trustedAddresses1 as string[]);
+            compareArrays(trustedAddresses, trustedAddresses2 as string[]);
         });
 
     });
@@ -420,7 +438,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             // Assert
             const { chosenFtso } = await ftsoManager.priceEpochs(0) as any;
-            // Should equal FTOS 1, the next eligible ftso in the list
+            // Should equal FTSO 1, the next eligible ftso in the list
             assert.equal(chosenFtso, mockFtso.address);
         });
 
@@ -449,8 +467,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             let ftso1Events = await ftso1.getPastEvents("PriceFinalized")
             let ftso2Events = await ftso2.getPastEvents("PriceFinalized")
-            assert.equal(lastOf(ftso1Events).args.forced, false);
-            assert.equal(lastOf(ftso2Events).args.forced, false);
+            assert.equal(lastOf(ftso1Events).args.finalizationType.toNumber(), 1);
+            assert.equal(lastOf(ftso2Events).args.finalizationType.toNumber(), 1);
 
 
             // reveal only for ftso2, not ftso1
@@ -468,8 +486,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             ftso1Events = await ftso1.getPastEvents("PriceFinalized");
             ftso2Events = await ftso2.getPastEvents("PriceFinalized");
-            assert.equal(lastOf(ftso1Events).args.forced, true);
-            assert.equal(lastOf(ftso2Events).args.forced, false);
+            assert.equal(lastOf(ftso1Events).args.finalizationType.toNumber(), 3);
+            assert.equal(lastOf(ftso2Events).args.finalizationType.toNumber(), 1);
 
         });
 
