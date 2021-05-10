@@ -283,6 +283,8 @@ contract Ftso is IIFtso {
      * @param _votePowerBlock       Vote power block
      */
     function setVotePowerBlock(uint256 _votePowerBlock) external override onlyFtsoManager {
+        // votePowerBlock must be in the past to prevent flash loan attacks
+        require(_votePowerBlock < block.number);
         epochs.votePowerBlock = _votePowerBlock;
     }
 

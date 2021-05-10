@@ -629,8 +629,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             for (let i = 1; i < rewardEpochDataList.length; i++) {
                 rewardEpochDataList[i].diff = rewardEpochDataList[i].startBlock - rewardEpochDataList[i - 1].startBlock;
                 rewardEpochDataList[i].offset = rewardEpochDataList[i].startBlock - rewardEpochDataList[i].votepowerBlock;
-                rewardEpochDataList[i].min = rewardEpochDataList[i].startBlock - Math.floor(rewardEpochDataList[i].diff / VOTE_POWER_BOUNDARY_FRACTION);
+                rewardEpochDataList[i].min = rewardEpochDataList[i].startBlock - Math.ceil(rewardEpochDataList[i].diff / VOTE_POWER_BOUNDARY_FRACTION);
                 offsets.add(rewardEpochDataList[i].offset);
+                console.log(rewardEpochDataList[i]);
                 assert(rewardEpochDataList[i].votepowerBlock >= rewardEpochDataList[i].min, "Vote power block in wrong range.");
             }
             // console.log(rewardEpochDataList)
