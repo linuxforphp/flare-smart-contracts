@@ -194,8 +194,6 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // - if far from now, it doesn't reflect last vote power changes
         // - if too small, possible loan attacks.     
         // IMPORTANT: currentRewardEpoch is actually the one just expired!
-        // NOTE: even block.number can become votePowerBlock in this setting 
-        // if  lastRandom % votepowerBlockBoundary == 0  
         uint256 votepowerBlockBoundary = 
             (block.number - rewardEpochs[currentRewardEpoch].startBlock) / 
               (votePowerBoundaryFraction == 0 ? 1 : votePowerBoundaryFraction);  
@@ -206,8 +204,16 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         if(votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
         }
+ 
+        uint256 votepowerBlocksAgo = lastRandom % votepowerBlockBoundary;
+        // prevent block.number becoming votePowerBlock
+        // if  lastRandom % votepowerBlockBoundary == 0  
+        if (votepowerBlocksAgo == 0) {
+            votepowerBlocksAgo = 1;
+        }
+        
         RewardEpochData memory epochData = RewardEpochData({
-            votepowerBlock: block.number - (lastRandom % votepowerBlockBoundary), 
+            votepowerBlock: block.number - votepowerBlocksAgo, 
             startBlock: block.number
         });
         rewardEpochs.push(epochData);
