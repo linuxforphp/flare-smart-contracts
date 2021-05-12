@@ -806,9 +806,6 @@ contract Ftso is IIFtso {
         }
         _votePowerAsset = epochs._getAssetVotePower(_epoch, votePowersAsset);
         
-        // console.log("Vote power   flr: %s of %s", _votePowerFlr, _epoch.minVotePowerFlr);
-        // console.log("           asset: %s of %s", _votePowerAsset, _epoch.minVotePowerAsset);
-        
         require(
             (_votePowerFlr > 0 && _votePowerFlr >= _epoch.minVotePowerFlr) || 
                 (_votePowerAsset > 0 && _votePowerAsset >= _epoch.minVotePowerAsset),
