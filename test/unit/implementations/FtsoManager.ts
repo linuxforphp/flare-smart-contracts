@@ -621,7 +621,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 for (let j = 0; j < REWARD_EPOCH_DURATION_S; j += secondsPerBlock) {
                     currentSnapshotTime = currentSnapshotTime.addn(secondsPerBlock);
                     await time.increaseTo(currentSnapshotTime);
-                    await time.advanceBlock();
+                    // time.increaseTo doesn't increase block number enough, so there is almost no space for random votePowerBlock (after we divide by 7)
+                    for (let k = 0; k < 10; k++) {
+                        await time.advanceBlock();
+                    }
                     await ftsoManager.keep();
                 }
             }
@@ -631,10 +634,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 rewardEpochDataList[i].offset = rewardEpochDataList[i].startBlock - rewardEpochDataList[i].votepowerBlock;
                 rewardEpochDataList[i].min = rewardEpochDataList[i].startBlock - Math.ceil(rewardEpochDataList[i].diff / VOTE_POWER_BOUNDARY_FRACTION);
                 offsets.add(rewardEpochDataList[i].offset);
-                console.log(rewardEpochDataList[i]);
                 assert(rewardEpochDataList[i].votepowerBlock >= rewardEpochDataList[i].min, "Vote power block in wrong range.");
             }
-            // console.log(rewardEpochDataList)
             assert(offsets.size > 1, "Offsets not random (ok to fail with small probability)");
         });
     });

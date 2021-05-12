@@ -53,7 +53,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 accounts[10],
                 1
             );
-            await ftso.configureEpochs(0, 10, 10, 1, 1, 1000, 10000, 50, { from: accounts[10] });
+            await ftso.configureEpochs(10, 10, 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
             await ftso.initializeEpochs(0, 120, 60, { from: accounts[10] });
             // init lender
             flashLenderMock = await FlashLenderMock.new();
@@ -92,7 +92,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }), 
-                "PriceFinalized", { epochId: toBN(epochId), price: toBN(380), forced: false });
+                "PriceFinalized", { epochId: toBN(epochId), price: toBN(380) });
         });
         
         it("Should not be able to vote with flash loaned flares (vote power block equals loan block)", async () => {
@@ -137,7 +137,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }),
-                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500), forced: false });
+                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500) });
         }
         
         it("Is able to vote with flash loaned flares (reveal during loan), if votePowerBlock is in future (only manager can actually achive that)", async () => {
@@ -169,7 +169,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }),
-                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500), forced: false });
+                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500) });
         });
 
     });

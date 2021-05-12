@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import { WFLR } from "../../implementations/WFLR.sol";
 import { Ftso } from "../../implementations/Ftso.sol";
-import "hardhat/console.sol";
 
 interface IFlashLenderMock {
     function requestFlareLoan(uint256 value) external;
@@ -61,7 +60,6 @@ contract FlashLoanMock is IFlashLoanMock {
     receive() external payable {}
     
     function testRequestLoan(uint256 _value) external {
-        // console.log("Block = %s", block.number);
         requestedValue = _value;
         require(address(this).balance == 0, "Starting balance not zero");
         flashLender.requestFlareLoan(_value);
@@ -77,9 +75,7 @@ contract FlashLoanMock is IFlashLoanMock {
     
     function mintWflr(uint256 _amount) public {
         require(address(this).balance >= _amount, "Not enought flares to mint wflr");
-        // console.log("Minting %s of balance %s", _amount, address(this).balance);
         wflr.deposit{ value: address(this).balance }();
-        // console.log("   remaining balance %s", address(this).balance);
     }
 
     function cashWflr(uint256 _amount) public {
@@ -97,7 +93,6 @@ contract FlashLoanMock is IFlashLoanMock {
 
     function doSomethingWithLoanedFlares(uint256) internal virtual {
         // to be overriden
-        //console.log("FlashLoanMock.doSomethingWithLoanedFlares(%s)", _value);
     }
 }
 
@@ -121,7 +116,6 @@ contract VotingFlashLoanMock is FlashLoanMock {
 
     function doSomethingWithLoanedFlares(uint256 _value) internal override {
         // to be overriden
-        // console.log("VotingFlashLoanMock.doSomethingWithLoanedFlares(%s)", _value);
         mintWflr(_value);
         revealPrice(epochId, price, random);
         cashWflr(_value);
