@@ -35,7 +35,7 @@ contract FtsoEpochMock {
         uint256 lastQuartileVoteId;             // vote id corresponding to the last quartile
         uint256 truncatedLastQuartileVoteId;    // last vote id eligible for reward
         uint256 lastVoteId;                     // id of the last vote in epoch
-        uint256 medianPrice;                    // consented epoch asset price
+        uint256 price;                          // consented epoch asset price
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
         uint256 lowWeightSum;                   // sum of (mixed) weights on votes with price too low for reward
@@ -143,7 +143,7 @@ contract FtsoEpochMock {
         epoch.lastQuartileVoteId = _epoch.lastQuartileVoteId;
         epoch.truncatedLastQuartileVoteId = _epoch.truncatedLastQuartileVoteId;
         epoch.lastVoteId = _epoch.lastVoteId;
-        epoch.medianPrice = _epoch.medianPrice;
+        epoch.price = _epoch.price;
         epoch.lowRewardedPrice = _epoch.lowRewardedPrice;
         epoch.highRewardedPrice = _epoch.highRewardedPrice;
         epoch.lowWeightSum = _epoch.lowWeightSum;

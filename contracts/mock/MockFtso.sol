@@ -123,7 +123,7 @@ contract MockFtso is Ftso {
         medians[4] = r.truncatedLastQuartileIndex;
 
         prices[0] = epoch.lowRewardedPrice;
-        prices[1] = epoch.medianPrice;
+        prices[1] = epoch.price;
         prices[2] = epoch.highRewardedPrice;
 
         weights[0] = epoch.lowWeightSum;

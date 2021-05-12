@@ -6,8 +6,9 @@
  * @dev Do not send anything out via console.log unless it is
  * json defining the created contracts.
  */
-import { DummyFAssetMinterContract, 
-  DummyFAssetMinterInstance, 
+import {
+  DummyFAssetMinterContract,
+  DummyFAssetMinterInstance,
   FAssetTokenContract,
   FAssetTokenInstance,
   FlareKeeperContract,
@@ -17,7 +18,8 @@ import { DummyFAssetMinterContract,
   InflationContract,
   RewardManagerContract,
   WFLRContract,
-  FtsoManagerInstance} from "../typechain-truffle";
+  FtsoManagerInstance
+} from "../typechain-truffle";
 
 import { pascalCase } from "pascal-case";
 
@@ -53,7 +55,7 @@ class Contracts {
 }
 
 // const parameters = JSON.parse(serializedParameters);
-const parameters = require(`./chain-config/${process.env.CHAIN_CONFIG}.json`)
+const parameters = require(`./chain-config/${ process.env.CHAIN_CONFIG }.json`)
 
 async function main(parameters: any) {
   // Define repository for created contracts
@@ -76,8 +78,8 @@ async function main(parameters: any) {
   const WFLR = artifacts.require("WFLR") as WFLRContract;
 
   // Inflation contract
-  const inflation = await Inflation.new(deployerAccount.address, 
-    parameters.inflationFundWithdrawTimeLockSec, 
+  const inflation = await Inflation.new(deployerAccount.address,
+    parameters.inflationFundWithdrawTimeLockSec,
     web3.utils.toWei(BN(parameters.totalFlrSupply)));
   spewNewContractInfo(contracts, Inflation.contractName, inflation.address);
 
@@ -111,9 +113,17 @@ async function main(parameters: any) {
   // Initialize the keeper
   const flareKeeper = await FlareKeeper.at(parameters.flareKeeperAddress);
   spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address);
-  await flareKeeper.initialiseFixedAddress();
-  await flareKeeper.proposeGovernance(deployerAccount.address, {from: genesisGovernanceAccount.address});
-  await flareKeeper.claimGovernance({from: deployerAccount.address});
+  let currentGovernanceAddress = null;
+  try {
+    await flareKeeper.initialiseFixedAddress();
+    currentGovernanceAddress = genesisGovernanceAccount.address;
+  } catch(e) {
+    // keeper might be already initialized if redeploy
+    // NOTE: unregister must claim governance of flareKeeper!
+    currentGovernanceAddress = governanceAccount.address
+  }
+  await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
+  await flareKeeper.claimGovernance({ from: deployerAccount.address });
 
   // Register kept contracts to the keeper
   await flareKeeper.registerToKeep(inflation.address);
@@ -130,12 +140,12 @@ async function main(parameters: any) {
 
   // Deploy FAsset, minter, and ftso for XRP
   console.error("Rigging XRP...");
-  const [, ,ftsoFxrpWflr] = await deployNewFAsset(
+  const [, , ftsoFxrp] = await deployNewFAsset(
     contracts,
-    deployerAccount.address, 
-    ftsoManager, 
-    wflr.address, 
-    parameters.XRP.fAssetName, 
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.XRP.fAssetName,
     parameters.XRP.fAssetSymbol,
     parameters.XRP.fAssetDecimals,
     parameters.XRP.dummyFAssetMinterMax,
@@ -143,29 +153,81 @@ async function main(parameters: any) {
 
   // Deploy FAsset, minter, and ftso for LTC
   console.error("Rigging LTC...");
-  const [, ,ftsoFltcWflr] = await deployNewFAsset(
+  const [, , ftsoFltc] = await deployNewFAsset(
     contracts,
-    deployerAccount.address, 
-    ftsoManager, 
-    wflr.address, 
-    parameters.LTC.fAssetName, 
-    parameters.LTC.fAssetSymbol, 
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.LTC.fAssetName,
+    parameters.LTC.fAssetSymbol,
     parameters.LTC.fAssetDecimals,
     parameters.LTC.dummyFAssetMinterMax,
     parameters.LTC.initialPrice);
 
   // Deploy FAsset, minter, and ftso for XDG
   console.error("Rigging XDG...");
-  const [, ,ftsoFxdgWflr] = await deployNewFAsset(
+  const [, , ftsoFxdg] = await deployNewFAsset(
     contracts,
-    deployerAccount.address, 
-    ftsoManager, 
-    wflr.address, 
-    parameters.XDG.fAssetName, 
-    parameters.XDG.fAssetSymbol, 
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.XDG.fAssetName,
+    parameters.XDG.fAssetSymbol,
     parameters.XDG.fAssetDecimals,
     parameters.XDG.dummyFAssetMinterMax,
     parameters.XDG.initialPrice);
+
+  // Deploy FAsset, minter, and ftso for ADA
+  console.error("Rigging ADA...");
+  const [, , ftsoFada] = await deployNewFAsset(
+    contracts,
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.ADA.fAssetName,
+    parameters.ADA.fAssetSymbol,
+    parameters.ADA.fAssetDecimals,
+    parameters.ADA.dummyFAssetMinterMax,
+    parameters.ADA.initialPrice);
+
+  // Deploy FAsset, minter, and ftso for ALGO
+  console.error("Rigging ALGO...");
+  const [, , ftsoFalgo] = await deployNewFAsset(
+    contracts,
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.ALGO.fAssetName,
+    parameters.ALGO.fAssetSymbol,
+    parameters.ALGO.fAssetDecimals,
+    parameters.ALGO.dummyFAssetMinterMax,
+    parameters.ALGO.initialPrice);
+
+  // Deploy FAsset, minter, and ftso for BCH
+  console.error("Rigging BCH...");
+  const [, , ftsoFbch] = await deployNewFAsset(
+    contracts,
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.BCH.fAssetName,
+    parameters.BCH.fAssetSymbol,
+    parameters.BCH.fAssetDecimals,
+    parameters.BCH.dummyFAssetMinterMax,
+    parameters.BCH.initialPrice);
+
+  // Deploy FAsset, minter, and ftso for DGB
+  console.error("Rigging DGB...");
+  const [, , ftsoFdgb] = await deployNewFAsset(
+    contracts,
+    deployerAccount.address,
+    ftsoManager,
+    wflr.address,
+    parameters.DGB.fAssetName,
+    parameters.DGB.fAssetSymbol,
+    parameters.DGB.fAssetDecimals,
+    parameters.DGB.dummyFAssetMinterMax,
+    parameters.DGB.initialPrice);
 
   // Setup governance parameters for the ftso manager
   console.error("Setting FTSO manager governance parameters...");
@@ -180,16 +242,22 @@ async function main(parameters: any) {
     parameters.lowFlrTurnoutBIPSThreshold,
     parameters.trustedAddresses);
 
-  // Set FTSOs to multi FAsset WFLR contract
-  await ftsoManager.setFtsoFAssetFtsos(ftsoWflr.address,
-    [ftsoFxrpWflr.address, ftsoFltcWflr.address, ftsoFxdgWflr.address]);
 
   // Add ftsos to the ftso manager
   console.error("Adding FTSOs to manager...");
   await ftsoManager.addFtso(ftsoWflr.address);
-  await ftsoManager.addFtso(ftsoFxrpWflr.address);
-  await ftsoManager.addFtso(ftsoFltcWflr.address);
-  await ftsoManager.addFtso(ftsoFxdgWflr.address);
+  await ftsoManager.addFtso(ftsoFxrp.address);
+  await ftsoManager.addFtso(ftsoFltc.address);
+  await ftsoManager.addFtso(ftsoFxdg.address);
+
+  await ftsoManager.addFtso(ftsoFada.address);
+  await ftsoManager.addFtso(ftsoFalgo.address);
+  await ftsoManager.addFtso(ftsoFbch.address);
+  await ftsoManager.addFtso(ftsoFdgb.address);
+
+  // Set FTSOs to multi FAsset WFLR contract
+  await ftsoManager.setFtsoFAssetFtsos(ftsoWflr.address,
+    [ftsoFxrp.address, ftsoFltc.address, ftsoFxdg.address]);
 
   // Activate the managers
   console.error("Activating managers...");
@@ -214,14 +282,14 @@ async function deployNewFAsset(
   contracts: Contracts,
   deployerAccountAddress: string,
   ftsoManager: FtsoManagerInstance,
-  wflrAddress: string, 
-  name: string, 
+  wflrAddress: string,
+  name: string,
   symbol: string,
-  decimals: number, 
+  decimals: number,
   maxMintRequestTwei: number,
   initialPrice: number):
-  Promise<[fAssetToken: FAssetTokenInstance, 
-    dummyFAssetMinter: DummyFAssetMinterInstance, 
+  Promise<[fAssetToken: FAssetTokenInstance,
+    dummyFAssetMinter: DummyFAssetMinterInstance,
     ftso: FtsoInstance]> {
 
   const DummyFAssetMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
@@ -234,28 +302,28 @@ async function deployNewFAsset(
 
   // Deploy dummy FAsset minter
   const dummyFAssetMinter = await DummyFAssetMinter.new(fAssetToken.address, maxMintRequestTwei);
-  spewNewContractInfo(contracts, `Dummy ${symbol} minter`, dummyFAssetMinter.address);
+  spewNewContractInfo(contracts, `Dummy ${ symbol } minter`, dummyFAssetMinter.address);
 
   // Establish governance over FAsset by minter
-  await fAssetToken.proposeGovernance(dummyFAssetMinter.address, {from: deployerAccountAddress});
+  await fAssetToken.proposeGovernance(dummyFAssetMinter.address, { from: deployerAccountAddress });
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
   const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, initialPrice);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
-  spewNewContractInfo(contracts, `FTSO ${symbol}/WFLR`, ftso.address);
+  spewNewContractInfo(contracts, `FTSO ${ symbol }`, ftso.address);
 
   return [fAssetToken, dummyFAssetMinter, ftso];
 }
 
 function spewNewContractInfo(contracts: Contracts, name: string, address: string) {
-  console.error(`${name} contract: `, address);
+  console.error(`${ name } contract: `, address);
   contracts.add(new Contract(pascalCase(name), address));
 }
 
 main(parameters)
-    .then(() => process.exit(0))
-    .catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });

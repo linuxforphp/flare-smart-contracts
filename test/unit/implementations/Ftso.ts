@@ -462,6 +462,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should not finalize more than once", async() => {
             expectEvent(await ftso.finalizePriceEpoch(0, false, {from: accounts[10]}), "PriceFinalized", {epochId: toBN(0), price: toBN(0), finalizationType: toBN(3)});
             await expectRevert(ftso.finalizePriceEpoch(0, false, {from: accounts[10]}), "Epoch already finalized");
+            await expectRevert(ftso.averageFinalizePriceEpoch(0, {from: accounts[10]}), "Epoch already finalized");
             await expectRevert(ftso.forceFinalizePriceEpoch(0, {from: accounts[10]}), "Epoch already finalized");
             expectEvent(await ftso.finalizePriceEpoch(1, true, {from: accounts[10]}), "PriceFinalized", {epochId: toBN(1), price: toBN(0), finalizationType: toBN(3)});
         });
@@ -781,14 +782,26 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should not finalize price epoch for epoch in future", async() => {
             await expectRevert(ftso.finalizePriceEpoch(epochId+1, false, {from: accounts[10]}), "Epoch not ready for finalization");
+            await expectRevert(ftso.averageFinalizePriceEpoch(epochId+1, {from: accounts[10]}), "Epoch not ready for finalization");
             await expectRevert(ftso.forceFinalizePriceEpoch(epochId+1, {from: accounts[10]}), "Epoch not ready for finalization");
+        });
+
+        it("Should force finalize price epoch using average", async() => {
+            expectEvent(await ftso.averageFinalizePriceEpoch(0, {from: accounts[10]}), "PriceFinalized",
+                {epochId: toBN(0), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(5)});
+            expectEvent(await ftso.averageFinalizePriceEpoch(1, {from: accounts[10]}), "PriceFinalized",
+                {epochId: toBN(1), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(5)});
         });
 
         it("Should force finalize price epoch", async() => {
             expectEvent(await ftso.forceFinalizePriceEpoch(0, {from: accounts[10]}), "PriceFinalized",
-                {epochId: toBN(0), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(3)});
+                {epochId: toBN(0), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(5)});
             expectEvent(await ftso.forceFinalizePriceEpoch(1, {from: accounts[10]}), "PriceFinalized",
-                {epochId: toBN(1), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(3)});
+                {epochId: toBN(1), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(5)});
+        });
+
+        it("Should not force finalize using average price epoch if not ftso manager", async() => {
+            await expectRevert(ftso.averageFinalizePriceEpoch(0, {from: accounts[1]}), "Access denied");
         });
 
         it("Should not force finalize price epoch if not ftso manager", async() => {
@@ -1448,8 +1461,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[3].toNumber()).to.equals(0);
             expect(data[4].toNumber()).to.equals(0);
             expect(data[5].toNumber()).to.equals(0);
             expect(data[6].toNumber()).to.equals(0);
@@ -1469,8 +1482,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[3].toNumber()).to.equals(0);
             expect(data[4].toNumber()).to.equals(0);
             expect(data[5].toNumber()).to.equals(0);
             expect(data[6].toNumber()).to.equals(0);
@@ -1491,8 +1504,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[3].toNumber()).to.equals(0);
             expect(data[4].toNumber()).to.equals(0);
             expect(data[5].toNumber()).to.equals(0);
             expect(data[6].toNumber()).to.equals(0);
@@ -1507,8 +1520,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId+1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
             expect(data[4].toNumber()).to.equals(250);
             expect(data[5].toNumber()).to.equals(250);
             expect(data[6].toNumber()).to.equals(250);
@@ -1516,7 +1529,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(data[8].toNumber()).to.equals(10);
             expect(data[9].toNumber()).to.equals(1);
             expect(data[10].length).to.equals(0);
-            expect(data[11]).to.equals(false);        });
+            expect(data[11]).to.equals(false);
+        });
 
         it("Should get epoch info after finalizing price epoch using trusted addresses votes when epoch has low flr turnout", async() => {
             await ftso.submitPrice(submitPriceHash(500, 123), {from: accounts[1]});
@@ -1550,14 +1564,54 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             let epochData = await ftso.getFullEpochReport(epochId);
             expect(epochData[0].toNumber()).to.equals(epochId * 120);
             expect(epochData[1].toNumber()).to.equals((epochId+1) * 120);
-            expect(epochData[2].toNumber()).to.equals((epochId+1) * 120);
-            expect(epochData[3].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(epochData[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(epochData[3].toNumber()).to.be.gt((epochId+1) * 120 + 60);
             expect(epochData[4].toNumber()).to.equals(450);
             expect(epochData[5].toNumber()).to.equals(0);
             expect(epochData[6].toNumber()).to.equals(0);
             expect(epochData[7].toNumber()).to.equals(4);
             expect(epochData[8].toNumber()).to.equals(10);
             expect(epochData[9].toNumber()).to.equals(2);
+            expect(epochData[10].length).to.equals(3);
+            expect(epochData[10]).to.eqls([accounts[5], accounts[6], accounts[7]]);
+            expect(epochData[11]).to.equals(false);
+        });
+
+        it("Should get epoch info after finalizing price epoch using trusted addresses votes - using average finalization", async() => {
+            await ftso.submitPrice(submitPriceHash(500, 123), {from: accounts[1]});
+            await ftso.submitPrice(submitPriceHash(250, 124), {from: accounts[2]});
+            await ftso.submitPrice(submitPriceHash(400, 125), {from: accounts[6]});
+            await ftso.submitPrice(submitPriceHash(500, 126), {from: accounts[7]});
+            
+            await setMockVotePowerAt(10, 50000, 1000000);
+            await ftso.initializeCurrentEpochStateForReveal({from: accounts[10]});
+            
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await setMockVotePowerOfAt(10, 10, 10000, accounts[1]);
+            await ftso.revealPrice(epochId, 500, 123, {from: accounts[1]});
+            await setMockVotePowerOfAt(10, 30, 0, accounts[2]);
+            await ftso.revealPrice(epochId, 250, 124, {from: accounts[2]});
+            await setMockVotePowerOfAt(10, 20, 50000, accounts[6]);
+            await ftso.revealPrice(epochId, 400, 125, {from: accounts[6]});
+            await setMockVotePowerOfAt(10, 5, 50000, accounts[7]);
+            await ftso.revealPrice(epochId, 500, 126, {from: accounts[7]});
+            
+            await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+
+            expectEvent(await ftso.averageFinalizePriceEpoch(epochId, {from: accounts[10]}), "PriceFinalized", {epochId: toBN(epochId), price: toBN(450), finalizationType: toBN(4)});
+
+            // after price finalization
+            let epochData = await ftso.getFullEpochReport(epochId);
+            expect(epochData[0].toNumber()).to.equals(epochId * 120);
+            expect(epochData[1].toNumber()).to.equals((epochId+1) * 120);
+            expect(epochData[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(epochData[3].toNumber()).to.be.gt((epochId+1) * 120 + 60);
+            expect(epochData[4].toNumber()).to.equals(450);
+            expect(epochData[5].toNumber()).to.equals(0);
+            expect(epochData[6].toNumber()).to.equals(0);
+            expect(epochData[7].toNumber()).to.equals(4);
+            expect(epochData[8].toNumber()).to.equals(10);
+            expect(epochData[9].toNumber()).to.equals(4);
             expect(epochData[10].length).to.equals(3);
             expect(epochData[10]).to.eqls([accounts[5], accounts[6], accounts[7]]);
             expect(epochData[11]).to.equals(false);
@@ -1589,14 +1643,48 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             let epochData = await ftso.getFullEpochReport(epochId);
             expect(epochData[0].toNumber()).to.equals(epochId * 120);
             expect(epochData[1].toNumber()).to.equals((epochId+1) * 120);
-            expect(epochData[2].toNumber()).to.equals((epochId+1) * 120);
-            expect(epochData[3].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(epochData[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(epochData[3].toNumber()).to.be.gt((epochId+1) * 120 + 60);
             expect(epochData[4].toNumber()).to.equals(0);
             expect(epochData[5].toNumber()).to.equals(0);
             expect(epochData[6].toNumber()).to.equals(0);
             expect(epochData[7].toNumber()).to.equals(2);
             expect(epochData[8].toNumber()).to.equals(10);
             expect(epochData[9].toNumber()).to.equals(3);
+            expect(epochData[10].length).to.equals(3);
+            expect(epochData[10]).to.eqls([accounts[5], accounts[6], accounts[7]]);
+            expect(epochData[11]).to.equals(false);
+        });
+
+        it("Should get epoch info after finalizing price epoch using force finalization and no votes from trusted addresses - using average finalization", async() => {
+            await ftso.submitPrice(submitPriceHash(500, 123), {from: accounts[1]});
+            await ftso.submitPrice(submitPriceHash(250, 124), {from: accounts[2]});
+            
+            await setMockVotePowerAt(10, 50000, 1000000);
+            await ftso.initializeCurrentEpochStateForReveal({from: accounts[10]});
+            
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await setMockVotePowerOfAt(10, 10, 10000, accounts[1]);
+            await ftso.revealPrice(epochId, 500, 123, {from: accounts[1]});
+            await setMockVotePowerOfAt(10, 30, 0, accounts[2]);
+            await ftso.revealPrice(epochId, 250, 124, {from: accounts[2]});
+            
+            await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+
+            expectEvent(await ftso.averageFinalizePriceEpoch(epochId, {from: accounts[10]}), "PriceFinalized", {epochId: toBN(epochId), price: toBN(0), finalizationType: toBN(5)});
+
+            // after price finalization
+            let epochData = await ftso.getFullEpochReport(epochId);
+            expect(epochData[0].toNumber()).to.equals(epochId * 120);
+            expect(epochData[1].toNumber()).to.equals((epochId+1) * 120);
+            expect(epochData[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(epochData[3].toNumber()).to.be.gt((epochId+1) * 120 + 60);
+            expect(epochData[4].toNumber()).to.equals(0);
+            expect(epochData[5].toNumber()).to.equals(0);
+            expect(epochData[6].toNumber()).to.equals(0);
+            expect(epochData[7].toNumber()).to.equals(2);
+            expect(epochData[8].toNumber()).to.equals(10);
+            expect(epochData[9].toNumber()).to.equals(5);
             expect(epochData[10].length).to.equals(3);
             expect(epochData[10]).to.eqls([accounts[5], accounts[6], accounts[7]]);
             expect(epochData[11]).to.equals(false);
@@ -1853,8 +1941,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[3].toNumber()).to.equals(0);
             expect(data[4].toNumber()).to.equals(0);
             expect(data[5].toNumber()).to.equals(0);
             expect(data[6].toNumber()).to.equals(0);
@@ -1875,8 +1963,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[3].toNumber()).to.equals(0);
             expect(data[4].toNumber()).to.equals(0);
             expect(data[5].toNumber()).to.equals(0);
             expect(data[6].toNumber()).to.equals(0);
@@ -1898,8 +1986,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[3].toNumber()).to.equals(0);
             expect(data[4].toNumber()).to.equals(0);
             expect(data[5].toNumber()).to.equals(0);
             expect(data[6].toNumber()).to.equals(0);
@@ -1915,8 +2003,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             data = await ftso.getFullEpochReport(epochId);
             expect(data[0].toNumber()).to.equals(epochId * 120);
             expect(data[1].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[2].toNumber()).to.equals((epochId + 1) * 120);
-            expect(data[3].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[2].toNumber()).to.equals((epochId + 1) * 120 + 60);
+            expect(data[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
             expect(data[4].toNumber()).to.equals(250);
             expect(data[5].toNumber()).to.equals(250);
             expect(data[6].toNumber()).to.equals(250);

@@ -19,6 +19,8 @@ interface IIFtso is IFtso {
         uint256 _totalFlrWeight
     );
 
+    function averageFinalizePriceEpoch(uint256 _epochId) external;
+
     function forceFinalizePriceEpoch(uint256 _epochId) external;
 
     /// init price epoch data will be called by reward manager once epoch is added 
@@ -60,8 +62,8 @@ interface IIFtso is IFtso {
      * @param _epochId                  Id of the epoch
      * @return _epochSubmitStartTime    Start time of epoch price submission as seconds from unix epoch
      * @return _epochSubmitEndTime      End time of epoch price submission as seconds from unix epoch
-     * @return _epochRevealStartTime    Start time of epoch price reveal as seconds from unix epoch
      * @return _epochRevealEndTime      End time of epoch price reveal as seconds from unix epoch
+     * @return _epochFinalizedTimestamp Block.timestamp when the price was decided
      * @return _price                   Finalized price for epoch
      * @return _lowRewardPrice          The lowest submitted price eligible for reward
      * @return _highRewardPrice         The highest submitted price eligible for reward
@@ -74,8 +76,8 @@ interface IIFtso is IFtso {
     function getFullEpochReport(uint256 _epochId) external view returns (
         uint256 _epochSubmitStartTime,
         uint256 _epochSubmitEndTime,
-        uint256 _epochRevealStartTime,
         uint256 _epochRevealEndTime,
+        uint256 _epochFinalizedTimestamp,
         uint256 _price,
         uint256 _lowRewardPrice,
         uint256 _highRewardPrice,

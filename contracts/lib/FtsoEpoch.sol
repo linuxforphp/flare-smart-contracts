@@ -63,7 +63,7 @@ library FtsoEpoch {
         uint256 lastQuartileVoteId;             // vote id corresponding to the last quartile
         uint256 truncatedLastQuartileVoteId;    // last vote id eligible for reward
         uint256 lastVoteId;                     // id of the last vote in epoch
-        uint256 medianPrice;                    // consented epoch asset price
+        uint256 price;                          // consented epoch asset price
         IFtso.PriceFinalizationType finalizationType; // finalization type
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
@@ -82,6 +82,7 @@ library FtsoEpoch {
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) votes;      // address to vote id mapping
         address[] trustedAddresses;             // trusted addresses - set only if low flr turnout is not achieved
+        uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
