@@ -16,7 +16,7 @@
     "lowAssetUSDThreshold": 200000000,
     "highAssetUSDThreshold": 3000000000,
     "highAssetTurnoutBIPSThreshold": 100,
-    "lowFlrTurnoutBIPSThreshold": 1500,
+    "lowFlrTurnoutBIPSThreshold": 300,
     "trustedAddresses": [
         "0xc783df8a850f42e7f7e57013759c285caa701eb6",
         "0xead9c93b79ae7c1591b1fb5323bd777e86e150d4",
@@ -24,7 +24,8 @@
         "0x92561f28ec438ee9831d00d1d59fbdc981b762b2",
         "0x2ffd013aaa7b5a7da93336c2251075202b33fb2b"
     ],
-    "initialWflrPrice": 0,    "XRP": {
+    "initialWflrPrice": 0,    
+    "XRP": {
         "fAssetName": "Flare Asset XRP",
         "fAssetSymbol": "FXRP",
         "fAssetDecimals": 6,
@@ -43,6 +44,34 @@
         "fAssetSymbol": "FXDG",
         "fAssetDecimals": 8,
         "dummyFAssetMinterMax": 13000000000000,
+        "initialPrice": 0
+    },
+    "ADA": {
+        "fAssetName": "Flare Asset ADA (Cardano)",
+        "fAssetSymbol": "FADA",
+        "fAssetDecimals": 8,
+        "dummyFAssetMinterMax": 45000000000,
+        "initialPrice": 0
+    },
+    "ALGO": {
+        "fAssetName": "Flare Asset Algorand",
+        "fAssetSymbol": "FALGO",
+        "fAssetDecimals": 8,
+        "dummyFAssetMinterMax": 5000000000,
+        "initialPrice": 0
+    },
+    "BCH": {
+        "fAssetName": "Flare Asset Bitcoin Cash",
+        "fAssetSymbol": "FBCH",
+        "fAssetDecimals": 8,
+        "dummyFAssetMinterMax": 21000000,
+        "initialPrice": 0
+    },
+    "DGB": {
+        "fAssetName": "Flare Asset Digibyte",
+        "fAssetSymbol": "FDGB",
+        "fAssetDecimals": 8,
+        "dummyFAssetMinterMax": 10000000000,
         "initialPrice": 0
     }
 }

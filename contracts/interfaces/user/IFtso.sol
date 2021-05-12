@@ -8,7 +8,9 @@ interface IFtso {
         NOT_FINALIZED,
         MEDIAN,
         TRUSTED_ADDRESSES,
-        PREVIOUS_PRICE_COPIED
+        PREVIOUS_PRICE_COPIED,
+        TRUSTED_ADDRESSES_EXCEPTION,        // same as TRUSTED_ADDRESSES - set when an exception occurs
+        PREVIOUS_PRICE_COPIED_EXCEPTION     // same as PREVIOUS_PRICE_COPIED - set when an exception occurs
     }
 
     // events
@@ -21,10 +23,18 @@ interface IFtso {
     );
     event PriceFinalized(
         uint256 indexed epochId, uint256 price, bool rewardedFtso,
-        uint256 lowRewardPrice, uint256 highRewardPrice, PriceFinalizationType finalizationType
+        uint256 lowRewardPrice, uint256 highRewardPrice, PriceFinalizationType finalizationType,
+        uint256 timestamp
     );
     event PriceEpochInitializedOnFtso(
-        uint256 indexed epochId, uint256 endTime
+        uint256 indexed epochId, uint256 endTime, uint256 timestamp
+    );
+
+    event LowTurnout(
+        uint256 indexed epochId,
+        uint256 flrTurnout,
+        uint256 lowFlrTurnoutBIPSThreshold,
+        uint256 timestamp
     );
 
     /**

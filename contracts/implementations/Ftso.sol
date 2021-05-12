@@ -134,11 +134,7 @@ contract Ftso is IIFtso {
         uint256[] memory _flrWeights,
         uint256 _flrWeightsSum
     ) {
-        require(block.timestamp > epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
-
-        // get epoch
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
+        FtsoEpoch.Instance storage epoch = getEpochForFinalization(_epochId);
 
         uint256 flrTurnout = 0;
         if (epoch.circulatingSupplyFlr > 0) {
@@ -146,25 +142,8 @@ contract Ftso is IIFtso {
             flrTurnout = epoch.accumulatedVotePowerFlr * FtsoEpoch.BIPS100 / epoch.circulatingSupplyFlr;
         }
         if (flrTurnout <= epoch.lowFlrTurnoutBIPSThreshold) {
-            uint256 _priceSum;
-            uint256 _count;
-            epoch.trustedAddresses = epochs.trustedAddresses;
-            // extract data from epoch trusted votes to memory
-            (_priceSum, _count) = readTrustedVotes(epoch);
-            if (_count > 0) {
-                // finalizationType = PriceFinalizationType.TRUSTED_ADDRESSES
-                epoch.medianPrice = _priceSum / _count;
-                epoch.finalizationType = PriceFinalizationType.TRUSTED_ADDRESSES;
-
-                // update price
-                fAssetPriceUSD = epoch.medianPrice;
-
-                // inform about epoch result
-                emit PriceFinalized(_epochId, epoch.medianPrice, false, 0, 0, epoch.finalizationType);
-            } else {
-                // finalizationType = PriceFinalizationType.PREVIOUS_PRICE_COPIED
-                _forceFinalizePriceEpoch(_epochId);
-            }
+            emit LowTurnout(_epochId, flrTurnout, epoch.lowFlrTurnoutBIPSThreshold, block.timestamp);
+            _averageFinalizePriceEpoch(_epochId, epoch, false);
 
             // return empty reward data
             return (_eligibleAddresses, _flrWeights, _flrWeightsSum);
@@ -196,8 +175,19 @@ contract Ftso is IIFtso {
         }
 
         // inform about epoch result
-        emit PriceFinalized(_epochId, epoch.medianPrice, epoch.rewardedFtso, 
-            epoch.lowRewardedPrice, epoch.highRewardedPrice, epoch.finalizationType);
+        emit PriceFinalized(_epochId, epoch.price, epoch.rewardedFtso, 
+            epoch.lowRewardedPrice, epoch.highRewardedPrice, epoch.finalizationType,
+            block.timestamp);
+    }
+
+    /**
+     * @notice Forces finalization of price epoch calculating average price from trusted addresses
+     * @param _epochId              Id of the epoch to finalize
+     * @dev Used as a fallback method if epoch finalization is failing
+     */
+    function averageFinalizePriceEpoch(uint256 _epochId) external override onlyFtsoManager {
+        FtsoEpoch.Instance storage epoch = getEpochForFinalization(_epochId);
+        _averageFinalizePriceEpoch(_epochId, epoch, true);
     }
 
     /**
@@ -206,8 +196,9 @@ contract Ftso is IIFtso {
      * @dev Used as a fallback method if epoch finalization is failing
      */
     function forceFinalizePriceEpoch(uint256 _epochId) external override onlyFtsoManager {
-        require(block.timestamp > epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
-        _forceFinalizePriceEpoch(_epochId);
+        FtsoEpoch.Instance storage epoch = getEpochForFinalization(_epochId);
+        epoch.trustedAddresses = epochs.trustedAddresses;
+        _forceFinalizePriceEpoch(_epochId, epoch, true);
     }
 
     /**
@@ -335,7 +326,7 @@ contract Ftso is IIFtso {
         );
 
         epoch.initializedForReveal = true;
-        emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId));
+        emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId), block.timestamp);
         return epochId;
     }
 
@@ -389,7 +380,7 @@ contract Ftso is IIFtso {
      * @return Price in USD multiplied by fAssetUSDDecimals
      */
     function getEpochPrice(uint256 _epochId) external view override returns (uint256) {
-        return epochs.instance[_epochId].medianPrice;
+        return epochs.instance[_epochId].price;
     }
 
     /**
@@ -462,8 +453,8 @@ contract Ftso is IIFtso {
      * @param _epochId                  Id of the epoch
      * @return _epochSubmitStartTime    Start time of epoch price submission as seconds from unix epoch
      * @return _epochSubmitEndTime      End time of epoch price submission as seconds from unix epoch
-     * @return _epochRevealStartTime    Start time of epoch price reveal as seconds from unix epoch
      * @return _epochRevealEndTime      End time of epoch price reveal as seconds from unix epoch
+     * @return _epochFinalizedTimestamp Block.timestamp when the price was decided
      * @return _price                   Finalized price for epoch
      * @return _lowRewardPrice          The lowest submitted price eligible for reward
      * @return _highRewardPrice         The highest submitted price eligible for reward
@@ -476,8 +467,8 @@ contract Ftso is IIFtso {
     function getFullEpochReport(uint256 _epochId) external override view returns (
         uint256 _epochSubmitStartTime,
         uint256 _epochSubmitEndTime,
-        uint256 _epochRevealStartTime,
         uint256 _epochRevealEndTime,
+        uint256 _epochFinalizedTimestamp,
         uint256 _price,
         uint256 _lowRewardPrice,
         uint256 _highRewardPrice,
@@ -490,10 +481,10 @@ contract Ftso is IIFtso {
         require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         _epochSubmitStartTime = epochs._epochSubmitStartTime(_epochId);
-        _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);
-        _epochRevealStartTime = _epochSubmitEndTime;
+        _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);        
         _epochRevealEndTime = epochs._epochRevealEndTime(_epochId);
-        _price = epoch.medianPrice;
+        _epochFinalizedTimestamp = epoch.finalizedTimestamp;
+        _price = epoch.price;
         _lowRewardPrice = epoch.lowRewardedPrice;
         _highRewardPrice = epoch.highRewardedPrice;
         _numberOfVotes = epoch.voteCount;
@@ -601,20 +592,58 @@ contract Ftso is IIFtso {
     }
 
     /**
+     * @notice Forces finalization of the epoch calculating average price from trusted addresses
+     * @param _epochId              Epoch id
+     * @param _epoch                Epoch instance
+     * @param _exception            Indicates if the exception happened
+     * @dev Sets the price to be the average of prices from trusted addresses or force finalize if no votes submitted
+     */
+    function _averageFinalizePriceEpoch(
+        uint256 _epochId,
+        FtsoEpoch.Instance storage _epoch,
+        bool _exception
+    ) internal {
+        uint256 _priceSum;
+        uint256 _count;
+        
+        _epoch.trustedAddresses = epochs.trustedAddresses;
+        // extract data from epoch trusted votes to memory
+        (_priceSum, _count) = readTrustedVotes(_epoch);
+        if (_count > 0) {
+            // finalizationType = PriceFinalizationType.TRUSTED_ADDRESSES
+            _epoch.price = _priceSum / _count;
+            _epoch.finalizedTimestamp = block.timestamp;
+            _epoch.finalizationType = _exception ?
+                PriceFinalizationType.TRUSTED_ADDRESSES_EXCEPTION : PriceFinalizationType.TRUSTED_ADDRESSES;
+
+            // update price
+            fAssetPriceUSD = _epoch.price;
+
+            // inform about epoch result
+            emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, _epoch.finalizationType, block.timestamp);
+        } else {
+            // finalizationType = PriceFinalizationType.PREVIOUS_PRICE_COPIED
+            _forceFinalizePriceEpoch(_epochId, _epoch, _exception);
+        }
+    }
+
+    /**
      * @notice Forces finalization of the epoch
      * @param _epochId              Epoch id
+     * @param _epoch                Epoch instance
+     * @param _exception            Indicates if the exception happened
      * @dev Sets the median price to be equal to the price from the previous epoch (if epoch id is 0, price is 0)
      */
-    function _forceFinalizePriceEpoch(uint256 _epochId) internal {
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
-
+    function _forceFinalizePriceEpoch(uint256 _epochId, FtsoEpoch.Instance storage _epoch, bool _exception) internal {
         if (_epochId > 0) {
-            epoch.medianPrice = epochs.instance[_epochId - 1].medianPrice;
+            _epoch.price = epochs.instance[_epochId - 1].price;
         } else {
-            epoch.medianPrice = 0;        }
-        epoch.finalizationType = PriceFinalizationType.PREVIOUS_PRICE_COPIED;
-        emit PriceFinalized(_epochId, epoch.medianPrice, false, 0, 0, epoch.finalizationType);
+            _epoch.price = 0;        
+        }
+        _epoch.finalizedTimestamp = block.timestamp;
+        _epoch.finalizationType = _exception ? 
+            PriceFinalizationType.PREVIOUS_PRICE_COPIED_EXCEPTION : PriceFinalizationType.PREVIOUS_PRICE_COPIED;
+        emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, _epoch.finalizationType, block.timestamp);
     }
 
     /**
@@ -743,7 +772,8 @@ contract Ftso is IIFtso {
         epoch.lastQuartileVoteId = vote[index[data.quartile3IndexOriginal]];
         epoch.medianVoteId = vote[index[data.medianIndex]];
         epoch.lowRewardedPrice = price[index[data.quartile1Index]];
-        epoch.medianPrice = data.finalMedianPrice; 
+        epoch.price = data.finalMedianPrice; 
+        epoch.finalizedTimestamp = block.timestamp;
         epoch.highRewardedPrice = price[index[data.quartile3Index]];
         epoch.lowWeightSum = data.lowWeightSum;
         epoch.highWeightSum = data.highWeightSum;
@@ -850,4 +880,14 @@ contract Ftso is IIFtso {
         }
     }
 
+   /**
+     * @notice Get epoch instance for given epoch id and check if it can be finished
+     * @param _epochId              Epoch id
+     * @return _epoch               Return epoch instance
+     */
+    function getEpochForFinalization(uint256 _epochId) internal view returns (FtsoEpoch.Instance storage _epoch) {
+        require(block.timestamp > epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
+        _epoch = epochs.instance[_epochId];
+        require(_epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
+    }
 }

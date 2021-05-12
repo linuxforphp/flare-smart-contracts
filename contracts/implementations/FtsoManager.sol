@@ -25,6 +25,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     struct PriceEpochData {
         address chosenFtso;
         uint256 rewardEpochId;
+        bool rewardDistributed;
     }
 
     struct RewardEpochData {
@@ -76,8 +77,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         uint256 _rewardEpochDurationSec,
         uint256 _rewardEpochsStartTs,
         uint256 _votePowerBoundaryFraction       
-    ) Governed(_governance) 
-    {
+    ) Governed(_governance) {
         require(_rewardEpochDurationSec > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_priceEpochDurationSec > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
         // TODO: probably whe should allow this
@@ -124,18 +124,18 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * - Set governance parameters and initialize epochs
      * - finalizeRewardEpoch 
      */
-    function keep() external override returns(bool){
+    function keep() external override returns(bool) {
         // flare keeper trigger. once every block
         
         // TODO: remove this eventafter testing phase
-        emit KeepTrigger(block.number);
+        emit KeepTrigger(block.number, block.timestamp);
         if (!active) return false;
-            
+
         if (justStarted) {
             initializeRewardEpoch();
         } else {
             if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec < block.timestamp) {
-                // finalizes price epoch, completely finalizes reward epoch,                         
+                // finalizes price epoch, completely finalizes reward epoch
                 finalizePriceEpoch();
             }
             // Note: prices should be first finalized and then new reward epoch can start
@@ -143,7 +143,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
                 finalizeRewardEpoch();
             }
 
-            if(currentPriceEpochEnds < block.timestamp) {                 
+            if(currentPriceEpochEnds < block.timestamp) {
                 // sets governance parameters on ftsos
                 initializeCurrentEpochFTSOStatesForReveal();
             }
@@ -160,12 +160,12 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             // Prime the reward epoch array with a new reward epoch
             // TODO: Randomize? What if there are no FTSOs here? Can't use same algo.
             RewardEpochData memory epochData = RewardEpochData({
-                votepowerBlock: block.number - 1, 
+                votepowerBlock: block.number - 1,
                 startBlock: block.number
             });
 
             rewardEpochs.push(epochData);
-            currentRewardEpoch = 0; 
+            currentRewardEpoch = 0;
 
             for (uint i; i < numFtsos; ++i) {
                 ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
@@ -183,11 +183,11 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
         uint256 lastRandom = block.timestamp;
         // Are there any FTSOs to process?
-        if (numFtsos > 0) {            
+        if (numFtsos > 0) {
             for (uint i = 0; i < numFtsos; ++i) {
                 lastRandom += ftsos[i].getCurrentRandom();
             }
-        }   
+        }
 
         lastRandom = uint256(keccak256(abi.encode(lastRandom)));
         // @dev when considering block boundary for vote power block:
@@ -196,10 +196,9 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // IMPORTANT: currentRewardEpoch is actually the one just expired!
         uint256 votepowerBlockBoundary = 
             (block.number - rewardEpochs[currentRewardEpoch].startBlock) / 
-              (votePowerBoundaryFraction == 0 ? 1 : votePowerBoundaryFraction);  
+              (votePowerBoundaryFraction == 0 ? 1 : votePowerBoundaryFraction);
         // additional notice: if someone sets votePowerBoundaryFraction to 0
-        // this would cause division by 0 and effectively revert would halt the
-        // system
+        // this would cause division by 0 and effectively revert would halt the system
  
         if(votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
@@ -249,7 +248,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // Set the vote power block
         // TODO: what is the condition?
         // if (priceEpochs.length > 0) {
-        if(!justStarted) {    
+        if(!justStarted) {
             ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
         }
         // }
@@ -324,12 +323,12 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     ) external override onlyGovernance
     {
         settings._setState(
-            _minVotePowerFlrThreshold, 
-            _minVotePowerAssetThreshold, 
-            _maxVotePowerFlrThreshold, 
-            _maxVotePowerAssetThreshold, 
-            _lowAssetUSDThreshold, 
-            _highAssetUSDThreshold, 
+            _minVotePowerFlrThreshold,
+            _minVotePowerAssetThreshold,
+            _maxVotePowerFlrThreshold,
+            _maxVotePowerAssetThreshold,
+            _lowAssetUSDThreshold,
+            _highAssetUSDThreshold,
             _highAssetTurnoutBIPSThreshold,
             _lowFlrTurnoutBIPSThreshold,
             _trustedAddresses
@@ -349,97 +348,85 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // Are there any FTSOs to process?
         if(numFtsos > 0) {
             // choose winning ftso
-            uint256 rewardedFtsoId;
+            uint256 chosenFtsoId;
             if (lastUnprocessedPriceEpoch == 0 || priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso == address(0)) {
-                // Pump not yet primed; start with first ftso?
-                rewardedFtsoId = 
-                    uint256(keccak256(abi.encode(
-                        ftsos[0].getCurrentRandom()
+                // pump not yet primed
+                chosenFtsoId = uint256(keccak256(abi.encode(
+                        block.difficulty, block.timestamp
                     ))) % numFtsos;
-            } else { 
+            } else {
                 // at least one finalize with real FTSO
-                rewardedFtsoId = 
-                    uint256(keccak256(abi.encode(
-                        IFtso(priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso).getCurrentRandom()
+                chosenFtsoId = uint256(keccak256(abi.encode(
+                        IIFtso(priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso).getCurrentRandom()
                     ))) % numFtsos;
             }
 
-            bool wasDistributed = determineRewards(ftsos[rewardedFtsoId]);
+            address[] memory addresses;
+            uint256[] memory weights;
+            uint256 totalWeight;
 
             // On the off chance that the winning FTSO does not have any
             // recipient within the truncated price distribution to
             // receive rewards, find the next FTSO that does have reward
-            // recipients and declare it the winner.
-            for (uint i = 0; i < numFtsos; i++) {
-                if (i == rewardedFtsoId) continue;
-
-                if (wasDistributed) {               
-                    try ftsos[i].finalizePriceEpoch(lastUnprocessedPriceEpoch, false) {
+            // recipients and declare it the winner. Start with the next ftso.
+            bool wasDistributed = false;
+            address rewardedFtsoAddress = address(0);
+            for(uint256 i = 0; i < numFtsos; i++) {
+                uint256 id = (chosenFtsoId + i) % numFtsos;
+                try ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
+                    address[] memory _addresses,
+                    uint256[] memory _weights,
+                    uint256 _totalWeight
+                ) {
+                    if (!wasDistributed && _addresses.length > 0) { // change also in FTSO if condition changes
+                        (addresses, weights, totalWeight) = (_addresses, _weights, _totalWeight);
+                        wasDistributed = true;
+                        rewardedFtsoAddress = address(ftsos[id]);
+                    }
+                } catch {
+                    try ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
 
                     } catch {
-                        ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch);
+                        ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch);
                     }
-                } else {
-                    // TODO: maybe we should optimize so that award is given
-                    // a kind of a randomly chosen remaining FTSO.
-                    // The following loop traverses all indices but priviledges the next in cycle
-                    // for(uint i = (rewardedFtsoId + 1) % numFtsos; 
-                    //     i != rewardedFtsoId; i = (i + 1) % numFtsos)                   
-                    wasDistributed = determineRewards(ftsos[i]);
-                    rewardedFtsoId = i;
                 }
             }
-      
+
             priceEpochs[lastUnprocessedPriceEpoch] = PriceEpochData({
-                chosenFtso: address(ftsos[rewardedFtsoId]),
-                rewardEpochId: currentRewardEpoch
-            });     
-            emit PriceEpochFinalized(address(ftsos[rewardedFtsoId]), currentRewardEpoch);       
+                chosenFtso: rewardedFtsoAddress,
+                rewardEpochId: currentRewardEpoch,
+                rewardDistributed: false
+            });
+
+            if (wasDistributed) {
+                try rewardManager.distributeRewards(
+                    addresses, weights, totalWeight,
+                    lastUnprocessedPriceEpoch, rewardedFtsoAddress,
+                    priceEpochDurationSec, currentRewardEpoch) {
+                    priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
+                } catch {
+                    // TODO: do remediation
+                    // TODO: log errors in local storage
+                    // TODO: issue event.
+                }
+            }
+
+            emit PriceEpochFinalized(rewardedFtsoAddress, currentRewardEpoch);       
         } else {
             priceEpochs[lastUnprocessedPriceEpoch] = PriceEpochData({
                 chosenFtso: address(0),
-                rewardEpochId: currentRewardEpoch
-            });    
-            emit PriceEpochFinalized(address(0), currentRewardEpoch);               
+                rewardEpochId: currentRewardEpoch,
+                rewardDistributed: false
+            });
+
+            emit PriceEpochFinalized(address(0), currentRewardEpoch);
         }      
         // Advance to next price epoch
         // CAREFUL! Notice: lastUnprocessedPriceEpoch <= ftso.getCurrentEpochId() which is equal to
         // 
         lastUnprocessedPriceEpoch++;
-        lastUnprocessedPriceEpochEnds += priceEpochDurationSec;        
-        //TODO: Add appropriate event data        
-    }
-
-    /**
-     * @notice Determines rewards for a chosen FTSO and notifies RewardManager.
-     */
-    function determineRewards(IIFtso ftso) internal returns (bool wasDistirubted) {
-
-        address[] memory addresses;
-        uint256[] memory weights;
-        uint256 totalWeight; 
-
-        try ftso.finalizePriceEpoch(lastUnprocessedPriceEpoch, true) returns (
-            address[] memory _addresses,
-            uint256[] memory _weights,
-            uint256 _totalWeight
-        ) {
-            (addresses, weights, totalWeight) = (_addresses, _weights, _totalWeight);
-        } catch {
-            // If 
-            ftso.forceFinalizePriceEpoch(lastUnprocessedPriceEpoch);
-            return false;
-        }
-
-        if (addresses.length == 0) return false;        
-        // TODO: we should assure that in case we are here, totalWeight > 0. Please verify.
-        rewardManager.distributeRewards(
-            addresses, weights, totalWeight, 
-            lastUnprocessedPriceEpoch, address(ftso), 
-            priceEpochDurationSec, currentRewardEpoch
-        ); 
-         
-        return true; 
+        lastUnprocessedPriceEpochEnds += priceEpochDurationSec;
+        //TODO: Add appropriate event data
     }
 
     /**
@@ -454,7 +441,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      */
     function getCurrentPriceEpochEndTime() internal view returns (uint256) {
         uint256 currentPriceEpoch = getCurrentPriceEpochId();
-        return firstPriceEpochStartTs + (currentPriceEpoch + 1)*priceEpochDurationSec;
+        return firstPriceEpochStartTs + (currentPriceEpoch + 1) * priceEpochDurationSec;
     }
 
     /**
@@ -467,18 +454,18 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
     function getCurrentPriceEpochData() external view override returns 
         (
-            uint256 priceEpochId, 
-            uint256 priceEpochStartTimestamp, 
-            uint256 priceEpochEndTimestamp, 
-            uint256 priceEpochRevealEndTimestamp, 
+            uint256 priceEpochId,
+            uint256 priceEpochStartTimestamp,
+            uint256 priceEpochEndTimestamp,
+            uint256 priceEpochRevealEndTimestamp,
             uint256 currentTimestamp
         ) {
             uint epochId = getCurrentPriceEpochId();
             return (
-                epochId, 
-                epochId == 0 ? firstPriceEpochStartTs : firstPriceEpochStartTs + (epochId - 1)*priceEpochDurationSec,
+                epochId,
                 firstPriceEpochStartTs + epochId * priceEpochDurationSec,
-                firstPriceEpochStartTs + epochId * priceEpochDurationSec + revealEpochDurationSec,
+                firstPriceEpochStartTs + (epochId + 1) * priceEpochDurationSec,
+                firstPriceEpochStartTs + (epochId + 1) * priceEpochDurationSec + revealEpochDurationSec,
                 block.timestamp
             );
     }
@@ -504,7 +491,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
                     settings.trustedAddresses
                 );
             }
-               
+
             // TODO: take care that these functions do no revert
             try ftsos[i].initializeCurrentEpochStateForReveal() {
 
@@ -516,8 +503,8 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         }
         // TODO: match setting this with remediation approach
         settings.changed = false;
-   
-        currentPriceEpochEnds = getCurrentPriceEpochEndTime();    
+
+        currentPriceEpochEnds = getCurrentPriceEpochEndTime();
     }
 
     /**
@@ -531,5 +518,4 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         (uint256 _firstPriceEpochStartTs, uint256 _priceEpochDurationSec, uint256 _revealEpochDurationSec) {
         return (firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
     }
-
 }

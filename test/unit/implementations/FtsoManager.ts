@@ -437,9 +437,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.keep();
 
             // Assert
-            const { chosenFtso } = await ftsoManager.priceEpochs(0) as any;
+            const { chosenFtso, rewardEpochId, rewardDistributed } = await ftsoManager.priceEpochs(0) as any;
             // Should equal FTSO 1, the next eligible ftso in the list
             assert.equal(chosenFtso, mockFtso.address);
+            assert.equal(rewardDistributed, true);
         });
 
         it("Should force finalize the price after one finalization", async () => {
