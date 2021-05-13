@@ -19,7 +19,7 @@ contract Ftso is IIFtso {
     using FtsoVote for FtsoVote.State;
 
     // number of decimal places in FAsset USD price
-    // note that the actual USD price is the integer value divided by 10^FASSET_USD_DECIMALS 
+    // note that the actual USD price is the integer value divided by 10^FASSET_USD_DECIMALS
     uint256 public constant FASSET_USD_DECIMALS = 5;
 
     // errors
@@ -416,21 +416,29 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Returns current epoch data
-     * @return _epochId             Current epoch id
-     * @return _epochSubmitEndTime  End time of the current epoch price submission as seconds from unix epoch
-     * @return _epochRevealEndTime  End time of the current epoch price reveal as seconds from unix epoch
-     * @return _timestamp           Timestamp as seconds from unix epoch
+     * @return _epochId                 Current epoch id
+     * @return _epochSubmitEndTime      End time of the current epoch price submission as seconds from unix epoch
+     * @return _epochRevealEndTime      End time of the current epoch price reveal as seconds from unix epoch
+     * @return _votePowerBlock          Vote power block for the current epoch
+     * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
+     * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
      */
     function getPriceEpochData() external view override returns (
         uint256 _epochId,
         uint256 _epochSubmitEndTime,
         uint256 _epochRevealEndTime,
-        uint256 _timestamp
+        uint256 _votePowerBlock,
+        uint256 _minVotePowerFlr,
+        uint256 _minVotePowerAsset
     ) {
         _epochId = getCurrentEpochId();
         _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);
         _epochRevealEndTime = _epochSubmitEndTime + epochs.revealPeriod;
-        _timestamp = block.timestamp;
+
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
+        _votePowerBlock = epoch.votePowerBlock;
+        _minVotePowerFlr = epoch.minVotePowerFlr;
+        _minVotePowerAsset = epoch.minVotePowerAsset;
     }
 
     /**
@@ -534,7 +542,7 @@ contract Ftso is IIFtso {
             _voters[i] = votes.sender[id];
             _prices[i] = vote.price;
             _weightsFlr[i] = vote.weightFlr;
-            _weightsAsset[i] = vote.weightAsset;            
+            _weightsAsset[i] = vote.weightAsset;
             if (id == firstIdEligibleForReward) {
                 eligibleForReward = true;
             }
@@ -544,7 +552,7 @@ contract Ftso is IIFtso {
             }
             id = epochs.nextVoteId[id];
         }
-        _weights = FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);        
+        _weights = FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);
     }
 
     /**
@@ -815,7 +823,7 @@ contract Ftso is IIFtso {
                 cnt++;
             }
         }        
-        flrWeightsSum = epoch.flrRewardedWeightSum;          
+        flrWeightsSum = epoch.flrRewardedWeightSum;
     }
 
     /**
@@ -831,7 +839,7 @@ contract Ftso is IIFtso {
         _votePowerFlr = getVotePowerOf(fFlr, _epoch.votePowerBlock, _owner);
         
         uint256[] memory votePowersAsset = new uint256[](_epoch.assets.length);
-        for (uint256 i = 0; i < _epoch.assets.length; i++) {            
+        for (uint256 i = 0; i < _epoch.assets.length; i++) {
             votePowersAsset[i] = getVotePowerOf(_epoch.assets[i], _epoch.votePowerBlock, _owner);
         }
         _votePowerAsset = epochs._getAssetVotePower(_epoch, votePowersAsset);

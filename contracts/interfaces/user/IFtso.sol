@@ -69,13 +69,17 @@ interface IFtso {
      * @return _epochId                 Current epoch id
      * @return _epochSubmitEndTime      End time of the current epoch price submission as seconds from unix epoch
      * @return _epochRevealEndTime      End time of the current epoch price reveal as seconds from unix epoch
-     * @return _timestamp               Timestamp as seconds from unix epoch
+     * @return _votePowerBlock          Vote power block for the current epoch
+     * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
+     * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
      */
     function getPriceEpochData() external view returns (
         uint256 _epochId,
         uint256 _epochSubmitEndTime,
         uint256 _epochRevealEndTime,
-        uint256 _timestamp
+        uint256 _votePowerBlock,
+        uint256 _minVotePowerFlr,
+        uint256 _minVotePowerAsset
     );
 
     /**

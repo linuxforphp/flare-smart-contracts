@@ -257,7 +257,7 @@ library FtsoEpoch {
         _instance.assetWeightedPrices = values;
 
         // compute vote power
-        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);        
+        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);
         _instance.votePowerAsset = votePower;
 
         // compute base weight ratio between asset and FLR
