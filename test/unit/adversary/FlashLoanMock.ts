@@ -92,7 +92,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }), 
-                "PriceFinalized", { epochId: toBN(epochId), price: toBN(380) });
+                "PriceFinalized", { epochId: toBN(epochId), price: toBN(380), finalizationType: toBN(1) });
         });
         
         it("Should not be able to vote with flash loaned flares (vote power block equals loan block)", async () => {
@@ -137,7 +137,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }),
-                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500) });
+                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500), finalizationType: toBN(1) });
         }
         
         it("Is able to vote with flash loaned flares (reveal during loan), if votePowerBlock is in future (only manager can actually achive that)", async () => {
@@ -169,7 +169,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }),
-                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500) });
+                "PriceFinalized", { epochId: toBN(epochId), price: toBN(500), finalizationType: toBN(1) });
         });
 
     });

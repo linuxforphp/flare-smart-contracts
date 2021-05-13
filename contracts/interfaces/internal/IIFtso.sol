@@ -58,6 +58,12 @@ interface IIFtso is IFtso {
     function getFAsset() external view returns (IFAsset);
 
     /**
+     * @notice Returns the FAsset FTSOs
+     * @dev FAssetFtsos is not null only in case of multi-asset FTSO
+     */
+    function getFAssetFtsos() external view returns (IIFtso[] memory);
+
+    /**
      * @notice Provides epoch summary
      * @param _epochId                  Id of the epoch
      * @return _epochSubmitStartTime    Start time of epoch price submission as seconds from unix epoch

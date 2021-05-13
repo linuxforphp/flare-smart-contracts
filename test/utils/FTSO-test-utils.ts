@@ -767,7 +767,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
-        0 //uint256 _initialPrice
+        1 //uint256 _initialPrice
     );
     ftso.setFAsset(assetToken.address);
 
@@ -799,7 +799,6 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
  */
 export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, signers: readonly SignerWithAddress[], ftso: MockFtso, testExample: TestExample): Promise<TestCase> {
     let logger = new TestExampleLogger(testExample);
-    await ftso.setCurrentPrice(1);
 
     let len = testExample.prices.length;
 
