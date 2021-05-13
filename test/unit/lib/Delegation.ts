@@ -135,7 +135,7 @@ contract(`Delegation.sol; ${ getTestFile(__filename) }; Delegation unit tests`, 
   });
 
   it("Should allow no more than n delegates by percent", async () => {
-    let maxDelegateCount = await delegation.MAX_DELEGATES_BY_PERCENT();
+    let maxDelegateCount = await delegation.maxDelegateCount();
     if (accounts.length > maxDelegateCount.toNumber()) {
       // Assemble
       // Add maxDelegateCount delegates with 50 bips each

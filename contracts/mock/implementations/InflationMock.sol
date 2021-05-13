@@ -18,6 +18,7 @@ contract InflationMock is MockContract {
         // This low level call is being done because of mixed Solidity version requirements between
         // this project and the MockContract component.
         bytes memory payload = abi.encodeWithSignature("setDailyRewardAmount(uint256)", amount);
+        //solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = _rewardManager.call(payload);
         require(success);
     }

@@ -56,5 +56,6 @@ contract DelegatableMock is Delegatable {
     }
 
     function votePower() public view override returns(uint256) {return 0;}
+    //solhint-disable-next-line no-unused-vars
     function votePowerAt(uint blockNumber) public view override returns(uint256) {return 0;}
 }

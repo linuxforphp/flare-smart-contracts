@@ -28,6 +28,27 @@ contract MockVPToken is IFAsset {
             }
         }
     }
+    /**
+     * @dev Should be compatible with ERC20 method
+     */
+    function name() external view override returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @dev Should be compatible with ERC20 method
+     */
+    function symbol() external view override returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * @dev Should be compatible with ERC20 method
+     */
+
+    function decimals() external view override returns (uint8) {
+        return _decimals;
+    }
 
     function votePower() public view override returns(uint256) {}
     function votePowerAt(uint blockNumber) public view override returns(uint256) {
@@ -50,27 +71,6 @@ contract MockVPToken is IFAsset {
     {
         blockNumber;
         return addressWeight[who];
-    }
-
-    /**
-     * @dev Should be compatible with ERC20 method
-     */
-    function name() external view override returns (string memory) {
-        return _name;
-    }
-
-    /**
-     * @dev Should be compatible with ERC20 method
-     */
-    function symbol() external view override returns (string memory) {
-        return _symbol;
-    }
-
-    /**
-     * @dev Should be compatible with ERC20 method
-     */
-    function decimals() external view override returns (uint8) {
-        return _decimals;
     }
 
     function undelegatedVotePowerOf(address owner) public view override returns(uint256) {}

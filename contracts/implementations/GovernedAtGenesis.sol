@@ -28,6 +28,7 @@ contract GovernedAtGenesis is Governed {
      * @notice Disallow initialise to be called
      * @param _governance The governance address for initial claiming
      **/
+    // solhint-disable-next-line no-unused-vars
     function initialise(address _governance) public override pure {
         assert(false);
     }

@@ -29,6 +29,7 @@ contract FtsoManagerMock is MockContract {
         bytes memory payload = abi.encodeWithSignature(
             "distributeRewards(address[],uint256[],uint256,uint256,address,uint256,uint256)",
             addresses, weights, totalWeight, epochId, ftso, priceEpochDurationSec, currentRewardEpoch);
+        //solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = _rewardManager.call(payload);
         require(success);
     }
