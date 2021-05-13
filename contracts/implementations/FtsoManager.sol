@@ -37,6 +37,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     string internal constant ERR_PRICE_EPOCH_DURATION_ZERO = "Price epoch 0";
     string internal constant ERR_FIRST_EPOCH_STARTS_TS_ZERO = "First epoch start 0";
     string internal constant ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "gov. params not initialized";
+    string internal constant ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
     string internal constant ERR_NOT_FOUND = "not found";
     bool internal active;
 
@@ -63,6 +64,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
     // list of ftsos eligible for reward
     IIFtso[] internal ftsos;
+    mapping(address => bool) internal managedFtsoAddresses;
     IRewardManager internal rewardManager;
 
     // flags
@@ -232,11 +234,14 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
     /**
      * @notice Adds FTSO to the list of rewarded FTSOs
+     * All ftsos in multi fasset ftso must be managed by this ftso manager
      */
     function addFtso(IIFtso ftso) external onlyGovernance {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
-        uint256 len = ftsos.length;
+        
+        checkFAssetFtsosAreManaged(ftso.getFAssetFtsos());
 
+        uint256 len = ftsos.length;
         for (uint256 i = 0; i < len; i++) {
             if (address(ftso) == address(ftsos[i])) {
                 return; // already registered
@@ -268,8 +273,10 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         
         // create epoch state (later this is done at the end finalizeEpochPrice)
         ftso.initializeCurrentEpochStateForReveal();
+
         // Add the ftso
         ftsos.push(ftso);
+        managedFtsoAddresses[address(ftso)] = true;
 
         emit FtsoAdded(ftso, true);
     }
@@ -282,14 +289,15 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     }
 
     /**
-     * @notice Set FAsset FTSOs for FTSO
+     * @notice Set FAsset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
      */
     function setFtsoFAssetFtsos(IIFtso ftso, IIFtso[] memory fAssetFtsos) external onlyGovernance {
+        checkFAssetFtsosAreManaged(fAssetFtsos);
         ftso.setFAssetFtsos(fAssetFtsos);
     }
 
     /**
-     * @notice Removes FTSO from the list of the rewarded FTSOs
+     * @notice Removes FTSO from the list of the rewarded FTSOs - revert if ftso is used in multi fasset ftso
      */
     function removeFtso(IIFtso ftso) external onlyGovernance {
         // TODO: Handle case where you want to remove a FTSO that is in a fAssetFtsos of FLR FTSO (multiasset)?
@@ -299,6 +307,8 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             if (address(ftso) == address(ftsos[i])) {
                 ftsos[i] = ftsos[len - 1];
                 ftsos.pop();
+                managedFtsoAddresses[address(ftso)] = false;
+                checkMultiFassetFtsosAreManaged();
                 emit FtsoAdded (ftso, false);
                 return;
             }
@@ -333,7 +343,29 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             _lowFlrTurnoutBIPSThreshold,
             _trustedAddresses
         );
-    } 
+    }
+
+    /**
+     * @notice Check if fasset ftsos are managed by this ftso manager, revert otherwise
+     */
+    function checkFAssetFtsosAreManaged(IIFtso[] memory fAssetFtsos) internal view {
+        uint256 len = fAssetFtsos.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (!managedFtsoAddresses[address(fAssetFtsos[i])]) {
+                revert(ERR_FASSET_FTSO_NOT_MANAGED);
+            }
+        }
+    }
+
+    /**
+     * @notice Check if all multi fasset ftsos are managed by this ftso manager, revert otherwise
+     */
+    function checkMultiFassetFtsosAreManaged() internal view {
+        uint256 len = ftsos.length;
+        for (uint256 i = 0; i < len; i++) {
+            checkFAssetFtsosAreManaged(ftsos[i].getFAssetFtsos());
+        }
+    }
 
     /**
      * @notice Finalizes price epoch

@@ -367,6 +367,15 @@ contract Ftso is IIFtso {
     }
 
     /**
+     * @notice Returns the FAsset FTSOs
+     * @dev FAssetFtsos is not null only in case of multi-asset FTSO
+     */
+    function getFAssetFtsos() external view override returns (IIFtso[] memory) {
+        return fAssets.length == 1 && fAssetFtsos.length == 1 && fAssetFtsos[0] == this ?
+            new IIFtso[](0) : fAssetFtsos;
+    }
+
+    /**
      * @notice Returns current FAsset price
      * @return Price in USD multiplied by fAssetUSDDecimals
      */

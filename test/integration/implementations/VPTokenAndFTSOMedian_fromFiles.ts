@@ -56,7 +56,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
                 "FASSET", flrToken.address, signers[0].address,  // symbol, address _fFlr, address _ftsoManager,
                 epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
-                0 //uint256 _initialPrice
+                1 //uint256 _initialPrice
             )
             await ftso.connect(signers[0]).setFAsset(assetToken.address);
 

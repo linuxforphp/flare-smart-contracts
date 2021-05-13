@@ -29,47 +29,24 @@ contract MockFtso is Ftso {
     ) Ftso(_symbol, _fFlr, _ftsoManager, _initialPrice) {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol
         if (_submitPeriod != 0 && _revealPeriod != 0) {
-            initEpoch(_startTimestamp, _submitPeriod, _revealPeriod);
-            configureEpoch(1e10, 1e10, 1, 1, 1000, 10000, 50, 1500, new address[](0));
+
+            // configureEpochs
+            epochs.minVotePowerFlrThreshold = 1e10;
+            epochs.minVotePowerAssetThreshold = 1e10;
+            epochs.maxVotePowerFlrThreshold = 1;
+            epochs.maxVotePowerAssetThreshold = 1;
+            epochs.lowAssetUSDThreshold = 1000;
+            epochs.highAssetUSDThreshold = 10000;
+            epochs.highAssetTurnoutBIPSThreshold = 50;
+            epochs.lowFlrTurnoutBIPSThreshold = 1500;
+            epochs.trustedAddresses = new address[](0);
+
+            // initializeEpochs
+            epochs.firstEpochStartTime = _startTimestamp;
+            epochs.submitPeriod = _submitPeriod;
+            epochs.revealPeriod = _revealPeriod;
+            active = true;
         }
-    }
-
-    function initEpoch(
-        uint256 _firstEpochStartTime,
-        uint256 _submitPeriod,
-        uint256 _revealPeriod
-    ) public {
-        require(!active, ERR_ALREADY_ACTIVATED);
-        epochs.firstEpochStartTime = _firstEpochStartTime;
-        epochs.submitPeriod = _submitPeriod;
-        epochs.revealPeriod = _revealPeriod;
-        active = true;
-    }
-
-    function configureEpoch(
-        uint256 _minVotePowerFlrThreshold,
-        uint256 _minVotePowerAssetThreshold,
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
-        uint256 _lowAssetUSDThreshold,
-        uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
-        address[] memory _trustedAddresses
-    ) internal {
-        epochs.minVotePowerFlrThreshold = _minVotePowerFlrThreshold;
-        epochs.minVotePowerAssetThreshold = _minVotePowerAssetThreshold;
-        epochs.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;
-        epochs.maxVotePowerAssetThreshold = _maxVotePowerAssetThreshold;
-        epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
-        epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
-        epochs.highAssetTurnoutBIPSThreshold = _highAssetTurnoutBIPSThreshold;
-        epochs.lowFlrTurnoutBIPSThreshold = _lowFlrTurnoutBIPSThreshold;
-        epochs.trustedAddresses = _trustedAddresses;
-    }
-
-    function setCurrentPrice(uint256 _price) external {
-        fAssetPriceUSD = _price;
     }
 
     function getWeightRatio(uint256 _epochId) external view returns (uint256) {

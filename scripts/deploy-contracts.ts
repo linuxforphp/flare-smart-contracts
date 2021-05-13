@@ -242,7 +242,6 @@ async function main(parameters: any) {
     parameters.lowFlrTurnoutBIPSThreshold,
     parameters.trustedAddresses);
 
-
   // Add ftsos to the ftso manager
   console.error("Adding FTSOs to manager...");
   await ftsoManager.addFtso(ftsoWflr.address);
