@@ -1380,25 +1380,60 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         });
 
         it("Should get current price epoch data", async() => {
+            await ftso.configureEpochs(1e4, 1e5, 1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
+            await setMockVotePowerAt(10, 50000, 10000000);
             let data = await ftso.getPriceEpochData();
             expect(data[0].toNumber()).to.equals(epochId);
             expect(data[1].toNumber()).to.equals((epochId+1) * 120);
             expect(data[2].toNumber()).to.equals((epochId+1) * 120 + 60);
-            expect(data[3].toNumber()).to.be.gte(epochId * 120);
+            expect(data[3].toNumber()).to.equals(0); // not yet set
+            expect(data[4].toNumber()).to.equals(0);
+            expect(data[5].toNumber()).to.equals(0);
+
+            await ftso.initializeCurrentEpochStateForReveal({from: accounts[10]});
+            let data1 = await ftso.getPriceEpochData();
+            expect(data1[0].toNumber()).to.equals(epochId);
+            expect(data1[1].toNumber()).to.equals((epochId+1) * 120);
+            expect(data1[2].toNumber()).to.equals((epochId+1) * 120 + 60);
+            expect(data1[3].toNumber()).to.equals(10);
+            expect(data1[4].toNumber()).to.equals(5);
+            expect(data1[5].toNumber()).to.equals(100); // current price = 1
+
+            await ftso.submitPrice(submitPriceHash(500, 123), {from: accounts[1]});
 
             await increaseTimeTo((epochId + 1) * 120 - 1);
             let data2 = await ftso.getPriceEpochData();
             expect(data2[0].toNumber()).to.equals(epochId);
             expect(data2[1].toNumber()).to.equals((epochId+1) * 120);
             expect(data2[2].toNumber()).to.equals((epochId+1) * 120 + 60);
-            expect(data2[3].toNumber()).to.be.gte(epochId * 120);
+            expect(data2[3].toNumber()).to.equals(10);
+            expect(data2[4].toNumber()).to.equals(5);
+            expect(data2[5].toNumber()).to.equals(100); // current price = 1
 
             await increaseTimeTo((epochId + 1) * 120);
             let data3 = await ftso.getPriceEpochData();
             expect(data3[0].toNumber()).to.equals(epochId+1);
             expect(data3[1].toNumber()).to.equals((epochId+2) * 120);
             expect(data3[2].toNumber()).to.equals((epochId+2) * 120 + 60);
-            expect(data3[3].toNumber()).to.be.gte((epochId+1) * 120);
+            expect(data3[3].toNumber()).to.equals(0);
+            expect(data3[4].toNumber()).to.equals(0);
+            expect(data3[5].toNumber()).to.equals(0);
+
+            await setMockVotePowerOfAt(10, 10000, 10000, accounts[1]);
+            await ftso.revealPrice(epochId, 500, 123, {from: accounts[1]});
+
+            await increaseTimeTo((epochId + 1) * 120 + 60);
+            await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]});
+
+            await ftso.initializeCurrentEpochStateForReveal({from: accounts[10]});
+
+            let data4 = await ftso.getPriceEpochData();
+            expect(data4[0].toNumber()).to.equals(epochId+1);
+            expect(data4[1].toNumber()).to.equals((epochId+2) * 120);
+            expect(data4[2].toNumber()).to.equals((epochId+2) * 120 + 60);
+            expect(data4[3].toNumber()).to.equals(10);
+            expect(data4[4].toNumber()).to.equals(5);
+            expect(data4[5].toNumber()).to.equals(50000); // current price = 500
         });
 
         it("Should get current epoch id", async() => {
