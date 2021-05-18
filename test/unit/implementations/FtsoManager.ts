@@ -52,6 +52,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         ftsoManager = await FtsoManager.new(
             accounts[0],
             mockRewardManager.address,
+            accounts[7],
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -72,6 +73,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert(startTs.eq(data._firstPriceEpochStartTs));
             expectEvent.notEmitted(tx, "PriceEpochFinalized");
             expectEvent.notEmitted(tx, "RewardEpochFinalized");
+        });
+
+        it("Should return price submitter address", async () => {
+            expect(await ftsoManager.priceSubmitter()).to.equals(accounts[7]);
         });
     });
 

@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/internal/IIFtso.sol";
+import "../interfaces/user/IPriceSubmitter.sol";
 
 interface IFtsoManager {
 
@@ -10,6 +11,8 @@ interface IFtsoManager {
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
     // TODO: Remove these two events for production
     event KeepTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring keep() calls
+
+    function priceSubmitter() external returns (IPriceSubmitter);
 
     function setGovernanceParameters(
         uint256 _minVotePowerFlrThreshold,

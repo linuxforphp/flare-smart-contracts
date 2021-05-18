@@ -1,22 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interfaces/IFAsset.sol";
-import "../interfaces/IFtsoManager.sol";
 import "../implementations/Ftso.sol";
 
 contract MockFtso is Ftso {
     using FtsoEpoch for FtsoEpoch.State;
-
-    struct ResultVars {
-        uint256 id;
-        uint32 len;
-        uint32 truncatedFirstQuartileIndex;
-        uint32 firstQuartileIndex;
-        uint32 medianIndex;
-        uint32 lastQuartileIndex;
-        uint32 truncatedLastQuartileIndex;
-    }
 
     constructor(
         string memory _symbol,
@@ -41,7 +29,7 @@ contract MockFtso is Ftso {
             epochs.lowFlrTurnoutBIPSThreshold = 1500;
             epochs.trustedAddresses = new address[](0);
 
-            // initializeEpochs
+            // activateFtso
             epochs.firstEpochStartTime = _startTimestamp;
             epochs.submitPeriod = _submitPeriod;
             epochs.revealPeriod = _revealPeriod;
@@ -53,51 +41,27 @@ contract MockFtso is Ftso {
         return FtsoEpoch._getWeightRatio(epochs.instance[_epochId]);
     }
 
-    function getEpochResult(uint256 _epochId)
-        external
-        view
-        returns (
-            uint256 epochId,
-            uint32[] memory medians,
-            uint256[] memory prices,
-            uint256[] memory weights
-        )
-    {
+    function getEpochResult(uint256 _epochId) external view returns (
+        uint256[] memory medians,
+        uint256[] memory prices,
+        uint256[] memory weights
+    ) {
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        ResultVars memory r = ResultVars(0, 0, 0, 0, 0, 0, 0);
 
-        epochId = _epochId;
-
-        r.len = epoch.voteCount;
-        r.id = epoch.firstVoteId;
-
-        for (uint32 cnt = 0; cnt < r.len; cnt++) {
-            if (r.id == epoch.firstQuartileVoteId) {
-                r.firstQuartileIndex = cnt;
-            }
-            if (r.id == epoch.truncatedFirstQuartileVoteId) {
-                r.truncatedFirstQuartileIndex = cnt;
-            }
-            if (r.id == epoch.medianVoteId) {
-                r.medianIndex = cnt;
-            }
-            if (r.id == epoch.lastQuartileVoteId) {
-                r.lastQuartileIndex = cnt;
-            }
-            if (r.id == epoch.truncatedLastQuartileVoteId) {
-                r.truncatedLastQuartileIndex = cnt;
-            }
-            r.id = epochs.nextVoteId[r.id];
-        }
-        medians = new uint32[](5);
+        medians = new uint256[](2);
         prices = new uint256[](3);
         weights = new uint256[](6);
 
-        medians[0] = r.truncatedFirstQuartileIndex;
-        medians[1] = r.firstQuartileIndex;
-        medians[2] = r.medianIndex;
-        medians[3] = r.lastQuartileIndex;
-        medians[4] = r.truncatedLastQuartileIndex;
+        uint256 id = epoch.firstVoteId;
+        for (uint256 cnt = 0; cnt < epoch.voteCount; cnt++) {
+            if (id == epoch.truncatedFirstQuartileVoteId) {
+                medians[0] = cnt;
+            }
+            if (id == epoch.truncatedLastQuartileVoteId) {
+                medians[1] = cnt;
+            }
+            id = epochs.nextVoteId[id];
+        }
 
         prices[0] = epoch.lowRewardedPrice;
         prices[1] = epoch.price;
@@ -110,5 +74,4 @@ contract MockFtso is Ftso {
         weights[4] = epoch.flrRewardedWeightSum;
         weights[5] = epoch.flrHighWeightSum;
     }
-
 }

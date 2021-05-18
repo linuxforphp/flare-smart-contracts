@@ -58,9 +58,6 @@ library FtsoEpoch {
         uint256 baseWeightRatio;                // base weight ratio between asset and FLR used to combine weights
         uint256 firstVoteId;                    // id of the first vote in epoch
         uint256 truncatedFirstQuartileVoteId;   // first vote id eligible for reward
-        uint256 firstQuartileVoteId;            // vote id corresponding to the first quartile
-        uint256 medianVoteId;                   // vote id corresponding to the median
-        uint256 lastQuartileVoteId;             // vote id corresponding to the last quartile
         uint256 truncatedLastQuartileVoteId;    // last vote id eligible for reward
         uint256 lastVoteId;                     // id of the last vote in epoch
         uint256 price;                          // consented epoch asset price
@@ -74,15 +71,15 @@ library FtsoEpoch {
         uint256 flrRewardedWeightSum;           // sum of FLR weights on votes eligible for reward
         uint256 flrHighWeightSum;               // sum of FLR weights on votes with price too high for reward
         uint256 random;                         // random number associated with the epoch
-        uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
-        uint32 voteCount;                       // number of votes in epoch
-        bool initializedForReveal;              // whether epoch instance is initialized for reveal
-        bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
+        uint256 voteRewardCount;                 // number of votes in epoch eligible for the reward
+        uint256 voteCount;                       // number of votes in epoch
         IFAsset[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) votes;      // address to vote id mapping
         address[] trustedAddresses;             // trusted addresses - set only if low flr turnout is not achieved
         uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
+        bool initializedForReveal;              // whether epoch instance is initialized for reveal
+        bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
@@ -92,7 +89,7 @@ library FtsoEpoch {
     uint256 internal constant TERA = 10**12;                    // 10^12
 
     /**
-     * @notice Initializes a new epoch instance with instance specific settings
+     * @notice Initializes a new epoch instance for reveal with instance specific settings
      * @param _state                    Epoch state
      * @param _instance                 Epoch instance
      * @param _votePowerFlr             Epoch FLR vote power
@@ -102,7 +99,7 @@ library FtsoEpoch {
      * @dev _votePowerFlr is assumed to be smaller than 2**128 to avoid overflows in computations
      * @dev computed votePowerAsset is assumed to be smaller than 2**128 to avoid overflows in computations
      */
-    function _initializeInstance(
+    function _initializeInstanceForReveal(
         State storage _state,
         Instance storage _instance,
         // uint256 _circulatingSupplyFlr,
@@ -123,6 +120,7 @@ library FtsoEpoch {
         _instance.minVotePowerAsset = _instance.votePowerAsset / _state.minVotePowerAssetThreshold;
         _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrThreshold;
         _instance.maxVotePowerAsset = _instance.votePowerAsset / _state.maxVotePowerAssetThreshold;
+        _instance.initializedForReveal = true;
     }
 
     /**
@@ -367,7 +365,7 @@ library FtsoEpoch {
             weightFlrShare = BIPS100 - weightAssetShare;
         }
 
-        for (uint32 i = 0; i < _instance.voteCount; i++) {
+        for (uint256 i = 0; i < _instance.voteCount; i++) {
             uint256 weightFlr = 0;
             if (weightFlrShare > 0) {
                 weightFlr = weightFlrShare.mulDiv(TERA * _weightsFlr[i], weightFlrSum * BIPS100);

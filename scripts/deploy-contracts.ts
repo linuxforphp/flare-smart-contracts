@@ -18,7 +18,8 @@ import {
   InflationContract,
   RewardManagerContract,
   WFLRContract,
-  FtsoManagerInstance
+  FtsoManagerInstance,
+  PriceSubmitterContract
 } from "../typechain-truffle";
 
 import { pascalCase } from "pascal-case";
@@ -75,6 +76,7 @@ async function main(parameters: any) {
   const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
   const Inflation = artifacts.require("Inflation") as InflationContract;
   const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
+  const PriceSubmitter = artifacts.require("PriceSubmitter") as PriceSubmitterContract;
   const WFLR = artifacts.require("WFLR") as WFLRContract;
 
   // Inflation contract
@@ -93,12 +95,17 @@ async function main(parameters: any) {
   // Tell inflation about the reward contract
   await inflation.setRewardContract(rewardManager.address);
 
+  // PriceSubmitter contract
+  const priceSubmitter = await PriceSubmitter.new();
+  spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address);
+
   // FtsoManager contract
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     rewardManager.address,
+    priceSubmitter.address,
     parameters.priceEpochDurationSec,
     startTs,
     parameters.revealEpochDurationSec,

@@ -5,6 +5,7 @@ import "../interfaces/IFtsoManager.sol";
 import "../interfaces/IRewardManager.sol";
 import "../interfaces/IFlareKeep.sol";
 import "../interfaces/internal/IIFtso.sol";
+import "../interfaces/user/IPriceSubmitter.sol";
 import "./Governed.sol";
 
 import "../lib/FtsoManagerSettings.sol";
@@ -66,13 +67,17 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     IIFtso[] internal ftsos;
     mapping(address => bool) internal managedFtsoAddresses;
     IRewardManager internal rewardManager;
+    IPriceSubmitter public immutable override priceSubmitter;
 
     // flags
     bool private justStarted;
 
+    // IPriceSubmitter should be a new contract for a new deploy or at least
+    // _priceEpochDurationSec, _firstEpochStartTs and _revealEpochDurationSec must match
     constructor(
         address _governance,
         IRewardManager _rewardManager,
+        IPriceSubmitter _priceSubmitter,
         uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
         uint256 _revealEpochDurationSec,
@@ -102,6 +107,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
         votePowerBoundaryFraction = _votePowerBoundaryFraction;
         rewardManager = _rewardManager;
+        priceSubmitter = _priceSubmitter;
         justStarted = true;
     }
 
@@ -248,7 +254,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             }
         }
 
-        ftso.initializeEpochs(firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
+        ftso.activateFtso(priceSubmitter, firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
 
         // Set the vote power block
         // TODO: what is the condition?

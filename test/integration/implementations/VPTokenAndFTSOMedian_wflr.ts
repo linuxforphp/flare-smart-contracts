@@ -191,7 +191,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
-        prettyPrintEpochResult(res, resVoteInfo, testExample.weightRatio!, logger);
+        prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
         let voterRes = toEpochResult(res, resVoteInfo);
         let testCase = {
             example: testExample,
@@ -261,7 +261,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
-        prettyPrintEpochResult(res, resVoteInfo, testExample.weightRatio!, logger);
+        prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
         let voterRes = toEpochResult(res, resVoteInfo);
         let testCase = {
             example: testExample,
@@ -290,7 +290,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         
         // Print results 2
         let res2 = await ftso.getEpochResult(epoch+1);
-        prettyPrintEpochResult(res2, resVoteInfo2, testExample2.weightRatio!, logger);
+        prettyPrintEpochResult(epoch+1, res2, resVoteInfo2, testExample2.weightRatio!, logger);
         let voterRes2 = toEpochResult(res2, resVoteInfo2);
         let testCase2 = {
             example: testExample2,
@@ -373,7 +373,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         
         // Print results                
         let res = await ftso.getEpochResult(epoch);
-        prettyPrintEpochResult(res, resVoteInfo, testExample.weightRatio!, logger);
+        prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
         let voterRes = toEpochResult(res, resVoteInfo);
         let testCase = {
             example: testExample,
@@ -402,7 +402,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         
         // Print results 2
         let res2 = await ftso.getEpochResult(epoch+1);
-        prettyPrintEpochResult(res2, resVoteInfo2, testExample2.weightRatio!, logger);
+        prettyPrintEpochResult(epoch+1, res2, resVoteInfo2, testExample2.weightRatio!, logger);
         let voterRes2 = toEpochResult(res2, resVoteInfo2);
         let testCase2 = {
             example: testExample2,

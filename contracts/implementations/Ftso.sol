@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/internal/IIFtso.sol";
-import "../interfaces/IFAsset.sol";
 import "../interfaces/IFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
 import "../lib/FtsoVote.sol";
@@ -46,9 +45,10 @@ contract Ftso is IIFtso {
 
     // external contracts
     IFAsset public immutable fFlr;              // wrapped FLR
+    IFtsoManager public immutable ftsoManager;  // FTSO manager contract
+    IPriceSubmitter public priceSubmitter;      // Price submitter contract
     IFAsset[] public fAssets;                   // array of assets
     IIFtso[] public fAssetFtsos;                // FTSOs for assets (for a multi-asset FTSO)
-    IFtsoManager public ftsoManager;            // FTSO manager contract
 
     constructor(
         string memory _symbol,
@@ -72,15 +72,32 @@ contract Ftso is IIFtso {
         _;
     }
 
+    modifier onlyPriceSubmitter {
+        require(msg.sender == address(priceSubmitter), ERR_NO_ACCESS);
+        _;
+    }
+
     /**
      * @notice Submits price hash for current epoch
      * @param _hash                 Hashed price and random number
      * @notice Emits PriceSubmitted event
      */
     function submitPrice(bytes32 _hash) external override whenActive {
-        uint256 epochId = getCurrentEpochId();
-        epochVoterHash[epochId][msg.sender] = _hash;
-        emit PriceSubmitted(msg.sender, epochId, _hash, block.timestamp);
+        _submitPrice(msg.sender, _hash);
+    }
+
+    /**
+     * @notice Submits price hash for current epoch
+     * @param _sender               Sender address
+     * @param _hash                 Hashed price and random number
+     * @return _epochId             Returns current epoch id
+     * @notice Emits PriceSubmitted event
+     */
+    function submitPriceSubmitter(
+        address _sender,
+        bytes32 _hash
+    ) external override whenActive onlyPriceSubmitter returns (uint256 _epochId) {
+        return _submitPrice(_sender, _hash);
     }
 
     /**
@@ -91,31 +108,30 @@ contract Ftso is IIFtso {
      * @notice The hash of _price and _random must be equal to the submitted hash
      * @notice Emits PriceRevealed event
      */
-    function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external override whenActive {
-        require(_price < 2**128, ERR_PRICE_TOO_HIGH);
-        require(epochs._epochRevealInProcess(_epochId), ERR_PRICE_REVEAL_FAILURE);
-        require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encode(_price, _random)), ERR_PRICE_INVALID);
+    function revealPrice(
+        uint256 _epochId,
+        uint256 _price,
+        uint256 _random
+    ) external override whenActive {
+        _revealPrice(msg.sender, _epochId, _price, _random);
+    }
 
-        // get epoch
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.initializedForReveal, ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL);
-
-        // register vote
-        (uint256 votePowerFlr, uint256 votePowerAsset) = getVotePowerOf(epoch, msg.sender);
-        uint256 voteId = votes._createInstance(
-            votePowerFlr,
-            votePowerAsset,
-            epoch.votePowerFlr,
-            epoch.votePowerAsset,
-            _price
-        );
-        epochs._addVote(epoch, voteId, votePowerFlr, votePowerAsset, _random);
-        
-        // prevent price submission from being revealed twice
-        delete epochVoterHash[_epochId][msg.sender];
-
-        // inform about price reveal result
-        emit PriceRevealed(msg.sender, _epochId, _price, _random, block.timestamp, votePowerFlr, votePowerAsset);
+    /**
+     * @notice Reveals submitted price during epoch reveal period
+     * @param _voter                Voter address
+     * @param _epochId              Id of the epoch in which the price hash was submitted
+     * @param _price                Submitted price in USD
+     * @param _random               Submitted random number
+     * @notice The hash of _price and _random must be equal to the submitted hash
+     * @notice Emits PriceRevealed event
+     */
+    function revealPriceSubmitter(
+        address _voter,
+        uint256 _epochId,
+        uint256 _price,
+        uint256 _random
+    ) external override whenActive onlyPriceSubmitter {
+        _revealPrice(_voter, _epochId, _price, _random);
     }
 
     /**
@@ -158,7 +174,7 @@ contract Ftso is IIFtso {
         (vote, price, weight, weightFlr) = readVotes(epoch);
 
         // compute weighted median and truncated quartiles
-        uint32[] memory index;
+        uint256[] memory index;
         FtsoMedian.Data memory data;
         (index, data) = FtsoMedian.compute(price, weight);
 
@@ -202,19 +218,22 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Initializes epoch immutable settings and activates oracle
+     * @notice Initializes ftso immutable settings and activates oracle
+     * @param _priceSubmitter       Price submitter contract
      * @param _firstEpochStartTime  Timestamp of the first epoch as seconds from unix epoch
-     * @param _submitPeriod     Duration of epoch submission period in seconds
+     * @param _submitPeriod         Duration of epoch submission period in seconds
      * @param _revealPeriod         Duration of epoch reveal period in seconds
      * @dev This method can only be called once
      */
-    function initializeEpochs(
+    function activateFtso(
+        IPriceSubmitter _priceSubmitter,
         uint256 _firstEpochStartTime,
         uint256 _submitPeriod,
         uint256 _revealPeriod
     ) external override onlyFtsoManager
     {
         require(!active, ERR_ALREADY_ACTIVATED);
+        priceSubmitter = _priceSubmitter;
         epochs.firstEpochStartTime = _firstEpochStartTime;
         epochs.submitPeriod = _submitPeriod;
         epochs.revealPeriod = _revealPeriod;
@@ -317,7 +336,7 @@ contract Ftso is IIFtso {
         uint256[] memory assetPrices;
         (assets, assetVotePowers, assetPrices) = getAssetData();
 
-        epochs._initializeInstance(
+        epochs._initializeInstanceForReveal(
             epoch,
             getVotePower(fFlr, epochs.votePowerBlock),
             assets,
@@ -325,7 +344,6 @@ contract Ftso is IIFtso {
             assetPrices
         );
 
-        epoch.initializedForReveal = true;
         emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId), block.timestamp);
         return epochId;
     }
@@ -564,6 +582,48 @@ contract Ftso is IIFtso {
         _weights = FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);
     }
 
+    function _submitPrice(address _sender, bytes32 _hash) internal returns (uint256 _epochId){
+        _epochId = getCurrentEpochId();
+        epochVoterHash[_epochId][_sender] = _hash;
+        emit PriceSubmitted(_sender, _epochId, _hash, block.timestamp);
+    }
+
+    /**
+     * @notice Reveals submitted price during epoch reveal period
+     * @param _voter                Voter address
+     * @param _epochId              Id of the epoch in which the price hash was submitted
+     * @param _price                Submitted price in USD
+     * @param _random               Submitted random number
+     * @notice The hash of _price and _random must be equal to the submitted hash
+     * @notice Emits PriceRevealed event
+     */
+    function _revealPrice(address _voter, uint256 _epochId, uint256 _price, uint256 _random) internal {
+        require(_price < 2**128, ERR_PRICE_TOO_HIGH);
+        require(epochs._epochRevealInProcess(_epochId), ERR_PRICE_REVEAL_FAILURE);
+        require(epochVoterHash[_epochId][_voter] == keccak256(abi.encode(_price, _random)), ERR_PRICE_INVALID);
+
+        // get epoch
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
+        require(epoch.initializedForReveal, ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL);
+
+        // register vote
+        (uint256 votePowerFlr, uint256 votePowerAsset) = getVotePowerOf(epoch, _voter);
+        uint256 voteId = votes._createInstance(
+            votePowerFlr,
+            votePowerAsset,
+            epoch.votePowerFlr,
+            epoch.votePowerAsset,
+            _price
+        );
+        epochs._addVote(epoch, voteId, votePowerFlr, votePowerAsset, _random);
+        
+        // prevent price submission from being revealed twice
+        delete epochVoterHash[_epochId][_voter];
+
+        // inform about price reveal result
+        emit PriceRevealed(_voter, _epochId, _price, _random, block.timestamp, votePowerFlr, votePowerAsset);
+    }
+
     /**
      * @notice Returns the list of assets and its vote powers
      * @return _assets              List of assets
@@ -675,7 +735,7 @@ contract Ftso is IIFtso {
     ) {
         uint256 length = _epoch.trustedAddresses.length;
 
-        for(uint32 i = 0; i < length; i++) {
+        for(uint256 i = 0; i < length; i++) {
             address a = _epoch.trustedAddresses[i];
             uint256 id = _epoch.votes[a];
             if (id > 0) {
@@ -707,7 +767,7 @@ contract Ftso is IIFtso {
         uint256 weightAssetSum = 0;
         uint256 id = _epoch.firstVoteId;
 
-        for(uint32 i = 0; i < length; i++) {
+        for(uint256 i = 0; i < length; i++) {
             FtsoVote.Instance storage v = votes.instance[id];
             vote[i] = id;
             price[i] = v.price;
@@ -734,15 +794,15 @@ contract Ftso is IIFtso {
     function writeEpochRewardData(
         FtsoEpoch.Instance storage epoch,
         FtsoMedian.Data memory data,
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory weightFlr
     ) internal
     {
-        uint32 voteRewardCount = 0;
+        uint256 voteRewardCount = 0;
         uint256 flrRewardedWeightSum = 0;
         uint256 flrLowWeightSum = 0;
         uint256 flrHighWeightSum = 0;
-        for (uint32 i = 0; i < epoch.voteCount; i++) {
+        for (uint256 i = 0; i < epoch.voteCount; i++) {
             if(i < data.quartile1Index) {
                 flrLowWeightSum += weightFlr[index[i]];
             } else if (i > data.quartile3Index) {
@@ -770,13 +830,13 @@ contract Ftso is IIFtso {
     function writeEpochPriceData(
         FtsoEpoch.Instance storage epoch,
         FtsoMedian.Data memory data, 
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory price,
         uint256[] memory vote
     ) internal
     {
         // relink results
-        for (uint32 i = 0; i < index.length - 1; i++) {
+        for (uint256 i = 0; i < index.length - 1; i++) {
             epochs.nextVoteId[vote[index[i]]] = vote[index[i + 1]];
         }
 
@@ -785,9 +845,6 @@ contract Ftso is IIFtso {
         epoch.lastVoteId = vote[index[index.length - 1]];
         epoch.truncatedFirstQuartileVoteId = vote[index[data.quartile1Index]];
         epoch.truncatedLastQuartileVoteId = vote[index[data.quartile3Index]];
-        epoch.firstQuartileVoteId = vote[index[data.quartile1IndexOriginal]];
-        epoch.lastQuartileVoteId = vote[index[data.quartile3IndexOriginal]];
-        epoch.medianVoteId = vote[index[data.medianIndex]];
         epoch.lowRewardedPrice = price[index[data.quartile1Index]];
         epoch.price = data.finalMedianPrice; 
         epoch.finalizedTimestamp = block.timestamp;
@@ -812,7 +869,7 @@ contract Ftso is IIFtso {
     function readRewardData(
         FtsoEpoch.Instance storage epoch,
         FtsoMedian.Data memory data,
-        uint32[] memory index, 
+        uint256[] memory index, 
         uint256[] memory weightFlr,
         uint256[] memory vote
     ) internal view returns (
@@ -820,11 +877,11 @@ contract Ftso is IIFtso {
         uint256[] memory flrWeights,
         uint256 flrWeightsSum
     ) {
-        uint32 voteRewardCount = epoch.voteRewardCount;
+        uint256 voteRewardCount = epoch.voteRewardCount;
         eligibleAddresses = new address[](voteRewardCount);
         flrWeights = new uint256[](voteRewardCount);
-        uint32 cnt = 0;
-        for (uint32 i = data.quartile1Index; i <= data.quartile3Index; i++) {
+        uint256 cnt = 0;
+        for (uint256 i = data.quartile1Index; i <= data.quartile3Index; i++) {
             if (weightFlr[index[i]] > 0) {
                 uint256 id = vote[index[i]];
                 eligibleAddresses[cnt] = votes.sender[id];

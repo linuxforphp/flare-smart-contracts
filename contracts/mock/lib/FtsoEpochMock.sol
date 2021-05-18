@@ -45,8 +45,8 @@ contract FtsoEpochMock {
         uint256 flrRewardedWeightSum;           // sum of FLR weights on votes eligible for reward
         uint256 flrHighWeightSum;               // sum of FLR weights on votes with price too high for reward
         uint256 random;                         // random number associated with the epoch
-        uint32 voteRewardCount;                 // number of votes in epoch eligible for the reward
-        uint32 voteCount;                       // number of votes in epoch
+        uint256 voteRewardCount;                 // number of votes in epoch eligible for the reward
+        uint256 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         IFAsset[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
@@ -67,14 +67,14 @@ contract FtsoEpochMock {
         _state.assetNorm[fasset] = 10**decimals;
     }
 
-    function _initializeInstance(
+    function _initializeInstanceForReveal(
         uint256 epochId,
         uint256 _votePowerFlr,
         IFAsset[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices) public {
         FtsoEpoch.Instance storage _epoch = _state.instance[epochId];
-        _state._initializeInstance(
+        _state._initializeInstanceForReveal(
             _epoch,
             _votePowerFlr, 
             _assets,
@@ -138,9 +138,9 @@ contract FtsoEpochMock {
         epoch.baseWeightRatio = _epoch.baseWeightRatio;
         epoch.firstVoteId = _epoch.firstVoteId;
         epoch.truncatedFirstQuartileVoteId = _epoch.truncatedFirstQuartileVoteId;
-        epoch.firstQuartileVoteId = _epoch.firstQuartileVoteId;
-        epoch.medianVoteId = _epoch.medianVoteId;
-        epoch.lastQuartileVoteId = _epoch.lastQuartileVoteId;
+        // epoch.firstQuartileVoteId = _epoch.firstQuartileVoteId;
+        // epoch.medianVoteId = _epoch.medianVoteId;
+        // epoch.lastQuartileVoteId = _epoch.lastQuartileVoteId;
         epoch.truncatedLastQuartileVoteId = _epoch.truncatedLastQuartileVoteId;
         epoch.lastVoteId = _epoch.lastVoteId;
         epoch.price = _epoch.price;

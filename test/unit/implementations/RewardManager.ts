@@ -43,6 +43,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
             rewardManager.address,
+            accounts[7],
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,

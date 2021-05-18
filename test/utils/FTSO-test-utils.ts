@@ -4,12 +4,17 @@
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber, Signer } from "ethers";
-import { ethers, web3 } from "hardhat";
-import { Ftso, MockFtso, MockVPToken } from "../../typechain";import { FlareBlock, increaseTimeTo, newContract, submitPriceHash, waitFinalize } from "./test-helpers";
+import { BigNumber } from "ethers";
+import { ethers } from "hardhat";
+import { Ftso, MockFtso, MockVPToken } from "../../typechain";
+import { FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
+import { increaseTimeTo, newContract, submitPriceHash, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 
 const { exec } = require("child_process");
+const { constants } = require('@openzeppelin/test-helpers');
+const MockFtsoManager = artifacts.require("MockContract") as MockContractContract;
+const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 
 
 ////////////////////////////////////////////////////////////
@@ -48,8 +53,7 @@ export interface VoteInfo {
  */
 
 interface EpochResultRaw {
-    epochId: BigNumber;
-    medians: number[];
+    medians: BigNumber[];
     prices: BigNumber[];
     weights: BigNumber[]
 }
@@ -90,7 +94,6 @@ export interface PriceInfo {
  * Result of the `findMedian` algorithm for a specific epoch.
  */
 export interface EpochResult {
-    epoch: number;
     votes: VoteInfo[];
     medians: MediansInfo;
     prices: PriceInfo;
@@ -186,14 +189,13 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
     })
 
     return {
-        epoch: epochResultRaw.epochId.toNumber(),
         votes: votes,
         medians: {
-            truncatedFirstQuartileIndex: epochResultRaw.medians[0],
-            firstQuartileIndex: epochResultRaw.medians[1],
-            medianIndex: epochResultRaw.medians[2],
-            lastQuartileIndex: epochResultRaw.medians[3],
-            truncatedLastQuartileIndex: epochResultRaw.medians[4]
+            truncatedFirstQuartileIndex: epochResultRaw.medians[0].toNumber(),
+            firstQuartileIndex: 0,
+            medianIndex: 0,
+            lastQuartileIndex: 0,
+            truncatedLastQuartileIndex: epochResultRaw.medians[1].toNumber()
         },
         prices: {
             lowRewardedPrice: epochResultRaw.prices[0].toNumber(),
@@ -268,10 +270,10 @@ function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumFlr: number
  */
 function marker(i: number, minfo: MediansInfo) {
     return "" +
-        (i == minfo.firstQuartileIndex ? "<1" : "") +
+        // (i == minfo.firstQuartileIndex ? "<1" : "") +
         (i == minfo.truncatedFirstQuartileIndex ? "<1-" : "") +
-        (i == minfo.medianIndex ? "<2" : "") +
-        (i == minfo.lastQuartileIndex ? "<3" : "") +
+        // (i == minfo.medianIndex ? "<2" : "") +
+        // (i == minfo.lastQuartileIndex ? "<3" : "") +
         (i == minfo.truncatedLastQuartileIndex ? "<3+" : "");
 }
 
@@ -280,7 +282,7 @@ function marker(i: number, minfo: MediansInfo) {
  * @param rawEpochResult 
  * @param logger logger object implementing function log(string). Could be `console` as well.
  */
-export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, rawVotes: VoteListRaw, weightRatio: number, logger?: any) {
+export function prettyPrintEpochResult(epoch: number, rawEpochResult: EpochResultRaw, rawVotes: VoteListRaw, weightRatio: number, logger?: any) {
     if (!logger) {
         logger = console;
     }
@@ -296,7 +298,7 @@ export function prettyPrintEpochResult(rawEpochResult: EpochResultRaw, rawVotes:
         `ID\tPRICE\tWFLR\tWASSET\tWEIGHT\n` +
         epochResult.votes.map((vote, i) => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset) }\t${ vote.runningSumFlr! + vote.runningSumAsset! }\t${ (vote.runningPct! * 100).toFixed(1) }\t${ marker(i, epochResult.medians) }`).join("\n") +
         "\n" +
-        `Epoch ${ epochResult.epoch }\n` +
+        `Epoch ${ epoch }\n` +
         `Lower price: ${ epochResult.prices.lowRewardedPrice }\n` +
         `Median price: ${ epochResult.prices.medianPrice }\n` +
         `Higher price: ${ epochResult.prices.highRewardedPrice }\n` +
@@ -474,7 +476,6 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
 
     return {
-        epoch: 0,
         votes,
         medians: {
             truncatedFirstQuartileIndex,
@@ -542,6 +543,9 @@ export function compareEpochResults(test: EpochResult, target: EpochResult) {
     expect(test.medians.truncatedFirstQuartileIndex, "Median truncated first quartile indexes do not match").to.equal(target.medians.truncatedFirstQuartileIndex);
     expect(test.medians.truncatedLastQuartileIndex, "Median truncated last quartile indexes do not match").to.equal(target.medians.truncatedLastQuartileIndex);
 
+    test.medians.firstQuartileIndex = target.medians.firstQuartileIndex;
+    test.medians.medianIndex = target.medians.medianIndex;
+    test.medians.lastQuartileIndex = target.medians.lastQuartileIndex;
     checkVotePricesSort(test);
     checkVotePricesSort(target);
 
@@ -676,7 +680,7 @@ export function randomizePriceGenerator(testExample: TestExample) {
  * @param epochPeriod - epoch period, must match to the one set in the FTSO contract
  * @param currentEpoch - current epoch
  */
-export async function moveToNextEpochStart(epochStartTimestamp: number, epochPeriod: number, currentEpoch: number, offset = 0) {
+export async function moveToNextEpochStart(epochStartTimestamp: number, epochPeriod: number, currentEpoch: number, offset = 1) {
     let nextEpochTimestamp = (currentEpoch + 1) * epochPeriod + epochStartTimestamp + offset;
     await increaseTimeTo(nextEpochTimestamp);
 }
@@ -687,7 +691,7 @@ export async function moveToNextEpochStart(epochStartTimestamp: number, epochPer
  * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
  * @returns new epochId
  */
-export async function moveFromCurrentToNextEpochStart(epochStartTimestamp: number, epochPeriod: number, offset = 0): Promise<number> {
+export async function moveFromCurrentToNextEpochStart(epochStartTimestamp: number, epochPeriod: number, offset = 1): Promise<number> {
     let blockInfo = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
     let currentEpoch = Math.floor((blockInfo.timestamp - epochStartTimestamp) / epochPeriod);
     await moveToNextEpochStart(epochStartTimestamp, epochPeriod, currentEpoch, offset);
@@ -828,7 +832,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
 
     // Print results                
     let res = await ftso.getEpochResult(epoch);
-    prettyPrintEpochResult(res, resVoteInfo, testExample.weightRatio!, logger);
+    prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
     let voterRes = toEpochResult(res, resVoteInfo);
     let testCase = {
         example: testExample,
@@ -886,4 +890,14 @@ export async function finalizePriceEpochWithResult(signer: SignerWithAddress, ft
     let epochFinalizeResponse = await ftso.connect(signer).callStatic.finalizePriceEpoch(epochId, true);
     await waitFinalize(signer, () => ftso.connect(signer).finalizePriceEpoch(epochId, true));
     return epochFinalizeResponse;
+}
+
+export async function createMockFtsoManager(priceSubmitterAddress: string): Promise<string> {
+    let mockFtsoManager: MockContractInstance = await MockFtsoManager.new();
+    let ftsoManagerInterface: FtsoManagerInstance = await FtsoManager.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, priceSubmitterAddress, 120, 10, 60, 3600, 10, 7);
+
+    const priceSubmitter = ftsoManagerInterface.contract.methods.priceSubmitter().encodeABI();
+    const priceSubmitterReturn = web3.eth.abi.encodeParameter('address', priceSubmitterAddress);
+    await mockFtsoManager.givenMethodReturn(priceSubmitter, priceSubmitterReturn);
+    return mockFtsoManager.address;
 }
