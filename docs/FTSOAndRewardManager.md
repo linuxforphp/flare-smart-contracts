@@ -5,12 +5,16 @@
 
 - Maintains the list of rewarded FTSOs.
 - Is beeing triggered by Keeper contract.
-- Accepts calls from governance contract to add or remove rewarded FTSOs,
+- Accepts calls from governance contract to update the FTSO list
 - Accepts calls from governance contract to change FTSO governance parameters,
 - Sets FTSO governance parameters to FTSOs at appropriate time;
 - Sets vote power blocks to FTSOs at appropriate times;
 - Manages the definition and lifecycle of reward epochs, including initialization, finalizations and the definitions of vote power blocks.
-- Manages the definition and lifecycle of price epochs, which include initialization, FTSO finalizations,  determination of rewards, triggering their distribution by Reward manager, and initializations of price reveal epochs immediately after the corresponding price epoch ends.
+- Manages the definition and lifecycle of price epochs, which include:
+   - initialize price epoch data structures at beginning of each price epoch
+   - FTSO finalizations
+   - determination of reward eligibility
+   - triggering reward distribution in Reward manager
 
 **Reward manager** is a smart contract that manages the following aspects of FTSO system.
 
@@ -42,9 +46,3 @@
 `FTSOManager` contract can be deactivated by calling API `deactivate()`. This stops periodic reward epochs finalizations, price epoch finalizations and initializations of price epoch instance objects. WARNING: the mechanism of how the system behaves after that is not yet fully defined.
 
 `RewardManager` contract can also be deactivated, which basically means that claiming awards is blocked. It is again possible, when the contract is activate (`activate()`). Deactivated `RewardManager` contract still accepts calls to `distributeRewards(...)` API and distributes the rewards. 
-
-
-
-
-
-

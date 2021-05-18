@@ -4,7 +4,12 @@ Due to Solidity's type system (or lack thereof, as it were), I propose that stan
 These recommendations (in no particular order) were made based upon the very good series of articles located at [Math In Solidity](https://medium.com/coinmonks/math-in-solidity-part-1-numbers-384c8377f26d).
 
 ## Use Native Types Where Possible
-Use `uint` or `int` data types and avoid the use of smaller types when masking is not directly required. All `uintx` and `intx` types are compiled to native 256 byte values by the EVM, and the most significant bits are masked, which needlessly takes additional operations and gas.
+Use `uint256` or `int256` data types and avoid the use of smaller uint types when masking is not directly required. All `uintx` and `intx` types are compiled to native 256 byte values by the EVM, and the most significant bits are masked, which needlessly takes additional operations and gas.
+Usage of smaller 'uint' types is relevant when trying to "squeeze" data inside structures. Example below will squeeze two numbers in one storage slot:
+> struct Squeeze {
+>    int248 num1;
+>    int8   num2;
+> }
 
 Example:<br>
 ```js
