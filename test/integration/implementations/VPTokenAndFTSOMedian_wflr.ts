@@ -173,7 +173,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, prices);
 
-        await ftso.initializeCurrentEpochStateForReveal();
+        await ftso.initializeCurrentEpochStateForReveal(false);
 
         logger.log(`REVEAL PRICE 5`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -190,7 +190,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
-        let res = await ftso.getEpochResult(epoch);
+        let res = await ftso.getFullEpochReport(epoch);
         prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
         let voterRes = toEpochResult(res, resVoteInfo);
         let testCase = {
@@ -240,7 +240,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, testExample.prices);
 
-        await ftso.initializeCurrentEpochStateForReveal();
+        await ftso.initializeCurrentEpochStateForReveal(false);
 
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -260,7 +260,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
-        let res = await ftso.getEpochResult(epoch);
+        let res = await ftso.getFullEpochReport(epoch);
         prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
         let voterRes = toEpochResult(res, resVoteInfo);
         let testCase = {
@@ -272,7 +272,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         // Test results
         checkTestCase(testCase);
 
-        await ftso.initializeCurrentEpochStateForReveal();
+        await ftso.initializeCurrentEpochStateForReveal(false);
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
@@ -289,7 +289,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         prettyPrintVoteInfo(epoch+1, resVoteInfo2, testExample2.weightRatio!, logger);
         
         // Print results 2
-        let res2 = await ftso.getEpochResult(epoch+1);
+        let res2 = await ftso.getFullEpochReport(epoch+1);
         prettyPrintEpochResult(epoch+1, res2, resVoteInfo2, testExample2.weightRatio!, logger);
         let voterRes2 = toEpochResult(res2, resVoteInfo2);
         let testCase2 = {
@@ -337,7 +337,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         const { epoch } = await submitPrice(signers, ftso, testExample.prices);
         
-        await ftso.initializeCurrentEpochStateForReveal();
+        await ftso.initializeCurrentEpochStateForReveal(false);
 
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -372,7 +372,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
-        let res = await ftso.getEpochResult(epoch);
+        let res = await ftso.getFullEpochReport(epoch);
         prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
         let voterRes = toEpochResult(res, resVoteInfo);
         let testCase = {
@@ -384,7 +384,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         // Test results
         checkTestCase(testCase);
 
-        await ftso.initializeCurrentEpochStateForReveal();
+        await ftso.initializeCurrentEpochStateForReveal(false);
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
@@ -401,7 +401,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         prettyPrintVoteInfo(epoch+1, resVoteInfo2, testExample2.weightRatio!, logger);
         
         // Print results 2
-        let res2 = await ftso.getEpochResult(epoch+1);
+        let res2 = await ftso.getFullEpochReport(epoch+1);
         prettyPrintEpochResult(epoch+1, res2, resVoteInfo2, testExample2.weightRatio!, logger);
         let voterRes2 = toEpochResult(res2, resVoteInfo2);
         let testCase2 = {

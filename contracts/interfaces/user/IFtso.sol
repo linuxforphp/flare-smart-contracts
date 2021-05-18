@@ -5,12 +5,18 @@ import "../IFAsset.sol";
 
 interface IFtso {
     enum PriceFinalizationType {
+        // initial state
         NOT_FINALIZED,
+        // median calculation used to decide price
         MEDIAN,
+        // low turnout - price decided using average price from trusted addresses votes
         TRUSTED_ADDRESSES,
+        // low turnout + no votes from trusted addresses - price copied from previous epoch
         PREVIOUS_PRICE_COPIED,
-        TRUSTED_ADDRESSES_EXCEPTION,        // same as TRUSTED_ADDRESSES - set when an exception occurs
-        PREVIOUS_PRICE_COPIED_EXCEPTION     // same as PREVIOUS_PRICE_COPIED - set when an exception occurs
+        // same as TRUSTED_ADDRESSES - set when an exception occurs
+        TRUSTED_ADDRESSES_EXCEPTION,
+        // same as PREVIOUS_PRICE_COPIED - set when an exception occurs
+        PREVIOUS_PRICE_COPIED_EXCEPTION
     }
 
     // events
@@ -72,6 +78,7 @@ interface IFtso {
      * @return _votePowerBlock          Vote power block for the current epoch
      * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
      * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
+     * @return _panicMode               Current epoch in panic mode - only votes from trusted addresses will be used
      */
     function getPriceEpochData() external view returns (
         uint256 _epochId,
@@ -79,7 +86,8 @@ interface IFtso {
         uint256 _epochRevealEndTime,
         uint256 _votePowerBlock,
         uint256 _minVotePowerFlr,
-        uint256 _minVotePowerAsset
+        uint256 _minVotePowerAsset,
+        bool _panicMode
     );
 
     /**

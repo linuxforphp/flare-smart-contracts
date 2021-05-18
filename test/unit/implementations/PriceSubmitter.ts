@@ -133,9 +133,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
             let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
             expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
-            await ftsos[0].initializeCurrentEpochStateForReveal({from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal({from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal({from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             await setMockVotePowerOfAt(1, 10, accounts[1]);  // vote power of 0 is not allowed
@@ -175,8 +175,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
             let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
             expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
-            await ftsos[0].initializeCurrentEpochStateForReveal({from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal({from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             await setMockVotePowerOfAt(1, 10, accounts[1]);  // vote power of 0 is not allowed
@@ -215,9 +215,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
             let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
             expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
-            await ftso.initializeCurrentEpochStateForReveal({from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal({from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal({from: accounts[10]});
+            await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             await setMockVotePowerOfAt(1, 10, accounts[1]);  // vote power of 0 is not allowed

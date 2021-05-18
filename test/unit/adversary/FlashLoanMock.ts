@@ -83,7 +83,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "PriceSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             await flashLoanMock.submitPrice(380, 234);
             // reveal epoch
-            await ftso.initializeCurrentEpochStateForReveal({ from: accounts[10] });
+            await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // reveals
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }), 
@@ -127,7 +127,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "PriceSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             await flashLoanMock.submitPrice(380, 234);
             // reveal epoch
-            await ftso.initializeCurrentEpochStateForReveal({ from: accounts[10] });
+            await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // reveals
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }),
@@ -159,7 +159,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             lastBlock = await web3.eth.getBlockNumber();
             await ftso.setVotePowerBlock(lastBlock, { from: accounts[10] });    // in the past - ok
             // start reveal
-            await ftso.initializeCurrentEpochStateForReveal({ from: accounts[10] });
+            await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // take loan and vote
             await expectRevert(votingFlashLoanMock.testRequestLoan(amount),

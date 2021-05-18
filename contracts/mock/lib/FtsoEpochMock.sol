@@ -38,14 +38,7 @@ contract FtsoEpochMock {
         uint256 price;                          // consented epoch asset price
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
-        uint256 lowWeightSum;                   // sum of (mixed) weights on votes with price too low for reward
-        uint256 rewardedWeightSum;              // sum of (mixed) weights on votes eligible for reward
-        uint256 highWeightSum;                  // sum of (mixed) weights on votes with price too high for reward
-        uint256 flrLowWeightSum;                // sum of FLR weights on votes with price too low for reward
-        uint256 flrRewardedWeightSum;           // sum of FLR weights on votes eligible for reward
-        uint256 flrHighWeightSum;               // sum of FLR weights on votes with price too high for reward
         uint256 random;                         // random number associated with the epoch
-        uint256 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint256 voteCount;                       // number of votes in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         IFAsset[] assets;                       // list of assets
@@ -138,22 +131,12 @@ contract FtsoEpochMock {
         epoch.baseWeightRatio = _epoch.baseWeightRatio;
         epoch.firstVoteId = _epoch.firstVoteId;
         epoch.truncatedFirstQuartileVoteId = _epoch.truncatedFirstQuartileVoteId;
-        // epoch.firstQuartileVoteId = _epoch.firstQuartileVoteId;
-        // epoch.medianVoteId = _epoch.medianVoteId;
-        // epoch.lastQuartileVoteId = _epoch.lastQuartileVoteId;
         epoch.truncatedLastQuartileVoteId = _epoch.truncatedLastQuartileVoteId;
         epoch.lastVoteId = _epoch.lastVoteId;
         epoch.price = _epoch.price;
         epoch.lowRewardedPrice = _epoch.lowRewardedPrice;
         epoch.highRewardedPrice = _epoch.highRewardedPrice;
-        epoch.lowWeightSum = _epoch.lowWeightSum;
-        epoch.rewardedWeightSum = _epoch.rewardedWeightSum;
-        epoch.highWeightSum = _epoch.highWeightSum;
-        epoch.flrLowWeightSum = _epoch.flrLowWeightSum;
-        epoch.flrRewardedWeightSum = _epoch.flrRewardedWeightSum;
-        epoch.flrHighWeightSum = _epoch.flrHighWeightSum;
         epoch.random = _epoch.random;
-        epoch.voteRewardCount = _epoch.voteRewardCount;
         epoch.voteCount = _epoch.voteCount;
         epoch.initializedForReveal = _epoch.initializedForReveal;
         epoch.assets = _epoch.assets;
