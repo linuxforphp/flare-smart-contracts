@@ -13,12 +13,10 @@ library FtsoMedian {
         uint256 rightSum2; 
         uint256 leftSum3;
         uint256 rightSum3;
-        uint256 leftMedianWeight;
-        uint256 rightMedianWeight;
         uint256 medianWeight;
         uint256 lowWeightSum;
         uint256 rewardedWeightSum;
-        uint256 highWeightSum;        
+        uint256 highWeightSum;
         uint256 totalSum;
         uint256 finalMedianPrice;
     }

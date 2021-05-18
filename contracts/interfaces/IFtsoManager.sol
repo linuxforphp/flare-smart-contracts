@@ -9,8 +9,11 @@ interface IFtsoManager {
     event FtsoAdded(IIFtso ftso, bool add);
     event RewardEpochFinalized(uint256 votepowerBlock, uint256 startBlock);
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
-    // TODO: Remove these two events for production
+    // TODO: Remove this event for production
     event KeepTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring keep() calls
+
+    function activate() external;
+    function deactivate() external;
 
     function priceSubmitter() external returns (IPriceSubmitter);
 
@@ -26,16 +29,27 @@ interface IFtsoManager {
         address[] memory _trustedAddresses
     ) external;
 
+    function addFtso(IIFtso _ftso) external;
+    function removeFtso(IIFtso _ftso) external;
+
+    function setFtsoFAsset(IIFtso _ftso, IFAsset _fAsset) external;
+    function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external;
+
+    function setPanicMode(bool _panicMode) external;
+    function setFtsoPanicMode(IIFtso _ftso, bool _panicMode) external;
+
     function getCurrentRewardEpoch() external view returns (uint256);
-    function getCurrentPriceEpochData() external view returns 
-        (
-            uint256 priceEpochId, 
-            uint256 priceEpochStartTimestamp, 
-            uint256 priceEpochEndTimestamp, 
-            uint256 priceEpochRevealEndTimestamp, 
-            uint256 currentTimestamp
-        );        
-    function getFtsos() external view returns (IIFtso[] memory ftsos);
-    function getPriceEpochConfiguration() external view returns 
-        (uint256 firstPriceEpochStartTs, uint256 priceEpochDurationSec, uint256 revealEpochDurationSec);
+    function getCurrentPriceEpochData() external view returns (
+        uint256 _priceEpochId,
+        uint256 _priceEpochStartTimestamp,
+        uint256 _priceEpochEndTimestamp,
+        uint256 _priceEpochRevealEndTimestamp,
+        uint256 _currentTimestamp
+    );
+    function getFtsos() external view returns (IIFtso[] memory _ftsos);
+    function getPriceEpochConfiguration() external view returns (
+        uint256 _firstPriceEpochStartTs,
+        uint256 _priceEpochDurationSec,
+        uint256 _revealEpochDurationSec
+    );
 }

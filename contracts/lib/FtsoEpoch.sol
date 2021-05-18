@@ -37,6 +37,7 @@ library FtsoEpoch {
         uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
         uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
         address[] trustedAddresses;             // trusted addresses - use their prices if low turnout is not achieved
+        mapping(address => bool) trustedAddressesMapping; // for checking addresses in panic mode
     }
 
     struct Instance {                           // struct holding epoch votes and results
@@ -64,22 +65,16 @@ library FtsoEpoch {
         IFtso.PriceFinalizationType finalizationType; // finalization type
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
-        uint256 lowWeightSum;                   // sum of (mixed) weights on votes with price too low for reward
-        uint256 rewardedWeightSum;              // sum of (mixed) weights on votes eligible for reward
-        uint256 highWeightSum;                  // sum of (mixed) weights on votes with price too high for reward
-        uint256 flrLowWeightSum;                // sum of FLR weights on votes with price too low for reward
-        uint256 flrRewardedWeightSum;           // sum of FLR weights on votes eligible for reward
-        uint256 flrHighWeightSum;               // sum of FLR weights on votes with price too high for reward
         uint256 random;                         // random number associated with the epoch
-        uint256 voteRewardCount;                 // number of votes in epoch eligible for the reward
         uint256 voteCount;                       // number of votes in epoch
         IFAsset[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) votes;      // address to vote id mapping
-        address[] trustedAddresses;             // trusted addresses - set only if low flr turnout is not achieved
+        address[] trustedAddresses;             // trusted addresses - set only when used
         uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
+        bool panicMode;                         // current epoch in panic mode
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
@@ -152,8 +147,8 @@ library FtsoEpoch {
             _instance.lastVoteId = _voteId;
             _instance.voteCount += 1;
         }
-        _instance.accumulatedVotePowerFlr += _votePowerFlr;
-        _instance.accumulatedVotePowerAsset += _votePowerAsset;
+        _instance.accumulatedVotePowerFlr = _instance.accumulatedVotePowerFlr.add(_votePowerFlr);
+        _instance.accumulatedVotePowerAsset = _instance.accumulatedVotePowerAsset.add(_votePowerAsset);
         _instance.random += _random;
         _instance.votes[msg.sender] = _voteId;
     }

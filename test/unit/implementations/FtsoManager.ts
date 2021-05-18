@@ -19,6 +19,7 @@ const VOTE_POWER_BOUNDARY_FRACTION = 7;
 const ERR_GOVERNANCE_ONLY = "only governance"
 const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "gov. params not initialized"
 const ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
+const ERR_NOT_FOUND = "not found";
 
 contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests`, async accounts => {
     // contains a fresh contract for each test
@@ -587,7 +588,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
 
             await time.increaseTo(startTs.addn(120 + 30));
-            let tx = await ftsoManager.keep();
+            await ftsoManager.keep();
 
             let ftso1Events = await ftso1.getPastEvents("PriceFinalized")
             let ftso2Events = await ftso2.getPastEvents("PriceFinalized")
@@ -764,4 +765,96 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
     });
 
+    describe("Panic mode", async () => {
+        it("Should set panic mode", async () => {
+            await settingWithOneFTSO_1(accounts, ftsoInterface, mockFtso, ftsoManager);
+            await ftsoManager.setPanicMode(true, { from: accounts[0] });
+            assert(await ftsoManager.panicMode());
+
+            await ftsoManager.setPanicMode(false, { from: accounts[0] });
+            assert(!await ftsoManager.panicMode());
+        });
+
+        it("Should not set panic mode if not from governance", async () => {
+            await settingWithOneFTSO_1(accounts, ftsoInterface, mockFtso, ftsoManager);
+            await expectRevert(ftsoManager.setPanicMode(true, { from: accounts[1] }), ERR_GOVERNANCE_ONLY);
+        });
+
+        it("Should set panic mode for ftso", async () => {
+            let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await setDefaultGovernanceParameters(ftsoManager);
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+            assert(await ftsoManager.ftsoInPanicMode(ftso1.address));
+
+            await ftsoManager.setFtsoPanicMode(ftso1.address, false, { from: accounts[0] });
+            assert(!await ftsoManager.ftsoInPanicMode(ftso1.address));
+        });
+        
+        it("Should not set panic mode for ftso if not managed", async () => {
+            let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await expectRevert(ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] }), ERR_NOT_FOUND);
+        });
+
+        it("Should not set panic mode for ftso if not from governance", async () => {
+            let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await setDefaultGovernanceParameters(ftsoManager);
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await expectRevert(ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[1] }), ERR_GOVERNANCE_ONLY);
+        });
+
+        it("Should initialize epochs in panic mode for all ftsos", async () => {
+            let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await setDefaultGovernanceParameters(ftsoManager);
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
+
+            await ftsoManager.setPanicMode(true, { from: accounts[0] });
+
+            await ftsoManager.activate();
+            await ftsoManager.keep();
+
+            let epoch = await submitSomePrices(ftso1, 10, accounts);
+            epoch = await submitSomePrices(ftso2, 10, accounts);
+
+            await time.increaseTo(startTs.addn(120));
+            await ftsoManager.keep();
+
+            let report1 = await ftso1.getFullEpochReport(epoch.add(toBN(1)));
+            expect(report1[12]).to.equals(true);
+
+            let report2 = await ftso2.getFullEpochReport(epoch.add(toBN(1)));
+            expect(report2[12]).to.equals(true);
+        });
+
+        it("Should initialize epoch in panic mode for first ftso", async () => {
+            let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await setDefaultGovernanceParameters(ftsoManager);
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
+
+            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+
+            await ftsoManager.activate();
+            await ftsoManager.keep();
+
+            let epoch = await submitSomePrices(ftso1, 10, accounts);
+            epoch = await submitSomePrices(ftso2, 10, accounts);
+
+            await time.increaseTo(startTs.addn(120));
+            await ftsoManager.keep();
+
+            let report1 = await ftso1.getFullEpochReport(epoch.add(toBN(1)));
+            expect(report1[12]).to.equals(true);
+
+            let report2 = await ftso2.getFullEpochReport(epoch.add(toBN(1)));
+            expect(report2[12]).to.equals(false);
+        });
+    });
 });

@@ -49,13 +49,22 @@ export interface VoteInfo {
 }
 
 /**
- * Auxiliary interface for JSON returned by FTSO mock function `getEpochResult`
+ * Auxiliary interface for JSON returned by FTSO function `getFullEpochReport`
  */
-
-interface EpochResultRaw {
-    medians: BigNumber[];
-    prices: BigNumber[];
-    weights: BigNumber[]
+export interface EpochResultRaw {
+    _epochSubmitStartTime: BigNumber;
+    _epochSubmitEndTime: BigNumber;
+    _epochRevealEndTime: BigNumber;
+    _epochFinalizedTimestamp: BigNumber;
+    _price: BigNumber;
+    _lowRewardPrice: BigNumber;
+    _highRewardPrice: BigNumber;
+    _numberOfVotes: BigNumber;
+    _votePowerBlock: BigNumber;
+    _finalizationType: number;
+    _trustedAddresses: string[];
+    _rewardedFtso: boolean;
+    _panicMode: boolean;
 }
 
 /**
@@ -167,7 +176,29 @@ export function toVoteList(voteList: VoteListRaw): VoteInfo[] {
  */
 export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteListRaw): EpochResult {
     let votes: VoteInfo[] = [];
+
+    let lowWeightSum = 0;
+    let rewardedWeightSum = 0;
+    let highWeightSum = 0;
+    let FLRlowWeightSum = 0;
+    let FLRrewardedWeightSum = 0;
+    let FLRhighWeightSum = 0;
+    let truncatedFirstQuartileIndex = 0;
+    let truncatedLastQuartileIndex = votesRaw._prices.length - 1;
+
     for (let i = 0; i < votesRaw._prices.length; i++) {
+        if (votesRaw._prices[i].toNumber() < epochResultRaw._lowRewardPrice.toNumber()) {
+            lowWeightSum += votesRaw._weights[i].toNumber();
+            FLRlowWeightSum += votesRaw._weightsFlr[i].toNumber();
+            truncatedFirstQuartileIndex++;
+        } else if (votesRaw._prices[i].toNumber() > epochResultRaw._highRewardPrice.toNumber()) {
+            highWeightSum += votesRaw._weights[i].toNumber();
+            FLRhighWeightSum += votesRaw._weightsFlr[i].toNumber();
+            truncatedLastQuartileIndex--;
+        } else {
+            rewardedWeightSum += votesRaw._weights[i].toNumber();
+            FLRrewardedWeightSum += votesRaw._weightsFlr[i].toNumber();
+        }
         votes.push({
             id: i,
             price: votesRaw._prices[i].toNumber(),
@@ -191,24 +222,24 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
     return {
         votes: votes,
         medians: {
-            truncatedFirstQuartileIndex: epochResultRaw.medians[0].toNumber(),
+            truncatedFirstQuartileIndex,
             firstQuartileIndex: 0,
             medianIndex: 0,
             lastQuartileIndex: 0,
-            truncatedLastQuartileIndex: epochResultRaw.medians[1].toNumber()
+            truncatedLastQuartileIndex
         },
         prices: {
-            lowRewardedPrice: epochResultRaw.prices[0].toNumber(),
-            medianPrice: epochResultRaw.prices[1].toNumber(),
-            highRewardedPrice: epochResultRaw.prices[2].toNumber()
+            lowRewardedPrice: epochResultRaw._lowRewardPrice.toNumber(),
+            medianPrice: epochResultRaw._price.toNumber(),
+            highRewardedPrice: epochResultRaw._highRewardPrice.toNumber()
         },
         weights: {
-            lowWeightSum: epochResultRaw.weights[0].toNumber(),
-            rewardedWeightSum: epochResultRaw.weights[1].toNumber(),
-            highWeightSum: epochResultRaw.weights[2].toNumber(),
-            FLRlowWeightSum: epochResultRaw.weights[3].toNumber(),
-            FLRrewardedWeightSum: epochResultRaw.weights[4].toNumber(),
-            FLRhighWeightSum: epochResultRaw.weights[5].toNumber()
+            lowWeightSum,
+            rewardedWeightSum,
+            highWeightSum,
+            FLRlowWeightSum,
+            FLRrewardedWeightSum,
+            FLRhighWeightSum
         }
     }
 }
@@ -812,7 +843,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     logger.log(`SUBMIT PRICE ${ len }`);
     const { epoch } = await submitPrice(signers, ftso, testExample.prices);
 
-    await ftso.initializeCurrentEpochStateForReveal();
+    await ftso.initializeCurrentEpochStateForReveal(false);
 
     // Reveal price
     await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -831,7 +862,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
 
     // Print results                
-    let res = await ftso.getEpochResult(epoch);
+    let res = await ftso.getFullEpochReport(epoch);
     prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
     let voterRes = toEpochResult(res, resVoteInfo);
     let testCase = {

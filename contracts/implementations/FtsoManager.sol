@@ -71,6 +71,8 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
 
     // flags
     bool private justStarted;
+    bool public panicMode; // all ftsos in panic mode
+    mapping(address => bool) public ftsoInPanicMode;
 
     // IPriceSubmitter should be a new contract for a new deploy or at least
     // _priceEpochDurationSec, _firstEpochStartTs and _revealEpochDurationSec must match
@@ -114,14 +116,14 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Activates FTSO manager (keep() runs jobs)
      */
-    function activate() external onlyGovernance {
+    function activate() external override onlyGovernance {
         active = true;
     }
 
     /**
      * @notice Deactivates FTSO manager (keep() stops running jobs)
      */
-    function deactivate() external onlyGovernance {
+    function deactivate() external override onlyGovernance {
         active = false;
     }
 
@@ -132,7 +134,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * - Set governance parameters and initialize epochs
      * - finalizeRewardEpoch 
      */
-    function keep() external override returns(bool) {
+    function keep() external override returns (bool) {
         // flare keeper trigger. once every block
         
         // TODO: remove this eventafter testing phase
@@ -140,20 +142,20 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         if (!active) return false;
 
         if (justStarted) {
-            initializeRewardEpoch();
+            _initializeRewardEpoch();
         } else {
             if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec < block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
-                finalizePriceEpoch();
+                _finalizePriceEpoch();
             }
             // Note: prices should be first finalized and then new reward epoch can start
             if (currentRewardEpochEnds < block.timestamp) {
-                finalizeRewardEpoch();
+                _finalizeRewardEpoch();
             }
 
             if(currentPriceEpochEnds < block.timestamp) {
                 // sets governance parameters on ftsos
-                initializeCurrentEpochFTSOStatesForReveal();
+                _initializeCurrentEpochFTSOStatesForReveal();
             }
         }
         return true;
@@ -162,9 +164,9 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Initializes reward epochs. Also sets vote power block to FTSOs
      */
-    function initializeRewardEpoch() internal {
+    function _initializeRewardEpoch() internal {
         if (block.timestamp >= currentRewardEpochEnds - rewardEpochDurationSec) {
-            uint numFtsos = ftsos.length;
+            uint256 numFtsos = ftsos.length;
             // Prime the reward epoch array with a new reward epoch
             // TODO: Randomize? What if there are no FTSOs here? Can't use same algo.
             RewardEpochData memory epochData = RewardEpochData({
@@ -175,7 +177,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             rewardEpochs.push(epochData);
             currentRewardEpoch = 0;
 
-            for (uint i; i < numFtsos; ++i) {
+            for (uint256 i = 0; i < numFtsos; ++i) {
                 ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
             justStarted = false;
@@ -185,14 +187,14 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Finalizes reward epoch
      */
-    function finalizeRewardEpoch() internal {
+    function _finalizeRewardEpoch() internal {
         if (justStarted) return;
-        uint numFtsos = ftsos.length;
+        uint256 numFtsos = ftsos.length;
 
         uint256 lastRandom = block.timestamp;
         // Are there any FTSOs to process?
         if (numFtsos > 0) {
-            for (uint i = 0; i < numFtsos; ++i) {
+            for (uint256 i = 0; i < numFtsos; ++i) {
                 lastRandom += ftsos[i].getCurrentRandom();
             }
         }
@@ -226,7 +228,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         rewardEpochs.push(epochData);
 
         currentRewardEpoch = rewardEpochs.length - 1;
-        for (uint i; i < numFtsos; ++i) {
+        for (uint256 i = 0; i < numFtsos; ++i) {
             ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
         }
 
@@ -242,30 +244,30 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * @notice Adds FTSO to the list of rewarded FTSOs
      * All ftsos in multi fasset ftso must be managed by this ftso manager
      */
-    function addFtso(IIFtso ftso) external onlyGovernance {
+    function addFtso(IIFtso _ftso) external override onlyGovernance {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
         
-        checkFAssetFtsosAreManaged(ftso.getFAssetFtsos());
+        _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
 
         uint256 len = ftsos.length;
         for (uint256 i = 0; i < len; i++) {
-            if (address(ftso) == address(ftsos[i])) {
+            if (address(_ftso) == address(ftsos[i])) {
                 return; // already registered
             }
         }
 
-        ftso.activateFtso(priceSubmitter, firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
+        _ftso.activateFtso(priceSubmitter, firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
 
         // Set the vote power block
         // TODO: what is the condition?
         // if (priceEpochs.length > 0) {
         if(!justStarted) {
-            ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
+            _ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
         }
         // }
 
         // Configure 
-        ftso.configureEpochs(
+        _ftso.configureEpochs(
             settings.minVotePowerFlrThreshold,
             settings.minVotePowerAssetThreshold,
             settings.maxVotePowerFlrThreshold,
@@ -278,49 +280,64 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         );
         
         // create epoch state (later this is done at the end finalizeEpochPrice)
-        ftso.initializeCurrentEpochStateForReveal();
+        _ftso.initializeCurrentEpochStateForReveal(panicMode || ftsoInPanicMode[address(_ftso)]);
 
         // Add the ftso
-        ftsos.push(ftso);
-        managedFtsoAddresses[address(ftso)] = true;
+        ftsos.push(_ftso);
+        managedFtsoAddresses[address(_ftso)] = true;
 
-        emit FtsoAdded(ftso, true);
-    }
-
-    /**
-     * @notice Set FAsset for FTSO
-     */
-    function setFtsoFAsset(IIFtso ftso, IFAsset fAsset) external onlyGovernance {
-        ftso.setFAsset(fAsset);
-    }
-
-    /**
-     * @notice Set FAsset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
-     */
-    function setFtsoFAssetFtsos(IIFtso ftso, IIFtso[] memory fAssetFtsos) external onlyGovernance {
-        checkFAssetFtsosAreManaged(fAssetFtsos);
-        ftso.setFAssetFtsos(fAssetFtsos);
+        emit FtsoAdded(_ftso, true);
     }
 
     /**
      * @notice Removes FTSO from the list of the rewarded FTSOs - revert if ftso is used in multi fasset ftso
      */
-    function removeFtso(IIFtso ftso) external onlyGovernance {
-        // TODO: Handle case where you want to remove a FTSO that is in a fAssetFtsos of FLR FTSO (multiasset)?
+    function removeFtso(IIFtso _ftso) external override onlyGovernance {
         uint256 len = ftsos.length;
 
         for (uint256 i = 0; i < len; ++i) {
-            if (address(ftso) == address(ftsos[i])) {
+            if (address(_ftso) == address(ftsos[i])) {
                 ftsos[i] = ftsos[len - 1];
                 ftsos.pop();
-                managedFtsoAddresses[address(ftso)] = false;
-                checkMultiFassetFtsosAreManaged();
-                emit FtsoAdded (ftso, false);
+                ftsoInPanicMode[address(_ftso)] = false;
+                managedFtsoAddresses[address(_ftso)] = false;
+                _checkMultiFassetFtsosAreManaged();
+                emit FtsoAdded (_ftso, false);
                 return;
             }
         }
 
         revert(ERR_NOT_FOUND);
+    }
+    
+    /**
+     * @notice Set FAsset for FTSO
+     */
+    function setFtsoFAsset(IIFtso _ftso, IFAsset _fAsset) external override onlyGovernance {
+        _ftso.setFAsset(_fAsset);
+    }
+
+    /**
+     * @notice Set FAsset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
+     */
+    function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external override onlyGovernance {
+        _checkFAssetFtsosAreManaged(_fAssetFtsos);
+        _ftso.setFAssetFtsos(_fAssetFtsos);
+    }
+
+    /**
+     * @notice Set panic mode
+     */
+    function setPanicMode(bool _panicMode) external override onlyGovernance {
+        panicMode = _panicMode;
+    }
+
+    /**
+     * @notice Set panic mode for ftso
+     */
+    function setFtsoPanicMode(IIFtso _ftso, bool _panicMode) external override onlyGovernance {
+        require(managedFtsoAddresses[address(_ftso)], ERR_NOT_FOUND);
+        ftsoInPanicMode[address(_ftso)] = _panicMode;
     }
 
     /**
@@ -336,8 +353,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         uint256 _highAssetTurnoutBIPSThreshold,
         uint256 _lowFlrTurnoutBIPSThreshold,
         address[] memory _trustedAddresses
-    ) external override onlyGovernance
-    {
+    ) external override onlyGovernance {
         settings._setState(
             _minVotePowerFlrThreshold,
             _minVotePowerAssetThreshold,
@@ -354,10 +370,10 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Check if fasset ftsos are managed by this ftso manager, revert otherwise
      */
-    function checkFAssetFtsosAreManaged(IIFtso[] memory fAssetFtsos) internal view {
-        uint256 len = fAssetFtsos.length;
+    function _checkFAssetFtsosAreManaged(IIFtso[] memory _fAssetFtsos) internal view {
+        uint256 len = _fAssetFtsos.length;
         for (uint256 i = 0; i < len; i++) {
-            if (!managedFtsoAddresses[address(fAssetFtsos[i])]) {
+            if (!managedFtsoAddresses[address(_fAssetFtsos[i])]) {
                 revert(ERR_FASSET_FTSO_NOT_MANAGED);
             }
         }
@@ -366,10 +382,10 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Check if all multi fasset ftsos are managed by this ftso manager, revert otherwise
      */
-    function checkMultiFassetFtsosAreManaged() internal view {
+    function _checkMultiFassetFtsosAreManaged() internal view {
         uint256 len = ftsos.length;
         for (uint256 i = 0; i < len; i++) {
-            checkFAssetFtsosAreManaged(ftsos[i].getFAssetFtsos());
+            _checkFAssetFtsosAreManaged(ftsos[i].getFAssetFtsos());
         }
     }
 
@@ -380,8 +396,8 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * We should consider try..catch for external calls to FTSOs or
      * and then maybe remediation functions
      */
-    function finalizePriceEpoch() internal {
-        uint numFtsos = ftsos.length;
+    function _finalizePriceEpoch() internal {
+        uint256 numFtsos = ftsos.length;
 
         // Are there any FTSOs to process?
         if(numFtsos > 0) {
@@ -477,8 +493,8 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Returns current price epoch end time.
      */
-    function getCurrentPriceEpochEndTime() internal view returns (uint256) {
-        uint256 currentPriceEpoch = getCurrentPriceEpochId();
+    function _getCurrentPriceEpochEndTime() internal view returns (uint256) {
+        uint256 currentPriceEpoch = _getCurrentPriceEpochId();
         return firstPriceEpochStartTs + (currentPriceEpoch + 1) * priceEpochDurationSec;
     }
 
@@ -486,26 +502,25 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * @notice Returns current price epoch id. The calculation in this function
      * should fully match to definition of current epoch id in FTSO contracts.
      */
-    function getCurrentPriceEpochId() internal view returns (uint256) {
+    function _getCurrentPriceEpochId() internal view returns (uint256) {
         return (block.timestamp - firstPriceEpochStartTs) / priceEpochDurationSec;
     }
 
-    function getCurrentPriceEpochData() external view override returns 
-        (
-            uint256 priceEpochId,
-            uint256 priceEpochStartTimestamp,
-            uint256 priceEpochEndTimestamp,
-            uint256 priceEpochRevealEndTimestamp,
-            uint256 currentTimestamp
-        ) {
-            uint epochId = getCurrentPriceEpochId();
-            return (
-                epochId,
-                firstPriceEpochStartTs + epochId * priceEpochDurationSec,
-                firstPriceEpochStartTs + (epochId + 1) * priceEpochDurationSec,
-                firstPriceEpochStartTs + (epochId + 1) * priceEpochDurationSec + revealEpochDurationSec,
-                block.timestamp
-            );
+    function getCurrentPriceEpochData() external view override returns (
+        uint256 priceEpochId,
+        uint256 priceEpochStartTimestamp,
+        uint256 priceEpochEndTimestamp,
+        uint256 priceEpochRevealEndTimestamp,
+        uint256 currentTimestamp
+    ) {
+        uint256 epochId = _getCurrentPriceEpochId();
+        return (
+            epochId,
+            firstPriceEpochStartTs + epochId * priceEpochDurationSec,
+            firstPriceEpochStartTs + (epochId + 1) * priceEpochDurationSec,
+            firstPriceEpochStartTs + (epochId + 1) * priceEpochDurationSec + revealEpochDurationSec,
+            block.timestamp
+        );
     }
 
     /**
@@ -513,9 +528,9 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
      * Prior to initialization it sets governance parameters, if 
      * governance has changed them.
      */
-    function initializeCurrentEpochFTSOStatesForReveal() internal {
-        uint numFtsos = ftsos.length;
-        for (uint i = 0; i < numFtsos; i++) {
+    function _initializeCurrentEpochFTSOStatesForReveal() internal {
+        uint256 numFtsos = ftsos.length;
+        for (uint256 i = 0; i < numFtsos; i++) {
             if(settings.changed) {
                 ftsos[i].configureEpochs(
                     settings.minVotePowerFlrThreshold,
@@ -531,7 +546,7 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
             }
 
             // TODO: take care that these functions do no revert
-            try ftsos[i].initializeCurrentEpochStateForReveal() {
+            try ftsos[i].initializeCurrentEpochStateForReveal(panicMode || ftsoInPanicMode[address(ftsos[i])]) {
 
             } catch {
                 // TODO: do remediation
@@ -542,18 +557,21 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
         // TODO: match setting this with remediation approach
         settings.changed = false;
 
-        currentPriceEpochEnds = getCurrentPriceEpochEndTime();
+        currentPriceEpochEnds = _getCurrentPriceEpochEndTime();
     }
 
     /**
-     * @notice Returns the list of rewarded FTSOs
+     * @notice Returns the list of FTSOs
      */
     function getFtsos() external view override returns (IIFtso[] memory _ftsos) {
-        return (ftsos);
+        return ftsos;
     }
 
-    function getPriceEpochConfiguration() external view override returns 
-        (uint256 _firstPriceEpochStartTs, uint256 _priceEpochDurationSec, uint256 _revealEpochDurationSec) {
+    function getPriceEpochConfiguration() external view override returns (
+        uint256 _firstPriceEpochStartTs,
+        uint256 _priceEpochDurationSec,
+        uint256 _revealEpochDurationSec
+    ) {
         return (firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
     }
 }

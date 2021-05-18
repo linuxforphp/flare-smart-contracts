@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "../user/IFtso.sol";
 import "../user/IPriceSubmitter.sol";
-import "../../lib/FtsoManagerSettings.sol";
 
 interface IIFtso is IFtso {
 
@@ -74,8 +73,7 @@ interface IIFtso is IFtso {
     // reward manager only can set this data. 
     function setVotePowerBlock(uint256 _blockNumber) external;
 
-    // Returns current epoch id
-    function initializeCurrentEpochStateForReveal() external returns (uint256);
+    function initializeCurrentEpochStateForReveal(bool _panicMode) external;
   
     /**
      * @notice Returns the FTSO asset
@@ -103,7 +101,8 @@ interface IIFtso is IFtso {
      * @return _votePowerBlock          Block used for vote power inspection
      * @return _finalizationType        Finalization type for epoch
      * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
-     * @return _rewardedFtso            Whether current epoch instance was a rewarded ftso
+     * @return _rewardedFtso            Whether epoch instance was a rewarded ftso
+     * @return _panicMode               Whether epoch instance was in panic mode
      */
     function getFullEpochReport(uint256 _epochId) external view returns (
         uint256 _epochSubmitStartTime,
@@ -117,7 +116,8 @@ interface IIFtso is IFtso {
         uint256 _votePowerBlock,
         PriceFinalizationType _finalizationType,
         address[] memory _trustedAddresses,
-        bool _rewardedFtso
+        bool _rewardedFtso,
+        bool _panicMode
     );
     
     /**
