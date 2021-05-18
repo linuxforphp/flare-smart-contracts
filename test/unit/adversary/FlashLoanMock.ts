@@ -54,7 +54,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 1
             );
             await ftso.configureEpochs(10, 10, 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
-            await ftso.initializeEpochs(0, 120, 60, { from: accounts[10] });
+            await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });
             // init lender
             flashLenderMock = await FlashLenderMock.new();
             await flashLenderMock.send(LENDER_AMOUNT);

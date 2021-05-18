@@ -50,6 +50,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; FtsoManager system tests`
             const ftsoManager = await FtsoManager.new(
               accounts[1],
               rewardManagerMock.address,
+              accounts[7],
               60,
               startTs,
               5,

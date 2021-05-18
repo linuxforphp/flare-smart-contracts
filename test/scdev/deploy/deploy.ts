@@ -27,6 +27,7 @@ class Contracts {
   private contracts: Map<string, string>;
   public static readonly INFLATION = "Inflation";
   public static readonly REWARD_MANAGER = "RewardManager";
+  public static readonly PRICE_SUBMITTER = "PriceSubmitter";
   public static readonly FTSO_MANAGER = "FtsoManager";
   public static readonly FLARE_KEEPER = "FlareKeeper";
   public static readonly WFLR = "Wflr";
@@ -172,16 +173,30 @@ contract(`deploy.ts system tests`, async accounts => {
   });
 
   describe(Contracts.FTSO_MANAGER, async() => {
+    let FtsoManager: FtsoManagerContract;
+    let ftsoManager: FtsoManagerInstance;
+
+    beforeEach(async() => {
+        FtsoManager = artifacts.require("FtsoManager");
+        ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
+    });
+
     it("Should by kept by keeper", async() => {
         // Assemble
-        const FtsoManager = artifacts.require("FtsoManager");
-        const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
         // Act
         const startBlock = (await ftsoManager.rewardEpochs(0))[0];
         // Assert
         // If the keeper is calling keep on the RewardManager, then there should be
         // an active reward epoch.
         assert(startBlock.toNumber() != 0);
+    });
+
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoManager.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     });
   });
 
@@ -408,6 +423,14 @@ contract(`deploy.ts system tests`, async accounts => {
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoWflr.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
+
     it("Should know about XRP FAsset FTSO", async() => {
       // Assemble
       // Act
@@ -457,6 +480,14 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
+
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFxrp.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
    
   describe(Contracts.FTSO_FLTC, async() => {
@@ -482,7 +513,15 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoFltc.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });    
+    });
+    
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFltc.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
   describe(Contracts.FTSO_FXDG, async() => {
@@ -508,7 +547,15 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoFxdg.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });    
+    });
+    
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFxdg.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
   describe(Contracts.FTSO_FADA, async() => {
@@ -534,7 +581,15 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoFada.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });    
+    });
+    
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFada.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
   describe(Contracts.FTSO_FALGO, async() => {
@@ -560,7 +615,15 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoFalgo.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });    
+    });
+    
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFalgo.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
   describe(Contracts.FTSO_FBCH, async() => {
@@ -586,7 +649,15 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoFbch.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });    
+    });
+    
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFbch.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
   describe(Contracts.FTSO_FDGB, async() => {
@@ -612,7 +683,15 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoFdgb.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });    
+    });
+    
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoFdgb.priceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
 

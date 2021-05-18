@@ -4,11 +4,9 @@ pragma solidity 0.7.6;
 library FtsoMedian {
 
     struct Data {
-        uint32 medianIndex;
-        uint32 quartile1Index;
-        uint32 quartile3Index;
-        uint32 quartile1IndexOriginal;
-        uint32 quartile3IndexOriginal;
+        uint256 medianIndex;
+        uint256 quartile1Index;
+        uint256 quartile3Index;
         uint256 leftSum1;
         uint256 rightSum1;
         uint256 leftSum2;
@@ -36,23 +34,23 @@ library FtsoMedian {
     }
 
     struct QSPositions {
-        uint32 pos;
-        uint32 left;
-        uint32 right;
-        uint32 pivotId;
+        uint256 pos;
+        uint256 left;
+        uint256 right;
+        uint256 pivotId;
     }
 
     function compute(
         uint256[] memory price,
         uint256[] memory weight
     ) internal view returns (
-        uint32[] memory index,
+        uint256[] memory index,
         Data memory d)
     {
-        uint32 count = uint32(price.length);
+        uint256 count = price.length;
 
-        index = new uint32[](count);
-        for (uint32 i = 0; i < count; i++) {
+        index = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
             index[i] = i;
         }
 
@@ -112,9 +110,6 @@ library FtsoMedian {
                 (d.finalMedianPrice + closestPriceFix(d.medianIndex, count - 1, index, price)) / 2;
         }
 
-        d.quartile1IndexOriginal = d.quartile1Index;
-        d.quartile3IndexOriginal = d.quartile3Index;
-
         (d.quartile1Index, d.lowWeightSum) = samePriceFix(
             d.quartile1Index, 0, -1, d.leftSum1, index, price, weight);
         (d.quartile3Index, d.highWeightSum) = samePriceFix(
@@ -122,36 +117,36 @@ library FtsoMedian {
         d.rewardedWeightSum = d.leftSum2 + d.rightSum2 + d.medianWeight - d.lowWeightSum - d.highWeightSum;
     }
 
-    function swap(uint32 i, uint32 j, uint32[] memory index) internal pure {
+    function swap(uint256 i, uint256 j, uint256[] memory index) internal pure {
         if (i == j) return;
-        uint32 tmp = index[i];
+        uint256 tmp = index[i];
         index[i] = index[j];
         index[j] = tmp;
     }
 
     function partition(
-        uint32 left0,
-        uint32 right0,
-        uint32 pivotId,
+        uint256 left0,
+        uint256 right0,
+        uint256 pivotId,
         uint256 leftSum0, 
         uint256 rightSum0,
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory price, 
         uint256[] memory weight
     )
         internal pure
-        returns (uint32, uint256, uint256)
+        returns (uint256, uint256, uint256)
     {
         uint256 pivotValue = price[index[pivotId]];
         uint256[] memory sums = new uint256[](2);
         sums[0] = leftSum0;
         sums[1] = rightSum0;
-        uint32 left = left0;
-        uint32 right = right0;
+        uint256 left = left0;
+        uint256 right = right0;
         swap(pivotId, right, index);
-        uint32 storeIndex = left;
-        for (uint32 i = left; i < right; i++) {
-            uint32 eltId = index[i];
+        uint256 storeIndex = left;
+        for (uint256 i = left; i < right; i++) {
+            uint256 eltId = index[i];
             if (price[eltId] < pivotValue) {
                 sums[0] += weight[eltId];
                 swap(storeIndex, i, index);
@@ -165,17 +160,17 @@ library FtsoMedian {
     }
 
     function quickSelect(
-        uint8 k,
-        uint32 start,
-        uint32 end,
+        uint256 k,
+        uint256 start,
+        uint256 end,
         uint256 leftSumInit,
         uint256 rightSumInit,
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory price, 
         uint256[] memory weight
      )
         internal view
-        returns (uint32, uint256, uint256)
+        returns (uint256, uint256, uint256)
      {
         if (start == end) {
             return (start, leftSumInit, rightSumInit);
@@ -186,7 +181,7 @@ library FtsoMedian {
         QSPositions memory p;
         p.left = start;
         p.right = end;
-        uint32 random = uint32(uint256(keccak256(abi.encode(block.difficulty, block.timestamp))));
+        uint256 random = uint256(keccak256(abi.encode(block.difficulty, block.timestamp)));
         uint256 totalSum; 
         while (true) {
             // guarantee: pos is in [left,right] and newLeftSum >= leftSum, newRightSum >= rightSum !!!
@@ -250,37 +245,37 @@ library FtsoMedian {
     }
 
     function samePriceFix(
-        uint32 start,
-        uint32 end,
-        int8 direction,
+        uint256 start,
+        uint256 end,
+        int256 direction,
         uint256 sumInit,
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory price,
         uint256[] memory weight
     )
         internal pure
-        returns (uint32, uint256)
+        returns (uint256, uint256)
     {
-        uint weightSum = sumInit;
-        if ((int32(start) - int32(end)) * direction >= 0) return (start, sumInit);
-        uint thePrice = price[index[start]];
-        int32 storeIndex = int32(start) + direction;
-        uint32 eltId;
-        for (int32 i = int32(start) + direction; (i - int32(end)) * direction <= 0; i += direction) {
-            eltId = index[uint32(i)];
+        uint256 weightSum = sumInit;
+        if ((int256(start) - int256(end)) * direction >= 0) return (start, sumInit);
+        uint256 thePrice = price[index[start]];
+        int256 storeIndex = int256(start) + direction;
+        uint256 eltId;
+        for (int256 i = int256(start) + direction; (i - int256(end)) * direction <= 0; i += direction) {
+            eltId = index[uint256(i)];
             if (price[eltId] == thePrice) {
                 weightSum -= weight[eltId];
-                swap(uint32(storeIndex), uint32(i), index);
+                swap(uint256(storeIndex), uint256(i), index);
                 storeIndex += direction;
             }
         }
-        return (uint32(storeIndex - direction), weightSum);
+        return (uint256(storeIndex - direction), weightSum);
     }
 
     function closestPriceFix(
-        uint32 start,
-        uint32 end,
-        uint32[] memory index,
+        uint256 start,
+        uint256 end,
+        uint256[] memory index,
         uint256[] memory price
     )
         internal pure returns (uint256)
@@ -291,7 +286,7 @@ library FtsoMedian {
 
         uint closestPrice = price[index[start + 1]];
         uint newPrice;
-        for (uint32 i = start + 2; i <= end; i++) {
+        for (uint256 i = start + 2; i <= end; i++) {
             newPrice = price[index[i]];
             // assumes all the elements to the right of start are greater or equal 
             if (newPrice < closestPrice) {

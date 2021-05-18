@@ -11,24 +11,24 @@ import {FtsoMedian} from "../../lib/FtsoMedian.sol";
 contract FtsoMedianMock {
     using FtsoMedian for FtsoMedian.Data;
     
-    function swap(uint32 i, uint32 j, uint32[] memory index) public pure returns (uint32[] memory) {
+    function swap(uint256 i, uint256 j, uint256[] memory index) public pure returns (uint256[] memory) {
         FtsoMedian.swap(i, j, index);
         return index;
     }
 
     function partition(
-        uint32 left0,
-        uint32 right0,
-        uint32 pivotId,
+        uint256 left0,
+        uint256 right0,
+        uint256 pivotId,
         uint256 leftSum0, 
         uint256 rightSum0,
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory price, 
         uint256[] memory weight) public pure returns (
-            uint32 pos, 
+            uint256 pos, 
             uint256 leftSum, 
             uint256 rightSum, 
-            uint32[] memory,
+            uint256[] memory,
             uint256[] memory, 
             uint256[] memory) {
         (pos, leftSum, rightSum) = 
@@ -37,16 +37,16 @@ contract FtsoMedianMock {
     }
 
     function samePriceFix(
-        uint32 start,
-        uint32 end,
+        uint256 start,
+        uint256 end,
         int8 direction,
         uint256 sumInit,
-        uint32[] memory index,
+        uint256[] memory index,
         uint256[] memory price,
         uint256[] memory weight) public pure returns (
-            uint32 pos, 
+            uint256 pos, 
             uint256 sum,
-            uint32[] memory,
+            uint256[] memory,
             uint256[] memory, 
             uint256[] memory) {
         (pos, sum) = FtsoMedian.samePriceFix(start, end, direction, sumInit, index, price, weight);
@@ -54,9 +54,9 @@ contract FtsoMedianMock {
     }
 
     function closestPriceFix(
-        uint32 start,
-        uint32 end,
-        uint32[] memory index,
+        uint256 start,
+        uint256 end,
+        uint256[] memory index,
         uint256[] memory price) public pure returns (uint256) {
         return FtsoMedian.closestPriceFix(start, end, index, price);
     }
@@ -64,7 +64,7 @@ contract FtsoMedianMock {
     function compute(
         uint256[] memory price,
         uint256[] memory weight) public view returns (
-            uint32[] memory index, 
+            uint256[] memory index, 
             FtsoMedian.Data memory d,
             uint256[] memory,
             uint256[] memory) {
