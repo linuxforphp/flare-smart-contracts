@@ -7,6 +7,7 @@ pragma solidity 0.7.6;
  **/
 interface IVotePower {
     function undelegatedVotePowerOf(address owner) external view returns(uint256);
+    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view returns(uint256);
     function votePower() external view returns(uint256);
     function votePowerAt(uint blockNumber) external view returns(uint256);
     function votePowerFromTo(address from, address to) external view returns(uint256);

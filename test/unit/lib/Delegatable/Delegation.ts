@@ -3,6 +3,7 @@
 import { DelegatableMockContract, DelegatableMockInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const {getTestFile} = require('../../../utils/constants');
 
 const truffleAssert = require('truffle-assertions');
@@ -23,10 +24,10 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     await delegatable.mintVotePower(accounts[1], 100);
     // Act
     await delegatable.delegate(accounts[2], 1000, {from: accounts[1]});
-    const { delegateAddresses, amountOrBips, } = await delegatable.delegatesOf(accounts[1]) as any;
+    const { delegateAddresses, bips, } = await delegatable.delegatesOf(accounts[1]) as any;
     // Assert
     assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 1000);
+    assert.equal(bips[0], 1000);
   });
 
   it("Should emit delegate event when delegate by percentage successful", async() => {
@@ -49,12 +50,11 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     await delegatable.mintVotePower(accounts[1], 100);
     // Act
     await delegatable.delegateExplicit(accounts[2], 10, {from: accounts[1]});
-    const { delegateAddresses, amountOrBips, count, delegationMode } = await delegatable.delegatesOf(accounts[1]) as any;
-    // Assert
-    assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 10);
-    assert.equal(count, 1);
-    assert.equal(delegationMode, 2);
+    // old delgatesOf only works in percentage mode
+    await expectRevert(delegatable.delegatesOf(accounts[1]), "delegatesOf does not work in AMOUNT delegation mode");
+    // must use votePowerFromTo
+    const bips = await delegatable.votePowerFromTo(accounts[1], accounts[2]);
+    assert.equal<any>(bips, 10);
   });
 
   it("Should emit delegate event when explicit delegate successful", async() => {

@@ -1,4 +1,4 @@
-import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
+import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance, WFLRContract, WFLRInstance } from "../../../typechain-truffle";
 import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
@@ -9,6 +9,7 @@ const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const Inflation = artifacts.require("InflationMock") as InflationMockContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
+const WFLR = artifacts.require("WFLR") as WFLRContract;
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -23,6 +24,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let startTs: BN;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
+    let wFlr: WFLRInstance;
 
     beforeEach(async () => {
         mockFtso = await MockFtso.new();
@@ -57,7 +59,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             startTs,
             VOTE_POWER_BOUNDARY_FRACTION
         );
+
+        wFlr = await WFLR.new();
+
         await rewardManager.setFTSOManager(ftsoManager.address);
+        await rewardManager.setWFLR(wFlr.address);
         await inflation.setRewardManager(rewardManager.address);
         await rewardManager.activate();
     });
@@ -111,6 +117,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     describe("reward claiming", async () => {
 
         it("Should enable rewards to be claimed once reward epoch finalized", async () => {
+            // deposit some wflrs
+            await wFlr.deposit({ from: accounts[1], value: "100" });
+            
             // Assemble
             // stub ftso randomizer
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
@@ -145,7 +154,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees
             let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await rewardManager.claimReward(accounts[3], 0, { from: accounts[1] });
+            await rewardManager.claimReward(accounts[3], [ 0 ], { from: accounts[1] });
 
             // Assert
             // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 finalizations = 694
