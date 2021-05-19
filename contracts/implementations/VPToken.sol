@@ -64,10 +64,28 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     }
 
     /**
+     * @notice Compute the current undelegated vote power of `owner`
+     * @param owner The address to get undelegated voting power.
+     * @return votePower The unallocated vote power of `owner`
+     */
+    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) 
+    public view override returns (uint256 votePower) {
+        return _undelegatedVotePowerOfAt(owner, balanceOfAt(owner, blockNumber), blockNumber);
+    }
+
+    /**
      * @notice Undelegate all voting power for delegates of `msg.sender`
      **/
     function undelegateAll() external override {
         _undelegateAll(balanceOf(_msgSender()));
+    }
+
+    /**
+     * @notice Undelegate all explicit voting power for delegates of `msg.sender`.
+     *      Must provide list of delgatees, since explcit delegates are not stored.
+     **/
+    function undelegateAllExplicit(address[] memory delegateAddresses) external override {
+        _undelegateAllExplicit(delegateAddresses, balanceOf(_msgSender()));
     }
 
     /**

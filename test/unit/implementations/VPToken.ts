@@ -46,12 +46,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.delegate(accounts[2], 50, {from: accounts[1]});
     await vpToken.delegate(accounts[3], 50, {from: accounts[1]});
     // Act
-    const { delegateAddresses, amountOrBips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
+    const { delegateAddresses, bips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
     // Assert
     assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 50);
+    assert.equal(bips[0], 50);
     assert.equal(delegateAddresses[1], accounts[3]);
-    assert.equal(amountOrBips[1], 50);
+    assert.equal(bips[1], 50);
     assert.equal(count, 2);
     assert.equal(delegationMode, 1);
   });
@@ -63,20 +63,32 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     await vpToken.undelegateAll({from: accounts[1]});
     // Assert
-    const { delegateAddresses, amountOrBips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
+    const { delegateAddresses, bips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
     assert.equal(count, 0);
     assert.equal(delegationMode, 0);
   });
 
-  it("Should be explicitly delegatable", async() => {
+  it("Should be explicitly delegatable", async () => {
     // Assemble
     await vpToken.mint(accounts[1], 100);
-    await vpToken.delegateExplicit(accounts[2], 75, {from: accounts[1]});
+    await vpToken.delegateExplicit(accounts[2], 75, { from: accounts[1] });
+    await vpToken.delegateExplicit(accounts[3], 15, { from: accounts[1] });
     // Act
-    const { delegateAddresses, amountOrBips, } = await vpToken.delegatesOf(accounts[1]) as any;
+    const bips = [
+      await vpToken.votePowerFromTo(accounts[1], accounts[2]),
+      await vpToken.votePowerFromTo(accounts[1], accounts[3]),
+    ].map(x => x.toNumber());
     // Assert
-    assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 75);
+    assert.equal(bips[0], 75);
+    assert.equal(bips[1], 15);
+  });
+
+  it("Should not be allowed to call delegatesOf for explicit delgation", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.delegateExplicit(accounts[2], 75, { from: accounts[1] });
+    // Act
+    await expectRevert(vpToken.delegatesOf(accounts[1]), "delegatesOf does not work in AMOUNT delegation mode");
   });
 
   it("Should retrieve undelegated vote power", async() => {
@@ -197,4 +209,76 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     assert.equal(await vpToken.votePower() as any, 20);
   });  
+
+  it("Should correctly calculate undelegated vote power", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 200);
+    await vpToken.mint(accounts[2], 50);
+    await vpToken.mint(accounts[3], 20);
+    // Act
+    await vpToken.delegate(accounts[2], 3000, { from: accounts[1] });
+    await vpToken.delegate(accounts[3], 4000, { from: accounts[2] });
+    // vote powers
+    //      B     VP     UVP
+    // 1   200    140    140
+    // 2   50     90     30
+    // 1   20     40     20
+    // Assert
+    assert.equal((await vpToken.votePowerOf(accounts[1])).toNumber(), 140);
+    assert.equal((await vpToken.votePowerOf(accounts[2])).toNumber(), 90);
+    assert.equal((await vpToken.votePowerOf(accounts[3])).toNumber(), 40);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 140);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[2])).toNumber(), 30);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[3])).toNumber(), 20);
+  });
+
+  it("Should correctly handle historic undelegated vote power", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 20);
+    // Act
+    await vpToken.delegate(accounts[2], 3000, { from: accounts[1] });
+    const blockAfterDelegate1 = await web3.eth.getBlockNumber();
+    // mint and delegate some more
+    await vpToken.mint(accounts[1], 30);
+    await vpToken.delegate(accounts[2], 9000, { from: accounts[1] });
+    // Assert
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 14);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 5);
+  });
+
+  it("Should correctly calculate undelegated vote power (explicit delegation)", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 200);
+    await vpToken.mint(accounts[2], 50);
+    await vpToken.mint(accounts[3], 20);
+    // Act
+    await vpToken.delegateExplicit(accounts[2], 60, { from: accounts[1] });
+    await vpToken.delegateExplicit(accounts[3], 20, { from: accounts[2] });
+    // vote powers
+    //      B     VP     UVP
+    // 1   200    140    140
+    // 2   50     90     30
+    // 1   20     40     20
+    // Assert
+    assert.equal((await vpToken.votePowerOf(accounts[1])).toNumber(), 140);
+    assert.equal((await vpToken.votePowerOf(accounts[2])).toNumber(), 90);
+    assert.equal((await vpToken.votePowerOf(accounts[3])).toNumber(), 40);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 140);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[2])).toNumber(), 30);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[3])).toNumber(), 20);
+  });
+
+  it("Should correctly handle historic undelegated vote power (explicit delegation)", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 20);
+    // Act
+    await vpToken.delegateExplicit(accounts[2], 6, { from: accounts[1] });
+    const blockAfterDelegate1 = await web3.eth.getBlockNumber();
+    // mint and delegate some more
+    await vpToken.mint(accounts[1], 30);
+    await vpToken.delegateExplicit(accounts[2], 45, { from: accounts[1] });
+    // Assert
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 14);
+    assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 5);
+  });
 });

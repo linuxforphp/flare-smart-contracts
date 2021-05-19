@@ -1,4 +1,4 @@
-import { FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, InflationMockContract, InflationMockInstance, MockContractInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
+import { FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, InflationMockContract, InflationMockInstance, MockContractInstance, RewardManagerContract, RewardManagerInstance, WFLRContract, WFLRInstance } from "../../../typechain-truffle";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -7,6 +7,7 @@ const RewardManager = artifacts.require("RewardManager") as RewardManagerContrac
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const Inflation = artifacts.require("InflationMock") as InflationMockContract;
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
+const WFLR = artifacts.require("WFLR") as WFLRContract;
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -23,6 +24,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
     let inflation: InflationMockInstance;
     let startTs: BN;
     let mockFtsoManager: FtsoManagerMockInstance;
+    let wFlr: WFLRInstance;
 
     beforeEach(async () => {
         inflation = await Inflation.new();
@@ -52,7 +54,10 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
+        wFlr = await WFLR.new();
+
         await rewardManager.setFTSOManager(mockFtsoManager.address);
+        await rewardManager.setWFLR(wFlr.address);
         await inflation.setRewardManager(rewardManager.address);
         await mockFtsoManager.setRewardManager(rewardManager.address);
         await rewardManager.activate();
@@ -97,6 +102,10 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
 
         it("Should enable rewards to be claimed once reward epoch finalized", async () => {
 
+            // deposit some wflrs
+            await wFlr.deposit({ from: accounts[1], value: "100" });
+            let votePowerBlock = await web3.eth.getBlockNumber();
+            
             // give reward manager some flr to distribute
             await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
             await inflation.setRewardManagerDailyRewardAmount(1000000);
@@ -131,13 +140,17 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             const getCurrentRewardEpoch = ftsoManagerInterface.contract.methods.getCurrentRewardEpoch().encodeABI();
             const getCurrentRewardEpochReturn = web3.eth.abi.encodeParameter( 'uint256', 1);
             await mockFtsoManager.givenMethodReturn(getCurrentRewardEpoch, getCurrentRewardEpochReturn);
+            
+            const getRewardEpochVotePowerBlock = ftsoManagerInterface.contract.methods.getRewardEpochVotePowerBlock(0).encodeABI();
+            const getRewardEpochVotePowerBlockReturn = web3.eth.abi.encodeParameter( 'uint256', votePowerBlock);
+            await mockFtsoManager.givenMethodReturn(getRewardEpochVotePowerBlock, getRewardEpochVotePowerBlockReturn);
 
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
-            // having to calc gas fees
+            // having to calc gas fees            
             let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await rewardManager.claimReward(accounts[3], 0, { from: accounts[1] });
-
+            await rewardManager.claimReward(accounts[3], [ 0 ], { from: accounts[1] });
+            
             // Assert
             // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 finalizations = 694
             let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import {Delegation} from "../lib/Delegation.sol";
+
+import {PercentageDelegation} from "../lib/PercentageDelegation.sol";
+import {ExplicitDelegation} from "../lib/ExplicitDelegation.sol";
 import {IDelegatable} from "../IDelegatable.sol";
 import {IVotePower} from "../IVotePower.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -14,17 +16,29 @@ import {VotePower} from "../lib/VotePower.sol";
  *  managing a delegation and the vote power allocations that result.
  **/
 abstract contract Delegatable is IDelegatable, IVotePower {
-    using Delegation for Delegation.DelegationState;
+    using PercentageDelegation for PercentageDelegation.DelegationState;
+    using ExplicitDelegation for ExplicitDelegation.DelegationState;
     using SafeMath for uint256;
     using SafePct for uint256;
     using VotePower for VotePower.VotePowerState;
 
+    enum DelegationMode { 
+        NOTSET, 
+        PERCENTAGE, 
+        AMOUNT
+    }
+
     string constant private UNDELEGATED_VP_TOO_SMALL_MSG = 
         "Undelegated vote power too small";
 
-    // `_delegations` is the map that tracks the voting power delegation of each 
-    //  address.
-    mapping (address => Delegation.DelegationState) private _delegations;
+    // Map that tracks delegation mode of each address.
+    mapping (address => DelegationMode) private _delegationMode;
+
+    // `_percentageDelegations` is the map that tracks the percentage voting power delegation of each address.
+    // Explicit delegations are tracked directly through _votePower.
+    mapping (address => PercentageDelegation.DelegationState) private _percentageDelegations;
+    
+    mapping (address => ExplicitDelegation.DelegationState) private _explicitDelegations;
 
     // `_votePower` tracks all voting power balances
     VotePower.VotePowerState private _votePower;
@@ -38,17 +52,16 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      *  is from delegation to owner.
      */
     function _allocateVotePower(address owner, uint256 amount, bool increase) private {
-        // Get the voting delegation for the owner
-        Delegation.DelegationState storage delegation = _delegations[owner];
-
         // Only proceed if we have a delegation by percentage
-        if (delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE) {
+        if (_delegationMode[owner] == DelegationMode.PERCENTAGE) {
+            // Get the voting delegation for the owner
+            PercentageDelegation.DelegationState storage delegation = _percentageDelegations[owner];
             // Iterate over the delegates
-            for (uint i = 0; i < delegation.getDelegateCount(); i++) {      // Permissive use: length capped
-                // Get the delegate address and their allocation
-                (address delegate, uint256 bips) = delegation.getDelegateAt(i);
+            (address[] memory delegates, uint256[] memory bipses) = delegation.getDelegations();
+            for (uint i = 0; i < delegates.length; i++) {      // Permissive use: length capped
+                address delegate = delegates[i];
                 // Compute the delegated vote power for the delegate
-                uint256 toAllocate = amount.mulDiv(bips, Delegation.MAX_BIPS);
+                uint256 toAllocate = amount.mulDiv(bipses[i], PercentageDelegation.MAX_BIPS);
                 // Compute new voting power
                 if (increase) {
                     // delegte
@@ -73,10 +86,9 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      */
     function _burnVotePower(address owner, uint256 ownerCurrentBalance, uint256 amount) internal {
         // Is there enough unallocated VP to burn if explicitly delegated?
-        _isTransmittable(owner, ownerCurrentBalance, amount) ?
-            // burn vote power
-            _votePower._burn(owner, amount):
-            revert(UNDELEGATED_VP_TOO_SMALL_MSG);
+        require(_isTransmittable(owner, ownerCurrentBalance, amount), UNDELEGATED_VP_TOO_SMALL_MSG);
+        // burn vote power
+        _votePower._burn(owner, amount);
         // Reduce newly burned vote power over delegates
         _allocateVotePower(owner, amount, false);
     }
@@ -87,17 +99,11 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @return True if delegation can be delegated by percentage.
      */
     function _canDelegateByPct(address owner) internal view returns(bool) {
-        // Get the vote power delegation for the sender
-        Delegation.DelegationState storage delegation;
-        delegation = _delegations[owner];
         // Get the delegation mode.
-        Delegation.DelegationMode delegationMode = delegation.getDelegationMode();
+        DelegationMode delegationMode = _delegationMode[owner];
         // Return true if delegation is safe to store percents, which can also
         // apply if there is not delegation mode set.
-        return delegationMode == Delegation.DelegationMode.NOTSET ||
-            delegationMode == Delegation.DelegationMode.PERCENTAGE ?
-            true :
-            false;
+        return delegationMode == DelegationMode.NOTSET || delegationMode == DelegationMode.PERCENTAGE;
     }
 
     /**
@@ -106,17 +112,11 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @return True if delegation can be delegated by amount.
      */
     function _canDelegateByAmount(address owner) internal view returns(bool) {
-        // Get the vote power delegation for the sender
-        Delegation.DelegationState storage delegation;
-        delegation = _delegations[owner];
         // Get the delegation mode.
-        Delegation.DelegationMode delegationMode = delegation.getDelegationMode();
-        // Return true if delegation is safe to store amounts, which can also
+        DelegationMode delegationMode = _delegationMode[owner];
+        // Return true if delegation is safe to store explicit amounts, which can also
         // apply if there is not delegation mode set.
-        return delegationMode == Delegation.DelegationMode.NOTSET ||
-            delegationMode == Delegation.DelegationMode.AMOUNT ?
-            true :
-            false;
+        return delegationMode == DelegationMode.NOTSET || delegationMode == DelegationMode.AMOUNT;
     }
 
     /**
@@ -126,31 +126,38 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @param amount The amount of voting power to be delegated
      **/
     function _delegateByAmount(address to, uint256 senderCurrentBalance, uint256 amount) internal virtual {      
+        address from = msg.sender;
+        
+        require (_canDelegateByAmount(from), "Cannot delegate by amount");
+        
         // Get the vote power delegation for the sender
-        Delegation.DelegationState storage delegation;
-        delegation = _delegations[msg.sender];
-
+        ExplicitDelegation.DelegationState storage delegation = _explicitDelegations[from];
+        
         // Find if delegate may already exist
-        (bool found, uint256 oldAmount) = delegation.tryFindDelegate(to);
-        if (found) {
+        uint256 oldAmount = _votePower.votePowerFromToAtNow(from, to);
+        if (oldAmount > 0) {
             // The delegate was found. Back out old delegated amount.
-            _votePower.undelegate(msg.sender, to, oldAmount);
+            _votePower.undelegate(from, to, oldAmount);
+            delegation.undelegate(oldAmount);
             // Emit delegate event reversing currently delegated vote power
-            emit Delegate(to, msg.sender, oldAmount, block.number);
+            emit Delegate(to, from, oldAmount, block.number);
         }
 
         // Is there enough undelegated vote power?
-        require(_undelegatedVotePowerOf(msg.sender, senderCurrentBalance) >= amount, 
+        require(_undelegatedVotePowerOf(from, senderCurrentBalance) >= amount, 
             UNDELEGATED_VP_TOO_SMALL_MSG);
 
-        // Add/replace delegate
-        delegation.addReplaceDelegateByAmount(to, amount);
-
-        // Update vote power
-        _votePower.delegate(msg.sender, to, amount);
+        // Update vote power and total
+        _votePower.delegate(from, to, amount);
+        delegation.delegate(amount);
+        
+        // update mode if needed
+        if (_delegationMode[from] != DelegationMode.AMOUNT) {
+            _delegationMode[from] = DelegationMode.AMOUNT;
+        }
 
         // Emit delegate event for newly delegated vote power
-        emit Delegate(msg.sender, to, amount, block.number);
+        emit Delegate(from, to, amount, block.number);
     }
 
     /**
@@ -160,9 +167,12 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @param bips The percentage of voting power in basis points (1/100 of 1 percent) to be delegated
      **/
     function _delegateByPercentage(address to, uint256 senderCurrentBalance, uint16 bips) internal virtual {
+        address from = msg.sender;
+        
+        require (_canDelegateByPct(from), "Cannot delegate by percentage");
+        
         // Get the vote power delegation for the sender
-        Delegation.DelegationState storage delegation;
-        delegation = _delegations[msg.sender];
+        PercentageDelegation.DelegationState storage delegation = _percentageDelegations[from];
 
         // Get prior percent for delegate if exists
         (bool found, uint256 priorBips) = delegation.tryFindDelegate(to);
@@ -172,18 +182,23 @@ abstract contract Delegatable is IDelegatable, IVotePower {
 
         // First, back out old voting power percentage, if not zero
         if (found && priorBips != 0) {
-            uint256 reverseVotePower = senderCurrentBalance.mulDiv(priorBips, Delegation.MAX_BIPS);
-            _votePower.undelegate(msg.sender, to, reverseVotePower);
+            uint256 reverseVotePower = senderCurrentBalance.mulDiv(priorBips, PercentageDelegation.MAX_BIPS);
+            _votePower.undelegate(from, to, reverseVotePower);
             // Emit delegate event reversing currently delegated vote power
-            emit Delegate(to, msg.sender, reverseVotePower, block.number);
+            emit Delegate(to, from, reverseVotePower, block.number);
         }
 
         // Delegate new power
-        uint256 newVotePower = senderCurrentBalance.mulDiv(bips, Delegation.MAX_BIPS);
-        _votePower.delegate(msg.sender, to, newVotePower);
+        uint256 newVotePower = senderCurrentBalance.mulDiv(bips, PercentageDelegation.MAX_BIPS);
+        _votePower.delegate(from, to, newVotePower);
+        
+        // update mode if needed
+        if (_delegationMode[from] != DelegationMode.PERCENTAGE) {
+            _delegationMode[from] = DelegationMode.PERCENTAGE;
+        }
 
         // Emit delegate event for new vote delegated vote power
-        emit Delegate(msg.sender, to, newVotePower, block.number);
+        emit Delegate(from, to, newVotePower, block.number);
     }
 
     /**
@@ -192,50 +207,62 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @param who The address to get delegation mode.
      * @return delegationMode (NOTSET=0, PERCENTAGE=1, AMOUNT=2))
      */
-    function delegationModeOf(address who) external view override returns (uint8 delegationMode) {
-        return uint8(_delegations[who].getDelegationMode());
+    function delegationModeOf(address who) public view override returns (uint8 delegationMode) {
+        return uint8(_delegationMode[who]);
     }
 
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
     *  and `pcts` of an `_owner`. Returned in two separate positional arrays.
     * @param owner The address to get delegations.
-    * @return delegateAddresses Positional delegationAddress array of delegation addresses.
-    * @return amountOrBips Positional amountOrBips array of delegation percents specified in 
-    *  basis points (1/100 or 1 percent), or explicit vote power delegation amounts depending on `delegationMode`.
+    * @param blockNumber The block for which we want to know the delegations.
+    * @return delegateAddresses Positional array of delegation addresses.
+    * @return bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
     * @return count The number of delegates.
     * @return delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOf(address owner) public view override 
-        returns (
-            address[] memory delegateAddresses, 
-            uint256[] memory amountOrBips,
-            uint256 count,
-            uint8 delegationMode) {
-
-        // Get the vote power delegation for the owner
-        Delegation.DelegationState storage delegation;
-        delegation = _delegations[owner];
-
-        Delegation.DelegationMode mode = delegation.getDelegationMode();
-        count = delegation.getDelegateCount();
-
-        // Allocate array sizes
-        delegateAddresses = new address[](count);
-        amountOrBips = new uint256[](count);
-
-        // Spin through all delegates
-        for (uint i = 0; i < count; i++) {         // Permissive use: length capped
-            (address delegate, uint256 fetchedAmountOrBips) = delegation.getDelegateAt(i);
-            delegateAddresses[i] = delegate;
-            if (mode == Delegation.DelegationMode.PERCENTAGE) {
-                amountOrBips[i] = uint16(fetchedAmountOrBips);
-            } else {
-                amountOrBips[i] = fetchedAmountOrBips;
-            }
+    function delegatesOfAt(
+        address owner,
+        uint256 blockNumber
+    ) public view override returns (
+        address[] memory delegateAddresses, 
+        uint256[] memory bips,
+        uint256 count,
+        uint8 delegationMode
+    ) {
+        DelegationMode mode = _delegationMode[owner];
+        if (mode == DelegationMode.PERCENTAGE) {
+            // Get the vote power delegation for the owner
+            PercentageDelegation.DelegationState storage delegation = _percentageDelegations[owner];
+            (delegateAddresses, bips) = delegation.getDelegationsAt(blockNumber);
+        } else if (mode == DelegationMode.NOTSET) {
+            delegateAddresses = new address[](0);
+            bips = new uint256[](0);
+        } else {
+            revert ("delegatesOf does not work in AMOUNT delegation mode");
         }
+        count = delegateAddresses.length;
+        delegationMode = delegationModeOf(owner);
+    }
 
-        delegationMode = uint8(mode);
+    /**
+    * @notice Get the vote power delegation `delegationAddresses` 
+    *  and `pcts` of an `_owner`. Returned in two separate positional arrays.
+    * @param owner The address to get delegations.
+    * @return delegateAddresses Positional array of delegation addresses.
+    * @return bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
+    * @return count The number of delegates.
+    * @return delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
+    */
+    function delegatesOf(
+        address owner
+    ) public view override returns (
+        address[] memory delegateAddresses, 
+        uint256[] memory bips,
+        uint256 count,
+        uint8 delegationMode
+    ) {
+        return delegatesOfAt(owner, block.number);
     }
 
     /**
@@ -249,12 +276,10 @@ abstract contract Delegatable is IDelegatable, IVotePower {
     function _isTransmittable(
         address owner, 
         uint256 ownerCurrentBalance, 
-        uint256 amount) private view returns(bool) {
-
-        // Get the voting delegation for the owner
-        Delegation.DelegationState storage delegation = _delegations[owner];
+        uint256 amount
+    ) private view returns(bool) {
         // Only proceed if we have a delegation by amount
-        if (delegation.getDelegationMode() == Delegation.DelegationMode.AMOUNT) {
+        if (_delegationMode[owner] == DelegationMode.AMOUNT) {
             // Return true if there is enough vote power to cover the transfer
             return _undelegatedVotePowerOf(owner, ownerCurrentBalance) >= amount;
         } else {
@@ -277,12 +302,19 @@ abstract contract Delegatable is IDelegatable, IVotePower {
     /**
     * @notice Revoke the vote power of `who` at block `blockNumber`
     * @param who The delegatee address of vote power to revoke.
-    * @param blockNumber The block number at which to fetch.
+    * @param blockNumber The block number at which to revoke.
     */
     function revokeDelegationAt(address who, uint blockNumber) external override {
         // Revoke vote power and get amount revoked
         uint256 votePowerRevoked = _votePower.revokeAt(msg.sender, who, blockNumber);
 
+        DelegationMode mode = _delegationMode[msg.sender];
+        if (mode == DelegationMode.PERCENTAGE) {
+            _percentageDelegations[msg.sender].addReplaceDelegateByPercentAt(who, 0, blockNumber);
+        } else if (mode == DelegationMode.AMOUNT) {
+            _explicitDelegations[msg.sender].undelegateAt(votePowerRevoked, blockNumber);
+        }
+        
         // Emit revoke event
         emit Revoke(msg.sender, who, votePowerRevoked, blockNumber);
     }
@@ -298,14 +330,13 @@ abstract contract Delegatable is IDelegatable, IVotePower {
         address from, 
         address to, 
         uint256 fromCurrentBalance, 
-        uint256 amount) internal {
-
+        uint256 amount
+    ) internal {
         // reduce sender vote power allocations
         _allocateVotePower(from, amount, false);
         // transmit vote power to receiver
-        _isTransmittable(from, fromCurrentBalance, amount) ?
-            _votePower.transmit(from, to, amount) :
-            revert(UNDELEGATED_VP_TOO_SMALL_MSG);
+        require(_isTransmittable(from, fromCurrentBalance, amount), UNDELEGATED_VP_TOO_SMALL_MSG);
+        _votePower.transmit(from, to, amount);
         // Allocate receivers new vote power according to their delegates
         _allocateVotePower(to, amount, true);
     }
@@ -315,54 +346,16 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @param senderCurrentBalance The current balance of `who`.
      */
     function _undelegateAll(uint256 senderCurrentBalance) internal virtual {
-        // Get the vote power delegation for the sender
-        Delegation.DelegationState storage delegation;
-        delegation = _delegations[msg.sender];
-
-        if (delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE) {
+        DelegationMode delegationMode = _delegationMode[msg.sender];
+        
+        if (delegationMode == DelegationMode.PERCENTAGE) {
+            PercentageDelegation.DelegationState storage delegation = _percentageDelegations[msg.sender];
             _undelegateAllByPercentage(delegation, msg.sender, senderCurrentBalance);
-        } else if (delegation.getDelegationMode() == Delegation.DelegationMode.AMOUNT) {
-            _undelegateAllByAmount(delegation, msg.sender, senderCurrentBalance);
-        } else if (delegation.getDelegationMode() == Delegation.DelegationMode.NOTSET) {
+        } else if (delegationMode == DelegationMode.NOTSET) {
             // Nothing to do
         } else {
-            // Should not happen
-            assert(false);
+            revert("undelegateAll can only be used in percentage delegation mode");
         }
-    }
-
-    /**
-     * @notice Undelegate all vote power by amount for `delegation` of `who`.
-     * @param delegation The delegation of `who`.
-     * @param who The address of the delegation owner to undelegate.
-     * @param senderCurrentBalance The current balance of `who`.
-     */
-    function _undelegateAllByAmount(
-        Delegation.DelegationState storage delegation, 
-        address who,
-        uint256 senderCurrentBalance) internal {
-
-        // Shortcut
-        if (delegation.getDelegationMode() == Delegation.DelegationMode.NOTSET) {
-            return;
-        }
-        
-        assert(delegation.getDelegationMode() == Delegation.DelegationMode.AMOUNT);
-
-        // Iterate over the delegates
-        for (uint i = 0; i < delegation.getDelegateCount(); i++) {      // Permissive use: length capped
-            (address delegate, uint256 amount) = delegation.getDelegateAt(i);
-            // Transmit vote power back to owner
-            _votePower.undelegate(who, delegate, amount);
-            // Emit vote power reversal event
-            emit Delegate(delegate, who, amount, block.number);
-        }
-
-        // Sanity check: Owner vote power should equal current balance
-        assert(votePowerOf(who) == senderCurrentBalance);
-
-        // Clear delegates
-        delegation.clear();
     }
 
     /**
@@ -370,28 +363,22 @@ abstract contract Delegatable is IDelegatable, IVotePower {
      * @param delegation The delegation of `who`.
      * @param who The address of the delegation owner to undelegate.
      * @param senderCurrentBalance The current balance of `who`.
+     * precondition: _delegationMode[who] == DelegationMode.PERCENTAGE
      */
     function _undelegateAllByPercentage(
-        Delegation.DelegationState storage delegation, 
+        PercentageDelegation.DelegationState storage delegation, 
         address who,
-        uint256 senderCurrentBalance) internal {
-
-        // Shortcut
-        if (delegation.getDelegationMode() == Delegation.DelegationMode.NOTSET) {
-            return;
-        }
-
-        assert(delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE);
-
+        uint256 senderCurrentBalance
+    ) private {
         // Iterate over the delegates
-        for (uint i = 0; i < delegation.getDelegateCount(); i++) {      // Permissive use: length capped
-            (address delegate, uint256 bips) = delegation.getDelegateAt(i);
+        (address[] memory delegates, uint256[] memory bips) = delegation.getDelegations();
+        for (uint i = 0; i < delegates.length; i++) {      // Permissive use: length capped
             // Compute vote power to be reversed for the delegate
-            uint256 reverseVotePower = senderCurrentBalance.mulDiv(bips, Delegation.MAX_BIPS);
+            uint256 reverseVotePower = senderCurrentBalance.mulDiv(bips[i], PercentageDelegation.MAX_BIPS);
             // Transmit vote power back to owner
-            _votePower.undelegate(who, delegate, reverseVotePower);
+            _votePower.undelegate(who, delegates[i], reverseVotePower);
             // Emit vote power reversal event
-            emit Delegate(delegate, who, reverseVotePower, block.number);
+            emit Delegate(delegates[i], who, reverseVotePower, block.number);
         }
 
         // Sanity check: Owner vote power should equal current balance
@@ -399,39 +386,109 @@ abstract contract Delegatable is IDelegatable, IVotePower {
 
         // Clear delegates
         delegation.clear();
+        
+        // reset mode
+        _delegationMode[who] = DelegationMode.NOTSET;
+    }
+
+    /**
+     * @notice Undelegate all vote power delegates for `msg.sender`.
+     * @param delegateAdresses Explicit delegation does not store delegatees' addresses, 
+     *   so the caller must supply them.
+     * @param senderCurrentBalance The current balance of `who`.
+     */
+    function _undelegateAllExplicit(address[] memory delegateAdresses, uint256 senderCurrentBalance) internal virtual {
+        DelegationMode delegationMode = _delegationMode[msg.sender];
+        
+        if (delegationMode == DelegationMode.AMOUNT) {
+            ExplicitDelegation.DelegationState storage delegation = _explicitDelegations[msg.sender];
+            _undelegateAllByAmount(delegation, msg.sender, delegateAdresses, senderCurrentBalance);
+        } else if (delegationMode == DelegationMode.NOTSET) {
+            // Nothing to do
+        } else {
+            revert("undelegateAllExplicit can only be used in percentage delegation mode");
+        }
+    }
+
+    /**
+     * @notice Undelegate all vote power by amount for `delegation` of `who`.
+     * @param delegation The delegation of `who`.
+     * @param who The address of the delegation owner to undelegate.
+     * @param delegateAdresses Explicit delegation does not store delegatees' addresses, 
+     *   so the caller must supply them.
+     * @param senderCurrentBalance The current balance of `who`.
+     * precondition: _delegationMode[who] == DelegationMode.AMOUNT
+     */
+    function _undelegateAllByAmount(
+        ExplicitDelegation.DelegationState storage delegation, 
+        address who,
+        address[] memory delegateAdresses,
+        uint256 senderCurrentBalance
+    ) private {
+        // Iterate over the delegates
+        for (uint i = 0; i < delegateAdresses.length; i++) {      // Permissive use: length capped
+            // Compute vote power to be reversed for the delegate
+            uint256 reverseVotePower = _votePower.votePowerFromToAtNow(who, delegateAdresses[i]);
+            // Transmit vote power back to owner
+            _votePower.undelegate(who, delegateAdresses[i], reverseVotePower);
+            delegation.undelegate(reverseVotePower);
+            // Emit vote power reversal event
+            emit Delegate(delegateAdresses[i], who, reverseVotePower, block.number);
+        }
+
+        // all delegations cleared?
+        if (delegation.getDelegateTotal() == 0) {
+            // Sanity check: Owner vote power should equal current balance
+            assert(votePowerOf(who) == senderCurrentBalance);
+            // reset mode
+            _delegationMode[who] = DelegationMode.NOTSET;
+        }
+    }
+
+    /**
+     * @notice Get the undelegated vote power of `owner` at some block.
+     * @param owner The address of owner to get undelegated vote power.
+     * @param ownerBalanceAt The balance of the owner at that block (not their vote power).
+     * @param blockNumber The block number at which to fetch.
+     * @return votePower The undelegated vote power at block.
+     */
+    function _undelegatedVotePowerOfAt(
+        address owner, 
+        uint256 ownerBalanceAt,
+        uint256 blockNumber
+    ) internal view returns(uint256 votePower) {
+        // Get the vote power delegation for the owner
+        DelegationMode delegationMode = _delegationMode[owner];
+        if (delegationMode == DelegationMode.NOTSET) {
+            // Return the current balance as all vote power is undelegated
+            return ownerBalanceAt;
+        } else if (delegationMode == DelegationMode.AMOUNT) {
+            // Return the current balance less explicit delegations or zero if negative
+            ExplicitDelegation.DelegationState storage delegation = _explicitDelegations[owner];
+            bool overflow;
+            uint256 result;
+            (overflow, result) = ownerBalanceAt.trySub(delegation.getDelegateTotalAt(blockNumber));
+            return result;
+        } else if (delegationMode == DelegationMode.PERCENTAGE) {
+            PercentageDelegation.DelegationState storage delegation = _percentageDelegations[owner];
+            uint256 undelegatedBips = PercentageDelegation.MAX_BIPS.sub(delegation.getDelegateTotalAt(blockNumber));
+            return ownerBalanceAt.mulDiv(undelegatedBips, PercentageDelegation.MAX_BIPS);
+        } else {
+            assert(false);
+        }
     }
 
     /**
      * @notice Get the undelegated vote power of `owner`.
      * @param owner The address of owner to get undelegated vote power.
      * @param ownerCurrentBalance The current balance of the owner (not their vote power).
-     * @return The undelegated vote power.
+     * @return votePower The undelegated vote power.
      */
     function _undelegatedVotePowerOf(
         address owner, 
-        uint256 ownerCurrentBalance) internal view returns(uint256) {
-
-        // Get the vote power delegation for the owner
-        Delegation.DelegationState storage delegation = _delegations[owner];
-
-        if (delegation.getDelegationMode() == Delegation.DelegationMode.NOTSET) {
-            // Return the current balance as all vote power is undelegated
-            return ownerCurrentBalance;
-        } else if (delegation.getDelegationMode() == Delegation.DelegationMode.AMOUNT) {
-            // Return the current balance less explicit delegations
-            bool overflow;
-            uint256 result;
-            // Return zero if negative
-            (overflow, result) = ownerCurrentBalance.trySub(delegation.getDelegateTotal());
-            return result;
-        } else if (delegation.getDelegationMode() == Delegation.DelegationMode.PERCENTAGE) {
-            return ownerCurrentBalance.mulDiv(
-                uint(Delegation.MAX_BIPS).sub(delegation.getDelegateTotal()), 
-                Delegation.MAX_BIPS
-            );
-        } else {
-            revert("Delegation mode not supported");
-        }
+        uint256 ownerCurrentBalance
+    ) internal view returns(uint256 votePower) {
+        return _undelegatedVotePowerOfAt(owner, ownerCurrentBalance, block.number);
     }
     
     /**

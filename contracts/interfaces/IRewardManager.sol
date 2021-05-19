@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "./IFtsoManager.sol";
+import "../implementations/WFLR.sol";
 
 /// @title IRewardManager high level
 /// The reward manager distributes price submission rewards for FLR vote power holders
@@ -23,22 +24,38 @@ import "./IFtsoManager.sol";
 ///     - if not enough balance pull from Inflation contract.
 interface IRewardManager {
 
+    event FundsReceived(
+        address indexed sender,
+        uint256 amount
+    );
+
     event RewardClaimed(
+        address indexed dataProvider,
         address indexed whoClaimed,
         address indexed sentTo,
-        uint256 indexed rewardEpoch, 
+        uint256 rewardEpoch, 
         uint256 amount
     );
     
     event RewardDistributedByFtso(
-        address ftso,
-        uint256 indexed epochId,
+        address indexed ftso,
+        uint256 epochId,
         address[] addresses,
         uint256[] rewards
     );
 
+    event FeePercentageChanged(
+        address indexed dataProvider,
+        uint256 value,
+        uint256 validFromEpoch
+    );
+
     ///@dev sender claims his reward
-    function claimReward(address payable to, uint256 rewardEpoch) external returns(uint256 rewardAmount);
+    function claimReward(
+        address payable recipient,
+        uint256[] memory rewardEpoch
+    ) external returns(uint256 rewardAmount);
+    
     function distributeRewards(
         address[] memory addresses,
         uint256[] memory weights,
@@ -48,10 +65,32 @@ interface IRewardManager {
         uint256 priceEpochDurationSec,
         uint256 currentRewardEpoch
     ) external returns (bool);
+
     function setDailyRewardAmount(uint256 rewardAmountTwei) external;
+
     function setFTSOManager(IFtsoManager _ftsoManager) external;
+    
+    function setWFLR(WFLR _wFlr) external;
 
     ///@dev each data provider can update sharing percentage of rewards
     /// if not set, a default percentage is used
-    function setDataProviderSharingPercentage(uint256 percentageBPS) external;
+    function setDataProviderFeePercentage(
+        uint256 _percentageBPS
+    ) external returns (
+        uint256 _validFromEpoch
+    );
+
+    function getDataProviderCurrentFeePercentage(
+        address _dataProvider
+    ) external view returns (
+        uint256 _feePercentageBIPS
+    );
+
+    function getDataProviderScheduledFeePercentageChanges(
+        address _dataProvider
+    ) external view returns (
+        uint256[] memory _feePercentageBIPS,
+        uint256[] memory _validFromEpoch,
+        bool[] memory _fixed
+    );
 }

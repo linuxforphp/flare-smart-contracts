@@ -39,6 +39,9 @@ interface IFtsoManager {
     function setFtsoPanicMode(IIFtso _ftso, bool _panicMode) external;
 
     function getCurrentRewardEpoch() external view returns (uint256);
+
+    function getRewardEpochVotePowerBlock(uint256 _rewardEpoch) external view returns (uint256);
+    
     function getCurrentPriceEpochData() external view returns (
         uint256 _priceEpochId,
         uint256 _priceEpochStartTimestamp,

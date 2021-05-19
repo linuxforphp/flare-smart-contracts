@@ -368,6 +368,14 @@ contract FtsoManager is IFtsoManager, IFlareKeep, Governed {
     }
 
     /**
+     * @notice Gets vote power block of the specified reward epoch
+     * @param _rewardEpoch          Reward epoch sequence number
+     */
+    function getRewardEpochVotePowerBlock(uint256 _rewardEpoch) external view override returns (uint256) {
+        return rewardEpochs[_rewardEpoch].votepowerBlock;
+    }
+
+    /*
      * @notice Check if fasset ftsos are managed by this ftso manager, revert otherwise
      */
     function _checkFAssetFtsosAreManaged(IIFtso[] memory _fAssetFtsos) internal view {

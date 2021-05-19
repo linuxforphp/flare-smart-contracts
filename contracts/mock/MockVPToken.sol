@@ -74,4 +74,5 @@ contract MockVPToken is IFAsset {
     }
 
     function undelegatedVotePowerOf(address owner) public view override returns(uint256) {}
+    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) public view override returns(uint256) {}
 }
