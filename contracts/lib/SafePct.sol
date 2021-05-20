@@ -20,21 +20,25 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 library SafePct {
     using SafeMath for uint256;
     /**
-     * @dev Returns `x` as a factor of `y` scaled to `z` without loss of precision for z <= 2**128
-     *
      * Requirements:
      *
      * - intermediate operations must revert on overflow
      */
-    function mulDiv (uint256 x, uint256 y, uint256 z) internal pure returns (uint256)
+    function mulDiv(uint256 x, uint256 y, uint256 z) internal pure returns (uint256)
     {
-        require(z <= 2**128);
+        require(z > 0, "Division by zero");
 
-        uint256 a = x.div(z);
-        uint256 b = x.mod(z); // x = a * z + b
+        if (x == 0) return 0;
+        uint256 xy = x * y;
+        if (xy / x == y) { // no overflow happened - same as in SafeMath mul
+            return xy / z;
+        }
 
-        uint256 c = y.div(z);
-        uint256 d = y.mod(z); // y = c * z + d
+        uint256 a = x / z;
+        uint256 b = x % z; // x = a * z + b
+
+        uint256 c = y / z;
+        uint256 d = y % z; // y = c * z + d
 
         return (a.mul(c).mul(z)).add(a.mul(d)).add(b.mul(c)).add(b.mul(d).div(z));
     }
