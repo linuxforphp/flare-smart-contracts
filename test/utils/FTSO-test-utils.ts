@@ -798,7 +798,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         signers.slice(0, len).map(signer => signer.address), testExample.weightsAsset
     )
     let ftso = await newContract<MockFtso>("MockFtso", signers[0],
-        assetToken._symbol(), flrToken.address, signers[0].address,  // address _fFlr, address _fAsset,
+        assetToken._symbol(), flrToken.address, signers[0].address,  // address _wFlr, address _fAsset,
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod

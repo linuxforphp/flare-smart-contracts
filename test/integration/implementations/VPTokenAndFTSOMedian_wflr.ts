@@ -12,7 +12,7 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
     let flrToken: WFLR = await newContract<WFLR>("WFLR", signer);
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, "fAsset", "FASSET");
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
-        "FASSET", flrToken.address, signer.address,  // symbol, address _fFlr, address _ftsoManager,
+        "FASSET", flrToken.address, signer.address,  // symbol, address _wFlr, address _ftsoManager,
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
         1 //uint256 _initialPrice

@@ -410,7 +410,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for WFLR", async() => {
         // Assemble
         // Act
-        const address = await ftsoWflr.fFlr();
+        const address = await ftsoWflr.wFlr();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.WFLR));
     });

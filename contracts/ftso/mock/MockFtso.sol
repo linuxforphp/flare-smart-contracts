@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../implementations/Ftso.sol";
+import "../implementation/Ftso.sol";
 
 contract MockFtso is Ftso {
     using FtsoEpoch for FtsoEpoch.State;
 
     constructor(
         string memory _symbol,
-        IFAsset _fFlr,
-        IFtsoManager _ftsoManager,
+        IFAsset _wFlr,
+        IIFtsoManager _ftsoManager,
         uint256 _startTimestamp,
         uint256 _submitPeriod,
         uint256 _revealPeriod,
         uint256 _initialPrice
-    ) Ftso(_symbol, _fFlr, _ftsoManager, _initialPrice) {
+    ) Ftso(_symbol, _wFlr, _ftsoManager, _initialPrice) {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol
         if (_submitPeriod != 0 && _revealPeriod != 0) {
 

@@ -47,7 +47,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should create new epoch`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.votePowerFlr).to.equals('40');
         expect(epoch.votePowerAsset).to.equals('120');
@@ -60,9 +60,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should add vote to epoch`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
-        await ftsoEpoch._addVote(1, 10, 25, 20, 5, {from: accounts[1]});
+        await ftsoEpoch.addVote(1, 10, 25, 20, 5, {from: accounts[1]});
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.firstVoteId).to.equals('10');
         expect(epoch.lastVoteId).to.equals('10');
@@ -73,20 +73,20 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should set voter vote id correctly`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
-        await ftsoEpoch._addVote(1, 10, 25, 20, 5, {from: accounts[1]});
+        await ftsoEpoch.addVote(1, 10, 25, 20, 5, {from: accounts[1]});
         expect((await ftsoEpoch.getVoterVoteId(1, {from: accounts[1]})).toNumber()).to.equals(10);
         expect((await ftsoEpoch.getVoterVoteId(1, {from: accounts[2]})).toNumber()).to.equals(0);
         expect((await ftsoEpoch.getVoterVoteId(2, {from: accounts[1]})).toNumber()).to.equals(0);
     });
 
     it(`Should sum vote power of voters correctly`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
-        await ftsoEpoch._addVote(1, 10, 5, 20, 5, {from: accounts[1]});
-        await ftsoEpoch._addVote(1, 11, 15, 10, 15, {from: accounts[2]});
-        await ftsoEpoch._addVote(1, 12, 10, 0, 1000, {from: accounts[3]});
+        await ftsoEpoch.addVote(1, 10, 5, 20, 5, {from: accounts[1]});
+        await ftsoEpoch.addVote(1, 11, 15, 10, 15, {from: accounts[2]});
+        await ftsoEpoch.addVote(1, 12, 10, 0, 1000, {from: accounts[3]});
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.firstVoteId).to.equals('10');
         expect(epoch.lastVoteId).to.equals('12');
@@ -97,12 +97,12 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should not change the epoch instance if vote is added to a new epoch instance`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
-        await ftsoEpoch._addVote(1, 10, 25, 20, 5, {from: accounts[1]});
-        await ftsoEpoch._initializeInstanceForReveal(2, 30, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.addVote(1, 10, 25, 20, 5, {from: accounts[1]});
+        await ftsoEpoch.initializeInstanceForReveal(2, 30, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
-        await ftsoEpoch._addVote(2, 12, 28, 18, 52, {from: accounts[1]});
+        await ftsoEpoch.addVote(2, 12, 28, 18, 52, {from: accounts[1]});
 
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.firstVoteId).to.equals('10');
@@ -114,9 +114,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should change state of a new epoch only`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [3]);
         await ftsoEpoch.configureEpochs(20, 5, 2, 1, 1000, 10000, 40, 1400, []);
-        await ftsoEpoch._initializeInstanceForReveal(2, 60, [mockVpToken.address], [50000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(2, 60, [mockVpToken.address], [50000], [2]);
 
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.votePowerFlr).to.equals('40');
@@ -140,9 +140,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should change vote power block of a new epoch only`, async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
         await ftsoEpoch.setVotePowerBlock(3);
-        await ftsoEpoch._initializeInstanceForReveal(2, 60, [mockVpToken.address], [50000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(2, 60, [mockVpToken.address], [50000], [2]);
 
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.votePowerBlock).to.equals('1');
@@ -154,25 +154,25 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     it(`Should calculate asset base weight ratio correctly`, async () => {
         // await ftsoEpoch.configureEpochs(0, 500, 1000, 1, 2, 1000, 10000, 50);
         let assetBaseWeightRatio;
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(999);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(999);
         expect(assetBaseWeightRatio.toNumber()).to.equals(0);
         
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(10000);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(10000);
         expect(assetBaseWeightRatio.toNumber()).to.equals(5000);
 
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(10001);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(10001);
         expect(assetBaseWeightRatio.toNumber()).to.equals(5000);
 
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(1000);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(1000);
         expect(assetBaseWeightRatio.toNumber()).to.equals(500);
 
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(1500);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(1500);
         expect(assetBaseWeightRatio.toNumber()).to.equals(750);
 
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(5500);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(5500);
         expect(assetBaseWeightRatio.toNumber()).to.equals(2750);
 
-        assetBaseWeightRatio = await ftsoEpoch._getAssetBaseWeightRatio(9500);
+        assetBaseWeightRatio = await ftsoEpoch.getAssetBaseWeightRatio(9500);
         expect(assetBaseWeightRatio.toNumber()).to.equals(4750);
     });
 
@@ -180,41 +180,41 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         // await ftsoEpoch.configureEpochs(0, 500, 1000, 1, 2, 1000, 10000, 50);
         let weightRatio;
         //_assetVotePowerUSD == 0
-        await ftsoEpoch._initializeInstanceForReveal(1, 40, [mockVpToken.address], [0], [3]);
-        await ftsoEpoch._setWeightsParameters(1, 0, 0);
-        weightRatio = await ftsoEpoch._getWeightRatio(1);
+        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [0], [3]);
+        await ftsoEpoch.setWeightsParameters(1, 0, 0);
+        weightRatio = await ftsoEpoch.getWeightRatio(1);
         expect(weightRatio.toNumber()).to.equals(0);
         
         //_assetVotePowerUSD < _state.lowAssetUSDThreshold
-        await ftsoEpoch._initializeInstanceForReveal(2, 40, [mockVpToken.address], [60000], [3]);
-        await ftsoEpoch._setWeightsParameters(2, 0, 0);
-        weightRatio = await ftsoEpoch._getWeightRatio(2);
+        await ftsoEpoch.initializeInstanceForReveal(2, 40, [mockVpToken.address], [60000], [3]);
+        await ftsoEpoch.setWeightsParameters(2, 0, 0);
+        weightRatio = await ftsoEpoch.getWeightRatio(2);
         expect(weightRatio.toNumber()).to.equals(0);
 
         //turnout >= _state.highAssetTurnoutBIPSThreshold
-        await ftsoEpoch._initializeInstanceForReveal(3, 40, [mockVpToken.address], [500000], [3]);
-        await ftsoEpoch._addVote(3, 1, 5, 600, 123);
-        await ftsoEpoch._setWeightsParameters(3, 125000000000, 400000000000);
-        weightRatio = await ftsoEpoch._getWeightRatio(3);
+        await ftsoEpoch.initializeInstanceForReveal(3, 40, [mockVpToken.address], [500000], [3]);
+        await ftsoEpoch.addVote(3, 1, 5, 600, 123);
+        await ftsoEpoch.setWeightsParameters(3, 125000000000, 400000000000);
+        weightRatio = await ftsoEpoch.getWeightRatio(3);
         expect(weightRatio.toNumber()).to.equals(750);
 
         //turnout < _state.highAssetTurnoutBIPSThreshold
-        await ftsoEpoch._initializeInstanceForReveal(4, 40, [mockVpToken.address], [500000], [3]);
-        await ftsoEpoch._addVote(4, 2, 5, 6, 123);
-        await ftsoEpoch._setWeightsParameters(4, 125000000000, 4000000000);
-        weightRatio = await ftsoEpoch._getWeightRatio(4);
+        await ftsoEpoch.initializeInstanceForReveal(4, 40, [mockVpToken.address], [500000], [3]);
+        await ftsoEpoch.addVote(4, 2, 5, 6, 123);
+        await ftsoEpoch.setWeightsParameters(4, 125000000000, 4000000000);
+        weightRatio = await ftsoEpoch.getWeightRatio(4);
         expect(weightRatio.toNumber()).to.equals(600);
 
         //_assetVotePowerUSD >= _state.highAssetUSDThreshold)
-        await ftsoEpoch._initializeInstanceForReveal(5, 40, [mockVpToken.address], [50000000], [3]);
-        await ftsoEpoch._addVote(5, 3, 5, 90000, 123);
-        await ftsoEpoch._setWeightsParameters(5, 125000000000, 600000000000);
-        weightRatio = await ftsoEpoch._getWeightRatio(5);
+        await ftsoEpoch.initializeInstanceForReveal(5, 40, [mockVpToken.address], [50000000], [3]);
+        await ftsoEpoch.addVote(5, 3, 5, 90000, 123);
+        await ftsoEpoch.setWeightsParameters(5, 125000000000, 600000000000);
+        weightRatio = await ftsoEpoch.getWeightRatio(5);
         expect(weightRatio.toNumber()).to.equals(5000);
     });
 
     it("Should set assets correctly", async () => {
-        await ftsoEpoch._setAssets(1, [mockVpToken.address, mockVpToken2.address, mockVpToken3.address], [2e6, 6e8, 3e7], [3, 5, 7]);
+        await ftsoEpoch.setAssets(1, [mockVpToken.address, mockVpToken2.address, mockVpToken3.address], [2e6, 6e8, 3e7], [3, 5, 7]);
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.assets[0]).to.equals(mockVpToken.address);
         expect(epoch.assets[1]).to.equals(mockVpToken2.address);
@@ -228,7 +228,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it("Should set assets correctly - zero prices", async () => {
-        await ftsoEpoch._setAssets(1, [mockVpToken.address, mockVpToken2.address, mockVpToken3.address], [2e6, 6e8, 3e7], [0, 0, 0]);
+        await ftsoEpoch.setAssets(1, [mockVpToken.address, mockVpToken2.address, mockVpToken3.address], [2e6, 6e8, 3e7], [0, 0, 0]);
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.assets[0]).to.equals(mockVpToken.address);
         expect(epoch.assets[1]).to.equals(mockVpToken2.address);
@@ -244,9 +244,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     it("Should compute weights correctly", async () => {
         let highAssetTurnoutBIPSThreshold = 9000;
         await ftsoEpoch.configureEpochs(500, 1000, 1, 2, 1000, 10000, highAssetTurnoutBIPSThreshold, 1500, []);
-        await ftsoEpoch._initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
-        await ftsoEpoch._addVote(1, 5, 50, 400000, 123);
-        await ftsoEpoch._addVote(1, 6, 70, 200000, 321);
+        await ftsoEpoch.initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.addVote(1, 5, 50, 400000, 123);
+        await ftsoEpoch.addVote(1, 6, 70, 200000, 321);
         let weightFlr1 = Math.floor(50/400*1e12);//125.000.000.000
         let weightFlr2 = Math.floor(70/400*1e12);//175.000.000.000
         let weightFlrSum = weightFlr1 + weightFlr2;
@@ -257,7 +257,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         let weightAsset1 = Math.floor(assetVotePower1/assetVotePower*1e12);//571.428.571.428
         let weightAsset2 = Math.floor(assetVotePower2/assetVotePower*1e12);//285.714.285.714
         let weightAssetSum = weightAsset1 + weightAsset2;//857.142.857.142
-        await ftsoEpoch._setWeightsParameters(1, weightFlrSum, weightAssetSum);
+        await ftsoEpoch.setWeightsParameters(1, weightFlrSum, weightAssetSum);
         const weights = await ftsoEpoch.computeWeights(1,[weightFlr1,weightFlr2], [weightAsset1,weightAsset2]);
         let turnout = Math.floor(weightAssetSum/100000000);
         let weightRatio = Math.floor(baseWeightRatio*turnout/highAssetTurnoutBIPSThreshold);
@@ -278,17 +278,17 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.weightFlrSum).to.equals(weightFlrSum.toString());
         expect(epoch.weightAssetSum).to.equals(weightAssetSum.toString());
 
-        expect((await ftsoEpoch._getWeightRatio(1)).toNumber()).to.equals(weightRatio);
+        expect((await ftsoEpoch.getWeightRatio(1)).toNumber()).to.equals(weightRatio);
     });
 
     it("Should compute weights correctly - zero asset vote power sum", async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
-        await ftsoEpoch._addVote(1, 5, 50, 0, 123);
-        await ftsoEpoch._addVote(1, 6, 70, 0, 321);
+        await ftsoEpoch.initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.addVote(1, 5, 50, 0, 123);
+        await ftsoEpoch.addVote(1, 6, 70, 0, 321);
         let weightFlr1 = Math.floor(50/400*1e12);
         let weightFlr2 = Math.floor(70/400*1e12);
         let weightFlrSum = weightFlr1 + weightFlr2;
-        await ftsoEpoch._setWeightsParameters(1, weightFlrSum, 0);
+        await ftsoEpoch.setWeightsParameters(1, weightFlrSum, 0);
         const weights = await ftsoEpoch.computeWeights(1,[weightFlr1,weightFlr2], [0,0]);
 
         expect(weights[0].toNumber()).to.equals(Math.floor(weightFlr1/weightFlrSum*1e12));
@@ -298,18 +298,18 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.baseWeightRatio).to.equals('3850');
         expect(epoch.weightFlrSum).to.equals(weightFlrSum.toString());
         expect(epoch.weightAssetSum).to.equals('0');
-        expect((await ftsoEpoch._getWeightRatio(1)).toNumber()).to.equals(0);
+        expect((await ftsoEpoch.getWeightRatio(1)).toNumber()).to.equals(0);
     });
 
     it("Should compute weights correctly - zero flr vote power sum", async () => {
-        await ftsoEpoch._initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
-        await ftsoEpoch._addVote(1, 5, 0, 400000, 123);
-        await ftsoEpoch._addVote(1, 6, 0, 200000, 321);
+        await ftsoEpoch.initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.addVote(1, 5, 0, 400000, 123);
+        await ftsoEpoch.addVote(1, 6, 0, 200000, 321);
 
         let weightAsset1 = Math.floor(400000/700000*1e12*11/1e3);
         let weightAsset2 = Math.floor(200000/700000*1e12*11/1e3);
         let weightAssetSum = weightAsset1 + weightAsset2;
-        await ftsoEpoch._setWeightsParameters(1, 0, weightAssetSum);
+        await ftsoEpoch.setWeightsParameters(1, 0, weightAssetSum);
         const weights = await ftsoEpoch.computeWeights(1,[0,0], [weightAsset1,weightAsset2]);
 
         expect(weights[0].toNumber()).to.equals(Math.floor(weightAsset1/weightAssetSum*1e12));
@@ -319,85 +319,85 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.baseWeightRatio).to.equals('3850');
         expect(epoch.weightFlrSum).to.equals('0');
         expect(epoch.weightAssetSum).to.equals(weightAssetSum.toString());
-        expect((await ftsoEpoch._getWeightRatio(1)).toNumber()).to.equals(10000);
+        expect((await ftsoEpoch.getWeightRatio(1)).toNumber()).to.equals(10000);
     });
 
     it("Should return correct epochId", async () => {
-        const epochId = await ftsoEpoch._getEpochId(124);
+        const epochId = await ftsoEpoch.getEpochId(124);
         expect(epochId.toNumber()).to.equals(0);
-        const epochId1 = await ftsoEpoch._getEpochId(125);
+        const epochId1 = await ftsoEpoch.getEpochId(125);
         expect(epochId1.toNumber()).to.equals(1);
-        const epochId2 = await ftsoEpoch._getEpochId(126);
+        const epochId2 = await ftsoEpoch.getEpochId(126);
         expect(epochId2.toNumber()).to.equals(1);
-        const epochId3 = await ftsoEpoch._getEpochId(244);
+        const epochId3 = await ftsoEpoch.getEpochId(244);
         expect(epochId3.toNumber()).to.equals(1);
-        const epochId4 = await ftsoEpoch._getEpochId(245);
+        const epochId4 = await ftsoEpoch.getEpochId(245);
         expect(epochId4.toNumber()).to.equals(2);
     });
 
     it("Should return correct epoch submit start time", async () => {
-        const endTime = await ftsoEpoch._epochSubmitStartTime(0);
+        const endTime = await ftsoEpoch.epochSubmitStartTime(0);
         expect(endTime.toNumber()).to.equals(5);
-        const endTime1 = await ftsoEpoch._epochSubmitStartTime(1);
+        const endTime1 = await ftsoEpoch.epochSubmitStartTime(1);
         expect(endTime1.toNumber()).to.equals(125);
-        const endTime2 = await ftsoEpoch._epochSubmitStartTime(2);
+        const endTime2 = await ftsoEpoch.epochSubmitStartTime(2);
         expect(endTime2.toNumber()).to.equals(245);
-        const endTime3 = await ftsoEpoch._epochSubmitStartTime(10);
+        const endTime3 = await ftsoEpoch.epochSubmitStartTime(10);
         expect(endTime3.toNumber()).to.equals(1205);
-        const endTime4 = await ftsoEpoch._epochSubmitStartTime(500);
+        const endTime4 = await ftsoEpoch.epochSubmitStartTime(500);
         expect(endTime4.toNumber()).to.equals(60005);
     });
 
     it("Should return correct epoch submit end time", async () => {
-        const endTime = await ftsoEpoch._epochSubmitEndTime(0);
+        const endTime = await ftsoEpoch.epochSubmitEndTime(0);
         expect(endTime.toNumber()).to.equals(125);
-        const endTime1 = await ftsoEpoch._epochSubmitEndTime(1);
+        const endTime1 = await ftsoEpoch.epochSubmitEndTime(1);
         expect(endTime1.toNumber()).to.equals(245);
-        const endTime2 = await ftsoEpoch._epochSubmitEndTime(2);
+        const endTime2 = await ftsoEpoch.epochSubmitEndTime(2);
         expect(endTime2.toNumber()).to.equals(365);
-        const endTime3 = await ftsoEpoch._epochSubmitEndTime(10);
+        const endTime3 = await ftsoEpoch.epochSubmitEndTime(10);
         expect(endTime3.toNumber()).to.equals(1325);
-        const endTime4 = await ftsoEpoch._epochSubmitEndTime(500);
+        const endTime4 = await ftsoEpoch.epochSubmitEndTime(500);
         expect(endTime4.toNumber()).to.equals(60125);
     });
 
     it("Should return correct epoch reveal end time", async () => {
-        const endTime = await ftsoEpoch._epochRevealEndTime(0);
+        const endTime = await ftsoEpoch.epochRevealEndTime(0);
         expect(endTime.toNumber()).to.equals(185);
-        const endTime1 = await ftsoEpoch._epochRevealEndTime(1);
+        const endTime1 = await ftsoEpoch.epochRevealEndTime(1);
         expect(endTime1.toNumber()).to.equals(305);
-        const endTime2 = await ftsoEpoch._epochRevealEndTime(2);
+        const endTime2 = await ftsoEpoch.epochRevealEndTime(2);
         expect(endTime2.toNumber()).to.equals(425);
-        const endTime3 = await ftsoEpoch._epochRevealEndTime(10);
+        const endTime3 = await ftsoEpoch.epochRevealEndTime(10);
         expect(endTime3.toNumber()).to.equals(1385);
-        const endTime4 = await ftsoEpoch._epochRevealEndTime(500);
+        const endTime4 = await ftsoEpoch.epochRevealEndTime(500);
         expect(endTime4.toNumber()).to.equals(60185);
     });
 
     it("Should return epoch reveal in process correctly", async () => {
-        const revealInProcess = await ftsoEpoch._epochRevealInProcess(10);
+        const revealInProcess = await ftsoEpoch.epochRevealInProcess(10);
         expect(revealInProcess).to.equals(false);
 
         const epochId = await moveFromCurrentToNextEpochStart(5, 120, 1);
-        const revealInProcess1 = await ftsoEpoch._epochRevealInProcess(epochId-1);
+        const revealInProcess1 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess1).to.equals(true);
-        const revealInProcess2 = await ftsoEpoch._epochRevealInProcess(epochId);
+        const revealInProcess2 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess2).to.equals(false);
 
         increaseTimeTo(5 + epochId * 120 + 60);
-        const revealInProcess3 = await ftsoEpoch._epochRevealInProcess(epochId-1);
+        const revealInProcess3 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess3).to.equals(true);
 
         increaseTimeTo(5 + epochId * 120 + 61);
-        const revealInProcess4 = await ftsoEpoch._epochRevealInProcess(epochId-1);
+        const revealInProcess4 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess4).to.equals(false);
 
         increaseTimeTo(5 + (epochId+1) * 120);
-        const revealInProcess5 = await ftsoEpoch._epochRevealInProcess(epochId);
+        const revealInProcess5 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess5).to.equals(false);
 
         increaseTimeTo(5 + (epochId+1) * 120 + 1);
-        const revealInProcess6 = await ftsoEpoch._epochRevealInProcess(epochId);
+        const revealInProcess6 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess6).to.equals(true);
     });
 });

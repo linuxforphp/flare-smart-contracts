@@ -126,7 +126,7 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
-      "contracts/mock/implementations/FtsoManagerMock.sol": {
+      "contracts/ftso/mock/FtsoManagerMock.sol": {
         version: "0.6.12",
         settings: { }
       },

@@ -16,13 +16,13 @@ contract(`FtsoVote.sol; ${getTestFile(__filename)};  Ftso vote unit tests`, asyn
     });
 
     it(`Should create new vote`, async () => {
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         const voteId = await ftsoVote.getLastVoteId();
         expect(voteId.toNumber()).to.equals(1);
     });
 
     it(`Last vote should be created vote`, async () => {
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         const voteId = await ftsoVote.getLastVoteId();
         let vote = await ftsoVote.getVote(voteId);
         let vote2 = await ftsoVote.getLastVote();
@@ -30,26 +30,26 @@ contract(`FtsoVote.sol; ${getTestFile(__filename)};  Ftso vote unit tests`, asyn
     });
 
     it(`Should set vote price correctly`, async () => {
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         let vote = await ftsoVote.getLastVote();
         expect(vote.price).to.equals('20');
     });
 
     it(`Should set vote weight FLR correctly`, async () => {
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         let vote = await ftsoVote.getLastVote();
         expect(vote.weightFlr).to.equals('333333333333');
     });
 
     it(`Should set vote weight asset correctly`, async () => {
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         let vote = await ftsoVote.getLastVote();
         expect(vote.weightAsset).to.equals('500000000000');
     });
     
     it(`Should create two votes`, async () => {
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
-        await ftsoVote._createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
+        await ftsoVote.createInstance(1, 2, 3, 4, 20); // returns transaction, not voteId
         const voteId = await ftsoVote.getLastVoteId();
         expect(voteId.toNumber()).to.equals(2);
     });

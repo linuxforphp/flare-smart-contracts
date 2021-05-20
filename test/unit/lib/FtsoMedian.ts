@@ -169,6 +169,13 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(value.toNumber()).to.equals(36);
     });
 
+    it(`Should find closest price correctly - example that should never happen`, async () => {
+        let index: number[] = [0,1,2,3,4];
+        let price: number[] = [30,35,38,36,50];
+        let value = await ftsoMedian.closestPriceFix(4, 4, index, price);
+        expect(value.toNumber()).to.equals(50);
+    });
+
     it(`Should compute median correctly`, async () => {
         let weight: number[] = [500,200,1000,300,500];
         

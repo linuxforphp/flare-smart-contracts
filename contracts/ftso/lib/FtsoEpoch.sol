@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interfaces/IFAsset.sol";
-import "../interfaces/user/IFtso.sol";
+import "../../interfaces/IFAsset.sol";
+import "../../userInterfaces/IFtso.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./SafePct.sol";
-// import "hardhat/console.sol";
+import "../../lib/SafePct.sol";
 
 /**
  * @title A library used for FTSO epoch management
@@ -104,7 +103,7 @@ library FtsoEpoch {
         uint256[] memory _assetPrices
     ) internal
     {    
-        // TODO: check somewhere that we never divide with 0  
+         // all divisions guaranteed not to divide with 0 - checked in ftso manager setGovernanceParameters(...)
         _setAssets(_state, _instance, _assets, _assetVotePowers, _assetPrices);
         _instance.votePowerBlock = _state.votePowerBlock;
         _instance.highAssetTurnoutBIPSThreshold = _state.highAssetTurnoutBIPSThreshold;
@@ -158,6 +157,7 @@ library FtsoEpoch {
      * @param _state                Epoch state
      * @param _timestamp            Timestamp as seconds since unix epoch
      * @return Epoch id
+     * @dev Should never revert
      */
     function _getEpochId(State storage _state, uint256 _timestamp) internal view returns (uint256) {
         if (_timestamp < _state.firstEpochStartTime) {
@@ -294,7 +294,8 @@ library FtsoEpoch {
         State storage _state,
         uint256 _assetVotePowerUSD
     ) internal view returns (uint256)
-    {        
+    {
+        // highAssetUSDThreshold >= lowAssetUSDThreshold - checked in ftso manager
         uint256 ratio;
         if (_assetVotePowerUSD < _state.lowAssetUSDThreshold) {
             // 0 %

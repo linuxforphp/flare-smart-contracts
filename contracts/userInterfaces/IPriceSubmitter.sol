@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../internal/IIFtso.sol";
+import "../ftso/interface/IIFtso.sol";
 
 interface IPriceSubmitter {
     // events

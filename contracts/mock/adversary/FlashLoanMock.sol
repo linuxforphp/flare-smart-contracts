@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import { WFLR } from "../../implementations/WFLR.sol";
-import { Ftso } from "../../implementations/Ftso.sol";
+import { Ftso } from "../../ftso/implementation/Ftso.sol";
 
 interface IFlashLenderMock {
     function requestFlareLoan(uint256 value) external;

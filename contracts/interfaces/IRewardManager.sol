@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./IFtsoManager.sol";
+import "../ftso/interface/IIFtsoManager.sol";
 import "../implementations/WFLR.sol";
 
 /// @title IRewardManager high level
@@ -68,7 +68,7 @@ interface IRewardManager {
 
     function setDailyRewardAmount(uint256 rewardAmountTwei) external;
 
-    function setFTSOManager(IFtsoManager _ftsoManager) external;
+    function setFTSOManager(IIFtsoManager _ftsoManager) external;
     
     function setWFLR(WFLR _wFlr) external;
 
