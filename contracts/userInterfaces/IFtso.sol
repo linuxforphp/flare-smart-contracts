@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../IFAsset.sol";
+import "../interfaces/IFAsset.sol";
 
 interface IFtso {
     enum PriceFinalizationType {
@@ -9,13 +9,13 @@ interface IFtso {
         NOT_FINALIZED,
         // median calculation used to decide price
         MEDIAN,
-        // low turnout - price decided using average price from trusted addresses votes
+        // low turnout - price decided from average of trusted addresses
         TRUSTED_ADDRESSES,
         // low turnout + no votes from trusted addresses - price copied from previous epoch
         PREVIOUS_PRICE_COPIED,
-        // same as TRUSTED_ADDRESSES - set when an exception occurs
+        // price decided from average of trusted addresses - triggered due to an exception
         TRUSTED_ADDRESSES_EXCEPTION,
-        // same as PREVIOUS_PRICE_COPIED - set when an exception occurs
+        // previous price copied - triggered due to an exception
         PREVIOUS_PRICE_COPIED_EXCEPTION
     }
 

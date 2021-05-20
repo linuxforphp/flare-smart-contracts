@@ -3,10 +3,8 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../lib/SafePct.sol";
-import "../interfaces/IFtsoManager.sol";
 import "../interfaces/IRewardManager.sol";
 import "./Governed.sol";
-import "./WFLR.sol";
 
 // import "hardhat/console.sol";
 
@@ -72,7 +70,7 @@ contract RewardManager is IRewardManager, Governed {
 
     /// addresses
     address public inflationContract;
-    IFtsoManager public ftsoManagerContract;
+    IIFtsoManager public ftsoManagerContract;
     WFLR public wFlr; 
 
     // flags
@@ -285,7 +283,7 @@ contract RewardManager is IRewardManager, Governed {
     /**
      * @notice sets FTSO manager corresponding to the reward manager
      */
-    function setFTSOManager(IFtsoManager _ftsoManager) external override onlyGovernance {
+    function setFTSOManager(IIFtsoManager _ftsoManager) external override onlyGovernance {
         ftsoManagerContract = _ftsoManager;
     }
 

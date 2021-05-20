@@ -17,9 +17,9 @@ const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
 
 const ERR_GOVERNANCE_ONLY = "only governance"
-const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "gov. params not initialized"
+const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized"
 const ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
-const ERR_NOT_FOUND = "not found";
+const ERR_NOT_FOUND = "Not found";
 
 contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests`, async accounts => {
     // contains a fresh contract for each test
@@ -316,10 +316,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let ftso3Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
             let ftso4Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
             
-            let trustedAddresses1  = ftso1Params.pop();
-            let trustedAddresses2  = ftso2Params.pop();
-            let trustedAddresses3  = ftso3Params.pop();
-            let trustedAddresses4  = ftso4Params.pop();
+            let trustedAddresses1 = ftso1Params.pop();
+            let trustedAddresses2 = ftso2Params.pop();
+            let trustedAddresses3 = ftso3Params.pop();
+            let trustedAddresses4 = ftso4Params.pop();
 
             // numeric epoch configuration should match the set one
             assert(doBNListsMatch(paramListBN, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
@@ -337,7 +337,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let [ftso1, ftso2] = await settingWithFourFTSOs(accounts, ftsoManager, true);
 
             // init reward epoch
-            let defaultParamListBN = await setDefaultGovernanceParameters(ftsoManager);
+            let defaultParamList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500];
+            let defaultParamListBN = defaultParamList.map(x => toBN(x));
+            await (ftsoManager.setGovernanceParameters as any)(...defaultParamListBN, [accounts[6], accounts[7]]);   
 
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
@@ -397,8 +399,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let ftso1Params = numberedKeyedObjectToList(await ftso1.epochsConfiguration());
             let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
 
-            let trustedAddresses1  = ftso1Params.pop();
-            let trustedAddresses2  = ftso2Params.pop();
+            let trustedAddresses1 = ftso1Params.pop();
+            let trustedAddresses2 = ftso2Params.pop();
 
             assert(doBNListsMatch(paramListBN, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
             assert(doBNListsMatch(paramListBN, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");

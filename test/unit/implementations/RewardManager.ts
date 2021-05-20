@@ -14,9 +14,6 @@ const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
 
-const ERR_GOVERNANCE_ONLY = "only governance"
-const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "gov. params not initialized"
-
 contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit tests`, async accounts => {
     // contains a fresh contract for each test
     let rewardManager: RewardManagerInstance;

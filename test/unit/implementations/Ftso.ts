@@ -562,10 +562,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             await setMockVotePowerOfAt(10, 200, 10000, accounts[1]);
             await ftso.revealPrice(epochId, 500, 123, {from: accounts[1]});
+            await setMockVotePowerOfAt(10, 200, 10000, accounts[3]);
+            await ftso.revealPrice(epochId, 400, 125, {from: accounts[3]});
 
             await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}), "PriceFinalized",
-                {epochId: toBN(epochId), price: toBN(500), rewardedFtso: false, lowRewardPrice: toBN(500), highRewardPrice: toBN(500), finalizationType: toBN(1)});
+                {epochId: toBN(epochId), price: toBN(450), rewardedFtso: false, lowRewardPrice: toBN(400), highRewardPrice: toBN(500), finalizationType: toBN(1)});
         });
 
         it("Should finalize price epoch - two epochs", async() => {
@@ -1297,6 +1299,27 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await increaseTimeTo((epochId + 3) * 120); // reveal period start
             let random12 = await ftso.getCurrentRandom();
             expect(random12.toNumber()).to.equals(0);
+        });
+
+        it("Should get current random for epoch 0", async() => {
+            ftso = await Ftso.new(
+                "ATOK",
+                mockWflr.address,
+                accounts[10],
+                1 // initial token price 0.00001$
+            );
+
+            // Force a block in order to get most up to date time
+            await time.advanceBlock();
+            // Get the timestamp for the just mined block
+            let timestamp = await time.latest();
+
+            await ftso.activateFtso(accounts[4], timestamp + 500, 120, 60, {from: accounts[10]});
+            let currentEpoch = await ftso.getCurrentEpochId();
+            expect(currentEpoch.toNumber()).to.equals(0);
+
+            let random = await ftso.getCurrentRandom();
+            expect(random.toNumber()).to.equals(0);
         });
 
         it("Should get random for epoch", async() => {
