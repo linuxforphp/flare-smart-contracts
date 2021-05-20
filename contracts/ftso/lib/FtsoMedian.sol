@@ -237,7 +237,10 @@ library FtsoMedian {
                 }
             }
         }
-        return (0,0,0); // never happens
+
+        // should never happen
+        assert(false);
+        return (0, 0, 0);
     }
 
     function _samePriceFix(
