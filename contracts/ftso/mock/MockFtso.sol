@@ -8,7 +8,7 @@ contract MockFtso is Ftso {
 
     constructor(
         string memory _symbol,
-        IFAsset _wFlr,
+        IVPToken _wFlr,
         IIFtsoManager _ftsoManager,
         uint256 _startTimestamp,
         uint256 _submitPeriod,

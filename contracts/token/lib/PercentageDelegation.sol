@@ -4,10 +4,10 @@ pragma solidity 0.7.6;
 import {CheckPointHistory} from "./CheckPointHistory.sol";
 import {DelegationHistory} from "./DelegationHistory.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "./SafePct.sol";
+import {SafePct} from "../../lib/SafePct.sol";
 
 /**
- * @title Delegation library
+ * @title PercentageDelegation library
  * @notice Only handles percentage delegation  
  * @notice A library to manage a group of delegates for allocating voting power by a delegator.
  **/
@@ -22,7 +22,7 @@ library PercentageDelegation {
     
     /**
      * @dev `DelegationState` is the state structure used by this library to contain/manage
-     *  a grouing of delegates (a Delegation) for a delegator.
+     *  a grouing of delegates (a PercentageDelegation) for a delegator.
      */
     struct DelegationState {
         // percentages by delegates
@@ -37,54 +37,19 @@ library PercentageDelegation {
      * @dev If you send a `bips` of zero, `delegate` will be deleted if one
      *  exists in the delegation; if zero and `delegate` does not exist, it will not be added.
      */
-    function addReplaceDelegateByPercentAt(
+    function addReplaceDelegate(
         DelegationState storage self, 
         address delegate, 
-        uint16 bips,
-        uint256 blockNumber
+        uint256 bips
     ) internal {
         // Check for max delegation basis points
         assert(bips <= MAX_BIPS);
 
         // Change the delegate's percentage
-        self.delegation.writeValueAt(delegate, bips, blockNumber);
-        
-        // check the total
-        require(self.delegation.totalValueAt(blockNumber) <= MAX_BIPS, MAX_BIPS_MSG);
-    }
-
-    /**
-     * @notice Add or replace an existing delegate with allocated vote power in basis points.
-     * @param self A DelegationState instance to manage.
-     * @param delegate The address of the delegate to add/replace
-     * @param bips Allocation of the delegation specified in basis points (1/100 of 1 percent)
-     * @dev If you send a `bips` of zero, `delegate` will be deleted if one
-     *  exists in the delegation; if zero and `delegate` does not exist, it will not be added.
-     */
-    function addReplaceDelegateByPercent(
-        DelegationState storage self, 
-        address delegate, 
-        uint16 bips
-    ) internal {
-        // Check for max delegation basis points
-        assert(bips <= MAX_BIPS);
-
-        // Change the delegate's percentage
-        self.delegation.writeValueAtNow(delegate, bips);
+        self.delegation.writeValue(delegate, bips);
         
         // check the total
         require(self.delegation.totalValueAtNow() <= MAX_BIPS, MAX_BIPS_MSG);
-    }
-
-    /**
-     * @notice Get the total number of delegates.
-     * @param self A DelegationState instance to manage.
-     * @return count The total number of delegates.
-     */
-    function getDelegateCount(
-        DelegationState storage self
-    ) internal view returns (uint256 count) {
-        return self.delegation.delegateCountAtNow();
     }
 
     /**
@@ -93,7 +58,7 @@ library PercentageDelegation {
      * @param blockNumber The block to query.
      * @return totalBips The total vote power amount or bips delegated.
      */
-    function getDelegateTotalAt(
+    function getDelegatedTotalAt(
         DelegationState storage self,
         uint256 blockNumber
     ) internal view returns (uint256 totalBips) {
@@ -105,7 +70,7 @@ library PercentageDelegation {
      * @param self A DelegationState instance to manage.
      * @return totalBips The total vote power amount or bips delegated.
      */
-    function getDelegateTotal(
+    function getDelegatedTotal(
         DelegationState storage self
     ) internal view returns (uint256 totalBips) {
         return self.delegation.totalValueAtNow();
@@ -115,24 +80,28 @@ library PercentageDelegation {
      * @notice Given a delegate address, return the explicit amount of bips of the vote power delegation.
      * @param self A DelegationState instance to manage.
      * @param delegate The delegate address to find.
-     * @return found True if the address was found. False otherwise. If false, percent is undetermined.
+     * @param blockNumber The block to query.
      * @return bips The percent of vote power allocated to the delegate address.
      */
-    function tryFindDelegate(
+    function getDelegatedValueAt(
         DelegationState storage self, 
-        address delegate
-    ) internal view returns(bool found, uint256 bips) {
-        uint256 value = self.delegation.valueOfAtNow(delegate);
-        return (value != 0, value);
+        address delegate,
+        uint256 blockNumber
+    ) internal view returns (uint256 bips) {
+        return self.delegation.valueOfAt(delegate, blockNumber);
     }
 
     /**
-     * @notice Clears all delegates.
+     * @notice Given a delegate address, return the explicit amount of bips of the vote power delegation.
      * @param self A DelegationState instance to manage.
-     * @dev Resets the DelegationMode to NOTSET in the process.
+     * @param delegate The delegate address to find.
+     * @return bips The percent of vote power allocated to the delegate address.
      */
-    function clear(DelegationState storage self) internal {
-        self.delegation.clear();
+    function getDelegatedValue(
+        DelegationState storage self, 
+        address delegate
+    ) internal view returns (uint256 bips) {
+        return self.delegation.valueOfAtNow(delegate);
     }
 
     /**
@@ -165,5 +134,14 @@ library PercentageDelegation {
         uint256[] memory values
     ) {
         return self.delegation.delegationsAtNow();
+    }
+    
+    /**
+     * @notice Clears all delegates.
+     * @param self A DelegationState instance to manage.
+     * @dev Resets the DelegationMode to NOTSET in the process.
+     */
+    function clear(DelegationState storage self) internal {
+        self.delegation.clear();
     }
 }

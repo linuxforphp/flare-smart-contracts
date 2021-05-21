@@ -24,6 +24,15 @@ contract(`VotePower.sol; ${getTestFile(__filename)}; Vote power unit tests`, asy
     assert.equal(await votePower.votePowerOfAtNow(accounts[1]) as any, 10);
   });
 
+  it("Should mint vote power for an address (zero case)", async () => {
+    // Assemble
+    await votePower._mint(accounts[1], 10);
+    // Act
+    await votePower._mint(accounts[1], 0);
+    // Assert
+    assert.equal(await votePower.votePowerOfAtNow(accounts[1]) as any, 10);
+  });
+
   it("Should not mint the zero address", async() => {
     // Assemble
     // Act
@@ -39,6 +48,15 @@ contract(`VotePower.sol; ${getTestFile(__filename)}; Vote power unit tests`, asy
     await votePower._burn(accounts[1], 6);
     // Assert
     assert.equal(await votePower.votePowerOfAtNow(accounts[1]) as any, 4);
+  });
+
+  it("Should burn vote power for an address (zero case)", async () => {
+    // Assemble
+    await votePower._mint(accounts[1], 10);
+    // Act
+    await votePower._burn(accounts[1], 0);
+    // Assert
+    assert.equal(await votePower.votePowerOfAtNow(accounts[1]) as any, 10);
   });
 
   it("Should not burn the zero address", async() => {
@@ -83,55 +101,4 @@ contract(`VotePower.sol; ${getTestFile(__filename)}; Vote power unit tests`, asy
     assert.equal(await votePower.votePowerOfAtNow(accounts[2]) as any, 5);
   });
 
-  it("Should delegate vote power", async() => {
-    // Assemble
-    await votePower._mint(accounts[1], 20);
-    // Act
-    await votePower.delegate(accounts[1], accounts[2], 5);
-    // Assert
-    assert.equal(await votePower.votePowerOfAtNow(accounts[1]) as any, 15);
-    assert.equal(await votePower.votePowerOfAtNow(accounts[2]) as any, 5);
-    assert.equal(await votePower.votePowerFromToAtNow(accounts[1], accounts[2]) as any, 5);
-  });
-
-  it("Should record historic delegated vote power", async() => {
-    // Assemble
-    const b = [];
-    let blockAfterFirstDelegate = 0;
-
-    await votePower._mint(accounts[1], 20);
-    await votePower.delegate(accounts[1], accounts[2], 5);
-    b[blockAfterFirstDelegate] = await web3.eth.getBlockNumber();
-    // Act
-    await votePower.delegate(accounts[1], accounts[2], 7);
-    // Assert
-    assert.equal(await votePower.votePowerFromToAt(accounts[1], accounts[2], b[blockAfterFirstDelegate]) as any, 5);
-  });
-
-  it("Should undelegate vote power", async() => {
-    // Assemble
-    await votePower._mint(accounts[1], 20);
-    await votePower.delegate(accounts[1], accounts[2], 10);
-    // Act
-    await votePower.undelegate(accounts[1], accounts[2], 3);
-    // Assert
-    assert.equal(await votePower.votePowerOfAtNow(accounts[1]) as any, 13);
-    assert.equal(await votePower.votePowerOfAtNow(accounts[2]) as any, 7);
-    assert.equal(await votePower.votePowerFromToAtNow(accounts[1], accounts[2]) as any, 7);
-  });
-
-  it("Should revoke vote power", async() => {
-    // Assemble
-    const b = [];
-    let blockAfterFirstDelegate = 0;
-
-    await votePower._mint(accounts[1], 20);
-    await votePower.delegate(accounts[1], accounts[2], 10);
-    b[blockAfterFirstDelegate] = await web3.eth.getBlockNumber();
-    await votePower.undelegate(accounts[1], accounts[2], 3);
-    // Act
-    await votePower.revokeAt(accounts[1], accounts[2], b[blockAfterFirstDelegate]);
-    // Assert
-    assert.equal(await votePower.votePowerFromToAt(accounts[1], accounts[2], b[blockAfterFirstDelegate]) as any, 0);
-  });
 });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interfaces/IFAsset.sol";
+import "./IVPToken.sol";
 
 interface IFtso {
     enum PriceFinalizationType {

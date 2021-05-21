@@ -31,12 +31,11 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
     // Assemble
     await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 10);
     b[0] = await web3.eth.getBlockNumber();
-    await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 20);
     // Act
-    await checkPointsByAddressMock.writeValueOfAt(accounts[1], 100, b[0]);
+    await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 20);
     // Assert
     let value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[0]);
-    assert.equal(value as any, 100);
+    assert.equal(value as any, 10);
   });
 
   it("Should store value now for different addresses", async () => {
@@ -93,27 +92,11 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
     await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 10);
     await checkPointsByAddressMock.writeValueOfAtNow(accounts[2], 20);
     // Act
-    await checkPointsByAddressMock.transmitAtNow(accounts[2], accounts[1], 20);
+    await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 20);
 
     // Assert
     let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
     let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
-    assert.equal(address1Value as any, 30);
-    assert.equal(address2Value as any, 0);
-  });
-
-  it("Should transmit historic value between addresses", async () => {
-    const b = [];
-    // Assemble
-    await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 10);
-    await checkPointsByAddressMock.writeValueOfAtNow(accounts[2], 20);
-    b[0] = await web3.eth.getBlockNumber();
-    await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 100);
-    // Act
-    await checkPointsByAddressMock.transmitAt(accounts[2], accounts[1], 20, b[0]);
-    // Assert
-    let address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[0]);
-    let address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[0]);
     assert.equal(address1Value as any, 30);
     assert.equal(address2Value as any, 0);
   });
@@ -123,11 +106,24 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
     await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 10);
     await checkPointsByAddressMock.writeValueOfAtNow(accounts[2], 20);
     // Act
-    await checkPointsByAddressMock.transmitAtNow(accounts[2], accounts[1], 20);
+    await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 20);
     // Assert
     let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
     let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
     assert.equal(address1Value as any, 30);
     assert.equal(address2Value as any, 0);
+  });
+
+  it("Should not transmit zero value between addresses", async () => {
+    // Assemble
+    await checkPointsByAddressMock.writeValueOfAtNow(accounts[1], 10);
+    await checkPointsByAddressMock.writeValueOfAtNow(accounts[2], 20);
+    // Act
+    await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 0);
+    // Assert
+    let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+    let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+    assert.equal(address1Value as any, 10);
+    assert.equal(address2Value as any, 20);
   });
 });

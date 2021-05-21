@@ -30,7 +30,7 @@ interface IIFtsoManager is IFtsoManager {
     function addFtso(IIFtso _ftso) external;
     function removeFtso(IIFtso _ftso) external;
 
-    function setFtsoFAsset(IIFtso _ftso, IFAsset _fAsset) external;
+    function setFtsoFAsset(IIFtso _ftso, IVPToken _fAsset) external;
     function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external;
 
     function setPanicMode(bool _panicMode) external;

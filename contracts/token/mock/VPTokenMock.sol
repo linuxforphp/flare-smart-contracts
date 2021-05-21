@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {VPToken} from "../../implementations/VPToken.sol";
+import {VPToken} from "../implementation/VPToken.sol";
 
 /**
  * @title Vote Power Token mock contract
@@ -24,5 +24,19 @@ contract VPTokenMock is VPToken {
 
     function setDecimals(uint8 decimals) public {
         _setupDecimals(decimals);
+    }
+    
+    // some forbidden functions
+    
+    function revokeDelegationAtNow(address to) public {
+        revokeDelegationAt(to, block.number);
+    }
+
+    function votePowerOfAtNowCached(address who) public returns (uint256) {
+        return votePowerOfAtCached(who, block.number);
+    }
+    
+    function votePowerAtNowCached() public returns (uint256) {
+        return votePowerAtCached(block.number);
     }
 }

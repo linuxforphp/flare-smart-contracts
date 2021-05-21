@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {CheckPointable} from "../../implementations/CheckPointable.sol";
+import {CheckPointable} from "../implementation/CheckPointable.sol";
 
 /**
  * @title CheckPointable mock contract

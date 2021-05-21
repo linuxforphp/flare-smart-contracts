@@ -64,7 +64,7 @@ interface IIFtso is IFtso {
         address[] memory _trustedAddresses
     ) external;
 
-    function setFAsset(IFAsset _fAsset) external;
+    function setFAsset(IVPToken _fAsset) external;
 
     function setFAssetFtsos(IIFtso[] memory _fAssetFtsos) external;
 
@@ -79,7 +79,7 @@ interface IIFtso is IFtso {
      * @notice Returns the FTSO asset
      * @dev fAsset is null in case of multi-asset FTSO
      */
-    function getFAsset() external view returns (IFAsset);
+    function getFAsset() external view returns (IVPToken);
 
     /**
      * @notice Returns the FAsset FTSOs

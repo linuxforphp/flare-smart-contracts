@@ -128,6 +128,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     await delegatable.delegate(ed, 40, {from: lucy});
 
     // Act
+    await expectRevert(delegatable.undelegateAllExplicit([bob, ed], { from: lucy }), 
+      "undelegateAllExplicit can only be used in explicit delegation mode");
+    
     await delegatable.undelegateAll({from: lucy});
 
     // Assert
@@ -259,7 +262,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     assert.equal(votePowerOfEd as any, 0);
     // the mode should be reset
     const mode2 = await delegatable.delegationModeOf(lucy);
-    assert.equal<any>(mode2, 0);   // 0 == DelegationMode.NOTSET
+    assert.equal<any>(mode2, 2);   // 2 == DelegationMode.AMOUNT (must not be reset)
   });
 
   it("Should not explicitly delegate if not enough vote power", async () => {
@@ -268,6 +271,19 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     let delegatePromise = delegatable.delegateExplicit(lucy, 10, {from: bob});
     // Assert
     await expectRevert(delegatePromise, UNDELEGATED_VP_TOO_SMALL_MSG);
+  });
+
+  it("Should revert when existing delegation is by percentage", async () => {
+    // Assemble
+    await delegatable.mintVotePower(bob, 20);
+    await delegatable.mintVotePower(lucy, 10);
+    // An explicit VP delegation to Lucy from Bob of 5 
+    await delegatable.delegate(lucy, 5, { from: bob });
+    // Act
+    // Change to a 50% vote power delegation from Bob to Lucy - yielding VP(lucy) = 20
+    let delegatePromise = delegatable.delegateExplicit(lucy, 10, { from: bob });
+    // Assert
+    await expectRevert(delegatePromise, "Cannot delegate by amount");
   });
 
   it("Should compute undelegated amount when explicitly delegated", async () => {

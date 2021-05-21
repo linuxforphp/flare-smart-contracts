@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {ICollateralizable} from "../ICollateralizable.sol";
-import {Governed} from "../governance/implementation/Governed.sol";
+import {ICollateralizable} from "../../ICollateralizable.sol";
+import {Governed} from "../../governance/implementation/Governed.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {VPToken} from "./VPToken.sol";
+import {VPToken} from "../../token/implementation/VPToken.sol";
 
 /**
  * @title FAsset Token
