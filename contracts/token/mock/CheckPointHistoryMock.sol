@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {CheckPointHistory} from "../../lib/CheckPointHistory.sol";
+import {CheckPointHistory} from "../lib/CheckPointHistory.sol";
 
 /**
  * @title Check Point History Mock contract
@@ -18,10 +18,7 @@ contract CheckPointHistoryMock {
     function valueAtNow() public view returns (uint256 value) {
         return _state.valueAtNow();
     }
-    function writeValueAt(uint256 value, uint256 blockNumber) public {
-        return _state.writeValueAt(value, blockNumber);
-    }
-    function writeValueAtNow(uint256 value) public returns (uint256 blockNumber) {
-        return _state.writeValueAtNow(value);
+    function writeValue(uint256 value) public returns (uint256 blockNumber) {
+        return _state.writeValue(value);
     }
 }

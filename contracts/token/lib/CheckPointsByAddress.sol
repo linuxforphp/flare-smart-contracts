@@ -19,23 +19,23 @@ library CheckPointsByAddress {
     }
 
     /**
-     * @notice Send `amount` value to `to` address from `from` address at `blockNumber`
+    /**
+     * @notice Send `amount` value to `to` address from `from` address.
      * @param self A CheckPointsByAddressState instance to manage.
      * @param from Address of the history of from values 
      * @param to Address of the history of to values 
      * @param amount The amount of value to be transferred
-     * @param blockNumber The block of the transmission
+     * @param blockNumber The block of recorded transmission
      **/
-    function transmitAt(
+    function transmit(
         CheckPointsByAddressState storage self, 
         address from, 
         address to, 
-        uint256 amount, 
-        uint256 blockNumber) internal {
+        uint256 amount) internal returns (uint256 blockNumber) {
 
         // Shortcut
         if (amount == 0) {
-            return;
+            return block.number;
         }
 
         // Both from and to can never be zero
@@ -44,33 +44,17 @@ library CheckPointsByAddress {
         // Update transferer value
         if (from != address(0)) {
             // Compute the new from balance
-            uint256 newValueFrom = valueOfAt(self, from, blockNumber).sub(amount);
-            writeValueOfAt(self, from, newValueFrom, blockNumber);
+            uint256 newValueFrom = valueOfAtNow(self, from).sub(amount);
+            writeValueOfAtNow(self, from, newValueFrom);
         }
 
         // Update transferee value
         if (to != address(0)) {
             // Compute the new to balance
-            uint256 newValueTo = valueOfAt(self, to, blockNumber).add(amount);
-            writeValueOfAt(self, to, newValueTo, blockNumber);
+            uint256 newValueTo = valueOfAtNow(self, to).add(amount);
+            writeValueOfAtNow(self, to, newValueTo);
         }
-    }
-
-    /**
-     * @notice Send `amount` value to `to` address from `from` address at the current block.
-     * @param self A CheckPointsByAddressState instance to manage.
-     * @param from Address of the history of from values 
-     * @param to Address of the history of to values 
-     * @param amount The amount of value to be transferred
-     * @param blockNumber The block of recorded transmission
-     **/
-    function transmitAtNow(
-        CheckPointsByAddressState storage self, 
-        address from, 
-        address to, 
-        uint256 amount) internal returns (uint256 blockNumber) {
-
-        transmitAt(self, from, to, amount, block.number);
+        
         return block.number;
     }
 
@@ -107,25 +91,6 @@ library CheckPointsByAddress {
      * @param self A CheckPointsByAddressState instance to manage.
      * @param owner The address of `owner` to write.
      * @param value The value to write.
-     * @param blockNumber The block to write the value.
-     * @dev Sender must be the owner of the contract.
-     **/
-    function writeValueOfAt(
-        CheckPointsByAddressState storage self, 
-        address owner, 
-        uint256 value,
-        uint256 blockNumber) internal {
-        // Get history for owner
-        CheckPointHistory.CheckPointHistoryState storage history = self.historyByAddress[owner];
-        // Write the value
-        history.writeValueAt(value, blockNumber);
-    }
-
-    /**
-     * @notice Writes the `value` at the current block number for `owner`.
-     * @param self A CheckPointsByAddressState instance to manage.
-     * @param owner The address of `owner` to write.
-     * @param value The value to write.
      * @return blockNumber The block that the value was written at. 
      * @dev Sender must be the owner of the contract.
      **/
@@ -134,7 +99,11 @@ library CheckPointsByAddress {
         address owner, 
         uint256 value) internal returns (uint256 blockNumber) {
 
-        writeValueOfAt(self, owner, value, block.number);
+        // Get history for owner
+        CheckPointHistory.CheckPointHistoryState storage history = self.historyByAddress[owner];
+        // Write the value
+        history.writeValue(value);
+        
         return block.number;
     }
 }

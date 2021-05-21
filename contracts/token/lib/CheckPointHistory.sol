@@ -84,42 +84,25 @@ library CheckPointHistory {
     }
 
     /**
-     * @notice Writes `value` at `blockNumber`.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param value Value to write.
-     * @param blockNumber The block at which to write.
-     **/
-    function writeValueAt(CheckPointHistoryState storage self, uint256 value, uint256 blockNumber) internal {
-        uint256 historyCount = self.values.length;
-
-        if (historyCount == 0) {
-            // values array empty, push new CheckPoint
-            self.values.push(CheckPoint({fromBlock: blockNumber, value: value}));
-        } else if (blockNumber == self.values[historyCount - 1].fromBlock) {
-            // If last check point is blockNumber input, just update
-            self.values[historyCount - 1].value = value;
-        } else if (blockNumber > self.values[historyCount - 1].fromBlock) {
-            // If last check point block is before
-            self.values.push(CheckPoint({fromBlock: blockNumber, value: value}));
-        } else {
-            // Find the block with number less than or equal to block given
-            uint256 index = indexOfGreatestBlockLessThan(self.values, blockNumber);
-            // Update the checkpoint value
-            self.values[index].value = value;
-        }
-    }
-
-    /**
      * @notice Writes the value at the current block.
      * @param self A CheckPointHistoryState instance to manage.
      * @param value Value to write.
      * @return blockNumber The block number that the value was written at. 
      **/
-    function writeValueAtNow(
+    function writeValue(
         CheckPointHistoryState storage self, 
-        uint256 value) internal returns (uint256 blockNumber) {
-          
-        writeValueAt(self, value, block.number);
+        uint256 value
+    ) internal returns (uint256 blockNumber) {
+        uint256 historyCount = self.values.length;
+
+        if (historyCount == 0 || block.number > self.values[historyCount - 1].fromBlock) {
+            // values array empty, push new CheckPoint
+            self.values.push(CheckPoint({fromBlock: block.number, value: value}));
+        } else {
+            assert (block.number == self.values[historyCount - 1].fromBlock);
+            // If last check point is blockNumber input, just update
+            self.values[historyCount - 1].value = value;
+        }
         return block.number;
     }
 }

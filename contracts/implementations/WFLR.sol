@@ -2,14 +2,15 @@
 pragma solidity 0.7.6;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {VPToken} from "./VPToken.sol";
+import {VPToken} from "../token/implementation/VPToken.sol";
+import {IWFLR} from "../userInterfaces/IWFLR.sol";
 
 /**
  * @title Wrapped Flare token
  * @notice Accept FLR deposits and mint ERC20 WFLR tokens 1-1.
  * @dev Attribution: https://rinkeby.etherscan.io/address/0xc778417e063141139fce010982780140aa0cd5ab#code 
  */
-contract WFLR is VPToken {
+contract WFLR is VPToken, IWFLR {
     using SafeMath for uint256;
     event  Deposit(address indexed dst, uint amount);
     event  Withdrawal(address indexed src, uint amount);
@@ -31,7 +32,7 @@ contract WFLR is VPToken {
      * - the caller must have allowance for `owners`'s tokens of at least
      * `amount`.
      */
-    function withdrawFrom(address owner, uint256 amount) public {
+    function withdrawFrom(address owner, uint256 amount) public override {
         // Reduce senders allowance
         _approve(owner, msg.sender, allowance(owner, msg.sender).sub(amount, "allowance below zero"));
         // Burn the owners balance
@@ -46,7 +47,7 @@ contract WFLR is VPToken {
      * @notice Deposit Flare from msg.sender to recipient and and mint WFLR ERC20.
      * @param recipient A payable address to receive Flare and minted WFLR.
      */
-    function depositTo(address payable recipient) public payable {
+    function depositTo(address payable recipient) public payable override {
         // Mint WFLR
         _mint(recipient, msg.value);
         // Transfer Flare to recipient
@@ -58,7 +59,7 @@ contract WFLR is VPToken {
     /**
      * @notice Deposit Flare and mint WFLR ERC20.
      */
-    function deposit() public payable {
+    function deposit() public payable override {
         // Mint WFLR
         _mint(msg.sender, msg.value);
         // Emit deposit event
@@ -69,7 +70,7 @@ contract WFLR is VPToken {
      * @notice Withdraw Flare and burn WFLR ERC20.
      * @param amount The amount to withdraw.
      */
-    function withdraw(uint256 amount) public {
+    function withdraw(uint256 amount) public override {
         // Burn WFLR tokens
         _burn(msg.sender, amount);
         // Send Flare to sender

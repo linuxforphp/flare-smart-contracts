@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../interfaces/IFAsset.sol";
+import "../../userInterfaces/IVPToken.sol";
 import "../../userInterfaces/IFtso.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../lib/SafePct.sol";
@@ -18,7 +18,7 @@ library FtsoEpoch {
         // storage        
         mapping(uint256 => Instance) instance;  // mapping from epoch id to instance
         mapping(uint256 => uint256) nextVoteId; // mapping from id to id storing the connection between votes in epoch
-        mapping(IFAsset => uint256) assetNorm;  // mapping from asset address to its normalization
+        mapping(IVPToken => uint256) assetNorm;  // mapping from asset address to its normalization
 
         // immutable settings
         uint256 firstEpochStartTime;            // start time of the first epoch instance
@@ -66,7 +66,7 @@ library FtsoEpoch {
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
         uint256 random;                         // random number associated with the epoch
         uint256 voteCount;                       // number of votes in epoch
-        IFAsset[] assets;                       // list of assets
+        IVPToken[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         mapping(address => uint256) votes;      // address to vote id mapping
         address[] trustedAddresses;             // trusted addresses - set only when used
@@ -98,7 +98,7 @@ library FtsoEpoch {
         Instance storage _instance,
         // uint256 _circulatingSupplyFlr,
         uint256 _votePowerFlr,
-        IFAsset[] memory _assets,
+        IVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
     ) internal
@@ -219,7 +219,7 @@ library FtsoEpoch {
     function _setAssets(
         State storage _state,
         Instance storage _instance,
-        IFAsset[] memory _assets,
+        IVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
     ) internal

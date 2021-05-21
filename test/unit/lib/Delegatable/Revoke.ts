@@ -116,7 +116,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     assert.equal(bobUndelegatedVotePowerPastBlock.toNumber(), 100);
     assert.equal(edUndelegatedVotePowerNow.toNumber(), 50);
     assert.equal(bobUndelegatedVotePowerNow.toNumber(), 135);
-});
+  });
   
   it("Should revoke a past delegation of bad actor (explicit delegation)", async () => {
     let blockAtStart = 0;

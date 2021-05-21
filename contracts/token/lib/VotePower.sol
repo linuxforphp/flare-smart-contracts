@@ -19,9 +19,6 @@ library VotePower {
      *  power amounts by delegator and it's delegates.
      */
     struct VotePowerState {
-        // `delegatedVotePower` is a map of delegators pointing to a map of delegates
-        // containing a checkpoint history of delegated vote power balances.
-        mapping(address => CheckPointsByAddress.CheckPointsByAddressState) delegatedVotePower;
         // `votePowerByAddress` is the map that tracks the voting power balance
         //  of each address, by block.
         CheckPointsByAddress.CheckPointsByAddressState votePowerByAddress;
@@ -58,7 +55,7 @@ library VotePower {
         assert(owner != address(0));
 
         // Burn vote power for address
-        self.votePowerByAddress.transmitAtNow(owner, address(0), amount);
+        self.votePowerByAddress.transmit(owner, address(0), amount);
     }
 
     /**
@@ -80,11 +77,7 @@ library VotePower {
         }
 
         // Transmit vote power
-        self.votePowerByAddress.transmitAtNow(delegator, delegatee, amount);
-
-        // Update vote power between delegator and delegatee
-        CheckPointsByAddress.CheckPointsByAddressState storage delegatedVotePower = self.delegatedVotePower[delegator];
-        delegatedVotePower.writeValueOfAtNow(delegatee, delegatedVotePower.valueOfAtNow(delegatee).add(amount));
+        self.votePowerByAddress.transmit(delegator, delegatee, amount);
     }
 
     /**
@@ -107,33 +100,7 @@ library VotePower {
         assert(owner != address(0));
 
         // Mint vote power for address
-        self.votePowerByAddress.transmitAtNow(address(0), owner, amount);
-    }
-
-    /**
-     * @notice Revoke vote power from `delegatee` address and return to `delegator` address
-     *  at `blockNumber`.
-     * @param delegator Delegator address 
-     * @param delegatee Delegatee address
-     * @param blockNumber The block at vote power recovered by delegator from delegatee
-     * @return votePowerRevoked The vote power that was revoked at blockNumber
-     * @dev Note that current vote power is unmodified and history is not rolled forward.
-     **/
-    function revokeAt(
-        VotePowerState storage self, 
-        address delegator, 
-        address delegatee, 
-        uint256 blockNumber
-    ) internal addressesNotZero(delegator, delegatee) returns (uint256 votePowerRevoked) {
-        // Get the vote power delegated at the given block
-        CheckPointsByAddress.CheckPointsByAddressState storage delegatedVotePower = self.delegatedVotePower[delegator];
-        votePowerRevoked = delegatedVotePower.valueOfAt(delegatee, blockNumber);
-
-        // Recover vote power at block
-        self.votePowerByAddress.transmitAt(delegatee, delegator, votePowerRevoked, blockNumber);
-
-        // Zero out vote power for delegate
-        delegatedVotePower.writeValueOfAt(delegatee, 0, blockNumber);
+        self.votePowerByAddress.transmit(address(0), owner, amount);
     }
 
     /**
@@ -149,7 +116,7 @@ library VotePower {
         uint256 amount
     ) internal addressesNotZero(from, to) {
 
-        self.votePowerByAddress.transmitAtNow(from, to, amount);
+        self.votePowerByAddress.transmit(from, to, amount);
     }
 
     /**
@@ -171,48 +138,7 @@ library VotePower {
         }
 
         // Recover vote power
-        self.votePowerByAddress.transmitAtNow(delegatee, delegator, amount);
-
-        // Update vote power between delegatee and delegator
-        CheckPointsByAddress.CheckPointsByAddressState storage delegatedVotePower = self.delegatedVotePower[delegator];
-        delegatedVotePower.writeValueOfAtNow(
-            delegatee, 
-            delegatedVotePower.valueOfAtNow(delegatee).sub(amount, "amount too big")
-        );
-    }
-
-    /**
-     * @notice Get the vote power transmitted `from` delegator `to` delegatee at `blockNumber`.
-     * @param self A VotePowerState instance to manage.
-     * @param from Address of the delegator.
-     * @param to Address of the delegatee.
-     * @param blockNumber Block number of the block to fetch vote power.
-     * @return votePower The fetched vote power.
-     */
-    function votePowerFromToAt(
-        VotePowerState storage self, 
-        address from, 
-        address to, 
-        uint blockNumber)
-        internal view returns(uint256 votePower) {
-
-        return self.delegatedVotePower[from].valueOfAt(to, blockNumber);
-    }
-
-    /**
-     * @notice Get the current vote power transmitted `from` delegator `to` delegatee.
-     * @param self A VotePowerState instance to manage.
-     * @param from Address of the delegator.
-     * @param to Address of the delegatee.
-     * @return votePower The fetched vote power.
-     */
-    function votePowerFromToAtNow(
-        VotePowerState storage self, 
-        address from, 
-        address to)
-        internal view returns(uint256 votePower) {
-        
-        return votePowerFromToAt(self, from, to, block.number);
+        self.votePowerByAddress.transmit(delegatee, delegator, amount);
     }
 
     /**

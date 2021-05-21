@@ -4,17 +4,15 @@ pragma solidity 0.7.6;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
- * @title Check Point History library
+ * @title DelegationHistory library
  * @notice A contract to manage checkpoints as of a given block.
  * @dev Store value history by block number with detachable state.
  **/
 library DelegationHistory {
     using SafeMath for uint256;
 
-    uint8 public constant MAX_DELEGATES_BY_PERCENT = 3;
+    uint public constant MAX_DELEGATES_BY_PERCENT = 3;
     string private constant MAX_DELEGATES_MSG = "Max delegates exceeded";
-    
-    uint256 private constant NOT_FOUND = uint256(-1);
     
     /**
      * @dev `CheckPoint` is the structure that attaches a block number to a
@@ -47,10 +45,8 @@ library DelegationHistory {
         address delegate, 
         uint256 blockNumber
     ) internal view returns (uint256 value) {
-        uint256 index = indexOfGreatestBlockLessThanIfExists(self.checkpoints, blockNumber);
-        if (index == NOT_FOUND) {
-            return 0;
-        }
+        (bool found, uint256 index) = findGreatestBlockLessThan(self.checkpoints, blockNumber);
+        if (!found) return 0;
 
         // find the delegate and return the corresponding value
         CheckPoint storage cp = self.checkpoints[index];
@@ -77,60 +73,37 @@ library DelegationHistory {
     }
 
     /**
-     * @notice Writes `value` at `blockNumber`.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param delegate The delegate tu update.
-     * @param value The new value to set for this delegate (0 value deletes delegate from the list).
-     * @param blockNumber The block at which to write.
-     **/
-    function writeValueAt(
-        CheckPointHistoryState storage self, 
-        address delegate, 
-        uint256 value, 
-        uint256 blockNumber
-    ) internal {
-        uint256 historyCount = self.checkpoints.length;
-        if (historyCount == 0) {
-            // checkpoints array empty, push new CheckPoint
-            if (value != 0) {
-                CheckPoint storage cp = self.checkpoints.push();
-                cp.fromBlock = blockNumber;
-                cp.delegates.push(delegate);
-                cp.values.push(value);
-            }
-        } else if (blockNumber == self.checkpoints[historyCount - 1].fromBlock) {
-            // If last check point is blockNumber input, just update
-            updateDelegates(self.checkpoints[historyCount - 1], delegate, value);
-        } else if (blockNumber > self.checkpoints[historyCount - 1].fromBlock) {
-            // If last check point block is before
-            CheckPoint storage cp = self.checkpoints.push();
-            cp.fromBlock = blockNumber;
-            copyAndUpdateDelegates(cp, self.checkpoints[historyCount - 1], delegate, value);
-        } else {
-            // Find the block with number less than or equal to block given
-            uint256 index = indexOfGreatestBlockLessThanIfExists(self.checkpoints, blockNumber);
-            if (index == NOT_FOUND) {
-                require(value == 0, "Cannot set nonzero value before first checkpoint");
-                return; // do nothing - the value before first checkpoint is already zero
-            }
-            // Update the checkpoint value
-            updateDelegates(self.checkpoints[index], delegate, value);
-        }
-    }
-    
-    /**
      * @notice Writes the value at the current block.
      * @param self A CheckPointHistoryState instance to manage.
      * @param delegate The delegate tu update.
      * @param value The new value to set for this delegate (0 value deletes delegate from the list).
      * @return blockNumber The block number that the value was written at. 
      **/
-    function writeValueAtNow(
+    function writeValue(
         CheckPointHistoryState storage self, 
         address delegate, 
         uint256 value
     ) internal returns (uint256 blockNumber) {
-        writeValueAt(self, delegate, value, block.number);
+        uint256 historyCount = self.checkpoints.length;
+        if (historyCount == 0) {
+            // checkpoints array empty, push new CheckPoint
+            if (value != 0) {
+                CheckPoint storage cp = self.checkpoints.push();
+                cp.fromBlock = block.number;
+                cp.delegates.push(delegate);
+                cp.values.push(value);
+            }
+        } else if (block.number == self.checkpoints[historyCount - 1].fromBlock) {
+            // If last check point is blockNumber input, just update
+            updateDelegates(self.checkpoints[historyCount - 1], delegate, value);
+        } else {
+            // last block cannot be from the future
+            assert(block.number > self.checkpoints[historyCount - 1].fromBlock); 
+            // last check point block is before
+            CheckPoint storage cp = self.checkpoints.push();
+            cp.fromBlock = block.number;
+            copyAndUpdateDelegates(cp, self.checkpoints[historyCount - 1], delegate, value);
+        }
         return block.number;
     }
     
@@ -148,8 +121,8 @@ library DelegationHistory {
         address[] memory delegates,
         uint256[] memory values
     ) {
-        uint index = indexOfGreatestBlockLessThanIfExists(self.checkpoints, blockNumber);
-        if (index == NOT_FOUND) {
+        (bool found, uint256 index) = findGreatestBlockLessThan(self.checkpoints, blockNumber);
+        if (!found) {
             return (new address[](0), new uint256[](0));
         }
 
@@ -181,32 +154,6 @@ library DelegationHistory {
     }
     
     /**
-     * Get number of percentage delegations active at a time.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param blockNumber The block number to query. 
-     * @return count Number of active percentage delegates at the time. 
-     **/
-    function delegateCountAt(
-        CheckPointHistoryState storage self, 
-        uint256 blockNumber
-    ) internal view returns (uint256 count) {
-        uint index = indexOfGreatestBlockLessThanIfExists(self.checkpoints, blockNumber);
-        if (index == NOT_FOUND) return 0;
-        return self.checkpoints[index].delegates.length;
-    }
-
-    /**
-     * Get number of percentage delegations currently active.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @return count Number of active percentage delegates. 
-     **/
-    function delegateCountAtNow(
-        CheckPointHistoryState storage self
-    ) internal view returns (uint256 count) {
-        return delegateCountAt(self, block.number);
-    }
-    
-    /**
      * Get the sum of all delegation values.
      * @param self A CheckPointHistoryState instance to query.
      * @param blockNumber The block number to query. 
@@ -216,8 +163,8 @@ library DelegationHistory {
         CheckPointHistoryState storage self, 
         uint256 blockNumber
     ) internal view returns (uint256 total) {
-        uint index = indexOfGreatestBlockLessThanIfExists(self.checkpoints, blockNumber);
-        if (index == NOT_FOUND) return 0;
+        (bool found, uint256 index) = findGreatestBlockLessThan(self.checkpoints, blockNumber);
+        if (!found) return 0;
         
         CheckPoint storage cp = self.checkpoints[index];
         uint length = cp.values.length;
@@ -320,7 +267,7 @@ library DelegationHistory {
      * @param checkpoints An array of CheckPoint to search.
      * @param blockNumber The block number to search for.
      */
-    function indexOfGreatestBlockLessThan(
+    function binarySearchGreatestBlockLessThan(
         CheckPoint[] storage checkpoints, 
         uint256 blockNumber
     ) private view returns (uint256 index) {
@@ -339,22 +286,32 @@ library DelegationHistory {
     }
 
     /**
-     * Like `indexOfGreatestBlockLessThan` but returns `NOT_FOUND` if no such block exists.
-     * Extra optimized for the common case when we are searching for the last block.
+     * @notice Binary search of checkpoints array. Extra optimized for the common case when we are 
+     *   searching for the last block.
+     * @param checkpoints An array of CheckPoint to search.
+     * @param blockNumber The block number to search for.
+     * @return found true if value was found (only `false` if `blockNumber` is before first 
+     *   checkpoint or the checkpoint array is empty)
+     * @return index index of the newst block with number less than or equal `blockNumber`
      */
-    function indexOfGreatestBlockLessThanIfExists(
+    function findGreatestBlockLessThan(
         CheckPoint[] storage checkpoints, 
         uint256 blockNumber
-    ) private view returns (uint256 index) {
+    ) private view returns (
+        bool found,
+        uint256 index
+    ) {
         uint256 historyCount = checkpoints.length;
         if (historyCount == 0) {
-            return NOT_FOUND;
+            found = false;
         } else if (blockNumber >= checkpoints[historyCount - 1].fromBlock) {
-            return historyCount - 1;
+            found = true;
+            index = historyCount - 1;
         } else if (blockNumber < checkpoints[0].fromBlock) {
-            return NOT_FOUND;
+            found = false;
         } else {
-            return indexOfGreatestBlockLessThan(checkpoints, blockNumber);
+            found = true;
+            index = binarySearchGreatestBlockLessThan(checkpoints, blockNumber);
         }
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {VotePower} from "../../lib/VotePower.sol";
+import {VotePower} from "../lib/VotePower.sol";
 
 /**
  * @title Vote Power mock contract
@@ -31,14 +31,6 @@ contract VotePowerMock {
         _self._mint(owner, amount);
     }
 
-    function revokeAt(
-        address delegator, 
-        address delegatee, 
-        uint256 blockNumber
-    ) public returns (uint256 votePowerRevoked) {
-        return _self.revokeAt(delegator, delegatee, blockNumber);
-    }
-
     function transmit(
         address from, 
         address to,
@@ -52,21 +44,6 @@ contract VotePowerMock {
         address delegatee,
         uint256 amount) public {
         _self.undelegate(delegator, delegatee, amount);
-    }
-
-    function votePowerFromToAt(
-        address from, 
-        address to, 
-        uint blockNumber)
-        public view returns(uint256 votePower) {
-        return _self.votePowerFromToAt(from, to, blockNumber);
-    }
-
-    function votePowerFromToAtNow(
-        address from, 
-        address to)
-        public view returns(uint256 votePower) {
-        return _self.votePowerFromToAtNow(from, to);
     }
 
     function votePowerOfAt(
