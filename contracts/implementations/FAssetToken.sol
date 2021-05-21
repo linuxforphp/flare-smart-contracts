@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import {ICollateralizable} from "../ICollateralizable.sol";
-import {Governed} from "./Governed.sol";
+import {Governed} from "../governance/implementation/Governed.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {VPToken} from "./VPToken.sol";
 

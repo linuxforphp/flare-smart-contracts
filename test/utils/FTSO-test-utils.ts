@@ -744,7 +744,7 @@ export async function moveToRevealStart(epochStartTimestamp: number, epochPeriod
  * @param epochStartTimestamp - start timemestamp from when epoch are counted, must match to the one set in the FTSO contract
  * @param epochPeriod - epoch period in seconds, must match to the one set in the FTSO contract
  * @param revealPeriod - reveal period in seconds, must match to the one set in the FTSO contract
- * @param epoch 
+ * @param epoch - epoch number
  */
 export async function moveToFinalizeStart(epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, epoch: number) {
     let finalizeTimestamp = (epoch + 1) * epochPeriod + epochStartTimestamp + revealPeriod + 1;
@@ -838,7 +838,8 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     let len = testExample.prices.length;
 
     // Submit price
-    await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
+    // CCB: I added an offset to prevent test from occasionally failing due to timing skew.
+    await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod, 1);
     logger.log(`EPOCH 1: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`SUBMIT PRICE ${ len }`);
     const { epoch } = await submitPrice(signers, ftso, testExample.prices);
@@ -925,7 +926,17 @@ export async function finalizePriceEpochWithResult(signer: SignerWithAddress, ft
 
 export async function createMockFtsoManager(priceSubmitterAddress: string): Promise<string> {
     let mockFtsoManager: MockContractInstance = await MockFtsoManager.new();
-    let ftsoManagerInterface: FtsoManagerInstance = await FtsoManager.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, priceSubmitterAddress, 120, 10, 60, 3600, 10, 7);
+    let ftsoManagerInterface: FtsoManagerInstance = await FtsoManager.new(
+      constants.ZERO_ADDRESS, 
+      constants.ZERO_ADDRESS, 
+      priceSubmitterAddress, 
+      constants.ZERO_ADDRESS,
+      120, 
+      10, 
+      60, 
+      3600, 
+      10, 
+      7);
 
     const priceSubmitter = ftsoManagerInterface.contract.methods.priceSubmitter().encodeABI();
     const priceSubmitterReturn = web3.eth.abi.encodeParameter('address', priceSubmitterAddress);

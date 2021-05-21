@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interface/IIFtsoManager.sol";
-import "../interface/IIFtso.sol";
-import "../../userInterfaces/IPriceSubmitter.sol";
+import { FtsoInflationAuthorizer } from "../../inflation/implementation/FtsoInflationAuthorizer.sol";
+import "../../userInterfaces/IFtsoManager.sol";
 import "../../interfaces/IRewardManager.sol";
 import "../../interfaces/IFlareKeep.sol";
-import "../../implementations/Governed.sol";
-
+import "../interface/IIFtso.sol";
+import "../../userInterfaces/IPriceSubmitter.sol";
+import "../../governance/implementation/Governed.sol";
+import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoManagerSettings.sol";
+//import "hardhat/console.sol";
 
 /**
  * FtsoManager is in charge of:
@@ -68,6 +70,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     mapping(IIFtso => bool) internal managedFtsos;
     IRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
+    FtsoInflationAuthorizer internal ftsoInflationAuthorizer;
 
     // flags
     bool private justStarted;
@@ -82,6 +85,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         address _governance,
         IRewardManager _rewardManager,
         IPriceSubmitter _priceSubmitter,
+        FtsoInflationAuthorizer _ftsoInflationAuthorizer,
         uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
         uint256 _revealEpochDurationSec,
@@ -111,6 +115,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         votePowerBoundaryFraction = _votePowerBoundaryFraction;
         rewardManager = _rewardManager;
         priceSubmitter = _priceSubmitter;
+        ftsoInflationAuthorizer = _ftsoInflationAuthorizer;
         justStarted = true;
     }
 
@@ -148,6 +153,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
             if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec < block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
                 _finalizePriceEpoch();
+                _closeExpiredRewardEpochs();
             }
             // Note: prices should be first finalized and then new reward epoch can start
             if (currentRewardEpochEnds < block.timestamp) {
@@ -419,6 +425,16 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         currentRewardEpochEnds += rewardEpochDurationSec;
     }
 
+    function _closeExpiredRewardEpochs() internal {
+        try rewardManager.closeExpiredRewardEpochs() {
+            
+        } catch {
+            // closing of expired failed, which is not critical
+            // just emit event for diagnostics
+            emit ClosingExpiredRewardEpochsFailed();
+        }        
+    }
+
     /**
      * @notice Finalizes price epoch
      * @dev TODO: This function is risky, as it does many things.
@@ -444,7 +460,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                         IIFtso(priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso).getCurrentRandom()
                     ))) % numFtsos;
             }
-
             address[] memory addresses;
             uint256[] memory weights;
             uint256 totalWeight;
@@ -469,7 +484,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                     }
                 } catch {
                     try ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-
                     } catch {
                         try ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
 
@@ -490,7 +504,8 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                 try rewardManager.distributeRewards(
                     addresses, weights, totalWeight,
                     lastUnprocessedPriceEpoch, rewardedFtsoAddress,
-                    priceEpochDurationSec, currentRewardEpoch) {
+                    getPriceEpochsRemainingInAnnum(lastUnprocessedPriceEpochEnds - priceEpochDurationSec),
+                    currentRewardEpoch) {
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
                 } catch {
                     // TODO: do remediation
@@ -561,6 +576,18 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
             if (!managedFtsos[_fAssetFtsos[i]]) {
                 revert(ERR_FASSET_FTSO_NOT_MANAGED);
             }
+        }
+    }
+
+    function getPriceEpochsRemainingInAnnum(uint256 fromTimestamp) internal view returns(uint256) {
+        uint256 endTimestamp;
+
+        (, , , endTimestamp, ) = 
+            ftsoInflationAuthorizer.inflationAnnums(ftsoInflationAuthorizer.currentAnnum());
+        if (fromTimestamp <= endTimestamp && priceEpochDurationSec >= 0) {
+            return (endTimestamp - fromTimestamp) / priceEpochDurationSec;
+        } else {
+            return 0;
         }
     }
 

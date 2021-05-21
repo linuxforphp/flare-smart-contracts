@@ -33,6 +33,8 @@ task(TASK_COMPILE)
       if (/VPToken.sol/.test(text) &&
         /Warning: This declaration shadows an existing declaration/.test(text) && 
         /votePower/.test(text)) return '';
+      if (/ReentrancyGuard.sol/.test(text) &&
+        /Warning: Visibility for constructor is ignored/.test(text)) return '';
       return text;
     });
     await runSuper(args);
@@ -107,7 +109,7 @@ const config: HardhatUserConfig = {
       accounts,
       initialDate: "2021-01-01",  // no time - get UTC @ 00:00:00
       blockGasLimit: 125000000 // 10x ETH gas 
-    }
+    },
   },
   solidity: {
     compilers: [
