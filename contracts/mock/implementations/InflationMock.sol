@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.0; // note. don't update version.
 
 import "@gnosis.pm/mock-contract/contracts/MockContract.sol";
 /**

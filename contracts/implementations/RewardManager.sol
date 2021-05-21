@@ -1,10 +1,21 @@
 // SPDX-License-Identifier: MIT
+
+// TODO: Hello Jan...I have created a FtsoRewardManagerAccounting.rewardsExpired method for you
+// to call when you have determined what rewards some poor souls will forfeit because they
+// were too slow to claim. This will keep the accounting system in balance with this contract.
+
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../lib/SafePct.sol";
+import "../governance/implementation/Governed.sol";
+import { FtsoRewardManagerAccounting } from "../accounting/implementation/FtsoRewardManagerAccounting.sol";
+import "../userInterfaces/IFtsoManager.sol";
 import "../interfaces/IRewardManager.sol";
-import "./Governed.sol";
+import "./WFLR.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { SupplyAccounting } from "../accounting/implementation/SupplyAccounting.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 // import "hardhat/console.sol";
 
@@ -13,7 +24,7 @@ import "./Governed.sol";
  * - distributing rewards according to instructions from FTSO Manager
  * - allowing claims for rewards
  */    
-contract RewardManager is IRewardManager, Governed {
+contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
 
     using SafePct for uint256;
     using SafeMath for uint256;
@@ -29,25 +40,23 @@ contract RewardManager is IRewardManager, Governed {
         bool[] claimed;             // positional array of booleans indicating if reward has already been claimed
     }
 
-    string internal constant ERR_INFLATION_ZERO = "no inflation";     
+    string internal constant ERR_INFLATION_ZERO = "no inflation"; 
+    string internal constant ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO = "no RM accounting";         
+    string internal constant ERR_SUPPLY_ACCOUNTING_ZERO = "no supply accounting";     
     string internal constant ERR_FTSO_MANAGER_ONLY = "ftso manager only";    
     string internal constant ERR_INFLATION_ONLY = "inflation only";    
     string internal constant ERR_FTSO_MANAGER_ZERO = "no ftso manager";
+    string internal constant ERR_REWARD_EPOCH_NOT_FINALIZED = "reward epoch not finalized";
+    string internal constant ERR_NO_REWARDS = "no rewards";   
+    string internal constant ERR_OUT_OF_BALANCE = "out of balance";
+    string internal constant ERR_CLAIM_FAILED = "claim failed";
+    string internal constant ERR_EXPIRED_REFUND_FAILED = "expired refund failed";
     string internal constant ERR_REWARD_NOT_EXPIRED = "reward not expired";
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
     string internal constant ERR_FEE_PERCENTAGE_INVALID = "invalid fee percentage value";
     string internal constant ERR_FEE_PERCENTAGE_UPDATE_FAILED = "fee percentage can not be updated";
-
-    // TODO: Note that there are leap seconds (last one was Dec 31, 2016).
-    // NOTE: They are not deterministic. IERS notifies the public in advance.
-    // In order to be technically correct, the governance contract would need to
-    // have a way to flip SECONDS_PER_DAY from 86400 to 86401 at the next June 30
-    // or Dec 31 (the only two days in a year when a leap second can be added).
-    // This assumes that the underlying operating system follows IERS recommendation,
-    // which Unix does not. Instead, it slows the clock down. Is this OS universal? Dunno.
-    uint32 constant private SECONDS_PER_DAY = 86400;
-
-    uint256 constant internal SHARING_PERCENTAGE_EPOCH_OFFSET = 2;
+    
+    // uint256 constant internal SHARING_PERCENTAGE_EPOCH_OFFSET = 2;
     uint256 constant internal MAX_BIPS = 1e4;
 
     bool internal active;
@@ -56,7 +65,10 @@ contract RewardManager is IRewardManager, Governed {
     uint256 public defaultFeePercentage; // default value for fee percentage
     
     uint256 public rewardExpiryOffset = 100; // period of reward expiry (in reward epochs)
-
+    
+    // id of the last closed reward epoch. Closed = expired and unclaimed funds sent back
+    uint256 public firstEpochToExpire = 0;       
+    
     /**
      * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed
      *  rewards.
@@ -64,40 +76,52 @@ contract RewardManager is IRewardManager, Governed {
     mapping(uint256 => mapping(address => uint256)) public unclaimedRewardsPerRewardEpoch;
     mapping(uint256 => mapping(address => uint256)) public totalRewardsPerRewardEpoch;
     mapping(uint256 => mapping(address => mapping(address => bool))) public rewardClaimed;
+    mapping(uint256 => uint256) public totalRewardEpochRewards;
+    mapping(uint256 => uint256) public claimedRewardEpochRewards;
+    
+
     mapping(address => FeePercentage[]) public dataProviderFeePercentages;
-    uint256 public dailyRewardAmountTwei;
-    uint256 public distributedSoFarTwei;
+    uint256 public distributedSoFar;
 
     /// addresses
-    address public inflationContract;
-    IIFtsoManager public ftsoManagerContract;
+    IFtsoManager public ftsoManagerContract;
+    FtsoRewardManagerAccounting public ftsoRewardManagerAccounting;
+
     WFLR public wFlr; 
+    SupplyAccounting public supplyAccounting;
 
     // flags
     bool private justStarted;
 
+    modifier mustBalance {
+        _;
+        // TODO: Jan, this will need to account for claims not posted to the accounting system.
+        // You'll need to reduce the number below by any claim paid and not posted.
+        uint256 rewardManagerAccountingBalance = ftsoRewardManagerAccounting.getRewardManagerBalance();
+        require(address(this).balance == rewardManagerAccountingBalance, ERR_OUT_OF_BALANCE);
+    }
+
     constructor(
         address _governance,
-        address _inflation
+        FtsoRewardManagerAccounting _ftsoRewardManagerAccounting,
+        SupplyAccounting _supplyAccounting
     ) Governed(_governance) 
     {
-        require(_inflation != address(0), ERR_INFLATION_ZERO);
+        require(address(_ftsoRewardManagerAccounting) != address(0), ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO);
+        require(address(_supplyAccounting) != address(0), ERR_SUPPLY_ACCOUNTING_ZERO);
         
-        inflationContract = _inflation;
+        ftsoRewardManagerAccounting = _ftsoRewardManagerAccounting;
+        supplyAccounting = _supplyAccounting;
         justStarted = true;
     }
 
-    receive() external payable {
+    receive() external payable mustBalance {
+        ftsoRewardManagerAccounting.receiveSupply(msg.value);
         emit FundsReceived(msg.sender, msg.value);
     }
 
     modifier onlyFtsoManager () {
         require (msg.sender == address(ftsoManagerContract), ERR_FTSO_MANAGER_ONLY);
-        _;
-    }
-
-    modifier onlyInflation () {
-        require (msg.sender == inflationContract, ERR_INFLATION_ONLY);
         _;
     }
 
@@ -177,7 +201,7 @@ contract RewardManager is IRewardManager, Governed {
     function claimReward(
         address payable _recipient,
         uint256[] memory _rewardEpochs
-    ) external override onlyIfActive returns (
+    ) external override onlyIfActive mustBalance nonReentrant returns (
         uint256 _rewardAmount
     ) {
         uint256 currentRewardEpoch = ftsoManagerContract.getCurrentRewardEpoch();
@@ -187,12 +211,20 @@ contract RewardManager is IRewardManager, Governed {
                 continue;
             }
             RewardState memory rewardState = _getStateOfRewards(msg.sender, _rewardEpochs[i], true);
-            _rewardAmount += _claimReward(_recipient, _rewardEpochs[i], rewardState);
+            uint256 amount = _claimReward(_recipient, _rewardEpochs[i], rewardState);
+            claimedRewardEpochRewards[_rewardEpochs[i]] += amount;
+            _rewardAmount += amount;
         }
 
         if (_rewardAmount > 0) {
             // transfer total amount (state is updated and events are emitted in _claimReward)
-            _recipient.transfer(_rewardAmount);
+            // _recipient.transfer(_rewardAmount);
+
+            ftsoRewardManagerAccounting.rewardsClaimed(_rewardAmount);
+            /* solhint-disable avoid-low-level-calls */
+            (bool success, ) = _recipient.call{value: _rewardAmount}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, ERR_CLAIM_FAILED);
         }
     }
 
@@ -220,12 +252,21 @@ contract RewardManager is IRewardManager, Governed {
             }
             RewardState memory rewardState;
             rewardState = _getStateOfRewardsFromDataProviders(msg.sender, _rewardEpochs[i], _dataProviders, true);
-            _rewardAmount += _claimReward(_recipient, _rewardEpochs[i], rewardState);
+
+            uint256 amount = _claimReward(_recipient, _rewardEpochs[i], rewardState);
+            claimedRewardEpochRewards[_rewardEpochs[i]] += amount;
+            _rewardAmount += amount;
         }
 
         if (_rewardAmount > 0) {
             // transfer total amount (state is updated and events are emitted in _claimReward)
-            _recipient.transfer(_rewardAmount);
+            // _recipient.transfer(_rewardAmount);
+            ftsoRewardManagerAccounting.rewardsClaimed(_rewardAmount);
+            /* solhint-disable avoid-low-level-calls */
+            (bool success, ) = _recipient.call{value: _rewardAmount}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, ERR_CLAIM_FAILED);
+
         }
     }
 
@@ -273,12 +314,6 @@ contract RewardManager is IRewardManager, Governed {
     function deactivate() external onlyGovernance {
         active = false;
     }
-
-    function setDailyRewardAmount(uint256 rewardAmountTwei) external override onlyInflation {
-        // TODO: Accounting of FLR in contract vs. this number needs to be reconciled
-        dailyRewardAmountTwei = rewardAmountTwei;
-        // TODO: add event
-    }
    
     /**
      * @notice sets FTSO manager corresponding to the reward manager
@@ -303,26 +338,22 @@ contract RewardManager is IRewardManager, Governed {
         uint256 totalWeight,
         uint256 epochId,
         address ftso,
-        uint256 priceEpochDurationSec,
+        uint256 priceEpochsRemaining,
         uint256 currentRewardEpoch
     ) external override ftsoManagerSet onlyFtsoManager returns (bool) {
 
-        // TODO: Due to remainders in division the sum of distributions for whole day will not 
-        // sum up into dailyRewardAmountTwei. 
-        // (dailyRewardAmountTwei * priceEpochDurationSec) % SECONDS_PER_DAY 
-        // will remain undistributed
-        uint256 totalPriceEpochRewardTwei = dailyRewardAmountTwei * priceEpochDurationSec / SECONDS_PER_DAY;
-        uint256 distributedSoFar = 0;
+        uint256 totalPriceEpochReward = 
+            supplyAccounting.getUndistributedFtsoInflationBalance().div(priceEpochsRemaining);
+        uint256 currentDistributedSoFar = 0;
         
-
         if (addresses.length == 0) return false;        
         // TODO: we should assure that in case we are here, totalWeight > 0. Please verify.
 
         uint256[] memory rewards = new uint256[](addresses.length);
 
         for (uint i = addresses.length - 1; i > 0; i--) {
-            uint256 rewardAmount = totalPriceEpochRewardTwei * weights[i] / totalWeight;
-            distributedSoFar += rewardAmount;
+            uint256 rewardAmount = totalPriceEpochReward * weights[i] / totalWeight;
+            currentDistributedSoFar += rewardAmount;
             rewards[i] = rewardAmount;
             unclaimedRewardsPerRewardEpoch[currentRewardEpoch][addresses[i]] +=
                 rewardAmount;
@@ -332,9 +363,14 @@ contract RewardManager is IRewardManager, Governed {
 
         // give remaining amount to last address.
         unclaimedRewardsPerRewardEpoch[currentRewardEpoch][addresses[0]] += 
-            totalPriceEpochRewardTwei - distributedSoFar;
+            totalPriceEpochReward - currentDistributedSoFar;
         totalRewardsPerRewardEpoch[currentRewardEpoch][addresses[0]] +=
-            totalPriceEpochRewardTwei - distributedSoFar;
+            totalPriceEpochReward - currentDistributedSoFar;
+
+        totalRewardEpochRewards[currentRewardEpoch] += totalPriceEpochReward;
+
+        // Update accounting with total amount distributed
+        ftsoRewardManagerAccounting.rewardsEarned(totalPriceEpochReward);
 
         emit RewardDistributedByFtso(ftso, epochId, addresses, rewards);
         return true; 
@@ -449,7 +485,7 @@ contract RewardManager is IRewardManager, Governed {
             if (rewardAmount > 0) {
                 assert(unclaimedRewardsPerRewardEpoch[_rewardEpoch][dataProvider] >= rewardAmount); // sanity check
                 unclaimedRewardsPerRewardEpoch[_rewardEpoch][dataProvider] -= rewardAmount;
-                distributedSoFarTwei += rewardAmount;
+                distributedSoFar += rewardAmount;
                 totalRewardAmount += rewardAmount;
             }
 
@@ -463,6 +499,21 @@ contract RewardManager is IRewardManager, Governed {
         }
 
         return totalRewardAmount;
+    }
+
+    function closeExpiredRewardEpochs() external override onlyFtsoManager {
+        uint256 expiredRewards = 0;
+        uint256 current = ftsoManagerContract.getCurrentRewardEpoch();
+        while(firstEpochToExpire < current && !_isRewardClaimable(firstEpochToExpire, current)) {
+            expiredRewards += 
+                totalRewardEpochRewards[firstEpochToExpire] - 
+                claimedRewardEpochRewards[firstEpochToExpire];
+            emit RewardClaimsExpired(firstEpochToExpire);
+            firstEpochToExpire++;
+        }
+        if(expiredRewards > 0) {
+            ftsoRewardManagerAccounting.rewardsExpired(expiredRewards);
+        }
     }
 
     /**

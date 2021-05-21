@@ -1,6 +1,5 @@
 const {constants, time} = require('@openzeppelin/test-helpers');
 
-import { ReadStream } from "node:fs";
 import { DummyFAssetMinterContract, 
   FAssetTokenContract,
   FtsoContract,
@@ -9,79 +8,37 @@ import { DummyFAssetMinterContract,
   RewardManagerContract,
   RewardManagerInstance,
   WFLRContract, 
-  InflationContract,
-  InflationInstance,
+  FtsoInflationAuthorizerContract,
+  FtsoInflationAuthorizerInstance,
   FAssetTokenInstance,
   FtsoManagerContract,
-  FtsoManagerInstance } from "../../../typechain-truffle";
+  FtsoManagerInstance,
+  FtsoInflationPercentageProviderContract,
+  FtsoInflationPercentageProviderInstance,
+  SupplyAccountingContract,
+  SupplyAccountingInstance,
+  FtsoInflationAccountingContract,
+  FtsoInflationAccountingInstance,
+  FlareNetworkGeneralLedgerContract,
+  FlareNetworkGeneralLedgerInstance,
+  FtsoRewardManagerAccountingContract,
+  FtsoRewardManagerAccountingInstance,
+  MintAccountingContract,
+  MintAccountingInstance,
+  FtsoRewardManagerTopupContract,
+  FtsoRewardManagerTopupInstance,
+  FtsoRewardMintingFaucetContract,
+  FtsoRewardMintingFaucetInstance,
+  FlareKeeperInstance} from "../../typechain-truffle";
+import { Contracts } from "../../scripts/Contracts";
 
 // import { serializedParameters } from "../../../scripts/DeploymentParameters";
 
 // console.log(process.argv)
 // // const parameters = JSON.parse(serializedParameters);
 
-const parameters = require(`../../../scripts/chain-config/${process.env.CHAIN_CONFIG}.json`)
+const parameters = require(`../../scripts/chain-config/${process.env.CHAIN_CONFIG}.json`)
 const BN = web3.utils.toBN;
-
-class Contracts {
-  private contracts: Map<string, string>;
-  public static readonly INFLATION = "Inflation";
-  public static readonly REWARD_MANAGER = "RewardManager";
-  public static readonly PRICE_SUBMITTER = "PriceSubmitter";
-  public static readonly FTSO_MANAGER = "FtsoManager";
-  public static readonly FLARE_KEEPER = "FlareKeeper";
-  public static readonly WFLR = "Wflr";
-  public static readonly FXRP = "Fxrp";
-  public static readonly DUMMY_FXRP_MINTER = "DummyFxrpMinter";
-  public static readonly FTSO_FXRP = "FtsoFxrp";
-  public static readonly FLTC = "Fltc";
-  public static readonly DUMMY_FLTC_MINTER = "DummyFltcMinter";
-  public static readonly FTSO_FLTC = "FtsoFltc";
-  public static readonly FXDG = "Fxdg";
-  public static readonly DUMMY_FXDG_MINTER = "DummyFxdgMinter";
-  public static readonly FTSO_FXDG = "FtsoFxdg";
-  public static readonly FTSO_WFLR = "FtsoWflr";
-
-  public static readonly FADA = "Fada";
-  public static readonly DUMMY_FADA_MINTER = "DummyFadaMinter";
-  public static readonly FTSO_FADA = "FtsoFada";
-  public static readonly FALGO = "Falgo";
-  public static readonly DUMMY_FALGO_MINTER = "DummyFalgoMinter";
-  public static readonly FTSO_FALGO = "FtsoFalgo";
-  public static readonly FBCH = "Fbch";
-  public static readonly DUMMY_FBCH_MINTER = "DummyFbchMinter";
-  public static readonly FTSO_FBCH = "FtsoFbch";
-  public static readonly FDGB = "Fdgb";
-  public static readonly DUMMY_FDGB_MINTER = "DummyFdgbMinter";
-  public static readonly FTSO_FDGB = "FtsoFdgb";
-
-
-  constructor() {
-    this.contracts = new Map<string, string>();
-  }
-
-  async deserialize(stream: any) {
-    const contractsJson = await this.read(stream);
-    const parsedContracts = JSON.parse(contractsJson);
-    parsedContracts.forEach((contract: { name: string; address: string; }) => {
-      this.contracts.set(contract.name, contract.address);
-    })
-  }
-
-  getContractAddress(name: string): string {
-    if (this.contracts.has(name)) {
-      return this.contracts.get(name) as string;
-    } else {
-      throw new Error(`${name} not found`);
-    }
-  }
-
-  async read(stream: ReadStream) {
-    const chunks = [];
-    for await (const chunk of stream) chunks.push(chunk); 
-    return Buffer.concat(chunks).toString('utf-8');
-  }    
-}
 
 async function findKeptContract(contracts: Contracts, address: string): Promise<boolean> {
   const FlareKeeper = artifacts.require("FlareKeeper");
@@ -132,6 +89,16 @@ async function findFtso(contracts: Contracts, address: string): Promise<boolean>
   return found;
 }
 
+async function findRoleMember(role: string, permissioningAddress: any, memberAddress: any): Promise<boolean> {
+  const roleMemberCount: BN = await permissioningAddress.getRoleMemberCount(role);
+  for (let i = 0; i < roleMemberCount.toNumber(); i++) {
+    if (await permissioningAddress.getRoleMember(role, i) == memberAddress.address) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * This test assumes a local chain is running with Flare allocated in accounts
  * listed in `./hardhat.config.ts`
@@ -144,12 +111,240 @@ contract(`deploy.ts system tests`, async accounts => {
     await contracts.deserialize(process.stdin);
   });
 
+  describe(Contracts.FTSO_REWARD_MINTING_FAUCET, async() => {
+    let FtsoRewardMintingFaucet: FtsoRewardMintingFaucetContract;
+    let ftsoRewardMintingFaucet: FtsoRewardMintingFaucetInstance;
+    let FlareKeeper: FlareKeeperContract;
+    let flareKeeper: FlareKeeperInstance;
+    let MintAccounting: MintAccountingContract;
+    let mintAccounting: MintAccountingInstance;
+    let RewardManager: RewardManagerContract;
+    let rewardManager: RewardManagerInstance;
+
+    beforeEach(async() => {
+      FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
+      ftsoRewardMintingFaucet = await FtsoRewardMintingFaucet.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MINTING_FAUCET));
+      FlareKeeper = artifacts.require("FlareKeeper");
+      flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
+      MintAccounting = artifacts.require("MintAccounting");
+      mintAccounting = await MintAccounting.at(contracts.getContractAddress(Contracts.MINT_ACCOUNTING));
+      RewardManager = artifacts.require("RewardManager");
+      rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+    });
+
+    it("Should have last withdraw timestamp set", async() => {
+      // Assemble
+      // Act
+      const lastFundsWithdrawTs = await ftsoRewardMintingFaucet.lastFundsWithdrawTs();
+      // Assert
+      assert(lastFundsWithdrawTs.gt(BN(0)));
+    });
+
+    it("Should have withdraw time lock set", async() => {
+      // Assemble
+      // Act
+      const fundWithdrawTimeLockSec = await ftsoRewardMintingFaucet.fundWithdrawTimeLockSec();
+      // Assert
+      assert.equal(fundWithdrawTimeLockSec.toNumber(), parameters.ftsoRewardMintingFaucetFundWithdrawTimeLockSec);
+    });
+
+    it("Should have fund request JIT interval set", async() => {
+      // Assemble
+      // Act
+      const fundRequestIntervalSec = await ftsoRewardMintingFaucet.fundRequestIntervalSec();
+      // Assert
+      assert.equal(fundRequestIntervalSec.toNumber(), parameters.ftsoRewardMintingFundRequestIntervalSec);
+    });
+
+    it("Should have flare keeper set", async() => {
+      // Assemble
+      // Act
+      const flareKeeperInContract = await ftsoRewardMintingFaucet.flareKeeper();
+      // Assert
+      assert.equal(flareKeeperInContract, flareKeeper.address);
+    });
+
+    it("Should have mint accounting set", async() => {
+      // Assemble
+      // Act
+      const mintAccountingInContract = await ftsoRewardMintingFaucet.mintAccounting();
+      // Assert
+      assert.equal(mintAccountingInContract, mintAccounting.address);
+    });
+
+    it("Should have ftso reward manager set", async() => {
+      // Assemble
+      // Act
+      const rewardManagerInContract = await ftsoRewardMintingFaucet.rewardManager();
+      // Assert
+      assert.equal(rewardManagerInContract, rewardManager.address);
+    });    
+  });
+
+  describe(Contracts.FTSO_REWARD_MANAGER_TOPUP, async() => {
+    let FtsoRewardManagerTopup: FtsoRewardManagerTopupContract;
+    let ftsoRewardManagerTopup: FtsoRewardManagerTopupInstance;
+    let RewardManager: RewardManagerContract;
+    let rewardManager: RewardManagerInstance;
+    let FtsoInflationAccounting: FtsoInflationAccountingContract;
+    let ftsoInflationAccounting: FtsoInflationAccountingInstance;
+
+    beforeEach(async() => {
+      FtsoRewardManagerTopup = artifacts.require("FtsoRewardManagerTopup");
+      ftsoRewardManagerTopup = await FtsoRewardManagerTopup.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER_TOPUP));
+      RewardManager = artifacts.require("RewardManager");
+      rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+      FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
+      ftsoInflationAccounting = await FtsoInflationAccounting.at(contracts.getContractAddress(Contracts.FTSO_INFLATION_ACCOUNTING));
+    });
+
+    it("Should know about the ftso reward manager", async() => {
+      // Assemble
+      // Act
+      // Assert
+      assert.equal(await ftsoRewardManagerTopup.rewardManager(), rewardManager.address);
+    });
+
+    it("Should know about ftso inflation accounting", async() => {
+      // Assemble
+      // Act
+      // Assert
+      assert.equal(await ftsoRewardManagerTopup.ftsoInflationAccounting(), ftsoInflationAccounting.address);
+    });
+  });
+
+  describe(Contracts.MINT_ACCOUNTING, async() => {
+    let MintAccounting: MintAccountingContract;
+    let mintAccounting: MintAccountingInstance;
+    let FlareNetworkGeneralLedger: FlareNetworkGeneralLedgerContract;
+    let gl: FlareNetworkGeneralLedgerInstance;
+
+    beforeEach(async() => {
+      MintAccounting = artifacts.require("MintAccounting");
+      mintAccounting = await MintAccounting.at(contracts.getContractAddress(Contracts.MINT_ACCOUNTING));
+      FlareNetworkGeneralLedger = artifacts.require("FlareNetworkGeneralLedger");
+      gl = await FlareNetworkGeneralLedger.at(contracts.getContractAddress(Contracts.FLARE_NETWORK_GENERAL_LEDGER));
+    });
+
+    it("Should know about the general ledger", async() => {
+      // Assemble
+      // Act
+      // Assert
+      assert.equal(await mintAccounting.gl(), gl.address);
+    });
+
+    it("Should have permission to post to GL", async() => {
+      // Assemble
+      // Act
+      const roleMemberFound = await findRoleMember(await gl.POSTER_ROLE(), gl, mintAccounting);
+      // Assert
+      assert(roleMemberFound);
+    });
+  });
+
+  describe(Contracts.FTSO_INFLATION_ACCOUNTING, async() => {
+    let FtsoInflationAccounting: FtsoInflationAccountingContract;
+    let ftsoInflationAccounting: FtsoInflationAccountingInstance;
+    let FlareNetworkGeneralLedger: FlareNetworkGeneralLedgerContract;
+    let gl: FlareNetworkGeneralLedgerInstance;
+
+    beforeEach(async() => {
+      FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
+      ftsoInflationAccounting = await FtsoInflationAccounting.at(contracts.getContractAddress(Contracts.FTSO_INFLATION_ACCOUNTING));
+      FlareNetworkGeneralLedger = artifacts.require("FlareNetworkGeneralLedger");
+      gl = await FlareNetworkGeneralLedger.at(contracts.getContractAddress(Contracts.FLARE_NETWORK_GENERAL_LEDGER));
+    });
+
+    it("Should know about the general ledger", async() => {
+      // Assemble
+      // Act
+      // Assert
+      assert.equal(await ftsoInflationAccounting.gl(), gl.address);
+    });
+
+    it("Should have permission to post to GL", async() => {
+      // Assemble
+      // Act
+      const roleMemberFound = await findRoleMember(await gl.POSTER_ROLE(), gl, ftsoInflationAccounting);
+      // Assert
+      assert(roleMemberFound);
+    });
+  });
+
+  describe(Contracts.FTSO_REWARD_MANAGER_ACCOUNTING, async() => {
+    let FtsoRewardManagerAccounting: FtsoRewardManagerAccountingContract;
+    let ftsoRewardManagerAccounting: FtsoRewardManagerAccountingInstance;
+    let FlareNetworkGeneralLedger: FlareNetworkGeneralLedgerContract;
+    let gl: FlareNetworkGeneralLedgerInstance;
+
+    beforeEach(async() => {
+      FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounting");
+      ftsoRewardManagerAccounting = await FtsoRewardManagerAccounting.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER_ACCOUNTING));
+      FlareNetworkGeneralLedger = artifacts.require("FlareNetworkGeneralLedger");
+      gl = await FlareNetworkGeneralLedger.at(contracts.getContractAddress(Contracts.FLARE_NETWORK_GENERAL_LEDGER));
+    });
+
+    it("Should know about the general ledger", async() => {
+      // Assemble
+      // Act
+      // Assert
+      assert.equal(await ftsoRewardManagerAccounting.gl(), gl.address);
+    });
+
+    it("Should have permission to post to GL", async() => {
+      // Assemble
+      // Act
+      const roleMemberFound = await findRoleMember(await gl.POSTER_ROLE(), gl, ftsoRewardManagerAccounting);
+      // Assert
+      assert(roleMemberFound);
+    });    
+  });
+
+  describe(Contracts.FTSO_INFLATION_PERCENTAGE_PROVIDER, async() => {
+    let FtsoInflationPercentageProvider: FtsoInflationPercentageProviderContract;
+    let ftsoInflationPercentageProvider: FtsoInflationPercentageProviderInstance;
+
+    beforeEach(async() => {
+      FtsoInflationPercentageProvider = artifacts.require("FtsoInflationPercentageProvider");
+      ftsoInflationPercentageProvider = await FtsoInflationPercentageProvider.at(contracts.getContractAddress(Contracts.FTSO_INFLATION_PERCENTAGE_PROVIDER));
+    });
+
+    it("Should fetch an ftso annual inflation percentage", async() => {
+      // Assemble
+      // Act
+      const percentage = await ftsoInflationPercentageProvider.getAnnualPercentageBips();
+      // Assert
+      assert(percentage.gt(BN(0)));
+    });
+  });
+
+  describe(Contracts.SUPPLY_ACCOUNTING, async() => {
+    let SupplyAccounting: SupplyAccountingContract;
+    let supplyAccounting: SupplyAccountingInstance;
+
+    beforeEach(async() => {
+      SupplyAccounting = artifacts.require("SupplyAccounting");
+      supplyAccounting = await SupplyAccounting.at(contracts.getContractAddress(Contracts.SUPPLY_ACCOUNTING));
+    });
+
+    it("Should fetch an inflatable supply balance", async() => {
+      // Assemble
+      // Act
+      const inflatableSupply = await supplyAccounting.getInflatableSupplyBalance();
+      // Assert
+      assert(inflatableSupply.gt(BN(0)));
+    });
+  });
+
   describe(Contracts.FLARE_KEEPER, async() => {
     it("Should be keeping", async() => {
       // Assemble
       const FlareKeeper = artifacts.require("FlareKeeper") as FlareKeeperContract;
       const flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
         // Act
+      if (flareKeeper.address != parameters.flareKeeperAddress) {
+        await flareKeeper.trigger();
+      }
       const systemLastTriggeredAt = await flareKeeper.systemLastTriggeredAt();
       // Assert
       assert(systemLastTriggeredAt.toNumber() > 0);
@@ -158,7 +353,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be keeping inflation contract", async() => {
       // Assemble
       // Act
-      const found = await findKeptContract(contracts, contracts.getContractAddress(Contracts.INFLATION));
+      const found = await findKeptContract(contracts, contracts.getContractAddress(Contracts.FTSO_INFLATION_AUTHORIZER));
       // Assert
       assert(found);
     });
@@ -200,41 +395,23 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.INFLATION, async() => {
-    let Inflation: InflationContract;
-    let inflation: InflationInstance;
+  describe(Contracts.FTSO_INFLATION_AUTHORIZER, async() => {
+    let Inflation: FtsoInflationAuthorizerContract;
+    let inflation: FtsoInflationAuthorizerInstance;
 
     beforeEach(async() => {
-        Inflation = artifacts.require("Inflation");
-        inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
+        Inflation = artifacts.require("FtsoInflationAuthorizer");
+        inflation = await Inflation.at(contracts.getContractAddress(Contracts.FTSO_INFLATION_AUTHORIZER));
     });
 
-    it("Should know the reward manager", async() => {
+    it("Should have the inflation to allocate set", async() => {
         // Assemble
+        const currentFlareAnnum = await inflation.currentAnnum();
         // Act
-        const rewardManager = await inflation.rewardManager();
+        await inflation.keep();
         // Assert
-        // If the keeper is calling keep on the RewardManager, then there should be
-        // an active reward epoch.
-        assert.equal(rewardManager, contracts.getContractAddress(Contracts.REWARD_MANAGER));
-    });
-
-    it("Should end current annum in the future", async() => {
-        // Assemble
-        const currentTs = await time.latest();
-        // Act
-        const endAnnumTs = await inflation.currentAnnumEndsTs();
-        // Assert
-        assert(endAnnumTs > currentTs, "Current timestamp after end of annum timestamp");
-    });
-
-    it("Should have the total supply set", async() => {
-        // Assemble
-        const currentFlareAnnum = await inflation.currentFlareAnnum();
-        // Act
-        const totalSupply = (await inflation.flareAnnumData(currentFlareAnnum))[0];
-        // Assert
-        assert(totalSupply.eq(web3.utils.toWei(BN(parameters.totalFlrSupply))));
+        const { 0: inflationToAllocateTWei } = await inflation.inflationAnnums(currentFlareAnnum);
+        assert(inflationToAllocateTWei.gt(BN(0)));
     });
   });
 
@@ -247,28 +424,12 @@ contract(`deploy.ts system tests`, async accounts => {
       rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
     });
 
-    it("Should know about inflation contract", async() => {
-      // Assemble
-      // Act
-      const inflation = await rewardManager.inflationContract();
-      // Assert
-      assert.equal(inflation, contracts.getContractAddress(Contracts.INFLATION));
-    });
-
     it("Should know about the FTSO manager contract", async() => {
       // Assemble
       // Act
       const ftsoManager = await rewardManager.ftsoManagerContract();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });
-
-    it("Should have a daily reward amount set", async() => {
-      // Assemble
-      // Act
-      const dailyReward = await rewardManager.dailyRewardAmountTwei();
-      // Assert
-      assert(dailyReward.gt(BN(0)));
     });
   });
 

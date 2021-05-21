@@ -1,15 +1,35 @@
-import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, InflationMockContract, InflationMockInstance, MockContractContract, MockContractInstance, RewardManagerContract, RewardManagerInstance, WFLRContract, WFLRInstance } from "../../../typechain-truffle";
+import {
+    FlareNetworkGeneralLedgerInstance,
+    FtsoInflationAccountingInstance,
+    FtsoInflationAuthorizerInstance,
+    FtsoInstance,
+    FtsoManagerInstance,
+    FtsoRewardManagerAccountingInstance,
+    MockContractInstance,
+    RewardManagerInstance,
+    SupplyAccountingInstance,
+    WFLRInstance
+} from "../../../typechain-truffle";
+
 import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
+import { FlareNetworkChartOfAccounts } from "../../utils/Accounting";
 
-const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
-const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
-const Inflation = artifacts.require("InflationMock") as InflationMockContract;
-const Ftso = artifacts.require("Ftso") as FtsoContract;
-const MockFtso = artifacts.require("MockContract") as MockContractContract;
-const WFLR = artifacts.require("WFLR") as WFLRContract;
+const BN = web3.utils.toBN;
+
+
+const RewardManager = artifacts.require("RewardManager");
+const FtsoManager = artifacts.require("FtsoManager");
+const FtsoInflationAuthorizer = artifacts.require("FtsoInflationAuthorizer");
+const Ftso = artifacts.require("Ftso");
+const MockContract = artifacts.require("MockContract");
+const WFLR = artifacts.require("WFLR")
+const FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounting");
+const FlareNetworkGeneralLedger = artifacts.require("FlareNetworkGeneralLedger");
+const SupplyAccounting = artifacts.require("SupplyAccounting");
+const FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -20,21 +40,58 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     // contains a fresh contract for each test
     let rewardManager: RewardManagerInstance;
     let ftsoManager: FtsoManagerInstance;
-    let inflation: InflationMockInstance;
+    let ftsoInflationAuthorizer: FtsoInflationAuthorizerInstance;
+    let mockInflationPercentageProvider: MockContractInstance;
     let startTs: BN;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
     let wFlr: WFLRInstance;
+    let ftsoRewardManagerAccounting: FtsoRewardManagerAccountingInstance;
+    let gl: FlareNetworkGeneralLedgerInstance;
+    let supplyAccounting: SupplyAccountingInstance;
+    let ftsoInflationAccounting: FtsoInflationAccountingInstance;
 
     beforeEach(async () => {
-        mockFtso = await MockFtso.new();
-        inflation = await Inflation.new();
+        mockFtso = await MockContract.new();
         ftsoInterface = await Ftso.new(
             "FLR",
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             0
         );
+
+        mockInflationPercentageProvider = await MockContract.new()
+        const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0, 10);
+        // Allocate at 9%
+        await mockInflationPercentageProvider.givenMethodReturnUint(getAnnualPercentageBips, 1000);
+
+        // Wire up accounting system
+        gl = await FlareNetworkGeneralLedger.new(accounts[0]);
+        ftsoRewardManagerAccounting = await FtsoRewardManagerAccounting.new(accounts[0], gl.address);
+        await gl.grantRole(await gl.POSTER_ROLE(), ftsoRewardManagerAccounting.address);
+        supplyAccounting = await SupplyAccounting.new(gl.address);
+        ftsoInflationAccounting = await FtsoInflationAccounting.new(accounts[0], gl.address);
+        await gl.grantRole(await gl.POSTER_ROLE(), ftsoInflationAccounting.address);
+
+        // Put some balance into the genesis account, otherwise there will not be an inflatable balance.
+        await gl.grantRole(await gl.POSTER_ROLE(), accounts[0]);
+        const journalEntries = [];
+        journalEntries[0] = { accountName: FlareNetworkChartOfAccounts.GENESIS, debit: "1000000000", credit: 0 };
+        journalEntries[1] = { accountName: FlareNetworkChartOfAccounts.GENESIS_TOKEN, debit: 0, credit: "1000000000" };
+        await gl.post(journalEntries);
+
+        // Wire up inflation authorizer
+        ftsoInflationAuthorizer = await FtsoInflationAuthorizer.new(
+          accounts[0],
+          86400,
+          0,
+          mockInflationPercentageProvider.address,
+          supplyAccounting.address,
+          ftsoInflationAccounting.address);
+        // FtsoInflationAuthorizer will post to the FtsoInflationAccounting contract
+        await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.POSTER_ROLE(), ftsoInflationAuthorizer.address);
+        // Prime the inflation authorizer so we get a new annum
+        await ftsoInflationAuthorizer.keep();
 
         // Force a block in order to get most up to date time
         await time.advanceBlock();
@@ -43,15 +100,19 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         rewardManager = await RewardManager.new(
             accounts[0],
-            inflation.address,
+            ftsoRewardManagerAccounting.address,
+            supplyAccounting.address
             // 172800,                      // Reward epoch 2 days
             // startTs
         );
+        // RewardManager will post to the reward manager accounting contract
+        ftsoRewardManagerAccounting.grantRole(await ftsoRewardManagerAccounting.POSTER_ROLE(), rewardManager.address);
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
             rewardManager.address,
             accounts[7],
+            ftsoInflationAuthorizer.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -64,12 +125,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         await rewardManager.setFTSOManager(ftsoManager.address);
         await rewardManager.setWFLR(wFlr.address);
-        await inflation.setRewardManager(rewardManager.address);
         await rewardManager.activate();
     });
 
     describe("Price epochs, finalization", async () => {
-        
+
         it("Should finalize price epoch and distribute unclaimed rewards", async () => {
             // Assemble
             // stub ftso randomizer
@@ -84,8 +144,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
             // give reward manager some flr to distribute
             await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
-            // set the daily reward amount
-            await inflation.setRewardManagerDailyRewardAmount(1000000);
 
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.activate();
@@ -100,17 +158,20 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await time.increaseTo(startTs.addn(120 + 30));
 
             // Act
-            // Simulate the keeper tickling reward manager
+            // Simulate the keeper tickling ftso manager
             await ftsoManager.keep();
 
             // Assert
-            // a1 should be (1000000 / (86400 / 120)) * 0.25 = 347
-            // a2 should be = (1000000 / (86400 / 120)) * 0.75 = 1041
-            // TODO: There is a remainder of 0.8 repeating. It is not being allocated. Ok?
+            // 282600 is number of 2 minute price epochs in 1 year
+            // 100000000 is 10% inflation on 1000000000
+            // a1 should be (100000000 / 262800) * 0.25 = 95.129
+            // a2 should be = (100000000 / 262800) * 0.75 = 285.388
+            // There is a remainder. It is not being allocated. It should get progressively
+            // smaller using a double declining balance allocation.
             let a1UnclaimedReward = await rewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[1]);
             let a2UnclaimedReward = await rewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[2]);
-            assert.equal(a1UnclaimedReward.toNumber(), 347);
-            assert.equal(a2UnclaimedReward.toNumber(), 1041);
+            assert.equal(a1UnclaimedReward.toString(), "95");
+            assert.equal(a2UnclaimedReward.toString(), "285");
         });
     });
 
@@ -119,7 +180,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         it("Should enable rewards to be claimed once reward epoch finalized", async () => {
             // deposit some wflrs
             await wFlr.deposit({ from: accounts[1], value: "100" });
-            
             // Assemble
             // stub ftso randomizer
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
@@ -130,9 +190,10 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
                 ['address[]', 'uint256[]', 'uint256'],
                 [[accounts[1], accounts[2]], [25, 75], 100]);
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+            // Stub accounting system to make it balance with RM contract
+
             // give reward manager some flr to distribute
             await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
-            await inflation.setRewardManagerDailyRewardAmount(1000000);
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -144,7 +205,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await time.increaseTo(startTs.addn(120 + 30));
             // Trigger price epoch finalization
             await ftsoManager.keep();
-
             // Time travel 2 days
             await time.increaseTo(startTs.addn(172800));
             // Trigger reward epoch finalization and another finalization
@@ -154,13 +214,12 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees
             let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await rewardManager.claimReward(accounts[3], [ 0 ], { from: accounts[1] });
+            await rewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
 
             // Assert
-            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 finalizations = 694
+            // a1 -> a3 claimed should be (100000000 / 262800) * 0.25 * 2 finalizations = 190
             let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), Math.floor(1000000 / (86400 / 120) * 0.25 * 2));
+            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), Math.floor(100000000 / 262800 * 0.25 * 2));
         });
     });
-
 });

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../../interfaces/IFAsset.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
-
 import "../lib/FtsoEpoch.sol";
 import "../lib/FtsoVote.sol";
 import "../lib/FtsoMedian.sol";

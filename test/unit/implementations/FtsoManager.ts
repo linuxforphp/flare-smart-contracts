@@ -1,15 +1,32 @@
-import { FtsoContract, FtsoInstance, FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance, MockVPTokenContract, MockVPTokenInstance, RewardManagerContract, RewardManagerInstance } from "../../../typechain-truffle";
-import { revealSomePrices, RewardEpochData, setDefaultGovernanceParameters, settingWithFourFTSOs, settingWithOneFTSO_1, settingWithTwoFTSOs, submitSomePrices, toNumberify } from "../../utils/FtsoManager-test-utils";
+import { 
+  FtsoInflationAuthorizerInstance,
+  FtsoInstance, 
+  FtsoManagerInstance, 
+  MockContractInstance, 
+  MockVPTokenContract, 
+  MockVPTokenInstance, 
+  RewardManagerInstance } from "../../../typechain-truffle";
+import { 
+  revealSomePrices, 
+  RewardEpochData, 
+  setDefaultGovernanceParameters, 
+  settingWithFourFTSOs, 
+  settingWithOneFTSO_1, 
+  settingWithTwoFTSOs, 
+  submitSomePrices, 
+  toNumberify } from "../../utils/FtsoManager-test-utils";
 import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN } from "../../utils/test-helpers";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
-const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
-const Ftso = artifacts.require("Ftso") as FtsoContract;
-const MockFtso = artifacts.require("MockContract") as MockContractContract;
-const MockRewardManager = artifacts.require("MockContract") as MockContractContract;
+const RewardManager = artifacts.require("RewardManager");
+const FtsoManager = artifacts.require("FtsoManager");
+const Ftso = artifacts.require("Ftso");
+const MockFtso = artifacts.require("MockContract");
+const MockContract = artifacts.require("MockContract");
+const MockRewardManager = artifacts.require("MockContract");
+const FtsoInflationAuthorizer = artifacts.require("FtsoInflationAuthorizer");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -29,6 +46,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let rewardManagerInterface: RewardManagerInstance;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
+    let ftsoInflationAuthorizer: FtsoInflationAuthorizerInstance;
+    let mockInflationPercentageProvider: MockContractInstance;
+    let mockSupplyAccounting: MockContractInstance;
+    let mockFtsoInflationAccounting: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockFtso.new();
@@ -47,13 +68,36 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         mockRewardManager = await MockRewardManager.new();
         rewardManagerInterface = await RewardManager.new(
             constants.ZERO_ADDRESS,
-            accounts[9]
+            accounts[9],
+            (await MockContract.new()).address
         );
+
+        // Get inflation happy...it would be nice if gnosis mock would return tuple mocks, but it does not.
+        mockInflationPercentageProvider = await MockContract.new();
+        mockSupplyAccounting = await MockContract.new();
+        mockFtsoInflationAccounting = await MockContract.new();
+        const getInflatableSupplyBalance = web3.utils.sha3("getInflatableSupplyBalance()")!.slice(0,10); // first 4 bytes is function selector
+        const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0,10);
+        await mockSupplyAccounting.givenMethodReturnUint(getInflatableSupplyBalance, 1000000);
+        await mockInflationPercentageProvider.givenMethodReturnUint(getAnnualPercentageBips, 1000);
+
+        ftsoInflationAuthorizer = await FtsoInflationAuthorizer.new(
+            accounts[0],
+            86400,
+            0,
+            mockInflationPercentageProvider.address,
+            mockSupplyAccounting.address,
+            mockFtsoInflationAccounting.address
+        );
+
+        // Prime to get a fresh annum
+        await ftsoInflationAuthorizer.keep();
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
             mockRewardManager.address,
             accounts[7],
+            ftsoInflationAuthorizer.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -505,15 +549,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochDurationSec,
+            // uint256 priceEpochsRemaining,
             // uint256 currentRewardEpoch
+            // There should be 262,800 120 second epochs in a year
             const distributeRewards = rewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
                 [25, 75],
                 100,
                 0,
                 mockFtso.address,
-                PRICE_EPOCH_DURATION_S,
+                262800,
                 0
             ).encodeABI();
 

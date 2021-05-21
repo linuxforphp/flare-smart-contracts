@@ -20,7 +20,6 @@ contract(`SafePct.sol; ${getTestFile(__filename)};  SafePct unit tests`, async a
 
     it(`Should calculate correctly 2`, async () => {
         let result = await safePct.mulDiv(toBN(10).pow(toBN(50)).add(toBN(1)), toBN(10).pow(toBN(50)).sub(toBN(1)), toBN(10).pow(toBN(30)));
-        console.log(result.toString())
         expect(result.eq(toBN(10).pow(toBN(70)).sub(toBN(1)))).to.be.true;
     });
 

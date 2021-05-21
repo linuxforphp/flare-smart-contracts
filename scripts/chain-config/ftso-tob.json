@@ -1,0 +1,79 @@
+{
+  "flareKeeperAddress": "0x1000000000000000000000000000000000000002",
+  "deployerPrivateKey": "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122",
+  "genesisGovernancePrivateKey": "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c",
+  "governancePrivateKey": "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
+  "ftsoInflationAuthorizationRequestFrequencySec": 14400,
+  "ftsoRewardMintingFaucetFundWithdrawTimeLockSec": 225,
+  "ftsoRewardMintingFundRequestIntervalSec": 20, 
+  "totalFlrSupply": 100000000000,
+  "rewardEpochDurationSec": 240,
+  "revealEpochDurationSec": 30,
+  "priceEpochDurationSec": 60,
+  "votePowerBoundaryFraction": 7,
+  "minVotePowerFlrThreshold": 10000000000,
+  "minVotePowerAssetThreshold": 10000000000,
+  "maxVotePowerFlrThreshold": 10,
+  "maxVotePowerAssetThreshold": 10,
+  "lowAssetUSDThreshold": 200000000,
+  "highAssetUSDThreshold": 3000000000,
+  "highAssetTurnoutBIPSThreshold": 100,
+  "lowFlrTurnoutBIPSThreshold": 300,
+  "trustedAddresses": [
+      "0xc783df8a850f42e7f7e57013759c285caa701eb6",
+      "0xead9c93b79ae7c1591b1fb5323bd777e86e150d4",
+      "0xe5904695748fe4a84b40b3fc79de2277660bd1d3",
+      "0x92561f28ec438ee9831d00d1d59fbdc981b762b2",
+      "0x2ffd013aaa7b5a7da93336c2251075202b33fb2b"
+  ],
+  "initialWflrPrice": 0,   
+  "XRP": {
+      "fAssetName": "Flare Asset XRP",
+      "fAssetSymbol": "FXRP",
+      "fAssetDecimals": 6,
+      "dummyFAssetMinterMax": 7000000000,
+      "initialPrice": 0
+  },
+  "LTC": {
+      "fAssetName": "Flare Asset Litecoin",
+      "fAssetSymbol": "FLTC",
+      "fAssetDecimals": 8,
+      "dummyFAssetMinterMax": 4000000000,
+      "initialPrice": 0
+  },
+  "XDG": {
+      "fAssetName": "Flare Asset Dogecoin",
+      "fAssetSymbol": "FXDG",
+      "fAssetDecimals": 8,
+      "dummyFAssetMinterMax": 13000000000000,
+      "initialPrice": 0
+  },
+  "ADA": {
+      "fAssetName": "Flare Asset ADA (Cardano)",
+      "fAssetSymbol": "FADA",
+      "fAssetDecimals": 8,
+      "dummyFAssetMinterMax": 45000000000,
+      "initialPrice": 0
+  },
+  "ALGO": {
+      "fAssetName": "Flare Asset Algorand",
+      "fAssetSymbol": "FALGO",
+      "fAssetDecimals": 8,
+      "dummyFAssetMinterMax": 5000000000,
+      "initialPrice": 0
+  },
+  "BCH": {
+      "fAssetName": "Flare Asset Bitcoin Cash",
+      "fAssetSymbol": "FBCH",
+      "fAssetDecimals": 8,
+      "dummyFAssetMinterMax": 21000000,
+      "initialPrice": 0
+  },
+  "DGB": {
+      "fAssetName": "Flare Asset Digibyte",
+      "fAssetSymbol": "FDGB",
+      "fAssetDecimals": 8,
+      "dummyFAssetMinterMax": 10000000000,
+      "initialPrice": 0
+  }
+}

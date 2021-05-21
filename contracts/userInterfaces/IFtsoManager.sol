@@ -10,6 +10,7 @@ interface IFtsoManager {
     event FtsoPanicMode(IIFtso ftso, bool panicMode);
     event RewardEpochFinalized(uint256 votepowerBlock, uint256 startBlock);
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
+    event ClosingExpiredRewardEpochsFailed();
 
     function active() external view returns (bool);
     

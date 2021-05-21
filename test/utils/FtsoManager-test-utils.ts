@@ -1,4 +1,4 @@
-import { FtsoInstance, FtsoManagerInstance, InflationMockInstance, MockContractInstance, MockFtsoContract, MockFtsoInstance, MockVPTokenContract, MockVPTokenInstance, RewardManagerInstance } from "../../typechain-truffle";
+import { FtsoInstance, FtsoManagerInstance, MockContractInstance, MockFtsoContract, MockFtsoInstance, MockVPTokenContract, MockVPTokenInstance } from "../../typechain-truffle";
 import { submitPriceHash, toBN } from "./test-helpers";
 
 const { constants } = require('@openzeppelin/test-helpers');

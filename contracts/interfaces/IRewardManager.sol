@@ -50,23 +50,27 @@ interface IRewardManager {
         uint256 validFromEpoch
     );
 
+    event RewardClaimsExpired(
+        uint256 rewardEpochId
+    );
+
     ///@dev sender claims his reward
     function claimReward(
         address payable recipient,
         uint256[] memory rewardEpoch
     ) external returns(uint256 rewardAmount);
     
+    function closeExpiredRewardEpochs() external;
+
     function distributeRewards(
         address[] memory addresses,
         uint256[] memory weights,
         uint256 totalWeight,
         uint256 epochId,
         address ftso,
-        uint256 priceEpochDurationSec,
+        uint256 priceEpochsRemaining,
         uint256 currentRewardEpoch
     ) external returns (bool);
-
-    function setDailyRewardAmount(uint256 rewardAmountTwei) external;
 
     function setFTSOManager(IIFtsoManager _ftsoManager) external;
     

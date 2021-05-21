@@ -4,29 +4,41 @@ import { FlareKeeperInstance,
 const {time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 const genesisGovernance = require('../../utils/constants').genesisGovernance;
+import { advanceBlock } from '../../utils/test-helpers';
+import { spewKeeperErrors } from "../../utils/FlareKeeperTestUtils";
+
+const BN = web3.utils.toBN;
 
 const FlareKeeper = artifacts.require("FlareKeeper");
 const FtsoManager = artifacts.require("FtsoManager");
 const RewardManagerMock = artifacts.require("MockContract");
+const MockContract = artifacts.require("MockContract");
+
 
 /**
  * This test assumes a local chain is running with Flare allocated in accounts
  * listed in `./hardhat.config.ts`
+ * It does not assume that contracts are deployed, other than the FlareKeeper, which should
+ * already be loaded in the genesis block.
  */
-contract(`FtsoManager.sol; ${getTestFile(__filename)}; FtsoManager system tests`, async accounts => {
+ contract(`FtsoManager.sol; ${getTestFile(__filename)}; FtsoManager system tests`, async accounts => {
     // Static address of the keeper on a local network
     let flareKeeper: FlareKeeperInstance;
 
     // fresh contracts for each test
     let rewardManagerMock: MockContractInstance;
     let startTs: any;
+    let mintAccountingMock: MockContractInstance;
+
 
     before(async() => {
         // Defined in fba-avalanche/avalanchego/genesis/genesis_coston.go
         flareKeeper = await FlareKeeper.at("0x1000000000000000000000000000000000000002");
+        mintAccountingMock = await MockContract.new();
         // Make sure keeper is initialized with a governance address...if may revert if already done.
         try {
             await flareKeeper.initialiseFixedAddress();
+            await flareKeeper.setMintAccounting(mintAccountingMock.address);
         } catch (e) {
             const governanceAddress = await flareKeeper.governance();
             if (genesisGovernance != governanceAddress) {
@@ -58,14 +70,24 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; FtsoManager system tests`
               startTs,
               0
             );
+            const fromBlock = await flareKeeper.systemLastTriggeredAt();
             await flareKeeper.registerToKeep(ftsoManager.address, {from: genesisGovernance});
             // Act
             await ftsoManager.activate({from: accounts[1]});
+            // Wait for some blocks to mine...
+            for(let i = 0; i < 5; i++) {
+              await new Promise(resolve => {
+                setTimeout(resolve, 1000);
+              });
+              await advanceBlock();  
+            }
             // Assert
             // If the keeper is calling keep on the RewardManager, then there should be
             // an active reward epoch.
-            const { 1: startBlock } = await ftsoManager.rewardEpochs(0);
-            assert(startBlock.toNumber() != 0);
+            const toBlock = await flareKeeper.systemLastTriggeredAt();
+            assert.equal(await spewKeeperErrors(flareKeeper, fromBlock, toBlock), 0);
+            const { 1: rewardEpochStartBlock } = await ftsoManager.rewardEpochs(0);
+            assert(rewardEpochStartBlock.toNumber() != 0);
         });
     });
 });
