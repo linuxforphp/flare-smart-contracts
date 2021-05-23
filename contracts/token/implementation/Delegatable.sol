@@ -7,8 +7,7 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {VotePower} from "../lib/VotePower.sol";
 import {VotePowerCache} from "../lib/VotePowerCache.sol";
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
-import {IVotePowerCached} from "../interface/IVotePowerCached.sol";
+import {IIVPToken} from "../interface/IIVPToken.sol";
 
 /**
  * @title Delegateable ERC20 behavior
@@ -16,7 +15,7 @@ import {IVotePowerCached} from "../interface/IVotePowerCached.sol";
  *  of a token to delegates. This contract orchestrates interaction between
  *  managing a delegation and the vote power allocations that result.
  **/
-abstract contract Delegatable is IVPToken, IVotePowerCached {
+abstract contract Delegatable is IIVPToken {
     using PercentageDelegation for PercentageDelegation.DelegationState;
     using ExplicitDelegation for ExplicitDelegation.DelegationState;
     using SafeMath for uint256;

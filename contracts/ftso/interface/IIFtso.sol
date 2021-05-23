@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "../../userInterfaces/IFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
+import "../../token/interface/IIVPToken.sol";
 
 interface IIFtso is IFtso {
 
@@ -64,7 +65,7 @@ interface IIFtso is IFtso {
         address[] memory _trustedAddresses
     ) external;
 
-    function setFAsset(IVPToken _fAsset) external;
+    function setFAsset(IIVPToken _fAsset) external;
 
     function setFAssetFtsos(IIFtso[] memory _fAssetFtsos) external;
 
@@ -79,7 +80,7 @@ interface IIFtso is IFtso {
      * @notice Returns the FTSO asset
      * @dev fAsset is null in case of multi-asset FTSO
      */
-    function getFAsset() external view returns (IVPToken);
+    function getFAsset() external view returns (IIVPToken);
 
     /**
      * @notice Returns the FAsset FTSOs

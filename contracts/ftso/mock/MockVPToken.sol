@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IVPToken.sol";
+import "../../token/interface/IIVPToken.sol";
 
 // import "hardhat/console.sol";
 
-contract MockVPToken is IVPToken {
+contract MockVPToken is IIVPToken {
     /* solhint-disable ordering */
 
     uint8 public _decimals = 0;
@@ -71,7 +71,15 @@ contract MockVPToken is IVPToken {
         return addressWeight[who];
     }
 
-    // empty implementations, to satisfy the IVPToken contract    
+    function votePowerAtCached(uint256 _blockNumber) external view override returns(uint256) {
+        return votePowerAt(_blockNumber);
+    }
+
+    function votePowerOfAtCached(address _owner, uint256 _blockNumber) external view override returns(uint256) {
+        return votePowerOfAt(_owner, _blockNumber);
+    }
+    
+    // empty implementations, to satisfy the IIVPToken contract    
     /* solhint-disable no-unused-vars */
     function allowance(address owner, address spender) external override view returns (uint256) {}
     function approve(address spender, uint256 amount) external override returns (bool) {}
@@ -95,4 +103,5 @@ contract MockVPToken is IVPToken {
     function revokeDelegationAt(address who, uint blockNumber) public override {}
     function votePowerFromTo(address from, address to) external view override returns(uint256) {}
     function votePowerFromToAt(address from, address to, uint blockNumber) external view override returns(uint256) {}
+    
 }

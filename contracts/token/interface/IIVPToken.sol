@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IVPToken} from "../../userInterfaces/IVPToken.sol";
 
-interface IVotePowerCached {
+interface IIVPToken is IVPToken {
     /**
     * @notice Get the vote power at block `_blockNumber` using cache.
     *   It tries to read the cached value and if not found, reads the actual value and stores it in cache.

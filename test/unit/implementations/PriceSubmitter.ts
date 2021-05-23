@@ -16,9 +16,9 @@ let priceSubmitter: PriceSubmitterInstance;
 let epochId: number;
 
 async function setMockVotePowerOfAt(blockNumber: number, wflrVotePower: number, address: string) {
-    const votePowerOfAt_wflr = wflrInterface.contract.methods.votePowerOfAt(address, blockNumber).encodeABI();
-    const votePowerOfAtReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
-    await mockWflr.givenMethodReturn(votePowerOfAt_wflr, votePowerOfAtReturn_wflr);
+    const votePowerOfAtCached_wflr = wflrInterface.contract.methods.votePowerOfAtCached(address, blockNumber).encodeABI();
+    const votePowerOfAtCachedReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
+    await mockWflr.givenMethodReturn(votePowerOfAtCached_wflr, votePowerOfAtCachedReturn_wflr);
 }
 
 contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit tests`, async accounts => {
