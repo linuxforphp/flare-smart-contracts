@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import {CheckPointHistory} from "./CheckPointHistory.sol";
 import {DelegationHistory} from "./DelegationHistory.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../lib/SafePct.sol";
+import {SafePct} from "../../utils/implementation/SafePct.sol";
 
 /**
  * @title PercentageDelegation library

@@ -5,8 +5,8 @@
 // You have been warned. That is all.
 pragma solidity 0.7.6;
 
-import { GovernedAtGenesis } from "../governance/implementation/GovernedAtGenesis.sol";
-import { MintAccounting } from "../accounting/implementation/MintAccounting.sol";
+import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGenesis.sol";
+import { MintAccounting } from "../../accounting/implementation/MintAccounting.sol";
 import { IFlareKeep } from "../interfaces/IFlareKeep.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";

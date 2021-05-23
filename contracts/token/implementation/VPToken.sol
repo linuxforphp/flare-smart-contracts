@@ -4,7 +4,7 @@ import {CheckPointable} from "./CheckPointable.sol";
 import {Delegatable} from "./Delegatable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../lib/SafePct.sol";
+import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
 
 /**

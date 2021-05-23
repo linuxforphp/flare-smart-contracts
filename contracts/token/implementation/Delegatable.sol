@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import {PercentageDelegation} from "../lib/PercentageDelegation.sol";
 import {ExplicitDelegation} from "../lib/ExplicitDelegation.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../lib/SafePct.sol";
+import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {VotePower} from "../lib/VotePower.sol";
 import {VotePowerCache} from "../lib/VotePowerCache.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";

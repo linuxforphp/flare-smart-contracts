@@ -7,7 +7,7 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../lib/SafePct.sol";
+import "../utils/implementation/SafePct.sol";
 import "../governance/implementation/Governed.sol";
 import { FtsoRewardManagerAccounting } from "../accounting/implementation/FtsoRewardManagerAccounting.sol";
 import "../userInterfaces/IFtsoManager.sol";
