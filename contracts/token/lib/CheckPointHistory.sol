@@ -29,19 +29,20 @@ library CheckPointHistory {
     }
 
     /**
-     * @notice Binary search of checkpoints array.
-     * @param checkpoints An array of CheckPoint to search.
-     * @param blockNumber The block number to search for.
+     * @notice Binary search of _checkpoints array.
+     * @param _checkpoints An array of CheckPoint to search.
+     * @param _blockNumber The block number to search for.
      */
-    function indexOfGreatestBlockLessThan(
-        CheckPoint[] storage checkpoints, 
-        uint256 blockNumber) private view returns (uint256 index) {
+    function _indexOfGreatestBlockLessThan(
+        CheckPoint[] storage _checkpoints, 
+        uint256 _blockNumber
+    ) private view returns (uint256 index) {
         // Binary search of the value by given block number in the array
         uint256 min = 0;
-        uint256 max = checkpoints.length.sub(1);
+        uint256 max = _checkpoints.length.sub(1);
         while (max > min) {
             uint256 mid = (max.add(min).add(1)).div(2);
-            if (checkpoints[mid].fromBlock<=blockNumber) {
+            if (_checkpoints[mid].fromBlock <= _blockNumber) {
                 min = mid;
             } else {
                 max = mid.sub(1);
@@ -51,57 +52,59 @@ library CheckPointHistory {
     }
 
     /**
-     * @notice Queries the value at a specific `blockNumber`
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param blockNumber The block number of the value active at that time
-     * @return value The value at `blockNumber`     
+     * @notice Queries the value at a specific `_blockNumber`
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @param _blockNumber The block number of the value active at that time
+     * @return _value The value at `_blockNumber`     
      **/
-    function valueAt(CheckPointHistoryState storage self, uint256 blockNumber) internal view returns (uint256 value) {
-        uint256 historyCount = self.values.length;
+    function valueAt(
+        CheckPointHistoryState storage _self, 
+        uint256 _blockNumber
+    ) internal view returns (uint256 _value) {
+        uint256 historyCount = _self.values.length;
 
-        // No checkpoints, return 0
+        // No _checkpoints, return 0
         if (historyCount == 0) return 0;
 
         // Shortcut for the actual value
-        if (blockNumber >= self.values[historyCount - 1].fromBlock)
-            return self.values[historyCount - 1].value;
-        if (blockNumber < self.values[0].fromBlock) return 0;
+        if (_blockNumber >= _self.values[historyCount - 1].fromBlock)
+            return _self.values[historyCount - 1].value;
+        if (_blockNumber < _self.values[0].fromBlock) return 0;
 
         // Find the block with number less than or equal to block given
-        uint256 index = indexOfGreatestBlockLessThan(self.values, blockNumber);
+        uint256 index = _indexOfGreatestBlockLessThan(_self.values, _blockNumber);
 
-        return self.values[index].value;
+        return _self.values[index].value;
     }
 
     /**
      * @notice Queries the value at `block.number`
-     * @param self A CheckPointHistoryState instance to manage.
-     * @return value The value at `block.number`
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @return _value The value at `block.number`
      **/
-    function valueAtNow(CheckPointHistoryState storage self) internal view returns (uint256 value) {
-        value = valueAt(self, block.number);
-        return value;
+    function valueAtNow(CheckPointHistoryState storage _self) internal view returns (uint256 _value) {
+        return valueAt(_self, block.number);
     }
 
     /**
      * @notice Writes the value at the current block.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param value Value to write.
-     * @return blockNumber The block number that the value was written at. 
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @param _value Value to write.
+     * @return _blockNumber The block number that the value was written at. 
      **/
     function writeValue(
-        CheckPointHistoryState storage self, 
-        uint256 value
-    ) internal returns (uint256 blockNumber) {
-        uint256 historyCount = self.values.length;
+        CheckPointHistoryState storage _self, 
+        uint256 _value
+    ) internal returns (uint256 _blockNumber) {
+        uint256 historyCount = _self.values.length;
 
-        if (historyCount == 0 || block.number > self.values[historyCount - 1].fromBlock) {
+        if (historyCount == 0 || block.number > _self.values[historyCount - 1].fromBlock) {
             // values array empty, push new CheckPoint
-            self.values.push(CheckPoint({fromBlock: block.number, value: value}));
+            _self.values.push(CheckPoint({fromBlock: block.number, value: _value}));
         } else {
-            assert (block.number == self.values[historyCount - 1].fromBlock);
-            // If last check point is blockNumber input, just update
-            self.values[historyCount - 1].value = value;
+            assert (block.number == _self.values[historyCount - 1].fromBlock);
+            // If last check point is _blockNumber input, just update
+            _self.values[historyCount - 1].value = _value;
         }
         return block.number;
     }

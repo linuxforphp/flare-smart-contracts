@@ -11,7 +11,7 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 library DelegationHistory {
     using SafeMath for uint256;
 
-    uint public constant MAX_DELEGATES_BY_PERCENT = 3;
+    uint256 public constant MAX_DELEGATES_BY_PERCENT = 3;
     string private constant MAX_DELEGATES_MSG = "Max delegates exceeded";
     
     /**
@@ -34,165 +34,165 @@ library DelegationHistory {
     }
 
     /**
-     * @notice Queries the value at a specific `blockNumber`
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param delegate The delegate for which we need value.
-     * @param blockNumber The block number of the value active at that time
-     * @return value The value of the delegate at `blockNumber`     
+     * @notice Queries the value at a specific `_blockNumber`
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @param _delegate The delegate for which we need value.
+     * @param _blockNumber The block number of the value active at that time
+     * @return _value The value of the `_delegate` at `_blockNumber`     
      **/
     function valueOfAt(
-        CheckPointHistoryState storage self, 
-        address delegate, 
-        uint256 blockNumber
-    ) internal view returns (uint256 value) {
-        (bool found, uint256 index) = findGreatestBlockLessThan(self.checkpoints, blockNumber);
+        CheckPointHistoryState storage _self, 
+        address _delegate, 
+        uint256 _blockNumber
+    ) internal view returns (uint256 _value) {
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
         if (!found) return 0;
 
         // find the delegate and return the corresponding value
-        CheckPoint storage cp = self.checkpoints[index];
-        uint length = cp.delegates.length;
-        for (uint i = 0; i < length; i++) {
-            if (cp.delegates[i] == delegate) {
+        CheckPoint storage cp = _self.checkpoints[index];
+        uint256 length = cp.delegates.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (cp.delegates[i] == _delegate) {
                 return cp.values[i];
             }
         }
-        return 0;   // delegate not found
+        return 0;   // _delegate not found
     }
 
     /**
      * @notice Queries the value at `block.number`
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param delegate The delegate for which we need value.
-     * @return value The value at `block.number`
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @param _delegate The delegate for which we need value.
+     * @return _value The value at `block.number`
      **/
     function valueOfAtNow(
-        CheckPointHistoryState storage self, 
-        address delegate
-    ) internal view returns (uint256 value) {
-        return valueOfAt(self, delegate, block.number);
+        CheckPointHistoryState storage _self, 
+        address _delegate
+    ) internal view returns (uint256 _value) {
+        return valueOfAt(_self, _delegate, block.number);
     }
 
     /**
      * @notice Writes the value at the current block.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param delegate The delegate tu update.
-     * @param value The new value to set for this delegate (0 value deletes delegate from the list).
-     * @return blockNumber The block number that the value was written at. 
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @param _delegate The delegate tu update.
+     * @param _value The new value to set for this delegate (value `0` deletes `_delegate` from the list).
+     * @return _blockNumber The block number that the value was written at. 
      **/
     function writeValue(
-        CheckPointHistoryState storage self, 
-        address delegate, 
-        uint256 value
-    ) internal returns (uint256 blockNumber) {
-        uint256 historyCount = self.checkpoints.length;
+        CheckPointHistoryState storage _self, 
+        address _delegate, 
+        uint256 _value
+    ) internal returns (uint256 _blockNumber) {
+        uint256 historyCount = _self.checkpoints.length;
         if (historyCount == 0) {
             // checkpoints array empty, push new CheckPoint
-            if (value != 0) {
-                CheckPoint storage cp = self.checkpoints.push();
+            if (_value != 0) {
+                CheckPoint storage cp = _self.checkpoints.push();
                 cp.fromBlock = block.number;
-                cp.delegates.push(delegate);
-                cp.values.push(value);
+                cp.delegates.push(_delegate);
+                cp.values.push(_value);
             }
-        } else if (block.number == self.checkpoints[historyCount - 1].fromBlock) {
-            // If last check point is blockNumber input, just update
-            updateDelegates(self.checkpoints[historyCount - 1], delegate, value);
+        } else if (block.number == _self.checkpoints[historyCount - 1].fromBlock) {
+            // If last check point is _blockNumber input, just update
+            _updateDelegates(_self.checkpoints[historyCount - 1], _delegate, _value);
         } else {
             // last block cannot be from the future
-            assert(block.number > self.checkpoints[historyCount - 1].fromBlock); 
+            assert(block.number > _self.checkpoints[historyCount - 1].fromBlock); 
             // last check point block is before
-            CheckPoint storage cp = self.checkpoints.push();
+            CheckPoint storage cp = _self.checkpoints.push();
             cp.fromBlock = block.number;
-            copyAndUpdateDelegates(cp, self.checkpoints[historyCount - 1], delegate, value);
+            _copyAndUpdateDelegates(cp, _self.checkpoints[historyCount - 1], _delegate, _value);
         }
         return block.number;
     }
     
     /**
      * Get all percentage delegations active at a time.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @param blockNumber The block number to query. 
-     * @return delegates The active percentage delegates at the time. 
-     * @return values The delegates' values at the time. 
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @param _blockNumber The block number to query. 
+     * @return _delegates The active percentage delegates at the time. 
+     * @return _values The delegates' values at the time. 
      **/
     function delegationsAt(
-        CheckPointHistoryState storage self,
-        uint256 blockNumber
+        CheckPointHistoryState storage _self,
+        uint256 _blockNumber
     ) internal view returns (
-        address[] memory delegates,
-        uint256[] memory values
+        address[] memory _delegates,
+        uint256[] memory _values
     ) {
-        (bool found, uint256 index) = findGreatestBlockLessThan(self.checkpoints, blockNumber);
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
         if (!found) {
             return (new address[](0), new uint256[](0));
         }
 
         // copy delegates and values to memory arrays
         // (to prevent caller updating the stored value)
-        CheckPoint storage cp = self.checkpoints[index];
-        uint length = cp.delegates.length;
-        delegates = new address[](length);
-        values = new uint256[](length);
-        for (uint i = 0; i < length; i++) {
-            delegates[i] = cp.delegates[i];
-            values[i] = cp.values[i];
+        CheckPoint storage cp = _self.checkpoints[index];
+        uint256 length = cp.delegates.length;
+        _delegates = new address[](length);
+        _values = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            _delegates[i] = cp.delegates[i];
+            _values[i] = cp.values[i];
         }
     }
     
     /**
      * Get all percentage delegations active now.
-     * @param self A CheckPointHistoryState instance to manage.
-     * @return delegates The active percentage delegates. 
-     * @return values The delegates' values. 
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @return _delegates The active percentage delegates. 
+     * @return _values The delegates' values. 
      **/
     function delegationsAtNow(
-        CheckPointHistoryState storage self
+        CheckPointHistoryState storage _self
     ) internal view returns (
-        address[] memory delegates,
-        uint256[] memory values
+        address[] memory _delegates,
+        uint256[] memory _values
     ) {
-        return delegationsAt(self, block.number);
+        return delegationsAt(_self, block.number);
     }
     
     /**
      * Get the sum of all delegation values.
-     * @param self A CheckPointHistoryState instance to query.
-     * @param blockNumber The block number to query. 
-     * @return total Total delegation value at the time.
+     * @param _self A CheckPointHistoryState instance to query.
+     * @param _blockNumber The block number to query. 
+     * @return _total Total delegation value at the time.
      **/
     function totalValueAt(
-        CheckPointHistoryState storage self, 
-        uint256 blockNumber
-    ) internal view returns (uint256 total) {
-        (bool found, uint256 index) = findGreatestBlockLessThan(self.checkpoints, blockNumber);
+        CheckPointHistoryState storage _self, 
+        uint256 _blockNumber
+    ) internal view returns (uint256 _total) {
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
         if (!found) return 0;
         
-        CheckPoint storage cp = self.checkpoints[index];
-        uint length = cp.values.length;
-        total = 0;
-        for (uint i = 0; i < length; i++) {
-            total += cp.values[i];
+        CheckPoint storage cp = _self.checkpoints[index];
+        uint256 length = cp.values.length;
+        _total = 0;
+        for (uint256 i = 0; i < length; i++) {
+            _total += cp.values[i];
         }
     }
 
     /**
      * Get the sum of all delegation values.
-     * @param self A CheckPointHistoryState instance to query.
-     * @return total Total delegation value at the time.
+     * @param _self A CheckPointHistoryState instance to query.
+     * @return _total Total delegation value at the time.
      **/
     function totalValueAtNow(
-        CheckPointHistoryState storage self
-    ) internal view returns (uint256 total) {
-        return totalValueAt(self, block.number);
+        CheckPointHistoryState storage _self
+    ) internal view returns (uint256 _total) {
+        return totalValueAt(_self, block.number);
     }
 
     /**
      * Clear all delegations at this moment.
-     * @param self A CheckPointHistoryState instance to manage.
+     * @param _self A CheckPointHistoryState instance to manage.
      */    
-    function clear(CheckPointHistoryState storage self) internal {
-        if (self.checkpoints.length > 0) {
+    function clear(CheckPointHistoryState storage _self) internal {
+        if (_self.checkpoints.length > 0) {
             // add an empty checkpoint
-            CheckPoint storage cp = self.checkpoints.push();
+            CheckPoint storage cp = _self.checkpoints.push();
             cp.fromBlock = block.number;
         }
     }
@@ -200,83 +200,83 @@ library DelegationHistory {
     /////////////////////////////////////////////////////////////////////////////////
     // helper functions for writeValueAt
     
-    function copyAndUpdateDelegates(
-        CheckPoint storage cp, 
-        CheckPoint storage orig, 
-        address delegate, 
-        uint256 value
+    function _copyAndUpdateDelegates(
+        CheckPoint storage _cp, 
+        CheckPoint storage _orig, 
+        address _delegate, 
+        uint256 _value
     ) private {
-        uint length = orig.delegates.length;
+        uint256 length = _orig.delegates.length;
         bool updated = false;
-        for (uint i = 0; i < length; i++) {
-            address origDelegate = orig.delegates[i];
-            if (origDelegate == delegate) {
+        for (uint256 i = 0; i < length; i++) {
+            address origDelegate = _orig.delegates[i];
+            if (origDelegate == _delegate) {
                 // copy delegate, but with new value
-                appendDelegate(cp, origDelegate, value, i);
+                _appendDelegate(_cp, origDelegate, _value, i);
                 updated = true;
             } else {
                 // just copy the delegate with original value
-                appendDelegate(cp, origDelegate, orig.values[i], i);
+                _appendDelegate(_cp, origDelegate, _orig.values[i], i);
             }
         }
         if (!updated) {
             // delegate is not in the original list, so add it
-            appendDelegate(cp, delegate, value, length);
+            _appendDelegate(_cp, _delegate, _value, length);
         }
     }
 
-    function updateDelegates(CheckPoint storage cp, address delegate, uint256 value) private {
-        uint length = cp.delegates.length;
-        uint i = 0;
-        while (i < length && cp.delegates[i] != delegate) ++i;
+    function _updateDelegates(CheckPoint storage _cp, address _delegate, uint256 _value) private {
+        uint256 length = _cp.delegates.length;
+        uint256 i = 0;
+        while (i < length && _cp.delegates[i] != _delegate) ++i;
         if (i < length) {
-            if (value != 0) {
-                cp.values[i] = value;
+            if (_value != 0) {
+                _cp.values[i] = _value;
             } else {
-                deleteDelegate(cp, i, length);
+                _deleteDelegate(_cp, i, length);
             }
         } else {
-            appendDelegate(cp, delegate, value, length);
+            _appendDelegate(_cp, _delegate, _value, length);
         }
     }
     
-    function appendDelegate(CheckPoint storage cp, address delegate, uint256 value, uint length) private {
-        if (value != 0) {
-            require(length < MAX_DELEGATES_BY_PERCENT, MAX_DELEGATES_MSG);
-            cp.delegates.push(delegate);
-            cp.values.push(value);
+    function _appendDelegate(CheckPoint storage _cp, address _delegate, uint256 _value, uint256 _length) private {
+        if (_value != 0) {
+            require(_length < MAX_DELEGATES_BY_PERCENT, MAX_DELEGATES_MSG);
+            _cp.delegates.push(_delegate);
+            _cp.values.push(_value);
         }
     }
     
-    function deleteDelegate(CheckPoint storage cp, uint i, uint length) private {
-        // no check that length > 0 (not needed, since we only call this from updateDelegates 
+    function _deleteDelegate(CheckPoint storage _cp, uint256 _index, uint256 _length) private {
+        // no check that length > 0 (not needed, since we only call this from _updateDelegates 
         // where delegate was found, therefore length > 0)
-        if (i + 1 < length) {
-            cp.delegates[i] = cp.delegates[length - 1];
-            cp.values[i] = cp.values[length - 1];
+        if (_index + 1 < _length) {
+            _cp.delegates[_index] = _cp.delegates[_length - 1];
+            _cp.values[_index] = _cp.values[_length - 1];
         }
-        cp.delegates.pop();
-        cp.values.pop();
+        _cp.delegates.pop();
+        _cp.values.pop();
     }
     
     /////////////////////////////////////////////////////////////////////////////////
     // helper functions for querying
     
     /**
-     * @notice Binary search of checkpoints array.
-     * @param checkpoints An array of CheckPoint to search.
-     * @param blockNumber The block number to search for.
+     * @notice Binary search of _checkpoints array.
+     * @param _checkpoints An array of CheckPoint to search.
+     * @param _blockNumber The block number to search for.
      */
-    function binarySearchGreatestBlockLessThan(
-        CheckPoint[] storage checkpoints, 
-        uint256 blockNumber
-    ) private view returns (uint256 index) {
+    function _binarySearchGreatestBlockLessThan(
+        CheckPoint[] storage _checkpoints, 
+        uint256 _blockNumber
+    ) private view returns (uint256 _index) {
         // Binary search of the value by given block number in the array
         uint256 min = 0;
-        uint256 max = checkpoints.length.sub(1);
+        uint256 max = _checkpoints.length.sub(1);
         while (max > min) {
             uint256 mid = (max.add(min).add(1)).div(2);
-            if (checkpoints[mid].fromBlock<=blockNumber) {
+            if (_checkpoints[mid].fromBlock <= _blockNumber) {
                 min = mid;
             } else {
                 max = mid.sub(1);
@@ -286,32 +286,32 @@ library DelegationHistory {
     }
 
     /**
-     * @notice Binary search of checkpoints array. Extra optimized for the common case when we are 
+     * @notice Binary search of _checkpoints array. Extra optimized for the common case when we are 
      *   searching for the last block.
-     * @param checkpoints An array of CheckPoint to search.
-     * @param blockNumber The block number to search for.
-     * @return found true if value was found (only `false` if `blockNumber` is before first 
+     * @param _checkpoints An array of CheckPoint to search.
+     * @param _blockNumber The block number to search for.
+     * @return _found true if value was found (only `false` if `_blockNumber` is before first 
      *   checkpoint or the checkpoint array is empty)
-     * @return index index of the newst block with number less than or equal `blockNumber`
+     * @return _index index of the newest block with number less than or equal `_blockNumber`
      */
-    function findGreatestBlockLessThan(
-        CheckPoint[] storage checkpoints, 
-        uint256 blockNumber
+    function _findGreatestBlockLessThan(
+        CheckPoint[] storage _checkpoints, 
+        uint256 _blockNumber
     ) private view returns (
-        bool found,
-        uint256 index
+        bool _found,
+        uint256 _index
     ) {
-        uint256 historyCount = checkpoints.length;
+        uint256 historyCount = _checkpoints.length;
         if (historyCount == 0) {
-            found = false;
-        } else if (blockNumber >= checkpoints[historyCount - 1].fromBlock) {
-            found = true;
-            index = historyCount - 1;
-        } else if (blockNumber < checkpoints[0].fromBlock) {
-            found = false;
+            _found = false;
+        } else if (_blockNumber >= _checkpoints[historyCount - 1].fromBlock) {
+            _found = true;
+            _index = historyCount - 1;
+        } else if (_blockNumber < _checkpoints[0].fromBlock) {
+            _found = false;
         } else {
-            found = true;
-            index = binarySearchGreatestBlockLessThan(checkpoints, blockNumber);
+            _found = true;
+            _index = _binarySearchGreatestBlockLessThan(_checkpoints, _blockNumber);
         }
     }
 }

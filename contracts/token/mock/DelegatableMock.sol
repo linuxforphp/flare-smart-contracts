@@ -14,7 +14,7 @@ contract DelegatableMock is Delegatable {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using SafeMath for uint256;
 
-    mapping (address => CheckPointHistory.CheckPointHistoryState) private _senderBalances;
+    mapping(address => CheckPointHistory.CheckPointHistoryState) private senderBalances;
 
     constructor() Delegatable() {
     }
@@ -29,81 +29,85 @@ contract DelegatableMock is Delegatable {
         return 18;
     }
 
-    function balanceOf(address who) public override view returns (uint256) {
-        return _senderBalances[who].valueAtNow();
+    function balanceOf(address _who) public override view returns (uint256) {
+        return senderBalances[_who].valueAtNow();
     }
 
-    function balanceOfAt(address who, uint256 blockNumber) public override view returns (uint256) {
-        return _senderBalances[who].valueAt(blockNumber);
+    function balanceOfAt(address _who, uint256 _blockNumber) public override view returns (uint256) {
+        return senderBalances[_who].valueAt(_blockNumber);
     }
 
-    function addUpdateBalance(address who, uint256 balance) private {
-        _senderBalances[who].writeValue(balanceOf(who).add(balance));
+    function addUpdateBalance(address _who, uint256 _balance) private {
+        senderBalances[_who].writeValue(balanceOf(_who).add(_balance));
     }
 
-    function subtractBalance(address who, uint256 balance) private {
-        _senderBalances[who].writeValue(balanceOf(who).sub(balance));
+    function subtractBalance(address _who, uint256 _balance) private {
+        senderBalances[_who].writeValue(balanceOf(_who).sub(_balance));
     }
 
-    function delegate(address to, uint256 bips) public override {
-        _delegateByPercentage(to, balanceOf(msg.sender), bips);
+    function delegate(address _to, uint256 _bips) public override {
+        _delegateByPercentage(_to, balanceOf(msg.sender), _bips);
     }
 
-    function delegateExplicit(address to, uint votePower) public override {
-        _delegateByAmount(to, balanceOf(msg.sender), votePower);
+    function delegateExplicit(address _to, uint256 _votePower) public override {
+        _delegateByAmount(_to, balanceOf(msg.sender), _votePower);
     }
 
     function undelegateAll() public override {
         _undelegateAllByPercentage(balanceOf(msg.sender));
     }
     
-    function undelegateAllExplicit(address[] memory delegateAddresses) external override {
-        _undelegateAllByAmount(delegateAddresses, balanceOf(msg.sender));
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external override {
+        _undelegateAllByAmount(_delegateAddresses, balanceOf(msg.sender));
     }
 
-    function burnVotePower(address owner, uint256 amount) public {
-        subtractBalance(owner, amount);
-        _burnVotePower(owner, balanceOf(owner), amount);
+    function burnVotePower(address _owner, uint256 _amount) public {
+        subtractBalance(_owner, _amount);
+        _burnVotePower(_owner, balanceOf(_owner), _amount);
     }
 
-    function mintVotePower(address owner, uint256 amount) public {
-        addUpdateBalance(owner, amount);
-        _mintVotePower(owner, amount);
+    function mintVotePower(address _owner, uint256 _amount) public {
+        addUpdateBalance(_owner, _amount);
+        _mintVotePower(_owner, _amount);
     }
 
-    function transmitVotePower(address from, address to, uint256 amount) public {
-        _transmitVotePower(from, to, balanceOf(from), amount);
+    function transmitVotePower(address from, address to, uint256 _amount) public {
+        _transmitVotePower(from, to, balanceOf(from), _amount);
     }
 
-    function undelegatedVotePowerOf(address owner) public view override returns(uint256 votePower) {
-        return _undelegatedVotePowerOf(owner, balanceOf(owner));
+    function undelegatedVotePowerOf(address _owner) public view override returns(uint256 _votePower) {
+        return _undelegatedVotePowerOf(_owner, balanceOf(_owner));
     }
 
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) 
-        public view override returns (uint256 votePower) {
-        return _undelegatedVotePowerOfAt(owner, balanceOfAt(owner, blockNumber), blockNumber);
+    function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) 
+        public view override returns (uint256 _votePower) {
+        return _undelegatedVotePowerOfAt(_owner, balanceOfAt(_owner, _blockNumber), _blockNumber);
     }
 
-    function revokeDelegationAt(address who, uint blockNumber) external override {
-        _revokeDelegationAt(who, balanceOfAt(msg.sender, blockNumber), blockNumber);
+    function revokeDelegationAt(address _who, uint256 _blockNumber) external override {
+        _revokeDelegationAt(_who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
     }
 
-    function votePowerFromTo(address from, address to) external view override returns(uint256) {
-        return _votePowerFromTo(from, to, balanceOf(from));
+    function votePowerFromTo(address _from, address _to) external view override returns(uint256) {
+        return _votePowerFromTo(_from, _to, balanceOf(_from));
     }
     
-    function votePowerFromToAt(address from, address to, uint blockNumber) external view override returns(uint256) {
-        return _votePowerFromToAt(from, to, balanceOfAt(from, blockNumber), blockNumber);
+    function votePowerFromToAt(
+        address _from, 
+        address _to, 
+        uint256 _blockNumber
+    ) external view override returns(uint256) {
+        return _votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
     
     // empty implementations, to satisfy the IVPToken contract    
-    function allowance(address owner, address spender) external override view returns (uint256) {}
-    function approve(address spender, uint256 amount) external override returns (bool) {}
+    function allowance(address _owner, address _spender) external override view returns (uint256) {}
+    function approve(address _spender, uint256 _amount) external override returns (bool) {}
     function totalSupply() external override view returns (uint256) {}
-    function transfer(address recipient, uint256 amount) external override returns (bool) {}
-    function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {}
-    function totalSupplyAt(uint blockNumber) public view override returns(uint256) {}
+    function transfer(address _recipient, uint256 _amount) external override returns (bool) {}
+    function transferFrom(address _sender, address _recipient, uint256 _amount) external override returns (bool) {}
+    function totalSupplyAt(uint256 _blockNumber) public view override returns(uint256) {}
     function votePower() public view override returns(uint256) {}
-    function votePowerAt(uint blockNumber) public view override returns(uint256) {}
-    function votePowerAtCached(uint blockNumber) public override returns(uint256) {}
+    function votePowerAt(uint256 _blockNumber) public view override returns(uint256) {}
+    function votePowerAtCached(uint256 _blockNumber) public override returns(uint256) {}
 }

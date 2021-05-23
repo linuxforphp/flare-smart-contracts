@@ -11,25 +11,25 @@ import {ExplicitDelegation} from "../lib/ExplicitDelegation.sol";
 contract ExplicitDelegationMock {
     using ExplicitDelegation for ExplicitDelegation.DelegationState;
 
-    ExplicitDelegation.DelegationState private _self;
+    ExplicitDelegation.DelegationState private self;
 
-    function addReplaceDelegate(address delegate, uint256 bips) public {
-        _self.addReplaceDelegate(delegate, bips);
+    function addReplaceDelegate(address _delegate, uint256 _bips) public {
+        self.addReplaceDelegate(_delegate, _bips);
     }
     
-    function getDelegatedTotalAt(uint256 blockNumber) public view returns (uint256 totalBips) {
-        return _self.getDelegatedTotalAt(blockNumber);
+    function getDelegatedTotalAt(uint256 _blockNumber) public view returns (uint256 _totalBips) {
+        return self.getDelegatedTotalAt(_blockNumber);
     }
     
-    function getDelegatedTotal() public view returns (uint256 totalBips) {
-        return _self.getDelegatedTotal();
+    function getDelegatedTotal() public view returns (uint256 _totalBips) {
+        return self.getDelegatedTotal();
     }
     
-    function getDelegatedValueAt(address delegate, uint256 blockNumber) public view returns (uint256 bips) {
-        return _self.getDelegatedValueAt(delegate, blockNumber);
+    function getDelegatedValueAt(address _delegate, uint256 _blockNumber) public view returns (uint256 _bips) {
+        return self.getDelegatedValueAt(_delegate, _blockNumber);
     }
     
-    function getDelegatedValue(address delegate) public view returns (uint256 bips) {
-        return _self.getDelegatedValue(delegate);
+    function getDelegatedValue(address _delegate) public view returns (uint256 _bips) {
+        return self.getDelegatedValue(_delegate);
     }
 }

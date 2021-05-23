@@ -20,6 +20,11 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     vpToken = await VPToken.new("A token", "ATOK");
   });
 
+  it("Should return name", async () => {
+    assert.equal(await vpToken.name(), "A token");
+    assert.equal(await vpToken.symbol(), "ATOK");
+  });
+
   it("Should be checkpointable", async() => {
     const b = [];
     // Assemble
@@ -46,14 +51,14 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.delegate(accounts[2], 50, {from: accounts[1]});
     await vpToken.delegate(accounts[3], 50, {from: accounts[1]});
     // Act
-    const { delegateAddresses, bips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
+    const { _delegateAddresses, _bips, _count, _delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
     // Assert
-    assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(bips[0], 50);
-    assert.equal(delegateAddresses[1], accounts[3]);
-    assert.equal(bips[1], 50);
-    assert.equal(count, 2);
-    assert.equal(delegationMode, 1);
+    assert.equal(_delegateAddresses[0], accounts[2]);
+    assert.equal(_bips[0], 50);
+    assert.equal(_delegateAddresses[1], accounts[3]);
+    assert.equal(_bips[1], 50);
+    assert.equal(_count, 2);
+    assert.equal(_delegationMode, 1);
   });
 
   it("Should return value of delegation", async () => {
@@ -114,9 +119,9 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     await vpToken.undelegateAll({ from: accounts[1] });
     // Assert
-    const { delegateAddresses, bips, count, delegationMode } = await vpToken.delegatesOf(accounts[1]) as any;
-    assert.equal(count, 0);
-    assert.equal(delegationMode, 1);  // PERCENTAGE (mode should never be reset)
+    const { _delegateAddresses, _bips, _count, _delegationMode } = await vpToken.delegatesOf(accounts[1]) as any;
+    assert.equal(_count, 0);
+    assert.equal(_delegationMode, 1);  // PERCENTAGE (mode should never be reset)
   });
 
   it("Should undelegate all explicit", async () => {

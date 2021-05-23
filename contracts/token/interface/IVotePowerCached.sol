@@ -5,21 +5,21 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IVotePowerCached {
     /**
-    * @notice Get the vote power at block `blockNumber` using cache.
+    * @notice Get the vote power at block `_blockNumber` using cache.
     *   It tries to read the cached value and if not found, reads the actual value and stores it in cache.
-    *   Can only be used if blockNumber is in the past, otherwise reverts.    
-    * @param blockNumber The block number at which to fetch.
+    *   Can only be used if _blockNumber is in the past, otherwise reverts.    
+    * @param _blockNumber The block number at which to fetch.
     * @return The vote power at the block.
     */
-    function votePowerAtCached(uint blockNumber) external returns(uint256);
+    function votePowerAtCached(uint256 _blockNumber) external returns(uint256);
     
     /**
-    * @notice Get the vote power of `owner` at block `blockNumber` using cache.
+    * @notice Get the vote power of `_owner` at block `_blockNumber` using cache.
     *   It tries to read the cached value and if not found, reads the actual value and stores it in cache.
-    *   Can only be used if blockNumber is in the past, otherwise reverts.    
-    * @param owner The address to get voting power.
-    * @param blockNumber The block number at which to fetch.
-    * @return Vote power of `owner` at `blockNumber`.
+    *   Can only be used if _blockNumber is in the past, otherwise reverts.    
+    * @param _owner The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_owner` at `_blockNumber`.
     */
-    function votePowerOfAtCached(address owner, uint256 blockNumber) external returns(uint256);
+    function votePowerOfAtCached(address _owner, uint256 _blockNumber) external returns(uint256);
 }

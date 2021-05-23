@@ -102,10 +102,10 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     assert.equal(bobVotePowerPastBlock as any, 100);
     assert.equal(edVotePowerNow as any, 65);
     assert.equal(bobVotePowerNow as any, 135);
-    let { delegateAddresses: delegatesPast, bips: bipsPast } = await delegatable.delegatesOfAt(bob, b[blockAfterBobDelegateToEd]) as any;
+    let { _delegateAddresses: delegatesPast, _bips: bipsPast } = await delegatable.delegatesOfAt(bob, b[blockAfterBobDelegateToEd]) as any;
     compareArrays(delegatesPast, [lucy]);
     compareArrays(bipsPast.map((x: BN) => x.toNumber()), [5000]);
-    let { delegateAddresses: delegatesNow, bips: bipsNow } = await delegatable.delegatesOf(bob) as any;
+    let { _delegateAddresses: delegatesNow, _bips: bipsNow } = await delegatable.delegatesOf(bob) as any;
     compareArrays(delegatesNow, [lucy, ed]);
     compareArrays(bipsNow.map((x: BN) => x.toNumber()), [5000, 500]);
     let edUndelegatedVotePowerPastBlock = await delegatable.undelegatedVotePowerOfAt(ed, b[blockAfterBobDelegateToEd]);

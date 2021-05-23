@@ -24,39 +24,50 @@ contract DummyVPToken is ERC20, IVPToken {
     }
 
     function votePower() public view override returns(uint256) {}
-    function votePowerAt(uint blockNumber) public view override returns(uint256) {}
+    function votePowerAt(uint256 _blockNumber) public view override returns(uint256) {}
 
     /// vote power for current block
-    function votePowerOf(address who) public view override returns (uint256) {
-        return votePowerOfAt(who, block.number);
+    function votePowerOf(address _who) public view override returns (uint256) {
+        return votePowerOfAt(_who, block.number);
     }
 
     /// @notice for any cotracts wishing to share rewards with depositers, this
     ///     function enables to check how much of the contracts vote power came 
     ///     from this delegator.
-    function votePowerOfAt(address who, uint256 blockNumber) public view override
+    function votePowerOfAt(address _who, uint256 _blockNumber) public view override
         returns (uint256)
     {
-        blockNumber;
-        return balanceOf(who) / 1e18;
+        _blockNumber;
+        return balanceOf(_who) / 1e18;
     }
 
     // empty implementations, to satisfy the IVPToken contract    
     /* solhint-disable no-unused-vars */
-    function totalSupplyAt(uint blockNumber) public view override returns(uint256) {}
-    function balanceOfAt(address owner, uint blockNumber) public view override returns (uint256) {}
-    function delegate(address to, uint256 bips) external override {}
-    function delegateExplicit(address to, uint256 amount) external override {}
-    function delegationModeOf(address who) public view override returns (uint256 delegationMode) {}
-    function undelegatedVotePowerOf(address owner) public view override returns(uint256) {}
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) public view override returns (uint256) {}
+    function totalSupplyAt(uint256 _blockNumber) public view override returns(uint256) {}
+    function balanceOfAt(address _owner, uint256 _blockNumber) public view override returns (uint256) {}
+    function delegate(address _to, uint256 _bips) external override {}
+    function delegateExplicit(address _to, uint256 _amount) external override {}
+    function delegationModeOf(address _who) public view override returns (uint256 _delegationMode) {}
+    function undelegatedVotePowerOf(address _owner) public view override returns(uint256) {}
+    function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) public view override returns (uint256) {}
     function undelegateAll() external override {}
-    function undelegateAllExplicit(address[] memory delegateAddresses) external override {}
-    function delegatesOfAt(address owner, uint256 blockNumber) public view override 
-        returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode) {}
-    function delegatesOf(address owner) public view override 
-        returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode) {}
-    function revokeDelegationAt(address who, uint blockNumber) public override {}
-    function votePowerFromTo(address from, address to) external view override returns(uint256) {}
-    function votePowerFromToAt(address from, address to, uint blockNumber) external view override returns(uint256) {}
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external override {}
+    function delegatesOfAt(address _owner, uint256 _blockNumber) public view override 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips, 
+            uint256 _count, 
+            uint256 _delegationMode
+        ) {}
+    function delegatesOf(address _owner) public view override 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips, 
+            uint256 _count, 
+            uint256 _delegationMode
+        ) {}
+    function revokeDelegationAt(address _who, uint256 _blockNumber) public override {}
+    function votePowerFromTo(address _from, address _to) external view override returns(uint256) {}
+    function votePowerFromToAt(address _from, address _to, uint256 _blockNumber) external view override 
+        returns(uint256) {}
 }

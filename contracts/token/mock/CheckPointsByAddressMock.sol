@@ -11,18 +11,18 @@ import {CheckPointsByAddress} from "../lib/CheckPointsByAddress.sol";
 contract CheckPointsByAddressMock {
     using CheckPointsByAddress for CheckPointsByAddress.CheckPointsByAddressState;
 
-    CheckPointsByAddress.CheckPointsByAddressState private _state;
+    CheckPointsByAddress.CheckPointsByAddressState private state;
 
-    function valueOfAtNow(address owner) public view returns (uint256) {
-        return _state.valueOfAtNow(owner);
+    function valueOfAtNow(address _owner) public view returns (uint256) {
+        return state.valueOfAtNow(_owner);
     }
-    function valueOfAt(address owner, uint blockNumber) public view returns (uint256) {
-        return _state.valueOfAt(owner, blockNumber);
+    function valueOfAt(address _owner, uint256 _blockNumber) public view returns (uint256) {
+        return state.valueOfAt(_owner, _blockNumber);
     }
-    function transmit(address from, address to, uint256 amount) public {
-        _state.transmit(from, to, amount);(from, to, amount);
+    function transmit(address _from, address _to, uint256 _amount) public {
+        state.transmit(_from, _to, _amount);
     }
-    function writeValueOfAtNow(address owner, uint256 value) public returns (uint256 blockNumber) {
-        return _state.writeValueOfAtNow(owner, value);
+    function writeValueOfAtNow(address _owner, uint256 _value) public returns (uint256 _blockNumber) {
+        return state.writeValueOfAtNow(_owner, _value);
     }
 }

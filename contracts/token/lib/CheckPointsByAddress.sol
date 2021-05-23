@@ -15,94 +15,94 @@ library CheckPointsByAddress {
 
     struct CheckPointsByAddressState {
         // `historyByAddress` is the map that stores the check point history of each address
-        mapping (address => CheckPointHistory.CheckPointHistoryState) historyByAddress;
+        mapping(address => CheckPointHistory.CheckPointHistoryState) historyByAddress;
     }
 
     /**
     /**
      * @notice Send `amount` value to `to` address from `from` address.
-     * @param self A CheckPointsByAddressState instance to manage.
-     * @param from Address of the history of from values 
-     * @param to Address of the history of to values 
-     * @param amount The amount of value to be transferred
-     * @param blockNumber The block of recorded transmission
+     * @param _self A CheckPointsByAddressState instance to manage.
+     * @param _from Address of the history of from values 
+     * @param _to Address of the history of to values 
+     * @param _amount The amount of value to be transferred
+     * @param _blockNumber The block of recorded transmission
      **/
     function transmit(
-        CheckPointsByAddressState storage self, 
-        address from, 
-        address to, 
-        uint256 amount) internal returns (uint256 blockNumber) {
+        CheckPointsByAddressState storage _self, 
+        address _from, 
+        address _to, 
+        uint256 _amount) internal returns (uint256 _blockNumber) {
 
         // Shortcut
-        if (amount == 0) {
+        if (_amount == 0) {
             return block.number;
         }
 
         // Both from and to can never be zero
-        assert(!(from == address(0) && to == address(0)));
+        assert(!(_from == address(0) && _to == address(0)));
 
         // Update transferer value
-        if (from != address(0)) {
+        if (_from != address(0)) {
             // Compute the new from balance
-            uint256 newValueFrom = valueOfAtNow(self, from).sub(amount);
-            writeValueOfAtNow(self, from, newValueFrom);
+            uint256 newValueFrom = valueOfAtNow(_self, _from).sub(_amount);
+            writeValueOfAtNow(_self, _from, newValueFrom);
         }
 
         // Update transferee value
-        if (to != address(0)) {
+        if (_to != address(0)) {
             // Compute the new to balance
-            uint256 newValueTo = valueOfAtNow(self, to).add(amount);
-            writeValueOfAtNow(self, to, newValueTo);
+            uint256 newValueTo = valueOfAtNow(_self, _to).add(_amount);
+            writeValueOfAtNow(_self, _to, newValueTo);
         }
         
         return block.number;
     }
 
     /**
-     * @notice Queries the value of `owner` at a specific `blockNumber`.
-     * @param self A CheckPointsByAddressState instance to manage.
-     * @param owner The address from which the value will be retrieved.
-     * @param blockNumber The block number to query for the then current value.
-     * @return The value at `blockNumber` for `owner`.
+     * @notice Queries the value of `_owner` at a specific `_blockNumber`.
+     * @param _self A CheckPointsByAddressState instance to manage.
+     * @param _owner The address from which the value will be retrieved.
+     * @param _blockNumber The block number to query for the then current value.
+     * @return The value at `_blockNumber` for `_owner`.
      **/
     function valueOfAt(
-        CheckPointsByAddressState storage self, 
-        address owner, 
-        uint blockNumber) internal view returns (uint256) {
+        CheckPointsByAddressState storage _self, 
+        address _owner, 
+        uint256 _blockNumber) internal view returns (uint256) {
           
-        // Get history for owner
-        CheckPointHistory.CheckPointHistoryState storage history = self.historyByAddress[owner];
+        // Get history for _owner
+        CheckPointHistory.CheckPointHistoryState storage history = _self.historyByAddress[_owner];
         // Return value at given block
-        return history.valueAt(blockNumber);
+        return history.valueAt(_blockNumber);
     }
 
     /**
-     * @notice Get the value of the `owner` at the current `block.number`.
-     * @param self A CheckPointsByAddressState instance to manage.
-     * @param owner The address of the value is being requested.
-     * @return The value of `owner` at the current block.
+     * @notice Get the value of the `_owner` at the current `block.number`.
+     * @param _self A CheckPointsByAddressState instance to manage.
+     * @param _owner The address of the value is being requested.
+     * @return The value of `_owner` at the current block.
      **/
-    function valueOfAtNow(CheckPointsByAddressState storage self, address owner) internal view returns (uint256) {
-        return valueOfAt(self, owner, block.number);
+    function valueOfAtNow(CheckPointsByAddressState storage _self, address _owner) internal view returns (uint256) {
+        return valueOfAt(_self, _owner, block.number);
     }
 
     /**
-     * @notice Writes the `value` at the current block number for `owner`.
-     * @param self A CheckPointsByAddressState instance to manage.
-     * @param owner The address of `owner` to write.
-     * @param value The value to write.
-     * @return blockNumber The block that the value was written at. 
+     * @notice Writes the `value` at the current block number for `_owner`.
+     * @param _self A CheckPointsByAddressState instance to manage.
+     * @param _owner The address of `_owner` to write.
+     * @param _value The value to write.
+     * @return _blockNumber The block that the value was written at. 
      * @dev Sender must be the owner of the contract.
      **/
     function writeValueOfAtNow(
-        CheckPointsByAddressState storage self, 
-        address owner, 
-        uint256 value) internal returns (uint256 blockNumber) {
+        CheckPointsByAddressState storage _self, 
+        address _owner, 
+        uint256 _value) internal returns (uint256 _blockNumber) {
 
-        // Get history for owner
-        CheckPointHistory.CheckPointHistoryState storage history = self.historyByAddress[owner];
+        // Get history for _owner
+        CheckPointHistory.CheckPointHistoryState storage history = _self.historyByAddress[_owner];
         // Write the value
-        history.writeValue(value);
+        history.writeValue(_value);
         
         return block.number;
     }
