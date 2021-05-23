@@ -97,7 +97,10 @@ library Account {
     function _indexOfGreatestBlockLessThan(
         LedgerEntry[] storage ledgerEntries, 
         uint256 blockNumber
-    ) private view returns (uint256 index) {
+    )
+        private view 
+        returns (uint256 index) 
+    {
         // Binary search of the value by given block number in the array
         uint256 min = 0;
         uint256 max = ledgerEntries.length.sub(1);
@@ -115,7 +118,10 @@ library Account {
     function _indexOfGreatestBlockLessThanIfExists(
         LedgerEntry[] storage ledgerEntries, 
         uint256 blockNumber
-    ) private view returns (uint256 index) {
+    )
+        private view
+        returns (uint256 index) 
+    {
         uint256 entriesCount = ledgerEntries.length;
         if (entriesCount == 0) {
             return NOT_FOUND;
@@ -128,7 +134,7 @@ library Account {
         }
     }
 
-    function getBalanceAt(AccountState storage _self, uint256 blockNumber) external view returns (int256){
+    function getBalanceAt(AccountState storage _self, uint256 blockNumber) external view returns (int256) {
         uint index = _indexOfGreatestBlockLessThanIfExists(_self.ledgerEntries, blockNumber);
         if (index == NOT_FOUND) return 0;
         return _self.ledgerEntries[index].runningBalance;

@@ -14,7 +14,6 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
  * @title Ledger
  * @notice This contract represents an accounting ledger with a chart of accounts.
  **/
-
 contract Ledger {
     using Account for Account.AccountState;
     using SafeMath for uint256;
@@ -29,39 +28,73 @@ contract Ledger {
     uint256 public liabilityBalance;
     uint256 public equityBalance;
 
+    uint256 internal constant MAX_JOURNAL_ENTRIES = 20;
+    uint256 internal constant MAX_ACCOUNTS = 100;
+
+    string internal constant ERR_TOO_MANY_MSG = "too many";
+    string internal constant ERR_GOLDEN_RULE_MSG = "assets != liability + equity";
+    string internal constant ERR_NOT_FOUND_MSG = "not found";
+    string internal constant ERR_DEBITS_NEQ_CREDITS_MSG = "debits != credits";
+    string internal constant ERR_ALREADY_ADDED_MSG = "already added";
+
     modifier mustBalance {
         _;
-        require(assetBalance == liabilityBalance.add(equityBalance), "assets != liability + equity");
+        require(assetBalance == liabilityBalance.add(equityBalance), ERR_GOLDEN_RULE_MSG);
+    }
+
+    modifier mustBeBounded(uint256 _length, uint256 _limit) {
+        require (_length <= _limit, ERR_TOO_MANY_MSG);
+        _;
+    }
+
+    modifier mustExist(bytes32 _accountName) {
+        require(accountExists(_accountName), ERR_NOT_FOUND_MSG);
+        _;
+    }
+
+    modifier mustNotExist(bytes32 _accountName) {
+        require(!accountExists(_accountName), ERR_ALREADY_ADDED_MSG);
+        _;
     }
 
     constructor(string memory _name) {
         name = _name;
     }
 
-    function addAccount(AccountDefinition memory _accountDefinition) public virtual {
-        // TODO: spit out name, as this may be called with a bunch of accounts to add
-        require(!accountExists(_accountDefinition.name), "already added");
+    function addAccount(AccountDefinition memory _accountDefinition)
+        public virtual 
+        mustNotExist(_accountDefinition.name)
+    {
 
         Account.AccountState storage account = chartOfAccounts[_accountDefinition.name];
         account.init(_accountDefinition.name, _accountDefinition.accountType);
         accountNames.push(_accountDefinition.name);
     }
 
-    function addAccounts(AccountDefinition[] memory _accountDefinitions) public virtual {
+    function addAccounts(AccountDefinition[] memory _accountDefinitions)
+        public virtual 
+        mustBeBounded(_accountDefinitions.length, MAX_ACCOUNTS)
+    {
         uint256 count = _accountDefinitions.length;
         for(uint256 i = 0; i < count; i++) {
             addAccount(_accountDefinitions[i]);
         }
     }
 
-    function getCurrentBalance(bytes32 _forAccountName) external view returns(int256) {
-        require(accountExists(_forAccountName), "not found");
+    function getCurrentBalance(bytes32 _forAccountName)
+        external view 
+        mustExist(_forAccountName)
+        returns(int256)
+    {
         Account.AccountState storage account = chartOfAccounts[_forAccountName];
         return account.currentBalance;
     }
 
-    function getLedgerEntry(bytes32 _forAccountName, uint256 index) external view returns(LedgerEntry memory) {
-        require(accountExists(_forAccountName), "not found");
+    function getLedgerEntry(bytes32 _forAccountName, uint256 index)
+        external view 
+        mustExist(_forAccountName)
+        returns(LedgerEntry memory)
+    {
         Account.AccountState storage account = chartOfAccounts[_forAccountName];
         return account.ledgerEntries[index];
     }
@@ -74,62 +107,34 @@ contract Ledger {
         return accountNames;
     }
 
-    // Open and close methods support the notion of sub-ledgers, where we accumulate detailed journal entries
-    // over time, but then don't want to clutter the general ledger with all the detail. We could periodically
-    // roll up the detail, post the summary to the GL, and then flush the detail in the sub-ledger. I am thinking
-    // of claims in particular.
-    
-    /* solhint-disable no-unused-vars */
-
-    /**
-        - Store all currnet balances as closing balances
-        - Spin through all accounts and compute the difference between opening balance and closing balance.
-        - Make journal entries to parent ledger posting all differences for all accounts.
-        - Clear detail
-        - Make new journal entry to establish new opening balances from stored closing balances
-        - NOTE: This could be divided up between a close and roll feature, in the event one wants to 
-        - snapshot closing balance and post to GL without clearing detail. Then the opening balance pointer
-        - just has to be moved.
-     */
-    // function close(Ledger parentLedger) external pure {
-    //     require(false, "not implemented");
-    // }
-
-    /**
-        - take in a parent ledger, get the balances of accountNames from the parent
-        - create accounts in this sub-ledger for all accountNames
-        - create a journal entry for all current balances
-        - set pointer to opening balance (this will need some mods to Account, I think)
-     */
-    // function open(Ledger parentLedger, bytes32[] calldata accountNames) external pure {
-    //     require(false, "not implemented");
-    // }
-    
-    /* solhint-enable no-unused-vars */
-
     /**
         - Check that sum of debits = credits
         - Check that all accounts exist in chart of accounts
         - Make entries to accounts
         - Update asset, liability, and equity totals.
      */
-    function post(JournalEntry[] calldata journalEntries) public virtual mustBalance {
+    function post(JournalEntry[] calldata journalEntries)
+        public virtual
+        mustBeBounded(journalEntries.length, MAX_JOURNAL_ENTRIES)
+        mustBalance 
+    {
         uint256 debits;
         uint256 credits;
 
+        uint256 count = journalEntries.length;
+
         // Check that sum of debits = credits
         // Check that all accounts exist in chart of accounts
-        for (uint i = 0; i < journalEntries.length; i++) {
+        for (uint i = 0; i < count; i++) {
             JournalEntry calldata journalEntry = journalEntries[i];
-            // TODO: Which account?
-            require(accountExists(journalEntry.accountName), "account missing");
+            require(accountExists(journalEntry.accountName), ERR_NOT_FOUND_MSG);
             debits += journalEntry.debit;
             credits += journalEntry.credit;
         }
-        require(debits == credits, "debits != credits");
+        require(debits == credits, ERR_DEBITS_NEQ_CREDITS_MSG);
 
         // Post
-        for (uint i = 0; i < journalEntries.length; i++) {
+        for (uint i = 0; i < count; i++) {
             // Post journal entries to accounts
             JournalEntry calldata journalEntry = journalEntries[i];
             Account.AccountState storage account = chartOfAccounts[journalEntry.accountName];
