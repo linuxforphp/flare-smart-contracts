@@ -65,6 +65,18 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(accountNames[0], AN_ASSET);
       assert.equal(accountNames[1], A_LIABILITY);
     });
+
+    it("Should not add too many accounts", async() => {
+      // Assemble
+      const accountDefinitions = [];
+      for (let i = 0; i <= 100; i++) {
+        accountDefinitions[i] = {name: keccak256(toUtf8Bytes(`Asset ${i}`)), accountType: AccountType.ASSET};
+      }
+      // Act
+      const addAccountsPromise = ledger.addAccounts(accountDefinitions);
+      // Assert
+      await expectRevert(addAccountsPromise, "too many");
+    });
   });
 
   describe("Post", async() => {
@@ -103,7 +115,7 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       // Act
       const postPromise = ledger.post(journalEntries);
       // Assert
-      await expectRevert(postPromise, "account missing");
+      await expectRevert(postPromise, `not found`);
     });
 
     it("Should update asset, liability, and equity ledger balances when posting", async() => {
@@ -234,10 +246,83 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       const addPromise = ledger.addAccount({name: BOGUS_ACCOUNT, accountType: AccountType.BOGUS});
       // Assert
       await expectRevert.unspecified(addPromise);
+    });
+
+    it("Should not add too many ledger entries", async() => {
+      // Assemble
+      await ledger.addAccount({name: SOME_EQUITY, accountType: AccountType.EQUITY});
+      const journalEntries = [];
+      for (let i = 0; i <= 20; i++) {
+        journalEntries[i] = { accountName: SOME_EQUITY, debit: 100, credit: 100};
+      }
+      // Act
+      const postPromise = ledger.post(journalEntries);
+      // Assert
+      await expectRevert(postPromise, "too many");
+    });
+
+    it("Should revert when driving asset total negative", async() => {
+      // Assemble
+      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
+      // This will create negative total assets since it is first in the list
+      const journalEntries = [];
+      journalEntries[0] = { accountName: AN_ASSET, debit: 0, credit: 100};
+      journalEntries[1] = { accountName: A_LIABILITY, debit: 100, credit: 0};
+      // Act
+      const postPromise = ledger.post(journalEntries);
+      // Assert
+      await expectRevert(postPromise, "SafeMath: subtraction overflow");
+    });
+
+    it("Should revert when driving liability total negative", async() => {
+      // Assemble
+      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
+      // This will create negative total assets since it is first in the list
+      const journalEntries = [];
+      journalEntries[0] = { accountName: A_LIABILITY, debit: 100, credit: 0};
+      journalEntries[1] = { accountName: AN_ASSET, debit: 0, credit: 100};
+      // Act
+      const postPromise = ledger.post(journalEntries);
+      // Assert
+      await expectRevert(postPromise, "SafeMath: subtraction overflow");
+    });    
+
+    it("Should revert when driving equity total negative", async() => {
+      // Assemble
+      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      await ledger.addAccount({name: SOME_EQUITY, accountType: AccountType.EQUITY});
+      // This will create negative total equity since it is first in the list
+      const journalEntries = [];
+      journalEntries[0] = { accountName: SOME_EQUITY, debit: 100, credit: 0};
+      journalEntries[1] = { accountName: AN_ASSET, debit: 0, credit: 100};
+      // Act
+      const postPromise = ledger.post(journalEntries);
+      // Assert
+      await expectRevert(postPromise, "SafeMath: subtraction overflow");
+    });        
+  });
+
+  describe("Account not found exceptions", async() => {
+    it("Should not get current balance if account not found", async() => {
+      // Assemble
+      // Act
+      const getPromise = ledger.getCurrentBalance(SOME_EQUITY);
+      // Assert
+      await expectRevert(getPromise, "not found");
+    });
+
+    it("Should not get ledger entry if account not found", async() => {
+      // Assemble
+      // Act
+      const getPromise = ledger.getLedgerEntry(SOME_EQUITY, 0);
+      // Assert
+      await expectRevert(getPromise, "not found");
     });    
   });
 
-  describe("History", async() => {
+  describe("Query history", async() => {
     it.skip("Placeholder for running balance history tests", async() => {
     });
   });
