@@ -26,13 +26,13 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     
     modifier onlyPercent {
         // If a delegate cannot be added by percentage, revert.
-        require(_canDelegateByPct(_msgSender()), ALREADY_EXPLICIT_MSG);
+        require(_canDelegateByPct(msg.sender), ALREADY_EXPLICIT_MSG);
         _;
     }
 
     modifier onlyExplicit {
         // If a delegate cannot be added by explicit amount, revert.
-        require(_canDelegateByAmount(_msgSender()), ALREADY_PERCENT_MSG);
+        require(_canDelegateByAmount(msg.sender), ALREADY_PERCENT_MSG);
         _;
     }
 
@@ -72,8 +72,10 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @param _blockNumber The block number when the balance is queried.
      * @return The balance at `_blockNumber`.
      **/
-    function balanceOfAt(address _owner, uint256 _blockNumber) 
-    public view override(CheckPointable, IVPToken) returns (uint256) {
+    function balanceOfAt(
+        address _owner, 
+        uint256 _blockNumber
+    ) public view override(CheckPointable, IVPToken) returns (uint256) {
         return CheckPointable.balanceOfAt(_owner, _blockNumber);
     }
     
@@ -85,7 +87,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      **/
     function delegate(address _to, uint256 _bips) external override onlyPercent {
         // Get the current balance of sender and delegate by percentage _to recipient
-        _delegateByPercentage(_to, balanceOf(_msgSender()), _bips);
+        _delegateByPercentage(_to, balanceOf(msg.sender), _bips);
     }
 
     /**
@@ -95,7 +97,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/    
     function delegateExplicit(address _to, uint256 _amount) external override onlyExplicit {
-        _delegateByAmount(_to, balanceOf(_msgSender()), _amount);
+        _delegateByAmount(_to, balanceOf(msg.sender), _amount);
     }
 
     /**
@@ -121,7 +123,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @notice Undelegate all voting power for delegates of `msg.sender`
      **/
     function undelegateAll() external override onlyPercent {
-        _undelegateAllByPercentage(balanceOf(_msgSender()));
+        _undelegateAllByPercentage(balanceOf(msg.sender));
     }
 
     /**
@@ -130,7 +132,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      *   so the caller must supply them.
      */
     function undelegateAllExplicit(address[] memory _delegateAddresses) external override onlyExplicit {
-        _undelegateAllByAmount(_delegateAddresses, balanceOf(_msgSender()));
+        _undelegateAllByAmount(_delegateAddresses, balanceOf(msg.sender));
     }
     
     /**
@@ -141,7 +143,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
     */
     function revokeDelegationAt(address _who, uint256 _blockNumber) public override {
-        _revokeDelegationAt(_who, balanceOfAt(_msgSender(), _blockNumber), _blockNumber);
+        _revokeDelegationAt(_who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
     }
 
     /**
