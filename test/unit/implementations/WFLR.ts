@@ -6,6 +6,7 @@ const {expectRevert} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const WFLR = artifacts.require("WFLR") as WFLRContract;
+const TransferToWflr = artifacts.require("TransferToWflrMock");
 
 const ALLOWANCE_EXCEEDED_MSG = "allowance below zero";
 
@@ -122,12 +123,47 @@ contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
     await expectRevert(withdrawPromise, ALLOWANCE_EXCEEDED_MSG);
   });
 
-  it("Should not receive either without calling deposit", async() => {
+  it("Should receive flares and update balance via direct flare transfer (web3 send)", async () => {
     // Assemble
     // Act
-    let callPromise = web3.eth.call({to: wflr.address, value: toBN(50)});
+    await web3.eth.sendTransaction({ to: wflr.address, value: toBN(8000), from: accounts[1] });
     // Assert
-    await expectRevert(callPromise, "function selector was not recognized and there's no fallback nor receive function");    
+    const balance = await wflr.balanceOf(accounts[1]);
+    assert.equal(balance.toNumber(), 8000);
+  });
+
+  it("Should not receive flares without calling deposit due to gas shortage - via transfer (2300 gas)", async () => {
+    // Assemble
+    const transferer = await TransferToWflr.new();
+    await transferer.send(5e18);
+    // Act
+    let callPromise = transferer.transferToWflr(wflr.address, 8500);
+    // Assert
+    await expectRevert(callPromise, "contract call run out of gas and made the transaction revert");
+    const balance = await wflr.balanceOf(transferer.address);
+    assert.equal(balance.toNumber(), 0);
+  });
+
+  it("Should not receive flares without calling deposit due to gas shortage - via transfer (2300 gas), event if deposited before", async () => {
+    // Assemble
+    const transferer = await TransferToWflr.new();
+    await transferer.send(5e18);
+    // Act
+    await transferer.depositToWflr(wflr.address, 1500);
+    let callPromise = transferer.transferToWflr(wflr.address, 8500);
+    // Assert
+    await expectRevert(callPromise, "contract call run out of gas and made the transaction revert");
+    const balance = await wflr.balanceOf(transferer.address);
+    assert.equal(balance.toNumber(), 1500);
+  });
+
+  it("Should not receive flares without calling deposit - via unknown function call", async () => {
+    // Assemble
+    let funcCall = web3.eth.abi.encodeFunctionCall({ name: 'some_name', type: 'function', inputs: [] }, []);
+    // Act
+    let callPromise = web3.eth.call({ to: wflr.address, value: toBN(50), data: funcCall });
+    // Assert
+    await expectRevert(callPromise, "function selector was not recognized and there's no fallback function");
   });
 
   // TODO: Test Deposit and Withdrawal events

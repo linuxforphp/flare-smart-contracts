@@ -20,6 +20,10 @@ contract WFLR is VPToken, IWFLR {
      */
     constructor() VPToken("Wrapped FLR", "WFLR") {
     }
+    
+    receive() external payable {
+        deposit();
+    }
 
     /**
      * @notice Withdraw WFLR from an owner and send FLR to msg.sender given an allowance.
