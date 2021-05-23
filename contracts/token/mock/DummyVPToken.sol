@@ -3,9 +3,10 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../../userInterfaces/IVPToken.sol";
+import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import "../interface/IIVPToken.sol";
 
-contract DummyVPToken is ERC20, IVPToken {
+contract DummyVPToken is ERC20, IIVPToken {
     /* solhint-disable ordering */
     
     uint256 public constant MINTAMOUNT = 700 * 10 ** 18; 
@@ -41,7 +42,7 @@ contract DummyVPToken is ERC20, IVPToken {
         return balanceOf(_who) / 1e18;
     }
 
-    // empty implementations, to satisfy the IVPToken contract    
+    // empty implementations, to satisfy the IIVPToken contract    
     /* solhint-disable no-unused-vars */
     function totalSupplyAt(uint256 _blockNumber) public view override returns(uint256) {}
     function balanceOfAt(address _owner, uint256 _blockNumber) public view override returns (uint256) {}
@@ -70,4 +71,6 @@ contract DummyVPToken is ERC20, IVPToken {
     function votePowerFromTo(address _from, address _to) external view override returns(uint256) {}
     function votePowerFromToAt(address _from, address _to, uint256 _blockNumber) external view override 
         returns(uint256) {}
+    function votePowerAtCached(uint256 _blockNumber) external override returns(uint256) {}
+    function votePowerOfAtCached(address _owner, uint256 _blockNumber) external override returns(uint256) {}
 }

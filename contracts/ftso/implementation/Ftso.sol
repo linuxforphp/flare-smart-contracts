@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IVPToken.sol";
+import "../../token/interface/IIVPToken.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
@@ -43,15 +43,15 @@ contract Ftso is IIFtso {
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
 
     // external contracts
-    IVPToken public immutable wFlr;              // wrapped FLR
+    IIVPToken public immutable wFlr;              // wrapped FLR
     IIFtsoManager public immutable ftsoManager;  // FTSO manager contract
     IPriceSubmitter public priceSubmitter;      // Price submitter contract
-    IVPToken[] public fAssets;                   // array of assets
+    IIVPToken[] public fAssets;                   // array of assets
     IIFtso[] public fAssetFtsos;                // FTSOs for assets (for a multi-asset FTSO)
 
     constructor(
         string memory _symbol,
-        IVPToken _wFlr,
+        IIVPToken _wFlr,
         IIFtsoManager _ftsoManager,
         uint256 _initialPriceUSD
     ) {
@@ -313,7 +313,7 @@ contract Ftso is IIFtso {
      * @notice Sets asset for FTSO to operate as single-asset oracle
      * @param _fAsset               Asset
      */
-    function setFAsset(IVPToken _fAsset) external override onlyFtsoManager {
+    function setFAsset(IIVPToken _fAsset) external override onlyFtsoManager {
         symbol = _fAsset.symbol();
         fAssetFtsos = [ IIFtso(this) ];
         fAssets = [ _fAsset ];
@@ -329,7 +329,7 @@ contract Ftso is IIFtso {
         assert(_fAssetFtsos.length > 0);
         assert(_fAssetFtsos.length > 1 || _fAssetFtsos[0] != this);
         fAssetFtsos = _fAssetFtsos;
-        fAssets = new IVPToken[](_fAssetFtsos.length);
+        fAssets = new IIVPToken[](_fAssetFtsos.length);
         _refreshAssets();
     }
 
@@ -346,7 +346,7 @@ contract Ftso is IIFtso {
             return;
         }
 
-        IVPToken[] memory assets;
+        IIVPToken[] memory assets;
         uint256[] memory assetVotePowers;
         uint256[] memory assetPrices;
         (assets, assetVotePowers, assetPrices) = _getAssetData();
@@ -393,9 +393,9 @@ contract Ftso is IIFtso {
      * @notice Returns the FTSO asset
      * @dev fAsset is null in case of multi-asset FTSO
      */
-    function getFAsset() external view override returns (IVPToken) {
+    function getFAsset() external view override returns (IIVPToken) {
         return fAssets.length == 1 && fAssetFtsos.length == 1 && fAssetFtsos[0] == this ?
-            fAssets[0] : IVPToken(address(0));
+            fAssets[0] : IIVPToken(address(0));
     }
 
     /**
@@ -653,7 +653,7 @@ contract Ftso is IIFtso {
      * @return _prices              List of asset prices
      */
     function _getAssetData() internal returns (
-        IVPToken[] memory _assets,
+        IIVPToken[] memory _assets,
         uint256[] memory _votePowers,
         uint256[] memory _prices
     ) {
@@ -678,7 +678,7 @@ contract Ftso is IIFtso {
             return;
         } else {
             for (uint256 i = 0; i < fAssetFtsos.length; i++) {
-                IVPToken asset = fAssetFtsos[i].getFAsset();
+                IIVPToken asset = fAssetFtsos[i].getFAsset();
                 if (asset == fAssets[i]) {
                     continue;
                 }
@@ -892,7 +892,7 @@ contract Ftso is IIFtso {
      * @param _owner                Owner address
      * @dev Checks if vote power is sufficient and adjusts vote power if it is too large
      */
-    function _getVotePowerOf(FtsoEpoch.Instance storage _epoch, address _owner) internal view returns (
+    function _getVotePowerOf(FtsoEpoch.Instance storage _epoch, address _owner) internal returns (
         uint256 _votePowerFlr,
         uint256 _votePowerAsset
     ) {
@@ -929,11 +929,11 @@ contract Ftso is IIFtso {
      * @param _vpBlock              Vote power block
      * @dev Returns 0 if vote power token is null
      */
-    function _getVotePowerAt(IVPToken _vp, uint256 _vpBlock) internal view returns (uint256) {
+    function _getVotePowerAt(IIVPToken _vp, uint256 _vpBlock) internal returns (uint256) {
         if (address(_vp) == address(0)) {
             return 0;
         } else {
-            return _vp.votePowerAt(_vpBlock);
+            return _vp.votePowerAtCached(_vpBlock);
         }
     }
 
@@ -944,11 +944,11 @@ contract Ftso is IIFtso {
      * @param _owner                Owner address
      * @dev Returns 0 if vote power token is null
      */
-    function _getVotePowerOfAt(IVPToken _vp, address _owner, uint256 _vpBlock) internal view returns (uint256) {
+    function _getVotePowerOfAt(IIVPToken _vp, address _owner, uint256 _vpBlock) internal returns (uint256) {
         if (address(_vp) == address(0)) {
             return 0;
         } else {
-            return _vp.votePowerOfAt(_owner, _vpBlock);
+            return _vp.votePowerOfAtCached(_owner, _vpBlock);
         }
     }
 

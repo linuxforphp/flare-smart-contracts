@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "../lib/FtsoEpoch.sol";
-import "../../userInterfaces/IVPToken.sol";
+import "../../token/interface/IIVPToken.sol";
 
 /**
  * @title Ftso Vote mock contract
@@ -39,7 +39,7 @@ contract FtsoEpochMock {
         uint256 highRewardedPrice;              // the highest submitted price elibible for reward
         uint256 random;                         // random number associated with the epoch
         uint256 voteCount;                       // number of votes in epoch
-        IVPToken[] assets;                       // list of assets
+        IIVPToken[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         address[] trustedAddresses;             // trusted addresses - set only when used
         uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
@@ -59,14 +59,14 @@ contract FtsoEpochMock {
         state.revealPeriod = _revealPeriod;
     }
 
-    function setAssetNorm(IVPToken _fasset, uint256 _decimals) public {
+    function setAssetNorm(IIVPToken _fasset, uint256 _decimals) public {
         state.assetNorm[_fasset] = 10**_decimals;
     }
 
     function initializeInstanceForReveal(
         uint256 _epochId,
         uint256 _votePowerFlr,
-        IVPToken[] memory _assets,
+        IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
     ) public {
@@ -163,7 +163,7 @@ contract FtsoEpochMock {
 
     function setAssets(
         uint256 _epochId, 
-        IVPToken[] memory _assets,
+        IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
     ) public {

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./IVPToken.sol";
-
 interface IFtso {
     enum PriceFinalizationType {
         // initial state

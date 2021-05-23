@@ -100,7 +100,7 @@ contract DelegatableMock is Delegatable {
         return _votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
     
-    // empty implementations, to satisfy the IVPToken contract    
+    // empty implementations, to satisfy the IIVPToken contract    
     function allowance(address _owner, address _spender) external override view returns (uint256) {}
     function approve(address _spender, uint256 _amount) external override returns (bool) {}
     function totalSupply() external override view returns (uint256) {}

@@ -238,7 +238,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     /**
      * @notice Set FAsset for FTSO
      */
-    function setFtsoFAsset(IIFtso _ftso, IVPToken _fAsset) external override onlyGovernance {
+    function setFtsoFAsset(IIFtso _ftso, IIVPToken _fAsset) external override onlyGovernance {
         _ftso.setFAsset(_fAsset);
     }
 
