@@ -36,19 +36,19 @@ interface IVPToken is IERC20 {
     
 
     /**
-     * @notice Total amount of tokens at a specific `blockNumber`.
-     * @param blockNumber The block number when the totalSupply is queried
-     * @return The total amount of tokens at `blockNumber`
+     * @notice Total amount of tokens at a specific `_blockNumber`.
+     * @param _blockNumber The block number when the totalSupply is queried
+     * @return The total amount of tokens at `_blockNumber`
      **/
-    function totalSupplyAt(uint blockNumber) external view returns(uint256);
+    function totalSupplyAt(uint _blockNumber) external view returns(uint256);
 
     /**
-     * @dev Queries the token balance of `owner` at a specific `blockNumber`.
-     * @param owner The address from which the balance will be retrieved.
-     * @param blockNumber The block number when the balance is queried.
-     * @return The balance at `blockNumber`.
+     * @dev Queries the token balance of `_owner` at a specific `_blockNumber`.
+     * @param _owner The address from which the balance will be retrieved.
+     * @param _blockNumber The block number when the balance is queried.
+     * @return The balance at `_blockNumber`.
      **/
-    function balanceOfAt(address owner, uint blockNumber) external view returns (uint256);
+    function balanceOfAt(address _owner, uint _blockNumber) external view returns (uint256);
 
     
     /**
@@ -58,54 +58,54 @@ interface IVPToken is IERC20 {
     function votePower() external view returns(uint256);
     
     /**
-    * @notice Get the vote power at block `blockNumber`
-    * @param blockNumber The block number at which to fetch.
+    * @notice Get the vote power at block `_blockNumber`
+    * @param _blockNumber The block number at which to fetch.
     * @return The vote power at the block.
     */
-    function votePowerAt(uint blockNumber) external view returns(uint256);
+    function votePowerAt(uint _blockNumber) external view returns(uint256);
 
     /**
-     * @notice Get the current vote power of `owner`.
-     * @param owner The address to get voting power.
-     * @return Current vote power of `owner`.
+     * @notice Get the current vote power of `_owner`.
+     * @param _owner The address to get voting power.
+     * @return Current vote power of `_owner`.
      */
-    function votePowerOf(address owner) external view returns(uint256);
+    function votePowerOf(address _owner) external view returns(uint256);
     
     /**
-    * @notice Get the vote power of `owner` at block `blockNumber`
-    * @param owner The address to get voting power.
-    * @param blockNumber The block number at which to fetch.
-    * @return Vote power of `owner` at `blockNumber`.
+    * @notice Get the vote power of `_owner` at block `_blockNumber`
+    * @param _owner The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_owner` at `_blockNumber`.
     */
-    function votePowerOfAt(address owner, uint256 blockNumber) external view returns(uint256);
+    function votePowerOfAt(address _owner, uint256 _blockNumber) external view returns(uint256);
 
 
     /**
-     * @notice Delegate by percentage  `pct` of voting power to `to` from `msg.sender`.
-     * @param to The address of the recipient
-     * @param bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
+     * @notice Delegate by percentage `_bips` of voting power to `_to` from `msg.sender`.
+     * @param _to The address of the recipient
+     * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
      **/
-    function delegate(address to, uint256 bips) external;
+    function delegate(address _to, uint256 _bips) external;
     
     /**
-     * @notice Explicitly delegate `amount` of voting power to `to` from `msg.sender`.
-     * @param to The address of the recipient
-     * @param amount An explicit vote power amount to be delegated.
+     * @notice Explicitly delegate `_amount` of voting power to `_to` from `msg.sender`.
+     * @param _to The address of the recipient
+     * @param _amount An explicit vote power amount to be delegated.
      *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
      **/    
-    function delegateExplicit(address to, uint amount) external;
+    function delegateExplicit(address _to, uint _amount) external;
 
     /**
-    * @notice Revoke all delegation from sender to `who` at given block. 
-    *    Only affects the reads via `votePowerOfAtCached()` in the block `blockNumber`.
-    *    Block `blockNumber` must be in the past. 
+    * @notice Revoke all delegation from sender to `_who` at given block. 
+    *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
+    *    Block `_blockNumber` must be in the past. 
     *    This method should be used only to prevent rogue delegate voting in the current voting block.
     *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
-    * @param who Address of the delegatee
-    * @param blockNumber The block number at which to revoke delegation.
+    * @param _who Address of the delegatee
+    * @param _blockNumber The block number at which to revoke delegation.
     */
-    function revokeDelegationAt(address who, uint blockNumber) external;
+    function revokeDelegationAt(address _who, uint _blockNumber) external;
     
     /**
      * @notice Undelegate all voting power for delegates of `msg.sender`
@@ -118,80 +118,80 @@ interface IVPToken is IERC20 {
      * @notice Undelegate all explicit vote power by amount delegates for `msg.sender`.
      *    Can only be used with explicit delegation.
      *    Does not reset delegation mode back to NOTSET.
-     * @param delegateAddresses Explicit delegation does not store delegatees' addresses, 
+     * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
      *   so the caller must supply them.
      */
-    function undelegateAllExplicit(address[] memory delegateAddresses) external;
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external;
 
     /**
-     * @notice Get the delegation mode for 'who'. This mode determines whether vote power is
+     * @notice Get the delegation mode for '_who'. This mode determines whether vote power is
      *  allocated by percentage or by explicit value. Once the delegation mode is set, 
      *  it never changes, even if all delegations are removed.
-     * @param who The address to get delegation mode.
+     * @param _who The address to get delegation mode.
      * @return delegation mode: 0 = NOTSET, 1 = PERCENTAGE, 2 = AMOUNT (i.e. explicit)
      */
-    function delegationModeOf(address who) external view returns(uint256);
+    function delegationModeOf(address _who) external view returns(uint256);
         
     /**
-    * @notice Get current delegated vote power `from` delegator delegated `to` delegatee.
-    * @param from Address of delegator
-    * @param to Address of delegatee
-    * @return votePower The delegated vote power.
-    */
-    function votePowerFromTo(address from, address to) external view returns(uint256);
-    
-    /**
-    * @notice Get delegated the vote power `from` delegator delegated `to` delegatee at `blockNumber`.
-    * @param from Address of delegator
-    * @param to Address of delegatee
-    * @param blockNumber The block number at which to fetch.
+    * @notice Get current delegated vote power `_from` delegator delegated `_to` delegatee.
+    * @param _from Address of delegator
+    * @param _to Address of delegatee
     * @return The delegated vote power.
     */
-    function votePowerFromToAt(address from, address to, uint blockNumber) external view returns(uint256);
+    function votePowerFromTo(address _from, address _to) external view returns(uint256);
     
     /**
-     * @notice Compute the current undelegated vote power of `owner`
-     * @param owner The address to get undelegated voting power.
-     * @return The unallocated vote power of `owner`
-     */
-    function undelegatedVotePowerOf(address owner) external view returns(uint256);
+    * @notice Get delegated the vote power `_from` delegator delegated `_to` delegatee at `_blockNumber`.
+    * @param _from Address of delegator
+    * @param _to Address of delegatee
+    * @param _blockNumber The block number at which to fetch.
+    * @return The delegated vote power.
+    */
+    function votePowerFromToAt(address _from, address _to, uint _blockNumber) external view returns(uint256);
     
     /**
-     * @notice Get the undelegated vote power of `owner` at given block.
-     * @param owner The address to get undelegated voting power.
-     * @param blockNumber The block number at which to fetch.
-     * @return The unallocated vote power of `owner`
+     * @notice Compute the current undelegated vote power of `_owner`
+     * @param _owner The address to get undelegated voting power.
+     * @return The unallocated vote power of `_owner`
      */
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view returns(uint256);
+    function undelegatedVotePowerOf(address _owner) external view returns(uint256);
+    
+    /**
+     * @notice Get the undelegated vote power of `_owner` at given block.
+     * @param _owner The address to get undelegated voting power.
+     * @param _blockNumber The block number at which to fetch.
+     * @return The undelegated vote power of `_owner` (= owner's own balance minus all delegations from owner)
+     */
+    function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) external view returns(uint256);
     
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
-    *  and `pcts` of `who`. Returned in two separate positional arrays.
-    * @param who The address to get delegations.
-    * @return delegateAddresses Positional array of delegation addresses.
-    * @return bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
-    * @return count The number of delegates.
-    * @return delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
+    *  and `_bips` of `_who`. Returned in two separate positional arrays.
+    * @param _who The address to get delegations.
+    * @return _delegateAddresses Positional array of delegation addresses.
+    * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
+    * @return _count The number of delegates.
+    * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOf(address who) external view returns (
-        address[] memory delegateAddresses,
-        uint256[] memory bips,
-        uint256 count, 
-        uint256 delegationMode);
+    function delegatesOf(address _who) external view returns (
+        address[] memory _delegateAddresses,
+        uint256[] memory _bips,
+        uint256 _count, 
+        uint256 _delegationMode);
         
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
-    *  and `pcts` of `who`. Returned in two separate positional arrays.
-    * @param who The address to get delegations.
-    * @param blockNumber The block for which we want to know the delegations.
-    * @return delegateAddresses Positional array of delegation addresses.
-    * @return bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
-    * @return count The number of delegates.
-    * @return delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
+    *  and `pcts` of `_who`. Returned in two separate positional arrays.
+    * @param _who The address to get delegations.
+    * @param _blockNumber The block for which we want to know the delegations.
+    * @return _delegateAddresses Positional array of delegation addresses.
+    * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
+    * @return _count The number of delegates.
+    * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOfAt(address who, uint256 blockNumber) external view returns (
-        address[] memory delegateAddresses, 
-        uint256[] memory bips, 
-        uint256 count, 
-        uint256 delegationMode);
+    function delegatesOfAt(address _who, uint256 _blockNumber) external view returns (
+        address[] memory _delegateAddresses, 
+        uint256[] memory _bips, 
+        uint256 _count, 
+        uint256 _delegationMode);
 }

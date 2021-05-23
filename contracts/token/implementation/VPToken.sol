@@ -20,8 +20,8 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     string constant private ALREADY_PERCENT_MSG = "Already delegated by percentage";
 
     constructor(
-        string memory name_, 
-        string memory symbol_) ERC20(name_, symbol_) {
+        string memory _name, 
+        string memory _symbol) ERC20(_name, _symbol) {
     }
     
     modifier onlyPercent {
@@ -58,63 +58,63 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     }
 
     /**
-     * @notice Total amount of tokens at a specific `blockNumber`.
-     * @param blockNumber The block number when the totalSupply is queried
-     * @return The total amount of tokens at `blockNumber`
+     * @notice Total amount of tokens at a specific `_blockNumber`.
+     * @param _blockNumber The block number when the totalSupply is queried
+     * @return The total amount of tokens at `_blockNumber`
      **/
-    function totalSupplyAt(uint blockNumber) public view override(CheckPointable, IVPToken) returns(uint256) {
-        return CheckPointable.totalSupplyAt(blockNumber);
+    function totalSupplyAt(uint256 _blockNumber) public view override(CheckPointable, IVPToken) returns(uint256) {
+        return CheckPointable.totalSupplyAt(_blockNumber);
     }
 
     /**
-     * @dev Queries the token balance of `owner` at a specific `blockNumber`.
-     * @param owner The address from which the balance will be retrieved.
-     * @param blockNumber The block number when the balance is queried.
-     * @return The balance at `blockNumber`.
+     * @dev Queries the token balance of `_owner` at a specific `_blockNumber`.
+     * @param _owner The address from which the balance will be retrieved.
+     * @param _blockNumber The block number when the balance is queried.
+     * @return The balance at `_blockNumber`.
      **/
-    function balanceOfAt(address owner, uint blockNumber) 
+    function balanceOfAt(address _owner, uint256 _blockNumber) 
     public view override(CheckPointable, IVPToken) returns (uint256) {
-        return CheckPointable.balanceOfAt(owner, blockNumber);
+        return CheckPointable.balanceOfAt(_owner, _blockNumber);
     }
     
     /**
-     * @notice Delegate `pct` of voting power to `to` from `msg.sender`
-     * @param to The address of the recipient
-     * @param bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
+     * @notice Delegate `_bips` of voting power to `_to` from `msg.sender`
+     * @param _to The address of the recipient
+     * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/
-    function delegate(address to, uint256 bips) external override onlyPercent {
-        // Get the current balance of sender and delegate by percentage to recipient
-        _delegateByPercentage(to, balanceOf(_msgSender()), bips);
+    function delegate(address _to, uint256 _bips) external override onlyPercent {
+        // Get the current balance of sender and delegate by percentage _to recipient
+        _delegateByPercentage(_to, balanceOf(_msgSender()), _bips);
     }
 
     /**
-     * @notice Delegate `pct` of voting power to `to` from `msg.sender`
-     * @param to The address of the recipient
-     * @param amount An explicit vote power amount to be delegated.
+     * @notice Delegate `pct` of voting power to `_to` from `msg.sender`
+     * @param _to The address of the recipient
+     * @param _amount An explicit vote power amount to be delegated.
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/    
-    function delegateExplicit(address to, uint256 amount) external override onlyExplicit {
-        _delegateByAmount(to, balanceOf(_msgSender()), amount);
+    function delegateExplicit(address _to, uint256 _amount) external override onlyExplicit {
+        _delegateByAmount(_to, balanceOf(_msgSender()), _amount);
     }
 
     /**
-     * @notice Compute the current undelegated vote power of `owner`
-     * @param owner The address to get undelegated voting power.
-     * @return The unallocated vote power of `owner`
+     * @notice Compute the current undelegated vote power of `_owner`
+     * @param _owner The address to get undelegated voting power.
+     * @return The unallocated vote power of `_owner`
      */
-    function undelegatedVotePowerOf(address owner) public view override returns(uint256) {
-        return _undelegatedVotePowerOf(owner, balanceOf(owner));
+    function undelegatedVotePowerOf(address _owner) public view override returns(uint256) {
+        return _undelegatedVotePowerOf(_owner, balanceOf(_owner));
     }
 
     /**
-     * @notice Get the undelegated vote power of `owner` at given block.
-     * @param owner The address to get undelegated voting power.
-     * @param blockNumber The block number at which to fetch.
-     * @return The unallocated vote power of `owner`
+     * @notice Get the undelegated vote power of `_owner` at given block.
+     * @param _owner The address to get undelegated voting power.
+     * @param _blockNumber The block number at which to fetch.
+     * @return The unallocated vote power of `_owner`
      */
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) public view override returns (uint256) {
-        return _undelegatedVotePowerOfAt(owner, balanceOfAt(owner, blockNumber), blockNumber);
+    function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) public view override returns (uint256) {
+        return _undelegatedVotePowerOfAt(_owner, balanceOfAt(_owner, _blockNumber), _blockNumber);
     }
 
     /**
@@ -126,43 +126,50 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
 
     /**
      * @notice Undelegate all explicit vote power by amount delegates for `msg.sender`.
-     * @param delegateAddresses Explicit delegation does not store delegatees' addresses, 
+     * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
      *   so the caller must supply them.
      */
-    function undelegateAllExplicit(address[] memory delegateAddresses) external override onlyExplicit {
-        _undelegateAllByAmount(delegateAddresses, balanceOf(_msgSender()));
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external override onlyExplicit {
+        _undelegateAllByAmount(_delegateAddresses, balanceOf(_msgSender()));
     }
     
     /**
-    * @notice Revoke all delegation from sender to `who` at given block. 
-    *    Only affects the reads via `votePowerOfAtCached()` in the block `blockNumber`.
-    *    Block `blockNumber` must be in the past. 
+    * @notice Revoke all delegation from sender to `_who` at given block. 
+    *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
+    *    Block `_blockNumber` must be in the past. 
     *    This method should be used only to prevent rogue delegate voting in the current voting block.
     *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
     */
-    function revokeDelegationAt(address who, uint blockNumber) public override {
-        _revokeDelegationAt(who, balanceOfAt(_msgSender(), blockNumber), blockNumber);
+    function revokeDelegationAt(address _who, uint256 _blockNumber) public override {
+        _revokeDelegationAt(_who, balanceOfAt(_msgSender(), _blockNumber), _blockNumber);
     }
 
     /**
-    * @notice Get current delegated vote power `from` delegator delegated `to` delegatee.
-    * @param from Address of delegator
-    * @param to Address of delegatee
+    * @notice Get current delegated vote power `_from` delegator delegated `_to` delegatee.
+    * @param _from Address of delegator
+    * @param _to Address of delegatee
     * @return votePower The delegated vote power.
     */
-    function votePowerFromTo(address from, address to) external view override returns(uint256) {
-        return _votePowerFromTo(from, to, balanceOf(from));
+    function votePowerFromTo(
+        address _from, 
+        address _to
+    ) external view override returns(uint256) {
+        return _votePowerFromTo(_from, _to, balanceOf(_from));
     }
     
     /**
-    * @notice Get delegated the vote power `from` delegator delegated `to` delegatee at `blockNumber`.
-    * @param from Address of delegator
-    * @param to Address of delegatee
-    * @param blockNumber The block number at which to fetch.
+    * @notice Get delegated the vote power `_from` delegator delegated `_to` delegatee at `_blockNumber`.
+    * @param _from Address of delegator
+    * @param _to Address of delegatee
+    * @param _blockNumber The block number at which to fetch.
     * @return The delegated vote power.
     */
-    function votePowerFromToAt(address from, address to, uint blockNumber) external view override returns(uint256) {
-        return _votePowerFromToAt(from, to, balanceOfAt(from, blockNumber), blockNumber);
+    function votePowerFromToAt(
+        address _from, 
+        address _to, 
+        uint256 _blockNumber
+    ) external view override returns(uint256) {
+        return _votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
     
     /**
@@ -174,49 +181,49 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     }
 
     /**
-    * @notice Get the vote power at block `blockNumber`
-    * @param blockNumber The block number at which to fetch.
+    * @notice Get the vote power at block `_blockNumber`
+    * @param _blockNumber The block number at which to fetch.
     * @return The vote power at the block.
     */
-    function votePowerAt(uint blockNumber) public view override returns(uint256) {
-        return totalSupplyAt(blockNumber);
+    function votePowerAt(uint256 _blockNumber) public view override returns(uint256) {
+        return totalSupplyAt(_blockNumber);
     }
 
     /**
-    * @notice Get the vote power at block `blockNumber` using cache.
-    *   It tries to read the cached value and if not found, reads the actual value and stores it in cache.
-    *   Can only be used if blockNumber is in the past, otherwise reverts.    
-    * @param blockNumber The block number at which to fetch.
+    * @notice Get the vote power at block `_blockNumber` using cache.
+    *   It tries _to read the cached value and if not found, reads the actual value and stores it in cache.
+    *   Can only be used if _blockNumber is in the past, otherwise reverts.    
+    * @param _blockNumber The block number at which to fetch.
     * @return The vote power at the block.
     */
-    function votePowerAtCached(uint blockNumber) public override returns(uint256) {
-        return _totalSupplyAtCached(blockNumber);
+    function votePowerAtCached(uint256 _blockNumber) public override returns(uint256) {
+        return _totalSupplyAtCached(_blockNumber);
     }
 
     // Update vote power and balance checkpoints before balances are modified. This is implemented
     // in the _beforeTokenTransfer hook, which is executed for _mint, _burn, and _transfer operations.
     function _beforeTokenTransfer(
-        address from, 
-        address to, 
-        uint256 amount) internal virtual override(ERC20) {
+        address _from, 
+        address _to, 
+        uint256 _amount) internal virtual override(ERC20) {
           
-        ERC20._beforeTokenTransfer(from, to, amount);
+        ERC20._beforeTokenTransfer(_from, _to, _amount);
 
-        if (from == address(0)) {
+        if (_from == address(0)) {
             // mint new vote power
-            _mintVotePower(to, amount);
+            _mintVotePower(_to, _amount);
             // mint checkpoint balance data for transferee
-            _mintForAtNow(to, amount);
-        } else if (to == address(0)) {
+            _mintForAtNow(_to, _amount);
+        } else if (_to == address(0)) {
             // burn vote power
-            _burnVotePower(from, balanceOf(from), amount);
+            _burnVotePower(_from, balanceOf(_from), _amount);
             // burn checkpoint data for transferer
-            _burnForAtNow(from, amount);
+            _burnForAtNow(_from, _amount);
         } else {
-            // transmit vote power to receiver
-            _transmitVotePower(from, to, balanceOf(from), amount);
+            // transmit vote power _to receiver
+            _transmitVotePower(_from, _to, balanceOf(_from), _amount);
             // transfer checkpoint balance data
-            _transmitAtNow(from, to, amount);
+            _transmitAtNow(_from, _to, _amount);
         }
     }
 }

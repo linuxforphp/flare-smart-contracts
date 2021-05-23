@@ -30,71 +30,71 @@ library ExplicitDelegation {
     }
 
     /**
-     * @notice Add or replace an existing delegate with new vote power (explicit).
-     * @param self A DelegationState instance to manage.
-     * @param delegate The address of the delegate to add/replace
-     * @param amount Allocation of the delegation as explicit amount
+     * @notice Add or replace an existing _delegate with new vote power (explicit).
+     * @param _self A DelegationState instance to manage.
+     * @param _delegate The address of the _delegate to add/replace
+     * @param _amount Allocation of the delegation as explicit amount
      */
     function addReplaceDelegate(
-        DelegationState storage self, 
-        address delegate, 
-        uint256 amount
+        DelegationState storage _self, 
+        address _delegate, 
+        uint256 _amount
     ) internal {
-        uint256 prevAmount = self.delegatedVotePower.valueOfAtNow(delegate);
-        uint256 newTotal = self.delegatedTotal.valueAtNow().sub(prevAmount, "Total < 0").add(amount);
-        self.delegatedVotePower.writeValueOfAtNow(delegate, amount);
-        self.delegatedTotal.writeValue(newTotal);
+        uint256 prevAmount = _self.delegatedVotePower.valueOfAtNow(_delegate);
+        uint256 newTotal = _self.delegatedTotal.valueAtNow().sub(prevAmount, "Total < 0").add(_amount);
+        _self.delegatedVotePower.writeValueOfAtNow(_delegate, _amount);
+        _self.delegatedTotal.writeValue(newTotal);
     }
     
     /**
-     * @notice Get the total of the explicit vote power delegation amount.
-     * @param self A DelegationState instance to manage.
-     * @param blockNumber The block to query.
-     * @return total The total vote power amount delegated.
+     * @notice Get the _total of the explicit vote power delegation amount.
+     * @param _self A DelegationState instance to manage.
+     * @param _blockNumber The block to query.
+     * @return _total The _total vote power amount delegated.
      */
     function getDelegatedTotalAt(
-        DelegationState storage self, uint256 blockNumber
-    ) internal view returns (uint256 total) {
-        return self.delegatedTotal.valueAt(blockNumber);
+        DelegationState storage _self, uint256 _blockNumber
+    ) internal view returns (uint256 _total) {
+        return _self.delegatedTotal.valueAt(_blockNumber);
     }
     
     /**
-     * @notice Get the total of the explicit vote power delegation amount.
-     * @param self A DelegationState instance to manage.
-     * @return total The total vote power amount delegated.
+     * @notice Get the _total of the explicit vote power delegation amount.
+     * @param _self A DelegationState instance to manage.
+     * @return _total The total vote power amount delegated.
      */
     function getDelegatedTotal(
-        DelegationState storage self
-    ) internal view returns (uint256 total) {
-        return self.delegatedTotal.valueAtNow();
+        DelegationState storage _self
+    ) internal view returns (uint256 _total) {
+        return _self.delegatedTotal.valueAtNow();
     }
     
     /**
-     * @notice Given a delegate address, return the explicit amount of bips of the vote power delegation.
-     * @param self A DelegationState instance to manage.
-     * @param delegate The delegate address to find.
-     * @param blockNumber The block to query.
-     * @return bips The percent of vote power allocated to the delegate address.
+     * @notice Given a delegate address, return the explicit amount of the vote power delegation.
+     * @param _self A DelegationState instance to manage.
+     * @param _delegate The _delegate address to find.
+     * @param _blockNumber The block to query.
+     * @return _value The percent of vote power allocated to the _delegate address.
      */
     function getDelegatedValueAt(
-        DelegationState storage self, 
-        address delegate,
-        uint256 blockNumber
-    ) internal view returns (uint256 bips) {
-        return self.delegatedVotePower.valueOfAt(delegate, blockNumber);
+        DelegationState storage _self, 
+        address _delegate,
+        uint256 _blockNumber
+    ) internal view returns (uint256 _value) {
+        return _self.delegatedVotePower.valueOfAt(_delegate, _blockNumber);
     }
 
     /**
-     * @notice Given a delegate address, return the explicit amount of bips of the vote power delegation.
-     * @param self A DelegationState instance to manage.
-     * @param delegate The delegate address to find.
-     * @return bips The percent of vote power allocated to the delegate address.
+     * @notice Given a delegate address, return the explicit amount of the vote power delegation.
+     * @param _self A DelegationState instance to manage.
+     * @param _delegate The _delegate address to find.
+     * @return _value The percent of vote power allocated to the _delegate address.
      */
     function getDelegatedValue(
-        DelegationState storage self, 
-        address delegate
-    ) internal view returns (uint256 bips) {
-        return self.delegatedVotePower.valueOfAtNow(delegate);
+        DelegationState storage _self, 
+        address _delegate
+    ) internal view returns (uint256 _value) {
+        return _self.delegatedVotePower.valueOfAtNow(_delegate);
     }
 
 }

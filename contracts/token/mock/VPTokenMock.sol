@@ -10,30 +10,30 @@ import {VPToken} from "../implementation/VPToken.sol";
 contract VPTokenMock is VPToken {
 
     constructor(
-        string memory name_, 
-        string memory symbol_) VPToken(name_, symbol_) {
+        string memory _name, 
+        string memory _symbol) VPToken(_name, _symbol) {
     }
 
-    function mint(address to, uint256 amount) public virtual {
-        _mint(to, amount);
+    function mint(address _to, uint256 _amount) public virtual {
+        _mint(_to, _amount);
     }
 
-    function burn(uint256 amount) public virtual {
-        _burn(_msgSender(), amount);
+    function burn(uint256 _amount) public virtual {
+        _burn(_msgSender(), _amount);
     }
 
-    function setDecimals(uint8 decimals) public {
-        _setupDecimals(decimals);
+    function setDecimals(uint8 _decimals) public {
+        _setupDecimals(_decimals);
     }
     
     // some forbidden functions
     
-    function revokeDelegationAtNow(address to) public {
-        revokeDelegationAt(to, block.number);
+    function revokeDelegationAtNow(address _to) public {
+        revokeDelegationAt(_to, block.number);
     }
 
-    function votePowerOfAtNowCached(address who) public returns (uint256) {
-        return votePowerOfAtCached(who, block.number);
+    function votePowerOfAtNowCached(address _who) public returns (uint256) {
+        return votePowerOfAtCached(_who, block.number);
     }
     
     function votePowerAtNowCached() public returns (uint256) {

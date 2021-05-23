@@ -96,8 +96,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     const a = accounts[1], b = accounts[2], c = accounts[3], d = accounts[4];
     await delegation.addReplaceMultipleDelegates([a, b], [5000, 2000]);
     // Act
-    // add c, delete b, update a
-    await delegation.addReplaceMultipleDelegates([c, b, a], [500, 0, 3000]);
+    // delete b, add c, add d, update a, delete d
+    await delegation.addReplaceMultipleDelegates([b, c, d, a, d], [0, 500, 100, 3000, 0]);
     // delete a, add d, update c
     await delegation.addReplaceMultipleDelegates([a, d, c], [0, 1500, 800]);
     // Assert
@@ -186,6 +186,28 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assemble
     await delegation.addReplaceDelegate(accounts[1], 100);
     await delegation.addReplaceDelegate(accounts[2], 200);
+    // Act
+    await delegation.clear();
+    // Assert
+    const { 0: delegates } = await delegation.getDelegations();
+    assert(delegates.length === 0);
+    const total = await delegation.getDelegatedTotal();
+    assert(total.toNumber() === 0);
+  });
+  
+  it("Doesn't create anything for zero delegation", async () => {
+    // Assemble
+    // Act
+    await delegation.addReplaceDelegate(accounts[1], 0);
+    // Assert
+    const { 0: delegates } = await delegation.getDelegations();
+    assert(delegates.length === 0);
+    const total = await delegation.getDelegatedTotal();
+    assert(total.toNumber() === 0);
+  });
+
+  it("Doesn't clear anything for zero delegation", async () => {
+    // Assemble
     // Act
     await delegation.clear();
     // Assert

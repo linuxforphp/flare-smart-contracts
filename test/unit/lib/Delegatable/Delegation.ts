@@ -24,10 +24,10 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     await delegatable.mintVotePower(accounts[1], 100);
     // Act
     await delegatable.delegate(accounts[2], 1000, {from: accounts[1]});
-    const { delegateAddresses, bips, } = await delegatable.delegatesOf(accounts[1]) as any;
+    const { _delegateAddresses, _bips, } = await delegatable.delegatesOf(accounts[1]) as any;
     // Assert
-    assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(bips[0], 1000);
+    assert.equal(_delegateAddresses[0], accounts[2]);
+    assert.equal(_bips[0], 1000);
   });
 
   it("Should emit delegate event when delegate by percentage successful", async() => {

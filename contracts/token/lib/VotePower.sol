@@ -26,148 +26,145 @@ library VotePower {
 
     /**
      * @notice This modifier checks that both addresses are non-zero.
-     * @param delegator A delegator address.
-     * @param delegatee A delegatee address.
+     * @param _delegator A delegator address.
+     * @param _delegatee A delegatee address.
      */
-    modifier addressesNotZero(address delegator, address delegatee) {
+    modifier addressesNotZero(address _delegator, address _delegatee) {
         // Both addresses cannot be zero
-        assert(!(delegator == address(0) && delegatee == address(0)));
+        assert(!(_delegator == address(0) && _delegatee == address(0)));
         _;
     }
 
     /**
      * @notice Burn vote power.
-     * @param self A VotePowerState instance to manage.
-     * @param owner The address of the vote power to be burned.
-     * @param amount The amount of vote power to burn.
+     * @param _self A VotePowerState instance to manage.
+     * @param _owner The address of the vote power to be burned.
+     * @param _amount The amount of vote power to burn.
      */
     function _burn(
-        VotePowerState storage self, 
-        address owner, 
-        uint256 amount) internal {
-
+        VotePowerState storage _self, 
+        address _owner, 
+        uint256 _amount
+    ) internal {
         // Shortcut
-        if (amount == 0) {
+        if (_amount == 0) {
             return;
         }
 
         // Cannot burn the zero address
-        assert(owner != address(0));
+        assert(_owner != address(0));
 
         // Burn vote power for address
-        self.votePowerByAddress.transmit(owner, address(0), amount);
+        _self.votePowerByAddress.transmit(_owner, address(0), _amount);
     }
 
     /**
-     * @notice Delegate vote power `amount` to `delegatee` address from `delegator` address.
-     * @param delegator Delegator address 
-     * @param delegatee Delegatee address
-     * @param amount The amount of vote power to send from delegator to delegatee
+     * @notice Delegate vote power `_amount` to `_delegatee` address from `_delegator` address.
+     * @param _delegator Delegator address 
+     * @param _delegatee Delegatee address
+     * @param _amount The _amount of vote power to send from _delegator to _delegatee
      * @dev Amount recorded at the current block.
      **/
     function delegate(
-        VotePowerState storage self, 
-        address delegator, 
-        address delegatee,
-        uint256 amount) internal addressesNotZero(delegator, delegatee) {
-
+        VotePowerState storage _self, 
+        address _delegator, 
+        address _delegatee,
+        uint256 _amount
+    ) internal addressesNotZero(_delegator, _delegatee) {
         // Shortcut
-        if (amount == 0) {
+        if (_amount == 0) {
             return;
         }
 
         // Transmit vote power
-        self.votePowerByAddress.transmit(delegator, delegatee, amount);
+        _self.votePowerByAddress.transmit(_delegator, _delegatee, _amount);
     }
 
     /**
      * @notice Mint vote power.
-     * @param self A VotePowerState instance to manage.
-     * @param owner The address owning the new vote power.
-     * @param amount The amount of vote power to mint.
+     * @param _self A VotePowerState instance to manage.
+     * @param _owner The address owning the new vote power.
+     * @param _amount The amount of vote power to mint.
      */
     function _mint(
-        VotePowerState storage self, 
-        address owner, 
-        uint256 amount) internal {
-
+        VotePowerState storage _self, 
+        address _owner, 
+        uint256 _amount
+    ) internal {
         // Shortcut
-        if (amount == 0) {
+        if (_amount == 0) {
             return;
         }
 
         // Cannot mint the zero address
-        assert(owner != address(0));
+        assert(_owner != address(0));
 
         // Mint vote power for address
-        self.votePowerByAddress.transmit(address(0), owner, amount);
+        _self.votePowerByAddress.transmit(address(0), _owner, _amount);
     }
 
     /**
-     * @notice Transmit current vote power `amount` `from` delegator `to` delegatee.
-     * @param from Address of delegator.
-     * @param to Address of delegatee.
-     * @param amount Amount of vote power to transmit.
+     * @notice Transmit current vote power `_amount` from `_delegator` to `_delegatee`.
+     * @param _delegator Address of delegator.
+     * @param _delegatee Address of delegatee.
+     * @param _amount Amount of vote power to transmit.
      */
     function transmit(
-        VotePowerState storage self, 
-        address from, 
-        address to,
-        uint256 amount
-    ) internal addressesNotZero(from, to) {
-
-        self.votePowerByAddress.transmit(from, to, amount);
+        VotePowerState storage _self, 
+        address _delegator, 
+        address _delegatee,
+        uint256 _amount
+    ) internal addressesNotZero(_delegator, _delegatee) {
+        _self.votePowerByAddress.transmit(_delegator, _delegatee, _amount);
     }
 
     /**
-     * @notice Undelegate vote power `amount` from `delegatee` address 
-     *  to `delegator` address
-     * @param delegator Delegator address 
-     * @param delegatee Delegatee address
-     * @param amount The amount of vote power recovered by delegator from delegatee
+     * @notice Undelegate vote power `_amount` from `_delegatee` address 
+     *  to `_delegator` address
+     * @param _delegator Delegator address 
+     * @param _delegatee Delegatee address
+     * @param _amount The amount of vote power recovered by delegator from delegatee
      **/
     function undelegate(
-        VotePowerState storage self, 
-        address delegator, 
-        address delegatee,
-        uint256 amount) internal addressesNotZero(delegator, delegatee) {
-
+        VotePowerState storage _self, 
+        address _delegator, 
+        address _delegatee,
+        uint256 _amount
+    ) internal addressesNotZero(_delegator, _delegatee) {
         // Shortcut
-        if (amount == 0) {
+        if (_amount == 0) {
             return;
         }
 
         // Recover vote power
-        self.votePowerByAddress.transmit(delegatee, delegator, amount);
+        _self.votePowerByAddress.transmit(_delegatee, _delegator, _amount);
     }
 
     /**
-     * @notice Get the vote power of `who` at `blockNumber`.
-     * @param self A VotePowerState instance to manage.
-     * @param who Address to get vote power.
-     * @param blockNumber Block number of the block to fetch vote power.
-     * @return votePower The fetched vote power.
+     * @notice Get the vote power of `_who` at `_blockNumber`.
+     * @param _self A VotePowerState instance to manage.
+     * @param _who Address to get vote power.
+     * @param _blockNumber Block number of the block to fetch vote power.
+     * @return _votePower The fetched vote power.
      */
     function votePowerOfAt(
-        VotePowerState storage self, 
-        address who, 
-        uint256 blockNumber)
-        internal view returns(uint256 votePower) {
-
-        return self.votePowerByAddress.valueOfAt(who, blockNumber);
+        VotePowerState storage _self, 
+        address _who, 
+        uint256 _blockNumber
+    ) internal view returns(uint256 _votePower) {
+        return _self.votePowerByAddress.valueOfAt(_who, _blockNumber);
     }
 
     /**
-     * @notice Get the current vote power of `who`.
-     * @param self A VotePowerState instance to manage.
-     * @param who Address to get vote power.
-     * @return votePower The fetched vote power.
+     * @notice Get the current vote power of `_who`.
+     * @param _self A VotePowerState instance to manage.
+     * @param _who Address to get vote power.
+     * @return _votePower The fetched vote power.
      */
     function votePowerOfAtNow(
-        VotePowerState storage self, 
-        address who)
-        internal view returns(uint256 votePower) {
-
-        return votePowerOfAt(self, who, block.number);
+        VotePowerState storage _self, 
+        address _who
+    ) internal view returns(uint256 _votePower) {
+        return votePowerOfAt(_self, _who, block.number);
     }
 }

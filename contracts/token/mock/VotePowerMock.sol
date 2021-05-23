@@ -10,52 +10,52 @@ import {VotePower} from "../lib/VotePower.sol";
 contract VotePowerMock {
     using VotePower for VotePower.VotePowerState;
 
-    VotePower.VotePowerState private _self;
+    VotePower.VotePowerState private self;
 
     function _burn(
-        address owner, 
-        uint256 amount) public {
-        _self._burn(owner, amount);
+        address _owner, 
+        uint256 _amount) public {
+        self._burn(_owner, _amount);
     }
 
     function delegate(
-        address delegator, 
-        address delegatee,
-        uint256 amount) public {
-        _self.delegate(delegator, delegatee, amount);
+        address _delegator, 
+        address _delegatee,
+        uint256 _amount) public {
+        self.delegate(_delegator, _delegatee, _amount);
     }
 
     function _mint(
-        address owner, 
-        uint256 amount) public {
-        _self._mint(owner, amount);
+        address _owner, 
+        uint256 _amount) public {
+        self._mint(_owner, _amount);
     }
 
     function transmit(
-        address from, 
-        address to,
-        uint256 amount
+        address _from, 
+        address _to,
+        uint256 _amount
     ) public {
-        _self.transmit(from, to, amount);
+        self.transmit(_from, _to, _amount);
     }
 
     function undelegate(
-        address delegator, 
-        address delegatee,
-        uint256 amount) public {
-        _self.undelegate(delegator, delegatee, amount);
+        address _delegator, 
+        address _delegatee,
+        uint256 _amount) public {
+        self.undelegate(_delegator, _delegatee, _amount);
     }
 
     function votePowerOfAt(
-        address who, 
-        uint256 blockNumber)
-        public view returns(uint256 votePower) {
-        return _self.votePowerOfAt(who, blockNumber);
+        address _who, 
+        uint256 _blockNumber)
+        public view returns(uint256 _votePower) {
+        return self.votePowerOfAt(_who, _blockNumber);
     }
 
     function votePowerOfAtNow(
-        address who)
-        public view returns(uint256 votePower) {
-        return _self.votePowerOfAtNow(who);
+        address _who)
+        public view returns(uint256 _votePower) {
+        return self.votePowerOfAtNow(_who);
     }
 }

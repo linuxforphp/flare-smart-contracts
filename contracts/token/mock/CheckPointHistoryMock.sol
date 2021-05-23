@@ -10,15 +10,15 @@ import {CheckPointHistory} from "../lib/CheckPointHistory.sol";
 contract CheckPointHistoryMock {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
 
-    CheckPointHistory.CheckPointHistoryState private _state;
+    CheckPointHistory.CheckPointHistoryState private state;
 
-    function valueAt(uint256 blockNumber) public view returns (uint256 value) {
-        return _state.valueAt(blockNumber);
+    function valueAt(uint256 _blockNumber) public view returns (uint256 _value) {
+        return state.valueAt(_blockNumber);
     }
-    function valueAtNow() public view returns (uint256 value) {
-        return _state.valueAtNow();
+    function valueAtNow() public view returns (uint256 _value) {
+        return state.valueAtNow();
     }
-    function writeValue(uint256 value) public returns (uint256 blockNumber) {
-        return _state.writeValue(value);
+    function writeValue(uint256 _value) public returns (uint256 _blockNumber) {
+        return state.writeValue(_value);
     }
 }
