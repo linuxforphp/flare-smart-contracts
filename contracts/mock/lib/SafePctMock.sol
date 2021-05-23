@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {SafePct} from "../../lib/SafePct.sol";
+import {SafePct} from "../../utils/implementation/SafePct.sol";
 
 /**
  * @title SafePct mock contract

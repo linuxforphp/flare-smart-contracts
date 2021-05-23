@@ -5,11 +5,11 @@ import { Governed } from "./Governed.sol";
 import { IIInflationPercentageProvider } from "../../inflation/interface/IIInflationPercentageProvider.sol";
 
 /**
- * @title Constitution contract
- * @notice This contract implements settings agreed upon by Flare Foundation constitutional governance.
+ * @title Inflation allocation contract
+ * @notice This contract implements settings agreed upon by Flare Foundation governance.
  **/
 
-contract Constitution is Governed {
+contract InflationAllocation is Governed {
     constructor(address _governance) Governed(_governance) {}
 
     function getFtsoInflationAnnualPercentageBips() external pure returns(uint256) {
@@ -18,13 +18,13 @@ contract Constitution is Governed {
 }
 
 contract FtsoInflationPercentageProvider is IIInflationPercentageProvider {
-    Constitution public constitution;
+    InflationAllocation public inflationAllocation;
 
-    constructor(Constitution _constitution) {
-        constitution = _constitution;
+    constructor(InflationAllocation _inflationAllocation) {
+        inflationAllocation = _inflationAllocation;
     }
 
     function getAnnualPercentageBips() external view override returns(uint256) {
-        return constitution.getFtsoInflationAnnualPercentageBips();
+        return inflationAllocation.getFtsoInflationAnnualPercentageBips();
     }
 }

@@ -2,14 +2,14 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { BokkyPooBahsDateTimeLibrary } from "../../lib/DateTimeLibrary.sol";
+import { BokkyPooBahsDateTimeLibrary } from "../../utils/implementation/DateTimeLibrary.sol";
 import { Governed } from "../../governance/implementation/Governed.sol";
-import { IFlareKeep } from "../../interfaces/IFlareKeep.sol";
+import { IFlareKeep } from "../../utils/interfaces/IFlareKeep.sol";
 import { IIInflationPercentageProvider } from "../interface/IIInflationPercentageProvider.sol";
 import { SupplyAccounting } from "../../accounting/implementation/SupplyAccounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/SafeCast.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../lib/SafePct.sol";
+import { SafePct } from "../../utils/implementation/SafePct.sol";
 import { SignedSafeMath } from "@openzeppelin/contracts/math/SignedSafeMath.sol";
 
 //import "hardhat/console.sol";

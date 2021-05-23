@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../userInterfaces/IPriceSubmitter.sol";
+import "../../userInterfaces/IPriceSubmitter.sol";
 
 /**
  * @title Price submitter

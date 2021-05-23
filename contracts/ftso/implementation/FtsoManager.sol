@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import { FtsoInflationAuthorizer } from "../../inflation/implementation/FtsoInflationAuthorizer.sol";
 import "../../userInterfaces/IFtsoManager.sol";
 import "../../interfaces/IRewardManager.sol";
-import "../../interfaces/IFlareKeep.sol";
+import "../../utils/interfaces/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";

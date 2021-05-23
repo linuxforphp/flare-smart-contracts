@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "../../userInterfaces/IVPToken.sol";
 import "../../userInterfaces/IFtso.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../../lib/SafePct.sol";
+import "../../utils/implementation/SafePct.sol";
 
 /**
  * @title A library used for FTSO epoch management

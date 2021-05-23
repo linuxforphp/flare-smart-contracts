@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import {CheckPointsByAddress} from "./CheckPointsByAddress.sol";
 import {CheckPointHistory} from "./CheckPointHistory.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../lib/SafePct.sol";
+import {SafePct} from "../../utils/implementation/SafePct.sol";
 
 
 /**

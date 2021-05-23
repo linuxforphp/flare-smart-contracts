@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { FlareKeeper } from "../../implementations/FlareKeeper.sol";
+import { FlareKeeper } from "../../utils/implementation/FlareKeeper.sol";
 import { MintAccounting } from "../../accounting/implementation/MintAccounting.sol";
 import { MintingFaucet } from "./MintingFaucet.sol";
 import { FtsoInflationAccounting } from "../../accounting/implementation/FtsoInflationAccounting.sol"; 

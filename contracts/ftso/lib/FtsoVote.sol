@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../lib/SafePct.sol";
+import "../../utils/implementation/SafePct.sol";
 
 /**
  * @title A library used for FTSO vote management
