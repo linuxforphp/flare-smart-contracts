@@ -19,7 +19,7 @@ contract VPTokenMock is VPToken {
     }
 
     function burn(uint256 _amount) public virtual {
-        _burn(_msgSender(), _amount);
+        _burn(msg.sender, _amount);
     }
 
     function setDecimals(uint8 _decimals) public {
