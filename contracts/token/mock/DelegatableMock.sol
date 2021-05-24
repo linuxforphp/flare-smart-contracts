@@ -57,22 +57,22 @@ contract DelegatableMock is Delegatable {
         _undelegateAllByPercentage(balanceOf(msg.sender));
     }
     
-    function undelegateAllExplicit(address[] memory _delegateAddresses) external override {
-        _undelegateAllByAmount(_delegateAddresses, balanceOf(msg.sender));
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external override returns (uint256) {
+        return _undelegateAllByAmount(_delegateAddresses);
     }
 
     function burnVotePower(address _owner, uint256 _amount) public {
-        subtractBalance(_owner, _amount);
         _burnVotePower(_owner, balanceOf(_owner), _amount);
+        subtractBalance(_owner, _amount);
     }
 
     function mintVotePower(address _owner, uint256 _amount) public {
+        _mintVotePower(_owner, balanceOf(_owner), _amount);
         addUpdateBalance(_owner, _amount);
-        _mintVotePower(_owner, _amount);
     }
 
     function transmitVotePower(address from, address to, uint256 _amount) public {
-        _transmitVotePower(from, to, balanceOf(from), _amount);
+        _transmitVotePower(from, to, balanceOf(from), balanceOf(to), _amount);
     }
 
     function undelegatedVotePowerOf(address _owner) public view override returns(uint256 _votePower) {

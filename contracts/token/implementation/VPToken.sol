@@ -130,9 +130,12 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @notice Undelegate all explicit vote power by amount delegates for `msg.sender`.
      * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
      *   so the caller must supply them.
+     * @return _remainingDelegation The amount still delegated (in case the list of delegates was incomplete).
      */
-    function undelegateAllExplicit(address[] memory _delegateAddresses) external override onlyExplicit {
-        _undelegateAllByAmount(_delegateAddresses, balanceOf(msg.sender));
+    function undelegateAllExplicit(
+        address[] memory _delegateAddresses
+    ) external override onlyExplicit returns (uint256 _remainingDelegation) {
+        return _undelegateAllByAmount(_delegateAddresses);
     }
     
     /**
@@ -213,7 +216,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
 
         if (_from == address(0)) {
             // mint new vote power
-            _mintVotePower(_to, _amount);
+            _mintVotePower(_to, balanceOf(_to), _amount);
             // mint checkpoint balance data for transferee
             _mintForAtNow(_to, _amount);
         } else if (_to == address(0)) {
@@ -223,7 +226,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
             _burnForAtNow(_from, _amount);
         } else {
             // transmit vote power _to receiver
-            _transmitVotePower(_from, _to, balanceOf(_from), _amount);
+            _transmitVotePower(_from, _to, balanceOf(_from), balanceOf(_to), _amount);
             // transfer checkpoint balance data
             _transmitAtNow(_from, _to, _amount);
         }

@@ -3,14 +3,14 @@ pragma solidity 0.7.6;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {VPToken} from "../token/implementation/VPToken.sol";
-import {IWFLR} from "../userInterfaces/IWFLR.sol";
+import {IWFlr} from "../userInterfaces/IWFlr.sol";
 
 /**
  * @title Wrapped Flare token
  * @notice Accept FLR deposits and mint ERC20 WFLR tokens 1-1.
  * @dev Attribution: https://rinkeby.etherscan.io/address/0xc778417e063141139fce010982780140aa0cd5ab#code 
  */
-contract WFLR is VPToken, IWFLR {
+contract WFLR is VPToken, IWFlr {
     using SafeMath for uint256;
     event  Deposit(address indexed dst, uint amount);
     event  Withdrawal(address indexed src, uint amount);

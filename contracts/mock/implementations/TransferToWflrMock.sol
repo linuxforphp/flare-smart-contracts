@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IWFLR} from "../../userInterfaces/IWFLR.sol";
+import {IWFlr} from "../../userInterfaces/IWFlr.sol";
 
 /**
  * @notice Provide a means to test behavior of WFLR when flares are transfered to it.
@@ -15,6 +15,6 @@ contract TransferToWflrMock {
     }
 
     function depositToWflr(address payable wflr, uint256 amount) public {
-        IWFLR(wflr).deposit{ value: amount }();
+        IWFlr(wflr).deposit{ value: amount }();
     }
 }

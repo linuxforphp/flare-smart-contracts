@@ -66,7 +66,7 @@ library PercentageDelegation {
     }
 
     /**
-     * @notice Get the total of the explicit vote power delegation bips of all _delegates.
+     * @notice Get the total of the bips vote power delegation bips of all _delegates.
      * @param _self A DelegationState instance to manage.
      * @return _totalBips The total vote power bips delegated.
      */
@@ -134,6 +134,20 @@ library PercentageDelegation {
         uint256[] memory _values
     ) {
         return _self.delegation.delegationsAtNow();
+    }
+    
+    /**
+     * @notice Get the total amount (absolute) of the vote power delegation of all delegates.
+     * @param _self A DelegationState instance to manage.
+     * @param _balance Owner's balance.
+     * @return _totalAmount The total vote power amount delegated.
+     */
+    function getDelegatedTotalAmountAt(
+        DelegationState storage _self, 
+        uint256 _balance,
+        uint256 _blockNumber
+    ) internal view returns (uint256 _totalAmount) {
+        return _self.delegation.scaledTotalValueAt(_balance, MAX_BIPS, _blockNumber);
     }
     
     /**

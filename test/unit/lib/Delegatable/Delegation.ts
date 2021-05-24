@@ -39,9 +39,29 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
 
     // Assert
     await truffleAssert.eventEmitted(tx, 'Delegate', (ev: any) => {
-      return ev.from == accounts[1] && 
-        ev.to == accounts[2] && ev.votePower == 50 && 
-        ev.blockNumber == blockNumber;
+      return ev.from == accounts[1] 
+        && ev.to == accounts[2] 
+        && ev.priorVotePower == 0
+        && ev.newVotePower == 50 
+        && ev.blockNumber == blockNumber;
+    });
+  });
+
+  it("Should emit delegate event when undelegate by percentage successful", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    // Act
+    await delegatable.delegate(accounts[2], 5000, { from: accounts[1] });
+    let tx = await delegatable.delegate(accounts[2], 0, { from: accounts[1] });
+    let blockNumber = await web3.eth.getBlockNumber();
+
+    // Assert
+    await truffleAssert.eventEmitted(tx, 'Delegate', (ev: any) => {
+      return ev.from == accounts[1]
+        && ev.to == accounts[2]
+        && ev.priorVotePower == 50
+        && ev.newVotePower == 0
+        && ev.blockNumber == blockNumber;
     });
   });
 
@@ -66,10 +86,29 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
 
     // Assert
     await truffleAssert.eventEmitted(tx, 'Delegate', (ev: any) => {
-      return ev.from == accounts[1] && 
-        ev.to == accounts[2] && 
-        ev.votePower == 50 && 
-        ev.blockNumber == blockNumber;
+      return ev.from == accounts[1]
+        && ev.to == accounts[2]
+        && ev.priorVotePower == 0
+        && ev.newVotePower == 50
+        && ev.blockNumber == blockNumber;
+    });
+  });
+
+  it("Should emit delegate event when explicit undelegate successful", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    // Act
+    await delegatable.delegateExplicit(accounts[2], 50, { from: accounts[1] });
+    let tx = await delegatable.delegateExplicit(accounts[2], 0, { from: accounts[1] });
+    let blockNumber = await web3.eth.getBlockNumber();
+
+    // Assert
+    await truffleAssert.eventEmitted(tx, 'Delegate', (ev: any) => {
+      return ev.from == accounts[1]
+        && ev.to == accounts[2]
+        && ev.priorVotePower == 50
+        && ev.newVotePower == 0
+        && ev.blockNumber == blockNumber;
     });
   });
 
