@@ -5,7 +5,7 @@ import "../ftso/interface/IIFtso.sol";
 
 interface IPriceSubmitter {
     // events
-    event PricesSubmitted(
+    event PriceHashesSubmitted(
         address indexed submitter,
         uint256 indexed epochId,
         IIFtso[] ftsos,
@@ -28,9 +28,9 @@ interface IPriceSubmitter {
      * @notice Submits price hashes for current epoch
      * @param _ftsos                List of ftsos
      * @param _hashes               List of hashed price and random number
-     * @notice Emits PricesSubmitted event
+     * @notice Emits PriceHashesSubmitted event
      */
-    function submitPrices(
+    function submitPriceHashes(
         IIFtso[] memory _ftsos,
         bytes32[] memory _hashes
     ) external;

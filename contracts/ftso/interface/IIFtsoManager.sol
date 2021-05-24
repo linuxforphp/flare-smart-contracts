@@ -2,13 +2,12 @@
 pragma solidity 0.7.6;
 
 import "../../ftso/interface/IIFtso.sol";
-import "../../userInterfaces/IPriceSubmitter.sol";
-import "../../ftso/interface/IIFtso.sol";
-import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../userInterfaces/IFtsoManager.sol";
+
 
 interface IIFtsoManager is IFtsoManager {
 
+    event ClosingExpiredRewardEpochsFailed();
     // TODO: Remove this event for production
     event KeepTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring keep() calls
 
@@ -33,6 +32,6 @@ interface IIFtsoManager is IFtsoManager {
     function setFtsoFAsset(IIFtso _ftso, IIVPToken _fAsset) external;
     function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external;
 
-    function setPanicMode(bool _panicMode) external;
-    function setFtsoPanicMode(IIFtso _ftso, bool _panicMode) external;
+    function setFallbackMode(bool _fallbackMode) external;
+    function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external;
 }

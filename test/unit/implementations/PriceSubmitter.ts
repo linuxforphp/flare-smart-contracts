@@ -1,15 +1,15 @@
-import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VPTokenContract, VPTokenInstance, WFLRContract, WFLRInstance } from "../../../typechain-truffle";
+import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, increaseTimeTo, lastOf, submitPriceHash, toBN } from "../../utils/test-helpers";
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const Wflr = artifacts.require("WFLR") as WFLRContract;
+const Wflr = artifacts.require("WFlr") as WFlrContract;
 const MockWflr = artifacts.require("MockContract") as MockContractContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
 const PriceSubmitter = artifacts.require("PriceSubmitter") as PriceSubmitterContract;
 
 // contains a fresh contract for each test 
-let wflrInterface: WFLRInstance;
+let wflrInterface: WFlrInstance;
 let mockWflr: MockContractInstance;
 let ftsos: FtsoInstance[];
 let priceSubmitter: PriceSubmitterInstance;
@@ -57,11 +57,11 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash3 = submitPriceHash(300, 125);
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
-            let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
-            expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
-            let ftso0Event = lastOf(await ftsos[0].getPastEvents("PriceSubmitted"));
-            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceSubmitted"));
-            let ftso2Event = lastOf(await ftsos[2].getPastEvents("PriceSubmitted"));
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
+            let ftso0Event = lastOf(await ftsos[0].getPastEvents("PriceHashSubmitted"));
+            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceHashSubmitted"));
+            let ftso2Event = lastOf(await ftsos[2].getPastEvents("PriceHashSubmitted"));
             expect(ftso0Event.args.submitter).to.equals(accounts[1]);
             expect(ftso0Event.args.epochId.toNumber()).to.equals(epochId);
             expect(ftso0Event.args.hash).to.equals(hashes[0]);
@@ -84,10 +84,10 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash2 = submitPriceHash(200, 124);
             let addresses = [ftso.address, ftsos[1].address];
             let hashes = [hash1, hash2];
-            let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
-            expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true]});
-            let ftso0Events = await ftso.getPastEvents("PriceSubmitted");
-            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceSubmitted"));
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true]});
+            let ftso0Events = await ftso.getPastEvents("PriceHashSubmitted");
+            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceHashSubmitted"));
             expect(ftso0Events.length).to.equals(0);
             expect(ftso1Event.args.submitter).to.equals(accounts[1]);
             expect(ftso1Event.args.epochId.toNumber()).to.equals(epochId);
@@ -110,11 +110,11 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash3 = submitPriceHash(300, 125);
             let addresses = [ftso.address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
-            let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
-            expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
-            let ftso0Events = await ftso.getPastEvents("PriceSubmitted");
-            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceSubmitted"));
-            let ftso2Event = lastOf(await ftsos[2].getPastEvents("PriceSubmitted"));
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
+            let ftso0Events = await ftso.getPastEvents("PriceHashSubmitted");
+            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceHashSubmitted"));
+            let ftso2Event = lastOf(await ftsos[2].getPastEvents("PriceHashSubmitted"));
             expect(ftso0Events.length).to.equals(0);
             expect(ftso1Event.args.submitter).to.equals(accounts[1]);
             expect(ftso1Event.args.epochId.toNumber()).to.equals(epochId);
@@ -131,8 +131,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
-            let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
-            expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -173,8 +173,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftso.address, ftsos[0].address, ftsos[1].address];
             let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
-            let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
-            expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
 
@@ -213,8 +213,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftso.address, ftsos[1].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
-            let tx = await priceSubmitter.submitPrices(addresses, hashes, {from: accounts[1]});
-            expectEvent(tx, "PricesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
             await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});

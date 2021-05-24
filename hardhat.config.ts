@@ -124,7 +124,7 @@ const config: HardhatUserConfig = {
       }
     ],
     overrides: {
-      "contracts/mock/Imports.sol": {
+      "contracts/utils/Imports.sol": {
         version: "0.6.12",
         settings: { }
       },
@@ -132,7 +132,7 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
-      "contracts/mock/implementations/InflationMock.sol": {
+      "contracts/inflation/mock/InflationMock.sol": {
         version: "0.6.12",
         settings: { }
       },

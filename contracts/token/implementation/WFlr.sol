@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import {VPToken} from "./VPToken.sol";
+import {IWFlr} from "../../userInterfaces/IWFlr.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {VPToken} from "../token/implementation/VPToken.sol";
-import {IWFlr} from "../userInterfaces/IWFlr.sol";
+
 
 /**
  * @title Wrapped Flare token
  * @notice Accept FLR deposits and mint ERC20 WFLR tokens 1-1.
  * @dev Attribution: https://rinkeby.etherscan.io/address/0xc778417e063141139fce010982780140aa0cd5ab#code 
  */
-contract WFLR is VPToken, IWFlr {
+contract WFlr is VPToken, IWFlr {
     using SafeMath for uint256;
     event  Deposit(address indexed dst, uint amount);
     event  Withdrawal(address indexed src, uint amount);
@@ -61,7 +62,7 @@ contract WFLR is VPToken, IWFlr {
     }
 
     /**
-     * @notice Deposit Flare and mint WFLR ERC20.
+     * @notice Deposit Flare and mint wFlr ERC20.
      */
     function deposit() public payable override {
         // Mint WFLR

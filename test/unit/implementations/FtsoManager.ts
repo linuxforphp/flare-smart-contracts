@@ -5,7 +5,7 @@ import {
   MockContractInstance, 
   MockVPTokenContract, 
   MockVPTokenInstance, 
-  RewardManagerInstance } from "../../../typechain-truffle";
+  FtsoRewardManagerInstance } from "../../../typechain-truffle";
 import { 
   revealSomePrices, 
   RewardEpochData, 
@@ -20,7 +20,7 @@ import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const RewardManager = artifacts.require("RewardManager");
+const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const FtsoManager = artifacts.require("FtsoManager");
 const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
@@ -43,7 +43,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let ftsoManager: FtsoManagerInstance;
     let startTs: BN;
     let mockRewardManager: MockContractInstance;
-    let rewardManagerInterface: RewardManagerInstance;
+    let ftsoRewardManagerInterface: FtsoRewardManagerInstance;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
     let ftsoInflationAuthorizer: FtsoInflationAuthorizerInstance;
@@ -66,10 +66,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         startTs = await time.latest();
 
         mockRewardManager = await MockRewardManager.new();
-        rewardManagerInterface = await RewardManager.new(
+        ftsoRewardManagerInterface = await FtsoRewardManager.new(
             constants.ZERO_ADDRESS,
             accounts[9],
-            (await MockContract.new()).address
+            (await MockContract.new()).address,
+            3,
+            0,
+            100
         );
 
         // Get inflation happy...it would be nice if gnosis mock would return tuple mocks, but it does not.
@@ -391,16 +394,19 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.activate();
             await ftsoManager.keep();
 
+            await time.increaseTo(startTs.addn(120));
+            await ftsoManager.keep();
+
             let epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            await time.increaseTo(startTs.addn(120));
+            await time.increaseTo(startTs.addn(120 * 2));
             await ftsoManager.keep();
 
             await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
 
-            await time.increaseTo(startTs.addn(120 + 30));
+            await time.increaseTo(startTs.addn(120 * 2 + 30));
             let tx = await ftsoManager.keep();
 
             // Assert
@@ -409,13 +415,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            await time.increaseTo(startTs.addn(120 * 2));
+            await time.increaseTo(startTs.addn(120 * 3));
             tx = await ftsoManager.keep();
 
             await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
 
-            await time.increaseTo(startTs.addn(120 * 2 + 30));
+            await time.increaseTo(startTs.addn(120 * 3 + 30));
             tx = await ftsoManager.keep();
 
             expectEvent(tx, "PriceEpochFinalized");
@@ -429,13 +435,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let trustedAddresses = [accounts[8], accounts[9]];
             await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
 
-            await time.increaseTo(startTs.addn(120 * 3));
+            await time.increaseTo(startTs.addn(120 * 4));
             tx = await ftsoManager.keep();
 
             await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
 
-            await time.increaseTo(startTs.addn(120 * 3 + 30));
+            await time.increaseTo(startTs.addn(120 * 4 + 30));
             tx = await ftsoManager.keep();
 
             expectEvent(tx, "PriceEpochFinalized");
@@ -497,14 +503,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
 
             await setDefaultGovernanceParameters(ftsoManager);
-            await ftsoManager.activate();
-
-            await ftsoManager.keep();
-
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
             await ftsoManager.activate();
+            await ftsoManager.keep();
+
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
 
@@ -529,14 +533,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
 
             await setDefaultGovernanceParameters(ftsoManager);
-            await ftsoManager.activate();
-            await ftsoManager.keep();
-
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
-
             await ftsoManager.activate();
+            await ftsoManager.keep();
+
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
 
@@ -552,7 +554,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 priceEpochsRemaining,
             // uint256 currentRewardEpoch
             // There should be 262,800 120 second epochs in a year
-            const distributeRewards = rewardManagerInterface.contract.methods.distributeRewards(
+            const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
                 [25, 75],
                 100,
@@ -589,17 +591,14 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // await web3.eth.sendTransaction({ from: accounts[0], to: mockRewardManager.address, value: 1000000 });
 
             await setDefaultGovernanceParameters(ftsoManager);
-            await ftsoManager.activate();
-            await ftsoManager.keep();
-
-            // set the daily reward amount
-            // await inflation.setRewardManagerDailyRewardAmount(1000000);
             // add fakey unrewardable ftso 0
             await ftsoManager.addFtso(mockFtsoNoAccounts.address, { from: accounts[0] });
             // add fakey rewardable ftso 1
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
             await ftsoManager.activate();
+            await ftsoManager.keep();
+
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
 
@@ -625,16 +624,19 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.activate();
             await ftsoManager.keep();
 
+            await time.increaseTo(startTs.addn(120));
+            await ftsoManager.keep();
+
             let epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            await time.increaseTo(startTs.addn(120));
+            await time.increaseTo(startTs.addn(120 * 2));
             await ftsoManager.keep();
 
             await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
 
-            await time.increaseTo(startTs.addn(120 + 30));
+            await time.increaseTo(startTs.addn(120 * 2 + 30));
             await ftsoManager.keep();
 
             let ftso1Events = await ftso1.getPastEvents("PriceFinalized")
@@ -646,12 +648,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // reveal only for ftso2, not ftso1
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            await time.increaseTo(startTs.addn(2 * 120));
+            await time.increaseTo(startTs.addn(3 * 120));
             await ftsoManager.keep();
 
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
 
-            await time.increaseTo(startTs.addn(2 * 120 + 30));
+            await time.increaseTo(startTs.addn(3 * 120 + 30));
 
             // finalize, ftso1 will force finalize
             await ftsoManager.keep();
@@ -680,12 +682,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         [[], [], '0']);
         await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
 
-        await ftsoManager.activate();
-        await ftsoManager.keep();
         // add fakey ftso
         await ftsoManager.addFtso(mockFtso.address, {from: accounts[0]});
-        // activate reward manager so keeper can fire events
         await ftsoManager.activate();
+        await ftsoManager.keep();
 
         // Act
         for (var i = 1; i <= (172800 / 1200); i++) {
@@ -812,54 +812,54 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
     });
 
-    describe("Panic mode", async () => {
-        it("Should set panic mode", async () => {
+    describe("fallback mode", async () => {
+        it("Should set fallback mode", async () => {
             await settingWithOneFTSO_1(accounts, ftsoInterface, mockFtso, ftsoManager);
-            await ftsoManager.setPanicMode(true, { from: accounts[0] });
-            assert(await ftsoManager.panicMode());
+            await ftsoManager.setFallbackMode(true, { from: accounts[0] });
+            assert(await ftsoManager.fallbackMode());
 
-            await ftsoManager.setPanicMode(false, { from: accounts[0] });
-            assert(!await ftsoManager.panicMode());
+            await ftsoManager.setFallbackMode(false, { from: accounts[0] });
+            assert(!await ftsoManager.fallbackMode());
         });
 
-        it("Should not set panic mode if not from governance", async () => {
+        it("Should not set fallback mode if not from governance", async () => {
             await settingWithOneFTSO_1(accounts, ftsoInterface, mockFtso, ftsoManager);
-            await expectRevert(ftsoManager.setPanicMode(true, { from: accounts[1] }), ERR_GOVERNANCE_ONLY);
+            await expectRevert(ftsoManager.setFallbackMode(true, { from: accounts[1] }), ERR_GOVERNANCE_ONLY);
         });
 
-        it("Should set panic mode for ftso", async () => {
+        it("Should set fallback mode for ftso", async () => {
             let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
-            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
-            assert(await ftsoManager.ftsoInPanicMode(ftso1.address));
+            await ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] });
+            assert(await ftsoManager.ftsoInFallbackMode(ftso1.address));
 
-            await ftsoManager.setFtsoPanicMode(ftso1.address, false, { from: accounts[0] });
-            assert(!await ftsoManager.ftsoInPanicMode(ftso1.address));
+            await ftsoManager.setFtsoFallbackMode(ftso1.address, false, { from: accounts[0] });
+            assert(!await ftsoManager.ftsoInFallbackMode(ftso1.address));
         });
         
-        it("Should not set panic mode for ftso if not managed", async () => {
+        it("Should not set fallback mode for ftso if not managed", async () => {
             let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
-            await expectRevert(ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] }), ERR_NOT_FOUND);
+            await expectRevert(ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] }), ERR_NOT_FOUND);
         });
 
-        it("Should not set panic mode for ftso if not from governance", async () => {
+        it("Should not set fallback mode for ftso if not from governance", async () => {
             let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
-            await expectRevert(ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[1] }), ERR_GOVERNANCE_ONLY);
+            await expectRevert(ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[1] }), ERR_GOVERNANCE_ONLY);
         });
 
-        it("Should initialize epochs in panic mode for all ftsos", async () => {
+        it("Should initialize epochs in fallback mode for all ftsos", async () => {
             let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
-            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+            await ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] });
 
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
 
-            await ftsoManager.setPanicMode(true, { from: accounts[0] });
+            await ftsoManager.setFallbackMode(true, { from: accounts[0] });
 
             await ftsoManager.activate();
             await ftsoManager.keep();
@@ -877,16 +877,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expect(report2[12]).to.equals(true);
         });
 
-        it("Should initialize epoch in panic mode for first ftso", async () => {
+        it("Should initialize epoch in fallback mode for first ftso", async () => {
             let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
-            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+            await ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] });
 
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
 
-            await ftsoManager.setFtsoPanicMode(ftso1.address, true, { from: accounts[0] });
+            await ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] });
 
             await ftsoManager.activate();
             await ftsoManager.keep();

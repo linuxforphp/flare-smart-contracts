@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import {FAssetToken} from "./FAssetToken.sol";
-import {ICollateralizable} from "../../ICollateralizable.sol";
+import {ICollateralizable} from "../interface/ICollateralizable.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**

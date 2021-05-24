@@ -14,7 +14,7 @@ export class Contracts {
   private contracts: Map<string, string>;
   private collection: Contract[];
 
-  public static readonly CONSTITUTION = "Constitution";
+  public static readonly INFLATION_ALLOCATOIN = "InflationAllocation";
   public static readonly FTSO_INFLATION_PERCENTAGE_PROVIDER = "FtsoInflationPercentageProvider";
   public static readonly FLARE_NETWORK_GENERAL_LEDGER = "FlareNetworkGeneralLedger";
   public static readonly FTSO_INFLATION_AUTHORIZER = "FtsoInflationAuthorizer";
@@ -24,11 +24,11 @@ export class Contracts {
   public static readonly MINT_ACCOUNTING = "MintAccounting";
   public static readonly FTSO_REWARD_MANAGER_TOPUP = "FtsoRewardManagerTopup";
   public static readonly FTSO_REWARD_MINTING_FAUCET = "FtsoRewardMintingFaucet";
-  public static readonly REWARD_MANAGER = "RewardManager";
+  public static readonly FTSO_REWARD_MANAGER = "FtsoRewardManager";
   public static readonly PRICE_SUBMITTER = "PriceSubmitter";
   public static readonly FTSO_MANAGER = "FtsoManager";
   public static readonly FLARE_KEEPER = "FlareKeeper";
-  public static readonly WFLR = "Wflr";
+  public static readonly WFLR = "WFlr";
   public static readonly FXRP = "Fxrp";
   public static readonly DUMMY_FXRP_MINTER = "DummyFxrpMinter";
   public static readonly FTSO_FXRP = "FtsoFxrp";

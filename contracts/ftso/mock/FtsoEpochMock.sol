@@ -45,7 +45,7 @@ contract FtsoEpochMock {
         uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
-        bool panicMode;                         // current epoch in panic mode
+        bool fallbackMode;                      // current epoch in fallback mode
     }
 
     FtsoEpoch.State private state;
@@ -151,7 +151,7 @@ contract FtsoEpochMock {
         result.finalizedTimestamp = epoch.finalizedTimestamp;
         result.initializedForReveal = epoch.initializedForReveal;
         result.rewardedFtso = epoch.rewardedFtso;
-        result.panicMode = epoch.panicMode;
+        result.fallbackMode = epoch.fallbackMode;
 
         return result;
     }

@@ -18,7 +18,7 @@ interface IFtso {
     }
 
     // events
-    event PriceSubmitted(
+    event PriceHashSubmitted(
         address indexed submitter, uint256 indexed epochId, bytes32 hash, uint256 timestamp
     );
     event PriceRevealed(
@@ -44,9 +44,9 @@ interface IFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _hash Hashed price and random number
-     * @notice Emits PriceSubmitted event
+     * @notice Emits PriceHashSubmitted event
      */
-    function submitPrice(bytes32 _hash) external;
+    function submitPriceHash(bytes32 _hash) external;
 
     /**
      * @notice Reveals submitted price during epoch reveal period
@@ -76,7 +76,7 @@ interface IFtso {
      * @return _votePowerBlock          Vote power block for the current epoch
      * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
      * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
-     * @return _panicMode               Current epoch in panic mode - only votes from trusted addresses will be used
+     * @return _fallbackMode            Current epoch in fallback mode - only votes from trusted addresses will be used
      */
     function getPriceEpochData() external view returns (
         uint256 _epochId,
@@ -85,7 +85,7 @@ interface IFtso {
         uint256 _votePowerBlock,
         uint256 _minVotePowerFlr,
         uint256 _minVotePowerAsset,
-        bool _panicMode
+        bool _fallbackMode
     );
 
     /**

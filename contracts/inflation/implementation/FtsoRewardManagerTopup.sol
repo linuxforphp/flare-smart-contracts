@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 
 import { FtsoInflationAccounting } from "../../accounting/implementation/FtsoInflationAccounting.sol";
 import { FtsoInflationAuthorizer } from "./FtsoInflationAuthorizer.sol";
-import { RewardManager } from "../../implementations/RewardManager.sol";
+import { FtsoRewardManager } from "../../ftso/implementation/FtsoRewardManager.sol";
 import { IIWithdrawAmountProvider } from "../interface/IIWithdrawAmountProvider.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -15,12 +15,12 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 contract FtsoRewardManagerTopup is IIWithdrawAmountProvider {
     using SafeMath for uint256;
 
-    RewardManager public rewardManager;
+    FtsoRewardManager public rewardManager;
     FtsoInflationAccounting public ftsoInflationAccounting;
     FtsoInflationAuthorizer public ftsoInflationAuthorizer;
 
     constructor(
-        RewardManager _rewardManager, 
+        FtsoRewardManager _rewardManager, 
         FtsoInflationAccounting _ftsoInflationAccounting,
         FtsoInflationAuthorizer _ftsoInflationAuthorizer) {
         require(address(_rewardManager) != address(0), "reward manager zero");

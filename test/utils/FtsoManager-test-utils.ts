@@ -145,7 +145,7 @@ export async function submitSomePrices(ftso: MockFtsoInstance, n: number, accoun
     let epoch!: BN;;
     for(let i = 0; i < n; i++) {        
         let hash = submitPriceHash(i, i);
-        let res = await ftso.submitPrice(hash, {from: accounts[i]});
+        let res = await ftso.submitPriceHash(hash, {from: accounts[i]});
         epoch = res.logs[0].args![1] as BN
     }
     return epoch;

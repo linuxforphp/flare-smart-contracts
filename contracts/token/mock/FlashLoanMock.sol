@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { WFLR } from "../../implementations/WFLR.sol";
+import { WFlr } from "../implementation/WFlr.sol";
 import { Ftso } from "../../ftso/implementation/Ftso.sol";
 
 interface IFlashLenderMock {
@@ -42,14 +42,14 @@ contract FlashLenderMock is IFlashLenderMock {
 
 contract FlashLoanMock is IFlashLoanMock {
     FlashLenderMock private flashLender;
-    WFLR private wflr;
+    WFlr private wflr;
     Ftso private ftso;
     
     uint256 private requestedValue;
     
     constructor(
         FlashLenderMock _flashLender,
-        WFLR _wflr,
+        WFlr _wflr,
         Ftso _ftso
     ) {
         flashLender = _flashLender;
@@ -82,9 +82,9 @@ contract FlashLoanMock is IFlashLoanMock {
         wflr.withdraw(_amount);
     }
     
-    function submitPrice(uint256 _price, uint256 _random) public {
-        bytes32 _hash = keccak256(abi.encodePacked(_price, _random));
-        ftso.submitPrice(_hash);
+    function submitPriceHash(uint256 _price, uint256 _random) public {
+        bytes32 _hash = keccak256(abi.encode(_price, _random));
+        ftso.submitPriceHash(_hash);
     }
 
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) public {
@@ -103,7 +103,7 @@ contract VotingFlashLoanMock is FlashLoanMock {
    
     constructor(
         FlashLenderMock _flashLender,
-        WFLR _wflr,
+        WFlr _wflr,
         Ftso _ftso
     ) FlashLoanMock(_flashLender, _wflr, _ftso) {
     }

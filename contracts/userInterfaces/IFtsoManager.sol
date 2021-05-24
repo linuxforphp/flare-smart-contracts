@@ -6,11 +6,13 @@ import "./IPriceSubmitter.sol";
 interface IFtsoManager {
 
     event FtsoAdded(IIFtso ftso, bool add);
-    event PanicMode(bool panicMode);
-    event FtsoPanicMode(IIFtso ftso, bool panicMode);
+    event FallbackMode(bool fallbackMode);
+    event FtsoFallbackMode(IIFtso ftso, bool fallbackMode);
     event RewardEpochFinalized(uint256 votepowerBlock, uint256 startBlock);
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
-    event ClosingExpiredRewardEpochsFailed();
+    event InitializingCurrentEpochStateForRevealFailed(IIFtso ftso, uint256 epochId);
+    event FinalizingPriceEpochFailed(IIFtso ftso, uint256 epochId);
+    event DistributingRewardsFailed(address ftso, uint256 epochId);
 
     function active() external view returns (bool);
     

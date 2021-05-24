@@ -5,8 +5,8 @@ import {
   FtsoManagerInstance, 
   FtsoRewardMintingFaucetContract,
   FtsoRewardMintingFaucetInstance,
-  RewardManagerContract,
-  RewardManagerInstance} from "../../../typechain-truffle";
+  FtsoRewardManagerContract,
+  FtsoRewardManagerInstance} from "../../../typechain-truffle";
 
 import { Contracts } from "../../../scripts/Contracts";
 
@@ -39,8 +39,8 @@ contract(`FtsoRewardMintingFaucet.sol; ${getTestFile(__filename)}; Ftso reward m
   let flareKeeper: FlareKeeperInstance;
   let FtsoRewardMintingFaucet: FtsoRewardMintingFaucetContract;
   let ftsoRewardMintingFaucet: FtsoRewardMintingFaucetInstance;
-  let RewardManager: RewardManagerContract;
-  let rewardManager: RewardManagerInstance;
+  let RewardManager: FtsoRewardManagerContract;
+  let rewardManager: FtsoRewardManagerInstance;
   let FtsoManager: FtsoManagerContract;
   let ftsoManager: FtsoManagerInstance;
   let lastFundsWithdrawTs: BN;
@@ -57,8 +57,8 @@ contract(`FtsoRewardMintingFaucet.sol; ${getTestFile(__filename)}; Ftso reward m
     flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
     FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
     ftsoRewardMintingFaucet = await FtsoRewardMintingFaucet.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MINTING_FAUCET));
-    RewardManager = artifacts.require("RewardManager");
-    rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+    RewardManager = artifacts.require("FtsoRewardManager");
+    rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     FtsoManager = artifacts.require("FtsoManager");
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
 

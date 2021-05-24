@@ -5,9 +5,9 @@ import { DummyFAssetMinterContract,
   FtsoContract,
   FtsoInstance,
   FlareKeeperContract,
-  RewardManagerContract,
-  RewardManagerInstance,
-  WFLRContract, 
+  FtsoRewardManagerContract,
+  FtsoRewardManagerInstance,
+  WFlrContract, 
   FtsoInflationAuthorizerContract,
   FtsoInflationAuthorizerInstance,
   FAssetTokenInstance,
@@ -118,8 +118,8 @@ contract(`deploy.ts system tests`, async accounts => {
     let flareKeeper: FlareKeeperInstance;
     let MintAccounting: MintAccountingContract;
     let mintAccounting: MintAccountingInstance;
-    let RewardManager: RewardManagerContract;
-    let rewardManager: RewardManagerInstance;
+    let FtsoRewardManager: FtsoRewardManagerContract;
+    let ftsoRewardManager: FtsoRewardManagerInstance;
 
     beforeEach(async() => {
       FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
@@ -128,8 +128,8 @@ contract(`deploy.ts system tests`, async accounts => {
       flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
       MintAccounting = artifacts.require("MintAccounting");
       mintAccounting = await MintAccounting.at(contracts.getContractAddress(Contracts.MINT_ACCOUNTING));
-      RewardManager = artifacts.require("RewardManager");
-      rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+      FtsoRewardManager = artifacts.require("FtsoRewardManager");
+      ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     });
 
     it("Should have last withdraw timestamp set", async() => {
@@ -177,23 +177,23 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const rewardManagerInContract = await ftsoRewardMintingFaucet.rewardManager();
       // Assert
-      assert.equal(rewardManagerInContract, rewardManager.address);
+      assert.equal(rewardManagerInContract, ftsoRewardManager.address);
     });    
   });
 
   describe(Contracts.FTSO_REWARD_MANAGER_TOPUP, async() => {
     let FtsoRewardManagerTopup: FtsoRewardManagerTopupContract;
     let ftsoRewardManagerTopup: FtsoRewardManagerTopupInstance;
-    let RewardManager: RewardManagerContract;
-    let rewardManager: RewardManagerInstance;
+    let FtsoRewardManager: FtsoRewardManagerContract;
+    let ftsoRewardManager: FtsoRewardManagerInstance;
     let FtsoInflationAccounting: FtsoInflationAccountingContract;
     let ftsoInflationAccounting: FtsoInflationAccountingInstance;
 
     beforeEach(async() => {
       FtsoRewardManagerTopup = artifacts.require("FtsoRewardManagerTopup");
       ftsoRewardManagerTopup = await FtsoRewardManagerTopup.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER_TOPUP));
-      RewardManager = artifacts.require("RewardManager");
-      rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+      FtsoRewardManager = artifacts.require("FtsoRewardManager");
+      ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
       FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
       ftsoInflationAccounting = await FtsoInflationAccounting.at(contracts.getContractAddress(Contracts.FTSO_INFLATION_ACCOUNTING));
     });
@@ -202,7 +202,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       // Act
       // Assert
-      assert.equal(await ftsoRewardManagerTopup.rewardManager(), rewardManager.address);
+      assert.equal(await ftsoRewardManagerTopup.rewardManager(), ftsoRewardManager.address);
     });
 
     it("Should know about ftso inflation accounting", async() => {
@@ -415,19 +415,19 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.REWARD_MANAGER, async() => {
-    let RewardManager: RewardManagerContract;
-    let rewardManager: RewardManagerInstance;
+  describe(Contracts.FTSO_REWARD_MANAGER, async() => {
+    let FtsoRewardManager: FtsoRewardManagerContract;
+    let ftsoRewardManager: FtsoRewardManagerInstance;
 
     beforeEach(async() => {
-      RewardManager = artifacts.require("RewardManager");
-      rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+      FtsoRewardManager = artifacts.require("FtsoRewardManager");
+      ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     });
 
     it("Should know about the FTSO manager contract", async() => {
       // Assemble
       // Act
-      const ftsoManager = await rewardManager.ftsoManagerContract();
+      const ftsoManager = await ftsoRewardManager.ftsoManagerContract();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
@@ -436,7 +436,7 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.WFLR, async() => {
     it("Should accept deposits", async() => {
         // Assemble
-        const WFLR = artifacts.require("WFLR") as WFLRContract;
+        const WFLR = artifacts.require("WFlr") as WFlrContract;
         const wflr = await WFLR.at(contracts.getContractAddress(Contracts.WFLR));
         const openingBalance = await wflr.balanceOf(accounts[1])
         // Act

@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import path from "path";
-import { MockFtso, VPTokenMock, WFLR } from "../../../typechain";
+import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
 import { checkTestCase, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 
@@ -39,7 +39,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
 
             // Contract deployment
-            let flrToken: WFLR = await newContract<WFLR>("WFLR", signers[0]);
+            let flrToken: WFlr = await newContract<WFlr>("WFlr", signers[0]);
             for (let i = 0; i < testExample.weightsFlr.length; i++) {
                 await flrToken.connect(signers[i]).depositTo(signers[i].address, {value: testExample.weightsFlr[i]})
             }
