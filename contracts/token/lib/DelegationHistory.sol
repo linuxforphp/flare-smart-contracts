@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {SafePct} from "../../utils/implementation/SafePct.sol";
 
 /**
  * @title DelegationHistory library
@@ -10,6 +11,7 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
  **/
 library DelegationHistory {
     using SafeMath for uint256;
+    using SafePct for uint256;
 
     uint256 public constant MAX_DELEGATES_BY_PERCENT = 3;
     string private constant MAX_DELEGATES_MSG = "Max delegates exceeded";
@@ -183,6 +185,31 @@ library DelegationHistory {
         CheckPointHistoryState storage _self
     ) internal view returns (uint256 _total) {
         return totalValueAt(_self, block.number);
+    }
+
+    /**
+     * Get the sum of all delegation values, every one scale by `_mul/_div`.
+     * @param _self A CheckPointHistoryState instance to query.
+     * @param _mul The multiplier.
+     * @param _div The divisor.
+     * @param _blockNumber The block number to query. 
+     * @return _total Total scaled delegation value at the time.
+     **/
+    function scaledTotalValueAt(
+        CheckPointHistoryState storage _self, 
+        uint256 _mul,
+        uint256 _div,
+        uint256 _blockNumber
+    ) internal view returns (uint256 _total) {
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
+        if (!found) return 0;
+        
+        CheckPoint storage cp = _self.checkpoints[index];
+        uint256 length = cp.values.length;
+        _total = 0;
+        for (uint256 i = 0; i < length; i++) {
+            _total += cp.values[i].mulDiv(_mul, _div);
+        }
     }
 
     /**

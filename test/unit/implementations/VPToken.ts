@@ -61,6 +61,24 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assert.equal(_delegationMode, 1);
   });
 
+  it("Should not delegate to zero", async () => {
+    await expectRevert(vpToken.delegate(constants.ZERO_ADDRESS, 50, { from: accounts[1] }),
+      "Cannot delegate to zero");
+  });
+
+  it("Should un-delegate for delegate bips of 0", async () => {
+    // Assemble
+    await vpToken.delegate(accounts[2], 50, { from: accounts[1] });
+    await vpToken.delegate(accounts[2], 0, { from: accounts[1] });
+    // Act
+    const { _delegateAddresses, _bips, _count, _delegationMode } = await vpToken.delegatesOf(accounts[1]) as any;
+    // Assert
+    assert.equal(_delegateAddresses.length, 0);
+    assert.equal(_bips.length, 0);
+    assert.equal(_count, 0);
+    assert.equal(_delegationMode, 1);
+  });
+
   it("Should return value of delegation", async () => {
     // Assemble
     await vpToken.mint(accounts[1], 100);
@@ -109,6 +127,23 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assert.equal(values[1].toNumber(), 15);
     assert.equal(values[2].toNumber(), 0);
     assert.equal(mode.toNumber(), 2);
+  });
+
+  it("Should not explicitly delegate to zero", async () => {
+    await vpToken.mint(accounts[1], 100);
+    await expectRevert(vpToken.delegateExplicit(constants.ZERO_ADDRESS, 50, { from: accounts[1] }),
+      "Cannot delegate to zero");
+  });
+
+  it("Should un-delegate for explicit delegate value of 0", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.delegateExplicit(accounts[2], 50, { from: accounts[1] });
+    await vpToken.delegateExplicit(accounts[2], 0, { from: accounts[1] });
+    // Act
+    const undelegated = await vpToken.undelegatedVotePowerOf(accounts[1]);
+    // Assert
+    assert.equal(undelegated.toNumber(), 100);
   });
 
   it("Should undelegate all", async () => {

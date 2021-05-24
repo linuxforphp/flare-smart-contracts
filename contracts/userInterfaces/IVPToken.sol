@@ -7,10 +7,10 @@ interface IVPToken is IERC20 {
     /* solhint-disable ordering */
     
     /**
-     * Event triggered when an account delegates or undelegates another account 
-     * (for undelegation, from and to will be switched).
+     * Event triggered when an account delegates or undelegates another account. 
+     * For undelegation, newVotePower is 0.
      */
-    event Delegate(address indexed from, address indexed to, uint votePower, uint blockNumber);
+    event Delegate(address indexed from, address indexed to, uint priorVotePower, uint newVotePower, uint blockNumber);
     
     /**
      * Event triggered only when account `delegator` revokes delegation to `delegatee`
@@ -120,8 +120,9 @@ interface IVPToken is IERC20 {
      *    Does not reset delegation mode back to NOTSET.
      * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
      *   so the caller must supply them.
+     * @return The amount still delegated (in case the list of delegates was incomplete).
      */
-    function undelegateAllExplicit(address[] memory _delegateAddresses) external;
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external returns (uint256);
 
     /**
      * @notice Get the delegation mode for '_who'. This mode determines whether vote power is
