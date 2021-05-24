@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    participant Validator
+    participant FlareKeeper
+    participant FtsoInflationAuthorizer
+    participant FtsoInflationPercentageProvider
+    participant SupplyAccounting
+    participant FtsoInflationAccounting
+    loop Every block
+        Validator-->FlareKeeper: trigger()
+        activate FlareKeeper
+        FlareKeeper-->FtsoInflationAuthorizer: keep()
+        alt new annum
+            FtsoInflationAuthorizer->FtsoInflationAuthorizer: initNewAnnum()
+            FtsoInflationAuthorizer->FtsoInflationPercentageProvider: getAnnualPercentageBips()
+            FtsoInflationAuthorizer->SupplyAccounting: getInflatableSupplyBalance()
+            FtsoInflationAuthorizer->FtsoInflationAccounting: inflateForAnnum(amount)
+        end
+        deactivate FlareKeeper
+    end
