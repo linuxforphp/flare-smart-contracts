@@ -1,15 +1,15 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { MockFtso, VPTokenMock, WFLR } from "../../../typechain";
+import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
 import { checkTestCase, finalizePriceEpochWithResult, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { TestExampleLogger } from "../../utils/TestExampleLogger";
 
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
-async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number): Promise<{ flrToken: WFLR; assetToken: VPTokenMock; ftso: MockFtso; }> {
+async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number): Promise<{ flrToken: WFlr; assetToken: VPTokenMock; ftso: MockFtso; }> {
 
-    let flrToken: WFLR = await newContract<WFLR>("WFLR", signer);
+    let flrToken: WFlr = await newContract<WFlr>("WFlr", signer);
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, "fAsset", "FASSET");
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
         "FASSET", flrToken.address, signer.address,  // symbol, address _wFlr, address _ftsoManager,

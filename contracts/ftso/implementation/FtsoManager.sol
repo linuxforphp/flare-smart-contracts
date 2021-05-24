@@ -2,25 +2,24 @@
 pragma solidity 0.7.6;
 
 import { FtsoInflationAuthorizer } from "../../inflation/implementation/FtsoInflationAuthorizer.sol";
-import "../../userInterfaces/IFtsoManager.sol";
-import "../../interfaces/IRewardManager.sol";
+import "../interface/IIFtsoManager.sol";
+import "../interface/IIFtsoRewardManager.sol";
 import "../../utils/interfaces/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
-import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoManagerSettings.sol";
-//import "hardhat/console.sol";
+
 
 /**
  * FtsoManager is in charge of:
- * - defining reward epochs (~2-7 days)
+ * - defining reward epochs (few days)
  * - per reward epoch choose a single block that represents vote power of this epoch.
  * - keep track of all FTSO contracts
- * - per price epoch (~2 minutes)
+ * - per price epoch (few minutes)
  *    - randomly choose one FTSO for rewarding.
  *    - trigger finalize price reveal epoch
- *    - determines addresses and reward weights and triggers rewardDistribution on RewardManager
+ *    - determines addresses and reward weights and triggers rewardDistribution
  */    
 contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     using FtsoManagerSettings for FtsoManagerSettings.State;
@@ -68,22 +67,22 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     // list of ftsos eligible for reward
     IIFtso[] internal ftsos;
     mapping(IIFtso => bool) internal managedFtsos;
-    IRewardManager internal rewardManager;
+    IIFtsoRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
     FtsoInflationAuthorizer internal ftsoInflationAuthorizer;
 
     // flags
     bool private justStarted;
 
-    // panic mode
-    bool public panicMode; // all ftsos in panic mode
-    mapping(IIFtso => bool) public ftsoInPanicMode;
+    // fallback mode
+    bool public fallbackMode; // all ftsos in fallback mode
+    mapping(IIFtso => bool) public ftsoInFallbackMode;
 
     // IPriceSubmitter should be a new contract for a new deploy or at least
     // _priceEpochDurationSec, _firstEpochStartTs and _revealEpochDurationSec must match
     constructor(
         address _governance,
-        IRewardManager _rewardManager,
+        IIFtsoRewardManager _rewardManager,
         IPriceSubmitter _priceSubmitter,
         FtsoInflationAuthorizer _ftsoInflationAuthorizer,
         uint256 _priceEpochDurationSec,
@@ -91,7 +90,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         uint256 _revealEpochDurationSec,
         uint256 _rewardEpochDurationSec,
         uint256 _rewardEpochsStartTs,
-        uint256 _votePowerBoundaryFraction       
+        uint256 _votePowerBoundaryFraction
     ) Governed(_governance) {
         require(_rewardEpochDurationSec > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_priceEpochDurationSec > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
@@ -108,9 +107,9 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         priceEpochDurationSec = _priceEpochDurationSec;
         revealEpochDurationSec = _revealEpochDurationSec;
         lastUnprocessedPriceEpoch = (block.timestamp - _firstEpochStartTs) / _priceEpochDurationSec;
-        lastUnprocessedPriceEpochEnds  = 
+        lastUnprocessedPriceEpochEnds = 
             _firstEpochStartTs + ((lastUnprocessedPriceEpoch + 1) * _priceEpochDurationSec);
-        currentPriceEpochEnds  = lastUnprocessedPriceEpochEnds;
+        currentPriceEpochEnds = lastUnprocessedPriceEpochEnds;
 
         votePowerBoundaryFraction = _votePowerBoundaryFraction;
         rewardManager = _rewardManager;
@@ -153,11 +152,11 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
             if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec < block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
                 _finalizePriceEpoch();
-                _closeExpiredRewardEpochs();
             }
             // Note: prices should be first finalized and then new reward epoch can start
             if (currentRewardEpochEnds < block.timestamp) {
                 _finalizeRewardEpoch();
+                _closeExpiredRewardEpochs();
             }
 
             if(currentPriceEpochEnds < block.timestamp) {
@@ -203,9 +202,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
             settings.lowFlrTurnoutBIPSThreshold,
             settings.trustedAddresses
         );
-        
-        // create epoch state (later this is done at the end finalizeEpochPrice)
-        _ftso.initializeCurrentEpochStateForReveal(panicMode || ftsoInPanicMode[_ftso]);
 
         // Add the ftso
         ftsos.push(_ftso);
@@ -224,7 +220,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
             if (_ftso == ftsos[i]) {
                 ftsos[i] = ftsos[len - 1];
                 ftsos.pop();
-                ftsoInPanicMode[_ftso] = false;
+                ftsoInFallbackMode[_ftso] = false;
                 managedFtsos[_ftso] = false;
                 _checkMultiFassetFtsosAreManaged();
                 emit FtsoAdded(_ftso, false);
@@ -251,20 +247,20 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     }
 
     /**
-     * @notice Set panic mode
+     * @notice Set fallback mode
      */
-    function setPanicMode(bool _panicMode) external override onlyGovernance {
-        panicMode = _panicMode;
-        emit PanicMode(_panicMode);
+    function setFallbackMode(bool _fallbackMode) external override onlyGovernance {
+        fallbackMode = _fallbackMode;
+        emit FallbackMode(_fallbackMode);
     }
 
     /**
-     * @notice Set panic mode for ftso
+     * @notice Set fallback mode for ftso
      */
-    function setFtsoPanicMode(IIFtso _ftso, bool _panicMode) external override onlyGovernance {
+    function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external override onlyGovernance {
         require(managedFtsos[_ftso], ERR_NOT_FOUND);
-        ftsoInPanicMode[_ftso] = _panicMode;
-        emit FtsoPanicMode(_ftso, _panicMode);
+        ftsoInFallbackMode[_ftso] = _fallbackMode;
+        emit FtsoFallbackMode(_ftso, _fallbackMode);
     }
 
     /**
@@ -427,7 +423,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
 
     function _closeExpiredRewardEpochs() internal {
         try rewardManager.closeExpiredRewardEpochs() {
-            
         } catch {
             // closing of expired failed, which is not critical
             // just emit event for diagnostics
@@ -437,10 +432,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
 
     /**
      * @notice Finalizes price epoch
-     * @dev TODO: This function is risky, as it does many things.
-     * If any external function reverts the system could get stuck
-     * We should consider try..catch for external calls to FTSOs or
-     * and then maybe remediation functions
      */
     function _finalizePriceEpoch() internal {
         uint256 numFtsos = ftsos.length;
@@ -486,9 +477,8 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                     try ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                     } catch {
                         try ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-
                         } catch {
-                            // this should never happen
+                            emit FinalizingPriceEpochFailed(ftsos[id], lastUnprocessedPriceEpoch);
                         }
                     }
                 }
@@ -504,13 +494,11 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                 try rewardManager.distributeRewards(
                     addresses, weights, totalWeight,
                     lastUnprocessedPriceEpoch, rewardedFtsoAddress,
-                    getPriceEpochsRemainingInAnnum(lastUnprocessedPriceEpochEnds - priceEpochDurationSec),
+                    _getPriceEpochsRemainingInAnnum(lastUnprocessedPriceEpochEnds - priceEpochDurationSec),
                     currentRewardEpoch) {
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
                 } catch {
-                    // TODO: do remediation
-                    // TODO: log errors in local storage
-                    // TODO: issue event.
+                    emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
                 }
             }
 
@@ -552,16 +540,11 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                 );
             }
 
-            // TODO: take care that these functions do no revert
-            try ftsos[i].initializeCurrentEpochStateForReveal(panicMode || ftsoInPanicMode[ftsos[i]]) {
-
+            try ftsos[i].initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[ftsos[i]]) {
             } catch {
-                // TODO: do remediation
-                // TODO: log errors in local storage
-                // TODO: issue event.
+                emit InitializingCurrentEpochStateForRevealFailed(ftsos[i], _getCurrentPriceEpochId());
             }
         }
-        // TODO: match setting this with remediation approach
         settings.changed = false;
 
         currentPriceEpochEnds = _getCurrentPriceEpochEndTime();
@@ -579,13 +562,13 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         }
     }
 
-    function getPriceEpochsRemainingInAnnum(uint256 fromTimestamp) internal view returns(uint256) {
+    function _getPriceEpochsRemainingInAnnum(uint256 _fromTimestamp) internal view returns(uint256) {
         uint256 endTimestamp;
 
         (, , , endTimestamp, ) = 
             ftsoInflationAuthorizer.inflationAnnums(ftsoInflationAuthorizer.currentAnnum());
-        if (fromTimestamp <= endTimestamp && priceEpochDurationSec >= 0) {
-            return (endTimestamp - fromTimestamp) / priceEpochDurationSec;
+        if (_fromTimestamp <= endTimestamp && priceEpochDurationSec >= 0) {
+            return (endTimestamp - _fromTimestamp) / priceEpochDurationSec;
         } else {
             return 0;
         }

@@ -36,7 +36,7 @@ library FtsoEpoch {
         uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
         uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
         address[] trustedAddresses;             // trusted addresses - use their prices if low turnout is not achieved
-        mapping(address => bool) trustedAddressesMapping; // for checking addresses in panic mode
+        mapping(address => bool) trustedAddressesMapping; // for checking addresses in fallback mode
     }
 
     struct Instance {                           // struct holding epoch votes and results
@@ -73,7 +73,7 @@ library FtsoEpoch {
         uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
-        bool panicMode;                         // current epoch in panic mode
+        bool fallbackMode;                      // current epoch in fallback mode
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points

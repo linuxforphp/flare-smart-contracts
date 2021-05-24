@@ -64,7 +64,7 @@ export interface EpochResultRaw {
     _finalizationType: number;
     _trustedAddresses: string[];
     _rewardedFtso: boolean;
-    _panicMode: boolean;
+    _fallbackMode: boolean;
 }
 
 /**
@@ -884,7 +884,7 @@ export async function submitPrice(signers: readonly SignerWithAddress[], ftso: F
         let random = priceToRandom(price);
         let hash = submitPriceHash(price, random);
         promises.push(waitFinalize(signers[i], async () =>
-            ftso.connect(signers[i]).submitPrice(hash)
+            ftso.connect(signers[i]).submitPriceHash(hash)
         ));
     }
     (await Promise.all(promises)).forEach(res => {

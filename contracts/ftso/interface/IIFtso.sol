@@ -5,6 +5,7 @@ import "../../userInterfaces/IFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../token/interface/IIVPToken.sol";
 
+
 interface IIFtso is IFtso {
 
     /**
@@ -12,9 +13,9 @@ interface IIFtso is IFtso {
      * @param _sender               Sender address
      * @param _hash                 Hashed price and random number
      * @return _epochId             Returns current epoch id
-     * @notice Emits PriceSubmitted event
+     * @notice Emits PriceHashSubmitted event
      */
-    function submitPriceSubmitter(address _sender, bytes32 _hash) external returns (uint256 _epochId);
+    function submitPriceHashSubmitter(address _sender, bytes32 _hash) external returns (uint256 _epochId);
 
     /**
      * @notice Reveals submitted price during epoch reveal period - only price submitter
@@ -74,7 +75,7 @@ interface IIFtso is IFtso {
     // reward manager only can set this data. 
     function setVotePowerBlock(uint256 _blockNumber) external;
 
-    function initializeCurrentEpochStateForReveal(bool _panicMode) external;
+    function initializeCurrentEpochStateForReveal(bool _fallbackMode) external;
   
     /**
      * @notice Returns the FTSO asset
@@ -103,7 +104,7 @@ interface IIFtso is IFtso {
      * @return _finalizationType        Finalization type for epoch
      * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
      * @return _rewardedFtso            Whether epoch instance was a rewarded ftso
-     * @return _panicMode               Whether epoch instance was in panic mode
+     * @return _fallbackMode               Whether epoch instance was in fallback mode
      */
     function getFullEpochReport(uint256 _epochId) external view returns (
         uint256 _epochSubmitStartTime,
@@ -118,7 +119,7 @@ interface IIFtso is IFtso {
         PriceFinalizationType _finalizationType,
         address[] memory _trustedAddresses,
         bool _rewardedFtso,
-        bool _panicMode
+        bool _fallbackMode
     );
     
     /**

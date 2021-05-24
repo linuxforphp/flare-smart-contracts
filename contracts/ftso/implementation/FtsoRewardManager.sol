@@ -1,30 +1,22 @@
 // SPDX-License-Identifier: MIT
-
-// TODO: Hello Jan...I have created a FtsoRewardManagerAccounting.rewardsExpired method for you
-// to call when you have determined what rewards some poor souls will forfeit because they
-// were too slow to claim. This will keep the accounting system in balance with this contract.
-
 pragma solidity 0.7.6;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../utils/implementation/SafePct.sol";
-import "../governance/implementation/Governed.sol";
-import { FtsoRewardManagerAccounting } from "../accounting/implementation/FtsoRewardManagerAccounting.sol";
-import "../userInterfaces/IFtsoManager.sol";
-import "../interfaces/IRewardManager.sol";
-import "./WFLR.sol";
+import "../interface/IIFtsoRewardManager.sol";
+import "../../governance/implementation/Governed.sol";
+import { SupplyAccounting } from "../../accounting/implementation/SupplyAccounting.sol";
+import { FtsoRewardManagerAccounting } from "../../accounting/implementation/FtsoRewardManagerAccounting.sol";
+import "../../token/implementation/WFlr.sol";
+import "../../utils/implementation/SafePct.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { SupplyAccounting } from "../accounting/implementation/SupplyAccounting.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
-// import "hardhat/console.sol";
 
 /**
- * RewardManager is in charge of:
+ * FTSORewardManager is in charge of:
  * - distributing rewards according to instructions from FTSO Manager
  * - allowing claims for rewards
  */    
-contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
+contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
 
     using SafePct for uint256;
     using SafeMath for uint256;
@@ -33,7 +25,6 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         uint16 value;               // fee percentage value (value between 0 and 1e4)
         uint240 validFromEpoch;     // id of the reward epoch from which the value is valid
     }
-
     struct RewardState {            // used for local storage of reward state
         address[] dataProviders;    // positional array of addresses representing data providers
         uint256[] rewardAmounts;    // positional array of numbers representing reward amount
@@ -55,39 +46,42 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
     string internal constant ERR_FEE_PERCENTAGE_INVALID = "invalid fee percentage value";
     string internal constant ERR_FEE_PERCENTAGE_UPDATE_FAILED = "fee percentage can not be updated";
+    string internal constant ERR_BALANCE_SYNCHRONIZER_ONLY = "balance synchronizer only";
     
     // uint256 constant internal SHARING_PERCENTAGE_EPOCH_OFFSET = 2;
     uint256 constant internal MAX_BIPS = 1e4;
 
     bool internal active;
 
-    uint256 internal feePercentageUpdateOffset; // timelock for fee percentage update measured in reward epochs
-    uint256 public defaultFeePercentage; // default value for fee percentage
+    uint256 internal immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
+    uint256 public immutable defaultFeePercentage; // default value for fee percentage
     
-    uint256 public rewardExpiryOffset = 100; // period of reward expiry (in reward epochs)
+    uint256 public immutable rewardExpiryOffset; // period of reward expiry (in reward epochs)
     
     // id of the last closed reward epoch. Closed = expired and unclaimed funds sent back
-    uint256 public firstEpochToExpire = 0;       
+    uint256 public firstEpochToExpire; 
+
+    // sum of all claims that were not yet reported to the accounting system
+    uint256 public unreportedClaims = 1;
     
     /**
-     * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed
-     *  rewards.
+     * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed rewards.
      */
     mapping(uint256 => mapping(address => uint256)) public unclaimedRewardsPerRewardEpoch;
     mapping(uint256 => mapping(address => uint256)) public totalRewardsPerRewardEpoch;
     mapping(uint256 => mapping(address => mapping(address => bool))) public rewardClaimed;
     mapping(uint256 => uint256) public totalRewardEpochRewards;
     mapping(uint256 => uint256) public claimedRewardEpochRewards;
-    
 
     mapping(address => FeePercentage[]) public dataProviderFeePercentages;
     uint256 public distributedSoFar;
 
     /// addresses
-    IFtsoManager public ftsoManagerContract;
+    IIFtsoManager public ftsoManagerContract;    
     FtsoRewardManagerAccounting public ftsoRewardManagerAccounting;
+    BalanceSynchronizer private balanceSynchronizer;
 
-    WFLR public wFlr; 
+    WFlr public wFlr; 
     SupplyAccounting public supplyAccounting;
 
     // flags
@@ -95,38 +89,12 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
 
     modifier mustBalance {
         _;
-        // TODO: Jan, this will need to account for claims not posted to the accounting system.
-        // You'll need to reduce the number below by any claim paid and not posted.
         uint256 rewardManagerAccountingBalance = ftsoRewardManagerAccounting.getRewardManagerBalance();
-        require(address(this).balance == rewardManagerAccountingBalance, ERR_OUT_OF_BALANCE);
-    }
-
-    constructor(
-        address _governance,
-        FtsoRewardManagerAccounting _ftsoRewardManagerAccounting,
-        SupplyAccounting _supplyAccounting
-    ) Governed(_governance) 
-    {
-        require(address(_ftsoRewardManagerAccounting) != address(0), ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO);
-        require(address(_supplyAccounting) != address(0), ERR_SUPPLY_ACCOUNTING_ZERO);
-        
-        ftsoRewardManagerAccounting = _ftsoRewardManagerAccounting;
-        supplyAccounting = _supplyAccounting;
-        justStarted = true;
-    }
-
-    receive() external payable mustBalance {
-        ftsoRewardManagerAccounting.receiveSupply(msg.value);
-        emit FundsReceived(msg.sender, msg.value);
+        require(address(this).balance.add(unreportedClaims - 1) == rewardManagerAccountingBalance, ERR_OUT_OF_BALANCE);
     }
 
     modifier onlyFtsoManager () {
         require (msg.sender == address(ftsoManagerContract), ERR_FTSO_MANAGER_ONLY);
-        _;
-    }
-
-    modifier ftsoManagerSet () {
-        require (address(ftsoManagerContract) != address(0), ERR_FTSO_MANAGER_ZERO);
         _;
     }
 
@@ -135,59 +103,38 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         _;
     }
 
-    /**
-     * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
-     * @param _beneficiary          address of reward beneficiary
-     * @param _rewardEpoch          reward epoch number
-     * @return _dataProviders       positional array of addresses representing data providers
-     * @return _rewardAmounts       positional array of reward amounts
-     * @return _claimed             positional array of boolean values indicating if reward is claimed
-     * @return _claimable           boolean value indicating if rewards are claimable
-     * @dev Reverts when queried with `_beneficary` delegating by amount
-     */
-    function getStateOfRewards(
-        address _beneficiary,
-        uint256 _rewardEpoch
-    ) external view returns (
-        address[] memory _dataProviders,
-        uint256[] memory _rewardAmounts,
-        bool[] memory _claimed,
-        bool _claimable
-    ) {
-        RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
-        _dataProviders = rewardState.dataProviders;
-        _rewardAmounts = rewardState.rewardAmounts;
-        _claimed = rewardState.claimed;
-        _claimable = _isRewardClaimable(_rewardEpoch, ftsoManagerContract.getCurrentRewardEpoch());
+    modifier onlyBalanceSynchronizer () {
+        require (
+            address(balanceSynchronizer) != address(0) && msg.sender == address(balanceSynchronizer), 
+            ERR_BALANCE_SYNCHRONIZER_ONLY
+        );
+        _;
     }
 
-    /**
-     * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch` from `_dataProviders`
-     * @param _beneficiary          address of reward beneficiary
-     * @param _rewardEpoch          reward epoch number
-     * @param _dataProviders        positional array of addresses representing data providers
-     * @return _rewardAmounts       positional array of reward amounts
-     * @return _claimed             positional array of boolean values indicating if reward is claimed
-     * @return _claimable           boolean value indicating if rewards are claimable
-     */
-    function getStateOfRewardsFromDataProviders(
-        address _beneficiary,
-        uint256 _rewardEpoch,
-        address[] memory _dataProviders
-    ) external view returns (
-        uint256[] memory _rewardAmounts,
-        bool[] memory _claimed,
-        bool _claimable
-    ) {
-        RewardState memory rewardState = _getStateOfRewardsFromDataProviders(
-            _beneficiary,
-            _rewardEpoch,
-            _dataProviders,
-            false
-        );
-        _rewardAmounts = rewardState.rewardAmounts;
-        _claimed = rewardState.claimed;
-        _claimable = _isRewardClaimable(_rewardEpoch, ftsoManagerContract.getCurrentRewardEpoch());
+    constructor(
+        address _governance,
+        FtsoRewardManagerAccounting _ftsoRewardManagerAccounting,
+        SupplyAccounting _supplyAccounting,
+        uint256 _feePercentageUpdateOffset,
+        uint256 _defaultFeePercentage,
+        uint256 _rewardExpiryOffset
+    ) Governed(_governance)
+    {
+        require(address(_ftsoRewardManagerAccounting) != address(0), ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO);
+        require(address(_supplyAccounting) != address(0), ERR_SUPPLY_ACCOUNTING_ZERO);
+        
+        ftsoRewardManagerAccounting = _ftsoRewardManagerAccounting;
+        supplyAccounting = _supplyAccounting;
+        feePercentageUpdateOffset = _feePercentageUpdateOffset;
+        defaultFeePercentage = _defaultFeePercentage;
+        rewardExpiryOffset = _rewardExpiryOffset;
+        justStarted = true;
+    }
+
+    receive() external payable mustBalance {
+        //TODO: account for tokens recieved in self destruct attack
+        ftsoRewardManagerAccounting.receiveSupply(msg.value);
+        emit FundsReceived(msg.sender, msg.value);
     }
 
     /**
@@ -217,10 +164,8 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         }
 
         if (_rewardAmount > 0) {
+            unreportedClaims += _rewardAmount;
             // transfer total amount (state is updated and events are emitted in _claimReward)
-            // _recipient.transfer(_rewardAmount);
-
-            ftsoRewardManagerAccounting.rewardsClaimed(_rewardAmount);
             /* solhint-disable avoid-low-level-calls */
             (bool success, ) = _recipient.call{value: _rewardAmount}("");
             /* solhint-enable avoid-low-level-calls */
@@ -241,7 +186,7 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         address payable _recipient,
         uint256[] memory _rewardEpochs,
         address[] memory _dataProviders
-    ) external onlyIfActive returns (
+    ) external override onlyIfActive mustBalance nonReentrant returns (
         uint256 _rewardAmount
     ) {
         uint256 currentRewardEpoch = ftsoManagerContract.getCurrentRewardEpoch();
@@ -259,52 +204,31 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         }
 
         if (_rewardAmount > 0) {
+            unreportedClaims += _rewardAmount;
+
             // transfer total amount (state is updated and events are emitted in _claimReward)
-            // _recipient.transfer(_rewardAmount);
-            ftsoRewardManagerAccounting.rewardsClaimed(_rewardAmount);
             /* solhint-disable avoid-low-level-calls */
             (bool success, ) = _recipient.call{value: _rewardAmount}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, ERR_CLAIM_FAILED);
-
         }
     }
 
-    // TODO: consider who has authority to use this function
-    // TODO: possibly emit an event
     /**
-     * @notice Transfers rewards that are no longer claimable to `_recipient`.
-     * @param _recipient            address to transfer funds to
-     * @param _rewardEpoch          reward epoch number
-     * @param _dataProviders        array of addresses representing data providers
-     * @return Returns the total transferred amount.
-     */
-    function transferUnclaimedRewardForDataProviders(
-        address payable _recipient,
-        uint256 _rewardEpoch,
-        address[] memory _dataProviders
-    ) external onlyGovernance returns (uint256)
-    {
-        uint256 currentRewardEpoch = ftsoManagerContract.getCurrentRewardEpoch();
-        require(!_isRewardClaimable(_rewardEpoch, currentRewardEpoch), ERR_REWARD_NOT_EXPIRED);
-
-        uint256 amount = 0;
-        for (uint256 i = 0; i < _dataProviders.length; i++) {
-            amount += unclaimedRewardsPerRewardEpoch[_rewardEpoch][_dataProviders[i]];
-            unclaimedRewardsPerRewardEpoch[_rewardEpoch][_dataProviders[i]] = 0;
-        }
-
-        if (amount > 0) {            
-            _recipient.transfer(amount);
-        }
-
-        return amount;
+     * @notice Returns unreported claims and flushes them.
+     * @dev Supposed to be called only by BalanceSynchronizer
+     */ 
+    function getUnreportedClaimsAndFlush() external override onlyBalanceSynchronizer returns (uint256) {
+        uint256 toReport = unreportedClaims - 1;
+        unreportedClaims = 1; // save gas. set to 1
+        return toReport;
     }
 
     /**
      * @notice Activates reward manager (allows claiming rewards)
      */
     function activate() external onlyGovernance {
+        require(address(ftsoManagerContract) != address(0), ERR_FTSO_MANAGER_ZERO);
         active = true;
     }
 
@@ -323,14 +247,22 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets WFLR token.
+     * @notice sets Balance synchronizer
      */
-    function setWFLR(WFLR _wFlr) external override onlyGovernance {
+    function setBalanceSynchronizer(BalanceSynchronizer _balanceSynchronizer) external override onlyGovernance {
+        balanceSynchronizer = _balanceSynchronizer;
+    }
+
+    /**
+     * @notice Sets WFlr token.
+     */
+    function setWFLR(WFlr _wFlr) external override onlyGovernance {
         wFlr = _wFlr;
     }
 
     /**
-     * @notice Distributes rewards to data providers accounts, according to input parameters.
+     *   @notice Distributes rewards to data providers accounts, according to input parameters.
+     *   @dev must be called with totalWeight > 0 and addresses.length > 0
      */
     function distributeRewards(
         address[] memory addresses,
@@ -340,14 +272,13 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         address ftso,
         uint256 priceEpochsRemaining,
         uint256 currentRewardEpoch
-    ) external override ftsoManagerSet onlyFtsoManager returns (bool) {
+    ) external override onlyFtsoManager returns (bool) {
+        // FTSO manager should never call with bad values.
+        assert (totalWeight != 0 && addresses.length != 0);        
 
         uint256 totalPriceEpochReward = 
             supplyAccounting.getUndistributedFtsoInflationBalance().div(priceEpochsRemaining);
         uint256 currentDistributedSoFar = 0;
-        
-        if (addresses.length == 0) return false;        
-        // TODO: we should assure that in case we are here, totalWeight > 0. Please verify.
 
         uint256[] memory rewards = new uint256[](addresses.length);
 
@@ -383,11 +314,10 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
      */
     function setDataProviderFeePercentage(uint256 _feePercentageBIPS) external override returns (uint256) {
         require(_feePercentageBIPS <= MAX_BIPS, ERR_FEE_PERCENTAGE_INVALID);
-        
+
         uint256 rewardEpoch = ftsoManagerContract.getCurrentRewardEpoch() + feePercentageUpdateOffset;
-        
         FeePercentage[] storage fps = dataProviderFeePercentages[msg.sender];
-        
+
         // determine whether to update the last setting or add a new one
         uint256 position = fps.length;
         if (position > 0) {
@@ -411,8 +341,62 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         fps[position].validFromEpoch = uint240(rewardEpoch);
 
         emit FeePercentageChanged(msg.sender, _feePercentageBIPS, rewardEpoch);
-
         return rewardEpoch;
+    }
+
+    /**
+     * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
+     * @param _beneficiary          address of reward beneficiary
+     * @param _rewardEpoch          reward epoch number
+     * @return _dataProviders       positional array of addresses representing data providers
+     * @return _rewardAmounts       positional array of reward amounts
+     * @return _claimed             positional array of boolean values indicating if reward is claimed
+     * @return _claimable           boolean value indicating if rewards are claimable
+     * @dev Reverts when queried with `_beneficary` delegating by amount
+     */
+    function getStateOfRewards(
+        address _beneficiary,
+        uint256 _rewardEpoch
+    ) external view override returns (
+        address[] memory _dataProviders,
+        uint256[] memory _rewardAmounts,
+        bool[] memory _claimed,
+        bool _claimable
+    ) {
+        RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
+        _dataProviders = rewardState.dataProviders;
+        _rewardAmounts = rewardState.rewardAmounts;
+        _claimed = rewardState.claimed;
+        _claimable = _isRewardClaimable(_rewardEpoch, ftsoManagerContract.getCurrentRewardEpoch());
+    }
+
+    /**
+     * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch` from `_dataProviders`
+     * @param _beneficiary          address of reward beneficiary
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProviders        positional array of addresses representing data providers
+     * @return _rewardAmounts       positional array of reward amounts
+     * @return _claimed             positional array of boolean values indicating if reward is claimed
+     * @return _claimable           boolean value indicating if rewards are claimable
+     */
+    function getStateOfRewardsFromDataProviders(
+        address _beneficiary,
+        uint256 _rewardEpoch,
+        address[] memory _dataProviders
+    ) external view override returns (
+        uint256[] memory _rewardAmounts,
+        bool[] memory _claimed,
+        bool _claimable
+    ) {
+        RewardState memory rewardState = _getStateOfRewardsFromDataProviders(
+            _beneficiary,
+            _rewardEpoch,
+            _dataProviders,
+            false
+        );
+        _rewardAmounts = rewardState.rewardAmounts;
+        _claimed = rewardState.claimed;
+        _claimable = _isRewardClaimable(_rewardEpoch, ftsoManagerContract.getCurrentRewardEpoch());
     }
 
     /**
@@ -452,7 +436,7 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
                 for (uint256 i = position; i < fps.length; i++) {
                     _feePercentageBIPS[i] = fps[i].value;
                     _validFromEpoch[i] = fps[i].validFromEpoch;
-                    _fixed[i] = (_validFromEpoch[i] - currentEpoch) == feePercentageUpdateOffset;
+                    _fixed[i] = (_validFromEpoch[i] - currentEpoch) != feePercentageUpdateOffset;
                 }
             }
         }        
@@ -501,6 +485,10 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
         return totalRewardAmount;
     }
 
+    /**
+     * @notice Collects funds from expired reward epochs and reports unclaimed amount to accounting system.
+     * @dev Triggered by ftsoManager on finalization of a reward epoch.
+     */
     function closeExpiredRewardEpochs() external override onlyFtsoManager {
         uint256 expiredRewards = 0;
         uint256 current = ftsoManagerContract.getCurrentRewardEpoch();
@@ -515,6 +503,7 @@ contract RewardManager is IRewardManager, Governed, ReentrancyGuard {
             ftsoRewardManagerAccounting.rewardsExpired(expiredRewards);
         }
     }
+
 
     /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`.

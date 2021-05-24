@@ -11,10 +11,10 @@ import {
   FtsoManagerInstance, 
   FtsoRewardMintingFaucetContract, 
   FtsoRewardMintingFaucetInstance, 
-  RewardManagerContract,
-  RewardManagerInstance,
-  WFLRContract,
-  WFLRInstance} from "../../../typechain-truffle";
+  FtsoRewardManagerContract,
+  FtsoRewardManagerInstance,
+  WFlrContract,
+  WFlrInstance} from "../../../typechain-truffle";
 
 import { Contracts } from "../../../scripts/Contracts";
 import { PriceInfo } from '../../utils/PriceInfo';
@@ -46,7 +46,7 @@ async function submitPrice(ftso: FtsoInstance, price: number, by: string): Promi
 
       console.log(`Submitting price ${preparedPrice} by ${by} for epoch ${epochId}`);
 
-      await ftso.submitPrice(hash!, {from: by});
+      await ftso.submitPriceHash(hash!, {from: by});
 
       const priceInfo = new PriceInfo(epochId, preparedPrice, random);
       priceInfo.moveToNextStatus();
@@ -85,12 +85,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let contracts: Contracts;
   let FlareKeeper: FlareKeeperContract;
   let flareKeeper: FlareKeeperInstance;
-  let RewardManager: RewardManagerContract;
-  let rewardManager: RewardManagerInstance;
+  let RewardManager: FtsoRewardManagerContract;
+  let rewardManager: FtsoRewardManagerInstance;
   let FtsoManager: FtsoManagerContract;
   let ftsoManager: FtsoManagerInstance;
-  let WFLR: WFLRContract;
-  let wFLR: WFLRInstance;
+  let WFlr: WFlrContract;
+  let wFLR: WFlrInstance;
   let Ftso: FtsoContract;
   let ftsoFltc: FtsoInstance;
   let ftsoFxdg: FtsoInstance;
@@ -116,12 +116,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Wire up needed contracts
     FlareKeeper = artifacts.require("FlareKeeper");
     flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
-    RewardManager = artifacts.require("RewardManager");
-    rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.REWARD_MANAGER));
+    RewardManager = artifacts.require("FtsoRewardManager");
+    rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     FtsoManager = artifacts.require("FtsoManager");
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    WFLR = artifacts.require("WFLR");
-    wFLR = await WFLR.at(contracts.getContractAddress(Contracts.WFLR));
+    WFlr = artifacts.require("WFlr");
+    wFLR = await WFlr.at(contracts.getContractAddress(Contracts.WFLR));
     Ftso = artifacts.require("Ftso");
     ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FLTC));
     ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXDG));
@@ -200,7 +200,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Time travel to reveal period
     await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSec.toNumber(), parseInt(p1FlrPrice!.epochId));
-    await flareKeeper.trigger();
+
+    console.log(firstPriceEpochStartTs.toNumber(), priceEpochDurationSec.toNumber(), parseInt(p1FlrPrice!.epochId))
+    // await flareKeeper.trigger();  // do not trigger this here
 
     // Reveal prices
     await revealPrice(ftsoWflr, p1FlrPrice!, p1);

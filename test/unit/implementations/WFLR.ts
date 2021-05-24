@@ -1,18 +1,18 @@
-import { WFLRContract, WFLRInstance } from "../../../typechain-truffle";
+import { WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 import { toBN } from "../../utils/test-helpers";
 
 const calcGasCost = require('../../utils/eth').calcGasCost;
 const {expectRevert} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const WFLR = artifacts.require("WFLR") as WFLRContract;
+const WFLR = artifacts.require("WFlr") as WFlrContract;
 const TransferToWflr = artifacts.require("TransferToWflrMock");
 
 const ALLOWANCE_EXCEEDED_MSG = "allowance below zero";
 
-contract(`WFLR.sol; ${getTestFile(__filename)}`, async accounts => {
+contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
   // a fresh contract for each test
-  let wflr: WFLRInstance;
+  let wflr: WFlrInstance;
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {

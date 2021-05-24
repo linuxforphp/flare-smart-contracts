@@ -37,7 +37,7 @@ async function main(parameters: any) {
   web3.eth.defaultAccount = deployerAccount.address;
 
   // Contract definitions
-  const Constitution = artifacts.require("Constitution");
+  const InflationAllocation = artifacts.require("InflationAllocation");
   const FlareKeeper = artifacts.require("FlareKeeper");
   const FlareNetworkGeneralLedger = artifacts.require("FlareNetworkGeneralLedger");
   const Ftso = artifacts.require("Ftso");
@@ -49,17 +49,17 @@ async function main(parameters: any) {
   const FtsoRewardManagerTopup = artifacts.require("FtsoRewardManagerTopup");
   const FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
   const MintAccounting = artifacts.require("MintAccounting");
-  const RewardManager = artifacts.require("RewardManager");
+  const FtsoRewardManager = artifacts.require("FtsoRewardManager");
   const SupplyAccounting = artifacts.require("SupplyAccounting");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
-  const WFLR = artifacts.require("WFLR");
+  const WFLR = artifacts.require("WFlr");
 
-  // Constitution contract
-  const constitution = await Constitution.new(deployerAccount.address);
-  spewNewContractInfo(contracts, Constitution.contractName, constitution.address);
+  // InflationAllocation contract
+  const inflationAllocation = await InflationAllocation.new(deployerAccount.address);
+  spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address);
 
   // FtsoInflationPercentageProvider contract
-  const ftsoInflationPercentageProvider = await FtsoInflationPercentageProvider.new(constitution.address);
+  const ftsoInflationPercentageProvider = await FtsoInflationPercentageProvider.new(inflationAllocation.address);
   spewNewContractInfo(contracts, FtsoInflationPercentageProvider.contractName, ftsoInflationPercentageProvider.address);
 
   // FlareNetworkGeneralLedger contract
@@ -104,16 +104,19 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, FtsoInflationAuthorizer.contractName, ftsoInflationAuthorizer.address);
 
   // RewardManager contract
-  const rewardManager = await RewardManager.new(
+  const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     ftsoRewardManagerAccounting.address,
-    supplyAccounting.address);
-  await ftsoRewardManagerAccounting.grantRole(await ftsoRewardManagerAccounting.POSTER_ROLE(), rewardManager.address);
-  spewNewContractInfo(contracts, RewardManager.contractName, rewardManager.address);
+    supplyAccounting.address,
+    parameters.rewardFeePercentageUpdateOffset,
+    parameters.defaultRewardFeePercentage,
+    parameters.rewardExpiryOffset);
+  await ftsoRewardManagerAccounting.grantRole(await ftsoRewardManagerAccounting.POSTER_ROLE(), ftsoRewardManager.address);
+  spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address);
 
   // FtsoRewardManagerTopup contract
   const ftsoRewardManagerTopup = await FtsoRewardManagerTopup.new(
-    rewardManager.address, 
+    ftsoRewardManager.address, 
     ftsoInflationAccounting.address,
     ftsoInflationAuthorizer.address);
   spewNewContractInfo(contracts, FtsoRewardManagerTopup.contractName, ftsoRewardManagerTopup.address);
@@ -127,7 +130,7 @@ async function main(parameters: any) {
   const startTs = await time.latest();
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
-    rewardManager.address,
+    ftsoRewardManager.address,
     priceSubmitter.address,
     ftsoInflationAuthorizer.address,
     parameters.priceEpochDurationSec,
@@ -139,7 +142,7 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address);
 
   // Tell reward manager about ftso manager
-  await rewardManager.setFTSOManager(ftsoManager.address);
+  await ftsoRewardManager.setFTSOManager(ftsoManager.address);
 
   // Initialize the keeper
   let flareKeeper: FlareKeeperInstance;
@@ -168,7 +171,7 @@ async function main(parameters: any) {
   const ftsoRewardMintingFaucet = await FtsoRewardMintingFaucet.new(
     deployerAccount.address, 
     ftsoRewardManagerTopup.address,
-    rewardManager.address,
+    ftsoRewardManager.address,
     flareKeeper.address,
     parameters.ftsoRewardMintingFaucetFundWithdrawTimeLockSec,
     parameters.ftsoRewardMintingFundRequestIntervalSec,
@@ -190,7 +193,7 @@ async function main(parameters: any) {
   // Deploy wrapped FLR
   const wflr = await WFLR.new();
   spewNewContractInfo(contracts, WFLR.contractName, wflr.address);
-  await rewardManager.setWFLR(wflr.address);
+  await ftsoRewardManager.setWFLR(wflr.address);
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
@@ -320,12 +323,12 @@ async function main(parameters: any) {
   // Activate the managers
   console.error("Activating managers...");
   await ftsoManager.activate();
-  await rewardManager.activate();
+  await ftsoRewardManager.activate();
 
   // Turn over governance
   // TODO: Lots more governance turnover
   console.error("Transfering governance...");
-  await constitution.proposeGovernance(governanceAccount.address);
+  await inflationAllocation.proposeGovernance(governanceAccount.address)
   await gl.grantRole(await gl.DEFAULT_ADMIN_ROLE(), governanceAccount.address);
   await gl.renounceRole(await gl.DEFAULT_ADMIN_ROLE(), deployerAccount.address);
   await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.DEFAULT_ADMIN_ROLE(), governanceAccount.address);
@@ -337,7 +340,7 @@ async function main(parameters: any) {
   await ftsoInflationAuthorizer.proposeGovernance(governanceAccount.address);
   await ftsoRewardMintingFaucet.proposeGovernance(governanceAccount.address);
   await flareKeeper.proposeGovernance(governanceAccount.address);
-  await rewardManager.proposeGovernance(governanceAccount.address);
+  await ftsoRewardManager.proposeGovernance(governanceAccount.address);
   await ftsoManager.proposeGovernance(governanceAccount.address);
   await ftsoInflationAuthorizer.proposeGovernance(governanceAccount.address);
 

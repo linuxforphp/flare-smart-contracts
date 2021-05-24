@@ -15,9 +15,9 @@ contract PriceSubmitter is IPriceSubmitter {
      * @notice Submits price hashes for current epoch
      * @param _ftsos                List of ftsos
      * @param _hashes               List of hashed price and random number
-     * @notice Emits PricesSubmitted event
+     * @notice Emits PriceHashesSubmitted event
      */
-    function submitPrices(
+    function submitPriceHashes(
         IIFtso[] memory _ftsos,
         bytes32[] memory _hashes
     ) external override {
@@ -27,13 +27,13 @@ contract PriceSubmitter is IPriceSubmitter {
         bool[] memory success = new bool[](len);
         uint256 epochId;
         for (uint256 i = 0; i < len; i++) {
-            try _ftsos[i].submitPriceSubmitter(msg.sender, _hashes[i]) returns (uint256 _epochId) {
+            try _ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]) returns (uint256 _epochId) {
                 success[i] = true;
                 // they should all be the same (one price provider contract for all ftsos managed by one ftso manager)
                 epochId = _epochId;
             } catch {}
         }
-        emit PricesSubmitted(msg.sender, epochId, _ftsos, _hashes, success, block.timestamp);
+        emit PriceHashesSubmitted(msg.sender, epochId, _ftsos, _hashes, success, block.timestamp);
     }
 
     /**

@@ -1,5 +1,5 @@
 import { soliditySha3Raw as soliditySha3 } from "web3-utils";
-import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFLRInstance } from "../../../typechain-truffle";
+import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, toBN } from "../../utils/test-helpers";
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const { getTestFile } = require('../../utils/constants');
@@ -7,7 +7,7 @@ const { getTestFile } = require('../../utils/constants');
 const FlashLenderMock = artifacts.require("FlashLenderMock");
 const FlashLoanMock = artifacts.require("FlashLoanMock");
 const VotingFlashLoanMock = artifacts.require("VotingFlashLoanMock");
-const Wflr = artifacts.require("WFLR");
+const Wflr = artifacts.require("WFlr");
 const Ftso = artifacts.require("Ftso");
 
 const FLARE = toBN(1e18);
@@ -27,7 +27,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
     let flashLenderMock: FlashLenderMockInstance;
     let flashLoanMock: FlashLoanMockInstance;
     let votingFlashLoanMock: VotingFlashLoanMockInstance;
-    let wflr: WFLRInstance;
+    let wflr: WFlrInstance;
     let vpToken: VPTokenInstance;
     let ftso: FtsoInstance;
     let epochId: number;
@@ -79,9 +79,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // start an epoch
             epochId = await startNewEpoch();
             // vote
-            expectEvent(await ftso.submitPrice(soliditySha3(500, 123), { from: accounts[1] }),
-                "PriceSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
-            await flashLoanMock.submitPrice(380, 234);
+            expectEvent(await ftso.submitPriceHash(soliditySha3(500, 123), { from: accounts[1] }),
+                "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
+            await flashLoanMock.submitPriceHash(380, 234);
             // reveal epoch
             await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
@@ -123,9 +123,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         async function tryVoting() {
             epochId = await startNewEpoch();
             // vote
-            expectEvent(await ftso.submitPrice(soliditySha3(500, 123), { from: accounts[1] }),
-                "PriceSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
-            await flashLoanMock.submitPrice(380, 234);
+            expectEvent(await ftso.submitPriceHash(soliditySha3(500, 123), { from: accounts[1] }),
+                "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
+            await flashLoanMock.submitPriceHash(380, 234);
             // reveal epoch
             await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
@@ -146,10 +146,10 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // start epoch
             epochId = await startNewEpoch();
             // votes
-            await votingFlashLoanMock.submitPrice(380, 234);
+            await votingFlashLoanMock.submitPriceHash(380, 234);
             await votingFlashLoanMock.setVote(epochId, 380, 234);
-            expectEvent(await ftso.submitPrice(soliditySha3(500, 123), { from: accounts[1] }),
-                "PriceSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
+            expectEvent(await ftso.submitPriceHash(soliditySha3(500, 123), { from: accounts[1] }),
+                "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             // reveal epoch
             // flash loan (and reveal) will happen in this block + x (x ~ 3), but we can set anything bigger as vote power block
             let lastBlock = await web3.eth.getBlockNumber();

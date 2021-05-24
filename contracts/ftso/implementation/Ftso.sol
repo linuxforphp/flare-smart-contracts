@@ -8,6 +8,7 @@ import "../lib/FtsoEpoch.sol";
 import "../lib/FtsoVote.sol";
 import "../lib/FtsoMedian.sol";
 
+
 /**
  * @title A contract implementing Flare Time Series Oracle
  */
@@ -43,11 +44,11 @@ contract Ftso is IIFtso {
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
 
     // external contracts
-    IIVPToken public immutable wFlr;              // wrapped FLR
+    IIVPToken public immutable wFlr;             // wrapped FLR
     IIFtsoManager public immutable ftsoManager;  // FTSO manager contract
-    IPriceSubmitter public priceSubmitter;      // Price submitter contract
-    IIVPToken[] public fAssets;                   // array of assets
-    IIFtso[] public fAssetFtsos;                // FTSOs for assets (for a multi-asset FTSO)
+    IPriceSubmitter public priceSubmitter;       // Price submitter contract
+    IIVPToken[] public fAssets;                  // array of assets
+    IIFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
 
     constructor(
         string memory _symbol,
@@ -79,10 +80,10 @@ contract Ftso is IIFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _hash                 Hashed price and random number
-     * @notice Emits PriceSubmitted event
+     * @notice Emits PriceHashSubmitted event
      */
-    function submitPrice(bytes32 _hash) external override whenActive {
-        _submitPrice(msg.sender, _hash);
+    function submitPriceHash(bytes32 _hash) external override whenActive {
+        _submitPriceHash(msg.sender, _hash);
     }
 
     /**
@@ -90,13 +91,13 @@ contract Ftso is IIFtso {
      * @param _sender               Sender address
      * @param _hash                 Hashed price and random number
      * @return _epochId             Returns current epoch id
-     * @notice Emits PriceSubmitted event
+     * @notice Emits PriceHashSubmitted event
      */
-    function submitPriceSubmitter(
+    function submitPriceHashSubmitter(
         address _sender,
         bytes32 _hash
     ) external override whenActive onlyPriceSubmitter returns (uint256 _epochId) {
-        return _submitPrice(_sender, _hash);
+        return _submitPriceHash(_sender, _hash);
     }
 
     /**
@@ -156,8 +157,8 @@ contract Ftso is IIFtso {
             // no overflow - epoch.accumulatedVotePowerFlr is the sum of all WFLRs of voters for given vote power block
             flrTurnout = epoch.accumulatedVotePowerFlr * FtsoEpoch.BIPS100 / epoch.circulatingSupplyFlr;
         }
-        if (epoch.panicMode || flrTurnout <= epoch.lowFlrTurnoutBIPSThreshold) {
-            if (!epoch.panicMode) {
+        if (epoch.fallbackMode || flrTurnout <= epoch.lowFlrTurnoutBIPSThreshold) {
+            if (!epoch.fallbackMode) {
                 emit LowTurnout(_epochId, flrTurnout, epoch.lowFlrTurnoutBIPSThreshold, block.timestamp);
             }
             _averageFinalizePriceEpoch(_epochId, epoch, false);
@@ -264,6 +265,7 @@ contract Ftso is IIFtso {
      * @param _highAssetTurnoutBIPSThreshold    threshold for high asset turnout
      * @param _lowFlrTurnoutBIPSThreshold       threshold for low flr turnout
      * @param _trustedAddresses                 trusted addresses - use their prices if low flr turnout is not achieved
+     * @dev Should never revert if called from ftso manager
      */
     function configureEpochs(
         uint256 _minVotePowerFlrThreshold,
@@ -335,14 +337,13 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Initializes current epoch instance for reveal
-     * @param _panicMode            Current epoch in panic mode
-     * @dev TODO: this function should not revert
+     * @param _fallbackMode            Current epoch in fallback mode
      */
-    function initializeCurrentEpochStateForReveal(bool _panicMode) external override onlyFtsoManager {
+    function initializeCurrentEpochStateForReveal(bool _fallbackMode) external override onlyFtsoManager {
         uint256 epochId = getCurrentEpochId();
         FtsoEpoch.Instance storage epoch = epochs.instance[epochId];
-        if (_panicMode) {
-            epoch.panicMode = true;
+        if (_fallbackMode) {
+            epoch.fallbackMode = true;
             return;
         }
 
@@ -437,6 +438,7 @@ contract Ftso is IIFtso {
     /**
      * @notice Returns current random number
      * @return Random number
+     * @dev Should never revert
      */
     function getCurrentRandom() external view override returns (uint256) {
         uint256 currentEpochId = getCurrentEpochId();
@@ -463,7 +465,7 @@ contract Ftso is IIFtso {
      * @return _votePowerBlock          Vote power block for the current epoch
      * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
      * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
-     * @return _panicMode               Current epoch in panic mode - only votes from trusted addresses will be used
+     * @return _fallbackMode            Current epoch in fallback mode - only votes from trusted addresses will be used
      */
     function getPriceEpochData() external view override returns (
         uint256 _epochId,
@@ -472,7 +474,7 @@ contract Ftso is IIFtso {
         uint256 _votePowerBlock,
         uint256 _minVotePowerFlr,
         uint256 _minVotePowerAsset,
-        bool _panicMode
+        bool _fallbackMode
     ) {
         _epochId = getCurrentEpochId();
         _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);
@@ -482,7 +484,7 @@ contract Ftso is IIFtso {
         _votePowerBlock = epoch.votePowerBlock;
         _minVotePowerFlr = epoch.minVotePowerFlr;
         _minVotePowerAsset = epoch.minVotePowerAsset;
-        _panicMode = epoch.panicMode;
+        _fallbackMode = epoch.fallbackMode;
     }
 
     /**
@@ -500,7 +502,7 @@ contract Ftso is IIFtso {
      * @return _finalizationType        Finalization type for epoch
      * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
      * @return _rewardedFtso            Whether epoch instance was a rewarded ftso
-     * @return _panicMode               Whether epoch instance was in panic mode
+     * @return _fallbackMode               Whether epoch instance was in fallback mode
      */
     function getFullEpochReport(uint256 _epochId) external view override returns (
         uint256 _epochSubmitStartTime,
@@ -515,7 +517,7 @@ contract Ftso is IIFtso {
         PriceFinalizationType _finalizationType,
         address[] memory _trustedAddresses,
         bool _rewardedFtso,
-        bool _panicMode
+        bool _fallbackMode
     ) {
         require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
         _epochSubmitStartTime = epochs._epochSubmitStartTime(_epochId);
@@ -530,7 +532,7 @@ contract Ftso is IIFtso {
         _finalizationType = epochs.instance[_epochId].finalizationType;
         _trustedAddresses = epochs.instance[_epochId].trustedAddresses;
         _rewardedFtso = epochs.instance[_epochId].rewardedFtso;
-        _panicMode = epochs.instance[_epochId].panicMode;
+        _fallbackMode = epochs.instance[_epochId].fallbackMode;
     }
 
     /**
@@ -603,10 +605,15 @@ contract Ftso is IIFtso {
         return epochs._getEpochId(_timestamp);
     }
 
-    function _submitPrice(address _sender, bytes32 _hash) internal returns (uint256 _epochId){
+    /**
+     * @notice Submits price hash for current epoch
+     * @param _hash Hashed price and random number
+     * @notice Emits PriceHashSubmitted event
+     */
+    function _submitPriceHash(address _sender, bytes32 _hash) internal returns (uint256 _epochId){
         _epochId = getCurrentEpochId();
         epochVoterHash[_epochId][_sender] = _hash;
-        emit PriceSubmitted(_sender, _epochId, _hash, block.timestamp);
+        emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
     }
 
     /**
@@ -625,7 +632,7 @@ contract Ftso is IIFtso {
 
         // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        require(epoch.initializedForReveal || (epoch.panicMode && epochs.trustedAddressesMapping[_voter]),
+        require(epoch.initializedForReveal || (epoch.fallbackMode && epochs.trustedAddressesMapping[_voter]),
             ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL);
 
         // register vote
@@ -887,7 +894,7 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns FLR and asset vote power for epoch - returns (0, 0) if in panic mode
+     * @notice Returns FLR and asset vote power for epoch - returns (0, 0) if in fallback mode
      * @param _epoch                Epoch instance
      * @param _owner                Owner address
      * @dev Checks if vote power is sufficient and adjusts vote power if it is too large
@@ -896,7 +903,7 @@ contract Ftso is IIFtso {
         uint256 _votePowerFlr,
         uint256 _votePowerAsset
     ) {
-        if (_epoch.panicMode) {
+        if (_epoch.fallbackMode) {
             return (0, 0);
         }
 

@@ -1,15 +1,15 @@
-import { FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerAccountingInstance, MockContractInstance, RewardManagerContract, RewardManagerInstance, WFLRContract, WFLRInstance } from "../../../typechain-truffle";
+import { BalanceSynchronizerInstance, FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerAccountingInstance, MockContractInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const RewardManager = artifacts.require("RewardManager") as RewardManagerContract;
+const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounting");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
-const WFLR = artifacts.require("WFLR") as WFLRContract;
+const WFLR = artifacts.require("WFlr") as WFlrContract;
 const MockContract = artifacts.require("MockContract");
-
+const BalanceSynchronizer = artifacts.require("BalanceSynchronizer");
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
@@ -17,15 +17,16 @@ const VOTE_POWER_BOUNDARY_FRACTION = 7;
 
 contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit tests`, async accounts => {
     // contains a fresh contract for each test
-    let rewardManager: RewardManagerInstance;
+    let ftsoRewardManager: FtsoRewardManagerInstance;
     let ftsoManagerInterface: FtsoManagerInstance;
     let startTs: BN;
     let mockFtsoManager: FtsoManagerMockInstance;
-    let wFlr: WFLRInstance;
+    let wFlr: WFlrInstance;
     let mockFtsoRewardManagerAccounting: MockContractInstance;
     let ftsoRewardManagerAccountingInterface: FtsoRewardManagerAccountingInstance;
     let ftsoInflationAuthorizer: MockContractInstance;
     let mockSupplyAccounting: MockContractInstance;
+    let balanceSynchronizer: BalanceSynchronizerInstance;
 
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
@@ -40,19 +41,20 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
         // Get the timestamp for the just mined block
         startTs = await time.latest();
 
-        rewardManager = await RewardManager.new(
+        ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
             mockFtsoRewardManagerAccounting.address,
-            mockSupplyAccounting.address
-            // 172800,                      // Reward epoch 2 days
-            // startTs
+            mockSupplyAccounting.address,
+            3,
+            0,
+            100
         );
 
         ftsoInflationAuthorizer = await MockContract.new();
 
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
-            rewardManager.address,
+            ftsoRewardManager.address,
             accounts[7],
             ftsoInflationAuthorizer.address,
             PRICE_EPOCH_DURATION_S,
@@ -65,12 +67,16 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
 
         wFlr = await WFLR.new();
 
-        await rewardManager.setFTSOManager(mockFtsoManager.address);
-        await rewardManager.setWFLR(wFlr.address);
+        await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
+        await ftsoRewardManager.setWFLR(wFlr.address);
         // await inflation.setRewardManager(rewardManager.address);
 
-        await mockFtsoManager.setRewardManager(rewardManager.address);
-        await rewardManager.activate();
+        await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
+        await ftsoRewardManager.activate();
+
+        balanceSynchronizer = await BalanceSynchronizer.new(accounts[0]);
+        balanceSynchronizer.setRewardManager(ftsoRewardManager.address);    
+        ftsoRewardManager.setBalanceSynchronizer(balanceSynchronizer.address);    
     });
 
     describe("Price epochs, finalization", async () => {
@@ -82,7 +88,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             const getUndistributedFtsoInflationBalance = web3.utils.sha3("getUndistributedFtsoInflationBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockSupplyAccounting.givenMethodReturnUint(getUndistributedFtsoInflationBalance, 1000000);
             // give reward manager some flr to distribute
-            await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
 
             // Give 3 price epochs remaining, and so it should distribute 1/3 of the amount.
             await mockFtsoManager.distributeRewardsCall(
@@ -101,8 +107,8 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             // a2 should be = (1000000 / 3) * 0.75 = 250000
             // There is a remainder of 0.3 repeating. A double declining balance should net
             // this out as tranches are allocated (not tested here).
-            let a1UnclaimedReward = await rewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[1]);
-            let a2UnclaimedReward = await rewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[2]);
+            let a1UnclaimedReward = await ftsoRewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[1]);
+            let a2UnclaimedReward = await ftsoRewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[2]);
             assert.equal(a1UnclaimedReward.toNumber(), 83334);
             assert.equal(a2UnclaimedReward.toNumber(), 249999);
         });
@@ -115,12 +121,12 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             const getRewardManagerBalance = web3.utils.sha3("getRewardManagerBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockFtsoRewardManagerAccounting.givenMethodReturnUint(getRewardManagerBalance, 1000000);
             // Act
-            await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
             // Assert
-            let balance = web3.utils.toBN(await web3.eth.getBalance(rewardManager.address));
+            let balance = web3.utils.toBN(await web3.eth.getBalance(ftsoRewardManager.address));
             assert.equal(balance.toNumber(), 1000000);
         });
-
+        // accounting changed
         it("Should enable rewards to be claimed once reward epoch finalized", async () => { 
 
             // deposit some wflrs
@@ -131,11 +137,13 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             // Stub accounting system to make it balance with RM contract
             const getRewardManagerBalance = web3.utils.sha3("getRewardManagerBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockFtsoRewardManagerAccounting.givenMethodReturnUint(getRewardManagerBalance, 1000000);
+            balanceSynchronizer.setFtsoRewardManagerAccounting(mockFtsoRewardManagerAccounting.address);
+
             // Stub accounting system to return the undistributed balance to reward manager
             const getUndistributedFtsoInflationBalance = web3.utils.sha3("getUndistributedFtsoInflationBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockSupplyAccounting.givenMethodReturnUint(getUndistributedFtsoInflationBalance, 1000000);
             // give reward manager some flr to distribute
-            await web3.eth.sendTransaction({ from: accounts[0], to: rewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
             
             // Let's assume the number of price epochs remaining is 720 (a days worth at 2 minute price epochs)
             // Trigger price epoch finalization
@@ -178,14 +186,19 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             // having to calc gas fees            
             let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             // await rewardManager.claimReward(accounts[3], [ 0 ], { from: accounts[1] });
-            await mockFtsoRewardManagerAccounting.givenMethodReturnUint(getRewardManagerBalance, 999306);
-            await rewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
+            await mockFtsoRewardManagerAccounting.givenMethodReturnUint(getRewardManagerBalance, 1000000);
+            await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
             let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), Math.floor(1000000 / (86400 / 120) * 0.25 * 2));
             const rewardsClaimed = ftsoRewardManagerAccountingInterface.contract.methods.rewardsClaimed(694).encodeABI();
+            
+            expectRevert(balanceSynchronizer.balanceRewardManagerClaims(), "not balancer");
+            balanceSynchronizer.grantRole(await balanceSynchronizer.BALANCER_ROLE(), accounts[0]);
+            await balanceSynchronizer.balanceRewardManagerClaims({from: accounts[0]});
             const invocationCount = await mockFtsoRewardManagerAccounting.invocationCountForCalldata.call(rewardsClaimed);
+
             assert.equal(invocationCount.toNumber(), 1);
         });
 
