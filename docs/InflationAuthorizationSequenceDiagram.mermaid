@@ -1,0 +1,17 @@
+sequenceDiagram
+    autonumber
+    participant Validator
+    participant FlareKeeper
+    participant FtsoInflationAuthorizer
+    participant FtsoInflationAccounting
+    loop Every block
+        Validator-->FlareKeeper: trigger()
+        activate FlareKeeper
+        FlareKeeper-->FtsoInflationAuthorizer: keep()
+        alt authorization every authorizationRequestFrequencySec
+            FtsoInflationAuthorizer->FtsoInflationAuthorizer: compute inflation remaining
+            FtsoInflationAuthorizer->FtsoInflationAuthorizer: compute periods remaining
+            FtsoInflationAuthorizer->FtsoInflationAccounting: authorizeMinting(amount)
+        end
+        deactivate FlareKeeper
+    end    
