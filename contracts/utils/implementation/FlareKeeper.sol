@@ -37,7 +37,7 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     string internal constant ERR_TRANSFER_FAILED = "transfer failed";
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    uint256 public constant MAX_KEEP_CONTRACTS = 10;
+    uint256 internal constant MAX_KEEP_CONTRACTS = 10;
     IFlareKeep[] public keepContracts;
     uint256 public systemLastTriggeredAt;
     MintAccounting public mintAccounting;
@@ -195,9 +195,7 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
      */
     function transferTo(address _receiver, uint256 _amountTWei) external onlyMinters mustBalance nonReentrant {
         lastBalance = address(this).balance.sub(_amountTWei);
-        /* solhint-disable avoid-low-level-calls */
-        (bool success, ) = (payable(_receiver)).call{value: _amountTWei}("");
-        /* solhint-enable avoid-low-level-calls */
+        (bool success, ) = (payable(_receiver)).call{value: _amountTWei}(""); // solhint-disable-line
         require(success, ERR_TRANSFER_FAILED);
         emit Transferred(_amountTWei);
     }

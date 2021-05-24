@@ -69,7 +69,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
         it("Should not register more contracts than allowable", async() => {
             // Assemble
-            const MAX = (await flareKeeper.MAX_KEEP_CONTRACTS()).toNumber();
+            const MAX = 10;
             for (let i = 0; i < MAX-1; i++ ) {
                 const contract = await MockContract.new();
                 await flareKeeper.registerToKeep(contract.address, {from: genesisGovernance});
