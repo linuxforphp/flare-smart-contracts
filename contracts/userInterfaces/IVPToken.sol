@@ -4,8 +4,6 @@ pragma solidity 0.7.6;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IVPToken is IERC20 {
-    /* solhint-disable ordering */
-    
     /**
      * Event triggered when an account delegates or undelegates another account. 
      * For undelegation, newVotePower is 0.
@@ -19,6 +17,51 @@ interface IVPToken is IERC20 {
     event Revoke(address indexed delegator, address indexed delegatee, uint votePower, uint blockNumber);
     
     
+    /**
+     * @notice Delegate by percentage `_bips` of voting power to `_to` from `msg.sender`.
+     * @param _to The address of the recipient
+     * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
+     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
+     **/
+    function delegate(address _to, uint256 _bips) external;
+    
+    /**
+     * @notice Explicitly delegate `_amount` of voting power to `_to` from `msg.sender`.
+     * @param _to The address of the recipient
+     * @param _amount An explicit vote power amount to be delegated.
+     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
+     **/    
+    function delegateExplicit(address _to, uint _amount) external;
+
+    /**
+    * @notice Revoke all delegation from sender to `_who` at given block. 
+    *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
+    *    Block `_blockNumber` must be in the past. 
+    *    This method should be used only to prevent rogue delegate voting in the current voting block.
+    *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
+    * @param _who Address of the delegatee
+    * @param _blockNumber The block number at which to revoke delegation.
+    */
+    function revokeDelegationAt(address _who, uint _blockNumber) external;
+    
+    /**
+     * @notice Undelegate all voting power for delegates of `msg.sender`
+     *    Can only be used with percentage delegation.
+     *    Does not reset delegation mode back to NOTSET.
+     **/
+    function undelegateAll() external;
+    
+    /**
+     * @notice Undelegate all explicit vote power by amount delegates for `msg.sender`.
+     *    Can only be used with explicit delegation.
+     *    Does not reset delegation mode back to NOTSET.
+     * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
+     *   so the caller must supply them.
+     * @return The amount still delegated (in case the list of delegates was incomplete).
+     */
+    function undelegateAllExplicit(address[] memory _delegateAddresses) external returns (uint256);
+
+
     /**
      * @dev Should be compatible with ERC20 method
      */
@@ -79,50 +122,6 @@ interface IVPToken is IERC20 {
     */
     function votePowerOfAt(address _owner, uint256 _blockNumber) external view returns(uint256);
 
-
-    /**
-     * @notice Delegate by percentage `_bips` of voting power to `_to` from `msg.sender`.
-     * @param _to The address of the recipient
-     * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
-     **/
-    function delegate(address _to, uint256 _bips) external;
-    
-    /**
-     * @notice Explicitly delegate `_amount` of voting power to `_to` from `msg.sender`.
-     * @param _to The address of the recipient
-     * @param _amount An explicit vote power amount to be delegated.
-     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
-     **/    
-    function delegateExplicit(address _to, uint _amount) external;
-
-    /**
-    * @notice Revoke all delegation from sender to `_who` at given block. 
-    *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
-    *    Block `_blockNumber` must be in the past. 
-    *    This method should be used only to prevent rogue delegate voting in the current voting block.
-    *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
-    * @param _who Address of the delegatee
-    * @param _blockNumber The block number at which to revoke delegation.
-    */
-    function revokeDelegationAt(address _who, uint _blockNumber) external;
-    
-    /**
-     * @notice Undelegate all voting power for delegates of `msg.sender`
-     *    Can only be used with percentage delegation.
-     *    Does not reset delegation mode back to NOTSET.
-     **/
-    function undelegateAll() external;
-    
-    /**
-     * @notice Undelegate all explicit vote power by amount delegates for `msg.sender`.
-     *    Can only be used with explicit delegation.
-     *    Does not reset delegation mode back to NOTSET.
-     * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
-     *   so the caller must supply them.
-     * @return The amount still delegated (in case the list of delegates was incomplete).
-     */
-    function undelegateAllExplicit(address[] memory _delegateAddresses) external returns (uint256);
 
     /**
      * @notice Get the delegation mode for '_who'. This mode determines whether vote power is
