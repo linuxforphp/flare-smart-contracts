@@ -139,7 +139,7 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
     // Act
     let callPromise = transferer.transferToWflr(wflr.address, 8500);
     // Assert
-    await expectRevert(callPromise, "contract call run out of gas and made the transaction revert");
+    await expectRevert.unspecified(callPromise);
     const balance = await wflr.balanceOf(transferer.address);
     assert.equal(balance.toNumber(), 0);
   });
@@ -152,7 +152,7 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
     await transferer.depositToWflr(wflr.address, 1500);
     let callPromise = transferer.transferToWflr(wflr.address, 8500);
     // Assert
-    await expectRevert(callPromise, "contract call run out of gas and made the transaction revert");
+    await expectRevert.unspecified(callPromise);
     const balance = await wflr.balanceOf(transferer.address);
     assert.equal(balance.toNumber(), 1500);
   });

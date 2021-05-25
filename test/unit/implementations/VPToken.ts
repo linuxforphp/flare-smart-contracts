@@ -372,6 +372,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
   it("Should correctly handle historic undelegated vote power", async () => {
     // Assemble
     await vpToken.mint(accounts[1], 20);
+    const blockBeforeDelegate1 = await web3.eth.getBlockNumber();
     // Act
     await vpToken.delegate(accounts[2], 3000, { from: accounts[1] });
     const blockAfterDelegate1 = await web3.eth.getBlockNumber();
@@ -379,6 +380,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.mint(accounts[1], 30);
     await vpToken.delegate(accounts[2], 9000, { from: accounts[1] });
     // Assert
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], 0)).toNumber(), 0);
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockBeforeDelegate1)).toNumber(), 20);
     assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 14);
     assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 5);
   });
@@ -408,6 +411,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
   it("Should correctly handle historic undelegated vote power (explicit delegation)", async () => {
     // Assemble
     await vpToken.mint(accounts[1], 20);
+    const blockBeforeDelegate1 = await web3.eth.getBlockNumber();
     // Act
     await vpToken.delegateExplicit(accounts[2], 6, { from: accounts[1] });
     const blockAfterDelegate1 = await web3.eth.getBlockNumber();
@@ -415,6 +419,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.mint(accounts[1], 30);
     await vpToken.delegateExplicit(accounts[2], 45, { from: accounts[1] });
     // Assert
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], 0)).toNumber(), 0);
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockBeforeDelegate1)).toNumber(), 20);
     assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 14);
     assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 5);
   });
