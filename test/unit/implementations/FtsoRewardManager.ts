@@ -1,4 +1,4 @@
-import { BalanceSynchronizerInstance, FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerAccountingInstance, MockContractInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
+import { FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerAccountingInstance, MockContractInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -9,11 +9,12 @@ const FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounti
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const WFLR = artifacts.require("WFlr") as WFlrContract;
 const MockContract = artifacts.require("MockContract");
-const BalanceSynchronizer = artifacts.require("BalanceSynchronizer");
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
+
+const ERR_CLOSE_MANAGER_ONLY = "close manager only";    
 
 contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit tests`, async accounts => {
     // contains a fresh contract for each test
@@ -26,12 +27,13 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
     let ftsoRewardManagerAccountingInterface: FtsoRewardManagerAccountingInstance;
     let ftsoInflationAuthorizer: MockContractInstance;
     let mockSupplyAccounting: MockContractInstance;
-    let balanceSynchronizer: BalanceSynchronizerInstance;
+    let mockCloseManager: MockContractInstance;
 
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
         mockFtsoRewardManagerAccounting = await MockContract.new();
         mockSupplyAccounting = await MockContract.new();
+        mockCloseManager = await MockContract.new();
         ftsoRewardManagerAccountingInterface = await FtsoRewardManagerAccounting.new(
           accounts[0], 
           (await MockContract.new()).address)
@@ -47,7 +49,8 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             mockSupplyAccounting.address,
             3,
             0,
-            100
+            100,
+            accounts[0] // This should be closeManager address...just plug so we can fake close.
         );
 
         ftsoInflationAuthorizer = await MockContract.new();
@@ -73,10 +76,6 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
 
         await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
         await ftsoRewardManager.activate();
-
-        balanceSynchronizer = await BalanceSynchronizer.new(accounts[0]);
-        balanceSynchronizer.setRewardManager(ftsoRewardManager.address);    
-        ftsoRewardManager.setBalanceSynchronizer(balanceSynchronizer.address);    
     });
 
     describe("Price epochs, finalization", async () => {
@@ -137,7 +136,6 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             // Stub accounting system to make it balance with RM contract
             const getRewardManagerBalance = web3.utils.sha3("getRewardManagerBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockFtsoRewardManagerAccounting.givenMethodReturnUint(getRewardManagerBalance, 1000000);
-            balanceSynchronizer.setFtsoRewardManagerAccounting(mockFtsoRewardManagerAccounting.address);
 
             // Stub accounting system to return the undistributed balance to reward manager
             const getUndistributedFtsoInflationBalance = web3.utils.sha3("getUndistributedFtsoInflationBalance()")!.slice(0,10); // first 4 bytes is function selector
@@ -191,17 +189,25 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             // Assert
             // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
             let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), Math.floor(1000000 / (86400 / 120) * 0.25 * 2));
-            const rewardsClaimed = ftsoRewardManagerAccountingInterface.contract.methods.rewardsClaimed(694).encodeABI();
-            
-            expectRevert(balanceSynchronizer.balanceRewardManagerClaims(), "not balancer");
-            balanceSynchronizer.grantRole(await balanceSynchronizer.BALANCER_ROLE(), accounts[0]);
-            await balanceSynchronizer.balanceRewardManagerClaims({from: accounts[0]});
+            let claimsExpected = Math.floor(1000000 / (86400 / 120) * 0.25 * 2);
+            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), claimsExpected);
+            // Let's do a fakey close and see if RM reports claims-to-date to accounting.
+            // I'd rather do another test, but am too lazy to re-do all this pre-amble just to do the below assert.
+            await ftsoRewardManager.close();
+            const rewardsClaimed = ftsoRewardManagerAccountingInterface.contract.methods.rewardsClaimed(claimsExpected).encodeABI();
             const invocationCount = await mockFtsoRewardManagerAccounting.invocationCountForCalldata.call(rewardsClaimed);
-
             assert.equal(invocationCount.toNumber(), 1);
         });
 
     });
 
+    describe("accounting close", async () => {
+      it("Should not close if not from close manager", async() => {
+        // Assemble
+        // Act
+        const closePromise = ftsoRewardManager.close({from: accounts[1]});
+        // Assert
+        await expectRevert(closePromise, ERR_CLOSE_MANAGER_ONLY)
+      });
+    });
 });

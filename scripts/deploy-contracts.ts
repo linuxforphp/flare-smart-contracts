@@ -53,8 +53,13 @@ async function main(parameters: any) {
   const SupplyAccounting = artifacts.require("SupplyAccounting");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const WFLR = artifacts.require("WFlr");
+  const CloseManager = artifacts.require("CloseManager");
 
-  // InflationAllocation contract
+  // CloseManager contract
+  const closeManager = await CloseManager.new(deployerAccount.address);
+  spewNewContractInfo(contracts, CloseManager.contractName, closeManager.address);
+
+  // Constitution contract
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address);
 
@@ -99,9 +104,11 @@ async function main(parameters: any) {
     0,
     ftsoInflationPercentageProvider.address,
     supplyAccounting.address,
+    closeManager.address,
     ftsoInflationAccounting.address);
   await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.POSTER_ROLE(), ftsoInflationAuthorizer.address);
   spewNewContractInfo(contracts, FtsoInflationAuthorizer.contractName, ftsoInflationAuthorizer.address);
+  await closeManager.registerToClose(ftsoInflationAuthorizer.address);
 
   // RewardManager contract
   const ftsoRewardManager = await FtsoRewardManager.new(
@@ -110,9 +117,11 @@ async function main(parameters: any) {
     supplyAccounting.address,
     parameters.rewardFeePercentageUpdateOffset,
     parameters.defaultRewardFeePercentage,
-    parameters.rewardExpiryOffset);
+    parameters.rewardExpiryOffset,
+    closeManager.address);
   await ftsoRewardManagerAccounting.grantRole(await ftsoRewardManagerAccounting.POSTER_ROLE(), ftsoRewardManager.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address);
+  await closeManager.registerToClose(ftsoRewardManager.address);
 
   // FtsoRewardManagerTopup contract
   const ftsoRewardManagerTopup = await FtsoRewardManagerTopup.new(
@@ -328,7 +337,8 @@ async function main(parameters: any) {
   // Turn over governance
   // TODO: Lots more governance turnover
   console.error("Transfering governance...");
-  await inflationAllocation.proposeGovernance(governanceAccount.address)
+  await closeManager.proposeGovernance(governanceAccount.address);
+  await inflationAllocation.proposeGovernance(governanceAccount.address);
   await gl.grantRole(await gl.DEFAULT_ADMIN_ROLE(), governanceAccount.address);
   await gl.renounceRole(await gl.DEFAULT_ADMIN_ROLE(), deployerAccount.address);
   await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.DEFAULT_ADMIN_ROLE(), governanceAccount.address);

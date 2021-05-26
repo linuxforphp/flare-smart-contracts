@@ -4,8 +4,7 @@ pragma solidity 0.7.6;
 import "../../userInterfaces/IFtsoRewardManager.sol";
 import "../interface/IIFtsoManager.sol";
 import "../../token/implementation/WFlr.sol";
-import "../../accounting/implementation/BalanceSynchronizer.sol";
-
+import "../../accounting/implementation/CloseManager.sol";
 
 interface IIFtsoRewardManager is IFtsoRewardManager {
 
@@ -22,7 +21,6 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
     ) external returns (bool);
 
     function setFTSOManager(IIFtsoManager _ftsoManager) external;
-    function setBalanceSynchronizer(BalanceSynchronizer _balanceSynchronizer) external;
-    function getUnreportedClaimsAndFlush() external returns (uint256);
     function setWFLR(WFlr _wFlr) external;
 }
+

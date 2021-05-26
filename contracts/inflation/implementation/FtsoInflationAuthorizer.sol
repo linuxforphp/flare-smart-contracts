@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import { BokkyPooBahsDateTimeLibrary } from "../../utils/implementation/DateTimeLibrary.sol";
+import { CloseManager } from "../../accounting/implementation/CloseManager.sol";
 import { Governed } from "../../governance/implementation/Governed.sol";
 import { IFlareKeep } from "../../utils/interfaces/IFlareKeep.sol";
 import { FtsoInflationAccounting } from "../../accounting/implementation/FtsoInflationAccounting.sol";
@@ -30,12 +31,14 @@ contract FtsoInflationAuthorizer is InflationAuthorizer {
         uint256 _startAuthorizingAtTs,
         IIInflationPercentageProvider _inflationPercentageProvider,
         SupplyAccounting _supplyAccounting,
+        CloseManager _closeManager,
         FtsoInflationAccounting _ftsoInflationAccounting
     ) InflationAuthorizer(_governance,
         _authorizationRequestFrequencySec,
         _startAuthorizingAtTs,
         _inflationPercentageProvider,
-        _supplyAccounting) {
+        _supplyAccounting,
+        _closeManager) {
         require(address(_ftsoInflationAccounting) != address(0), "ftsoInflationAccounting zero");
 
         // TODO: Need a way to reset these addresses...add setter
@@ -51,7 +54,7 @@ contract FtsoInflationAuthorizer is InflationAuthorizer {
         ftsoInflationAccounting.inflateForAnnum(inflationAnnums[currentAnnum].inflationToAllocateTWei);
     }
 
-    function authorizeMintingCallback(uint256 _nextAuthorizationTWei) internal override {
+    function authorizeMintingCallback(int256 _nextAuthorizationTWei) internal override {
         ftsoInflationAccounting.authorizeMinting(_nextAuthorizationTWei);
     }
 }

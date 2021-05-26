@@ -14,7 +14,8 @@ export class Contracts {
   private contracts: Map<string, string>;
   private collection: Contract[];
 
-  public static readonly INFLATION_ALLOCATOIN = "InflationAllocation";
+  public static readonly CLOSE_MANAGER = "CloseManager";
+  public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly FTSO_INFLATION_PERCENTAGE_PROVIDER = "FtsoInflationPercentageProvider";
   public static readonly FLARE_NETWORK_GENERAL_LEDGER = "FlareNetworkGeneralLedger";
   public static readonly FTSO_INFLATION_AUTHORIZER = "FtsoInflationAuthorizer";

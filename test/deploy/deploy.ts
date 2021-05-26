@@ -29,7 +29,9 @@ import { DummyFAssetMinterContract,
   FtsoRewardManagerTopupInstance,
   FtsoRewardMintingFaucetContract,
   FtsoRewardMintingFaucetInstance,
-  FlareKeeperInstance} from "../../typechain-truffle";
+  FlareKeeperInstance,
+  CloseManagerContract,
+  CloseManagerInstance} from "../../typechain-truffle";
 import { Contracts } from "../../scripts/Contracts";
 
 // import { serializedParameters } from "../../../scripts/DeploymentParameters";
@@ -109,6 +111,24 @@ contract(`deploy.ts system tests`, async accounts => {
   before(async() => {
     contracts = new Contracts();
     await contracts.deserialize(process.stdin);
+  });
+
+  describe (Contracts.CLOSE_MANAGER, async() => {
+    let CloseManager: CloseManagerContract;
+    let closeManager: CloseManagerInstance;
+
+    beforeEach(async() => {
+      CloseManager = artifacts.require("CloseManager");
+      closeManager = await CloseManager.at(contracts.getContractAddress(Contracts.CLOSE_MANAGER));
+    });
+
+    it("Should have at least 1 closeable", async() => {
+      // Assemble
+      // Act
+      const aClosable = await closeManager.closeables(0);
+      // Assert
+      assert(aClosable != "");
+    });
   });
 
   describe(Contracts.FTSO_REWARD_MINTING_FAUCET, async() => {
@@ -398,10 +418,14 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.FTSO_INFLATION_AUTHORIZER, async() => {
     let Inflation: FtsoInflationAuthorizerContract;
     let inflation: FtsoInflationAuthorizerInstance;
+    let CloseManager: CloseManagerContract;
+    let closeManager: CloseManagerInstance;
 
     beforeEach(async() => {
         Inflation = artifacts.require("FtsoInflationAuthorizer");
         inflation = await Inflation.at(contracts.getContractAddress(Contracts.FTSO_INFLATION_AUTHORIZER));
+        CloseManager = artifacts.require("CloseManager");
+        closeManager = await CloseManager.at(contracts.getContractAddress(Contracts.CLOSE_MANAGER));
     });
 
     it("Should have the inflation to allocate set", async() => {
@@ -413,15 +437,41 @@ contract(`deploy.ts system tests`, async accounts => {
         const { 0: inflationToAllocateTWei } = await inflation.inflationAnnums(currentFlareAnnum);
         assert(inflationToAllocateTWei.gt(BN(0)));
     });
+
+    it("Should be registered to CloseManager", async() => {
+      // Assemble
+      let found = false;
+      // Act
+      for(let i = 0; i < 20; i++) {
+        if (await closeManager.closeables(i) == inflation.address) {
+          found = true;
+          break;
+        }
+      }
+      // Assert
+      assert(found);
+    });
+
+    it("Should know about close manager", async() => {
+      // Assemble
+      // Act
+      const address = await inflation.closeManager();
+      // Assert
+      assert.equal(address, closeManager.address);
+    });
   });
 
   describe(Contracts.FTSO_REWARD_MANAGER, async() => {
     let FtsoRewardManager: FtsoRewardManagerContract;
     let ftsoRewardManager: FtsoRewardManagerInstance;
+    let CloseManager: CloseManagerContract;
+    let closeManager: CloseManagerInstance;
 
     beforeEach(async() => {
       FtsoRewardManager = artifacts.require("FtsoRewardManager");
       ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
+      CloseManager = artifacts.require("CloseManager");
+      closeManager = await CloseManager.at(contracts.getContractAddress(Contracts.CLOSE_MANAGER));
     });
 
     it("Should know about the FTSO manager contract", async() => {
@@ -430,6 +480,20 @@ contract(`deploy.ts system tests`, async accounts => {
       const ftsoManager = await ftsoRewardManager.ftsoManagerContract();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
+    });
+
+    it("Should be registered to CloseManager", async() => {
+      // Assemble
+      let found = false;
+      // Act
+      for(let i = 0; i < 20; i++) {
+        if (await closeManager.closeables(i) == ftsoRewardManager.address) {
+          found = true;
+          break;
+        }
+      }
+      // Assert
+      assert(found);
     });
   });
 
