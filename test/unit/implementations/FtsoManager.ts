@@ -50,6 +50,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let mockInflationPercentageProvider: MockContractInstance;
     let mockSupplyAccounting: MockContractInstance;
     let mockFtsoInflationAccounting: MockContractInstance;
+    let mockCloseManager: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockFtso.new();
@@ -60,6 +61,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             0
         );
 
+        mockCloseManager = await MockContract.new();
+        
         // Force a block in order to get most up to date time
         await time.advanceBlock();
         // Get the timestamp for the just mined block
@@ -72,7 +75,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             (await MockContract.new()).address,
             3,
             0,
-            100
+            100,
+            (await MockContract.new()).address
         );
 
         // Get inflation happy...it would be nice if gnosis mock would return tuple mocks, but it does not.
@@ -90,6 +94,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             0,
             mockInflationPercentageProvider.address,
             mockSupplyAccounting.address,
+            mockCloseManager.address,
             mockFtsoInflationAccounting.address
         );
 

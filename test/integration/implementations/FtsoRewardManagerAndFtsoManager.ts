@@ -1,4 +1,5 @@
 import {
+    CloseManagerInstance,
     FlareNetworkGeneralLedgerInstance,
     FtsoInflationAccountingInstance,
     FtsoInflationAuthorizerInstance,
@@ -30,6 +31,7 @@ const FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounti
 const FlareNetworkGeneralLedger = artifacts.require("FlareNetworkGeneralLedger");
 const SupplyAccounting = artifacts.require("SupplyAccounting");
 const FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
+const CloseManager = artifacts.require("CloseManager");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -50,6 +52,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let gl: FlareNetworkGeneralLedgerInstance;
     let supplyAccounting: SupplyAccountingInstance;
     let ftsoInflationAccounting: FtsoInflationAccountingInstance;
+    let closeManager: CloseManagerInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
@@ -60,6 +63,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             0
         );
 
+        closeManager = await CloseManager.new(accounts[0]);
         mockInflationPercentageProvider = await MockContract.new()
         const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0, 10);
         // Allocate at 9%
@@ -87,6 +91,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
           0,
           mockInflationPercentageProvider.address,
           supplyAccounting.address,
+          closeManager.address,
           ftsoInflationAccounting.address);
         // FtsoInflationAuthorizer will post to the FtsoInflationAccounting contract
         await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.POSTER_ROLE(), ftsoInflationAuthorizer.address);
@@ -104,10 +109,12 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             supplyAccounting.address,
             3,
             0,
-            100
+            100,
+            closeManager.address
         );
         // RewardManager will post to the reward manager accounting contract
         await ftsoRewardManagerAccounting.grantRole(await ftsoRewardManagerAccounting.POSTER_ROLE(), ftsoRewardManager.address);
+        closeManager.registerToClose(ftsoRewardManager.address);
 
         ftsoManager = await FtsoManager.new(
             accounts[0],

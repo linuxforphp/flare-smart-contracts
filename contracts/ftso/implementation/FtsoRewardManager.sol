@@ -5,6 +5,8 @@ import "../interface/IIFtsoRewardManager.sol";
 import "../../governance/implementation/Governed.sol";
 import { SupplyAccounting } from "../../accounting/implementation/SupplyAccounting.sol";
 import { FtsoRewardManagerAccounting } from "../../accounting/implementation/FtsoRewardManagerAccounting.sol";
+import { CloseManager } from "../../accounting/implementation/CloseManager.sol";
+import { IIAccountingClose } from "../../accounting/interface/IIAccountingClose.sol";
 import "../../token/implementation/WFlr.sol";
 import "../../utils/implementation/SafePct.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -16,7 +18,7 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
  * - distributing rewards according to instructions from FTSO Manager
  * - allowing claims for rewards
  */    
-contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
+contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, ReentrancyGuard {
 
     using SafePct for uint256;
     using SafeMath for uint256;
@@ -35,6 +37,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
     string internal constant ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO = "no RM accounting";         
     string internal constant ERR_SUPPLY_ACCOUNTING_ZERO = "no supply accounting";     
     string internal constant ERR_FTSO_MANAGER_ONLY = "ftso manager only";    
+    string internal constant ERR_CLOSE_MANAGER_ONLY = "close manager only";    
     string internal constant ERR_INFLATION_ONLY = "inflation only";    
     string internal constant ERR_FTSO_MANAGER_ZERO = "no ftso manager";
     string internal constant ERR_REWARD_EPOCH_NOT_FINALIZED = "reward epoch not finalized";
@@ -79,10 +82,10 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
     /// addresses
     IIFtsoManager public ftsoManagerContract;    
     FtsoRewardManagerAccounting public ftsoRewardManagerAccounting;
-    BalanceSynchronizer private balanceSynchronizer;
 
     WFlr public wFlr; 
     SupplyAccounting public supplyAccounting;
+    CloseManager public closeManager;
 
     // flags
     bool private justStarted;
@@ -103,11 +106,13 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
         _;
     }
 
-    modifier onlyBalanceSynchronizer () {
-        require (
-            address(balanceSynchronizer) != address(0) && msg.sender == address(balanceSynchronizer), 
-            ERR_BALANCE_SYNCHRONIZER_ONLY
-        );
+    modifier onlyCloseManager {
+        require(msg.sender == address(closeManager), ERR_CLOSE_MANAGER_ONLY);
+        _;
+    }
+
+    modifier ftsoManagerSet () {
+        require (address(ftsoManagerContract) != address(0), ERR_FTSO_MANAGER_ZERO);
         _;
     }
 
@@ -117,7 +122,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
         SupplyAccounting _supplyAccounting,
         uint256 _feePercentageUpdateOffset,
         uint256 _defaultFeePercentage,
-        uint256 _rewardExpiryOffset
+        uint256 _rewardExpiryOffset,
+        CloseManager _closeManager
     ) Governed(_governance)
     {
         require(address(_ftsoRewardManagerAccounting) != address(0), ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO);
@@ -125,6 +131,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
         
         ftsoRewardManagerAccounting = _ftsoRewardManagerAccounting;
         supplyAccounting = _supplyAccounting;
+        closeManager = _closeManager;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
         rewardExpiryOffset = _rewardExpiryOffset;
@@ -215,10 +222,19 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
     }
 
     /**
+     * @notice Accounting close called by CloseManager to report local sub-ledger kept
+     *   claims to the accounting system on a less that real-time basis.
+     * @dev Only to be called by CloseManager, which will corrdinate closing the GL across the entire system.
+     */
+    function close() external override onlyCloseManager {
+        uint256 claimedSinceLastClose = getUnreportedClaimsAndFlush();
+        ftsoRewardManagerAccounting.rewardsClaimed(claimedSinceLastClose);
+    }
+
+    /**
      * @notice Returns unreported claims and flushes them.
-     * @dev Supposed to be called only by BalanceSynchronizer
      */ 
-    function getUnreportedClaimsAndFlush() external override onlyBalanceSynchronizer returns (uint256) {
+    function getUnreportedClaimsAndFlush() internal returns (uint256) {
         uint256 toReport = unreportedClaims - 1;
         unreportedClaims = 1; // save gas. set to 1
         return toReport;
@@ -247,10 +263,10 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard {
     }
 
     /**
-     * @notice sets Balance synchronizer
+     * @notice sets CloseManager
      */
-    function setBalanceSynchronizer(BalanceSynchronizer _balanceSynchronizer) external override onlyGovernance {
-        balanceSynchronizer = _balanceSynchronizer;
+    function setCloseManager(CloseManager _closeManager) external override onlyGovernance {
+        closeManager = _closeManager;
     }
 
     /**

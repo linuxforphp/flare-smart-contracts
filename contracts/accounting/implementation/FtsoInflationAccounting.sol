@@ -48,19 +48,43 @@ contract FtsoInflationAccounting is Accounting {
         gl.post(journalEntries);
     }
 
-    function authorizeMinting(uint256 amountTWei) external onlyPosters {
+    /**
+     * @notice Authorize minting by posting the MINTING_AUTHORIZED account, balanced
+     *   against the FTSO_REWARD_INFLATION_VALIDATOR_PAYABLE account. Authorized minting
+     *   forms a liability of the validators to the network to mint tokens for Ftso rewards
+     *   at some point in the future.
+     * @param amountTWei The amount to authorize.
+     * @dev Note that amounts can be positive or negative. This is because authorization is
+     *   done in advance, in chunks. At points in time, however, the GL will synchronize a close
+     *   across the accounting system to negate all timing differences. A negative post to this
+     *   method will claw back authorized minting.
+     */
+    function authorizeMinting(int256 amountTWei) external onlyPosters {
         // Open a new accounting journal entry
         JournalEntry[] memory journalEntries = new JournalEntry[](2);
-        // Debit minting authorized account
-        journalEntries[0] = JournalEntry({
-            accountName: FlareNetworkChartOfAccounts.MINTING_AUTHORIZED, 
-            debit: amountTWei, 
-            credit: 0});
-        // Credit ftso inflation validator payable account
-        journalEntries[1] = JournalEntry({
-            accountName: FlareNetworkChartOfAccounts.FTSO_REWARD_INFLATION_VALIDATOR_PAYABLE, 
-            debit: 0, 
-            credit: amountTWei});
+        if (amountTWei >= 0) {
+            // Debit minting authorized account
+            journalEntries[0] = JournalEntry({
+                accountName: FlareNetworkChartOfAccounts.MINTING_AUTHORIZED, 
+                debit: amountTWei.toUint256(), 
+                credit: 0});
+            // Credit ftso inflation validator payable account
+            journalEntries[1] = JournalEntry({
+                accountName: FlareNetworkChartOfAccounts.FTSO_REWARD_INFLATION_VALIDATOR_PAYABLE, 
+                debit: 0, 
+                credit: amountTWei.toUint256()});
+        } else {
+            // Credit minting authorized account
+            journalEntries[0] = JournalEntry({
+                accountName: FlareNetworkChartOfAccounts.MINTING_AUTHORIZED, 
+                debit: 0, 
+                credit: (amountTWei * -1).toUint256()});
+            // Debit ftso inflation validator payable account
+            journalEntries[1] = JournalEntry({
+                accountName: FlareNetworkChartOfAccounts.FTSO_REWARD_INFLATION_VALIDATOR_PAYABLE, 
+                debit: (amountTWei * -1).toUint256(), 
+                credit: 0});
+        }
         // Post the new journal entry
         gl.post(journalEntries);
     }
