@@ -474,10 +474,10 @@ contract(`deploy.ts system tests`, async accounts => {
       closeManager = await CloseManager.at(contracts.getContractAddress(Contracts.CLOSE_MANAGER));
     });
 
-    it("Should know about the FTSO manager contract", async() => {
+    it("Should know about the FTSO manager", async() => {
       // Assemble
       // Act
-      const ftsoManager = await ftsoRewardManager.ftsoManagerContract();
+      const ftsoManager = await ftsoRewardManager.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });

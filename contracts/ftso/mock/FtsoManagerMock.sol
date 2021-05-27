@@ -33,4 +33,11 @@ contract FtsoManagerMock is MockContract {
         (bool success, ) = _rewardManager.call(payload);
         require(success);
     }
+
+    function closeExpiredRewardEpochsCall() public {
+        bytes memory payload = abi.encodeWithSignature("closeExpiredRewardEpochs()");
+        //solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = _rewardManager.call(payload);
+        require(success);
+    }
 }

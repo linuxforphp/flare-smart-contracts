@@ -72,9 +72,6 @@ export interface EpochResultRaw {
  */
 export interface MediansInfo {
     truncatedFirstQuartileIndex: number;
-    firstQuartileIndex: number;
-    medianIndex: number;
-    lastQuartileIndex: number;
     truncatedLastQuartileIndex: number;
 }
 
@@ -223,9 +220,6 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
         votes: votes,
         medians: {
             truncatedFirstQuartileIndex,
-            firstQuartileIndex: 0,
-            medianIndex: 0,
-            lastQuartileIndex: 0,
             truncatedLastQuartileIndex
         },
         prices: {
@@ -510,9 +504,6 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
         votes,
         medians: {
             truncatedFirstQuartileIndex,
-            firstQuartileIndex,
-            medianIndex,
-            lastQuartileIndex,
             truncatedLastQuartileIndex
         },
         prices: {
@@ -567,16 +558,9 @@ export function checkTestCase(testCase: TestCase) {
  */
 export function compareEpochResults(test: EpochResult, target: EpochResult) {
     expect(test.votes.length, "Vote numbers do not match").to.equal(target.votes.length);
-    // firstQuartileIndex, medianIndex and lastQuartileIndex should not be included in tests as sorting may produce different permutiations of votes (indexes) with equal prices
-    // expect(test.medians.firstQuartileIndex, "Median first quartile indexes do not match").to.equal(target.medians.firstQuartileIndex);
-    // expect(test.medians.medianIndex, "Median indexes do not match").to.equal(target.medians.medianIndex);
-    // expect(test.medians.lastQuartileIndex, "Median last quartile indexes do not match").to.equal(target.medians.lastQuartileIndex);
     expect(test.medians.truncatedFirstQuartileIndex, "Median truncated first quartile indexes do not match").to.equal(target.medians.truncatedFirstQuartileIndex);
     expect(test.medians.truncatedLastQuartileIndex, "Median truncated last quartile indexes do not match").to.equal(target.medians.truncatedLastQuartileIndex);
 
-    test.medians.firstQuartileIndex = target.medians.firstQuartileIndex;
-    test.medians.medianIndex = target.medians.medianIndex;
-    test.medians.lastQuartileIndex = target.medians.lastQuartileIndex;
     checkVotePricesSort(test);
     checkVotePricesSort(target);
 
@@ -600,43 +584,21 @@ export function compareEpochResults(test: EpochResult, target: EpochResult) {
  */
 export function checkVotePricesSort(result: EpochResult) {
     const truncatedFirstQuartileIndex = result.medians.truncatedFirstQuartileIndex;
-    const firstQuartileIndex = result.medians.firstQuartileIndex;
-    const medianIndex = result.medians.medianIndex;
-    const lastQuartileIndex = result.medians.lastQuartileIndex;
     const truncatedLastQuartileIndex = result.medians.truncatedLastQuartileIndex;
 
-    expect(truncatedFirstQuartileIndex).to.be.lte(firstQuartileIndex);
-    expect(firstQuartileIndex).to.be.lte(medianIndex);
-    expect(medianIndex).to.be.lte(lastQuartileIndex);
-    expect(lastQuartileIndex).to.be.lte(truncatedLastQuartileIndex);
+    expect(truncatedFirstQuartileIndex).to.be.lte(truncatedLastQuartileIndex);
 
     const truncatedFirstQuartilePrice = result.votes[truncatedFirstQuartileIndex].price;
-    const firstQuartilePrice = result.votes[firstQuartileIndex].price;
-    const medianPrice = result.votes[medianIndex].price;
-    const lastQuartilePrice = result.votes[lastQuartileIndex].price;
     const truncatedLastQuartilePrice = result.votes[truncatedLastQuartileIndex].price;
 
-    expect(truncatedFirstQuartilePrice).to.be.equal(firstQuartilePrice);
-    expect(firstQuartilePrice).to.be.lte(medianPrice);
-    expect(medianPrice).to.be.lte(lastQuartilePrice);
-    expect(lastQuartilePrice).to.be.equal(truncatedLastQuartilePrice);
+    expect(truncatedFirstQuartilePrice).to.be.lte(truncatedLastQuartilePrice);
 
     for (let i = 0; i < truncatedFirstQuartileIndex; i++) {
         expect(result.votes[i].price).to.be.lt(truncatedFirstQuartilePrice);
     }
-    for (let i = truncatedFirstQuartileIndex; i <= firstQuartileIndex; i++) {
-        expect(result.votes[i].price).to.be.equal(truncatedFirstQuartilePrice);
-    }
-    for (let i = firstQuartileIndex; i <= medianIndex; i++) {
+    for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
         expect(result.votes[i].price).to.be.gte(truncatedFirstQuartilePrice);
-        expect(result.votes[i].price).to.be.lte(medianPrice);
-    }
-    for (let i = medianIndex; i <= lastQuartileIndex; i++) {
-        expect(result.votes[i].price).to.be.gte(medianPrice);
         expect(result.votes[i].price).to.be.lte(truncatedLastQuartilePrice);
-    }
-    for (let i = lastQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
-        expect(result.votes[i].price).to.be.equal(truncatedLastQuartilePrice);
     }
     for (let i = truncatedLastQuartileIndex + 1; i < result.votes.length; i++) {
         expect(result.votes[i].price).to.be.gt(truncatedLastQuartilePrice);

@@ -35,6 +35,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         uint256 startBlock;
     }
 
+    string internal constant ERR_FIRST_EPOCH_START_TS_IN_FUTURE = "First epoch start timestamp in future";
     string internal constant ERR_REWARD_EPOCH_DURATION_ZERO = "Reward epoch 0";
     string internal constant ERR_PRICE_EPOCH_DURATION_ZERO = "Price epoch 0";
     string internal constant ERR_REVEAL_PRICE_EPOCH_DURATION_ZERO = "Reveal price epoch 0";
@@ -92,6 +93,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         uint256 _rewardEpochsStartTs,
         uint256 _votePowerBoundaryFraction
     ) Governed(_governance) {
+        require(block.timestamp >= _firstEpochStartTs, ERR_FIRST_EPOCH_START_TS_IN_FUTURE);
         require(_rewardEpochDurationSec > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_priceEpochDurationSec > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
         require(_revealEpochDurationSec > 0, ERR_REVEAL_PRICE_EPOCH_DURATION_ZERO);
@@ -371,7 +373,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
      * @notice Finalizes reward epoch
      */
     function _finalizeRewardEpoch() internal {
-        if (justStarted) return;
         uint256 numFtsos = ftsos.length;
 
         uint256 lastRandom = block.timestamp;
@@ -567,7 +568,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
 
         (, , , endTimestamp, ) = 
             ftsoInflationAuthorizer.inflationAnnums(ftsoInflationAuthorizer.currentAnnum());
-        if (_fromTimestamp <= endTimestamp && priceEpochDurationSec >= 0) {
+        if (_fromTimestamp <= endTimestamp) {
             return (endTimestamp - _fromTimestamp) / priceEpochDurationSec;
         } else {
             return 0;
