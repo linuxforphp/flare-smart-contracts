@@ -138,7 +138,7 @@ export async function setDefaultGovernanceParameters(ftsoManager: FtsoManagerIns
     let paramList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500];
     let paramListBN = paramList.map(x => toBN(x));
     await (ftsoManager.setGovernanceParameters as any)(...paramListBN, []);   
-    return paramListBN 
+    return paramListBN;
 }
 
 export async function submitSomePrices(ftso: MockFtsoInstance, n: number, accounts: Truffle.Accounts) {

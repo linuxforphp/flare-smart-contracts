@@ -16,7 +16,7 @@ interface IFtsoRewardManager {
         uint256 amount
     );
     
-    event RewardDistributedByFtso(
+    event RewardsDistributed(
         address indexed ftso,
         uint256 epochId,
         address[] addresses,
@@ -140,4 +140,9 @@ interface IFtsoRewardManager {
         bool _claimable
     );
 
+    /**
+     * @notice Return reward epoch that will expire, when new reward epoch will start
+     * @return Reward epoch id that will expire next
+     */
+    function getRewardEpochToExpireNext() external view returns (uint256);
 }
