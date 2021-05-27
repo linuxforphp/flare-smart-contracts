@@ -199,6 +199,9 @@ async function main(parameters: any) {
   await flareKeeper.registerToKeep(ftsoRewardMintingFaucet.address);
   await flareKeeper.registerToKeep(ftsoManager.address);
 
+  // Tell reward manager about flareKeeper address
+  await ftsoRewardManager.setFlareKeeper(flareKeeper.address);
+  
   // Deploy wrapped FLR
   const wflr = await WFLR.new();
   spewNewContractInfo(contracts, WFLR.contractName, wflr.address);

@@ -20,7 +20,7 @@ contract SupplyAccounting {
     FlareNetworkGeneralLedger public gl;
 
     constructor(FlareNetworkGeneralLedger _gl) {
-        // TODO: No zero addresses please
+        require(address(_gl) != address(0), "gl zero");
         gl = _gl;
     }
 

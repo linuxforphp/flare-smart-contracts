@@ -3,7 +3,7 @@ import { toUtf8Bytes } from "@ethersproject/strings";
 import { LedgerContract, LedgerInstance } from "../../../typechain-truffle";
 import { toBN } from "../../utils/test-helpers";
 import { AccountType } from "../../utils/Accounting";
-const {expectRevert, expectEvent} = require('@openzeppelin/test-helpers');
+const { expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 
 const getTestFile = require('../../utils/constants').getTestFile;
 
@@ -17,35 +17,35 @@ const SOME_EQUITY = keccak256(toUtf8Bytes("SomeEquity"));
 const CONTRA_EQUITY = keccak256(toUtf8Bytes("ContraEquity"));
 const BOGUS_ACCOUNT = keccak256(toUtf8Bytes("BogusAccount"));
 
-contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async accounts => {
+contract(`Ledger.sol; ${ getTestFile(__filename) }; Ledger unit tests`, async accounts => {
   let ledger: LedgerInstance;
 
-  beforeEach(async() => {
+  beforeEach(async () => {
     ledger = await Ledger.new("A Ledger");
   });
 
-  describe("Accounts", async() => {
-    it("Should add an account", async() => {
+  describe("Accounts", async () => {
+    it("Should add an account", async () => {
       // Assemble
       // Act
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
       // Assert
       assert.equal(await ledger.getAccountName(0), AN_ASSET);
     });
 
-    it("Should not add a duplicate account name", async() => {
+    it("Should not add a duplicate account name", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
       // Act
-      const addAccountPromise = ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      const addAccountPromise = ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
       // Assert
       await expectRevert(addAccountPromise, "already added");
     });
 
-    it("Should fetch all account names", async() => {
+    it("Should fetch all account names", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: A_LIABILITY, accountType: AccountType.LIABILITY });
       // Act
       const accountNames = await ledger.getAccountNames();
       // Assert
@@ -53,11 +53,11 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(accountNames[1], A_LIABILITY);
     });
 
-    it("Should add multiple accounts", async() => {
+    it("Should add multiple accounts", async () => {
       // Assemble
       const accountDefinitions = [];
-      accountDefinitions[0] = {name: AN_ASSET, accountType: AccountType.ASSET};
-      accountDefinitions[1] = {name: A_LIABILITY, accountType: AccountType.LIABILITY};
+      accountDefinitions[0] = { name: AN_ASSET, accountType: AccountType.ASSET };
+      accountDefinitions[1] = { name: A_LIABILITY, accountType: AccountType.LIABILITY };
       // Act
       await ledger.addAccounts(accountDefinitions);
       // Assert
@@ -66,11 +66,11 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(accountNames[1], A_LIABILITY);
     });
 
-    it("Should not add too many accounts", async() => {
+    it("Should not add too many accounts", async () => {
       // Assemble
       const accountDefinitions = [];
       for (let i = 0; i <= 100; i++) {
-        accountDefinitions[i] = {name: keccak256(toUtf8Bytes(`Asset ${i}`)), accountType: AccountType.ASSET};
+        accountDefinitions[i] = { name: keccak256(toUtf8Bytes(`Asset ${ i }`)), accountType: AccountType.ASSET };
       }
       // Act
       const addAccountsPromise = ledger.addAccounts(accountDefinitions);
@@ -79,11 +79,11 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
     });
   });
 
-  describe("Post", async() => {
-    it("Should revert if debits != credits", async() => {
+  describe("Post", async () => {
+    it("Should revert if debits != credits", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      const journalEntry = { accountName: AN_ASSET, debit: 100, credit: 0};
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      const journalEntry = { accountName: AN_ASSET, debit: 100, credit: 0 };
       const journalEntries = [];
       journalEntries[0] = journalEntry;
       // Act
@@ -94,11 +94,11 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
 
     // It is impossible to test for this condition unless
     // journal entries are edited in situ. Debits always = credits.
-    it.skip("Should revert if assets != liability + equity", async() => {
+    it.skip("Should revert if assets != liability + equity", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
       // One journal entry would do it, but nets to zero, so no change in asset balance.
-      const journalEntry = { accountName: AN_ASSET, debit: 100, credit: 100};
+      const journalEntry = { accountName: AN_ASSET, debit: 100, credit: 100 };
       const journalEntries = [];
       journalEntries[0] = journalEntry;
       // Act
@@ -107,9 +107,9 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       await expectRevert(postPromise, "assets != liability + equity");
     });
 
-    it("Should revert if account not found", async() => {
+    it("Should revert if account not found", async () => {
       // Assemble
-      const journalEntry = { accountName: AN_ASSET, debit: 100, credit: 0};
+      const journalEntry = { accountName: AN_ASSET, debit: 100, credit: 0 };
       const journalEntries = [];
       journalEntries[0] = journalEntry;
       // Act
@@ -118,15 +118,15 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       await expectRevert(postPromise, `not found`);
     });
 
-    it("Should update asset, liability, and equity ledger balances when posting", async() => {
+    it("Should update asset, liability, and equity ledger balances when posting", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      await ledger.addAccount({name: SOME_EQUITY, accountType: AccountType.EQUITY});
-      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
-      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 0};
-      const journalEntry1 = { accountName: SOME_EQUITY, debit: 0, credit: 100};
-      const journalEntry2 = { accountName: AN_ASSET, debit: 50, credit: 0};
-      const journalEntry3 = { accountName: A_LIABILITY, debit: 0, credit: 50};
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: SOME_EQUITY, accountType: AccountType.EQUITY });
+      await ledger.addAccount({ name: A_LIABILITY, accountType: AccountType.LIABILITY });
+      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 0 };
+      const journalEntry1 = { accountName: SOME_EQUITY, debit: 0, credit: 100 };
+      const journalEntry2 = { accountName: AN_ASSET, debit: 50, credit: 0 };
+      const journalEntry3 = { accountName: A_LIABILITY, debit: 0, credit: 50 };
       const journalEntries = [];
       journalEntries[0] = journalEntry0;
       journalEntries[1] = journalEntry1;
@@ -143,10 +143,10 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(liabilityBalance.toNumber(), 50);
     });
 
-    it("Should record ledger entries to accounts in same block", async() => {
+    it("Should record ledger entries to accounts in same block", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 100};
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 100 };
       const journalEntries = [];
       journalEntries[0] = journalEntry0;
       // Act
@@ -160,13 +160,13 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(ledgerEntry0.runningBalance, toBN(0));
     })
 
-    it("Should record ledger entries to accounts in two blocks", async() => {
+    it("Should record ledger entries to accounts in two blocks", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 0};
-      const journalEntry1 = { accountName: AN_ASSET, debit: 0, credit: 100};
-      const journalEntry2 = { accountName: AN_ASSET, debit: 20, credit: 0};
-      const journalEntry3 = { accountName: AN_ASSET, debit: 0, credit: 20};
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 0 };
+      const journalEntry1 = { accountName: AN_ASSET, debit: 0, credit: 100 };
+      const journalEntry2 = { accountName: AN_ASSET, debit: 20, credit: 0 };
+      const journalEntry3 = { accountName: AN_ASSET, debit: 0, credit: 20 };
 
       // Act
       await ledger.post([journalEntry0, journalEntry1]);
@@ -186,12 +186,12 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
 
     })
 
-    it("Should increase an asset when debiting and decrease when crediting", async() => {
+    it("Should increase an asset when debiting and decrease when crediting", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      await ledger.addAccount({name: A_CONTRA_ASSET, accountType: AccountType.ASSET});
-      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 0};
-      const journalEntry1 = { accountName: A_CONTRA_ASSET, debit: 0, credit: 100};
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: A_CONTRA_ASSET, accountType: AccountType.ASSET });
+      const journalEntry0 = { accountName: AN_ASSET, debit: 100, credit: 0 };
+      const journalEntry1 = { accountName: A_CONTRA_ASSET, debit: 0, credit: 100 };
       const journalEntries = [];
       journalEntries[0] = journalEntry0;
       journalEntries[1] = journalEntry1;
@@ -204,12 +204,12 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(aContraAssetBalance.toNumber(), -100);
     });
 
-    it("Should decrease a liability when debiting and increase when crediting", async() => {
+    it("Should decrease a liability when debiting and increase when crediting", async () => {
       // Assemble
-      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
-      await ledger.addAccount({name: A_CONTRA_LIABILITY, accountType: AccountType.LIABILITY});
-      const journalEntry0 = { accountName: A_LIABILITY, debit: 0, credit: 100};
-      const journalEntry1 = { accountName: A_CONTRA_LIABILITY, debit: 100, credit: 0};
+      await ledger.addAccount({ name: A_LIABILITY, accountType: AccountType.LIABILITY });
+      await ledger.addAccount({ name: A_CONTRA_LIABILITY, accountType: AccountType.LIABILITY });
+      const journalEntry0 = { accountName: A_LIABILITY, debit: 0, credit: 100 };
+      const journalEntry1 = { accountName: A_CONTRA_LIABILITY, debit: 100, credit: 0 };
       const journalEntries = [];
       journalEntries[0] = journalEntry0;
       journalEntries[1] = journalEntry1;
@@ -220,14 +220,14 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       const aContraLiabilityBalance = await ledger.getCurrentBalance(A_CONTRA_LIABILITY);
       assert.equal(aLiabilityBalance.toNumber(), 100);
       assert.equal(aContraLiabilityBalance.toNumber(), -100);
-    });    
+    });
 
-    it("Should decrease equity when debiting and increase when crediting", async() => {
+    it("Should decrease equity when debiting and increase when crediting", async () => {
       // Assemble
-      await ledger.addAccount({name: SOME_EQUITY, accountType: AccountType.EQUITY});
-      await ledger.addAccount({name: CONTRA_EQUITY, accountType: AccountType.EQUITY});
-      const journalEntry0 = { accountName: SOME_EQUITY, debit: 0, credit: 100};
-      const journalEntry1 = { accountName: CONTRA_EQUITY, debit: 100, credit: 0};
+      await ledger.addAccount({ name: SOME_EQUITY, accountType: AccountType.EQUITY });
+      await ledger.addAccount({ name: CONTRA_EQUITY, accountType: AccountType.EQUITY });
+      const journalEntry0 = { accountName: SOME_EQUITY, debit: 0, credit: 100 };
+      const journalEntry1 = { accountName: CONTRA_EQUITY, debit: 100, credit: 0 };
       const journalEntries = [];
       journalEntries[0] = journalEntry0;
       journalEntries[1] = journalEntry1;
@@ -239,21 +239,21 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       assert.equal(someEquityBalance.toNumber(), 100);
       assert.equal(contraEquityBalance.toNumber(), -100);
     });
-    
-    it("Should revert when adding an invalid account type", async() => {
+
+    it("Should revert when adding an invalid account type", async () => {
       // Assemble
       // Act
-      const addPromise = ledger.addAccount({name: BOGUS_ACCOUNT, accountType: AccountType.BOGUS});
+      const addPromise = ledger.addAccount({ name: BOGUS_ACCOUNT, accountType: AccountType.BOGUS });
       // Assert
       await expectRevert.unspecified(addPromise);
     });
 
-    it("Should not add too many ledger entries", async() => {
+    it("Should not add too many ledger entries", async () => {
       // Assemble
-      await ledger.addAccount({name: SOME_EQUITY, accountType: AccountType.EQUITY});
+      await ledger.addAccount({ name: SOME_EQUITY, accountType: AccountType.EQUITY });
       const journalEntries = [];
       for (let i = 0; i <= 20; i++) {
-        journalEntries[i] = { accountName: SOME_EQUITY, debit: 100, credit: 100};
+        journalEntries[i] = { accountName: SOME_EQUITY, debit: 100, credit: 100 };
       }
       // Act
       const postPromise = ledger.post(journalEntries);
@@ -261,51 +261,51 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       await expectRevert(postPromise, "too many");
     });
 
-    it("Should revert when driving asset total negative", async() => {
+    it("Should revert when driving asset total negative", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: A_LIABILITY, accountType: AccountType.LIABILITY });
       // This will create negative total assets since it is first in the list
       const journalEntries = [];
-      journalEntries[0] = { accountName: AN_ASSET, debit: 0, credit: 100};
-      journalEntries[1] = { accountName: A_LIABILITY, debit: 100, credit: 0};
+      journalEntries[0] = { accountName: AN_ASSET, debit: 0, credit: 100 };
+      journalEntries[1] = { accountName: A_LIABILITY, debit: 100, credit: 0 };
       // Act
       const postPromise = ledger.post(journalEntries);
       // Assert
       await expectRevert(postPromise, "SafeMath: subtraction overflow");
     });
 
-    it("Should revert when driving liability total negative", async() => {
+    it("Should revert when driving liability total negative", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      await ledger.addAccount({name: A_LIABILITY, accountType: AccountType.LIABILITY});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: A_LIABILITY, accountType: AccountType.LIABILITY });
       // This will create negative total assets since it is first in the list
       const journalEntries = [];
-      journalEntries[0] = { accountName: A_LIABILITY, debit: 100, credit: 0};
-      journalEntries[1] = { accountName: AN_ASSET, debit: 0, credit: 100};
+      journalEntries[0] = { accountName: A_LIABILITY, debit: 100, credit: 0 };
+      journalEntries[1] = { accountName: AN_ASSET, debit: 0, credit: 100 };
       // Act
       const postPromise = ledger.post(journalEntries);
       // Assert
       await expectRevert(postPromise, "SafeMath: subtraction overflow");
-    });    
+    });
 
-    it("Should revert when driving equity total negative", async() => {
+    it("Should revert when driving equity total negative", async () => {
       // Assemble
-      await ledger.addAccount({name: AN_ASSET, accountType: AccountType.ASSET});
-      await ledger.addAccount({name: SOME_EQUITY, accountType: AccountType.EQUITY});
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: SOME_EQUITY, accountType: AccountType.EQUITY });
       // This will create negative total equity since it is first in the list
       const journalEntries = [];
-      journalEntries[0] = { accountName: SOME_EQUITY, debit: 100, credit: 0};
-      journalEntries[1] = { accountName: AN_ASSET, debit: 0, credit: 100};
+      journalEntries[0] = { accountName: SOME_EQUITY, debit: 100, credit: 0 };
+      journalEntries[1] = { accountName: AN_ASSET, debit: 0, credit: 100 };
       // Act
       const postPromise = ledger.post(journalEntries);
       // Assert
       await expectRevert(postPromise, "SafeMath: subtraction overflow");
-    });        
+    });
   });
 
-  describe("Account not found exceptions", async() => {
-    it("Should not get current balance if account not found", async() => {
+  describe("Account not found exceptions", async () => {
+    it("Should not get current balance if account not found", async () => {
       // Assemble
       // Act
       const getPromise = ledger.getCurrentBalance(SOME_EQUITY);
@@ -313,17 +313,71 @@ contract(`Ledger.sol; ${getTestFile(__filename)}; Ledger unit tests`, async acco
       await expectRevert(getPromise, "not found");
     });
 
-    it("Should not get ledger entry if account not found", async() => {
+    it("Should not get ledger entry if account not found", async () => {
       // Assemble
       // Act
       const getPromise = ledger.getLedgerEntry(SOME_EQUITY, 0);
       // Assert
       await expectRevert(getPromise, "not found");
-    });    
+    });
   });
 
-  describe("Query history", async() => {
-    it.skip("Placeholder for running balance history tests", async() => {
+  describe("Query history", async () => {
+    it("Should get correct balance in block", async () => {
+      await ledger.addAccount({ name: AN_ASSET, accountType: AccountType.ASSET });
+      await ledger.addAccount({ name: A_LIABILITY, accountType: AccountType.LIABILITY });
+      assert.equal((await ledger.getCurrentBalance(AN_ASSET)).toNumber(), 0);
+      assert.equal((await ledger.getCurrentBalance(A_LIABILITY)).toNumber(), 0);
+
+      let N = 10;
+      let blocks = [];
+      let sum = 0;
+      for (let i = 0; i < N; i++) {
+        let val = 100 * i;
+        sum += val;
+        await ledger.post(
+          [
+            { accountName: AN_ASSET, debit: val, credit: 0 },
+            { accountName: A_LIABILITY, debit: 0, credit: val }
+          ]
+        );
+        blocks.push(await web3.eth.getBlockNumber())
+      }
+
+      assert.equal((await ledger.getCurrentBalance(AN_ASSET)).toNumber(), sum);
+      assert.equal((await ledger.getCurrentBalance(A_LIABILITY)).toNumber(), sum);
+      sum = 0;
+      for (let i = 0; i < N; i++) {
+        let val = 100 * i;
+        sum += val;
+        let block = blocks[i];
+        assert.equal((await ledger.getBalanceAt(AN_ASSET, block)).toNumber(), sum);
+        assert.equal((await ledger.getBalanceAt(A_LIABILITY, block)).toNumber(), sum);
+      }
+
+      blocks = [];
+      for (let i = 0; i < N; i++) {
+        let val = 100 * i;
+        await ledger.post(
+          [
+            { accountName: AN_ASSET, debit: 0, credit: val },
+            { accountName: A_LIABILITY, debit: val, credit: 0 }
+          ]
+        );
+        blocks.push(await web3.eth.getBlockNumber())
+      }
+
+      assert.equal((await ledger.getCurrentBalance(AN_ASSET)).toNumber(), 0);
+      assert.equal((await ledger.getCurrentBalance(A_LIABILITY)).toNumber(), 0);
+
+      for (let i = 0; i < N; i++) {
+        let val = 100 * i;
+        sum -= val;
+        let block = blocks[i];
+        assert.equal((await ledger.getBalanceAt(AN_ASSET, block)).toNumber(), sum);
+        assert.equal((await ledger.getBalanceAt(A_LIABILITY, block)).toNumber(), sum);
+      }
+
     });
   });
 });
