@@ -1,8 +1,6 @@
 # FTSO specification
 ## High level background
 On chain FTSO prices will be updated every few minutes. Any user (address) can provide prices (data) by reading prices from any chosen source and submitting them to a dedicated API on the FTSO contract. Any FLR holder can participate by submitting prices or delegating their vote power to another address (price provider) that submits prices. Good price feeds will be rewarded with part of the FLR inflation, in the form of FLR tokens on the Flare network. An address must have some minimum vote power in order to submit prices.
-
-
 ## FTSO overview
 
 The FTSO or ‘Flare Time Series Oracle’ is a service to gather price (and data) signals of off-chain assets for consumption by other smart contracts on the Flare blockchain. The system is designed to encourage FLR holders to submit accurate prices to the FTSO contracts. Users will submit prices in epochs of a few minutes. For every price epoch, a weighted median algorithm will aggregate all price submissions to find the median price, which will become the current FTSO price. Good price submissions will be rewarded with newly minted FLR tokens (FLR inflation).
@@ -13,35 +11,26 @@ An FTSO contract will be deployed for any new data signal supported by the Flare
 
 More detail about the FTSO can be found here: [https://blog.flare.xyz/ftso-a-breakdown/](https://blog.flare.xyz/ftso-a-breakdown/)
 
-
 # fAsset and the FTSO
-
-A fAsset system (which is not yet implemented) will enable asset holders of integrated block chains to mint a wrapped version of the asset onto flare. For example: XRP, LTC, ADA and more. The wrapped asset will be minted against FLR collateral. The FTSO is a crucial component that will enable this minting to occur in a safe and healthy environment.
+An fAsset system (which is not yet implemented) will enable asset holders of integrated block chains to mint a wrapped version of the asset onto the Flare Network. For example: XRP, LTC, ADA and more. The wrapped asset will be minted against FLR collateral. The FTSO is a crucial component that will enable this minting to occur backed by fairly priced collateral.
 
 Any block chain integrated with flare will have a dedicated fAsset minting system connected to an FTSO feeding asset/$ price signals. The FTSO price signals will be used to maintain safe collateral ratios in the fAsset system. The price signals will also be open for usage by any on-chain consumer.
-
 # Design aspects
-
 ## Price submission 
 Price submission works in a commit and reveal scheme. The commit period is the price epoch period (every few minutes) immediately followed by the reveal period. More on this scheme can be found [here](https://en.wikipedia.org/wiki/Commitment_scheme). This scheme is designed to stop individuals from submitting prices based on other price proposals. Within the commit period, all submissions are secret. After the commit period passes, individuals will no longer be able to change their submissions. During the reveal period, individuals must mandatorily reveal their prices to be considered by the FTSO. At this point, changes can not be made, and prices become public record.  
 
 Together with price data, any price provider must add a random number to their price submissions. This helps seed the source of randomness on the Flare chain for FTSO operations that require randomization.
 
 ## Price epochs - timings
-
-The FTSO will operate in time constrained epochs (campaigns), each timed to be a few minutes. Price epoch time is not configurable, so if we want to go back 100 epochs or 1000, we know exactly which time stamp it will be. Any FTSO contract deployed on Flare will share the same start / end times for price epochs. In other words, commit and reveal timing will be the same across FTSO contracts.
-
+The FTSO will operate in time constrained price epochs, each timed to be a few minutes. Price epoch time is not configurable, so if we want to go back n number of epochs, we know exactly which time stamp it will be. Any FTSO contract deployed on Flare will share the same start / end times for price epochs. In other words, commit and reveal timing will be the same across FTSO contracts.
 ## Weight (vote power) per price submission
 
-Each fAsset (wrapped asset) will have a related FTSO contract which will supply asset/$ prices. Example: XRP/$, LTC/$ and so forth. Each price provider can submit prices to each FTSO contract. The submitted price will be weighted according to the vote power of the provider address.
-Vote power per FTSO contract is divided between FLR holders and the holders of the specific fAsset related to this FTSO. Example: For XRP/$, time series vote power is divided between FLR and fXRP holders. Note that those two “sides” could be seen as having conflicting interests regarding the price. So when a price provider submits a price to the XRP/$ FTSO, the weight of his vote (price data) will be weighted by using his FLR vote power and fXRP vote power. Note each provider address could potentilly have WFLR vote power or fAsset vote power or both. 
-
+Each fAsset (wrapped asset) will have a related FTSO contract which will supply asset/$ prices. Example: XRP/$, LTC/$ and so forth. Any price provider can submit prices to any FTSO contract. The submitted price will be weighted according to the vote power of the provider address.
+Vote power per FTSO contract is divided between WFLR holders and the holders of the specific fAsset related to this FTSO. Example: For XRP/$, vote power is divided between WFLR and fXRP holders. Note that those two “sides” could be seen as having conflicting interests regarding the price. So when a price provider submits a price to the XRP/$ FTSO, the weight of his vote (price data) will be weighted by using his FLR vote power and fXRP vote power. Note each provider address could potentially have WFLR vote power or fAsset vote power or both. 
 ## Minimum turnout for creating a price
 A minimum of x% of the total circulating FLR (not wFLR) supply should participate in order to create a decentralized price result. More on total circulating supply data will be provided in the accounting specification. If minimum turnout for a specific price epoch is not achieved, a fall back mechanism will be used to create a price value.
-
 ## Participation thresholds, Min / Max vote power
-To avoid spam submissions, addresses are required to have a minimum vote power in order to submit a price. Each address will have to hold 1/x of the total vote power for wFLR or fAsset. X is planned to be in the range of 50 to 500, and will be determined from live network runs. To avoid one address holding too much vote power, each address is capped to a max percentage of vote power. Any address holding above the max will be considered as having max vote power, meaning it would  receive fewer rewards than its vote power would indicate for the price submission. Note that wFLR total supply is considered the total vote power available, meaning non-wrapped FLR are not accounted for.
-
+To avoid spam submissions, addresses are required to have a minimum vote power in order to submit a price. Each address will have to hold 1/x of the total vote power for wFLR or fAsset. X is planned to be in the range of 50 to 500, and will be determined from live network runs. To avoid one address holding too much vote power, each address is capped to a max percentage of vote power. Any address holding above the max will be considered as having max vote power, meaning it would receive fewer rewards than its vote power would indicate for the price submission. Note that wFLR total supply is considered the total vote power available, meaning non-wrapped FLR are not accounted for.
 ## fAsset vs wFLR weight
 Since fAsset holders and wFLR holders could be seen as having conflicting interests regarding the price, the FTSO aims to provide each of those groups equal vote power. To avoid a situation where a few minted fAssets get too much vote power, the weighting between the two groups will have a linear scale correlated to the minted $ value of fAssets. For Example, if only 100K $ of fXRP are minted, the group of fXRP holders will get a 5% weight against wFLR holders. The 2nd factor by which the fAsset group will be weighted is the turnout ratio. In general terms, this means that if an fAsset has a high $ mint value and high turnout in a specific price epoch, the fAsset holders group will have a 50% weight when determining the asset price. 
 
@@ -58,7 +47,6 @@ Example: 100 million $ of fLTC are minted and turnout of fLTC holders for a pric
 *   Create a linear function from min to max. Where max weight should be 50%
 #### fAsset turnout weighting
 *   Fasset_high_turnout_threshold: when fAsset voters turnout is higher than this value, give this group its full potential weight as calculated in base fAsset weight.
-
 #### Example:
 high_fasset_threshold_dollars = $50M
 low_fasset_threshold_dollars = $10M
@@ -71,9 +59,7 @@ So 22 % is the weight of fAsset against wFLR in this vote.
 Voters = holders who have voted
 
 ### Price granularity
-
 A fixed number of 5 decimals is used to reflect the fAsset $ price
-
 ### Note
 
 Once we know both total vote power for fAsset and for wFLR and the weight balance between wFLR and fAsset, we can define how to normalize vote power for one of the two. Thus actual vote power per address can only be calculated once the reveal period is finalised.
@@ -99,11 +85,9 @@ The price data of each provider will be transparent. Therefore, any external con
 By the end of the reveal period, a weighted median algorithm will analyze the submitted prices and choose a median price. Due to the design constraints defined above, the median calculation will be rather “heavy” or costly in EVM terms. Thus a special trigger from the validators will be used to run this calculation. Here, Flare benefits from having control over the block chain and being able to add extra mechanisms to support the smart contracts. More on this mechanism will be defined in the Flare Keeper document. 
 
 The weighted median code will iterate all submitted prices, find the weighted median, and set it as the current price. 
-
-
 ### Triggering Finalization
 
-As described above, a dedicated trigger coming from [Flare Keeper] will activate the price finalization code. As described, it is not a user trigger, and thus it differs from classic smart contract design patterns. The trigger will come through the [FTSO Manager] contract. This will trigger calcualting the weighted median and for one FTSO, sending list of eligible address to the [FTSO Reward Manager] which handles the [rewarding] process.
+As described above, a dedicated trigger executed by the [Flare Keeper] will activate the price finalization code. It is not user triggered, and thus it differs from classic smart contract design patterns. The trigger is initiated by the validator, enters into [Flare Keeper], and is dispatched to the [FTSO Manager] contract. [Ftso Manager] will calculate the weighted median and for one FTSO, sending a list of eligible address to the [FTSO Reward Manager], which handles the [rewarding] process.
 
 ## Price submitter contract
 FTSO price submission might create a lot of on-chain traffic. To reduce traffic, a [price submitter contract] will enable a price provider to submit all prices in one batch. This contract will receive a list of destination address and submission data and send it over to the target contracts. 
