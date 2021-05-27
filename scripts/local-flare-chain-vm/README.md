@@ -5,7 +5,6 @@ Local unit and integration tests can be perfomed on a 4-node instance spinned ou
 On Mac OS use default virtualization driver `hyperkit`. It is possible to use `virtualbox`, but it is, as usual, slower on Macs.
 
 ## Usage
-
 - Install multipass https://multipass.run/
 - Run `yarn vm_launch`. Wait for about 2 minutes.
 - Log onto VM shell: `yarn vm_shell`. Run `./launch.sh`. For the first time wait about 2 mins for GO files of Flare Network to compile and run. When 4 network nodes are run one cen use network. To stop network press any button. Keep this console (*console1*) open while testing. 
@@ -16,8 +15,6 @@ On Mac OS use default virtualization driver `hyperkit`. It is possible to use `v
 - To delete VM from the system, first stop VM and then run `yarn vm_purge`.
 
 ## Technical details
-
 For time shifts and testing on the real network two conditions have to be meet.
-
 1. Each transaction has to be wrapped with transaction finalization wrapper helper function (`waitFinalize` for `ethers` and `waitFinalize3` for `web3` transactions).
 2. Special timeshift function with forced mining of a block after time change (either shifting or changing) has to bi used. For ethers use `increaseTime` utility function (currently in `test-helpers.ts`)

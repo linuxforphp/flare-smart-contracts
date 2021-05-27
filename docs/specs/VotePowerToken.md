@@ -73,23 +73,6 @@ To recap, historical delegation APIs exist. For percentage delegations, each add
 1. Saving this data in real time while delegating.
 2. Reading past delegation events for this address.
 
-# Pausability
-
-*   Not yet implemented.
-When discussion was held about attack mitigations and issue handling mechanisms, the decision was made to only add a pause button to this contract. Upgradability for a contract that potentially holds so many user funds seems wrong in our view of decentralization.
-
-The pause option will be controlled by a governance address. Once paused, only the withdrawal operation will be possible. All other operations will be blocked.
-
-Note that during this period, the reading of vote power can still be used, assuming the issue that was found did not heavily damage the vote power values in the contract.
-
-# Memory footprint
-The VP token design will cause the footprint of VP tokens to get significant over time. With this the logarithmic search will get costly. To address this, we plan to add a history removal mechanism.
-
-This is the current plan:
-1. A set max time frame of history should be kept, for example: 1 year.
-2. Deduct lowest block when the time frame expires.
-3. Per every new checkpoint created for an address, the function will remove “old checkpoints”, i.e. checkpoints below this block.
-
 [WFLR]: ../../contracts/token/implementation/WFlr.sol "WFlr"
 [VPToken]: ../../contracts/token/implementation/VPToken.sol "VPToken"
 [IIVPToken]: ../../contracts/token/interface/IIVPToken.sol "IIVPToken"

@@ -1,11 +1,11 @@
 const BobAddress;
 const providerAddress; // price provider address
+
 // below values should be obtained from deployment json file
-const wFlr;
-const xrpFtso;
+const wFlr; //token contract
 const priceEpochDurationSec;
-// FTSO address list should be loaded from a json that will be published
 const FTSOAddressList {XRP_FTSO_Address, LTC_FTSO_Address, DOGE_FTSO_Address};
+
 // preliminary steps of wrapping flare and delegating vote power.
 // these steps will usually be done in a different scope
 /////////////////////////////////////////////////////////////////
