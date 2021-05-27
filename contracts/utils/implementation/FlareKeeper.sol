@@ -4,6 +4,7 @@
 // genesis file for the chain you wish to run. See ./docs/CompilingContracts.md for more information.
 // You have been warned. That is all.
 pragma solidity 0.7.6;
+pragma abicoder v2;
 
 import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGenesis.sol";
 import { MintAccounting } from "../../accounting/implementation/MintAccounting.sol";
@@ -24,8 +25,16 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     // Data Structures
     //====================================================================
     struct KeptError {
-        address contractInError;
-        string message;
+        uint192 lastErrorBlock;
+        uint64 numErrors;
+        address fromContract;
+        uint64 errorTypeIndex;
+        string errorMessage;
+    }
+
+    struct LastErrorData {
+        uint192 totalKeptErrors;
+        uint64 lastErrorTypeIndex;
     }
 
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
@@ -35,6 +44,7 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     string internal constant ERR_MINT_ACCOUNTING_ZERO = "mint accounting zero";
     string internal constant ERR_BLOCK_NUMBER_SMALL = "block.number small";
     string internal constant ERR_TRANSFER_FAILED = "transfer failed";
+    string internal constant INDEX_TOO_HIGH = "start index high";
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
@@ -44,7 +54,10 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     uint256 private lastBalance;
     uint256 private nextMintRequest;
     bool private initialized;
-    mapping(uint256 => KeptError[]) public errorsByBlock;
+    // track keep errors
+    mapping(bytes32 => KeptError) internal keptErrors;
+    bytes32 [] internal keepErrorHashes;
+    LastErrorData public errorData;
 
     event RegistrationUpdated (IFlareKeep theContract, bool add);
     event MintingRequested (uint256 toMintTWei);
@@ -210,7 +223,7 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
      *   mint requests as made to the accounting system, and also self-destruct sending to this contract, should
      *   it happen for some reason.
      */
-    function trigger() public mintAccountingSet returns (uint256 _toMintTWei) {
+    function trigger() external mintAccountingSet returns (uint256 _toMintTWei) {
         require(block.number > systemLastTriggeredAt, ERR_BLOCK_NUMBER_SMALL);
         systemLastTriggeredAt = block.number;
 
@@ -245,8 +258,7 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
             try keepContracts[i].keep() {
                 emit ContractKept(address(keepContracts[i]));
             } catch Error(string memory message) {
-                KeptError[] storage keptErrors = errorsByBlock[block.number];
-                keptErrors.push(KeptError({contractInError: address(keepContracts[i]), message: message}));
+                addKeepError(address(keepContracts[i]), message);
                 emit ContractKeepErrored(address(keepContracts[i]), block.number, message);
             }
         }
@@ -264,9 +276,79 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
         // We should now be in balance to the accounting system - don't revert, just report?
         uint256 flareKeeperAccountingBalance = mintAccounting.getKeeperBalance();
         if (flareKeeperAccountingBalance != currentBalance) {
-            KeptError[] storage keptErrors = errorsByBlock[block.number];
-            keptErrors.push(KeptError({contractInError: address(this), message: ERR_OUT_OF_BALANCE}));            
+            addKeepError(address(this), ERR_OUT_OF_BALANCE);            
             emit ContractKeepErrored(address(this), block.number, ERR_OUT_OF_BALANCE);
         }
+    }
+
+    function showKeptErrors (uint startIndex, uint numErrorTypesToShow) public view 
+        returns(
+            uint256[] memory _lastErrorBlock,
+            uint256[] memory _numErrors,
+            string[] memory _errorString,
+            address[] memory _erroringContract,
+            uint256 _totalKeptErrors
+        )
+    {
+        require(startIndex < keepErrorHashes.length, INDEX_TOO_HIGH);
+        uint256 numReportElements = 
+            keepErrorHashes.length >= startIndex + numErrorTypesToShow ?
+            numErrorTypesToShow :
+            keepErrorHashes.length - startIndex;
+
+        _lastErrorBlock = new uint256[] (numReportElements);
+        _numErrors = new uint256[] (numReportElements);
+        _errorString = new string[] (numReportElements);
+        _erroringContract = new address[] (numReportElements);
+
+        // we have error data error type.
+        // error type is hash(error_string, source contract)
+        // per error type we report how many times it happened.
+        // what was last block it happened.
+        // what is the error string.
+        // what is the erroring contract
+        for (uint i = 0; i < numReportElements; i++) {
+            bytes32 hash = keepErrorHashes[startIndex + i];
+
+            _lastErrorBlock[i] = keptErrors[hash].lastErrorBlock;
+            _numErrors[i] = keptErrors[hash].numErrors;
+            _errorString[i] = keptErrors[hash].errorMessage;
+            _erroringContract[i] = keptErrors[hash].fromContract;
+        }
+        _totalKeptErrors = errorData.totalKeptErrors;
+    }
+
+    function showLastKeptError () external view 
+        returns(
+            uint256[] memory _lastErrorBlock,
+            uint256[] memory _numErrors,
+            string[] memory _errorString,
+            address[] memory _erroringContract,
+            uint256 _totalKeptErrors
+        )
+    {
+        return showKeptErrors(errorData.lastErrorTypeIndex, 1);
+    }
+
+    function addKeepError(address keptContract, string memory message) internal {
+        bytes32 errorStringHash = keccak256(abi.encode(keptContract, message));
+
+        errorData.totalKeptErrors += 1;
+        keptErrors[errorStringHash].numErrors += 1;
+        keptErrors[errorStringHash].lastErrorBlock = uint192(block.number);
+
+        if (keptErrors[errorStringHash].numErrors > 1) {
+            // not first time this errors
+            errorData.lastErrorTypeIndex = keptErrors[errorStringHash].errorTypeIndex;
+            return;
+        }
+
+        // first time we recieve this error string.
+        keepErrorHashes.push(errorStringHash);
+        keptErrors[errorStringHash].fromContract = keptContract;
+        keptErrors[errorStringHash].errorMessage = message;
+        keptErrors[errorStringHash].errorTypeIndex = uint64(keepErrorHashes.length - 1);
+
+        errorData.lastErrorTypeIndex = keptErrors[errorStringHash].errorTypeIndex;
     }
 }
