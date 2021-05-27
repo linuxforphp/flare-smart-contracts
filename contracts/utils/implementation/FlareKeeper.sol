@@ -6,9 +6,8 @@
 pragma solidity 0.7.6;
 
 import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGenesis.sol";
-import { MintAccounting } from "../../accounting/implementation/MintAccounting.sol";
+import { Inflation } from "../../inflation/implementation/Inflation.sol";
 import { IFlareKeep } from "../interfaces/IFlareKeep.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
@@ -17,7 +16,7 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
  *   that are registered to receive said polling. The trigger method is called by the 
  *   validator right at the end of block state transition.
  */
-contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
+contract FlareKeeper is GovernedAtGenesis {
     using SafeMath for uint256;
 
     //====================================================================
@@ -29,30 +28,35 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     }
 
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
-    string internal constant ERR_NOT_A_MINTER = "not minter";
+    string internal constant ERR_NOT_INFLATION = "not inflation";
     string internal constant ERR_TOO_MANY = "too many";
     string internal constant ERR_CONTRACT_NOT_FOUND = "contract not found";
-    string internal constant ERR_MINT_ACCOUNTING_ZERO = "mint accounting zero";
+    string internal constant ERR_INFLATION_ZERO = "inflation zero";
     string internal constant ERR_BLOCK_NUMBER_SMALL = "block.number small";
     string internal constant ERR_TRANSFER_FAILED = "transfer failed";
 
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
     IFlareKeep[] public keepContracts;
     uint256 public systemLastTriggeredAt;
-    MintAccounting public mintAccounting;
     uint256 private lastBalance;
-    uint256 private nextMintRequest;
+    uint256 private expectedMintRequest;
+    uint256 public totalMintingRequested;
+    uint256 public totalMintingReceived;
+    uint256 public totalMintingWithdrawn;
+    uint256 public totalSelfDestructReceived;
+    uint256 public totalSelfDestructWithdrawn;
+    Inflation public inflation;
     bool private initialized;
     mapping(uint256 => KeptError[]) public errorsByBlock;
 
-    event RegistrationUpdated (IFlareKeep theContract, bool add);
-    event MintingRequested (uint256 toMintTWei);
-    event MintingReceived (uint256 toMintTWei);
-    event MintAccountingUpdated (MintAccounting from, MintAccounting to);
     event ContractKept(address theContract);
     event ContractKeepErrored(address theContract, uint256 atBlock, string theMessage);
-    event Transferred(uint256 amountTWei);
+    event MintingRequested (uint256 amountWei);
+    event MintingReceived (uint256 amountWei);
+    event MintingWithdrawn(uint256 amountWei);
+    event RegistrationUpdated (IFlareKeep theContract, bool add);
+    event SelfDestructReceived (uint256 amountWei);
+    event InflationSet(Inflation theNewContract, Inflation theOldContract);
 
     //====================================================================
     // Constructor for pre-compiled code
@@ -67,56 +71,40 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     }
 
     /**
-     * @dev As there is not a constructor, this modifier exists to make sure the mint accounting
+     * @dev As there is not a constructor, this modifier exists to make sure the inflation
      *   contract is set for methods that require it.
      */
-    modifier mintAccountingSet {
-        require(address(mintAccounting) != address(0), ERR_MINT_ACCOUNTING_ZERO);
+    modifier inflationSet {
+        require(address(inflation) != address(0), ERR_INFLATION_ZERO);
         _;
     }
 
     /**
-     * @dev This modifier ensures that this contract's balance matches the expected balance
-     *   within the general ledger accounting contract, referenced mint accounting;
+     * @dev This modifier ensures that this contract's balance matches the expected balance.
      */
     modifier mustBalance {
         _;
-        require(address(mintAccounting) != address(0), ERR_MINT_ACCOUNTING_ZERO);
-        uint256 flareKeeperAccountingBalance = mintAccounting.getKeeperBalance();
-        require(address(this).balance == flareKeeperAccountingBalance, ERR_OUT_OF_BALANCE);
+        // We should now be in balance - don't revert, just report...
+        uint256 contractBalanceExpected = getExpectedBalance();
+        if (contractBalanceExpected != address(this).balance) {
+            KeptError[] storage keptErrors = errorsByBlock[block.number];
+            keptErrors.push(KeptError({contractInError: address(this), message: ERR_OUT_OF_BALANCE}));            
+            emit ContractKeepErrored(address(this), block.number, ERR_OUT_OF_BALANCE);
+        }
     }
 
     /**
      * @dev Access control to protect methods to allow only minters to call select methods
      *   (like transferring balance out).
      */
-    modifier onlyMinters () {
-        require (hasRole(MINTER_ROLE, msg.sender), ERR_NOT_A_MINTER);
+    modifier onlyInflation (address _inflation) {
+        require (address(inflation) == _inflation, ERR_NOT_INFLATION);
         _;
     }
 
     //====================================================================
     // Functions
     //====================================================================  
-
-    /**
-     *  @dev The validators will NOT wind up calling this function when inflating
-     *  FLR. The receive method is here for testing purposes only, but if FLR is sent via
-     *  this venue, then it will be received and will balance to the accounting system without
-     *  issue.
-     */
-    receive() external payable mintAccountingSet mustBalance {
-        lastBalance = address(this).balance.add(msg.value);
-        if (msg.value <= nextMintRequest) {
-            mintAccounting.receiveMinting(msg.value);
-            emit MintingReceived(msg.value);
-        } else {
-            mintAccounting.receiveMinting(nextMintRequest);
-            emit MintingReceived(nextMintRequest);
-            mintAccounting.receiveSelfDestructProceeds(msg.value.sub(nextMintRequest));
-        }
-        nextMintRequest = 0;
-    }
 
     /**
      * @notice Set the governance address to a hard-coded known address.
@@ -154,6 +142,28 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     }
 
     /**
+     * @notice Queue up a minting request to send to the validator at next trigger.
+     * @param _amountWei    The amount to mint.
+     */
+    function requestMinting(uint256 _amountWei) external onlyInflation(msg.sender) {
+        if (_amountWei > 0) {
+            totalMintingRequested = totalMintingRequested.add(_amountWei);
+            emit MintingRequested(_amountWei);
+        }
+    }
+
+    /**
+     * @notice Sets the inflation contract, which will receive minted inflation funds for funding to
+     *   rewarding contracts.
+     * @param _inflation   The inflation contract.
+     */
+    function setInflation(Inflation _inflation) external onlyGovernance {
+        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
+        emit InflationSet(inflation, _inflation);
+        inflation = _inflation;
+    }
+
+    /**
      * @notice Unregister a contract from being polled by the keeper process.
      * @param _keep     The address of the contract to unregister.
      */
@@ -174,43 +184,16 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets the mint accounting contract to report and fetch accounting activity from the general ledger.
-     * @param _mintAccounting   The mint accounting contract.
-     */
-    function setMintAccounting(MintAccounting _mintAccounting) external onlyGovernance {
-        require(address(_mintAccounting) != address(0), ERR_MINT_ACCOUNTING_ZERO);
-        emit MintAccountingUpdated(mintAccounting, _mintAccounting);
-        mintAccounting = _mintAccounting;
-    }
-
-    /**
-     * @notice Transfer minted balance out to the world that need to distribute rewards, etc.
-     * @param _receiver     The address of the recipient to get funds. Should be a rewarding contract.
-     * @param _amountTWei   The amount to send.
-     * @dev Since we do not want to attribute transfer to a type of rewarder getting
-     *   these funds (we don't know who is requesting what here), 
-     *   it is up to the caller to make the correct accounting
-     *   entries prior to this call, so that the accounting system balances. It will ruin
-     *   your day if you do not take care to do that.
-     */
-    function transferTo(address _receiver, uint256 _amountTWei) external onlyMinters mustBalance nonReentrant {
-        lastBalance = address(this).balance.sub(_amountTWei);
-        (bool success, ) = (payable(_receiver)).call{value: _amountTWei}(""); // solhint-disable-line
-        require(success, ERR_TRANSFER_FAILED);
-        emit Transferred(_amountTWei);
-    }
-
-    /**
      * @notice The meat of this contract. Poll all registered contracts, calling the keep() method of each,
      *   in the order in which registered.
-     * @return  _toMintTWei     Return the amount to mint back to the validator. The asked for balance will show
+     * @return  _toMintWei     Return the amount to mint back to the validator. The asked for balance will show
      *                          up in the next block (it is actually added right before this block's state transition,
      *                          but well after this method call will see it.)
      * @dev This method watches for balances being added to this contract and handles appropriately - legit
-     *   mint requests as made to the accounting system, and also self-destruct sending to this contract, should
+     *   mint requests as made via requestMinting, and also self-destruct sending to this contract, should
      *   it happen for some reason.
      */
-    function trigger() public mintAccountingSet returns (uint256 _toMintTWei) {
+    function trigger() public mustBalance returns (uint256 _toMintWei) {
         require(block.number > systemLastTriggeredAt, ERR_BLOCK_NUMBER_SMALL);
         systemLastTriggeredAt = block.number;
 
@@ -218,24 +201,36 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
 
         // Did the validator or a self-destructor conjure some FLR?
         if (currentBalance > lastBalance) {
-            uint256 balanceExpected = lastBalance.add(nextMintRequest);
-            // Did we get at least what was last asked for?
-            if (currentBalance <= balanceExpected) {
-                // Yes, so assume it all came from the validator, but was not all minted for some reason.
+            uint256 balanceExpected = lastBalance.add(expectedMintRequest);
+            // Did we get what was last asked for?
+            if (currentBalance == balanceExpected) {
+                // Yes, so assume it all came from the validator.
                 uint256 minted = currentBalance.sub(lastBalance);
-                mintAccounting.receiveMinting(minted);
+                totalMintingReceived = totalMintingReceived.add(minted);
+                totalMintingWithdrawn = totalMintingWithdrawn.add(minted);
+                (bool success, ) = (payable(address(inflation))).call{value: minted}(""); // solhint-disable-line
+                require(success, ERR_TRANSFER_FAILED);      // TODO: Change to report error once Ilan's code is merged.
                 emit MintingReceived(minted);
+                emit MintingWithdrawn(minted);
+            } else if (currentBalance < balanceExpected) {
+                // No, and if less, assume it was a self-destructor. 
+                uint256 selfDestructReceived = currentBalance.sub(lastBalance);
+                totalSelfDestructReceived = totalSelfDestructReceived.add(selfDestructReceived);
+                emit SelfDestructReceived(selfDestructReceived);
             } else {
                 // No, so assume we got a minting request (perhaps zero...does not matter)
                 // and some self-destruct proceeds (unlikely but can happen).
-                mintAccounting.receiveMinting(nextMintRequest);
-                emit MintingReceived(nextMintRequest);
-                mintAccounting.receiveSelfDestructProceeds(currentBalance.sub(lastBalance).sub(nextMintRequest));
+                totalMintingReceived = totalMintingReceived.add(expectedMintRequest);
+                totalMintingWithdrawn = totalMintingWithdrawn.add(expectedMintRequest);
+                uint256 selfDestructReceived = currentBalance.sub(lastBalance).sub(expectedMintRequest);
+                totalSelfDestructReceived = totalSelfDestructReceived.add(selfDestructReceived);
+                (bool success, ) = (payable(address(inflation))).call{value: expectedMintRequest}(""); // solhint-disable-line
+                require(success, ERR_TRANSFER_FAILED);      // TODO: Change to report error once Ilan's code is merged.
+                emit MintingReceived(expectedMintRequest);
+                emit MintingWithdrawn(expectedMintRequest);
+                emit SelfDestructReceived(selfDestructReceived);
             }
         }
-
-        nextMintRequest = 0;
-        lastBalance = currentBalance;
 
         // Perform trigger operations here
         uint256 len = keepContracts.length;
@@ -252,21 +247,31 @@ contract FlareKeeper is GovernedAtGenesis, ReentrancyGuard {
         }
 
         // Get any requested minting and return to validator
-        _toMintTWei = mintAccounting.getMintingRequested();
-        if (_toMintTWei > 0) {
-            nextMintRequest = _toMintTWei;
-            emit MintingRequested(_toMintTWei);
+        _toMintWei = getPendingMintRequest();
+        if (_toMintWei > 0) {
+            expectedMintRequest = _toMintWei;
+            emit MintingRequested(_toMintWei);
+        } else {
+            expectedMintRequest = 0;            
         }
 
-        // Reset current balance after kept contracts were processed.
-        currentBalance = address(this).balance;
+        lastBalance = address(this).balance;
+    }
 
-        // We should now be in balance to the accounting system - don't revert, just report?
-        uint256 flareKeeperAccountingBalance = mintAccounting.getKeeperBalance();
-        if (flareKeeperAccountingBalance != currentBalance) {
-            KeptError[] storage keptErrors = errorsByBlock[block.number];
-            keptErrors.push(KeptError({contractInError: address(this), message: ERR_OUT_OF_BALANCE}));            
-            emit ContractKeepErrored(address(this), block.number, ERR_OUT_OF_BALANCE);
-        }
+    /**
+     * @notice Net totals to obtain the expected balance of the contract.
+     */
+    function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
+        _balanceExpectedWei = totalMintingReceived.
+            sub(totalMintingWithdrawn).
+            add(totalSelfDestructReceived).
+            sub(totalSelfDestructWithdrawn);
+    }
+
+    /**
+     * @notice Net total received from total requested.
+     */
+    function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
+        _mintRequestPendingWei = totalMintingRequested.sub(totalMintingReceived);
     }
 }
