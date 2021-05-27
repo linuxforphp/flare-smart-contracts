@@ -52,6 +52,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let gl: FlareNetworkGeneralLedgerInstance;
     let supplyAccounting: SupplyAccountingInstance;
     let ftsoInflationAccounting: FtsoInflationAccountingInstance;
+    let fakeFlareKeeperAddress = accounts[1];
     let closeManager: CloseManagerInstance;
 
     beforeEach(async () => {
@@ -133,6 +134,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         await ftsoRewardManager.setFTSOManager(ftsoManager.address);
         await ftsoRewardManager.setWFLR(wFlr.address);
+        await ftsoRewardManager.setFlareKeeper(fakeFlareKeeperAddress);
         await ftsoRewardManager.activate();
     });
 
@@ -151,11 +153,12 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
 
             // give reward manager some flr to distribute
-            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: fakeFlareKeeperAddress, to: ftsoRewardManager.address, value: 1000000 });
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
+
             // activte ftso manager
             await ftsoManager.activate();
             await ftsoManager.keep();
@@ -199,7 +202,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Stub accounting system to make it balance with RM contract
 
             // give reward manager some flr to distribute
-            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: fakeFlareKeeperAddress, to: ftsoRewardManager.address, value: 1000000 });
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso

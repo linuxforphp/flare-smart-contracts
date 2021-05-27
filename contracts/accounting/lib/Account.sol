@@ -94,6 +94,13 @@ library Account {
         }
     }
 
+    function getBalanceAt(AccountState storage _self, uint256 blockNumber) internal view returns (int256) {
+        uint index = _indexOfGreatestBlockLessThanIfExists(_self.ledgerEntries, blockNumber);
+        if (index == NOT_FOUND) return 0;
+        return _self.ledgerEntries[index].runningBalance;
+    }
+
+
     function _indexOfGreatestBlockLessThan(
         LedgerEntry[] storage ledgerEntries, 
         uint256 blockNumber
@@ -132,11 +139,5 @@ library Account {
         } else {
             return _indexOfGreatestBlockLessThan(ledgerEntries, blockNumber);
         }
-    }
-
-    function getBalanceAt(AccountState storage _self, uint256 blockNumber) external view returns (int256) {
-        uint index = _indexOfGreatestBlockLessThanIfExists(_self.ledgerEntries, blockNumber);
-        if (index == NOT_FOUND) return 0;
-        return _self.ledgerEntries[index].runningBalance;
     }
 }

@@ -9,6 +9,9 @@ import {
     LedgerEntry, 
     JournalEntry } from "../lib/AccountingStructs.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import { SignedSafeMath } from "@openzeppelin/contracts/math/SignedSafeMath.sol";
+
+// import "hardhat/console.sol";
 
 /**
  * @title Ledger
@@ -17,6 +20,7 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 contract Ledger {
     using Account for Account.AccountState;
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
 
     string public name;
 
@@ -90,6 +94,15 @@ contract Ledger {
         return account.currentBalance;
     }
 
+    function getBalanceAt(bytes32 _forAccountName, uint256 blockNumber)
+        external view 
+        mustExist(_forAccountName)
+        returns(int256)
+    {
+        Account.AccountState storage account = chartOfAccounts[_forAccountName];
+        return account.getBalanceAt(blockNumber);
+    }
+
     function getLedgerEntry(bytes32 _forAccountName, uint256 index)
         external view 
         mustExist(_forAccountName)
@@ -134,6 +147,10 @@ contract Ledger {
         require(debits == credits, ERR_DEBITS_NEQ_CREDITS_MSG);
 
         // Post
+        int256 assetBalanceDifference;
+        int256 liabilityBalanceDifference;
+        int256 equityBalanceDifference;
+
         for (uint i = 0; i < count; i++) {
             // Post journal entries to accounts
             JournalEntry calldata journalEntry = journalEntries[i];
@@ -147,34 +164,37 @@ contract Ledger {
             }
             
             int256 closingBalance = account.currentBalance;
-            int256 difference = closingBalance - openingBalance;
-            bool differenceNegative = difference < 0 ? true : false;
+            int256 difference = closingBalance.sub(openingBalance);
             // Update accounting journal totals based on changes to each account
-            if (account.accountType == AccountType.ASSET) {
-                if (differenceNegative) {
-                    assetBalance = assetBalance.sub(uint256(difference * -1));
-                } else {
-                    assetBalance = assetBalance.add(uint256(difference));
-                }
+            if (account.accountType == AccountType.ASSET) {       
+                assetBalanceDifference = assetBalanceDifference.add(difference);
             } else if (account.accountType == AccountType.LIABILITY) {
-                if (differenceNegative) {
-                    liabilityBalance = liabilityBalance.sub(uint256(difference * -1));
-                } else {
-                    liabilityBalance = liabilityBalance.add(uint256(difference));
-                }
+                liabilityBalanceDifference = liabilityBalanceDifference.add(difference);
             } else if (account.accountType == AccountType.EQUITY) {
-                if (differenceNegative) {
-                    equityBalance = equityBalance.sub(uint256(difference * -1));
-                } else {
-                    equityBalance = equityBalance.add(uint256(difference));
-                }
+                equityBalanceDifference = equityBalanceDifference.add(difference);
             } else {
                 assert(false);
             }
+        }
+        if (assetBalanceDifference < 0) {
+            assetBalance = assetBalance.sub(uint256(assetBalanceDifference * -1));
+        } else {
+            assetBalance = assetBalance.add(uint256(assetBalanceDifference));
+        }
+        if (liabilityBalanceDifference < 0) {
+            liabilityBalance = liabilityBalance.sub(uint256(liabilityBalanceDifference * -1));
+        } else {
+            liabilityBalance = liabilityBalance.add(uint256(liabilityBalanceDifference));
+        }
+        if (equityBalanceDifference < 0) {
+            equityBalance = equityBalance.sub(uint256(equityBalanceDifference * -1));
+        } else {
+            equityBalance = equityBalance.add(uint256(equityBalanceDifference));
         }
     } 
 
     function accountExists(bytes32 _name) public view returns(bool) {
         return chartOfAccounts[_name].name == _name;
     }
+
 }

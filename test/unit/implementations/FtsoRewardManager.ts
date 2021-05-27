@@ -1,4 +1,4 @@
-import { FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerAccountingInstance, MockContractInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
+import { FtsoManagerContract, FtsoManagerInstance, FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerAccountingInstance, MockContractInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, WFlrContract, WFlrInstance, FlareKeeperInstance } from "../../../typechain-truffle";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -27,6 +27,8 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
     let ftsoRewardManagerAccountingInterface: FtsoRewardManagerAccountingInstance;
     let ftsoInflationAuthorizer: MockContractInstance;
     let mockSupplyAccounting: MockContractInstance;
+
+    let fakeFlareKeeperAddress = accounts[1];
     let mockCloseManager: MockContractInstance;
 
     beforeEach(async () => {
@@ -72,6 +74,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
 
         await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
         await ftsoRewardManager.setWFLR(wFlr.address);
+        await ftsoRewardManager.setFlareKeeper(fakeFlareKeeperAddress);
         // await inflation.setRewardManager(rewardManager.address);
 
         await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
@@ -87,7 +90,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             const getUndistributedFtsoInflationBalance = web3.utils.sha3("getUndistributedFtsoInflationBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockSupplyAccounting.givenMethodReturnUint(getUndistributedFtsoInflationBalance, 1000000);
             // give reward manager some flr to distribute
-            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: fakeFlareKeeperAddress, to: ftsoRewardManager.address, value: 1000000 });
 
             // Give 3 price epochs remaining, and so it should distribute 1/3 of the amount.
             await mockFtsoManager.distributeRewardsCall(
@@ -120,7 +123,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             const getRewardManagerBalance = web3.utils.sha3("getRewardManagerBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockFtsoRewardManagerAccounting.givenMethodReturnUint(getRewardManagerBalance, 1000000);
             // Act
-            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: fakeFlareKeeperAddress, to: ftsoRewardManager.address, value: 1000000 });
             // Assert
             let balance = web3.utils.toBN(await web3.eth.getBalance(ftsoRewardManager.address));
             assert.equal(balance.toNumber(), 1000000);
@@ -141,7 +144,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Reward manager unit t
             const getUndistributedFtsoInflationBalance = web3.utils.sha3("getUndistributedFtsoInflationBalance()")!.slice(0,10); // first 4 bytes is function selector
             await mockSupplyAccounting.givenMethodReturnUint(getUndistributedFtsoInflationBalance, 1000000);
             // give reward manager some flr to distribute
-            await web3.eth.sendTransaction({ from: accounts[0], to: ftsoRewardManager.address, value: 1000000 });
+            await web3.eth.sendTransaction({ from: fakeFlareKeeperAddress, to: ftsoRewardManager.address, value: 1000000 });
             
             // Let's assume the number of price epochs remaining is 720 (a days worth at 2 minute price epochs)
             // Trigger price epoch finalization

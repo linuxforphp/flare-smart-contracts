@@ -11,7 +11,7 @@ import "../../token/implementation/WFlr.sol";
 import "../../utils/implementation/SafePct.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-
+import { FlareKeeper } from "../../utils/implementation/FlareKeeper.sol";
 
 /**
  * FTSORewardManager is in charge of:
@@ -83,6 +83,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     IIFtsoManager public ftsoManagerContract;    
     FtsoRewardManagerAccounting public ftsoRewardManagerAccounting;
 
+    address public flareKeeper;
+
     WFlr public wFlr; 
     SupplyAccounting public supplyAccounting;
     CloseManager public closeManager;
@@ -134,11 +136,14 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         closeManager = _closeManager;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
-        rewardExpiryOffset = _rewardExpiryOffset;
+        rewardExpiryOffset = _rewardExpiryOffset;        
         justStarted = true;
     }
 
     receive() external payable mustBalance {
+        // prevent sending funds from other addresses then flareKeeper
+        require(flareKeeper != address(0) && msg.sender == flareKeeper);
+
         //TODO: account for tokens recieved in self destruct attack
         ftsoRewardManagerAccounting.receiveSupply(msg.value);
         emit FundsReceived(msg.sender, msg.value);
@@ -274,6 +279,13 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
      */
     function setWFLR(WFlr _wFlr) external override onlyGovernance {
         wFlr = _wFlr;
+    }
+
+    /**
+     * @notice sets Flare keeper contract
+     */
+    function setFlareKeeper(address _flareKeeper) external override onlyGovernance {
+        flareKeeper = _flareKeeper;
     }
 
     /**
