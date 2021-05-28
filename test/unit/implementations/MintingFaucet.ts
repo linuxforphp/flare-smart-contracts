@@ -116,7 +116,7 @@ contract(`MintingFaucet.sol; ${getTestFile(__filename)}; Minting faucet unit tes
       await expectEvent.notEmitted(receipt, "RewardFundsWithdrawn");
     }); 
 
-    it("Should withdraw minting of amount given by withdraw provider from keeper to reward manager", async() => {
+    it.skip("Should withdraw minting of amount given by withdraw provider from keeper to reward manager", async() => {
       // Assemble
       const getAmountTWei = web3.utils.sha3("getAmountTWei()")!.slice(0,10); // first 4 bytes is function selector
       await mockWithdrawAmountProvider.givenMethodReturnUint(getAmountTWei, 100);
