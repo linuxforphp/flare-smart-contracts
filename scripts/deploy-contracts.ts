@@ -156,7 +156,8 @@ async function main(parameters: any) {
 
   // Inflation contract
   const inflation = await Inflation.new();
-  
+  spewNewContractInfo(contracts, Inflation.contractName, inflation.address);
+
   // Initialize the keeper
   let flareKeeper: FlareKeeperInstance;
   try {
@@ -193,10 +194,6 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, FtsoRewardMintingFaucet.contractName, ftsoRewardMintingFaucet.address);
   await mintAccounting.grantRole(await mintAccounting.POSTER_ROLE(), ftsoRewardMintingFaucet.address);
   await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.POSTER_ROLE(), ftsoRewardMintingFaucet.address);
-  await flareKeeper.grantRole(
-    await flareKeeper.MINTER_ROLE(), 
-    ftsoRewardMintingFaucet.address, 
-    {from: genesisGovernanceAccount.address});
 
   // Register kept contracts to the keeper
   await flareKeeper.registerToKeep(ftsoInflationAuthorizer.address);
