@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Governed } from "./Governed.sol";
 
 /**
@@ -12,7 +11,7 @@ import { Governed } from "./Governed.sol";
  *  where theoretically no accounts yet exist, and leaving it ungoverned could result in a race
  *  to claim governance by an unauthorized address.
  **/
-contract GovernedAtGenesis is AccessControl, Governed {
+contract GovernedAtGenesis is Governed {
     constructor(address _governance) Governed(_governance) { }
 
     /**

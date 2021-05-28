@@ -45,6 +45,7 @@ async function main(parameters: any) {
   const FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
   const FtsoInflationAuthorizer = artifacts.require("FtsoInflationAuthorizer");
   const FtsoInflationPercentageProvider = artifacts.require("FtsoInflationPercentageProvider");
+  const Inflation = artifacts.require("Inflation");
   const FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounting");
   const FtsoRewardManagerTopup = artifacts.require("FtsoRewardManagerTopup");
   const FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
@@ -153,6 +154,9 @@ async function main(parameters: any) {
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
 
+  // Inflation contract
+  const inflation = await Inflation.new();
+  
   // Initialize the keeper
   let flareKeeper: FlareKeeperInstance;
   try {
@@ -173,7 +177,7 @@ async function main(parameters: any) {
   }
   await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareKeeper.claimGovernance({ from: deployerAccount.address });
-  await flareKeeper.setMintAccounting(mintAccounting.address);
+  await flareKeeper.setInflation(inflation.address);
   await mintAccounting.grantRole(await mintAccounting.POSTER_ROLE(), flareKeeper.address);
 
   // FtsoRewardMintingFaucet contract

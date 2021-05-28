@@ -138,7 +138,6 @@ contract FlareKeeper is GovernedAtGenesis {
         if (!initialized) {
             initialized = true;
             address governanceAddress = super.initialiseFixedAddress();
-            _setupRole(DEFAULT_ADMIN_ROLE, governanceAddress);
             return governanceAddress;
         } else {
             return governance;
