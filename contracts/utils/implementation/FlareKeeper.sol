@@ -11,8 +11,10 @@ import { Inflation } from "../../inflation/implementation/Inflation.sol";
 import { IFlareKeep } from "../interfaces/IFlareKeep.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
+// import "hardhat/console.sol";
+
 /**
-*  @title Flare Keeper contract
+ * @title Flare Keeper contract
  * @notice This contract exists to coordinate regular daemon-like polling of contracts
  *   that are registered to receive said polling. The trigger method is called by the 
  *   validator right at the end of block state transition.
@@ -39,6 +41,8 @@ contract FlareKeeper is GovernedAtGenesis {
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_NOT_INFLATION = "not inflation";
     string internal constant ERR_TOO_MANY = "too many";
+    string internal constant ERR_TOO_BIG = "too big";
+    string internal constant ERR_TOO_OFTEN = "too often";
     string internal constant ERR_CONTRACT_NOT_FOUND = "contract not found";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
     string internal constant ERR_BLOCK_NUMBER_SMALL = "block.number small";
@@ -46,15 +50,20 @@ contract FlareKeeper is GovernedAtGenesis {
     string internal constant INDEX_TOO_HIGH = "start index high";
 
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
+    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
+    uint256 internal constant MAX_MINTING_FREQUENCY_DEFAULT = 14400;
     IFlareKeep[] public keepContracts;
     uint256 public systemLastTriggeredAt;
     uint256 private lastBalance;
     uint256 private expectedMintRequest;
-    uint256 public totalMintingRequested;
-    uint256 public totalMintingReceived;
-    uint256 public totalMintingWithdrawn;
-    uint256 public totalSelfDestructReceived;
-    uint256 public totalSelfDestructWithdrawn;
+    uint256 public totalMintingRequestedWei;
+    uint256 public totalMintingReceivedWei;
+    uint256 public totalMintingWithdrawnWei;
+    uint256 public totalSelfDestructReceivedWei;
+    uint256 public totalSelfDestructWithdrawnWei;
+    uint256 public maxMintingFreqSec;
+    uint256 public lastMintRequestTimestamp;
+    uint256 public maxMintingRequestWei;
     Inflation public inflation;
     bool private initialized;
     // track keep errors
@@ -100,7 +109,7 @@ contract FlareKeeper is GovernedAtGenesis {
      */
     modifier mustBalance {
         _;
-        // We should now be in balance - don't revert, just report...
+        // We should be in balance - don't revert, just report...
         uint256 contractBalanceExpected = getExpectedBalance();
         if (contractBalanceExpected != address(this).balance) {
             addKeepError(address(this), ERR_OUT_OF_BALANCE);
@@ -160,10 +169,29 @@ contract FlareKeeper is GovernedAtGenesis {
      * @param _amountWei    The amount to mint.
      */
     function requestMinting(uint256 _amountWei) external onlyInflation(msg.sender) {
+        require (_amountWei <= maxMintingRequestWei, ERR_TOO_BIG);
+        require (lastMintRequestTimestamp.add(maxMintingFreqSec) < block.timestamp, ERR_TOO_OFTEN);
         if (_amountWei > 0) {
-            totalMintingRequested = totalMintingRequested.add(_amountWei);
+            lastMintRequestTimestamp = block.timestamp;
+            totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
             emit MintingRequested(_amountWei);
         }
+    }
+
+    /**
+     * @notice Set limit on how frequent mint requests can be made.
+     * @param _maxMintingFreqSec    The frequency in seconds.
+     */
+    function setMaxMintingFrequency(uint256 _maxMintingFreqSec) external onlyGovernance {
+        maxMintingFreqSec = _maxMintingFreqSec;
+    }
+
+    /**
+     * @notice Set limit on how much can be minted per request.
+     * @param _maxMintingRequestWei    The request maximum in wei.
+     */
+    function setMaxMintingRequest(uint256 _maxMintingRequestWei) external onlyGovernance {
+        maxMintingRequestWei = _maxMintingRequestWei;
     }
 
     /**
@@ -175,6 +203,12 @@ contract FlareKeeper is GovernedAtGenesis {
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
         emit InflationSet(inflation, _inflation);
         inflation = _inflation;
+        if (maxMintingFreqSec == 0) {
+            maxMintingFreqSec = MAX_MINTING_FREQUENCY_DEFAULT;
+        }
+        if (maxMintingRequestWei == 0) {
+            maxMintingRequestWei = MAX_MINTING_REQUEST_DEFAULT;
+        }
     }
 
     /**
@@ -220,29 +254,35 @@ contract FlareKeeper is GovernedAtGenesis {
             if (currentBalance == balanceExpected) {
                 // Yes, so assume it all came from the validator.
                 uint256 minted = currentBalance.sub(lastBalance);
-                totalMintingReceived = totalMintingReceived.add(minted);
-                totalMintingWithdrawn = totalMintingWithdrawn.add(minted);
-                (bool success, ) = (payable(address(inflation))).call{value: minted}(""); // solhint-disable-line
-                require(success, ERR_TRANSFER_FAILED);      // TODO: Change to report error once Ilan's code is merged.
+                totalMintingReceivedWei = totalMintingReceivedWei.add(minted);
                 emit MintingReceived(minted);
-                emit MintingWithdrawn(minted);
+                try inflation.receiveMinting{ value: minted }() {
+                    totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(minted);
+                    emit MintingWithdrawn(minted);
+                } catch Error(string memory message) {
+                    addKeepError(address(this), message);
+                }
             } else if (currentBalance < balanceExpected) {
-                // No, and if less, assume it was a self-destructor. 
+                // No, and if less, there are two possibilities: 1) the validator did not
+                // send us what we asked (not possible unless a bug), or 2) an attacker
+                // sent us something in between a request and a mint. Assume 2.
                 uint256 selfDestructReceived = currentBalance.sub(lastBalance);
-                totalSelfDestructReceived = totalSelfDestructReceived.add(selfDestructReceived);
+                totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
                 emit SelfDestructReceived(selfDestructReceived);
             } else {
                 // No, so assume we got a minting request (perhaps zero...does not matter)
                 // and some self-destruct proceeds (unlikely but can happen).
-                totalMintingReceived = totalMintingReceived.add(expectedMintRequest);
-                totalMintingWithdrawn = totalMintingWithdrawn.add(expectedMintRequest);
+                totalMintingReceivedWei = totalMintingReceivedWei.add(expectedMintRequest);
                 uint256 selfDestructReceived = currentBalance.sub(lastBalance).sub(expectedMintRequest);
-                totalSelfDestructReceived = totalSelfDestructReceived.add(selfDestructReceived);
-                (bool success, ) = (payable(address(inflation))).call{value: expectedMintRequest}(""); // solhint-disable-line
-                require(success, ERR_TRANSFER_FAILED);      // TODO: Change to report error once Ilan's code is merged.
+                totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
                 emit MintingReceived(expectedMintRequest);
-                emit MintingWithdrawn(expectedMintRequest);
                 emit SelfDestructReceived(selfDestructReceived);
+                try inflation.receiveMinting{ value: expectedMintRequest }() {
+                    totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(expectedMintRequest);
+                    emit MintingWithdrawn(expectedMintRequest);
+                } catch Error(string memory message) {
+                    addKeepError(address(this), message);
+                }
             }
         }
 
@@ -274,17 +314,17 @@ contract FlareKeeper is GovernedAtGenesis {
      * @notice Net totals to obtain the expected balance of the contract.
      */
     function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
-        _balanceExpectedWei = totalMintingReceived.
-            sub(totalMintingWithdrawn).
-            add(totalSelfDestructReceived).
-            sub(totalSelfDestructWithdrawn);
+        _balanceExpectedWei = totalMintingReceivedWei.
+            sub(totalMintingWithdrawnWei).
+            add(totalSelfDestructReceivedWei).
+            sub(totalSelfDestructWithdrawnWei);
     }
 
     /**
      * @notice Net total received from total requested.
      */
     function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
-        _mintRequestPendingWei = totalMintingRequested.sub(totalMintingReceived);
+        _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
     }
 
     function showKeptErrors (uint startIndex, uint numErrorTypesToShow) public view 
