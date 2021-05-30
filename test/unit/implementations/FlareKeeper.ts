@@ -509,22 +509,18 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
         });
 
-        it("Should make sure setMaxMintRequest changes are limited", async() => {
+        it("Should make sure setMaxMintRequest changes are time locked", async() => {
           // Assemble
           await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await mockInflation.setFlareKeeper(flareKeeper.address);
 
-          // Act
-          const currentMaxMintRequest = await flareKeeper.maxMintingRequestWei();
-          const maximalNewValue = currentMaxMintRequest.mul(BN(11)).div(BN(10));
-
-          // Assert when requesting too high
-          await expectRevert(flareKeeper.setMaxMintingRequest(maximalNewValue.add(BN(1)), 
-            { from: genesisGovernance }),
-            "Max mint too high");
-
+          // first request should succeed.
           // correct amount success
-          flareKeeper.setMaxMintingRequest(maximalNewValue, { from: genesisGovernance });
-        });
+          flareKeeper.setMaxMintingRequest(BN(1000), { from: genesisGovernance });
+
+          await expectRevert(flareKeeper.setMaxMintingRequest(BN(1000), 
+            { from: genesisGovernance }),
+            "time gap too short");
+          });
     });
 });

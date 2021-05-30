@@ -49,7 +49,7 @@ contract FlareKeeper is GovernedAtGenesis {
     string internal constant ERR_BLOCK_NUMBER_SMALL = "block.number small";
     string internal constant ERR_TRANSFER_FAILED = "transfer failed";
     string internal constant INDEX_TOO_HIGH = "start index high";
-    string internal constant UPDATE_GAP_TOO_SHORT = "time since last update short";
+    string internal constant UPDATE_GAP_TOO_SHORT = "time gap too short";
     string internal constant MAX_MINT_TOO_HIGH = "Max mint too high";
 
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
@@ -189,7 +189,7 @@ contract FlareKeeper is GovernedAtGenesis {
      */
     function setMaxMintingRequest(uint256 _maxMintingRequestWei) external onlyGovernance {
         // make sure increase amount is reasonable
-        require(_maxMintingRequestWei <= (maxMintingRequestWei * 11 / 10), MAX_MINT_TOO_HIGH);
+        require(_maxMintingRequestWei <= (maxMintingRequestWei.mulDiv(11, 10)), MAX_MINT_TOO_HIGH);
         // make sure enough time since last update
         require(block.timestamp > lastUpdateMaxMintRequestTs + (60 * 60 * 24), UPDATE_GAP_TOO_SHORT);
 
