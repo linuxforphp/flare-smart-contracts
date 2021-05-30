@@ -485,6 +485,20 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
         });
 
+        it.skip("Should allow mint request exactly after timelock expires", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.requestMinting(BN(100));
+          
+          // do time shift
+
+          // request minting
+
+          // Assert
+          
+        });
+
         it("Should have cap on excessive minting", async() => {
           // Assemble
           await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
@@ -493,6 +507,20 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const requestPromise = mockInflation.requestMinting(web3.utils.toWei(BN(100000000)));
           // Assert
           await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
-        });        
+        });
+
+        it("Should make sure setMaxMintRequest changes are time locked", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+
+          // first request should succeed.
+          // correct amount success
+          flareKeeper.setMaxMintingRequest(BN(1000), { from: genesisGovernance });
+
+          await expectRevert(flareKeeper.setMaxMintingRequest(BN(1000), 
+            { from: genesisGovernance }),
+            "time gap too short");
+          });
     });
 });
