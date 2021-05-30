@@ -485,6 +485,20 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
         });
 
+        it.skip("Should allow mint request exactly after timelock expires", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.requestMinting(BN(100));
+          
+          // do time shift
+
+          // request minting
+
+          // Assert
+          
+        });
+
         it("Should have cap on excessive minting", async() => {
           // Assemble
           await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
@@ -493,6 +507,24 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const requestPromise = mockInflation.requestMinting(web3.utils.toWei(BN(100000000)));
           // Assert
           await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
-        });        
+        });
+
+        it("Should make sure setMaxMintRequest changes are limited", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+
+          // Act
+          const currentMaxMintRequest = await flareKeeper.maxMintingRequestWei();
+          const maximalNewValue = currentMaxMintRequest.mul(BN(11)).div(BN(10));
+
+          // Assert when requesting too high
+          await expectRevert(flareKeeper.setMaxMintingRequest(maximalNewValue.add(BN(1)), 
+            { from: genesisGovernance }),
+            "Max mint too high");
+
+          // correct amount success
+          flareKeeper.setMaxMintingRequest(maximalNewValue, { from: genesisGovernance });
+        });
     });
 });

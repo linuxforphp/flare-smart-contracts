@@ -10,8 +10,8 @@ import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGen
 import { Inflation } from "../../inflation/implementation/Inflation.sol";
 import { IFlareKeep } from "../interfaces/IFlareKeep.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import { SafePct } from "./SafePct.sol";
 
-// import "hardhat/console.sol";
 
 /**
  * @title Flare Keeper contract
@@ -21,6 +21,7 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
  */
 contract FlareKeeper is GovernedAtGenesis {
     using SafeMath for uint256;
+    using SafePct for uint256;
 
     //====================================================================
     // Data Structures
@@ -48,23 +49,27 @@ contract FlareKeeper is GovernedAtGenesis {
     string internal constant ERR_BLOCK_NUMBER_SMALL = "block.number small";
     string internal constant ERR_TRANSFER_FAILED = "transfer failed";
     string internal constant INDEX_TOO_HIGH = "start index high";
+    string internal constant UPDATE_GAP_TOO_SHORT = "time since last update short";
+    string internal constant MAX_MINT_TOO_HIGH = "Max mint too high";
 
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
-    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
-    uint256 internal constant MAX_MINTING_FREQUENCY_DEFAULT = 14400;
+    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether; // 50 million FLR
+    uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 82800; // 23 hours constant
+
     IFlareKeep[] public keepContracts;
+    Inflation public inflation;
     uint256 public systemLastTriggeredAt;
-    uint256 private lastBalance;
-    uint256 private expectedMintRequest;
     uint256 public totalMintingRequestedWei;
     uint256 public totalMintingReceivedWei;
     uint256 public totalMintingWithdrawnWei;
     uint256 public totalSelfDestructReceivedWei;
     uint256 public totalSelfDestructWithdrawnWei;
-    uint256 public maxMintingFreqSec;
-    uint256 public lastMintRequestTimestamp;
     uint256 public maxMintingRequestWei;
-    Inflation public inflation;
+    uint256 public lastMintRequestTs;
+    uint256 public lastUpdateMaxMintRequestTs;
+
+    uint256 private lastBalance;
+    uint256 private expectedMintRequest;
     bool private initialized;
     // track keep errors
     mapping(bytes32 => KeptError) internal keptErrors;
@@ -169,28 +174,27 @@ contract FlareKeeper is GovernedAtGenesis {
      */
     function requestMinting(uint256 _amountWei) external onlyInflation(msg.sender) {
         require (_amountWei <= maxMintingRequestWei, ERR_TOO_BIG);
-        require (lastMintRequestTimestamp.add(maxMintingFreqSec) < block.timestamp, ERR_TOO_OFTEN);
+        require (lastMintRequestTs.add(MAX_MINTING_FREQUENCY_SEC) < block.timestamp, ERR_TOO_OFTEN);
         if (_amountWei > 0) {
-            lastMintRequestTimestamp = block.timestamp;
+            lastMintRequestTs = block.timestamp;
             totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
             emit MintingRequested(_amountWei);
         }
     }
 
     /**
-     * @notice Set limit on how frequent mint requests can be made.
-     * @param _maxMintingFreqSec    The frequency in seconds.
-     */
-    function setMaxMintingFrequency(uint256 _maxMintingFreqSec) external onlyGovernance {
-        maxMintingFreqSec = _maxMintingFreqSec;
-    }
-
-    /**
      * @notice Set limit on how much can be minted per request.
      * @param _maxMintingRequestWei    The request maximum in wei.
+     * @notice this number can't be udated too often
      */
     function setMaxMintingRequest(uint256 _maxMintingRequestWei) external onlyGovernance {
+        // make sure increase amount is reasonable
+        require(_maxMintingRequestWei <= (maxMintingRequestWei * 11 / 10), MAX_MINT_TOO_HIGH);
+        // make sure enough time since last update
+        require(block.timestamp > lastUpdateMaxMintRequestTs + (60 * 60 * 24), UPDATE_GAP_TOO_SHORT);
+
         maxMintingRequestWei = _maxMintingRequestWei;
+        lastUpdateMaxMintRequestTs = block.timestamp;
     }
 
     /**
@@ -202,9 +206,6 @@ contract FlareKeeper is GovernedAtGenesis {
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
         emit InflationSet(inflation, _inflation);
         inflation = _inflation;
-        if (maxMintingFreqSec == 0) {
-            maxMintingFreqSec = MAX_MINTING_FREQUENCY_DEFAULT;
-        }
         if (maxMintingRequestWei == 0) {
             maxMintingRequestWei = MAX_MINTING_REQUEST_DEFAULT;
         }
@@ -319,13 +320,6 @@ contract FlareKeeper is GovernedAtGenesis {
             sub(totalSelfDestructWithdrawnWei);
     }
 
-    /**
-     * @notice Net total received from total requested.
-     */
-    function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
-        _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
-    }
-
     function showKeptErrors (uint startIndex, uint numErrorTypesToShow) public view 
         returns(
             uint256[] memory _lastErrorBlock,
@@ -373,6 +367,13 @@ contract FlareKeeper is GovernedAtGenesis {
         )
     {
         return showKeptErrors(errorData.lastErrorTypeIndex, 1);
+    }
+
+    /**
+     * @notice Net total received from total requested.
+     */
+    function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
+        _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
     }
 
     function addKeepError(address keptContract, string memory message) internal {
