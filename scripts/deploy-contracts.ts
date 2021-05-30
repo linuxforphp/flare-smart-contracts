@@ -45,6 +45,7 @@ async function main(parameters: any) {
   const FtsoInflationAccounting = artifacts.require("FtsoInflationAccounting");
   const FtsoInflationAuthorizer = artifacts.require("FtsoInflationAuthorizer");
   const FtsoInflationPercentageProvider = artifacts.require("FtsoInflationPercentageProvider");
+  const Inflation = artifacts.require("Inflation");
   const FtsoRewardManagerAccounting = artifacts.require("FtsoRewardManagerAccounting");
   const FtsoRewardManagerTopup = artifacts.require("FtsoRewardManagerTopup");
   const FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
@@ -153,6 +154,10 @@ async function main(parameters: any) {
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
 
+  // Inflation contract
+  const inflation = await Inflation.new();
+  spewNewContractInfo(contracts, Inflation.contractName, inflation.address);
+
   // Initialize the keeper
   let flareKeeper: FlareKeeperInstance;
   try {
@@ -173,7 +178,7 @@ async function main(parameters: any) {
   }
   await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareKeeper.claimGovernance({ from: deployerAccount.address });
-  await flareKeeper.setMintAccounting(mintAccounting.address);
+  await flareKeeper.setInflation(inflation.address);
   await mintAccounting.grantRole(await mintAccounting.POSTER_ROLE(), flareKeeper.address);
 
   // FtsoRewardMintingFaucet contract
@@ -189,10 +194,6 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, FtsoRewardMintingFaucet.contractName, ftsoRewardMintingFaucet.address);
   await mintAccounting.grantRole(await mintAccounting.POSTER_ROLE(), ftsoRewardMintingFaucet.address);
   await ftsoInflationAccounting.grantRole(await ftsoInflationAccounting.POSTER_ROLE(), ftsoRewardMintingFaucet.address);
-  await flareKeeper.grantRole(
-    await flareKeeper.MINTER_ROLE(), 
-    ftsoRewardMintingFaucet.address, 
-    {from: genesisGovernanceAccount.address});
 
   // Register kept contracts to the keeper
   await flareKeeper.registerToKeep(ftsoInflationAuthorizer.address);

@@ -1,6 +1,6 @@
 import { 
   FlareKeeperInstance, 
-  MintAccountingInstance, 
+  InflationMockInstance, 
   MockContractInstance } from "../../../typechain-truffle";
 
 const {expectRevert, expectEvent} = require('@openzeppelin/test-helpers');
@@ -10,31 +10,30 @@ const genesisGovernance = require('../../utils/constants').genesisGovernance;
 
 const FlareKeeper = artifacts.require("FlareKeeper");
 const MockContract = artifacts.require("MockContract");
-const MintAccounting = artifacts.require("MintAccounting");
 const SuicidalMock = artifacts.require("SuicidalMock");
+const InflationMock = artifacts.require("InflationMock");
 
 const BN = web3.utils.toBN;
 
 const ONLY_GOVERNANCE_MSG = "only governance";
 const TOO_MANY_CONTRACTS_MSG = "too many";
+const INFLATION_ZERO_MSG = "inflation zero";
 const CANT_FIND_CONTRACT_MSG = "contract not found";
 const REGISTRATIONUPDATED_EVENT = "RegistrationUpdated";
-const NOT_MINTER = "not minter";
+const MINTINGREQUESTED_EVENT = "MintingRequested";
 const ERR_OUT_OF_BALANCE = "out of balance";
 
 contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, async accounts => {
     // contains a fresh contract for each test
     let flareKeeper: FlareKeeperInstance;
-    let mockMintAccounting: MockContractInstance;
+    let mockInflation: InflationMockInstance;
     let mockContractToKeep: MockContractInstance;
-    let mintAccountingInterface: MintAccountingInstance;
 
     beforeEach(async() => {
         flareKeeper = await FlareKeeper.new();
         await flareKeeper.initialiseFixedAddress();
         mockContractToKeep = await MockContract.new();
-        mockMintAccounting = await MockContract.new();
-        mintAccountingInterface = await MintAccounting.new(accounts[0], await (await MockContract.new()).address);
+        mockInflation = await InflationMock.new();
     });
 
     describe("register", async() => {
@@ -81,6 +80,11 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         });
     });
 
+    describe("events", async() => {
+      it.skip("Should test events more thoroughly...", async() => {
+      });
+    });
+
     describe("unregister", async() => {
         it("Should unregister a kept contract", async() => {
             // Assemble
@@ -117,7 +121,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
             const keep = web3.utils.sha3("keep()")!.slice(0,10); // first 4 bytes is function selector
             await mockContractToKeep.givenMethodReturnBool(keep, true);
             await flareKeeper.registerToKeep(mockContractToKeep.address, {from: genesisGovernance});
-            await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+            await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
             // Act
             await flareKeeper.trigger();
             // Assert
@@ -128,7 +132,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         it("Should advance last triggered block", async() => {
             // Assemble
             const oldLastTriggeredBlock = await flareKeeper.systemLastTriggeredAt();
-            await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+            await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
             // Act
             await flareKeeper.trigger();
             // Assert
@@ -145,9 +149,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
         it("Should return amount to mint when triggered with a pending mint request", async() => {
           // Assemble
-          const getMintingRequested = mintAccountingInterface.contract.methods.getMintingRequested().encodeABI();
-          await mockMintAccounting.givenMethodReturnUint(getMintingRequested, 100);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(accounts[0], {from: genesisGovernance});
+          await flareKeeper.requestMinting(BN(100), { from: accounts[0] });
           // Act
           const toMint = await flareKeeper.trigger.call();
           // Assert
@@ -156,21 +159,21 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
         it("Should emit event when triggered with a pending mint request", async() => {
           // Assemble
-          const getMintingRequested = mintAccountingInterface.contract.methods.getMintingRequested().encodeABI();
-          await mockMintAccounting.givenMethodReturnUint(getMintingRequested, 100);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(accounts[0], {from: genesisGovernance});
+          await flareKeeper.requestMinting(BN(100), { from: accounts[0] });
           // Act
           const tx = await flareKeeper.trigger();
           // Assert
-          await expectEvent(tx, "MintingRequested", {toMintTWei: BN(100)});
+          await expectEvent(tx, MINTINGREQUESTED_EVENT, {amountWei: BN(100)});
         });
 
-        it("Should not trigger if mint accounting not set", async() => {
+        it("Should log error if inflation not set", async() => {
           // Assemble
           // Act
-          const tx = flareKeeper.trigger();
+          const tx = await flareKeeper.trigger();
           // Assert
-          await expectRevert(tx, "mint accounting zero");
+          const { 2: errorStringArr} = await flareKeeper.showLastKeptError();
+          assert.equal(errorStringArr[0], INFLATION_ZERO_MSG);
         });
 
         it("Should advance keep error counter if kept contract reverts", async() => {
@@ -178,7 +181,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const mockKeptContract = await MockContract.new();
           const keep = web3.utils.sha3("keep()")!.slice(0,10);
           await mockKeptContract.givenMethodRevertWithMessage(keep, "I am broken");
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await flareKeeper.registerToKeep(mockKeptContract.address, {from: genesisGovernance});
 
           // Act
@@ -201,7 +204,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const mockKeptContract = await MockContract.new();
           const keep = web3.utils.sha3("keep()")!.slice(0,10);
           await mockKeptContract.givenMethodRevertWithMessage(keep, "I am broken");
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await flareKeeper.registerToKeep(mockKeptContract.address, {from: genesisGovernance});
 
           // Act
@@ -225,7 +228,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const mockKeptContract = await MockContract.new();
           const keep = web3.utils.sha3("keep()")!.slice(0,10);
           await mockKeptContract.givenMethodRevertWithMessage(keep, "I am broken");
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await flareKeeper.registerToKeep(mockKeptContract.address, {from: genesisGovernance});
 
           // Act
@@ -260,7 +263,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const mockKeptContract = await MockContract.new();
           const keep = web3.utils.sha3("keep()")!.slice(0,10);
           await mockKeptContract.givenMethodRevertWithMessage(keep, "I am broken");
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await flareKeeper.registerToKeep(mockKeptContract.address, {from: genesisGovernance});
 
           // Act
@@ -305,7 +308,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const keep = web3.utils.sha3("keep()")!.slice(0,10);
           await mockKeptContract.givenMethodRevertWithMessage(keep, "I am broken");
           await mockKeptContract2.givenMethodRevertWithMessage(keep, "Me tooooo");
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await flareKeeper.registerToKeep(mockKeptContract.address, {from: genesisGovernance});
           await flareKeeper.registerToKeep(mockKeptContract2.address, {from: genesisGovernance});
 
@@ -343,123 +346,181 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     });
 
     describe("minting", async() => {
-        it("Should set mint accounting", async() => {
+        it("Should set inflation", async() => {
             // Assemble
             // Act
-            await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
+            await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
             // Assert
-            assert.equal(await flareKeeper.mintAccounting(), mockMintAccounting.address);
+            assert.equal(await flareKeeper.inflation(), mockInflation.address);
         });
 
         it("Should not set mint accounting if not from governance", async() => {
           // Assemble
           // Act
-          const promise = flareKeeper.setMintAccounting(mockMintAccounting.address, {from: accounts[0]});
+          const promise = flareKeeper.setInflation(mockInflation.address, {from: accounts[0]});
           // Assert
           await expectRevert(promise, "only governance");
         });
 
-        it("Should transfer minted amount to receiver", async() => {
+        it("Should request and transfer minted amount to inflation", async() => {
           // Assemble
-          const getKeeperBalance = web3.utils.sha3("getKeeperBalance()")!.slice(0,10); // first 4 bytes is function selector
-          await mockMintAccounting.givenMethodReturnUint(getKeeperBalance, 1000);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
-          // give keeper some flr to transfer
-          await web3.eth.sendTransaction({ from: accounts[0], to: flareKeeper.address, value: 1000 });
-          // set access control
-          await flareKeeper.grantRole(await flareKeeper.MINTER_ROLE(), accounts[0], {from: await flareKeeper.governance()});
-          // Act
-          const openingBalance = BN(await web3.eth.getBalance(accounts[1]));
-          await mockMintAccounting.givenMethodReturnUint(getKeeperBalance, 900);
-          await flareKeeper.transferTo(accounts[1], 100);
-          const closingBalance = BN(await web3.eth.getBalance(accounts[1]));
-          // Assert
-          const transfered = closingBalance.sub(openingBalance);
-          assert.equal(transfered.toNumber(), 100);
-        })
-
-        it("Should not transfer if not minter", async() => {
-          // Assemble
-          // Act
-          const transferPromise = flareKeeper.transferTo(accounts[1], 100);
-          // Assert
-          await expectRevert(transferPromise, NOT_MINTER);
-        })
-
-        it("Should post received FLR to GL in self-destruct bucket if minting not expected", async() => {
-          // Assemble
-          const getKeeperBalance = web3.utils.sha3("getKeeperBalance()")!.slice(0,10); // first 4 bytes is function selector
-          await mockMintAccounting.givenMethodReturnUint(getKeeperBalance, 1000);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
-          // Act
-          await web3.eth.sendTransaction({ from: accounts[0], to: flareKeeper.address, value: 1000 });
-          // Assert
-          const receiveSelfDestructProceeds = mintAccountingInterface.contract.methods.receiveSelfDestructProceeds(1000).encodeABI();
-          const invocationCount = await mockMintAccounting.invocationCountForCalldata.call(receiveSelfDestructProceeds);
-          assert.equal(invocationCount.toNumber(), 1);
-        });
-
-        it("Should post an unscheduled increase in balance to self-destruct bucket in GL", async() => {
-          // Assemble
-          const getKeeperBalance = web3.utils.sha3("getKeeperBalance()")!.slice(0,10); // first 4 bytes is function selector
-          await mockMintAccounting.givenMethodReturnUint(getKeeperBalance, 100);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
-          // Get suicidal
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.setDoNotReceiveNoMoreThan(1000);
+          await mockInflation.requestMinting(BN(100));
+          // Pretend we are teeing validator with amount to mint
+          await flareKeeper.trigger();
+          // Our fakey validator will be suiciding the right amount of FLR into flareKeeper
           const suicidalMock = await SuicidalMock.new(flareKeeper.address);
           // Give suicidal some FLR
           await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 100});
-          // Act
+          // Suicidal validator mints
           await suicidalMock.die();
+          // Act
           await flareKeeper.trigger();
           // Assert
-          const receiveSelfDestructProceeds = mintAccountingInterface.contract.methods.receiveSelfDestructProceeds(100).encodeABI();
-          const invocationCount = await mockMintAccounting.invocationCountForCalldata.call(receiveSelfDestructProceeds);
-          assert.equal(invocationCount.toNumber(), 1);
-          assert.equal(parseInt(await web3.eth.getBalance(flareKeeper.address)), 100);
-        });
+          const inflationBalance = BN(await web3.eth.getBalance(mockInflation.address));
+          assert.equal(inflationBalance.toNumber(), 100);
+        })
 
-        it("Should post an error if out of balance", async() => {
+        it("Should post received FLR to self-destruct bucket if minting not expected", async() => {
           // Assemble
-          const getKeeperBalance = web3.utils.sha3("getKeeperBalance()")!.slice(0,10); // first 4 bytes is function selector
-          await mockMintAccounting.givenMethodReturnUint(getKeeperBalance, 0);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
-          // Get suicidal
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          // Request more that we are going to receive
+          await mockInflation.requestMinting(110);
+          // Our subversive attacker will be suiciding some FLR into flareKeeper
           const suicidalMock = await SuicidalMock.new(flareKeeper.address);
           // Give suicidal some FLR
           await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 100});
-          // Act
+          // Attacker dies
           await suicidalMock.die();
+          // Act
           await flareKeeper.trigger();
           // Assert
-          //assert.equal(parseInt(await web3.eth.getBalance(flareKeeper.address)), 100);
-          //const { 0: addressInError, 1: errorMessage } = await flareKeeper.errorsByBlock(await web3.eth.getBlockNumber(), 0);
-          //assert.equal(addressInError, flareKeeper.address);
-          //assert.equal(errorMessage, ERR_OUT_OF_BALANCE);
+          const receivedSelfDestructProceeds = await flareKeeper.totalSelfDestructReceivedWei();
+          assert(receivedSelfDestructProceeds.eq(BN(100)));
+          const keeperBalance = BN(await web3.eth.getBalance(flareKeeper.address));
+          assert(keeperBalance.eq(BN(100)));
         });
    
-        it("Should post to GL amount of scheduled minting received and any self-destructed balance received", async() => {
+        it("Should receive scheduled minting and any received self-destructed balance", async() => {
           // Assemble
-          const getKeeperBalance = web3.utils.sha3("getKeeperBalance()")!.slice(0,10); // first 4 bytes is function selector
-          await mockMintAccounting.givenMethodReturnUint(getKeeperBalance, 200);
-          const getMintingRequested = mintAccountingInterface.contract.methods.getMintingRequested().encodeABI();
-          await mockMintAccounting.givenMethodReturnUint(getMintingRequested, 100);
-          await flareKeeper.setMintAccounting(mockMintAccounting.address, {from: genesisGovernance});
-          // Get suicidal
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.setDoNotReceiveNoMoreThan(1000);
+          await mockInflation.requestMinting(BN(100));
+          // Pretend we are teeing validator with amount to mint
+          await flareKeeper.trigger();
+          // Our fakey validator will be suiciding the right amount of FLR into flareKeeper
           const suicidalMock = await SuicidalMock.new(flareKeeper.address);
           // Give suicidal some FLR
-          await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 200});
-          // Act - this will simulate both a suicide and the validator conjuring a balance simultaneously
-          await flareKeeper.trigger();
+          await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 110});
+          // Suicidal validator mints and we pretend that another attacker attacks in same block
           await suicidalMock.die();
+          // Act
           await flareKeeper.trigger();
           // Assert
-          const receiveSelfDestructProceeds = mintAccountingInterface.contract.methods.receiveSelfDestructProceeds(100).encodeABI();
-          let invocationCount = await mockMintAccounting.invocationCountForCalldata.call(receiveSelfDestructProceeds);
-          assert.equal(invocationCount.toNumber(), 1);
-          const receiveMinting = mintAccountingInterface.contract.methods.receiveMinting(100).encodeABI();
-          invocationCount = await mockMintAccounting.invocationCountForCalldata.call(receiveMinting);
-          assert.equal(invocationCount.toNumber(), 1);
-          assert.equal(parseInt(await web3.eth.getBalance(flareKeeper.address)), 200);
-        });        
+          // Target got expected balance
+          const inflationBalance = BN(await web3.eth.getBalance(mockInflation.address));
+          assert(inflationBalance.eq(BN(100)), "rewarding target did not get expected balance");
+          // Keeper recorded self-destruct balance
+          const receivedSelfDestructProceeds = await flareKeeper.totalSelfDestructReceivedWei();
+          assert(receivedSelfDestructProceeds.eq(BN(10)), "expected self destruct balance incorrect");
+          // Keeper still has remaining balance
+          const keeperBalance = BN(await web3.eth.getBalance(flareKeeper.address));
+          assert(keeperBalance.eq(BN(10)), "keeper does not contain expected balance");
+        });
+
+        it("Should log error if transfer of requested minting fails", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.setDoNotReceiveNoMoreThan(BN(90));
+          await mockInflation.requestMinting(BN(100));
+          // Pretend we are teeing validator with amount to mint
+          await flareKeeper.trigger();
+          // Our fakey validator will be suiciding the right amount of FLR into flareKeeper
+          const suicidalMock = await SuicidalMock.new(flareKeeper.address);
+          // Give suicidal some FLR
+          await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 100});
+          // Suicidal validator mints
+          await suicidalMock.die();
+          // Act
+          await flareKeeper.trigger();
+          // Assert
+          const { 2: errorStringArr} = await flareKeeper.showLastKeptError();
+          assert.equal(errorStringArr[0], "too much");
+        });
+
+        it("Should log error if transfer of requested minting fails when additional self-destruct received", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.setDoNotReceiveNoMoreThan(90);
+          await mockInflation.requestMinting(BN(100));
+          // Pretend we are teeing validator with amount to mint
+          await flareKeeper.trigger();
+          // Our fakey validator will be suiciding the right amount of FLR into flareKeeper
+          const suicidalMock = await SuicidalMock.new(flareKeeper.address);
+          // Give suicidal some FLR
+          await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 110});
+          // Suicidal validator mints and we pretend that another attacker attacks in same block
+          await suicidalMock.die();
+          // Act
+          await flareKeeper.trigger();
+          // Assert
+          const { 2: errorStringArr} = await flareKeeper.showLastKeptError();
+          assert.equal(errorStringArr[0], "too much");
+        });
+
+        it("Should not allow mint request before timelock expires", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.requestMinting(BN(100));
+          // Act
+          const requestPromise = mockInflation.requestMinting(BN(100));
+          // Assert
+          await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
+        });
+
+        it.skip("Should allow mint request exactly after timelock expires", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.requestMinting(BN(100));
+          
+          // do time shift
+
+          // request minting
+
+          // Assert
+          
+        });
+
+        it("Should have cap on excessive minting", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          // Act
+          const requestPromise = mockInflation.requestMinting(web3.utils.toWei(BN(100000000)));
+          // Assert
+          await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
+        });
+
+        it("Should make sure setMaxMintRequest changes are time locked", async() => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+
+          // first request should succeed.
+          // correct amount success
+          flareKeeper.setMaxMintingRequest(BN(1000), { from: genesisGovernance });
+
+          await expectRevert(flareKeeper.setMaxMintingRequest(BN(1000), 
+            { from: genesisGovernance }),
+            "time gap too short");
+          });
     });
 });

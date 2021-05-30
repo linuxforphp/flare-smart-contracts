@@ -85,7 +85,7 @@ abstract contract MintingFaucet is Governed, IFlareKeep {
             requested = false;
             // call keeper instead
             withdrawRewardFundsCallback(nextWithdrawAmountTWei);
-            flareKeeper.transferTo(rewardManager, nextWithdrawAmountTWei);
+//            flareKeeper.transferTo(rewardManager, nextWithdrawAmountTWei);
             emit RewardFundsWithdrawn(block.timestamp, nextWithdrawAmountTWei);
         }
     }
