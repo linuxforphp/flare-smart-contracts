@@ -53,4 +53,4 @@ flattened
 
 ## Test deploys info
 deploys/*
-!deploys/ftsoMvpNetwork.json
+!deploys/scdevTOB.json
