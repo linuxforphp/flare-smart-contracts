@@ -7,6 +7,7 @@
   "ftsoRewardMintingFaucetFundWithdrawTimeLockSec": 225,
   "ftsoRewardMintingFundRequestIntervalSec": 20, 
   "totalFlrSupply": 100000000000,
+  "inflationPercentageBips": 1000,
   "rewardEpochDurationSec": 240,
   "revealEpochDurationSec": 30,
   "priceEpochDurationSec": 60,

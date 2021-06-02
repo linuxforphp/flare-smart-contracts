@@ -1,11 +1,11 @@
 import { 
-  FtsoInflationAuthorizerInstance,
   FtsoInstance, 
   FtsoManagerInstance, 
   MockContractInstance, 
   MockVPTokenContract, 
   MockVPTokenInstance, 
   FtsoRewardManagerInstance } from "../../../typechain-truffle";
+
 import { 
   revealSomePrices, 
   RewardEpochData, 
@@ -26,7 +26,6 @@ const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
 const MockContract = artifacts.require("MockContract");
 const MockRewardManager = artifacts.require("MockContract");
-const FtsoInflationAuthorizer = artifacts.require("FtsoInflationAuthorizer");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -46,11 +45,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let ftsoRewardManagerInterface: FtsoRewardManagerInstance;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
-    let ftsoInflationAuthorizer: FtsoInflationAuthorizerInstance;
-    let mockInflationPercentageProvider: MockContractInstance;
-    let mockSupplyAccounting: MockContractInstance;
-    let mockFtsoInflationAccounting: MockContractInstance;
-    let mockCloseManager: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockFtso.new();
@@ -60,8 +54,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             constants.ZERO_ADDRESS as any,
             0
         );
-
-        mockCloseManager = await MockContract.new();
         
         // Force a block in order to get most up to date time
         await time.advanceBlock();
@@ -71,41 +63,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         mockRewardManager = await MockRewardManager.new();
         ftsoRewardManagerInterface = await FtsoRewardManager.new(
             constants.ZERO_ADDRESS,
-            accounts[9],
-            (await MockContract.new()).address,
             3,
             0,
             100,
             (await MockContract.new()).address
         );
 
-        // Get inflation happy...it would be nice if gnosis mock would return tuple mocks, but it does not.
-        mockInflationPercentageProvider = await MockContract.new();
-        mockSupplyAccounting = await MockContract.new();
-        mockFtsoInflationAccounting = await MockContract.new();
-        const getInflatableSupplyBalance = web3.utils.sha3("getInflatableSupplyBalance()")!.slice(0,10); // first 4 bytes is function selector
-        const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0,10);
-        await mockSupplyAccounting.givenMethodReturnUint(getInflatableSupplyBalance, 1000000);
-        await mockInflationPercentageProvider.givenMethodReturnUint(getAnnualPercentageBips, 1000);
-
-        ftsoInflationAuthorizer = await FtsoInflationAuthorizer.new(
-            accounts[0],
-            86400,
-            0,
-            mockInflationPercentageProvider.address,
-            mockSupplyAccounting.address,
-            mockCloseManager.address,
-            mockFtsoInflationAccounting.address
-        );
-
-        // Prime to get a fresh annum
-        await ftsoInflationAuthorizer.keep();
-
         ftsoManager = await FtsoManager.new(
             accounts[0],
             mockRewardManager.address,
             accounts[7],
-            ftsoInflationAuthorizer.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -121,7 +88,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
-                ftsoInflationAuthorizer.address,
                 0,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -134,7 +100,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
-                ftsoInflationAuthorizer.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 0,
@@ -147,7 +112,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
-                ftsoInflationAuthorizer.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -160,7 +124,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
-                ftsoInflationAuthorizer.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs.addn(500),
                 REVEAL_EPOCH_DURATION_S,
@@ -286,7 +249,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
-                ftsoInflationAuthorizer.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -794,17 +756,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochsRemaining,
+            // uint256 priceEpochDurationSec,
             // uint256 currentRewardEpoch
-            // There should be 262,800 120 second epochs in a year
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
                 [25, 75],
                 100,
                 0,
                 mockFtso.address,
-                262800,
-                0
+                120,
+                0,
+                startTs.addn(PRICE_EPOCH_DURATION_S - 1)
             ).encodeABI();
 
             // Assert
@@ -839,17 +801,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochsRemaining,
+            // uint256 priceEpochDurationSec,
             // uint256 currentRewardEpoch
-            // There should be 262,800 120 second epochs in a year
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
                 [25, 75],
                 100,
                 0,
                 mockFtso.address,
-                262800,
-                0
+                120,
+                0,
+                startTs.addn(PRICE_EPOCH_DURATION_S - 1)
             ).encodeABI();
 
             await mockRewardManager.givenMethodRevert(distributeRewards);
@@ -1138,7 +1100,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
-                ftsoInflationAuthorizer.address,
                 yearSeconds / 10,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -1181,7 +1142,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochsRemaining,
+            // uint256 priceEpochDurationSec,
             // uint256 currentRewardEpoch
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
@@ -1189,8 +1150,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 100,
                 12,
                 mockFtso.address,
-                0,
-                1
+                yearSeconds / 10,
+                1,
+                startTs.addn((yearSeconds / 10 * 13) - 1)
             ).encodeABI();
 
             // Assert

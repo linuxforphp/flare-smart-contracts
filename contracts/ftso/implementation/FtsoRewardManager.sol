@@ -3,22 +3,21 @@ pragma solidity 0.7.6;
 
 import "../interface/IIFtsoRewardManager.sol";
 import "../../governance/implementation/Governed.sol";
-import { SupplyAccounting } from "../../accounting/implementation/SupplyAccounting.sol";
-import { FtsoRewardManagerAccounting } from "../../accounting/implementation/FtsoRewardManagerAccounting.sol";
-import { CloseManager } from "../../accounting/implementation/CloseManager.sol";
-import { IIAccountingClose } from "../../accounting/interface/IIAccountingClose.sol";
 import "../../token/implementation/WFlr.sol";
 import "../../utils/implementation/SafePct.sol";
+import { Inflation } from "../../inflation/implementation/Inflation.sol";
+import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiver.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { FlareKeeper } from "../../utils/implementation/FlareKeeper.sol";
+
+import "hardhat/console.sol";
 
 /**
  * FTSORewardManager is in charge of:
  * - distributing rewards according to instructions from FTSO Manager
  * - allowing claims for rewards
  */    
-contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, ReentrancyGuard {
+contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, Governed, ReentrancyGuard {
     using SafePct for uint256;
     using SafeMath for uint256;
 
@@ -32,10 +31,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         bool[] claimed;             // positional array of booleans indicating if reward has already been claimed
     }
 
-    string internal constant ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO = "no RM accounting";
-    string internal constant ERR_SUPPLY_ACCOUNTING_ZERO = "no supply accounting";
     string internal constant ERR_FTSO_MANAGER_ONLY = "ftso manager only";
-    string internal constant ERR_CLOSE_MANAGER_ONLY = "close manager only";
+    string internal constant ERR_INFLATION_ONLY = "inflation only";
+    string internal constant ERR_INFLATION_ZERO = "inflation zero";
     string internal constant ERR_FTSO_MANAGER_ZERO = "no ftso manager";
     string internal constant ERR_WFLR_ZERO = "no wflr";
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
@@ -43,8 +41,10 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
     string internal constant ERR_FEE_PERCENTAGE_INVALID = "invalid fee percentage value";
     string internal constant ERR_FEE_PERCENTAGE_UPDATE_FAILED = "fee percentage can not be updated";
+    string internal constant ERR_AFTER_DAILY_CYCLE = "after daily cycle";
     
     uint256 constant internal MAX_BIPS = 1e4;
+uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
 
     bool internal active;
 
@@ -55,9 +55,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     
     // id of the first epoch to expire. Closed = expired and unclaimed funds sent back
     uint256 private firstEpochToCheckExpiry; 
-
-    // sum of all claims that were not yet reported to the accounting system
-    uint256 private unreportedClaimedRewardsAmount = 1;
     
     /**
      * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed rewards.
@@ -69,23 +66,25 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     mapping(uint256 => uint256) public claimedRewardEpochRewards;
 
     mapping(address => FeePercentage[]) public dataProviderFeePercentages;
-    uint256 public distributedSoFar;
+
+    // Totals
+    uint256 public totalAwardedWei;
+    uint256 public totalClaimedWei;
+    uint256 public totalExpiredWei; // rewards that were not claimed
+    uint256 public totalInflationAuthorizedWei;
+    uint256 public totalInflationReceivedWei;
+    uint256 public lastInflationAuthorizationReceivedTs;
+    uint256 public dailyAuthorizedInflation;
 
     /// addresses
-    IIFtsoManager public ftsoManager;    
-    FtsoRewardManagerAccounting public ftsoRewardManagerAccounting;
-
-    address public flareKeeper;
+    IIFtsoManager public ftsoManager;
+    Inflation public inflation;
 
     WFlr public wFlr; 
-    SupplyAccounting public supplyAccounting;
-    CloseManager public closeManager;
 
     modifier mustBalance {
         _;
-        uint256 rewardManagerAccountingBalance = ftsoRewardManagerAccounting.getRewardManagerBalance();
-        require(address(this).balance.add(getUnreportedClaimedRewardsAmount()) == rewardManagerAccountingBalance,
-            ERR_OUT_OF_BALANCE);
+        require(address(this).balance == getExpectedBalance(), ERR_OUT_OF_BALANCE);
     }
 
     modifier onlyFtsoManager () {
@@ -98,39 +97,25 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         _;
     }
 
-    modifier onlyCloseManager {
-        require(msg.sender == address(closeManager), ERR_CLOSE_MANAGER_ONLY);
+    modifier onlyInflation {
+        require(msg.sender == address(inflation), ERR_INFLATION_ONLY);
         _;
     }
 
     constructor(
         address _governance,
-        FtsoRewardManagerAccounting _ftsoRewardManagerAccounting,
-        SupplyAccounting _supplyAccounting,
         uint256 _feePercentageUpdateOffset,
         uint256 _defaultFeePercentage,
         uint256 _rewardExpiryOffset,
-        CloseManager _closeManager
+        Inflation _inflation
     ) Governed(_governance)
     {
-        require(address(_ftsoRewardManagerAccounting) != address(0), ERR_FTSO_REWARD_MANAGER_ACCOUNTING_ZERO);
-        require(address(_supplyAccounting) != address(0), ERR_SUPPLY_ACCOUNTING_ZERO);
-        
-        ftsoRewardManagerAccounting = _ftsoRewardManagerAccounting;
-        supplyAccounting = _supplyAccounting;
-        closeManager = _closeManager;
+        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
+
+        inflation = _inflation;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
         rewardExpiryOffset = _rewardExpiryOffset;
-    }
-
-    receive() external payable mustBalance {
-        // prevent sending funds from other addresses then flareKeeper
-        require(flareKeeper != address(0) && msg.sender == flareKeeper);
-
-        //TODO: account for tokens recieved in self destruct attack
-        ftsoRewardManagerAccounting.receiveSupply(msg.value);
-        emit FundsReceived(msg.sender, msg.value);
     }
 
     /**
@@ -196,16 +181,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     }
 
     /**
-     * @notice Accounting close called by CloseManager to report local sub-ledger kept
-     *   claims to the accounting system on a less that real-time basis.
-     * @dev Only to be called by CloseManager, which will corrdinate closing the GL across the entire system.
-     */
-    function close() external override onlyCloseManager {
-        uint256 claimedSinceLastClose = getUnreportedClaimedRewardsAmountAndFlush();
-        ftsoRewardManagerAccounting.rewardsClaimed(claimedSinceLastClose);
-    }
-
-    /**
      * @notice Activates reward manager (allows claiming rewards)
      */
     function activate() external override onlyGovernance {
@@ -232,8 +207,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     /**
      * @notice sets CloseManager
      */
-    function setCloseManager(CloseManager _closeManager) external override onlyGovernance {
-        closeManager = _closeManager;
+    function setInflation(Inflation _inflation) external onlyGovernance {
+        inflation = _inflation;
     }
 
     /**
@@ -244,11 +219,19 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         wFlr = _wFlr;
     }
 
-    /**
-     * @notice sets Flare keeper contract
-     */
-    function setFlareKeeper(address _flareKeeper) external override onlyGovernance {
-        flareKeeper = _flareKeeper;
+    function setDailyAuthorizedInflation(uint256 _toAuthorizeWei) external override onlyInflation {
+        dailyAuthorizedInflation = _toAuthorizeWei;
+        totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(_toAuthorizeWei);
+        lastInflationAuthorizationReceivedTs = block.timestamp;
+        // TODO: event
+    }
+
+    function receiveInflation() external payable override onlyInflation {
+        // TODO: Self-destruct receiving will not break balancing, but current implementation
+        // will also not be able to track it, and therefore, distribute it.
+        // To do so will require looking at the expected topup from 
+        totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
+        // TODO: fire event
     }
 
     /**
@@ -261,16 +244,19 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         uint256 _totalWeight,
         uint256 _epochId,
         address _ftso,
-        uint256 _priceEpochsRemaining,
-        uint256 _currentRewardEpoch
+        uint256 _priceEpochDurationSec,
+        uint256 _currentRewardEpoch,
+        uint256 _priceEpochEndTime
     ) external override onlyFtsoManager {
         // FTSO manager should never call with bad values.
         assert (_totalWeight != 0 && _addresses.length != 0);        
 
-        uint256 totalPriceEpochReward = supplyAccounting.getUndistributedFtsoInflationBalance();
-        if (_priceEpochsRemaining > 0) {
-            totalPriceEpochReward = totalPriceEpochReward.div(_priceEpochsRemaining);
-        }
+        // console.log("_getDistributableFtsoInflationBalance() = ", _getDistributableFtsoInflationBalance());
+        // console.log("count = ", _getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
+        uint256 totalPriceEpochReward = 
+            _getDistributableFtsoInflationBalance()
+            .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
+        console.log("totalPriceEpochReward = ", totalPriceEpochReward);
         uint256 currentDistributedSoFar = 0;
 
         uint256[] memory rewards = new uint256[](_addresses.length);
@@ -293,8 +279,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
 
         totalRewardEpochRewards[_currentRewardEpoch] += totalPriceEpochReward;
 
-        // Update accounting with total amount distributed
-        ftsoRewardManagerAccounting.rewardsEarned(totalPriceEpochReward);
+        // Update total awarded with amount distributed
+        totalAwardedWei = totalAwardedWei.add(totalPriceEpochReward);
 
         emit RewardsDistributed(_ftso, _epochId, _addresses, rewards);
     }
@@ -337,7 +323,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     }
     
     /**
-     * @notice Collects funds from expired reward epochs and reports unclaimed amount to accounting system.
+     * @notice Collects funds from expired reward epochs and totals.
      * @dev Triggered by ftsoManager on finalization of a reward epoch.
      */
     function closeExpiredRewardEpochs() external override onlyFtsoManager {
@@ -350,9 +336,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
             emit RewardClaimsExpired(firstEpochToCheckExpiry);
             firstEpochToCheckExpiry++;
         }
-        if(expiredRewards > 0) {
-            ftsoRewardManagerAccounting.rewardsExpired(expiredRewards);
-        }
+        totalExpiredWei = totalExpiredWei.add(expiredRewards);
     }
 
     /**
@@ -466,14 +450,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
     }
 
     /**
-     * @notice Return the sum of claimed rewards that were not reported to accounting system
-     * @return Unreported claimed rewards amount
-     */
-    function getUnreportedClaimedRewardsAmount() public view override returns (uint256) {
-        return unreportedClaimedRewardsAmount - 1;
-    }
-
-    /**
      * @notice Claims `_rewardAmounts` for `_dataProviders`.
      * @dev Internal function that takes care of reward bookkeeping
      * @param _recipient            address representing the recipient of the reward
@@ -500,7 +476,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
             if (rewardAmount > 0) {
                 assert(unclaimedRewardsPerRewardEpoch[_rewardEpoch][dataProvider] >= rewardAmount); // sanity check
                 unclaimedRewardsPerRewardEpoch[_rewardEpoch][dataProvider] -= rewardAmount;
-                distributedSoFar += rewardAmount;
+                totalClaimedWei += rewardAmount;
                 totalRewardAmount += rewardAmount;
             }
 
@@ -516,6 +492,24 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         return totalRewardAmount;
     }
 
+    function _getDistributableFtsoInflationBalance() internal view returns (uint256) {
+        return totalInflationAuthorizedWei
+            .sub(totalAwardedWei.sub(totalExpiredWei));
+    }
+
+    function _getRemainingPriceEpochCount(
+        uint256 _fromThisTs, 
+        uint256 _priceEpochDurationSec
+    )
+        internal view
+        returns (uint256)
+    {
+        // Get the end of the daily period
+        uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_FULL_DAY_SEC);
+        require(_fromThisTs <= dailyPeriodEndTs, ERR_AFTER_DAILY_CYCLE);
+        return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSec) + 1;
+    }
+
     /**
      * @notice Transfers `_rewardAmount` to `_recipient`.
      * @param _recipient            address representing the reward recipient
@@ -524,7 +518,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
      */
     function _transferReward(address payable _recipient, uint256 _rewardAmount) internal {
         if (_rewardAmount > 0) {
-            unreportedClaimedRewardsAmount += _rewardAmount;
             // transfer total amount (state is updated and events are emitted in _claimReward)
             /* solhint-disable avoid-low-level-calls */
             (bool success, ) = _recipient.call{value: _rewardAmount}("");
@@ -533,15 +526,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         }
     }
     
-    /**
-     * @notice Returns unreported claims and flushes them.
-     */ 
-    function getUnreportedClaimedRewardsAmountAndFlush() internal returns (uint256) {
-        uint256 toReport = getUnreportedClaimedRewardsAmount();
-        unreportedClaimedRewardsAmount = 1; // save gas. set to 1
-        return toReport;
-    }
-
     /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`.
      * @dev Internal function
@@ -777,4 +761,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIAccountingClose, Governed, 
         return defaultFeePercentage;
     }
 
+    function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
+        return totalInflationReceivedWei
+            .sub(totalClaimedWei);
+    }
 }

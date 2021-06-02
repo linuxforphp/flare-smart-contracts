@@ -892,7 +892,6 @@ export async function createMockFtsoManager(priceSubmitterAddress: string): Prom
       constants.ZERO_ADDRESS, 
       constants.ZERO_ADDRESS, 
       priceSubmitterAddress, 
-      constants.ZERO_ADDRESS,
       120, 
       10, 
       60, 

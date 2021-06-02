@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { FtsoInflationAuthorizer } from "../../inflation/implementation/FtsoInflationAuthorizer.sol";
 import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtsoRewardManager.sol";
 import "../../utils/interfaces/IFlareKeep.sol";
@@ -70,7 +69,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     mapping(IIFtso => bool) internal managedFtsos;
     IIFtsoRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
-    FtsoInflationAuthorizer internal ftsoInflationAuthorizer;
 
     // flags
     bool private justStarted;
@@ -85,7 +83,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         address _governance,
         IIFtsoRewardManager _rewardManager,
         IPriceSubmitter _priceSubmitter,
-        FtsoInflationAuthorizer _ftsoInflationAuthorizer,
         uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
         uint256 _revealEpochDurationSec,
@@ -116,7 +113,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         votePowerBoundaryFraction = _votePowerBoundaryFraction;
         rewardManager = _rewardManager;
         priceSubmitter = _priceSubmitter;
-        ftsoInflationAuthorizer = _ftsoInflationAuthorizer;
         justStarted = true;
     }
 
@@ -495,8 +491,9 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
                 try rewardManager.distributeRewards(
                     addresses, weights, totalWeight,
                     lastUnprocessedPriceEpoch, rewardedFtsoAddress,
-                    _getPriceEpochsRemainingInAnnum(lastUnprocessedPriceEpochEnds - priceEpochDurationSec),
-                    currentRewardEpoch) {
+                    priceEpochDurationSec,
+                    currentRewardEpoch,
+                    _getPriceEpochEndTime(lastUnprocessedPriceEpoch)) {
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
                 } catch {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
@@ -563,18 +560,6 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         }
     }
 
-    function _getPriceEpochsRemainingInAnnum(uint256 _fromTimestamp) internal view returns(uint256) {
-        uint256 endTimestamp;
-
-        (, , , endTimestamp, ) = 
-            ftsoInflationAuthorizer.inflationAnnums(ftsoInflationAuthorizer.currentAnnum());
-        if (_fromTimestamp <= endTimestamp) {
-            return (endTimestamp - _fromTimestamp) / priceEpochDurationSec;
-        } else {
-            return 0;
-        }
-    }
-
     /**
      * @notice Check if all multi fasset ftsos are managed by this ftso manager, revert otherwise
      */
@@ -591,6 +576,14 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     function _getCurrentPriceEpochEndTime() internal view returns (uint256) {
         uint256 currentPriceEpoch = _getCurrentPriceEpochId();
         return firstPriceEpochStartTs + (currentPriceEpoch + 1) * priceEpochDurationSec;
+    }
+
+    /**
+     * @notice Returns price epoch end time.
+     * @param _forPriceEpochId The price epoch id of the end time to fetch.
+     */
+    function _getPriceEpochEndTime(uint256 _forPriceEpochId) internal view returns (uint256) {
+        return firstPriceEpochStartTs + ((_forPriceEpochId + 1) * priceEpochDurationSec) - 1;
     }
 
     /**

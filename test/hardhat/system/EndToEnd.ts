@@ -9,10 +9,10 @@ import {
   FtsoInstance, 
   FtsoManagerContract, 
   FtsoManagerInstance, 
-  FtsoRewardMintingFaucetContract, 
-  FtsoRewardMintingFaucetInstance, 
   FtsoRewardManagerContract,
   FtsoRewardManagerInstance,
+  SuicidalMockContract,
+  SuicidalMockInstance,
   WFlrContract,
   WFlrInstance} from "../../../typechain-truffle";
 
@@ -20,7 +20,6 @@ import { Contracts } from "../../../scripts/Contracts";
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart} from "../../utils/FTSO-test-utils"
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
-import { moveToInterMintingStart, moveToNextFundWithdrawStart } from "../../utils/MintingFaucetTestUtils";
 import { submitPriceHash } from '../../utils/test-helpers';
 const { expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -100,13 +99,13 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let ftsoFada: FtsoInstance;
   let ftsoFalgo: FtsoInstance;
   let ftsoFbch: FtsoInstance;
-  let FtsoRewardMintingFaucet: FtsoRewardMintingFaucetContract;
-  let ftsoRewardMintingFaucet: FtsoRewardMintingFaucetInstance;
   let firstPriceEpochStartTs: BN;
   let priceEpochDurationSec: BN;
   let revealEpochDurationSec: BN;
   let rewardEpochDurationSec: BN;
   let rewardEpochsStartTs: BN;
+  let SuicidalMock: SuicidalMockContract;
+  let suicidalMock: SuicidalMockInstance;
 
   before(async() => {
     // Get contract addresses of deployed contracts
@@ -131,8 +130,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     ftsoFada = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FADA));
     ftsoFalgo = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FALGO));
     ftsoFbch = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FBCH));
-    FtsoRewardMintingFaucet = artifacts.require("FtsoRewardMintingFaucet");
-    ftsoRewardMintingFaucet = await FtsoRewardMintingFaucet.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MINTING_FAUCET));
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
@@ -142,6 +139,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Set the ftso manager configuration parameters for time travel
     rewardEpochDurationSec = await ftsoManager.rewardEpochDurationSec();
     rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
+
+    // Set up the suicidal mock contract so we can conjure FLR into the keeper by self-destruction
+    SuicidalMock = artifacts.require("SuicidalMock");
+    suicidalMock = await SuicidalMock.new(flareKeeper.address);
   });
 
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async() => {
@@ -165,8 +166,19 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await wFLR.delegate(p2, 5000, {from: d1});
     await wFLR.delegate(p3, 2500, {from: d1});
 
-    // Prime the keeper to establish vote power block
+    // Prime the keeper to establish vote power block.
     await flareKeeper.trigger();    
+
+    // A minting request should be pending...
+    const mintingRequestWei = await flareKeeper.totalMintingRequestedWei();
+    if (mintingRequestWei.gt(BN(0))) {
+      // It is, so let's pretend to be the validator and self-destruct what was asked for into the keeper.
+      // Give suicidal some FLR
+      await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: mintingRequestWei});
+      await suicidalMock.die();
+    } else {
+      assert(false, "No minting request made. Claiming is not going to work too well...");
+    }
 
     // Set up a fresh price epoch
     await moveFromCurrentToNextEpochStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSec.toNumber(), 1);
@@ -238,34 +250,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       parseInt(p1FlrPrice!.epochId));
     await flareKeeper.trigger({ gas: 10000000 });
 
-    // Time travel to be within the reward manager inter-funding request minting period
-    // Get the last fund withdraw timestamp
-    const lastFundsWithdrawTs = await ftsoRewardMintingFaucet.lastFundsWithdrawTs();
-    // Get the fund withdraw time lock
-    const fundWithdrawTimeLockSec = await ftsoRewardMintingFaucet.fundWithdrawTimeLockSec();
-    // Get the fund request JIT interval
-    const fundRequestIntervalSec = await ftsoRewardMintingFaucet.fundRequestIntervalSec();
-
-    // Now time travel to within the fund request interval
-    await moveToInterMintingStart(
-      lastFundsWithdrawTs.toNumber(), 
-      fundWithdrawTimeLockSec.toNumber(), 
-      fundRequestIntervalSec.toNumber());
-    // Pump the keeper and get mint request...some FLR should have been requested
-    const mintRequestReceipt = await flareKeeper.trigger();
-
-    // Get the next topup request amount
-    const nextWithdrawAmountTWei = await ftsoRewardMintingFaucet.nextWithdrawAmountTWei();
-    // The keeper should have fired an event with this amount
-    await expectEvent(mintRequestReceipt, "MintingRequested", { toMintTWei: nextWithdrawAmountTWei });
-    // Be the fakey validator and send FLR to keeper
-    await web3.eth.sendTransaction({ from: accounts[0], to: flareKeeper.address, value: nextWithdrawAmountTWei });
-    // Time travel to just past the withdraw time lock
-    await moveToNextFundWithdrawStart(lastFundsWithdrawTs.toNumber(), fundWithdrawTimeLockSec.toNumber());
-    // Pump the keeper; this should trigger the reward manager topup
-    await flareKeeper.trigger();
     // There should be a balance to claim within reward manager at this point
-    assert(BN(await web3.eth.getBalance(rewardManager.address)) > BN(0), "No reward manager balance. Minting is broken.");
+    assert(BN(await web3.eth.getBalance(rewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
 
     // Time travel to reward epoch finalization
     await moveToRewardFinalizeStart(
@@ -329,11 +315,22 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       .add(gasCost);
 
     // Compute what we should have distributed for one price epoch
-    const numberOfSecondsInYear = BN(3600 * 24 * 365);
-    // Inflate at 9% inflation, 100 billion flare
-    const shouldaClaimed = web3.utils.toWei(BN(100000000000)).mul(BN(9)).div(BN(100)).div(numberOfSecondsInYear.div(priceEpochDurationSec));
+    const numberOfSecondsInDay = BN(3600 * 24);
+    // Get the daily inflation authorized on ftso reward manager
+    const dailyAuthorizedInflation = await rewardManager.dailyAuthorizedInflation();
+    // 1 subtracted from period remaining because first price epoch was used to prime
+    // vote power block; no prices were voted on.
+    const shouldaClaimed = dailyAuthorizedInflation
+      .div(
+        numberOfSecondsInDay.div(priceEpochDurationSec).sub(BN(1))
+      );
+
+    // Account for allocation truncation during distribution calc
+      // TODO: This should be fixed with a double declining balance allocation, where ever it is that
+      // is causing this rounding problem.
+      const differenceBetweenActualAndExpected = shouldaClaimed.sub(computedRewardClaimed);
 
     // After all that, one little test...
-    assert(computedRewardClaimed.eq(shouldaClaimed), `should have claimed ${shouldaClaimed} but actually claimed ${computedRewardClaimed}`);
+    assert(differenceBetweenActualAndExpected.lt(BN(10)), `should have claimed ${shouldaClaimed} but actually claimed ${computedRewardClaimed}`);
   });
 });
