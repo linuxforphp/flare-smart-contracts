@@ -3,8 +3,7 @@ import {
   InflationMockInstance, 
   MockContractInstance } from "../../../typechain-truffle";
 
-const {expectRevert, expectEvent} = require('@openzeppelin/test-helpers');
-
+const {expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 const genesisGovernance = require('../../utils/constants').genesisGovernance;
 
@@ -22,6 +21,7 @@ const CANT_FIND_CONTRACT_MSG = "contract not found";
 const REGISTRATIONUPDATED_EVENT = "RegistrationUpdated";
 const MINTINGREQUESTED_EVENT = "MintingRequested";
 const ERR_OUT_OF_BALANCE = "out of balance";
+const MAX_MINTING_FREQUENCY_SEC = 23 * 60 * 60; // Limit from FlareKeeper
 
 contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, async accounts => {
     // contains a fresh contract for each test
@@ -145,6 +145,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         it.skip("Should revert if trigger called more than once from same block", async() => {
             // TODO: Test reject if trigger called more than once for same block; HH advances the block for every call.
             // Not sure how to do this in an automated manner.
+            // 2.1.0 Version of Hardhat supports interval mining
+            // https://github.com/nomiclabs/hardhat/releases/tag/hardhat-core-v2.1.0
         });
 
         it("Should return amount to mint when triggered with a pending mint request", async() => {
@@ -432,6 +434,36 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           assert(keeperBalance.eq(BN(10)), "keeper does not contain expected balance");
         });
 
+        // Working version
+        it("Should self destruct when minting more than available", async () => {
+          // Assemble
+          await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+          await mockInflation.setFlareKeeper(flareKeeper.address);
+          await mockInflation.setDoNotReceiveNoMoreThan(BN(1000)); // Why is this needed?
+          await mockInflation.requestMinting(BN(100));
+
+          await flareKeeper.trigger();
+          // Our fakey validator will be suiciding with less than expected to mint
+          const suicidalMock = await SuicidalMock.new(flareKeeper.address);
+          // Give suicidal some FLR
+          await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 90});
+          // Suicidal validator mints and we pretend that another attacker attacks in same block
+          await suicidalMock.die();
+          // Act
+          await flareKeeper.trigger();
+          // Assert
+          // Nothing was minted
+          const inflationBalance = BN(await web3.eth.getBalance(mockInflation.address));
+          assert(inflationBalance.eq(BN(0)), "rewarding target did not get expected balance");
+          // Keeper recorded self-destruct balance
+          const receivedSelfDestructProceeds = await flareKeeper.totalSelfDestructReceivedWei();
+          assert(receivedSelfDestructProceeds.eq(BN(90)), "expected self destruct balance incorrect");
+          // Keeper still has remaining balance
+          const keeperBalance = BN(await web3.eth.getBalance(flareKeeper.address));
+          assert(keeperBalance.eq(BN(90)), "keeper does not contain expected balance");
+          
+        });
+
         it("Should log error if transfer of requested minting fails", async() => {
           // Assemble
           await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
@@ -485,18 +517,24 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           await expectRevert.unspecified(requestPromise); // unspecified because it is raised within mock call
         });
 
-        it.skip("Should allow mint request exactly after timelock expires", async() => {
+        it("Should allow mint request exactly after timelock expires", async() => {
+          // This test currently waits 23h on a real network so run it with caution
           // Assemble
           await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
           await mockInflation.setFlareKeeper(flareKeeper.address);
+          // Advance block to ensure that keeper has current time
+          await time.advanceBlock();
           await mockInflation.requestMinting(BN(100));
-          
-          // do time shift
 
-          // request minting
+          // Do time shift
+          // Advance just enough
+          await time.increase(MAX_MINTING_FREQUENCY_SEC);
 
+          // request minting as promise
+          const requestPromise = mockInflation.requestMinting(BN(100));
           // Assert
-          
+          // Forced promise should not fail
+          await requestPromise;
         });
 
         it("Should have cap on excessive minting", async() => {
