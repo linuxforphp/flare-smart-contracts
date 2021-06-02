@@ -70,19 +70,16 @@ contract Inflation is Governed, IFlareKeep {
         IIInflationPercentageProvider _inflationPercentageProvider,
         IIInflationSharingPercentageProvider _inflationSharingPercentageProvider,
         FlareKeeper _flareKeeper,
-        Supply _supply,
         uint256 _rewardEpochStartTs
     )
         Governed(_governance)
         notZero(address(_inflationPercentageProvider))
         notZero(address(_inflationSharingPercentageProvider))
         notZero(address(_flareKeeper))
-        notZero(address(_supply))
     {
         inflationPercentageProvider = _inflationPercentageProvider;
         inflationSharingPercentageProvider = _inflationSharingPercentageProvider;
         flareKeeper = _flareKeeper;
-        supply = _supply;
         rewardEpochStartTs = _rewardEpochStartTs;
     }
 
@@ -183,7 +180,7 @@ contract Inflation is Governed, IFlareKeep {
         _topupConfiguration.configured = topupConfiguration.configured;
     }
 
-    function keep() public virtual override returns(bool) {
+    function keep() public virtual override notZero(address(supply)) returns(bool) {
         // If inflation rewarding not started yet, blow off processing until it does.
         if (block.timestamp < rewardEpochStartTs) {
             return true;

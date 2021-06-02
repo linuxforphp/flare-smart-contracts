@@ -46,10 +46,6 @@ async function main(parameters: any) {
   const Supply = artifacts.require("Supply");
   const WFLR = artifacts.require("WFlr");
 
-  // Supply contract
-  const supply = await Supply.new();
-  spewNewContractInfo(contracts, Supply.contractName, supply.address);
-
   // InflationAllocation contract
   // ftsoRewardManager will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, parameters.inflationPercentageBips);
@@ -84,12 +80,22 @@ async function main(parameters: any) {
     inflationAllocation.address,
     inflationAllocation.address,
     flareKeeper.address,
-    supply.address,
     startTs
   );
   spewNewContractInfo(contracts, Inflation.contractName, inflation.address);
   // The keeper needs a reference to the inflation contract.
   await flareKeeper.setInflation(inflation.address);
+
+  // Supply contract
+  const supply = await Supply.new(
+    deployerAccount.address,
+    constants.ZERO_ADDRESS,
+    inflation.address,
+    BN(parameters.totalFlrSupply).mul(BN(10).pow(BN(18))),
+    BN(0), // TODO - locked foundation supply
+    []
+  );
+  spewNewContractInfo(contracts, Supply.contractName, supply.address);
 
   // RewardManager contract
   const ftsoRewardManager = await FtsoRewardManager.new(
@@ -97,10 +103,17 @@ async function main(parameters: any) {
     parameters.rewardFeePercentageUpdateOffset,
     parameters.defaultRewardFeePercentage,
     parameters.rewardExpiryOffset,
-    inflation.address);
+    inflation.address,
+    supply.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address);
+  
   // Inflation allocation needs to know about ftso reward manager
   await inflationAllocation.setSharingPercentages([ftsoRewardManager.address], [10000]);
+  // Supply contract needs to know about ftso reward manager
+  await supply.addRewardManager(ftsoRewardManager.address);
+
+  // The inflation needs a reference to the supply contract.
+  await inflation.setSupply(supply.address);
   
   // PriceSubmitter contract
   const priceSubmitter = await PriceSubmitter.new();
@@ -263,6 +276,7 @@ async function main(parameters: any) {
 
   // Turn over governance
   console.error("Transfering governance...");
+  await supply.proposeGovernance(governanceAccount.address);
   await inflation.proposeGovernance(governanceAccount.address);
   await inflationAllocation.proposeGovernance(governanceAccount.address);
   await flareKeeper.proposeGovernance(governanceAccount.address);

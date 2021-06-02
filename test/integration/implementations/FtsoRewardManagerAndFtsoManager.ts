@@ -36,9 +36,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let wFlr: WFlrInstance;
     let fakeFlareKeeperAddress = accounts[1];
     let mockInflation: InflationMockInstance;
+    let mockSupply: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
+        mockSupply = await MockContract.new();
         ftsoInterface = await Ftso.new(
             "FLR",
             constants.ZERO_ADDRESS as any,
@@ -53,7 +55,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             3,
             0,
             100,
-            mockInflation.address
+            mockInflation.address,
+            mockSupply.address
         );
 
         await mockInflation.setInflationReceiver(ftsoRewardManager.address);

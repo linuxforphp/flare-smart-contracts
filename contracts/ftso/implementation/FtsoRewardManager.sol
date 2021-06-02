@@ -6,18 +6,19 @@ import "../../governance/implementation/Governed.sol";
 import "../../token/implementation/WFlr.sol";
 import "../../utils/implementation/SafePct.sol";
 import { Inflation } from "../../inflation/implementation/Inflation.sol";
+import "../../accounting/interface/IIRewardManager.sol";
 import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiver.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 /**
  * FTSORewardManager is in charge of:
  * - distributing rewards according to instructions from FTSO Manager
  * - allowing claims for rewards
  */    
-contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, Governed, ReentrancyGuard {
+contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIRewardManager, Governed, ReentrancyGuard {
     using SafePct for uint256;
     using SafeMath for uint256;
 
@@ -34,6 +35,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, Governed
     string internal constant ERR_FTSO_MANAGER_ONLY = "ftso manager only";
     string internal constant ERR_INFLATION_ONLY = "inflation only";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
+    string internal constant ERR_SUPPLY_ZERO = "supply zero";
     string internal constant ERR_FTSO_MANAGER_ZERO = "no ftso manager";
     string internal constant ERR_WFLR_ZERO = "no wflr";
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
@@ -79,6 +81,7 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
     /// addresses
     IIFtsoManager public ftsoManager;
     Inflation public inflation;
+    Supply public supply;
 
     WFlr public wFlr; 
 
@@ -107,12 +110,15 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         uint256 _feePercentageUpdateOffset,
         uint256 _defaultFeePercentage,
         uint256 _rewardExpiryOffset,
-        Inflation _inflation
+        Inflation _inflation,
+        Supply _supply
     ) Governed(_governance)
     {
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
+        require(address(_supply) != address(0), ERR_SUPPLY_ZERO);
 
         inflation = _inflation;
+        supply = _supply;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
         rewardExpiryOffset = _rewardExpiryOffset;
@@ -205,10 +211,20 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
     }
 
     /**
-     * @notice sets CloseManager
+     * @notice Sets inflation contract
      */
     function setInflation(Inflation _inflation) external onlyGovernance {
+        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
         inflation = _inflation;
+    }
+
+    
+    /**
+     * @notice Sets supply contract
+     */
+    function setSupply(Supply _supply) external override onlyGovernance {
+        require(address(_supply) != address(0), ERR_SUPPLY_ZERO);
+        supply = _supply;
     }
 
     /**
@@ -224,6 +240,9 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(_toAuthorizeWei);
         lastInflationAuthorizationReceivedTs = block.timestamp;
         // TODO: event
+
+        // update supply contract with new data
+        supply.updateRewardManagerData(totalInflationAuthorizedWei, totalClaimedWei);
     }
 
     function receiveInflation() external payable override onlyInflation {
@@ -256,7 +275,7 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         uint256 totalPriceEpochReward = 
             _getDistributableFtsoInflationBalance()
             .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
-        console.log("totalPriceEpochReward = ", totalPriceEpochReward);
+        // console.log("totalPriceEpochReward = ", totalPriceEpochReward);
         uint256 currentDistributedSoFar = 0;
 
         uint256[] memory rewards = new uint256[](_addresses.length);
@@ -276,6 +295,7 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
             totalPriceEpochReward - currentDistributedSoFar;
         totalRewardsPerRewardEpoch[_currentRewardEpoch][_addresses[0]] +=
             totalPriceEpochReward - currentDistributedSoFar;
+        rewards[0] = totalPriceEpochReward - currentDistributedSoFar;
 
         totalRewardEpochRewards[_currentRewardEpoch] += totalPriceEpochReward;
 
