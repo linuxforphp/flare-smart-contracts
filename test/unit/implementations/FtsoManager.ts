@@ -66,6 +66,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             3,
             0,
             100,
+            (await MockContract.new()).address,
             (await MockContract.new()).address
         );
 

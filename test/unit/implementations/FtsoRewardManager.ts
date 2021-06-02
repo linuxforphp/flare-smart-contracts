@@ -8,7 +8,8 @@ import {
   FtsoRewardManagerInstance, 
   WFlrContract, 
   WFlrInstance, 
-  InflationMockInstance } from "../../../typechain-truffle";
+  InflationMockInstance, 
+  MockContractInstance} from "../../../typechain-truffle";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -18,6 +19,7 @@ const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const WFLR = artifacts.require("WFlr") as WFlrContract;
 const InflationMock = artifacts.require("InflationMock");
+const MockContract = artifacts.require("MockContract");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -33,6 +35,7 @@ let startTs: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let wFlr: WFlrInstance;
 let mockInflation: InflationMockInstance;
+let mockSupply: MockContractInstance;
 
 async function distributeRewards(
   accounts: Truffle.Accounts, 
@@ -114,16 +117,19 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
 
     let fakeFlareKeeperAddress = accounts[0];
 
+
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
         mockInflation = await InflationMock.new();
+        mockSupply = await MockContract.new();
 
         ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
             3,
             0,
             100,
-            mockInflation.address
+            mockInflation.address,
+            mockSupply.address
         );
 
         await mockInflation.setInflationReceiver(ftsoRewardManager.address);
@@ -163,7 +169,8 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
                 3,
                 0,
                 100,
-                mockInflation.address
+                mockInflation.address,
+                mockSupply.address
             );
 
             await expectRevert(ftsoRewardManager.activate(), "no ftso manager");
@@ -175,7 +182,8 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
                 3,
                 0,
                 100,
-                mockInflation.address
+                mockInflation.address,
+                mockSupply.address
             );
 
             await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);

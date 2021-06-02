@@ -60,9 +60,9 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
             mockInflationPercentageProvider.address,
             mockInflationSharingPercentageProvider.address,
             mockFlareKeeper.address,
-            mockSupply.address,
             0
         );
+        inflation.setSupply(mockSupply.address);
     });
 
     describe("init", async() => {
@@ -411,9 +411,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
             mockInflationPercentageProvider.address,
             mockInflationSharingPercentageProvider.address,
             mockFlareKeeper.address,
-            mockSupply.address,
             latest + 2 * 86400 // Set time sometime after now, but at least two days to trigger new inflation if not exiting preemptively
         );
+
+        await inflation.setSupply(mockSupply.address);
        
         // Act
         await inflation.keep();
