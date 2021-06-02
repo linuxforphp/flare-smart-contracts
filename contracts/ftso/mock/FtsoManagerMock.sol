@@ -22,13 +22,15 @@ contract FtsoManagerMock is MockContract {
         uint256 totalWeight,
         uint256 epochId,
         address ftso,
-        uint256 priceEpochsRemaining,
-        uint256 currentRewardEpoch) public {
+        uint256 priceEpochDurationSec,
+        uint256 currentRewardEpoch,
+        uint256 priceEpochEndTime) public {
         // This low level call is being done because of mixed Solidity version requirements between
         // this project and the MockContract component.
         bytes memory payload = abi.encodeWithSignature(
-            "distributeRewards(address[],uint256[],uint256,uint256,address,uint256,uint256)",
-            addresses, weights, totalWeight, epochId, ftso, priceEpochsRemaining, currentRewardEpoch);
+            "distributeRewards(address[],uint256[],uint256,uint256,address,uint256,uint256,uint256)",
+            addresses, weights, totalWeight, epochId, ftso, priceEpochDurationSec, currentRewardEpoch, 
+            priceEpochEndTime);
         //solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = _rewardManager.call(payload);
         require(success);

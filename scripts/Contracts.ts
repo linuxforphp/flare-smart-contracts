@@ -14,17 +14,9 @@ export class Contracts {
   private contracts: Map<string, string>;
   private collection: Contract[];
 
-  public static readonly CLOSE_MANAGER = "CloseManager";
+  public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
-  public static readonly FTSO_INFLATION_PERCENTAGE_PROVIDER = "FtsoInflationPercentageProvider";
-  public static readonly FLARE_NETWORK_GENERAL_LEDGER = "FlareNetworkGeneralLedger";
-  public static readonly FTSO_INFLATION_AUTHORIZER = "FtsoInflationAuthorizer";
-  public static readonly SUPPLY_ACCOUNTING = "SupplyAccounting";
-  public static readonly FTSO_INFLATION_ACCOUNTING = "FtsoInflationAccounting";
-  public static readonly FTSO_REWARD_MANAGER_ACCOUNTING = "FtsoRewardManagerAccounting";
-  public static readonly MINT_ACCOUNTING = "MintAccounting";
-  public static readonly FTSO_REWARD_MANAGER_TOPUP = "FtsoRewardManagerTopup";
-  public static readonly FTSO_REWARD_MINTING_FAUCET = "FtsoRewardMintingFaucet";
+  public static readonly INFLATION = "Inflation";
   public static readonly FTSO_REWARD_MANAGER = "FtsoRewardManager";
   public static readonly PRICE_SUBMITTER = "PriceSubmitter";
   public static readonly FTSO_MANAGER = "FtsoManager";
@@ -40,7 +32,6 @@ export class Contracts {
   public static readonly DUMMY_FXDG_MINTER = "DummyFxdgMinter";
   public static readonly FTSO_FXDG = "FtsoFxdg";
   public static readonly FTSO_WFLR = "FtsoWflr";
-
   public static readonly FADA = "Fada";
   public static readonly DUMMY_FADA_MINTER = "DummyFadaMinter";
   public static readonly FTSO_FADA = "FtsoFada";
