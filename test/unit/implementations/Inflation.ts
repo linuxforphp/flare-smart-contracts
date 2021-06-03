@@ -15,10 +15,11 @@ const FlareKeeper = artifacts.require("FlareKeeper");
 
 const ERR_TOPUP_LOW = "topup low";
 const ONLY_GOVERNANCE_MSG = "only governance";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ERR_IS_ZERO = "address is 0";
 
 enum TopupType{ FACTOROFDAILYAUTHORIZED, ALLAUTHORIZED }
+
+const DEFAULT_TOPUP_FACTOR_X100 = 120;
 
 const BN = web3.utils.toBN;
 
@@ -242,14 +243,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await inflation.setTopupConfiguration((await MockContract.new()).address, TopupType.ALLAUTHORIZED, 100);        
         // Require
 
-      });
-
-      it("Should not allow topup configuration change if not from governance", async() => {
-        // Assemble
-        // Act
-        const setPromise = inflation.setTopupConfiguration((await MockContract.new()).address, TopupType.ALLAUTHORIZED, 100, {from: accounts[2]});        
-        // Require
-        await expectRevert(setPromise, ONLY_GOVERNANCE_MSG);
       });
 
       it("Should request inflation to topup - first cycle, 2 sharing percentages, by factor type (default)", async() => {
@@ -477,12 +470,45 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Check self destruct bucket for good measure...
         const selfDestructProceeds = await inflation.totalSelfDestructReceivedWei();
         assert.equal(selfDestructProceeds.toNumber(), 1);
-      });      
+      });
+      
+      it("Should record timestamp of the block where keeping started in rewardEpochStartedTs when rewards started after 0", async() => {
+        mockSupply = await MockContract.new();
+        mockInflationPercentageProvider = await MockContract.new();
+        mockInflationSharingPercentageProvider = await MockContract.new();
+        mockFlareKeeper = await MockContract.new();
+
+        const getInflatableBalance = web3.utils.sha3("getInflatableBalance()")!.slice(0,10); // first 4 bytes is function selector
+        const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0,10);
+        await mockSupply.givenMethodReturnUint(getInflatableBalance, supply);
+        await mockInflationPercentageProvider.givenMethodReturnUint(getAnnualPercentageBips, inflationBips);
+        
+        await time.advanceBlock();
+        const latest = await time.latest();
+        const rewardTime = latest.addn(86400); // Initiate keep some time after the reward start time
+        inflation = await Inflation.new(
+            accounts[0],
+            mockInflationPercentageProvider.address,
+            mockInflationSharingPercentageProvider.address,
+            mockFlareKeeper.address,
+            latest // Set time to now
+        );
+        
+        await inflation.setSupply(mockSupply.address);
+        await time.increaseTo(rewardTime);
+        // Act
+        await inflation.keep();
+        // Assert
+        const lastTs = (await inflation.rewardEpochStartedTs()).toNumber();
+        
+        assert.equal(lastTs - 1, rewardTime); // Hardhat automatically advances time for 1 second after each transaction.
+      });
+
     });
 
     describe("helper methods", async() => {
       
-      it("Should set inflationPercentageProvider", async()=> {
+      it("Should set InflationPercentageProvider", async()=> {
         // Assemble
         const newMockInflationPercentageProvider = await MockContract.new();
         
@@ -494,7 +520,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
       });
 
-      it("Should reject inflation provider change if not from governed", async() => {
+      it("Should reject nflationPercentageProvider change if not from governed", async() => {
         // Assemble
         const newMockInflationPercentageProvider = await MockContract.new();
         
@@ -504,6 +530,52 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assert
         await expectRevert(changePromise, ONLY_GOVERNANCE_MSG);
         assert.equal((await inflation.inflationPercentageProvider()), mockInflationPercentageProvider.address);
+      });
+
+      it("Should reject InflationPercentageProvider change with 0 address", async() => {
+        // Assemble
+        
+        // Act
+        const changePromise = inflation.setInflationPercentageProvider(constants.ZERO_ADDRESS);
+        
+        // Assert
+        await expectRevert(changePromise, ERR_IS_ZERO);
+        assert.equal((await inflation.inflationPercentageProvider()), mockInflationPercentageProvider.address);
+      });
+
+      it("Should set InflationSharingPercentageProvider", async()=> {
+        // Assemble
+        const newMockInflationSharingPercentageProvider = await MockContract.new();
+        
+        // Act
+        await inflation.setInflationSharingPercentageProvider(newMockInflationSharingPercentageProvider.address);
+        
+        // Assert
+        assert.equal((await inflation.inflationSharingPercentageProvider()), newMockInflationSharingPercentageProvider.address);
+
+      });
+
+      it("Should reject InflationSharingPercentageProvider change if not from governed", async() => {
+        // Assemble
+        const newMockInflationSharingPercentageProvider = await MockContract.new();
+        
+        // Act
+        const changePromise = inflation.setInflationSharingPercentageProvider(newMockInflationSharingPercentageProvider.address, {from: accounts[2]});
+        
+        // Assert
+        await expectRevert(changePromise, ONLY_GOVERNANCE_MSG);
+        assert.equal((await inflation.inflationSharingPercentageProvider()), mockInflationSharingPercentageProvider.address);
+      });
+
+      it("Should reject InflationSharingPercentageProvider change with 0 address", async() => {
+        // Assemble
+        
+        // Act
+        const changePromise = inflation.setInflationSharingPercentageProvider(constants.ZERO_ADDRESS);
+        
+        // Assert
+        await expectRevert(changePromise, ERR_IS_ZERO);
+        assert.equal((await inflation.inflationSharingPercentageProvider()), mockInflationSharingPercentageProvider.address);
       });
 
       it("Should set new flare keeper", async()=> {
@@ -534,7 +606,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         
         // Act
-        const changePromise = inflation.setFlareKeeper(ZERO_ADDRESS, {from: accounts[2]});
+        const changePromise = inflation.setFlareKeeper(constants.ZERO_ADDRESS);
         
         // Assert
         await expectRevert(changePromise, ERR_IS_ZERO);
@@ -570,12 +642,93 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         
         // Act
-        const changePromise = inflation.setSupply(ZERO_ADDRESS, {from: accounts[2]});
+        const changePromise = inflation.setSupply(constants.ZERO_ADDRESS);
         
         // Assert
         await expectRevert(changePromise, ERR_IS_ZERO);
         assert.equal((await inflation.supply()), mockSupply.address);
       });
+
+      it("Should not allow topup configuration change if not from governance", async() => {
+        // Assemble
+        // Act
+        const setPromise = inflation.setTopupConfiguration((await MockContract.new()).address, TopupType.ALLAUTHORIZED, 100, {from: accounts[2]});        
+        // Require
+        await expectRevert(setPromise, ONLY_GOVERNANCE_MSG);
+      });
+
+      it("Should not allow topup configuration change with 0 address", async() => {
+        // Assemble
+        // Act
+        const setPromise = inflation.setTopupConfiguration(constants.ZERO_ADDRESS, TopupType.ALLAUTHORIZED, 100);        
+        // Require
+        await expectRevert(setPromise, ERR_IS_ZERO);
+      });
+
+      it("Should set and retrieve toput configuration", async () => {
+        // This will be changed in the future to only return values for valid inflation requests
+        // Assemble
+        const mockInflation1 = await MockContract.new();
+        const t1Type = TopupType.ALLAUTHORIZED;
+        const t1Factor = 0;
+        const mockInflation2 = await MockContract.new();
+        const t2Type = TopupType.ALLAUTHORIZED;
+        const t2Factor = 10;
+        const t2TypeFinal = TopupType.ALLAUTHORIZED;
+        const t2FactorFinal = 300;
+        const mockInflation3 = await MockContract.new();
+        
+        // Act
+        await inflation.setTopupConfiguration(mockInflation1.address, t1Type, t1Factor);
+        // Assert
+        const t1Result = await inflation.getTopupConfiguration.call(mockInflation1.address);
+        assert.equal(t1Result.configured, true);
+        assert.equal(t1Result.topupType, BN(t1Type));
+        assert.equal(t1Result.topupFactorX100, BN(t1Factor));
+        // t2 and 3 should be default
+        const t2ResultDefault = await inflation.getTopupConfiguration.call(mockInflation2.address);
+        assert.equal(t2ResultDefault.configured, true);
+        assert.equal(t2ResultDefault.topupType, BN(TopupType.FACTOROFDAILYAUTHORIZED));
+        assert.equal(t2ResultDefault.topupFactorX100, BN(DEFAULT_TOPUP_FACTOR_X100));
+
+        const t3Result = await inflation.getTopupConfiguration.call(mockInflation3.address);
+        assert.equal(t3Result.configured, true);
+        assert.equal(t3Result.topupType, BN(TopupType.FACTOROFDAILYAUTHORIZED));
+        assert.equal(t3Result.topupFactorX100, BN(DEFAULT_TOPUP_FACTOR_X100));
+        
+        // Adding another should not change previous
+        // Act
+        await inflation.setTopupConfiguration(mockInflation2.address, t2Type, t2Factor);
+        const t1Result2 = await inflation.getTopupConfiguration.call(mockInflation1.address);
+        assert.equal(t1Result2.configured, true);
+        assert.equal(t1Result2.topupType, BN(t1Type));
+        assert.equal(t1Result2.topupFactorX100, BN(t1Factor));
+        const t2Result = await inflation.getTopupConfiguration.call(mockInflation2.address);
+        assert.equal(t2Result.configured, true);
+        assert.equal(t2Result.topupType, BN(t2Type));
+        assert.equal(t2Result.topupFactorX100, BN(t2Factor));
+        const t3Result2 = await inflation.getTopupConfiguration.call(mockInflation3.address);
+        assert.equal(t3Result2.configured, true);
+        assert.equal(t3Result2.topupType, BN(TopupType.FACTOROFDAILYAUTHORIZED));
+        assert.equal(t3Result2.topupFactorX100, BN(DEFAULT_TOPUP_FACTOR_X100));
+
+        // Can update multiple times
+        await inflation.setTopupConfiguration(mockInflation2.address, t2TypeFinal, t2FactorFinal);
+        const t1Result3 = await inflation.getTopupConfiguration.call(mockInflation1.address);
+        assert.equal(t1Result3.configured, true);
+        assert.equal(t1Result3.topupType, BN(t1Type));
+        assert.equal(t1Result3.topupFactorX100, BN(t1Factor));
+        const t2ResultFinal = await inflation.getTopupConfiguration.call(mockInflation2.address);
+        assert.equal(t2ResultFinal.configured, true);
+        assert.equal(t2ResultFinal.topupType, BN(t2TypeFinal));
+        assert.equal(t2ResultFinal.topupFactorX100, BN(t2FactorFinal));
+        const t3Result3 = await inflation.getTopupConfiguration.call(mockInflation3.address);
+        assert.equal(t3Result3.configured, true);
+        assert.equal(t3Result3.topupType, BN(TopupType.FACTOROFDAILYAUTHORIZED));
+        assert.equal(t3Result3.topupFactorX100, BN(DEFAULT_TOPUP_FACTOR_X100));
+
+      });
+
     });
 
 });
