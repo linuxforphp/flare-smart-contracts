@@ -156,8 +156,8 @@ contract Supply is Governed {
     ) external onlyRewardManager {
         assert(_totalInflationAuthorizedWei >= _totalClaimedWei);
         InflationSupplyData storage data = rewardManagers[msg.sender];
-        _increaseCirculatingSupply(_totalInflationAuthorizedWei.sub(data.totalInflationAuthorizedWei));
-        _decreaseCirculatingSupply(_totalClaimedWei.sub(data.totalClaimedWei));
+        _decreaseCirculatingSupply(_totalInflationAuthorizedWei.sub(data.totalInflationAuthorizedWei));
+        _increaseCirculatingSupply(_totalClaimedWei.sub(data.totalClaimedWei));
         data.totalInflationAuthorizedWei = _totalInflationAuthorizedWei;
         data.totalClaimedWei = _totalClaimedWei;
     }
@@ -169,17 +169,8 @@ contract Supply is Governed {
     function updateRewardPoolDistributedAmount(uint256 _distributedAmountWei) external onlyRewardPool {
         SupplyData storage data = rewardPools[msg.sender];
         assert(data.totalSupplyWei >= _distributedAmountWei);
-        _decreaseCirculatingSupply(_distributedAmountWei.sub(data.distributedSupplyWei));
+        _increaseCirculatingSupply(_distributedAmountWei.sub(data.distributedSupplyWei));
         data.distributedSupplyWei = _distributedAmountWei;
-    }
-
-    /**
-     * @notice Get approximate circulating supply for given block number
-     * @param _blockNumber                          Block number
-     * @return Return approximate circulating supply for last known block <= _blockNumber
-    */
-    function getCirculatingSupplyAt(uint256 _blockNumber) external view returns(uint256) {
-        return circulatingSupply.valueAt(_blockNumber);
     }
     
     /**
@@ -191,6 +182,15 @@ contract Supply is Governed {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
         return circulatingSupplyCache.valueAt(circulatingSupply, _blockNumber);
+    }
+
+    /**
+     * @notice Get approximate circulating supply for given block number
+     * @param _blockNumber                          Block number
+     * @return Return approximate circulating supply for last known block <= _blockNumber
+    */
+    function getCirculatingSupplyAt(uint256 _blockNumber) external view returns(uint256) {
+        return circulatingSupply.valueAt(_blockNumber);
     }
 
     /**
@@ -222,7 +222,7 @@ contract Supply is Governed {
         data.totalSupplyWei = _rewardPool.totalSupplyWei();
         data.distributedSupplyWei = _rewardPool.distributedSupplyWei();
 
-        _increaseCirculatingSupply(data.totalSupplyWei.sub(data.distributedSupplyWei));
+        _decreaseCirculatingSupply(data.totalSupplyWei.sub(data.distributedSupplyWei));
     }
     
     function _decreaseFoundationSupply(uint256 _amountWei) internal {
