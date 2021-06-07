@@ -211,7 +211,9 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
         address _from, 
         address _to, 
         uint256 _amount) internal virtual override(ERC20) {
-          
+        
+        require(_from != _to, "Cannot transfer to self");
+        
         ERC20._beforeTokenTransfer(_from, _to, _amount);
 
         if (_from == address(0)) {
