@@ -3,9 +3,9 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import { BokkyPooBahsDateTimeLibrary } from "../../utils/implementation/DateTimeLibrary.sol";
-import { Governed } from "../../governance/implementation/Governed.sol";
 import { FlareKeeper } from "../../utils/implementation/FlareKeeper.sol";
 import { IFlareKeep } from "../../utils/interfaces/IFlareKeep.sol";
+import { GovernedAndFlareKept } from "../../utils/implementation/GovernedAndFlareKept.sol";
 import { InflationAnnum } from "../lib/InflationAnnum.sol";
 import { InflationAnnums } from "../lib/InflationAnnums.sol";
 import { IIInflationPercentageProvider } from "../interface/IIInflationPercentageProvider.sol";
@@ -18,7 +18,7 @@ import { SafePct } from "../../utils/implementation/SafePct.sol";
 
 //import "hardhat/console.sol";
 
-contract Inflation is Governed, IFlareKeep {
+contract Inflation is GovernedAndFlareKept, IFlareKeep {
     using InflationAnnums for InflationAnnums.InflationAnnumsState;
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -27,7 +27,6 @@ contract Inflation is Governed, IFlareKeep {
     // Composable contracts
     IIInflationPercentageProvider public inflationPercentageProvider;
     IIInflationSharingPercentageProvider public inflationSharingPercentageProvider;
-    FlareKeeper public flareKeeper;
     Supply public supply;
 
     // The annums
@@ -67,19 +66,17 @@ contract Inflation is Governed, IFlareKeep {
 
     constructor (
         address _governance, 
+        FlareKeeper _flareKeeper,
         IIInflationPercentageProvider _inflationPercentageProvider,
         IIInflationSharingPercentageProvider _inflationSharingPercentageProvider,
-        FlareKeeper _flareKeeper,
         uint256 _rewardEpochStartTs
     )
-        Governed(_governance)
+        GovernedAndFlareKept(_governance, _flareKeeper)
         notZero(address(_inflationPercentageProvider))
         notZero(address(_inflationSharingPercentageProvider))
-        notZero(address(_flareKeeper))
     {
         inflationPercentageProvider = _inflationPercentageProvider;
         inflationSharingPercentageProvider = _inflationSharingPercentageProvider;
-        flareKeeper = _flareKeeper;
         rewardEpochStartTs = _rewardEpochStartTs;
     }
 
@@ -135,10 +132,6 @@ contract Inflation is Governed, IFlareKeep {
         inflationSharingPercentageProvider = _inflationSharingPercentageProvider;
     }
 
-    function setFlareKeeper(FlareKeeper _flareKeeper) external notZero(address(_flareKeeper)) onlyGovernance {
-        flareKeeper = _flareKeeper;
-    }
-
     function setSupply(Supply _supply) external notZero(address(_supply)) onlyGovernance {
         supply = _supply;
     }
@@ -180,7 +173,7 @@ contract Inflation is Governed, IFlareKeep {
         _topupConfiguration.configured = topupConfiguration.configured;
     }
 
-    function keep() public virtual override notZero(address(supply)) returns(bool) {
+    function keep() public virtual override notZero(address(supply)) onlyFlareKeeper returns(bool) {
         // If inflation rewarding not started yet, blow off processing until it does.
         if (block.timestamp < rewardEpochStartTs) {
             return true;

@@ -142,6 +142,7 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
 
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
+            accounts[0],
             ftsoRewardManager.address,
             accounts[7],
             PRICE_EPOCH_DURATION_S,

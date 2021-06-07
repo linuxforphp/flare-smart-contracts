@@ -885,22 +885,3 @@ export async function finalizePriceEpochWithResult(signer: SignerWithAddress, ft
     await waitFinalize(signer, () => ftso.connect(signer).finalizePriceEpoch(epochId, true));
     return epochFinalizeResponse;
 }
-
-export async function createMockFtsoManager(priceSubmitterAddress: string): Promise<string> {
-    let mockFtsoManager: MockContractInstance = await MockFtsoManager.new();
-    let ftsoManagerInterface: FtsoManagerInstance = await FtsoManager.new(
-      constants.ZERO_ADDRESS, 
-      constants.ZERO_ADDRESS, 
-      priceSubmitterAddress, 
-      120, 
-      10, 
-      60, 
-      3600, 
-      10, 
-      7);
-
-    const priceSubmitter = ftsoManagerInterface.contract.methods.priceSubmitter().encodeABI();
-    const priceSubmitterReturn = web3.eth.abi.encodeParameter('address', priceSubmitterAddress);
-    await mockFtsoManager.givenMethodReturn(priceSubmitter, priceSubmitterReturn);
-    return mockFtsoManager.address;
-}

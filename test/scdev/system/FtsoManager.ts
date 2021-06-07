@@ -57,10 +57,11 @@ const MockContract = artifacts.require("MockContract");
     });
 
     describe("keep", async() => {
-        it("Should by kept by keeper", async() => {
+        it("Should be kept by keeper", async() => {
             // Assemble
             const ftsoManager = await FtsoManager.new(
               accounts[1],
+              flareKeeper.address,
               rewardManagerMock.address,
               accounts[7],
               60,

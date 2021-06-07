@@ -66,6 +66,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
+            accounts[0],
             ftsoRewardManager.address,
             accounts[7],
             PRICE_EPOCH_DURATION_S,

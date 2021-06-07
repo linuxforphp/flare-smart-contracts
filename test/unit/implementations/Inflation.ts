@@ -1,5 +1,6 @@
 import { 
   FlareKeeperInstance,
+  FlareKeeperMockInstance,
   InflationInstance,
   InflationReceiverMockInstance,
   MockContractInstance } from "../../../typechain-truffle";
@@ -11,6 +12,7 @@ const Inflation = artifacts.require("Inflation");
 const MockContract = artifacts.require("MockContract");
 const SharingPercentageProviderMock = artifacts.require("SharingPercentageProviderMock");
 const InflationReceiverMock = artifacts.require("InflationReceiverMock");
+const FlareKeeperMock = artifacts.require("FlareKeeperMock");
 const FlareKeeper = artifacts.require("FlareKeeper");
 
 const ERR_TOPUP_LOW = "topup low";
@@ -30,7 +32,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     let mockInflationSharingPercentageProvider: MockContractInstance;
     let inflation: InflationInstance;
     let mockInflationReceiverInterface: InflationReceiverMockInstance;
-    let mockFlareKeeper: MockContractInstance;
+    let mockFlareKeeper: FlareKeeperMockInstance;
     let mockFlareKeeperInterface: FlareKeeperInstance;
     let startTs: BN;
     const supply = 1000000;
@@ -43,7 +45,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         mockInflationPercentageProvider = await MockContract.new();
         mockInflationSharingPercentageProvider = await MockContract.new();
         mockInflationReceiverInterface = await InflationReceiverMock.new();
-        mockFlareKeeper = await MockContract.new();
+        mockFlareKeeper = await FlareKeeperMock.new();
         mockFlareKeeperInterface = await FlareKeeper.new();
 
         // Force a block in order to get most up to date time
@@ -58,19 +60,20 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
         inflation = await Inflation.new(
             accounts[0],
+            mockFlareKeeper.address,
             mockInflationPercentageProvider.address,
             mockInflationSharingPercentageProvider.address,
-            mockFlareKeeper.address,
             0
         );
-        inflation.setSupply(mockSupply.address);
+        await inflation.setSupply(mockSupply.address);
+        await mockFlareKeeper.registerToKeep(inflation.address);
     });
 
     describe("init", async() => {
       it("Should sum recognized inflation", async() => {
           // Assemble
           // Act
-          await inflation.keep();
+          await mockFlareKeeper.trigger();
           // Assert
           const recognizedInflation = await inflation.getTotalRecognizedInflationWei();
           assert.equal(recognizedInflation.toNumber(), inflationForAnnum);
@@ -80,7 +83,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         // Assume blockchain start time is 1/1/2021 - not a leap year
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const nowTs = await time.latest() as BN;
         // Assert
         const { 
@@ -100,12 +103,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assume blockchain start time is 1/1/2021 - not a leap year
         // 2022 is also not a leap year...
         // Assemble
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const nowTs = await time.latest() as BN;
         // A year passes...
         await time.increaseTo(nowTs.addn((365 * 86400)));
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const recognizedInflation = await inflation.getTotalRecognizedInflationWei();
         // We should have twice the recognized inflation accumulated...
@@ -117,7 +120,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       it("Should not authorize inflation if no sharing percentages", async() => {
         // Assemble
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const authorizedInflation = await inflation.getTotalAuthorizedInflationWei();
         assert.equal(authorizedInflation.toNumber(), 0);
@@ -131,7 +134,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
         const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
@@ -147,7 +150,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
         const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
@@ -171,12 +174,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         sharingPercentages[1] = {inflationReceiver: (await MockContract.new()).address, percentBips: 7000};
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const nowTs = await time.latest() as BN;
         // A day passes...
         await time.increaseTo(nowTs.addn(86400));
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
         const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
@@ -210,7 +213,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
         const setDailyAuthorizedInflation = mockInflationReceiverInterface.contract.methods.setDailyAuthorizedInflation(expectedAuthorizedInflation).encodeABI();
@@ -223,7 +226,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       it("Should not topup inflation if no sharing percentages", async() => {
         // Assemble
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const topup = await inflation.getTotalInflationTopupRequestedWei();
         assert.equal(topup.toNumber(), 0);
@@ -254,7 +257,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
         // This should cap at one days authorization...not the factor
@@ -276,12 +279,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         sharingPercentages[1] = {inflationReceiver: (await MockContract.new()).address, percentBips: 7000};
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const nowTs = await time.latest() as BN;
         // A day passes...
         await time.increaseTo(nowTs.addn(86400));
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
         const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
@@ -309,12 +312,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         await inflation.setTopupConfiguration(serviceReceiver1.address, TopupType.ALLAUTHORIZED, 0);        
         await inflation.setTopupConfiguration(serviceReceiver2.address, TopupType.ALLAUTHORIZED, 0);        
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const nowTs = await time.latest() as BN;
         // A day passes...
         await time.increaseTo(nowTs.addn(86400));
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const { 
           4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
@@ -341,7 +344,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const expectedRequestedInflation = Math.floor(inflationForAnnum / 365);
         const requestMinting = mockFlareKeeperInterface.contract.methods.requestMinting(expectedRequestedInflation).encodeABI();
@@ -358,7 +361,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const toMint = await inflation.getTotalInflationTopupRequestedWei();
         // Act
         await inflation.receiveMinting({ value: toMint});
@@ -389,7 +392,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         mockSupply = await MockContract.new();
         mockInflationPercentageProvider = await MockContract.new();
         mockInflationSharingPercentageProvider = await MockContract.new();
-        mockFlareKeeper = await MockContract.new();
+        mockFlareKeeper = await FlareKeeperMock.new();
 
         const getInflatableBalance = web3.utils.sha3("getInflatableBalance()")!.slice(0,10); // first 4 bytes is function selector
         const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0,10);
@@ -401,16 +404,17 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
         inflation = await Inflation.new(
             accounts[0],
+            mockFlareKeeper.address,
             mockInflationPercentageProvider.address,
             mockInflationSharingPercentageProvider.address,
-            mockFlareKeeper.address,
             latest + 2 * 86400 // Set time sometime after now, but at least two days to trigger new inflation if not exiting preemptively
         );
 
         await inflation.setSupply(mockSupply.address);
+        await mockFlareKeeper.registerToKeep(inflation.address);
        
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // It should return directly and not change lastAuthorizationTs
         const lastTs = await inflation.lastAuthorizationTs();
         assert.equal(lastTs.toNumber(), 0);
@@ -427,7 +431,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const toMint = await inflation.getTotalInflationTopupRequestedWei();
         // Act
         await inflation.receiveMinting({ value: toMint});
@@ -460,7 +464,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         const toMint = await inflation.getTotalInflationTopupRequestedWei();
         // Act
         // Sneak in 1 more to simulate self-destructing
@@ -476,7 +480,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         mockSupply = await MockContract.new();
         mockInflationPercentageProvider = await MockContract.new();
         mockInflationSharingPercentageProvider = await MockContract.new();
-        mockFlareKeeper = await MockContract.new();
+        mockFlareKeeper = await FlareKeeperMock.new();
 
         const getInflatableBalance = web3.utils.sha3("getInflatableBalance()")!.slice(0,10); // first 4 bytes is function selector
         const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0,10);
@@ -488,16 +492,17 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const rewardTime = latest.addn(86400); // Initiate keep some time after the reward start time
         inflation = await Inflation.new(
             accounts[0],
+            mockFlareKeeper.address,
             mockInflationPercentageProvider.address,
             mockInflationSharingPercentageProvider.address,
-            mockFlareKeeper.address,
             latest // Set time to now
         );
         
         await inflation.setSupply(mockSupply.address);
+        await mockFlareKeeper.registerToKeep(inflation.address);
         await time.increaseTo(rewardTime);
         // Act
-        await inflation.keep();
+        await mockFlareKeeper.trigger();
         // Assert
         const lastTs = (await inflation.rewardEpochStartedTs()).toNumber();
         
@@ -520,7 +525,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
       });
 
-      it("Should reject nflationPercentageProvider change if not from governed", async() => {
+      it("Should reject InflationPercentageProvider change if not from governed", async() => {
         // Assemble
         const newMockInflationPercentageProvider = await MockContract.new();
         
@@ -609,7 +614,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const changePromise = inflation.setFlareKeeper(constants.ZERO_ADDRESS);
         
         // Assert
-        await expectRevert(changePromise, ERR_IS_ZERO);
+        await expectRevert(changePromise, "flare keeper zero");
         assert.equal((await inflation.flareKeeper()), mockFlareKeeper.address);
       });
 

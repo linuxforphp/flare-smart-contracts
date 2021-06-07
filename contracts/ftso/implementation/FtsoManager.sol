@@ -6,6 +6,8 @@ import "../interface/IIFtsoRewardManager.sol";
 import "../../utils/interfaces/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
+import "../../utils/implementation/FlareKeeper.sol";
+import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
 
@@ -20,7 +22,7 @@ import "../lib/FtsoManagerSettings.sol";
  *    - trigger finalize price reveal epoch
  *    - determines addresses and reward weights and triggers rewardDistribution
  */    
-contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
+contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
     using FtsoManagerSettings for FtsoManagerSettings.State;
 
     struct PriceEpochData {
@@ -81,6 +83,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
     // _priceEpochDurationSec, _firstEpochStartTs and _revealEpochDurationSec must match
     constructor(
         address _governance,
+        FlareKeeper _flareKeeper,
         IIFtsoRewardManager _rewardManager,
         IPriceSubmitter _priceSubmitter,
         uint256 _priceEpochDurationSec,
@@ -89,7 +92,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
         uint256 _rewardEpochDurationSec,
         uint256 _rewardEpochsStartTs,
         uint256 _votePowerBoundaryFraction
-    ) Governed(_governance) {
+    ) GovernedAndFlareKept(_governance, _flareKeeper){
         require(block.timestamp >= _firstEpochStartTs, ERR_FIRST_EPOCH_START_TS_IN_FUTURE);
         require(_rewardEpochDurationSec > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_priceEpochDurationSec > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
@@ -137,7 +140,7 @@ contract FtsoManager is IIFtsoManager, IFlareKeep, Governed {
      * - Set governance parameters and initialize epochs
      * - finalizeRewardEpoch 
      */
-    function keep() external override returns (bool) {
+    function keep() external override onlyFlareKeeper returns (bool) {
         // flare keeper trigger. once every block
         
         // TODO: remove this event after testing phase
