@@ -128,6 +128,7 @@ abstract contract Delegatable is IIVPToken {
      **/
     function _delegateByAmount(address _to, uint256 _senderCurrentBalance, uint256 _amount) internal virtual {
         require (_to != address(0), "Cannot delegate to zero");
+        require (_to != msg.sender, "Cannot delegate to self");
         require (_canDelegateByAmount(msg.sender), "Cannot delegate by amount");
         
         // Get the vote power delegation for the sender
@@ -168,6 +169,7 @@ abstract contract Delegatable is IIVPToken {
      **/
     function _delegateByPercentage(address _to, uint256 _senderCurrentBalance, uint256 _bips) internal virtual {
         require (_to != address(0), "Cannot delegate to zero");
+        require (_to != msg.sender, "Cannot delegate to self");
         require (_canDelegateByPct(msg.sender), "Cannot delegate by percentage");
         
         // Get the vote power delegation for the sender
@@ -370,7 +372,9 @@ abstract contract Delegatable is IIVPToken {
         uint256 _amount
     ) internal {
         // for PERCENTAGE delegation: reduce sender vote power allocations
-        _allocateVotePower(_from, _fromCurrentBalance, _fromCurrentBalance.sub(_amount));
+        // revert with the same error as ERC20 in case transfer exceeds balance
+        uint256 newFromBalance = _fromCurrentBalance.sub(_amount, "ERC20: transfer amount exceeds balance");
+        _allocateVotePower(_from, _fromCurrentBalance, newFromBalance);
         // for AMOUNT delegation: transmit vote power _to receiver
         require(_isTransmittable(_from, _fromCurrentBalance, _amount), UNDELEGATED_VP_TOO_SMALL_MSG);
         votePower.transmit(_from, _to, _amount);
