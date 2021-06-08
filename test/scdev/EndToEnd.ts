@@ -11,6 +11,8 @@ import {
   FtsoManagerInstance, 
   FtsoRewardManagerContract,
   FtsoRewardManagerInstance,
+  PriceSubmitterContract,
+  PriceSubmitterInstance,
   WFlrContract,
   WFlrInstance} from "../../typechain-truffle";
 
@@ -49,6 +51,35 @@ async function submitPrice(ftso: FtsoInstance, price: number, by: string): Promi
   }
 };
 
+async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: PriceSubmitterInstance, prices: number[], by: string): Promise<PriceInfo[] | undefined> {
+  if(!ftsos || !prices || ftsos.length != prices.length) throw Error("Lists of ftsos and prices illegal or do not match")
+  let epochId = ((await ftsos[0].getCurrentEpochId()) as BN).toString();
+  let hashes: string[] = [];
+  let preparedPrices: number[] = [];
+  let priceInfos: PriceInfo[] = [];
+  let randoms: any[] = [];
+  for (let i = 0; i < ftsos.length; i++) {
+    let price = prices[i]
+    let preparedPrice = preparePrice(price);
+    let random = await getRandom();
+    randoms.push(random);
+    let hash = submitPriceHash(preparedPrice, random);
+    preparedPrices.push(preparedPrice);
+    hashes.push(hash);
+  }
+
+  console.log(`Submitting prices ${ preparedPrices } by ${ by } for epoch ${ epochId }`);
+
+  // await priceSubmitter.submitPriceHash(hash!, {from: by});
+  await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, {from: by, gas: "50000"})
+  for (let i = 0; i < ftsos.length; i++) {
+    const priceInfo = new PriceInfo(epochId, preparedPrices[i], randoms[i]);
+    priceInfo.moveToNextStatus();
+    priceInfos.push(priceInfo);
+  }
+  return priceInfos
+};
+
 async function revealPrice(ftso: FtsoInstance, priceInfo: PriceInfo, by: string): Promise<void> {  
   if (priceInfo?.isSubmitted()) {
     console.log(`Revealing price by ${by} of ${priceInfo.priceSubmitted} for epoch ${priceInfo.epochId}`);
@@ -57,6 +88,26 @@ async function revealPrice(ftso: FtsoInstance, priceInfo: PriceInfo, by: string)
 
     priceInfo.moveToNextStatus();
   }
+};
+
+async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: PriceSubmitterInstance, priceInfos: PriceInfo[], by: string): Promise<void> {
+  if(!ftsos || !priceInfos || ftsos.length == 0 || ftsos.length != priceInfos.length) throw Error("Lists of ftsos and priceInfos illegal or they do not match")
+  let epochId = priceInfos[0].epochId;
+
+  if(priceInfos.some(priceInfo => !priceInfo.isSubmitted())) throw Error("Some price infos not submitted");
+  priceInfos.forEach(priceInfo => {
+    priceInfo.moveToNextStatus();
+  })
+
+  console.log(`Revealing price by ${ by } for epoch ${ epochId }`);
+
+  await priceSubmitter.revealPrices(
+    epochId, 
+    ftsos.map(ftso => ftso.address), 
+    priceInfos.map(priceInfo => priceInfo.priceSubmitted),
+    priceInfos.map(priceInfo => priceInfo.random),
+    {from: by, gas: "50000"}
+  )
 };
 
 function spewClaimError(account: string, e: unknown) {
@@ -103,6 +154,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let rewardManager: FtsoRewardManagerInstance;
   let FtsoManager: FtsoManagerContract;
   let ftsoManager: FtsoManagerInstance;
+  let PriceSubmitter: PriceSubmitterContract;
+  let priceSubmiter: PriceSubmitterInstance;  
   let WFLR: WFlrContract;
   let wFLR: WFlrInstance;
   let Ftso: FtsoContract;
@@ -137,6 +190,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     FtsoManager = artifacts.require("FtsoManager");
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
+    PriceSubmitter = artifacts.require("PriceSubmitter");
+    priceSubmiter = await PriceSubmitter.at(contracts.getContractAddress(Contracts.PRICE_SUBMITTER));    
     WFLR = artifacts.require("WFlr");
     wFLR = await WFLR.at(contracts.getContractAddress(Contracts.WFLR));
     Ftso = artifacts.require("Ftso");
@@ -191,12 +246,19 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       rewardEpochsStartTs.toNumber(), 
       rewardEpochDurationSec.toNumber(), 
       (await ftsoManager.getCurrentRewardEpoch()).toNumber());
+
   });
 
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async() => {
     // Assemble
     // Providers submit prices
     const p1FlrPrice = await submitPrice(ftsoWflr, 0.35, p1);
+
+    const p1SubmitterPrices = await submitPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, [1.00, 1100, 1.84], p1);
+    const p2SubmitterPrices = await submitPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, [1.33, 1203, 1.90], p2);
+    const p3SubmitterPrices = await submitPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, [1.35, 1210, 1.91], p3);    
+
+    
     const p2FlrPrice = await submitPrice(ftsoWflr, 0.40, p2);
     const p3FlrPrice = await submitPrice(ftsoWflr, 0.50, p3);
     const p1XrpPrice = await submitPrice(ftsoFxrp, 1.40, p1);
@@ -211,15 +273,19 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const p1DgbPrice = await submitPrice(ftsoFdgb, 0.08, p1);
     const p2DgbPrice = await submitPrice(ftsoFdgb, 0.11, p2);
     const p3DgbPrice = await submitPrice(ftsoFdgb, 0.13, p3);
-    const p1AdaPrice = await submitPrice(ftsoFada, 1.84, p1);
-    const p2AdaPrice = await submitPrice(ftsoFada, 1.90, p2);
-    const p3AdaPrice = await submitPrice(ftsoFada, 1.91, p3);
-    const p1AlgoPrice = await submitPrice(ftsoFalgo, 1.00, p1);
-    const p2AlgoPrice = await submitPrice(ftsoFalgo, 1.33, p2);
-    const p3AlgoPrice = await submitPrice(ftsoFalgo, 1.35, p3);
-    const p1BchPrice = await submitPrice(ftsoFbch, 1100, p1);
-    const p2BchPrice = await submitPrice(ftsoFbch, 1203, p2);
-    const p3BchPrice = await submitPrice(ftsoFbch, 1210, p3);
+    // const p1AdaPrice = await submitPrice(ftsoFada, 1.84, p1);
+    // const p2AdaPrice = await submitPrice(ftsoFada, 1.90, p2);
+    // const p3AdaPrice = await submitPrice(ftsoFada, 1.91, p3);
+
+    // const p1AlgoPrice = await submitPrice(ftsoFalgo, 1.00, p1);
+    // const p2AlgoPrice = await submitPrice(ftsoFalgo, 1.33, p2);
+    // const p3AlgoPrice = await submitPrice(ftsoFalgo, 1.35, p3);
+    // const p1BchPrice = await submitPrice(ftsoFbch, 1100, p1);
+    // const p2BchPrice = await submitPrice(ftsoFbch, 1203, p2);
+    // const p3BchPrice = await submitPrice(ftsoFbch, 1210, p3);
+
+    // console.log("CURRENT PRICE FADA - START", await ftsoFada.getCurrentPrice())
+    // console.log("CURRENT PRICE ALGO - START", await ftsoFalgo.getCurrentPrice())
 
     const revealEndTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[2];
     const revealStartTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[1];
@@ -232,6 +298,11 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       console.log(`Trying to reveal prices; system last triggered at ${(await flareKeeper.systemLastTriggeredAt()).toNumber()}; it is now ${new Date().getTime() / 1000}...`);
       try {
         await revealPrice(ftsoWflr, p1FlrPrice!, p1);
+        await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p1SubmitterPrices!, p1);
+        await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p2SubmitterPrices!, p2);
+        await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p3SubmitterPrices!, p3);        
+
+        
         await revealPrice(ftsoWflr, p2FlrPrice!, p2);
         await revealPrice(ftsoWflr, p3FlrPrice!, p3);
         await revealPrice(ftsoFxrp, p1XrpPrice!, p1);
@@ -246,15 +317,16 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
         await revealPrice(ftsoFdgb, p1DgbPrice!, p1);
         await revealPrice(ftsoFdgb, p2DgbPrice!, p2);
         await revealPrice(ftsoFdgb, p3DgbPrice!, p3);
-        await revealPrice(ftsoFada, p1AdaPrice!, p1);
-        await revealPrice(ftsoFada, p2AdaPrice!, p2);
-        await revealPrice(ftsoFada, p3AdaPrice!, p3);
-        await revealPrice(ftsoFalgo, p1AlgoPrice!, p1);
-        await revealPrice(ftsoFalgo, p2AlgoPrice!, p2);
-        await revealPrice(ftsoFalgo, p3AlgoPrice!, p3);
-        await revealPrice(ftsoFbch, p1BchPrice!, p1);
-        await revealPrice(ftsoFbch, p2BchPrice!, p2);
-        await revealPrice(ftsoFbch, p3BchPrice!, p3);
+        // await revealPrice(ftsoFada, p1AdaPrice!, p1);
+        // await revealPrice(ftsoFada, p2AdaPrice!, p2);
+        // await revealPrice(ftsoFada, p3AdaPrice!, p3);
+
+        // await revealPrice(ftsoFalgo, p1AlgoPrice!, p1);
+        // await revealPrice(ftsoFalgo, p2AlgoPrice!, p2);
+        // await revealPrice(ftsoFalgo, p3AlgoPrice!, p3);
+        // await revealPrice(ftsoFbch, p1BchPrice!, p1);
+        // await revealPrice(ftsoFbch, p2BchPrice!, p2);
+        // await revealPrice(ftsoFbch, p3BchPrice!, p3);
         console.log("Prices revealed.");
         await advanceBlock();
         await new Promise(resolve => {
@@ -280,6 +352,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       rewardEpochDurationSec.toNumber(), 
       rewardEpochId.toNumber());
 
+    console.log("CURRENT PRICE FADA", await ftsoFada.getCurrentPrice())
+    console.log("CURRENT PRICE ALGO", await ftsoFalgo.getCurrentPrice())
+  
     console.log(`Claiming rewards for reward epoch ${rewardEpochId.toNumber()}...`);
 
     // Get the opening balances
@@ -375,4 +450,5 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       throw e;
     }
   });
+
 });

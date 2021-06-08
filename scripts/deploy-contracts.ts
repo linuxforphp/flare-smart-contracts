@@ -6,12 +6,14 @@
  * @dev Do not send anything out via console.log unless it is
  * json defining the created contracts.
  */
-import { 
-  DummyFAssetMinterInstance, 
+import {
+  DummyFAssetMinterInstance,
   FAssetTokenInstance,
   FlareKeeperInstance,
   FtsoInstance,
-  FtsoManagerInstance} from "../typechain-truffle";
+  FtsoManagerInstance,
+  PriceSubmitterInstance
+} from "../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
 import { pascalCase } from "pascal-case";
 
@@ -22,6 +24,18 @@ const { constants, time } = require('@openzeppelin/test-helpers');
 
 // const parameters = JSON.parse(serializedParameters);
 const parameters = require(`./chain-config/${ process.env.CHAIN_CONFIG }.json`)
+
+
+// inject private keys from .env, if they exist
+if (process.env.DEPLOYER_PRIVATE_KEY) {
+  parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
+}
+if (process.env.GENESIS_GOVERNANCE_PRIVATE_KEY) {
+  parameters.genesisGovernancePrivateKey = process.env.GENESIS_GOVERNANCE_PRIVATE_KEY
+}
+if (process.env.GOVERNANCE_PRIVATE_KEY) {
+  parameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
+}
 
 async function main(parameters: any) {
   // Define repository for created contracts
@@ -50,7 +64,7 @@ async function main(parameters: any) {
   // ftsoRewardManager will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, parameters.inflationPercentageBips);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address);
-  
+
   // Initialize the keeper
   let flareKeeper: FlareKeeperInstance;
   try {
@@ -64,7 +78,7 @@ async function main(parameters: any) {
   try {
     await flareKeeper.initialiseFixedAddress();
     currentGovernanceAddress = genesisGovernanceAccount.address;
-  } catch(e) {
+  } catch (e) {
     // keeper might be already initialized if redeploy
     // NOTE: unregister must claim governance of flareKeeper!
     currentGovernanceAddress = governanceAccount.address
@@ -106,7 +120,7 @@ async function main(parameters: any) {
     inflation.address,
     supply.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address);
-  
+
   // Inflation allocation needs to know about ftso reward manager
   await inflationAllocation.setSharingPercentages([ftsoRewardManager.address], [10000]);
   // Supply contract needs to know about ftso reward manager
@@ -114,10 +128,19 @@ async function main(parameters: any) {
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);
-  
+
   // PriceSubmitter contract
-  const priceSubmitter = await PriceSubmitter.new();
+  let priceSubmitter: PriceSubmitterInstance;
+  try {
+    priceSubmitter = await PriceSubmitter.at(parameters.priceSubmitterAddress);
+  } catch (e) {
+    console.error("PriceSubmitter not in genesis...creating new.")
+    priceSubmitter = await PriceSubmitter.new();
+  }
   spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address);
+
+  // Delayed reward epoch start time
+  let rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours*60*60)));
 
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
@@ -129,7 +152,7 @@ async function main(parameters: any) {
     startTs,
     parameters.revealEpochDurationSec,
     parameters.rewardEpochDurationSec,
-    startTs,
+    rewardEpochStartTs,
     parameters.votePowerBoundaryFraction);
   spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address);
 
@@ -139,7 +162,7 @@ async function main(parameters: any) {
   // Register kept contracts to the keeper...order matters. Inflation first.
   await flareKeeper.registerToKeep(inflation.address);
   await flareKeeper.registerToKeep(ftsoManager.address);
-  
+
   // Deploy wrapped FLR
   const wflr = await WFLR.new();
   spewNewContractInfo(contracts, WFLR.contractName, wflr.address);

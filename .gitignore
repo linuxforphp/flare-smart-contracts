@@ -54,3 +54,6 @@ flattened
 ## Test deploys info
 deploys/*
 !deploys/scdevTOB.json
+
+## .env
+.env

@@ -11,7 +11,6 @@ import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
 
-
 /**
  * FtsoManager is in charge of:
  * - defining reward epochs (few days)
@@ -150,7 +149,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
         if (justStarted) {
             _initializeRewardEpoch();
         } else {
-            if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec <= block.timestamp) {
+            if (lastUnprocessedPriceEpochEnds < rewardEpochsStartTs) {
+                // Force closing ftsos before start of the first reward epoch
+                _forceFinalizePriceEpochBeforeRewardEpochStarts();
+            } else if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec <= block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
                 _finalizePriceEpoch();
             }
@@ -433,6 +435,22 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
         }        
     }
 
+    /**
+     * @notice Force finalizes price epochs that expired before reward epochs start
+     */
+    function _forceFinalizePriceEpochBeforeRewardEpochStarts() internal {
+        uint256 numFtsos = ftsos.length;
+        if(numFtsos > 0) {
+            for(uint256 i = 0; i < numFtsos; i++) {
+                try ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+                } catch {
+                    emit FinalizingPriceEpochFailed(ftsos[i], lastUnprocessedPriceEpoch);
+                }
+            }
+        }
+        lastUnprocessedPriceEpoch++;
+        lastUnprocessedPriceEpochEnds += priceEpochDurationSec;
+    }
     /**
      * @notice Finalizes price epoch
      */

@@ -40,6 +40,7 @@ library FtsoVote {
      */
     function _createInstance(
         State storage _state,
+        address _voter,
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,
         uint256 _totalVotePowerFlr,
@@ -52,7 +53,7 @@ library FtsoVote {
         vote.weightFlr = _getWeight(_votePowerFlr, _totalVotePowerFlr);
         vote.weightAsset = _getWeight(_votePowerAsset, _totalVotePowerAsset);
         vote.price = uint128(_price);
-        _state.sender[voteId] = msg.sender;
+        _state.sender[voteId] = _voter;
         return voteId;
     }
 
