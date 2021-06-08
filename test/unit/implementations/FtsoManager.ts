@@ -72,6 +72,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
+            accounts[0],
             mockRewardManager.address,
             accounts[7],
             PRICE_EPOCH_DURATION_S,
@@ -87,6 +88,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should revert at deploy if setting invalid parameters", async () => {
             await expectRevert(FtsoManager.new(
                 accounts[0],
+                accounts[0],
                 mockRewardManager.address,
                 accounts[7],
                 0,
@@ -98,6 +100,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             ), "Price epoch 0");
 
             await expectRevert(FtsoManager.new(
+                accounts[0],
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
@@ -111,6 +114,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             await expectRevert(FtsoManager.new(
                 accounts[0],
+                accounts[0],
                 mockRewardManager.address,
                 accounts[7],
                 PRICE_EPOCH_DURATION_S,
@@ -122,6 +126,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             ), "Reward epoch 0");
 
             await expectRevert(FtsoManager.new(
+                accounts[0],
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
@@ -145,6 +150,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         it("Should return false when calling keep and ftso manager not active", async () => {
             expect(await ftsoManager.keep.call()).to.equals(false);
+        });
+        
+        it("Should revert calling keep if not from flare keeper", async () => {
+            await ftsoManager.activate();
+            await expectRevert(ftsoManager.keep({ from : accounts[1]}), "only flare keeper");
         });
 
         it("Should get current price epoch data", async () => {
@@ -247,6 +257,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         it("Should initialize reward epoch only after reward epoch start timestamp", async () => {
             ftsoManager = await FtsoManager.new(
+                accounts[0],
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
@@ -1098,6 +1109,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             
             // longer reward and price epochs - time travel and calling keep()
             ftsoManager = await FtsoManager.new(
+                accounts[0],
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],

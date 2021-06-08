@@ -77,9 +77,9 @@ async function main(parameters: any) {
   const startTs = await time.latest();
   const inflation = await Inflation.new(
     deployerAccount.address,
-    inflationAllocation.address,
-    inflationAllocation.address,
     flareKeeper.address,
+    inflationAllocation.address,
+    inflationAllocation.address,
     startTs
   );
   spewNewContractInfo(contracts, Inflation.contractName, inflation.address);
@@ -122,6 +122,7 @@ async function main(parameters: any) {
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
+    flareKeeper.address,
     ftsoRewardManager.address,
     priceSubmitter.address,
     parameters.priceEpochDurationSec,

@@ -123,6 +123,10 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
+      "contracts/utils/mock/FlareKeeperMock.sol": {
+        version: "0.6.12",
+        settings: { }
+      },
       "contracts/rewardPool/mock/RewardPoolMock.sol": {
         version: "0.6.12",
         settings: { }
