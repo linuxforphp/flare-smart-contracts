@@ -27,6 +27,7 @@
     "test_timeshift_help": "echo 'Run tests with time shifts in VM'",
     "test_timewait": "env VM_FLARE_TEST=real yarn hardhat test --network develop",
     "test_timewait_help": "echo 'Run tests with actual delays'",
+    "test_fuzzing_token": "yarn hardhat test --network hardhat test/fuzzing/token/VPTokenFuzzing.ts",
     "---------DEPLOY---TEST---SCRIPTS": "",
     "test_deploy_local_scdev": "cat deploys/scdev.json | env CHAIN_CONFIG=ftso-tob yarn --silent hardhat test --no-compile --network scdev ./test/deploy/deploy.ts",
     "test_deploy_network_scdevTOB": "cat deploys/scdevTOB.json | env CHAIN_CONFIG=ftso-tob-deploy yarn hardhat test --network scdevTOB ./test/deploy/deploy.ts",
