@@ -178,10 +178,11 @@ library FtsoEpoch {
     }
 
     /**
-     * @notice Returns end time of price submission for an epoch instance
+     * @notice Returns end time of price submission for an epoch instance = reveal start time
      * @param _state                Epoch state
      * @param _epochId              Id of epoch instance
      * @return Timestamp as seconds since unix epoch
+     * @dev half-closed interval - end time not included
      */
     function _epochSubmitEndTime(State storage _state, uint256 _epochId) internal view returns (uint256) {
         return _state.firstEpochStartTime + (_epochId + 1) * _state.submitPeriod;
@@ -192,6 +193,7 @@ library FtsoEpoch {
      * @param _state                Epoch state
      * @param _epochId              Id of epoch instance
      * @return Timestamp as seconds since unix epoch
+     * @dev half-closed interval - end time not included
      */
     function _epochRevealEndTime(State storage _state, uint256 _epochId) internal view returns (uint256) {
         return _epochSubmitEndTime(_state, _epochId) + _state.revealPeriod;
@@ -204,8 +206,8 @@ library FtsoEpoch {
      * @return True if epoch reveal is in process and false otherwise
      */
     function _epochRevealInProcess(State storage _state, uint256 _epochId) internal view returns (bool) {
-        uint256 endTime = _epochSubmitEndTime(_state, _epochId);
-        return endTime < block.timestamp && block.timestamp <= endTime + _state.revealPeriod;
+        uint256 revealStartTime = _epochSubmitEndTime(_state, _epochId);
+        return revealStartTime <= block.timestamp && block.timestamp < revealStartTime + _state.revealPeriod;
     }
 
     /**

@@ -159,7 +159,6 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
 
         await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
         await ftsoRewardManager.setWFLR(wFlr.address);
-        await ftsoRewardManager.setInflation(mockInflation.address);
         mockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
 
         await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
@@ -210,6 +209,12 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
         it("Should revert calling deactivate if not from governance", async () => {
             await expectRevert(ftsoRewardManager.deactivate({ from: accounts[1]}), "only governance");
         });
+        
+        it("Should update ftso manager", async () => {
+            expect(await ftsoRewardManager.ftsoManager()).to.equals(mockFtsoManager.address);
+            await ftsoRewardManager.setFTSOManager(accounts[8]);
+            expect(await ftsoRewardManager.ftsoManager()).to.equals(accounts[8]);
+        });
 
         it("Should revert calling setFtsoManager if not from governance", async () => {
             await expectRevert(ftsoRewardManager.setFTSOManager(accounts[2], { from: accounts[1]}), "only governance");
@@ -219,12 +224,14 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
             await expectRevert(ftsoRewardManager.setFTSOManager(constants.ZERO_ADDRESS), "no ftso manager");
         });
 
-        it("Should revert calling setWFLR if not from governance", async () => {
-            await expectRevert(ftsoRewardManager.setWFLR(accounts[2], { from: accounts[1]}), "only governance");
+        it("Should update WFLR", async () => {
+            expect(await ftsoRewardManager.wFlr()).to.equals(wFlr.address);
+            await ftsoRewardManager.setWFLR(accounts[8]);
+            expect(await ftsoRewardManager.wFlr()).to.equals(accounts[8]);
         });
 
-        it("Should revert calling setInflation if not from governance", async () => {
-          await expectRevert(ftsoRewardManager.setInflation(accounts[2], { from: accounts[1]}), "only governance");
+        it("Should revert calling setWFLR if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.setWFLR(accounts[2], { from: accounts[1]}), "only governance");
         });
 
         it("Should revert calling setWFLR if setting to address(0)", async () => {
@@ -235,6 +242,28 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
             expect(await ftsoRewardManager.inflation()).to.equals(mockInflation.address);
             await ftsoRewardManager.setInflation(accounts[8]);
             expect(await ftsoRewardManager.inflation()).to.equals(accounts[8]);
+        });
+        
+        it("Should revert calling setInflation if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.setInflation(accounts[2], { from: accounts[1]}), "only governance");
+        });
+
+        it("Should revert calling setInflation if setting to address(0)", async () => {
+            await expectRevert(ftsoRewardManager.setInflation(constants.ZERO_ADDRESS), "inflation zero");
+        });
+
+        it("Should update supply", async () => {
+            expect(await ftsoRewardManager.supply()).to.equals(mockSupply.address);
+            await ftsoRewardManager.setSupply(accounts[8]);
+            expect(await ftsoRewardManager.supply()).to.equals(accounts[8]);
+        });
+        
+        it("Should revert calling setSupply if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.setSupply(accounts[2], { from: accounts[1]}), "only governance");
+        });
+
+        it("Should revert calling setSupply if setting to address(0)", async () => {
+            await expectRevert(ftsoRewardManager.setSupply(constants.ZERO_ADDRESS), "supply zero");
         });
 
         it("Should get epoch to expire next", async () => {

@@ -222,7 +222,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const p3BchPrice = await submitPrice(ftsoFbch, 1210, p3);
 
     const revealEndTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[2];
-    const revealStartTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[1].add(BN(1));
+    const revealStartTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[1];
     const votePowerBlock = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[8];
 
     console.log(`Reveal will start at = ${revealStartTs}; Reveal will end at = ${revealEndTs}; it is now ${new Date().getTime() / 1000}; votePower block for epoch ${p1FlrPrice?.epochId!} is ${votePowerBlock.toString()}`);

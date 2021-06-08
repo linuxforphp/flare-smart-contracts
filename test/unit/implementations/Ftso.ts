@@ -317,14 +317,14 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should not reveal price before submit period is over", async() => {
             let hash = submitPriceHash(500, 123);
             await ftso.submitPriceHash(hash, {from: accounts[1]});
-            await increaseTimeTo((epochId + 1) * 120 - 1);
+            await increaseTimeTo((epochId + 1) * 120 - 2);
             await expectRevert(ftso.revealPrice(epochId, 500, 123, {from: accounts[1]}), "Reveal period not active");
         });
 
         it("Should not reveal price after reveal period is over", async() => {
             let hash = submitPriceHash(500, 123);
             await ftso.submitPriceHash(hash, {from: accounts[1]});
-            await increaseTimeTo((epochId + 1) * 120 + 60);
+            await increaseTimeTo((epochId + 1) * 120 + 60 - 1);
             await expectRevert(ftso.revealPrice(epochId, 500, 123, {from: accounts[1]}), "Reveal period not active");
         });
 
@@ -890,9 +890,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         });
 
         it("Should not finalize price epoch for epoch in reveal price period", async() => {
-            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await increaseTimeTo((epochId + 1) * 120 - 1); // reveal period start
             await expectRevert(ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}), "Epoch not ready for finalization");
-            await increaseTimeTo((epochId + 1) * 120 + 60 - 1); // reveal period end -1s
+            await increaseTimeTo((epochId + 1) * 120 + 60 - 2); // reveal period end -1s
             await expectRevert(ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}), "Epoch not ready for finalization");
         });
 

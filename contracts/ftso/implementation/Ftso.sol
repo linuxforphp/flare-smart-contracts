@@ -466,6 +466,7 @@ contract Ftso is IIFtso {
      * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
      * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
      * @return _fallbackMode            Current epoch in fallback mode - only votes from trusted addresses will be used
+     * @dev half-closed intervals - end time not included
      */
     function getPriceEpochData() external view override returns (
         uint256 _epochId,
@@ -502,7 +503,8 @@ contract Ftso is IIFtso {
      * @return _finalizationType        Finalization type for epoch
      * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
      * @return _rewardedFtso            Whether epoch instance was a rewarded ftso
-     * @return _fallbackMode               Whether epoch instance was in fallback mode
+     * @return _fallbackMode            Whether epoch instance was in fallback mode
+     * @dev half-closed intervals - end time not included
      */
     function getFullEpochReport(uint256 _epochId) external view override returns (
         uint256 _epochSubmitStartTime,
@@ -965,7 +967,7 @@ contract Ftso is IIFtso {
      * @return _epoch               Return epoch instance
      */
     function _getEpochForFinalization(uint256 _epochId) internal view returns (FtsoEpoch.Instance storage _epoch) {
-        require(block.timestamp > epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
+        require(block.timestamp >= epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
         _epoch = epochs.instance[_epochId];
         require(_epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
     }
