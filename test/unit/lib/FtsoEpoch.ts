@@ -384,19 +384,19 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         const revealInProcess2 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess2).to.equals(false);
 
-        increaseTimeTo(5 + epochId * 120 + 60);
+        increaseTimeTo(5 + epochId * 120 + 59);
         const revealInProcess3 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess3).to.equals(true);
 
-        increaseTimeTo(5 + epochId * 120 + 61);
+        increaseTimeTo(5 + epochId * 120 + 60);
         const revealInProcess4 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess4).to.equals(false);
 
-        increaseTimeTo(5 + (epochId+1) * 120);
+        increaseTimeTo(5 + (epochId+1) * 120 - 1);
         const revealInProcess5 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess5).to.equals(false);
 
-        increaseTimeTo(5 + (epochId+1) * 120 + 1);
+        increaseTimeTo(5 + (epochId+1) * 120);
         const revealInProcess6 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess6).to.equals(true);
     });

@@ -150,17 +150,17 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
         if (justStarted) {
             _initializeRewardEpoch();
         } else {
-            if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec < block.timestamp) {
+            if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec <= block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
                 _finalizePriceEpoch();
             }
             // Note: prices should be first finalized and then new reward epoch can start
-            if (currentRewardEpochEnds < block.timestamp) {
+            if (currentRewardEpochEnds <= block.timestamp) {
                 _finalizeRewardEpoch();
                 _closeExpiredRewardEpochs();
             }
 
-            if(currentPriceEpochEnds < block.timestamp) {
+            if(currentPriceEpochEnds <= block.timestamp) {
                 // sets governance parameters on ftsos
                 _initializeCurrentEpochFTSOStatesForReveal();
             }
@@ -306,6 +306,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
         return currentRewardEpoch;
     }
 
+    /**
+     * @dev half-closed intervals - end time not included
+     */
     function getCurrentPriceEpochData() external view override returns (
         uint256 priceEpochId,
         uint256 priceEpochStartTimestamp,
@@ -496,7 +499,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
                     lastUnprocessedPriceEpoch, rewardedFtsoAddress,
                     priceEpochDurationSec,
                     currentRewardEpoch,
-                    _getPriceEpochEndTime(lastUnprocessedPriceEpoch)) {
+                    _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1) { // actual end time (included)
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
                 } catch {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
@@ -575,6 +578,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
 
     /**
      * @notice Returns current price epoch end time.
+     * @dev half-closed interval - end time not included
      */
     function _getCurrentPriceEpochEndTime() internal view returns (uint256) {
         uint256 currentPriceEpoch = _getCurrentPriceEpochId();
@@ -584,9 +588,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
     /**
      * @notice Returns price epoch end time.
      * @param _forPriceEpochId The price epoch id of the end time to fetch.
+     * @dev half-closed interval - end time not included
      */
     function _getPriceEpochEndTime(uint256 _forPriceEpochId) internal view returns (uint256) {
-        return firstPriceEpochStartTs + ((_forPriceEpochId + 1) * priceEpochDurationSec) - 1;
+        return firstPriceEpochStartTs + ((_forPriceEpochId + 1) * priceEpochDurationSec);
     }
 
     /**

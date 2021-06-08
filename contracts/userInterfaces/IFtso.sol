@@ -77,6 +77,7 @@ interface IFtso {
      * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
      * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
      * @return _fallbackMode            Current epoch in fallback mode - only votes from trusted addresses will be used
+     * @dev half-closed intervals - end time not included
      */
     function getPriceEpochData() external view returns (
         uint256 _epochId,

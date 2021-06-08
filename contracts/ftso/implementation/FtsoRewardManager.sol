@@ -273,8 +273,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     }
 
     /**
-     *   @notice Distributes rewards to data providers accounts, according to input parameters.
-     *   @dev must be called with totalWeight > 0 and addresses.length > 0
+     * @notice Distributes rewards to data providers accounts, according to input parameters.
+     * @dev must be called with totalWeight > 0 and addresses.length > 0
      */
     function distributeRewards(
         address[] memory _addresses,
@@ -284,10 +284,10 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address _ftso,
         uint256 _priceEpochDurationSec,
         uint256 _currentRewardEpoch,
-        uint256 _priceEpochEndTime
+        uint256 _priceEpochEndTime // end time included in epoch
     ) external override onlyFtsoManager {
         // FTSO manager should never call with bad values.
-        assert (_totalWeight != 0 && _addresses.length != 0);        
+        assert (_totalWeight != 0 && _addresses.length != 0);
 
         // console.log("_getDistributableFtsoInflationBalance() = ", _getDistributableFtsoInflationBalance());
         // console.log("count = ", _getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));

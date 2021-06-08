@@ -104,7 +104,8 @@ interface IIFtso is IFtso {
      * @return _finalizationType        Finalization type for epoch
      * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
      * @return _rewardedFtso            Whether epoch instance was a rewarded ftso
-     * @return _fallbackMode               Whether epoch instance was in fallback mode
+     * @return _fallbackMode            Whether epoch instance was in fallback mode
+     * @dev half-closed intervals - end time not included
      */
     function getFullEpochReport(uint256 _epochId) external view returns (
         uint256 _epochSubmitStartTime,
