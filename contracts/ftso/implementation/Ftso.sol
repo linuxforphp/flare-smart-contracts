@@ -640,13 +640,14 @@ contract Ftso is IIFtso {
         // register vote
         (uint256 votePowerFlr, uint256 votePowerAsset) = _getVotePowerOf(epoch, _voter);
         uint256 voteId = votes._createInstance(
+            _voter,
             votePowerFlr,
             votePowerAsset,
             epoch.votePowerFlr,
             epoch.votePowerAsset,
             _price
         );
-        epochs._addVote(epoch, voteId, votePowerFlr, votePowerAsset, _random);
+        epochs._addVote(epoch, _voter, voteId, votePowerFlr, votePowerAsset, _random);
         
         // prevent price submission from being revealed twice
         delete epochVoterHash[_epochId][_voter];

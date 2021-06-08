@@ -134,7 +134,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       // Act
       const sharingPctData = await inflationAllocation.getSharingPercentages();
-      console.log(sharingPctData);
+      // console.log(sharingPctData);
       // Assert
       assert.equal(ftsoRewardManager.address, sharingPctData[0].inflationReceiver);
       assert.equal(BN(10000), sharingPctData[0].percentBips)
@@ -189,15 +189,16 @@ contract(`deploy.ts system tests`, async accounts => {
         ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    it("Should by kept by keeper", async() => {
-        // Assemble
-        // Act
-        const startBlock = (await ftsoManager.rewardEpochs(0))[0];
-        // Assert
-        // If the keeper is calling keep on the RewardManager, then there should be
-        // an active reward epoch.
-        assert(startBlock.toNumber() != 0);
-    });
+    // After deploy delay introduced this is not relevant test
+    // it.skip("Should by kept by keeper", async() => {
+    //     // Assemble
+    //     // Act
+    //     const startBlock = (await ftsoManager.rewardEpochs(0))[0];
+    //     // Assert
+    //     // If the keeper is calling keep on the RewardManager, then there should be
+    //     // an active reward epoch.
+    //     assert(startBlock.toNumber() != 0);
+    // });
 
     it("Should know about PriceSubmitter", async() => {
       // Assemble
@@ -228,7 +229,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should have recognized inflation set", async() => {
         // Assemble
         // Act
-        await inflation.keep();
+        await flareKeeper.trigger();
         // Assert
         const { 0: recognizedInflationWei } = await inflation.getCurrentAnnum() as any;
         assert(BN(recognizedInflationWei).gt(BN(0)));

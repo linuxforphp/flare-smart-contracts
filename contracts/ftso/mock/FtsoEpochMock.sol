@@ -79,15 +79,16 @@ contract FtsoEpochMock {
             _assetPrices);
     }
 
-    function addVote(
+    function addVote(        
         uint256 _epochId,
+        address _voter,
         uint256 _voteId,
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,        
         uint256 _random
     ) public {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        state._addVote(epoch, _voteId, _votePowerFlr, _votePowerAsset, _random);
+        state._addVote(epoch, _voter, _voteId, _votePowerFlr, _votePowerAsset, _random);
     }
 
     function configureEpochs(

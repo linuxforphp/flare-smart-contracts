@@ -1,4 +1,5 @@
-import { ReadStream } from "node:fs";
+// import { ReadStream } from "node:fs";
+import { ReadStream } from "fs";
 
 export class Contract {
   name: string;

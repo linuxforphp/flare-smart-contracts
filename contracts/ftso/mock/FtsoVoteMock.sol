@@ -15,12 +15,14 @@ contract FtsoVoteMock {
     FtsoVote.State private state;
 
     function createInstance(
+        address _voter,
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,
         uint256 _totalVotePowerFlr,
         uint256 _totalVotePowerAsset,
         uint256 _price) public returns(uint256) {
         return state._createInstance(
+            _voter,
             _votePowerFlr,
             _votePowerAsset,
             _totalVotePowerFlr,

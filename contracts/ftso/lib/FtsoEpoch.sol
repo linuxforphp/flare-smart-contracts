@@ -129,6 +129,7 @@ library FtsoEpoch {
     function _addVote(
         State storage _state,
         Instance storage _instance,
+        address _voter,
         uint256 _voteId,
         uint256 _votePowerFlr,
         uint256 _votePowerAsset,
@@ -149,7 +150,7 @@ library FtsoEpoch {
         _instance.accumulatedVotePowerFlr = _instance.accumulatedVotePowerFlr.add(_votePowerFlr);
         _instance.accumulatedVotePowerAsset = _instance.accumulatedVotePowerAsset.add(_votePowerAsset);
         _instance.random += _random;
-        _instance.votes[msg.sender] = _voteId;
+        _instance.votes[_voter] = _voteId;
     }
 
     /**
