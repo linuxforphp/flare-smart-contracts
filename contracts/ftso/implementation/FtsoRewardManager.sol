@@ -11,13 +11,15 @@ import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiv
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
-// import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 /**
  * FTSORewardManager is in charge of:
  * - distributing rewards according to instructions from FTSO Manager
  * - allowing claims for rewards
  */    
+
+//solhint-disable-next-line max-states-count
 contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIRewardManager, Governed, ReentrancyGuard {
     using SafePct for uint256;
     using SafeMath for uint256;
@@ -46,7 +48,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     string internal constant ERR_AFTER_DAILY_CYCLE = "after daily cycle";
     
     uint256 constant internal MAX_BIPS = 1e4;
-uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
+    uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
 
     bool internal active;
 
@@ -75,8 +77,11 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
     uint256 public totalExpiredWei; // rewards that were not claimed
     uint256 public totalInflationAuthorizedWei;
     uint256 public totalInflationReceivedWei;
+    uint256 public totalSelfDestructReceivedWei;
     uint256 public lastInflationAuthorizationReceivedTs;
     uint256 public dailyAuthorizedInflation;
+
+    uint256 private lastBalance;
 
     /// addresses
     IIFtsoManager public ftsoManager;
@@ -87,7 +92,7 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
 
     modifier mustBalance {
         _;
-        require(address(this).balance == getExpectedBalance(), ERR_OUT_OF_BALANCE);
+        require(address(this).balance == _getExpectedBalance(), ERR_OUT_OF_BALANCE);
     }
 
     modifier onlyFtsoManager () {
@@ -138,6 +143,8 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
     ) external override onlyIfActive mustBalance nonReentrant returns (
         uint256 _rewardAmount
     ) {
+        _handleSelfDestructProceeds();
+
         uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
                 
         for (uint256 i = 0; i < _rewardEpochs.length; i++) {
@@ -151,6 +158,8 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         }
 
         _transferReward(_recipient, _rewardAmount);
+
+        lastBalance = address(this).balance;
     }
 
     /**
@@ -169,6 +178,8 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
     ) external override onlyIfActive mustBalance nonReentrant returns (
         uint256 _rewardAmount
     ) {
+        _handleSelfDestructProceeds();
+
         uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
 
         for (uint256 i = 0; i < _rewardEpochs.length; i++) {
@@ -184,6 +195,8 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         }
 
         _transferReward(_recipient, _rewardAmount);
+
+        lastBalance = address(this).balance;
     }
 
     /**
@@ -245,11 +258,17 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         supply.updateRewardManagerData(totalInflationAuthorizedWei, totalClaimedWei);
     }
 
-    function receiveInflation() external payable override onlyInflation {
-        // TODO: Self-destruct receiving will not break balancing, but current implementation
-        // will also not be able to track it, and therefore, distribute it.
-        // To do so will require looking at the expected topup from 
-        totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
+    function receiveInflation() external payable override mustBalance onlyInflation {
+        (uint256 currentBalance, uint256  expectedBalance ) = _handleSelfDestructProceeds();
+        if (currentBalance > expectedBalance) {
+            // Extra were self-destruct proceeds; already taken care of
+            totalInflationReceivedWei = totalInflationReceivedWei.add(expectedBalance);
+        } else if (currentBalance == expectedBalance) {
+            totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
+        } else {
+            assert(false);
+        }
+        lastBalance = currentBalance;
         // TODO: fire event
     }
 
@@ -469,6 +488,18 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         return 0;
     }
 
+    function _handleSelfDestructProceeds() internal returns (uint256 _currentBalance, uint256 _expectedBalance) {
+        _expectedBalance = lastBalance.add(msg.value);
+        _currentBalance = address(this).balance;
+        if (_currentBalance > _expectedBalance) {
+            // Then assume extra were self-destruct proceeds
+            totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(_currentBalance).sub(_expectedBalance);
+        } else if (_currentBalance < _expectedBalance) {
+            // This is a coding error
+            assert(false);
+        }
+    }
+
     /**
      * @notice Claims `_rewardAmounts` for `_dataProviders`.
      * @dev Internal function that takes care of reward bookkeeping
@@ -512,6 +543,22 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         return totalRewardAmount;
     }
 
+    /**
+     * @notice Transfers `_rewardAmount` to `_recipient`.
+     * @param _recipient            address representing the reward recipient
+     * @param _rewardAmount         number representing the amount to transfer
+     * @dev Uses low level call to transfer funds.
+     */
+    function _transferReward(address payable _recipient, uint256 _rewardAmount) internal {
+        if (_rewardAmount > 0) {
+            // transfer total amount (state is updated and events are emitted in _claimReward)
+            /* solhint-disable avoid-low-level-calls */
+            (bool success, ) = _recipient.call{value: _rewardAmount}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, ERR_CLAIM_FAILED);
+        }
+    }
+
     function _getDistributableFtsoInflationBalance() internal view returns (uint256) {
         return totalInflationAuthorizedWei
             .sub(totalAwardedWei.sub(totalExpiredWei));
@@ -528,22 +575,6 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_FULL_DAY_SEC);
         require(_fromThisTs <= dailyPeriodEndTs, ERR_AFTER_DAILY_CYCLE);
         return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSec) + 1;
-    }
-
-    /**
-     * @notice Transfers `_rewardAmount` to `_recipient`.
-     * @param _recipient            address representing the reward recipient
-     * @param _rewardAmount         number representing the amount to transfer
-     * @dev Uses low level call to transfer funds.
-     */
-    function _transferReward(address payable _recipient, uint256 _rewardAmount) internal {
-        if (_rewardAmount > 0) {
-            // transfer total amount (state is updated and events are emitted in _claimReward)
-            /* solhint-disable avoid-low-level-calls */
-            (bool success, ) = _recipient.call{value: _rewardAmount}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, ERR_CLAIM_FAILED);
-        }
     }
     
     /**
@@ -781,8 +812,9 @@ uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
         return defaultFeePercentage;
     }
 
-    function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
+    function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
         return totalInflationReceivedWei
+            .add(totalSelfDestructReceivedWei)
             .sub(totalClaimedWei);
     }
 }
