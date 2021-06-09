@@ -43,13 +43,6 @@ library InflationAnnum {
             BIPS100);
     }
 
-    function _computeDaysInAnnum(uint256 _startTimeStamp) internal pure returns(uint16) {
-        // This should cover passing through Feb 29
-        uint256 nextYearTimeStamp = _startTimeStamp.addYears(1);
-        uint256 daysInAnnum = _startTimeStamp.diffDays(nextYearTimeStamp);
-        return daysInAnnum.toUint16();
-    }
-
     function _computeDaysRemainingInAnnum(
         InflationAnnumState storage _self, 
         uint256 _atTimeStamp
@@ -65,8 +58,16 @@ library InflationAnnum {
         }
     }
 
-    function _getAnnumEndsTs(uint256 startTimeStamp) internal pure returns (uint256) {
-        return startTimeStamp.addYears(1).subSeconds(1);
+    function _getAnnumEndsTs(uint256 _startTimeStamp) internal pure returns (uint256) {
+        uint256 nextYearTimeStamp = _startTimeStamp.addYears(1);
+        if (_startTimeStamp.getMonth() == 2 && _startTimeStamp.getDay() == 29) {
+            nextYearTimeStamp = nextYearTimeStamp.addDays(1);
+        }
+        return nextYearTimeStamp.subSeconds(1);
+    }
+
+    function _computeDaysInAnnum(uint256 _startTimeStamp, uint256 _endTimeStamp) internal pure returns(uint16) {
+        return _startTimeStamp.diffDays(_endTimeStamp.addSeconds(1)).toUint16();
     }
 
     function initialize(
@@ -81,7 +82,7 @@ library InflationAnnum {
         _self.recognizedInflationWei = _computeRecognizedInflationWei(
             _inflatableBalance, 
             _annualInflationPercentageBips);
-        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp);
         _self.endTimeStamp = _getAnnumEndsTs(_startTimeStamp);
+        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp,_self.endTimeStamp);
     }
 }
