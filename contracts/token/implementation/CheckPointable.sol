@@ -37,7 +37,7 @@ abstract contract CheckPointable {
      */
     function _burnForAtNow(address _owner, uint256 _amount) internal virtual {
         uint256 newBalance = balanceOfAt(_owner, block.number).sub(_amount, "Burn too big for owner");
-        balanceHistory.writeValueOfAtNow(_owner, newBalance);
+        balanceHistory.writeValue(_owner, newBalance);
         totalSupply.writeValue(totalSupplyAt(block.number).sub(_amount, "Burn too big for total supply"));
     }
 
@@ -48,7 +48,7 @@ abstract contract CheckPointable {
      */
     function _mintForAtNow(address _owner, uint256 _amount) internal virtual {
         uint256 newBalance = balanceOfAt(_owner, block.number).add(_amount);
-        balanceHistory.writeValueOfAtNow(_owner, newBalance);
+        balanceHistory.writeValue(_owner, newBalance);
         totalSupply.writeValue(totalSupplyAt(block.number).add(_amount));
     }
 

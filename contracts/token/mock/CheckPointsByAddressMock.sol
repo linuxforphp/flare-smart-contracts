@@ -22,7 +22,7 @@ contract CheckPointsByAddressMock {
     function transmit(address _from, address _to, uint256 _amount) public {
         state.transmit(_from, _to, _amount);
     }
-    function writeValueOfAtNow(address _owner, uint256 _value) public returns (uint256 _blockNumber) {
-        return state.writeValueOfAtNow(_owner, _value);
+    function writeValue(address _owner, uint256 _value) public {
+        state.writeValue(_owner, _value);
     }
 }

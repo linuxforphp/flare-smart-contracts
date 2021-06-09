@@ -90,22 +90,28 @@ library CheckPointHistory {
      * @notice Writes the value at the current block.
      * @param _self A CheckPointHistoryState instance to manage.
      * @param _value Value to write.
-     * @return _blockNumber The block number that the value was written at. 
      **/
     function writeValue(
         CheckPointHistoryState storage _self, 
         uint256 _value
-    ) internal returns (uint256 _blockNumber) {
+    ) internal {
         uint256 historyCount = _self.values.length;
-
-        if (historyCount == 0 || block.number > _self.values[historyCount - 1].fromBlock) {
+        if (historyCount == 0) {
             // values array empty, push new CheckPoint
             _self.values.push(CheckPoint({fromBlock: block.number, value: _value}));
         } else {
-            assert (block.number == _self.values[historyCount - 1].fromBlock);
-            // If last check point is _blockNumber input, just update
-            _self.values[historyCount - 1].value = _value;
+            CheckPoint storage lastCheckpoint = _self.values[historyCount - 1];
+            uint256 lastBlock = lastCheckpoint.fromBlock;
+            // slither-disable-next-line incorrect-equality
+            if (block.number == lastBlock) {
+                // If last check point is the current block, just update
+                lastCheckpoint.value = _value;
+            } else {
+                // we should never have future blocks in history
+                assert (block.number > lastBlock);
+                // push new CheckPoint
+                _self.values.push(CheckPoint({fromBlock: block.number, value: _value}));
+            }
         }
-        return block.number;
     }
 }

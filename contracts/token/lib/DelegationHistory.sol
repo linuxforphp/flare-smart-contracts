@@ -79,13 +79,12 @@ library DelegationHistory {
      * @param _self A CheckPointHistoryState instance to manage.
      * @param _delegate The delegate tu update.
      * @param _value The new value to set for this delegate (value `0` deletes `_delegate` from the list).
-     * @return _blockNumber The block number that the value was written at. 
      **/
     function writeValue(
         CheckPointHistoryState storage _self, 
         address _delegate, 
         uint256 _value
-    ) internal returns (uint256 _blockNumber) {
+    ) internal {
         uint256 historyCount = _self.checkpoints.length;
         if (historyCount == 0) {
             // checkpoints array empty, push new CheckPoint
@@ -95,18 +94,22 @@ library DelegationHistory {
                 cp.delegates.push(_delegate);
                 cp.values.push(_value);
             }
-        } else if (block.number == _self.checkpoints[historyCount - 1].fromBlock) {
-            // If last check point is _blockNumber input, just update
-            _updateDelegates(_self.checkpoints[historyCount - 1], _delegate, _value);
         } else {
-            // last block cannot be from the future
-            assert(block.number > _self.checkpoints[historyCount - 1].fromBlock); 
-            // last check point block is before
-            CheckPoint storage cp = _self.checkpoints.push();
-            cp.fromBlock = block.number;
-            _copyAndUpdateDelegates(cp, _self.checkpoints[historyCount - 1], _delegate, _value);
+            CheckPoint storage lastCheckpoint = _self.checkpoints[historyCount - 1];
+            uint256 lastBlock = lastCheckpoint.fromBlock;
+            // slither-disable-next-line incorrect-equality
+            if (block.number == lastBlock) {
+                // If last check point is the current block, just update
+                _updateDelegates(lastCheckpoint, _delegate, _value);
+            } else {
+                // we should never have future blocks in history
+                assert(block.number > lastBlock); 
+                // last check point block is before
+                CheckPoint storage cp = _self.checkpoints.push();
+                cp.fromBlock = block.number;
+                _copyAndUpdateDelegates(cp, lastCheckpoint, _delegate, _value);
+            }
         }
-        return block.number;
     }
     
     /**

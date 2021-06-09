@@ -63,6 +63,7 @@ contract FlareKeeper is GovernedAtGenesis {
     uint256 public totalMintingReceivedWei;
     uint256 public totalMintingWithdrawnWei;
     uint256 public totalSelfDestructReceivedWei;
+    //slither-disable-next-line uninitialized-state                     // no problem, will be zero initialized anyway
     uint256 public totalSelfDestructWithdrawnWei;
     uint256 public maxMintingRequestWei;
     uint256 public lastMintRequestTs;
@@ -241,7 +242,10 @@ contract FlareKeeper is GovernedAtGenesis {
      *   mint requests as made via requestMinting, and also self-destruct sending to this contract, should
      *   it happen for some reason.
      */
-    function trigger() public inflationSet mustBalance returns (uint256 _toMintWei) {
+    //slither-disable-next-line reentrancy-eth      // method protected by reentrancy guard (see comment below)
+    function trigger() external inflationSet mustBalance returns (uint256 _toMintWei) {
+        // only one trigger() call per block allowed
+        // this also serves as reentrancy guard, since any re-entry will happen in the same block
         require(block.number > systemLastTriggeredAt, ERR_BLOCK_NUMBER_SMALL);
         systemLastTriggeredAt = block.number;
 
@@ -256,6 +260,7 @@ contract FlareKeeper is GovernedAtGenesis {
                 uint256 minted = currentBalance.sub(lastBalance);
                 totalMintingReceivedWei = totalMintingReceivedWei.add(minted);
                 emit MintingReceived(minted);
+                //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
                 try inflation.receiveMinting{ value: minted }() {
                     totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(minted);
                     emit MintingWithdrawn(minted);
@@ -277,6 +282,7 @@ contract FlareKeeper is GovernedAtGenesis {
                 totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
                 emit MintingReceived(expectedMintRequest);
                 emit SelfDestructReceived(selfDestructReceived);
+                //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
                 try inflation.receiveMinting{ value: expectedMintRequest }() {
                     totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(expectedMintRequest);
                     emit MintingWithdrawn(expectedMintRequest);

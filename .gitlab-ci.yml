@@ -21,3 +21,14 @@ test-contract:
         - yarn c
         - yarn $TEST_LINTER
         - yarn $TEST_HARDHAT
+
+slither-check:
+    stage: test
+    image: node:latest
+    before_script:
+        - apt update
+        - apt install -y python3-pip
+        - pip3 install slither-analyzer
+        - yarn install --frozen-lockfile
+    script:
+        - yarn slither

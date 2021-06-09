@@ -6,5 +6,7 @@
   "[solidity]": {
     "editor.tabSize": 4
   },
-  "terminal.integrated.scrollback": 2000
+  "terminal.integrated.scrollback": 2000,
+  "slither.solcPath": "",
+  "slither.hiddenDetectors": []
 }

@@ -34,9 +34,11 @@ library SafePct {
             return xy / z;
         }
 
+        //slither-disable-next-line divide-before-multiply
         uint256 a = x / z;
         uint256 b = x % z; // x = a * z + b
 
+        //slither-disable-next-line divide-before-multiply
         uint256 c = y / z;
         uint256 d = y % z; // y = c * z + d
 

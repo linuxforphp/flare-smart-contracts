@@ -37,28 +37,29 @@ contract WFlr is VPToken, IWFlr {
      * - the caller must have allowance for `owners`'s tokens of at least
      * `amount`.
      */
-    function withdrawFrom(address owner, uint256 amount) public override {
+    function withdrawFrom(address owner, uint256 amount) external override {
         // Reduce senders allowance
         _approve(owner, msg.sender, allowance(owner, msg.sender).sub(amount, "allowance below zero"));
         // Burn the owners balance
         _burn(owner, amount);
-        // Move value to sender
-        msg.sender.transfer(amount);
         // Emit withdraw event
         emit Withdrawal(owner, amount);
+        // Move value to sender (last statement, to prevent reentrancy)
+        msg.sender.transfer(amount);
     }
 
     /**
      * @notice Deposit Flare from msg.sender to recipient and and mint WFLR ERC20.
      * @param recipient A payable address to receive Flare and minted WFLR.
      */
-    function depositTo(address payable recipient) public payable override {
+    function depositTo(address payable recipient) external payable override {
+        require(recipient != address(0));
         // Mint WFLR
         _mint(recipient, msg.value);
-        // Transfer Flare to recipient
-        recipient.transfer(msg.value);
         // Emit deposit event
         emit Deposit(recipient, msg.value);
+        // Transfer Flare to recipient (last statement, to prevent reentrancy)
+        recipient.transfer(msg.value);
     }
 
     /**
@@ -75,12 +76,12 @@ contract WFlr is VPToken, IWFlr {
      * @notice Withdraw Flare and burn WFLR ERC20.
      * @param amount The amount to withdraw.
      */
-    function withdraw(uint256 amount) public override {
+    function withdraw(uint256 amount) external override {
         // Burn WFLR tokens
         _burn(msg.sender, amount);
-        // Send Flare to sender
-        msg.sender.transfer(amount);
         // Emit withdrawal event
         emit Withdrawal(msg.sender, amount);
+        // Send Flare to sender (last statement, to prevent reentrancy)
+        msg.sender.transfer(amount);
     }
 }

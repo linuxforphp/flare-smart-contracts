@@ -20,8 +20,11 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     string constant private ALREADY_PERCENT_MSG = "Already delegated by percentage";
 
     constructor(
+        //slither-disable-next-line shadowing-local
         string memory _name, 
-        string memory _symbol) ERC20(_name, _symbol) {
+        //slither-disable-next-line shadowing-local
+        string memory _symbol
+    ) ERC20(_name, _symbol) {
     }
     
     modifier onlyPercent {
