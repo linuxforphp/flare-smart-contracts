@@ -16,6 +16,7 @@ import {
 } from "../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
 import { pascalCase } from "pascal-case";
+import { Account } from "web3/eth/accounts";
 
 // import { serializedParameters } from "./DeploymentParameters";
 
@@ -42,9 +43,17 @@ async function main(parameters: any) {
   const contracts = new Contracts();
 
   // Define accounts in play for the deployment process
-  const deployerAccount = web3.eth.accounts.privateKeyToAccount(parameters.deployerPrivateKey);
-  const governanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.governancePrivateKey);
-  const genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.genesisGovernancePrivateKey);
+  let deployerAccount: any;
+  let governanceAccount: any;
+  let genesisGovernanceAccount
+
+  try {
+    deployerAccount = web3.eth.accounts.privateKeyToAccount(parameters.deployerPrivateKey);
+    governanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.governancePrivateKey);
+    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.genesisGovernancePrivateKey);
+  } catch (e) {
+    throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
+  }
 
   // Wire up the default account that will do the deployment
   web3.eth.defaultAccount = deployerAccount.address;
@@ -140,7 +149,7 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address);
 
   // Delayed reward epoch start time
-  let rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours*60*60)));
+  let rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours * 60 * 60)));
 
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
