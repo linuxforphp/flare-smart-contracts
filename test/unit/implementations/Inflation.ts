@@ -116,6 +116,108 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       });
     });
 
+    describe("annums lengths", async() => {
+      it("Counting annum length in non leap year", async() => {
+        // Assemble
+        await time.advanceBlock();
+        const nowTs = await time.latest() as BN;  
+        // Make sure the current blockchain time is before 1/2/2030
+        const timestamp_1_2_2030 = 1896134400;
+        assert.isAtLeast(timestamp_1_2_2030, nowTs.toNumber());
+        // Act
+        await time.increaseTo(timestamp_1_2_2030);
+        await mockFlareKeeper.trigger();
+        const { 
+          1: daysInAnnum,
+          2: startTimeStamp,
+          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        // Assert
+        // Check that daysInAnnum parameter is working correctly
+        assert.equal(daysInAnnum,365);
+        // Check that start and end timestamp are actually 365 days appart -1 sec as designed
+        assert.equal(endTimeStamp-startTimeStamp,365*24*60*60-1);
+      });
+
+      it("Counting annum length starting from date not in leap year" +
+        "but after march one year before leap year", async() => {
+        // Assemble
+        await time.advanceBlock();
+        const nowTs = await time.latest() as BN;  
+        // Make sure the current blockchain time is before 30/6/2023
+        const timestamp_30_6_2031 = 1940544000;
+        assert.isAtLeast(timestamp_30_6_2031, nowTs.toNumber());
+        // Act
+        await time.increaseTo(timestamp_30_6_2031);
+        await mockFlareKeeper.trigger();
+        const { 
+          1: daysInAnnum,
+          2: startTimeStamp,
+          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        // Assert
+        assert.equal(daysInAnnum,366);
+        assert.equal(endTimeStamp-startTimeStamp,366*24*60*60-1);
+      });
+
+      it("Counting annum length starting on 28/2 not in leap year" +
+        "but one year before leap year", async() => {
+        // Assemble
+        await time.advanceBlock();
+        const nowTs = await time.latest() as BN;  
+        // Make sure the current blockchain time is before 28/2/2027
+        const timestamp_28_2_2035 = 2056233600;
+        assert.isAtLeast(timestamp_28_2_2035, nowTs.toNumber());
+        // Act
+        await time.increaseTo(timestamp_28_2_2035);
+        await mockFlareKeeper.trigger();
+        const { 
+          1: daysInAnnum,
+          2: startTimeStamp,
+          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        // Assert
+        assert.equal(daysInAnnum,365);
+        assert.equal(endTimeStamp-startTimeStamp,365*24*60*60-1);
+      });
+
+      it("Counting annum length starting from date in leap year" +
+        "but after 29/2 in a leap year", async() => {
+        // Assemble
+        await time.advanceBlock();
+        const nowTs = await time.latest() as BN;  
+        // Make sure the current blockchain time is before 30/6/2028
+        const timestamp_30_6_2036 = 2098396800;
+        assert.isAtLeast(timestamp_30_6_2036, nowTs.toNumber());
+        // Act
+        await time.increaseTo(timestamp_30_6_2036);
+        await mockFlareKeeper.trigger();
+        const { 
+          1: daysInAnnum,
+          2: startTimeStamp,
+          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        // Assert
+        assert.equal(daysInAnnum,365);
+        assert.equal(endTimeStamp-startTimeStamp,365*24*60*60-1);
+      });
+
+      it("Counting annum length starting on 29/2 in a leap year", async() => {
+        // Assemble
+        await time.advanceBlock();
+        const nowTs = await time.latest() as BN;  
+        // Make sure the current blockchain time is before 29/2/2032
+        const timestamp_29_2_2040 = 2214086400;
+        assert.isAtLeast(timestamp_29_2_2040, nowTs.toNumber());
+        // Act
+        await time.increaseTo(timestamp_29_2_2040);
+        await mockFlareKeeper.trigger();
+        const { 
+          1: daysInAnnum,
+          2: startTimeStamp,
+          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        // Assert
+        assert.equal(daysInAnnum,366);
+        assert.equal(endTimeStamp-startTimeStamp,366*24*60*60-1);
+      });
+    });
+
     describe("authorize", async() => {
       it("Should not authorize inflation if no sharing percentages", async() => {
         // Assemble
@@ -164,6 +266,34 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(rewardServicesState.rewardServices[0].authorizedInflationWei, Math.floor(expectedAuthorizedInflation * 0.3));
         // Check authorized inflation for the second reward service
         assert.equal(rewardServicesState.rewardServices[1].authorizedInflationWei, expectedAuthorizedInflation - Math.floor(expectedAuthorizedInflation * 0.3));
+      });  
+
+      it("Should authorize inflation - first cycle, 3 sharing percentages", async() => {
+        // Assemble
+        // Set up three sharing percentages
+        const sharingPercentages = [];
+        sharingPercentages[0] = {inflationReceiver: (await MockContract.new()).address, percentBips: 3333};
+        sharingPercentages[1] = {inflationReceiver: (await MockContract.new()).address, percentBips: 3334};
+        sharingPercentages[2] = {inflationReceiver: (await MockContract.new()).address, percentBips: 3333};
+        const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
+        await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+        // Act
+        await mockFlareKeeper.trigger();
+        // Assert
+        const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
+        const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
+        // Check authorized inflation across annums (only 1 annum tho)
+        assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
+        const { 
+          4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        // Check authorized inflation total for current annum
+        assert.equal(rewardServicesState.totalAuthorizedInflationWei, expectedAuthorizedInflation);
+        // Check authorized inflation for first reward service
+        assert.equal(rewardServicesState.rewardServices[0].authorizedInflationWei, Math.floor(expectedAuthorizedInflation * 0.3333));
+        // Check authorized inflation for second reward service
+        assert.equal(rewardServicesState.rewardServices[1].authorizedInflationWei, Math.floor(expectedAuthorizedInflation * 0.3334));
+        // Check authorized inflation for the third reward service
+        assert.equal(rewardServicesState.rewardServices[2].authorizedInflationWei, expectedAuthorizedInflation - Math.floor(expectedAuthorizedInflation * 0.3334) - Math.floor(expectedAuthorizedInflation * 0.3333));
       });  
 
       it("Should authorize inflation - second cycle, 2 sharing percentages", async() => {
