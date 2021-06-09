@@ -6,7 +6,7 @@ const axios = require('axios')
 const express = require('express')
 
 const port = 3000
-const provider = 'https://coston-api-sc.flare.rocks/ext/bc/C/rpc'
+const provider = `${process.env.SERVER}/ext/bc/C/rpc`
 const web3Provider = new Web3.providers.HttpProvider(provider)
 const web3 = new Web3(web3Provider)
 

@@ -48,12 +48,12 @@ nul
 ## Flattened contracts
 flattened
 
-## Annoying .DS_Store on mac
+## Annoying .DS_Store on Mac
 .DS_Store
 
 ## Test deploys info
 deploys/*
-!deploys/scdevTOB.json
+!deploys/coston-private-beta.json
 
 ## .env
 .env
