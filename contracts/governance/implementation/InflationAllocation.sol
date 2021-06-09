@@ -51,7 +51,7 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
     function setSharingPercentages (
         IIInflationReceiver[] memory _inflationRecievers, 
         uint256[] memory _percentagePerReceiverBips
-        ) public onlyGovernance 
+        ) external onlyGovernance 
     {
         require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
 

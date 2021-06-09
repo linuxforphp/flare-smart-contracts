@@ -62,19 +62,19 @@ abstract contract Delegatable is IIVPToken {
             // Iterate over the delegates
             (address[] memory delegates, uint256[] memory bipses) = delegation.getDelegations();
             for (uint256 i = 0; i < delegates.length; i++) {
-                address delegate = delegates[i];
-                // Compute the delegated vote power for the delegate
+                address delegatee = delegates[i];
+                // Compute the delegated vote power for the delegatee
                 uint256 priorValue = _priorBalance.mulDiv(bipses[i], PercentageDelegation.MAX_BIPS);
                 uint256 newValue = _newBalance.mulDiv(bipses[i], PercentageDelegation.MAX_BIPS);
                 // Compute new voting power
                 if (newValue > priorValue) {
                     // increase (subtraction is safe as newValue > priorValue)
-                    votePower.delegate(_owner, delegate, newValue - priorValue);
+                    votePower.delegate(_owner, delegatee, newValue - priorValue);
                 } else {
                     // decrease (subtraction is safe as newValue < priorValue)
-                    votePower.undelegate(_owner, delegate, priorValue - newValue);
+                    votePower.undelegate(_owner, delegatee, priorValue - newValue);
                 }
-                emit Delegate(_owner, delegate, priorValue, newValue, block.number);
+                emit Delegate(_owner, delegatee, priorValue, newValue, block.number);
             }
         }
     }

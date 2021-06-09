@@ -181,6 +181,7 @@ library FtsoMedian {
         uint256 totalSum; 
         while (true) {
             // guarantee: pos is in [left,right] and newLeftSum >= leftSum, newRightSum >= rightSum !!!
+            //slither-disable-next-line weak-prng       // no need for secure random, at worst more gas used
             (p.pos, s.newLeftSum, s.newRightSum) = _partition(
                 p.left,
                 p.right,

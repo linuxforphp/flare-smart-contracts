@@ -402,6 +402,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
             votepowerBlockBoundary = 1;
         }
  
+        //slither-disable-next-line weak-prng           // lastRandom calculated from ftso inputs
         uint256 votepowerBlocksAgo = lastRandom % votepowerBlockBoundary;
         // prevent block.number becoming votePowerBlock
         // if  lastRandom % votepowerBlockBoundary == 0  
@@ -463,11 +464,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
             uint256 chosenFtsoId;
             if (lastUnprocessedPriceEpoch == 0 || priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso == address(0)) {
                 // pump not yet primed
+                //slither-disable-next-line weak-prng           // only used for first epoch
                 chosenFtsoId = uint256(keccak256(abi.encode(
                         block.difficulty, block.timestamp
                     ))) % numFtsos;
             } else {
                 // at least one finalize with real FTSO
+                //slither-disable-next-line weak-prng           // ftso random calculated safely from inputs
                 chosenFtsoId = uint256(keccak256(abi.encode(
                         IIFtso(priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso).getCurrentRandom()
                     ))) % numFtsos;
@@ -483,6 +486,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
             bool wasDistributed = false;
             address rewardedFtsoAddress = address(0);
             for(uint256 i = 0; i < numFtsos; i++) {
+                //slither-disable-next-line weak-prng           // not a random, just choosing next
                 uint256 id = (chosenFtsoId + i) % numFtsos;
                 try ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
                     address[] memory _addresses,

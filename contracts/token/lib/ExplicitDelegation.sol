@@ -42,7 +42,7 @@ library ExplicitDelegation {
     ) internal {
         uint256 prevAmount = _self.delegatedVotePower.valueOfAtNow(_delegate);
         uint256 newTotal = _self.delegatedTotal.valueAtNow().sub(prevAmount, "Total < 0").add(_amount);
-        _self.delegatedVotePower.writeValueOfAtNow(_delegate, _amount);
+        _self.delegatedVotePower.writeValue(_delegate, _amount);
         _self.delegatedTotal.writeValue(newTotal);
     }
     

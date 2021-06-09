@@ -38,6 +38,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
         internal topupConfigurations;                                   // A topup configuration for a contract
                                                                         //   receiving inflation.
     uint256 public totalSelfDestructReceivedWei;
+    //slither-disable-next-line uninitialized-state                     // no problem, will be zero initialized anyway
     uint256 public totalSelfDestructWithdrawnWei;
     uint256 immutable public rewardEpochStartTs;
     uint256 public rewardEpochStartedTs;
@@ -158,7 +159,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
     function getTopupConfiguration(
         IIInflationReceiver _inflationReceiver
     )
-        public
+        external
         notZero(address(_inflationReceiver))
         returns(TopupConfiguration memory _topupConfiguration)
     {
@@ -173,7 +174,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
         _topupConfiguration.configured = topupConfiguration.configured;
     }
 
-    function keep() public virtual override notZero(address(supply)) onlyFlareKeeper returns(bool) {
+    function keep() external virtual override notZero(address(supply)) onlyFlareKeeper returns(bool) {
         // If inflation rewarding not started yet, blow off processing until it does.
         if (block.timestamp < rewardEpochStartTs) {
             return true;

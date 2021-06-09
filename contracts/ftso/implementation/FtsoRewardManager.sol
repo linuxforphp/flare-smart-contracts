@@ -159,6 +159,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
 
         _transferReward(_recipient, _rewardAmount);
 
+        //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant
         lastBalance = address(this).balance;
     }
 
@@ -195,7 +196,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         }
 
         _transferReward(_recipient, _rewardAmount);
-
+        
+        //slither-disable-next-line reentrancy-eth      // guarded by nonReentrant
         lastBalance = address(this).balance;
     }
 
@@ -553,6 +555,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         if (_rewardAmount > 0) {
             // transfer total amount (state is updated and events are emitted in _claimReward)
             /* solhint-disable avoid-low-level-calls */
+            //slither-disable-next-line arbitrary-send          // amount always calculated by _claimReward
             (bool success, ) = _recipient.call{value: _rewardAmount}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, ERR_CLAIM_FAILED);

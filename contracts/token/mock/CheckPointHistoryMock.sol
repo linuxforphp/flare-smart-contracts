@@ -18,7 +18,7 @@ contract CheckPointHistoryMock {
     function valueAtNow() public view returns (uint256 _value) {
         return state.valueAtNow();
     }
-    function writeValue(uint256 _value) public returns (uint256 _blockNumber) {
-        return state.writeValue(_value);
+    function writeValue(uint256 _value) public {
+        state.writeValue(_value);
     }
 }

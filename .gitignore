@@ -18,6 +18,7 @@ accounts.json
 ## Build generated
 build/
 bin/
+crytic-export/
 
 ## Node packages etc
 node_modules/

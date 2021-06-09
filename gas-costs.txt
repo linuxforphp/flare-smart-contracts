@@ -8,7 +8,7 @@
    47730    47730    47730     1   transmitAt (CheckPointsByAddressMock)
   113219   113219   113219     2   transmit (CheckPointsByAddressMock)
    37492    37492    37492     1   writeValueOfAt (CheckPointsByAddressMock)
-   81036    72388    83918    16   writeValueOfAtNow (CheckPointsByAddressMock)
+   81036    72388    83918    16   writeValue (CheckPointsByAddressMock)
   342949   342949   342949     1   burnVotePower (DelegatableMock)
   272753   109523   341948    19   delegate (DelegatableMock)
   330652   291648   343306    12   delegateExplicit (DelegatableMock)
