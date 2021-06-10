@@ -1,5 +1,5 @@
 import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
-import { compareArrays, compareNumberArrays, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
@@ -1296,23 +1296,23 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await setMockVotePowerOfAt(10, 1000, 10000, accounts[1]);
             await ftso.revealPrice(epochId, 500, 123, {from: accounts[1]});
             let random3 = await ftso.getCurrentRandom();
-            expect(random3.toNumber()).to.equals(123); // 123
+            expect(random3.toString()).to.equals(computeVoteRandom([[500, 123]])); // "75282780669876531298563125864469239736494948496730006659928901908576945650647" = keccak256(123, 500)
 
             await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
             await ftso.revealPrice(epochId, 250, 124, {from: accounts[2]});
             let random4 = await ftso.getCurrentRandom();
-            expect(random4.toNumber()).to.equals(247); // 123 + 124
+            expect(random4.toString()).to.equals(computeVoteRandom([[500, 123], [250, 124]])); // "63602438260585912703189698405303200700455766745107631159982124671982290245668" = keccak256(123,500) + keccak256(124, 250)
 
             await setMockVotePowerOfAt(10, 0, 50000, accounts[3]);
             await ftso.revealPrice(epochId, 400, 125, {from: accounts[3]});
             let random5 = await ftso.getCurrentRandom();
-            expect(random5.toNumber()).to.equals(372); // 123 + 124 + 125
+            expect(random5.toString()).to.equals(computeVoteRandom([[500, 123], [250, 124], [400, 125]])); // "3548118661429363055776256193746673930982690427070434576280736407613539635493" = keccak256(123,500) + keccak256(124, 250) + keccak256(125, 400)
             
             await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
             await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}); // finalize price -> epochId price = 250
 
             let random6 = await ftso.getCurrentRandom();
-            expect(random6.toNumber()).to.equals(372); // 123 + 124 + 125
+            expect(random6.toString()).to.equals(random5.toString()); // Computed above
             
             // round 2 - current fasset price = 250
             await ftso.submitPriceHash(submitPriceHash(300, 223), {from: accounts[1]});
@@ -1329,23 +1329,23 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await setMockVotePowerOfAt(12, 2000, 0, accounts[1]);
             await ftso.revealPrice(epochId+1, 300, 223, {from: accounts[1]});
             let random8 = await ftso.getCurrentRandom();
-            expect(random8.toNumber()).to.equals(223); // 223
+            expect(random8.toString()).to.equals(computeVoteRandom([[300, 223]])); // "110795213627240982145569590549608355097455138196728857926796593827002785112641" = keccak256(223, 300)
 
             await setMockVotePowerOfAt(12, 2000, 80000, accounts[2]);
             await ftso.revealPrice(epochId+1, 400, 300, {from: accounts[2]});
             let random9 = await ftso.getCurrentRandom();
-            expect(random9.toNumber()).to.equals(523); // 223 + 300
+            expect(random9.toString()).to.equals(computeVoteRandom([[300, 223], [400, 300]])); // "1340778395199417997733493134654933692809673674359391723196464968294144616253" =  keccak256(223, 300) + keccak256(300, 400)
 
             await setMockVotePowerOfAt(12, 2000, 10000, accounts[3]);
             await ftso.revealPrice(epochId+1, 200, 23, {from: accounts[3]});
             let random10 = await ftso.getCurrentRandom();
-            expect(random10.toNumber()).to.equals(546); // 223 + 300 + 23
+            expect(random10.toString()).to.equals(computeVoteRandom([[300, 223], [400, 300], [200, 23]]));  // "33056549103278957729624771621298579361541645567473985324007450939133354680375" = keccak256(223, 300) + keccak256(300, 400) + keccak256(23, 200)
 
             await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
             await ftso.finalizePriceEpoch(epochId+1, false, {from: accounts[10]}); // finalize price -> epochId+1 price = 400
 
             let random11 = await ftso.getCurrentRandom();
-            expect(random11.toNumber()).to.equals(546); // 223 + 300 + 23
+            expect(random11.toString()).to.equals(random10.toString()); // computed above
 
             await increaseTimeTo((epochId + 3) * 120); // reveal period start
             let random12 = await ftso.getCurrentRandom();
@@ -1392,23 +1392,23 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await setMockVotePowerOfAt(10, 1000, 10000, accounts[1]);
             await ftso.revealPrice(epochId, 500, 123, {from: accounts[1]});
             let random3 = await ftso.getRandom(epochId);
-            expect(random3.toNumber()).to.equals(123); // 123
+            expect(random3.toString()).to.equals(computeVoteRandom([[500, 123]])); // "75282780669876531298563125864469239736494948496730006659928901908576945650647" = keccak256(123, 500)
 
             await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
             await ftso.revealPrice(epochId, 250, 124, {from: accounts[2]});
             let random4 = await ftso.getRandom(epochId);
-            expect(random4.toNumber()).to.equals(247); // 123 + 124
+            expect(random4.toString()).to.equals(computeVoteRandom([[500, 123], [250, 124]])); // "63602438260585912703189698405303200700455766745107631159982124671982290245668" = keccak256(123,500) + keccak256(124, 250)
 
             await setMockVotePowerOfAt(10, 0, 50000, accounts[3]);
             await ftso.revealPrice(epochId, 400, 125, {from: accounts[3]});
             let random5 = await ftso.getRandom(epochId);
-            expect(random5.toNumber()).to.equals(372); // 123 + 124 + 125
+            expect(random5.toString()).to.equals(computeVoteRandom([[500, 123], [250, 124], [400, 125]])); // "3548118661429363055776256193746673930982690427070434576280736407613539635493" = keccak256(123,500) + keccak256(124, 250) + keccak256(125, 400)
             
             await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
             await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}); // finalize price -> epochId price = 250
 
             let random6 = await ftso.getRandom(epochId);
-            expect(random6.toNumber()).to.equals(372); // 123 + 124 + 125
+            expect(random6.toString()).to.equals(random5.toString()); // Computed above
             
             // round 2 - current fasset price = 250
             await ftso.submitPriceHash(submitPriceHash(300, 223), {from: accounts[1]});
@@ -1425,31 +1425,31 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await setMockVotePowerOfAt(12, 2000, 0, accounts[1]);
             await ftso.revealPrice(epochId+1, 300, 223, {from: accounts[1]});
             let random8 = await ftso.getRandom(epochId+1);
-            expect(random8.toNumber()).to.equals(223); // 223
+            expect(random8.toString()).to.equals(computeVoteRandom([[300, 223]])); // "110795213627240982145569590549608355097455138196728857926796593827002785112641" = keccak256(223, 300)
 
             await setMockVotePowerOfAt(12, 2000, 80000, accounts[2]);
             await ftso.revealPrice(epochId+1, 400, 300, {from: accounts[2]});
             let random9 = await ftso.getRandom(epochId+1);
-            expect(random9.toNumber()).to.equals(523); // 223 + 300
+            expect(random9.toString()).to.equals(computeVoteRandom([[300, 223], [400, 300]])); // "1340778395199417997733493134654933692809673674359391723196464968294144616253" =  keccak256(223, 300) + keccak256(300, 400)
 
             await setMockVotePowerOfAt(12, 2000, 10000, accounts[3]);
             await ftso.revealPrice(epochId+1, 200, 23, {from: accounts[3]});
             let random10 = await ftso.getRandom(epochId+1);
-            expect(random10.toNumber()).to.equals(546); // 223 + 300 + 23
+            expect(random10.toString()).to.equals(computeVoteRandom([[300, 223], [400, 300], [200, 23]]));  // "33056549103278957729624771621298579361541645567473985324007450939133354680375" = keccak256(223, 300) + keccak256(300, 400) + keccak256(23, 200)
 
             await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
             await ftso.finalizePriceEpoch(epochId+1, false, {from: accounts[10]}); // finalize price -> epochId+1 price = 400
 
             let random11 = await ftso.getRandom(epochId+1);
-            expect(random11.toNumber()).to.equals(546); // 223 + 300 + 23
+            expect(random11.toString()).to.equals(random10.toString()); // computed above
 
             await increaseTimeTo((epochId + 3) * 120); // reveal period start
             let random12 = await ftso.getRandom(0);
             expect(random12.toNumber()).to.equals(0);
             let random13 = await ftso.getRandom(epochId);
-            expect(random13.toNumber()).to.equals(372); // 123 + 124 + 125
+            expect(random13.toString()).to.equals(computeVoteRandom([[500, 123], [250, 124], [400, 125]])); // "3548118661429363055776256193746673930982690427070434576280736407613539635493" = keccak256(123,500) + keccak256(124, 250) + keccak256(125, 400)
             let random14 = await ftso.getRandom(epochId+1);
-            expect(random14.toNumber()).to.equals(546); // 223 + 300 + 23
+            expect(random14.toString()).to.equals(computeVoteRandom([[300, 223], [400, 300], [200, 23]]));  // "33056549103278957729624771621298579361541645567473985324007450939133354680375" = keccak256(223, 300) + keccak256(300, 400) + keccak256(23, 200)
             let random15 = await ftso.getRandom(epochId+2);
             expect(random15.toNumber()).to.equals(0);
         });

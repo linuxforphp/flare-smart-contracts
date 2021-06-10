@@ -198,3 +198,16 @@ export function compareArrays<T>(a: T[], b: T[]) {
 export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber): string {
     return ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price.toString(), random.toString() ]);
 }
+
+function computeOneVoteRandom(price: number | BN | BigNumber, random: number | BN | BigNumber): BN {
+    return  web3.utils.toBN(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ random.toString(), price.toString() ]));
+}
+
+export function computeVoteRandom(price_random: number[][] | BN[][] | BigNumber[][]): string {
+    let sum = toBN(0);
+    for (let i = 0; i < price_random.length; i++) {
+        sum = sum.add(computeOneVoteRandom(price_random[i][0], price_random[i][1]));
+    }
+    return  sum.mod(toBN(2).pow(toBN(256))).toString();
+}
+
