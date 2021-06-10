@@ -11,7 +11,7 @@ import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiv
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
-//import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 /**
  * FTSORewardManager is in charge of:
@@ -261,15 +261,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     }
 
     function receiveInflation() external payable override mustBalance onlyInflation {
-        (uint256 currentBalance, uint256  expectedBalance ) = _handleSelfDestructProceeds();
-        if (currentBalance > expectedBalance) {
-            // Extra were self-destruct proceeds; already taken care of
-            totalInflationReceivedWei = totalInflationReceivedWei.add(expectedBalance);
-        } else if (currentBalance == expectedBalance) {
-            totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
-        } else {
-            assert(false);
-        }
+        (uint256 currentBalance, ) = _handleSelfDestructProceeds();
+        totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
         lastBalance = currentBalance;
         // TODO: fire event
     }

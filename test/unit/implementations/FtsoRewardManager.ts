@@ -857,6 +857,24 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
           assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
+        it("Should gracefully receive self-destruct proceeds - initial balance > 0", async() => {
+            // Add some initial balance (inflation)
+            await mockInflation.receiveInflation({ value: "1" });
+            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "1");
+            // Assemble
+            // Give suicidal some FLR
+            await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
+            // Sneak it into ftso reward manager
+            await mockSuicidal.die();
+            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "2");
+            // Act
+            await mockInflation.receiveInflation({ value: "1" });
+            // Assert
+            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "3");
+            const selfDestructReceived = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            assert.equal(selfDestructReceived.toNumber(), 1);
+        });
+
         it("Should not accept FLR unless from inflation", async () => {
           // Assemble
           // Act
