@@ -10,6 +10,19 @@ import { SafePct } from "../../utils/implementation/SafePct.sol";
 
 enum TopupType{ FACTOROFDAILYAUTHORIZED, ALLAUTHORIZED }
 
+/**
+* @notice A struct that defines how mint request topups will be computed for a reward service.
+* @param topupType             The type to signal how the topup amounts are to be calculated.
+*                              FACTOROFDAILYAUTHORIZED = Use a factor of last daily authorized to set a
+*                              target balance for a reward service to maintain as a reserve for claiming.
+*                              ALLAUTHORIZED = Mint enough FLR to topup reward service contract to hold
+*                              all authorized but unrequested rewards.
+* @param topupFactorX100       If _topupType == FACTOROFDAILYAUTHORIZED, then this factor (times 100)
+*                              is multipled by last daily authorized inflation to obtain the
+*                              maximum balance that a reward service can hold at any given time. If it holds less,
+*                              then this max amount is used to compute the mint request topup required to 
+*                              bring the reward service contract FLR balance up to that amount.
+*/
 struct TopupConfiguration {
     TopupType topupType;                            // Topup algo type
     uint256 topupFactorX100;                        // Topup factor, times 100, if applicable for type
@@ -18,7 +31,10 @@ struct TopupConfiguration {
 
 /**
  * @title Reward Service library
- * @notice A library representing rewardable service that shares distributing the annual inflation rewards. 
+ * @notice A library representing a reward service. A reward service consists of a reward contract and
+ *   associated inflation-related totals. When a topup configuration is applied, a reward service can
+ *   also make minting requests to topup FLR within a reward contract.
+ * @dev A reward service exists within the context of a given inflation annum.
  **/
 library RewardService {    
     using SafeMath for uint256;
@@ -37,19 +53,37 @@ library RewardService {
         uint256 inflationTopupWithdrawnWei;             // Total inflation minting sent to rewarding service contract
     }
 
+    /**
+     * @notice Maintain authorized inflation total for service.
+     * @param _amountWei Amount to add.
+     */
     function addAuthorizedInflation(RewardServiceState storage _self, uint256 _amountWei) internal {
         _self.authorizedInflationWei = _self.authorizedInflationWei.add(_amountWei);
         _self.lastDailyAuthorizedInflationWei = _amountWei;
     }
 
+    /**
+     * @notice Maintain topup FLR received total for service. 
+     * @param _amountWei Amount to add.
+     */
     function addTopupReceived(RewardServiceState storage _self, uint256 _amountWei) internal {
         _self.inflationTopupReceivedWei = _self.inflationTopupReceivedWei.add(_amountWei);
     }
 
+    /**
+     * @notice Maintain topup FLR withdrawn (funded) total for service. 
+     * @param _amountWei Amount to add.
+     */
     function addTopupWithdrawn(RewardServiceState storage _self, uint256 _amountWei) internal {
         _self.inflationTopupWithdrawnWei = _self.inflationTopupWithdrawnWei.add(_amountWei);
     }
 
+    /**
+     * @notice Given a topup configuration, compute the topup request for the reward contract associated
+     *   to the service.
+     * @param _topupConfiguration   The topup configuration defining the algo used to compute the topup amount.
+     * @return _topupRequestWei     The topup request amount computed.
+     */
     function computeTopupRequest(
         RewardServiceState storage _self,
         TopupConfiguration memory _topupConfiguration
@@ -93,6 +127,10 @@ library RewardService {
         // TODO: Fire event
     }
 
+    /**
+     * @notice Compute a pending topup request.
+     * @return _pendingTopupWei The amount pending to be minted.
+     */
     function getPendingTopup(
         RewardServiceState storage _self
     )
@@ -102,6 +140,10 @@ library RewardService {
         return _self.inflationTopupRequestedWei.sub(_self.inflationTopupReceivedWei);        
     }
 
+    /**
+     * @notice Initial a new reward service.
+     * @dev Assume service is already instantiated.
+     */
     function initialize(
         RewardServiceState storage _self,
         IIInflationReceiver _inflationReceiver
@@ -109,5 +151,10 @@ library RewardService {
         internal
     {
         _self.inflationReceiver = _inflationReceiver;
+        _self.authorizedInflationWei = 0;
+        _self.lastDailyAuthorizedInflationWei = 0;
+        _self.inflationTopupRequestedWei = 0;
+        _self.inflationTopupReceivedWei = 0;
+        _self.inflationTopupWithdrawnWei = 0;
     }
 }

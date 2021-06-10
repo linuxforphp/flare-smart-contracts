@@ -5,6 +5,7 @@ pragma abicoder v2;
 import { BokkyPooBahsDateTimeLibrary } from "../../utils/implementation/DateTimeLibrary.sol";
 import { RewardServices } from "./RewardServices.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/SafeCast.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { SafePct } from "../../utils/implementation/SafePct.sol";
 
 /**
@@ -15,6 +16,7 @@ library InflationAnnum {
     using BokkyPooBahsDateTimeLibrary for uint256;
     using InflationAnnum for InflationAnnum.InflationAnnumState;
     using SafeCast for uint256;
+    using SafeMath for uint256;
     using SafePct for uint256;
 
     /**
@@ -31,6 +33,12 @@ library InflationAnnum {
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
 
+    /**
+     * @notice Helper function to compute recognized inflation.
+     * @param _inflatableBalance                The balance used to recognize inflation.
+     * @param _annualInflationPercentageBips    The annual percentage used to recognize inflation.
+     * @return The computed recognized inflation.
+     */
     function _computeRecognizedInflationWei(
         uint256 _inflatableBalance, 
         uint256 _annualInflationPercentageBips
@@ -43,6 +51,24 @@ library InflationAnnum {
             BIPS100);
     }
 
+    /**
+     * @notice Helper function to compute the number of days in an annum.
+     * @param _startTimeStamp   The start time of the annum in question.
+     * @return  The number of days in the annum.
+     */
+    function _computeDaysInAnnum(uint256 _startTimeStamp) internal pure returns(uint16) {
+        // This should cover passing through Feb 29
+        uint256 nextYearTimeStamp = _startTimeStamp.addYears(1);
+        uint256 daysInAnnum = _startTimeStamp.diffDays(nextYearTimeStamp);
+        return daysInAnnum.toUint16();
+    }
+
+    /**
+     * @notice Helper function to compute the number of days remaining in an annum.
+     * @param _atTimeStamp  Compute the number of days for the annum at this time stamp.
+     * @return The number of days computed.
+     * @dev If _atTimeStamp is after the end of the annum, 0 days will be returned.
+     */
     function _computeDaysRemainingInAnnum(
         InflationAnnumState storage _self, 
         uint256 _atTimeStamp
@@ -58,31 +84,53 @@ library InflationAnnum {
         }
     }
 
+    /**
+     * @notice Given a start time stamp, compute the end time stamp for an annum.
+     * @param _startTimeStamp The start time stamp for an annum.
+     * @return The end time stamp for the annum.
+     */
     function _getAnnumEndsTs(uint256 _startTimeStamp) internal pure returns (uint256) {
-        uint256 nextYearTimeStamp = _startTimeStamp.addYears(1);
-        if (_startTimeStamp.getMonth() == 2 && _startTimeStamp.getDay() == 29) {
-            nextYearTimeStamp = nextYearTimeStamp.addDays(1);
-        }
-        return nextYearTimeStamp.subSeconds(1);
+        return _startTimeStamp.addYears(1).subSeconds(1);
     }
 
-    function _computeDaysInAnnum(uint256 _startTimeStamp, uint256 _endTimeStamp) internal pure returns(uint16) {
-        return _startTimeStamp.diffDays(_endTimeStamp.addSeconds(1)).toUint16();
+    /**
+     * @notice Compute the number of periods remaining within an annum.
+     * @param _atTimeStamp  Compute periods remaining at this time stamp.
+     * @return The number of periods remaining.
+     * @dev The number of periods must include the current day.
+     */
+    function getPeriodsRemaining(
+        InflationAnnumState storage _self, 
+        uint256 _atTimeStamp
+    )
+        internal view 
+        returns(uint256)
+    {
+        assert(_atTimeStamp <= _self.endTimeStamp);
+        // Add 1 to the periods remaining because the difference between days does not count the current day.
+        return _computeDaysRemainingInAnnum(_self, _atTimeStamp).add(1);
     }
 
+    /**
+     * @notice Initialize a new annum data structure.
+     * @param _startTimeStamp       The start time stamp of the new annum.
+     * @param _inflatableBalanceWei The inflatable balance used to calculate recognized inflation for the new annum.
+     * @param _annualInflationPercentageBips The annual inflation percentage in bips to calc recognized inflation.
+     * @dev A newly created InflationAnnumState is expected to exist.
+     */
     function initialize(
         InflationAnnumState storage _self,
         uint256 _startTimeStamp, 
-        uint256 _inflatableBalance, 
+        uint256 _inflatableBalanceWei, 
         uint256 _annualInflationPercentageBips
     ) 
         internal
     {
         _self.startTimeStamp = _startTimeStamp;
         _self.recognizedInflationWei = _computeRecognizedInflationWei(
-            _inflatableBalance, 
+            _inflatableBalanceWei, 
             _annualInflationPercentageBips);
         _self.endTimeStamp = _getAnnumEndsTs(_startTimeStamp);
-        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp,_self.endTimeStamp);
+        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp);
     }
 }

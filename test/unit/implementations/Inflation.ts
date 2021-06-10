@@ -75,7 +75,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
           // Act
           await mockFlareKeeper.trigger();
           // Assert
-          const recognizedInflation = await inflation.getTotalRecognizedInflationWei();
+          const {4: recognizedInflation} = await inflation.getTotals();
           assert.equal(recognizedInflation.toNumber(), inflationForAnnum);
       });
 
@@ -110,7 +110,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Act
         await mockFlareKeeper.trigger();
         // Assert
-        const recognizedInflation = await inflation.getTotalRecognizedInflationWei();
+        const {4: recognizedInflation} = await inflation.getTotals();
         // We should have twice the recognized inflation accumulated...
         assert.equal(recognizedInflation.toNumber(), inflationForAnnum * 2);
       });
@@ -213,8 +213,8 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
           2: startTimeStamp,
           3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
         // Assert
-        assert.equal(daysInAnnum,366);
-        assert.equal(endTimeStamp-startTimeStamp,366*24*60*60-1);
+        assert.equal(daysInAnnum,365);
+        assert.equal(endTimeStamp-startTimeStamp,365*24*60*60-1);
       });
     });
 
@@ -224,7 +224,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Act
         await mockFlareKeeper.trigger();
         // Assert
-        const authorizedInflation = await inflation.getTotalAuthorizedInflationWei();
+        const {0: authorizedInflation} = await inflation.getTotals();
         assert.equal(authorizedInflation.toNumber(), 0);
       });
 
@@ -239,7 +239,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
-        const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
+        const {0: actualAuthorizedInflation} = await inflation.getTotals();
         assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
       });
 
@@ -255,7 +255,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
-        const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
+        const {0: actualAuthorizedInflation} = await inflation.getTotals();
         // Check authorized inflation across annums (only 1 annum tho)
         assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
         const { 
@@ -281,7 +281,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
-        const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
+        const {0: actualAuthorizedInflation} = await inflation.getTotals();
         // Check authorized inflation across annums (only 1 annum tho)
         assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
         const { 
@@ -314,7 +314,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
         const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
         const expectedAuthorizedInflation = expectedAuthorizedInflationCycle1 + expectedAuthorizedInflationCycle2;
-        const actualAuthorizedInflation = await inflation.getTotalAuthorizedInflationWei();
+        const {0: actualAuthorizedInflation} = await inflation.getTotals();
         // Check authorized inflation across annums (only 1 annum tho)
         assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
         // Compute authorized inflation total for cycle 2, each service
@@ -358,7 +358,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Act
         await mockFlareKeeper.trigger();
         // Assert
-        const topup = await inflation.getTotalInflationTopupRequestedWei();
+        const {1: topup} = await inflation.getTotals();
         assert.equal(topup.toNumber(), 0);
       });
 
@@ -482,7 +482,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(invocationCount.toNumber(), 1);
       });
 
-      it("Should receive top'ed up inflation - first cycle, 2 sharing percentages, by factor type (default)", async() => {
+      it("Should receive toped up inflation - first cycle, 2 sharing percentages, by factor type (default)", async() => {
         // Assemble
         // Set up two sharing percentages
         const sharingPercentages = [];
@@ -492,25 +492,23 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
         await mockFlareKeeper.trigger();
-        const toMint = await inflation.getTotalInflationTopupRequestedWei();
+        const {1: toMint} = await inflation.getTotals();
         // Act
-        await inflation.receiveMinting({ value: toMint});
+        await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint});
         // Assert
         const expectedReceivedInflation = Math.floor(inflationForAnnum / 365);
         // This should cap at one days authorization...not the factor
         const expectedTopupService1 = Math.floor(expectedReceivedInflation * 0.3);
         const expectedTopupService2 = expectedReceivedInflation - expectedTopupService1;
-        const { 
-          4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        const {4: rewardServicesState} = await inflation.getCurrentAnnum() as any;
         // Check topup inflation for first reward service
         assert.equal(rewardServicesState.rewardServices[0].inflationTopupReceivedWei, expectedTopupService1);
         // Check topup inflation for the second reward service
         assert.equal(rewardServicesState.rewardServices[1].inflationTopupReceivedWei, expectedTopupService2);
         
         // Running sum should be correct
-        assert.equal(
-          (await inflation.getTotalInflationTopupReceivedWei()).toNumber(), expectedTopupService1 + expectedTopupService2
-        );
+        const {2: receivedTopup} = await inflation.getTotals();
+        assert.equal(receivedTopup.toNumber(), expectedTopupService1 + expectedTopupService2);
       });
     });
 
@@ -550,7 +548,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(lastTs.toNumber(), 0);
       });
 
-      it("Should fund top'ed up inflation - first cycle, 2 sharing percentages, by factor type (default)", async() => {
+      it("Should fund toped up inflation - first cycle, 2 sharing percentages, by factor type (default)", async() => {
         // Assemble
         // Set up two sharing percentages
         const sharingPercentages = [];
@@ -562,9 +560,9 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
         await mockFlareKeeper.trigger();
-        const toMint = await inflation.getTotalInflationTopupRequestedWei();
+        const {1: toMint} = await inflation.getTotals();
         // Act
-        await inflation.receiveMinting({ value: toMint});
+        await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint});
         // Assert
         const expectedInflationFunded = Math.floor(inflationForAnnum / 365);
         // This should cap at one days authorization...not the factor
@@ -577,9 +575,8 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Check topup inflation for the second reward service
         assert.equal(rewardServicesState.rewardServices[1].inflationTopupWithdrawnWei, expectedTopupService1);
         // Running sum should be correct
-        assert.equal(
-          (await inflation.getTotalInflationTopupWithdrawnWei()).toNumber() , expectedTopupService0 + expectedTopupService1
-        );
+        const {3: inflationWithdrawn} = await inflation.getTotals();
+        assert.equal(inflationWithdrawn.toNumber() , expectedTopupService0 + expectedTopupService1);
         // Check that target reward service contracts got the FLR they are due
         assert.equal((await web3.eth.getBalance(rewardingServiceContract0.address)), expectedTopupService0.toString());
         assert.equal((await web3.eth.getBalance(rewardingServiceContract1.address)), expectedTopupService1.toString());
@@ -595,14 +592,14 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
         await mockFlareKeeper.trigger();
-        const toMint = await inflation.getTotalInflationTopupRequestedWei();
+        const {1: toMint} = await inflation.getTotals();
         // Act
         // Sneak in 1 more to simulate self-destructing
-        await inflation.receiveMinting({ value: toMint.addn(1) });
+        await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint.addn(1)});
         // ...and if it got here, then we balance.
         // Assert
         // Check self destruct bucket for good measure...
-        const selfDestructProceeds = await inflation.totalSelfDestructReceivedWei();
+        const {5: selfDestructProceeds} = await inflation.getTotals();
         assert.equal(selfDestructProceeds.toNumber(), 1);
       });
       
@@ -642,7 +639,15 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     });
 
     describe("helper methods", async() => {
-      
+      it("Should get an annum by index", async() => {
+        // Assemble
+        await mockFlareKeeper.trigger();
+        // Act
+        const { recognizedInflationWei } = await inflation.getAnnum(0);
+        // Assert
+        assert.equal(recognizedInflationWei, BN(inflationForAnnum));
+      });
+
       it("Should set InflationPercentageProvider", async()=> {
         // Assemble
         const newMockInflationPercentageProvider = await MockContract.new();
@@ -800,7 +805,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await expectRevert(setPromise, ERR_IS_ZERO);
       });
 
-      it("Should set and retrieve toput configuration", async () => {
+      it("Should set and retrieve topup configuration", async () => {
         // This will be changed in the future to only return values for valid inflation requests
         // Assemble
         const mockInflation1 = await MockContract.new();
