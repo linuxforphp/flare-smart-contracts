@@ -630,8 +630,8 @@ contract Ftso is IIFtso {
     function _revealPrice(address _voter, uint256 _epochId, uint256 _price, uint256 _random) internal {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
         require(epochs._epochRevealInProcess(_epochId), ERR_PRICE_REVEAL_FAILURE);
-        require(epochVoterHash[_epochId][_voter] == keccak256(abi.encode(_price, _random)), ERR_PRICE_INVALID);
-
+        require(epochVoterHash[_epochId][_voter] == keccak256(abi.encode(_price, _random, _voter)), 
+                ERR_PRICE_INVALID);
         // get epoch
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         require(epoch.initializedForReveal || (epoch.fallbackMode && epochs.trustedAddressesMapping[_voter]),

@@ -52,9 +52,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
         });
 
         it("Should submit prices", async() => {
-            let hash1 = submitPriceHash(500, 123);
-            let hash2 = submitPriceHash(200, 124);
-            let hash3 = submitPriceHash(300, 125);
+            let hash1 = submitPriceHash(500, 123, accounts[1]);
+            let hash2 = submitPriceHash(200, 124, accounts[1]);
+            let hash3 = submitPriceHash(300, 125, accounts[1]);
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
@@ -80,8 +80,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 accounts[10],
                 1 // initial token price 0.00001$
             );
-            let hash1 = submitPriceHash(500, 123);
-            let hash2 = submitPriceHash(200, 124);
+            let hash1 = submitPriceHash(500, 123, accounts[1]);
+            let hash2 = submitPriceHash(200, 124, accounts[1]);
             let addresses = [ftso.address, ftsos[1].address];
             let hashes = [hash1, hash2];
             let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
@@ -105,9 +105,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
             await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
 
-            let hash1 = submitPriceHash(500, 123);
-            let hash2 = submitPriceHash(200, 124);
-            let hash3 = submitPriceHash(300, 125);
+            let hash1 = submitPriceHash(500, 123, accounts[1]);
+            let hash2 = submitPriceHash(200, 124, accounts[1]);
+            let hash3 = submitPriceHash(300, 125, accounts[1]);
             let addresses = [ftso.address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
@@ -130,7 +130,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randoms = [123, 124, 125];
             let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
-            let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
+            let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -172,7 +172,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randoms = [123, 124, 125, 126];
             let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftso.address, ftsos[0].address, ftsos[1].address];
-            let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
+            let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -212,7 +212,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randoms = [123, 124, 125];
             let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftso.address, ftsos[1].address, ftsos[2].address];
-            let hashes = [submitPriceHash(prices[0], randoms[0]), submitPriceHash(prices[1], randoms[1]), submitPriceHash(prices[2], randoms[2])];
+            let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [false, true, true]});
             await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -235,6 +235,70 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             expect(ftso2Event.args.epochId.toNumber()).to.equals(epochId);
             expect(ftso2Event.args.price.toNumber()).to.equals(prices[2]);
             expect(ftso2Event.args.random.toNumber()).to.equals(randoms[2]);
+        });
+
+        it("Should not allow price shadowing", async () => {
+            // Thist tests against an attacker that just copies submitted commit hash and sends 
+            // the same revealed price without doing anything else
+            // This is mitigated by including sender's address in the hash before reveal.
+            let prices = [500, 200, 300];
+            let pricesBN = prices.map(x => toBN(x));
+            let randoms = [123, 124, 125];
+            let randomsBN = randoms.map(x => toBN(x));
+            let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
+            let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
+            let hashesAttacker = Array.from(hashes) // Copy sent hashes
+
+            let tx = await priceSubmitter.submitPriceHashes(addresses, hashes, {from: accounts[1]});
+            let txAttacker = await priceSubmitter.submitPriceHashes(addresses, hashesAttacker, {from: accounts[2]});
+
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
+            expectEvent(txAttacker, "PriceHashesSubmitted", {submitter: accounts[2], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
+            
+            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await setMockVotePowerOfAt(1, 10, accounts[1]);  // vote power of 0 is not allowed
+            await setMockVotePowerOfAt(1, 10, accounts[2]);  // vote power of 0 is not allowed
+            let tx2 = await priceSubmitter.revealPrices(epochId, addresses, prices, randoms, {from: accounts[1]});
+
+            expectEvent(tx2, "PricesRevealed", {voter: accounts[1], epochId: toBN(epochId), ftsos: addresses, prices: pricesBN, randoms: randomsBN, success: [true, true, true]});
+
+            const f0e1 = lastOf(await ftsos[0].getPastEvents("PriceRevealed"));
+            const f1e1 = lastOf(await ftsos[1].getPastEvents("PriceRevealed"));
+            const f2e1 = lastOf(await ftsos[2].getPastEvents("PriceRevealed"));
+
+            // First submit should succeed
+            expect(f0e1.args.voter).to.equals(accounts[1]);
+            expect(f0e1.args.epochId.toNumber()).to.equals(epochId);
+            expect(f0e1.args.price.toNumber()).to.equals(prices[0]);
+            expect(f0e1.args.random.toNumber()).to.equals(randoms[0]);
+            expect(f1e1.args.voter).to.equals(accounts[1]);
+            expect(f1e1.args.epochId.toNumber()).to.equals(epochId);
+            expect(f1e1.args.price.toNumber()).to.equals(prices[1]);
+            expect(f1e1.args.random.toNumber()).to.equals(randoms[1]);
+            expect(f2e1.args.voter).to.equals(accounts[1]);
+            expect(f2e1.args.epochId.toNumber()).to.equals(epochId);
+            expect(f2e1.args.price.toNumber()).to.equals(prices[2]);
+            expect(f2e1.args.random.toNumber()).to.equals(randoms[2]);
+
+            // Just copy the first node
+            let tx2Attacker = await priceSubmitter.revealPrices(epochId, addresses, prices, randoms, {from: accounts[2]});
+
+            // Copy attacker should not succeed in submitting the final price
+            expectEvent(tx2Attacker, "PricesRevealed", {voter: accounts[2], epochId: toBN(epochId), ftsos: addresses, prices: pricesBN, randoms: randomsBN, success: [false, false, false]});
+            
+            // No correct prices should be revealed
+            const f0e2 = lastOf(await ftsos[0].getPastEvents("PriceRevealed"));
+            const f1e2 = lastOf(await ftsos[1].getPastEvents("PriceRevealed"));
+            const f2e2 = lastOf(await ftsos[2].getPastEvents("PriceRevealed"));
+            
+            assert.isUndefined(f0e2);
+            assert.isUndefined(f1e2);
+            assert.isUndefined(f2e2);
+
         });
     });
 });

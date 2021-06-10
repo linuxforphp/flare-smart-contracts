@@ -636,7 +636,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assert
         const lastTs = (await inflation.rewardEpochStartedTs()).toNumber();
         
-        assert.equal(lastTs - 1, rewardTime); // Hardhat automatically advances time for 1 second after each transaction.
+        assert.equal(lastTs - 1, rewardTime.toNumber()); // Hardhat automatically advances time for 1 second after each transaction.
       });
 
     });

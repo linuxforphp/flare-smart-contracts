@@ -47,6 +47,8 @@ Price epochs follow the commit and reveal scheme. The commit period is the price
 
 Together with price data, any price provider must add a random number to their price submissions. This helps seed the source of randomness on the Flare chain for FTSO operations that require randomization.
 
+Together with random, sender's addres is included in commited hash to prevent "shadowing" attacks, where one would just copy some other node submissions.
+
 # Coding
 Following files expose all relevant functions and events:
 - [FTSO interface](../../contracts/userInterface/IFtso.sol)
@@ -58,7 +60,7 @@ see more details below.
 ```
    function submitPriceHash(bytes32 _hash) external;
 ```
-The _hash should be keccak256(price, random)
+The _hash should be keccak256(price, random, senders_address)
 
 #### Reveal price
 ```
@@ -218,8 +220,8 @@ main() {
            uint currentFtso = ftsoPrices.length - 1;
            // create hash of above values and submit
            ftsoPriceHashes[currentFtso] = solidityKeccak256(
-               ["uint256", "uint256"],
-               [ftsoPrices[currentFtso], ftsoRandoms[currentFtso]]
+               ["uint256", "uint256", "address"],
+               [ftsoPrices[currentFtso], ftsoRandoms[currentFtso], providerAddress]
            );
        }
 
