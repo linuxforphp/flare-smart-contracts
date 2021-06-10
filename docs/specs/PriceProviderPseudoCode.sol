@@ -58,8 +58,8 @@ main() {
            uint currentFtso = ftsoPrices.length - 1;
            // create hash of above values and submit
            ftsoPriceHashes[currentFtso] = solidityKeccak256(
-               ["uint256", "uint256"],
-               [ftsoPrices[currentFtso], ftsoRandoms[currentFtso]]
+               ["uint256", "uint256", "address"],
+               [ftsoPrices[currentFtso], ftsoRandoms[currentFtso], providerAddress]
            );
         }
  

@@ -83,7 +83,7 @@ contract FlashLoanMock is IFlashLoanMock {
     }
     
     function submitPriceHash(uint256 _price, uint256 _random) public {
-        bytes32 _hash = keccak256(abi.encode(_price, _random));
+        bytes32 _hash = keccak256(abi.encode(_price, _random, this));
         ftso.submitPriceHash(_hash);
     }
 

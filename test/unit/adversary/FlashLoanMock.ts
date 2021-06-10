@@ -1,6 +1,6 @@
 import { soliditySha3Raw as soliditySha3 } from "web3-utils";
 import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
-import { increaseTimeTo, toBN } from "../../utils/test-helpers";
+import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const { getTestFile } = require('../../utils/constants');
 
@@ -79,7 +79,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // start an epoch
             epochId = await startNewEpoch();
             // vote
-            expectEvent(await ftso.submitPriceHash(soliditySha3(500, 123), { from: accounts[1] }),
+            expectEvent(await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             await flashLoanMock.submitPriceHash(380, 234);
             // reveal epoch
@@ -123,7 +123,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         async function tryVoting() {
             epochId = await startNewEpoch();
             // vote
-            expectEvent(await ftso.submitPriceHash(soliditySha3(500, 123), { from: accounts[1] }),
+            expectEvent(await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             await flashLoanMock.submitPriceHash(380, 234);
             // reveal epoch
@@ -148,7 +148,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // votes
             await votingFlashLoanMock.submitPriceHash(380, 234);
             await votingFlashLoanMock.setVote(epochId, 380, 234);
-            expectEvent(await ftso.submitPriceHash(soliditySha3(500, 123), { from: accounts[1] }),
+            expectEvent(await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             // reveal epoch
             // flash loan (and reveal) will happen in this block + x (x ~ 3), but we can set anything bigger as vote power block

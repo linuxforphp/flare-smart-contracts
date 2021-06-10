@@ -719,7 +719,7 @@ export async function moveToFinalizeStart(epochStartTimestamp: number, epochPeri
  * @returns 
  */
 export function getEpochPeriod(len: number): number {
-    return len + 10;
+    return len + 20;
 }
 
 /**
@@ -795,8 +795,7 @@ export async function testFTSOMedian(epochStartTimestamp: number, signers: reado
  * @returns 
  */
 export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: number, revealPeriod: number, signers: readonly SignerWithAddress[], ftso: MockFtso, testExample: TestExample): Promise<TestCase> {
-    let logger = new TestExampleLogger(testExample);
-
+    const logger = new TestExampleLogger(testExample);
     let len = testExample.prices.length;
 
     // Submit price
@@ -844,7 +843,7 @@ export async function submitPrice(signers: readonly SignerWithAddress[], ftso: F
     for (let i = 0; i < len; i++) {
         let price = prices[i];
         let random = priceToRandom(price);
-        let hash = submitPriceHash(price, random);
+        let hash = submitPriceHash(price, random, signers[i].address);
         promises.push(waitFinalize(signers[i], async () =>
             ftso.connect(signers[i]).submitPriceHash(hash)
         ));

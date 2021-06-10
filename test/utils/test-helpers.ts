@@ -195,6 +195,6 @@ export function compareArrays<T>(a: T[], b: T[]) {
     }
 }
 
-export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber): string {
-    return ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ price.toString(), random.toString() ]);
+export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber, address: string,): string {
+    return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint256", "uint256", "address" ], [ price.toString(), random.toString(), address]))
 }
