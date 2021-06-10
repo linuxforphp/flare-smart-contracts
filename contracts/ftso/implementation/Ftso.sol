@@ -647,8 +647,15 @@ contract Ftso is IIFtso {
             epoch.votePowerAsset,
             _price
         );
-        epochs._addVote(epoch, _voter, voteId, votePowerFlr, votePowerAsset, _random);
         
+        epochs._addVote(epoch,
+            _voter,
+            voteId,
+            votePowerFlr,
+            votePowerAsset,
+            uint256(keccak256(abi.encode(_random, _price)))
+        );
+
         // prevent price submission from being revealed twice
         delete epochVoterHash[_epochId][_voter];
 
