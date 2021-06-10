@@ -13,16 +13,19 @@ import { TopupConfiguration } from "./RewardService.sol";
 
 /**
  * @title Reward Services library
- * @notice A library to manage a collection of reward services and associated totals and perform operations
- *   that impact or involve the collection, such as allocating new authorized inflation amounts.
+ * @notice A library to manage a collection of reward services, their associated totals, and to perform operations
+ *   that impact or involve the collection, such as calculating topup amounts across services.
+ * @dev There are two concepts that are helpful to understand. A sharing percentage associates an inflation receiver
+ *   with a sharing percentage used to calculate percentage of authorized inflation a given reward contract
+ *   is entitled to receive for distributing rewards. A reward service is associtated to a topup configuration, which
+ *   dictates how much FLR will be minted and sent for claiming reserves, and it stores totals for a given inflation
+ *   receiver, for a given annum.
  **/
 library RewardServices {    
     using BokkyPooBahsDateTimeLibrary for uint256;
     using RewardService for RewardService.RewardServiceState;
     using SafeMath for uint256;
     using SafePct for uint256;
-
-    uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
 
     /**
      * @dev `RewardServicesState` is state structure used by this library to manage
@@ -38,18 +41,34 @@ library RewardServices {
         uint256 totalInflationTopupWithdrawnWei;
     }
 
+    uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
+
+    /**
+     * @notice For all sharing percentages, compute authorized daily inflation for current cycle
+     *  and then allocate it across associated inflation receivers according to their sharing percentages, 
+     *  updating reward service totals along the way. Finally,
+     *  set the daily authorized inflation for the given inflation receiver.
+     * @param _totalRecognizedInflationWei The total recognized inflation across all annums.
+     * @param _totalAuthorizedInflationWei The total authorized inflation across all annums.
+     * @param _periodsRemaining The number of periods remaining in the current annum.
+     * @param _sharingPercentages An array of inflation sharing percentages.
+     * @return _amountAuthorizedWei The inflation authorized for this cycle.
+     * @dev This method requires totals across all annums so as to continually calculate
+     *   the amount remaining to be authorized regardless of timing slippage between annums should it
+     *   occur.
+     */
     function authorizeDailyInflation(
         RewardServicesState storage _self,
         uint256 _totalRecognizedInflationWei,
         uint256 _totalAuthorizedInflationWei,
         uint256 _periodsRemaining,
-        SharingPercentage[] memory sharingPercentages
+        SharingPercentage[] memory _sharingPercentages
     )
         internal
         returns(uint256 _amountAuthorizedWei)
     {
         // If there are no sharing percentages, then there is nothing to authorize.
-        if (sharingPercentages.length == 0) {
+        if (_sharingPercentages.length == 0) {
             _amountAuthorizedWei = 0;
             return _amountAuthorizedWei;
         }
@@ -60,27 +79,27 @@ library RewardServices {
             .div(_periodsRemaining);
         // Set up return value with amount authorized
         _amountAuthorizedWei = amountToAuthorizeRemaingWei;
-        // Accumulate authorized total...note that this total is for a given annum
+        // Accumulate authorized total...note that this total is for a given annum, for a given service
         _self.totalAuthorizedInflationWei = _self.totalAuthorizedInflationWei.add(amountToAuthorizeRemaingWei);
         // Start with total bips in denominator
         uint256 divisorRemaining = BIPS100;
         // Loop over sharing percentages
-        for(uint256 i; i < sharingPercentages.length; i++) {
+        for(uint256 i; i < _sharingPercentages.length; i++) {
             // Compute the amount to authorize for a given service
             uint256 toAuthorizeWei = amountToAuthorizeRemaingWei.mulDiv(
-                sharingPercentages[i].percentBips, 
+                _sharingPercentages[i].percentBips, 
                 divisorRemaining
             );
             // Reduce the numerator by amount just computed
             amountToAuthorizeRemaingWei = amountToAuthorizeRemaingWei.sub(toAuthorizeWei);
             // Reduce the divisor by the bips just allocated
-            divisorRemaining = divisorRemaining.sub(sharingPercentages[i].percentBips);
+            divisorRemaining = divisorRemaining.sub(_sharingPercentages[i].percentBips);
             // Try to find a matching reward service for the given sharing percentage.
             // New sharing percentages can be added at any time. And if one gets removed,  
             // we don't remove that reward service for a given annum, since its total still
             // remains applicable.
             ( bool found, uint256 rewardServiceIndex ) = 
-                findRewardService(_self, sharingPercentages[i].inflationReceiver);
+                findRewardService(_self, _sharingPercentages[i].inflationReceiver);
             if (found) {
                 // Get the existing reward service
                 RewardService.RewardServiceState storage rewardService = _self.rewardServices[rewardServiceIndex];
@@ -89,17 +108,24 @@ library RewardServices {
             } else {
                 // Initialize a new reward service
                 RewardService.RewardServiceState storage rewardService = _self.rewardServices.push();
-                rewardService.initialize(sharingPercentages[i].inflationReceiver);
+                rewardService.initialize(_sharingPercentages[i].inflationReceiver);
                 // Accumulate the amount authorized for the service
                 rewardService.addAuthorizedInflation(toAuthorizeWei);                
             }                
             // Signal the inflation receiver of the reward service (the actual rewarding contract)
             // with amount just authorized.
-            sharingPercentages[i].inflationReceiver.setDailyAuthorizedInflation(toAuthorizeWei);
+            _sharingPercentages[i].inflationReceiver.setDailyAuthorizedInflation(toAuthorizeWei);
             // TODO: Fire event
         }
     }
 
+    /**
+     * @notice Given topup configurations as maintained by an instantiated Inflation contract, compute
+     *   the topup minting requests needed to topup reward contracts with FLR reserves to satisfy claim
+     *   requests.
+     * @param _inflation    The Inflation contract holding the topup configurations.
+     * @return _topupRequestWei The topup request to mint FLR across reward services for this cycle.
+     */
     function computeTopupRequest(
         RewardServicesState storage _self,
         Inflation _inflation
@@ -113,8 +139,17 @@ library RewardServices {
             _topupRequestWei = _topupRequestWei.add(_self.rewardServices[i].computeTopupRequest(topupConfiguration));
         }
         _self.totalInflationTopupRequestedWei = _self.totalInflationTopupRequestedWei.add(_topupRequestWei);
+        // Make sure topup requested never exceeds the amount authorized
+        assert(_self.totalInflationTopupRequestedWei <= _self.totalAuthorizedInflationWei);
     }
 
+    /**
+     * @notice Given an inflation receiver, return the index of the associated reward service.
+     * @param _inflationReceiver The inflation receiver.
+     * @return _found   True if the reward service was found.
+     * @return _index   The index on the rewardServices array of the found service. Index is undefined
+     *   if the reward service was not found.
+     */
     function findRewardService(
         RewardServicesState storage _self,
         IIInflationReceiver _inflationReceiver
@@ -133,9 +168,13 @@ library RewardServices {
         }
     }
 
-    // Assume value is siting in Inflation contract waiting to be posted and transmitted.
-    // This function is atomic, so if for some reason not enough FLR got minted, this
-    // function will fail until all topup requests can be satisfied.
+    /**
+     * @notice Receive a topup request of minted FLR and disburse amongst requestors.
+     * @return _amountPostedWei The total amount of FLR funded.
+     * @dev Assume value is siting in Inflation contract waiting to be posted and transmitted.
+     *   This function is atomic, so if for some reason not enough FLR got minted, this
+     *   function will fail until all topup requests can be satisfied.
+     */
     function receiveTopupRequest(
         RewardServicesState storage _self
     ) 
