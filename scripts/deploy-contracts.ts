@@ -126,14 +126,13 @@ async function main(parameters: any) {
     parameters.rewardFeePercentageUpdateOffset,
     parameters.defaultRewardFeePercentage,
     parameters.rewardExpiryOffset,
-    inflation.address,
-    supply.address);
+    inflation.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address);
 
   // Inflation allocation needs to know about ftso reward manager
   await inflationAllocation.setSharingPercentages([ftsoRewardManager.address], [10000]);
   // Supply contract needs to know about ftso reward manager
-  await supply.addRewardManager(ftsoRewardManager.address);
+  await supply.addRewardPool(ftsoRewardManager.address, 0);
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);

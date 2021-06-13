@@ -39,7 +39,7 @@ async function submitPrice(ftso: FtsoInstance, price: number, by: string): Promi
   if (price) {
       let preparedPrice = preparePrice(price);
       let random = await getRandom();
-      let hash = submitPriceHash(preparedPrice, random);
+      let hash = submitPriceHash(preparedPrice, random, by);
 
       console.log(`Submitting price ${preparedPrice} by ${by} for epoch ${epochId}`);
 
@@ -63,7 +63,7 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
     let preparedPrice = preparePrice(price);
     let random = await getRandom();
     randoms.push(random);
-    let hash = submitPriceHash(preparedPrice, random);
+    let hash = submitPriceHash(preparedPrice, random, by);
     preparedPrices.push(preparedPrice);
     hashes.push(hash);
   }

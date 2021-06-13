@@ -1,16 +1,15 @@
+import {
+    FtsoManagerContract,
+    FtsoManagerInstance,
+    FtsoManagerMockContract,
+    FtsoManagerMockInstance,
+    FtsoRewardManagerContract,
+    FtsoRewardManagerInstance,
+    InflationMockInstance,
+    SuicidalMockInstance, WFlrContract,
+    WFlrInstance
+} from "../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, toBN } from "../../utils/test-helpers";
-import { 
-  FtsoManagerContract, 
-  FtsoManagerInstance, 
-  FtsoManagerMockContract, 
-  FtsoManagerMockInstance, 
-  FtsoRewardManagerContract, 
-  FtsoRewardManagerInstance, 
-  WFlrContract, 
-  WFlrInstance, 
-  InflationMockInstance, 
-  MockContractInstance,
-  SuicidalMockInstance} from "../../../typechain-truffle";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -37,7 +36,6 @@ let startTs: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let wFlr: WFlrInstance;
 let mockInflation: InflationMockInstance;
-let mockSupply: MockContractInstance;
 
 async function distributeRewards(
   accounts: Truffle.Accounts, 
@@ -123,15 +121,13 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
         mockInflation = await InflationMock.new();
-        mockSupply = await MockContract.new();
 
         ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
             3,
             0,
             100,
-            mockInflation.address,
-            mockSupply.address
+            mockInflation.address
         );
 
         await mockInflation.setInflationReceiver(ftsoRewardManager.address);
@@ -173,8 +169,7 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
                 3,
                 0,
                 100,
-                mockInflation.address,
-                mockSupply.address
+                mockInflation.address
             );
 
             await expectRevert(ftsoRewardManager.activate(), "no ftso manager");
@@ -186,8 +181,7 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
                 3,
                 0,
                 100,
-                mockInflation.address,
-                mockSupply.address
+                mockInflation.address
             );
 
             await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
@@ -250,20 +244,6 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
 
         it("Should revert calling setInflation if setting to address(0)", async () => {
             await expectRevert(ftsoRewardManager.setInflation(constants.ZERO_ADDRESS), "inflation zero");
-        });
-
-        it("Should update supply", async () => {
-            expect(await ftsoRewardManager.supply()).to.equals(mockSupply.address);
-            await ftsoRewardManager.setSupply(accounts[8]);
-            expect(await ftsoRewardManager.supply()).to.equals(accounts[8]);
-        });
-        
-        it("Should revert calling setSupply if not from governance", async () => {
-            await expectRevert(ftsoRewardManager.setSupply(accounts[2], { from: accounts[1]}), "only governance");
-        });
-
-        it("Should revert calling setSupply if setting to address(0)", async () => {
-            await expectRevert(ftsoRewardManager.setSupply(constants.ZERO_ADDRESS), "supply zero");
         });
 
         it("Should get epoch to expire next", async () => {
@@ -343,6 +323,23 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
     });
 
     describe("getters and setters", async () => {
+        it("Should get reward pool supply data", async () => {
+            let data = await ftsoRewardManager.getRewardPoolSupplyData();
+            expect(data[0].toNumber()).to.equals(0);
+            expect(data[1].toNumber()).to.equals(1000000);
+            expect(data[2].toNumber()).to.equals(0);
+
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs);
+
+            await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
+
+            data = await ftsoRewardManager.getRewardPoolSupplyData();
+            expect(data[0].toNumber()).to.equals(0);
+            expect(data[1].toNumber()).to.equals(3000000);
+            expect(data[2].toNumber()).to.equals(694);
+        });
+
         it("Should set and update data provider fee percentage", async () => {
             await ftsoRewardManager.setDataProviderFeePercentage(5, { from: accounts[2] });
             expect((await ftsoRewardManager.getDataProviderCurrentFeePercentage(accounts[1])).toNumber()).to.equals(0);

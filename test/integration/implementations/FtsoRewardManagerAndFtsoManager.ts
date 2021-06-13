@@ -1,13 +1,12 @@
 import {
     FtsoInstance,
     FtsoManagerInstance,
-    MockContractInstance,
     FtsoRewardManagerInstance,
-    WFlrInstance,
-    InflationMockInstance
+    InflationMockInstance, MockContractInstance,
+    WFlrInstance
 } from "../../../typechain-truffle";
-
 import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
+
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -34,13 +33,10 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
     let wFlr: WFlrInstance;
-    let fakeFlareKeeperAddress = accounts[1];
     let mockInflation: InflationMockInstance;
-    let mockSupply: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
-        mockSupply = await MockContract.new();
         ftsoInterface = await Ftso.new(
             "FLR",
             constants.ZERO_ADDRESS as any,
@@ -55,8 +51,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             3,
             0,
             100,
-            mockInflation.address,
-            mockSupply.address
+            mockInflation.address
         );
 
         await mockInflation.setInflationReceiver(ftsoRewardManager.address);

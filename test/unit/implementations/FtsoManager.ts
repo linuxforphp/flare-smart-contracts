@@ -1,21 +1,22 @@
-import { 
-  FtsoInstance, 
-  FtsoManagerInstance, 
-  MockContractInstance, 
-  MockVPTokenContract, 
-  MockVPTokenInstance, 
-  FtsoRewardManagerInstance } from "../../../typechain-truffle";
-
-import { 
-  revealSomePrices, 
-  RewardEpochData, 
-  setDefaultGovernanceParameters, 
-  settingWithFourFTSOs, 
-  settingWithOneFTSO_1, 
-  settingWithTwoFTSOs, 
-  submitSomePrices, 
-  toNumberify } from "../../utils/FtsoManager-test-utils";
+import {
+    FtsoInstance,
+    FtsoManagerInstance,
+    FtsoRewardManagerInstance, MockContractInstance,
+    MockVPTokenContract,
+    MockVPTokenInstance
+} from "../../../typechain-truffle";
+import {
+    revealSomePrices,
+    RewardEpochData,
+    setDefaultGovernanceParameters,
+    settingWithFourFTSOs,
+    settingWithOneFTSO_1,
+    settingWithTwoFTSOs,
+    submitSomePrices,
+    toNumberify
+} from "../../utils/FtsoManager-test-utils";
 import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN } from "../../utils/test-helpers";
+
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -66,7 +67,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             3,
             0,
             100,
-            (await MockContract.new()).address,
             (await MockContract.new()).address
         );
 

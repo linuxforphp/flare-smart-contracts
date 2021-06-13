@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interface/IIRewardManager.sol";
+import "../interface/IIRewardPool.sol";
 import { CheckPointHistory } from "../../token/lib/CheckPointHistory.sol";
 import { CheckPointHistoryCache } from "../../token/lib/CheckPointHistoryCache.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../inflation/implementation/Inflation.sol";
-import "../../rewardPool/interface/IIRewardPool.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
@@ -20,19 +19,15 @@ contract Supply is Governed {
     using SafeMath for uint256;
 
     struct SupplyData {
-        uint256 totalSupplyWei;
-        uint256 distributedSupplyWei;
-    }
-
-    struct InflationSupplyData {
+        IIRewardPool rewardPool;
+        uint256 foundationAllocatedFundsWei;
         uint256 totalInflationAuthorizedWei;
         uint256 totalClaimedWei;
-        bool added;
     }
 
-    string internal constant ERR_NO_ACCESS = "Access denied";
-    string internal constant ERR_REWARD_POOL_ALREADY_ADDED = "Reward pool already added";
+    string internal constant ERR_INFLATION_ONLY = "inflation only";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
+    string internal constant ERR_REWARD_POOL_ALREADY_ADDED = "reward pool already added";
     string internal constant ERR_INITIAL_GENESIS_AMOUNT_ZERO = "initial genesis amount zero";
 
     CheckPointHistory.CheckPointHistoryState private circulatingSupply;
@@ -40,28 +35,19 @@ contract Supply is Governed {
 
     uint256 immutable public initialGenesisAmountWei;
     uint256 public totalInflationAuthorizedWei;
-    SupplyData public foundationSupply;
-    mapping(address => SupplyData) public rewardPools;
-    mapping(address => InflationSupplyData) public rewardManagers;
+    uint256 public lastUpdateTimestamp;
+    uint256 public totalFoundationSupplyWei;
+    uint256 public distributedFoundationSupplyWei;
+    SupplyData[] public rewardPools;
 
     Inflation public inflation;
     address public burnAddress;
 
-    // balance of burn address at last check - needed to update circulating supply
+    // balance of burn address at last check - needed for updating circulating supply
     uint256 private burnAddressBalance;
 
     modifier onlyInflation {
-        require(msg.sender == address(inflation), ERR_NO_ACCESS);
-        _;
-    }
-
-    modifier onlyRewardPool {
-        require(rewardPools[msg.sender].totalSupplyWei > 0, ERR_NO_ACCESS);
-        _;
-    }
-
-    modifier onlyRewardManager {
-        require(rewardManagers[msg.sender].added, ERR_NO_ACCESS);
+        require(msg.sender == address(inflation), ERR_INFLATION_ONLY);
         _;
     }
 
@@ -78,7 +64,7 @@ contract Supply is Governed {
         burnAddress = _burnAddress;
         inflation = _inflation;
         initialGenesisAmountWei = _initialGenesisAmountWei;
-        foundationSupply.totalSupplyWei = _totalFoundationSupplyWei;
+        totalFoundationSupplyWei = _totalFoundationSupplyWei;
 
         _increaseCirculatingSupply(_initialGenesisAmountWei.sub(_totalFoundationSupplyWei));
 
@@ -86,19 +72,15 @@ contract Supply is Governed {
             _addRewardPool(_rewardPools[i]);
         }
 
-        _updateBurnAddressAmount();
+        _updateCirculatingSupply();
     }
 
     /**
-     * @notice When new inflaion is authorized, it is sent to rewards managers and updated here as they also 
-        report new values through updateRewardManagerData at the same block
-     * @param _amountWei                             Authorized inflation amount
-     * @dev Also updates the burn address amount once a day
+     * @notice Update circulating supply
+     * @dev Also updates the burn address amount
     */
-    function addAuthorizedInflation(uint256 _amountWei) external onlyInflation {
-        totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(_amountWei);
-        _increaseCirculatingSupply(_amountWei);
-        _updateBurnAddressAmount();
+    function updateCirculatingSupply() external onlyInflation {
+        _updateCirculatingSupply();
     }
 
     /**
@@ -114,23 +96,16 @@ contract Supply is Governed {
     ) external onlyGovernance {
         _decreaseFoundationSupply(_decreaseFoundationSupplyByAmountWei);
         _addRewardPool(_rewardPool);
+        _updateCirculatingSupply();
     }
 
     /**
-     * @notice Adds reward manager so it can call updateRewardManagerData method
-     * @param _rewardManager                        Reward manager address
-     */
-    function addRewardManager(IIRewardManager _rewardManager) external onlyGovernance {
-        InflationSupplyData storage data = rewardManagers[address(_rewardManager)];
-        data.added = true;
-    }
-
-    /**
-     * @notice Decrease foundation supply when a new reward pool is created or some foundation member rewards are sent
+     * @notice Decrease foundation supply when foundation funds are released to a reward pool or team members
      * @param _amountWei                            Amount to decrease by
      */
     function decreaseFoundationSupply(uint256 _amountWei) external onlyGovernance {
         _decreaseFoundationSupply(_amountWei);
+        _updateCirculatingSupply();
     }
 
     /**
@@ -139,38 +114,10 @@ contract Supply is Governed {
      * @dev Updates burn value for current address, changes to new address and updates again
      */
     function changeBurnAddress(address _burnAddress) external onlyGovernance {
-        _updateBurnAddressAmount();
+        _updateCirculatingSupply();
         burnAddressBalance = 0;
         burnAddress = _burnAddress;
         _updateBurnAddressAmount();
-    }
-
-    /**
-     * @notice Called from reward manager when new authorized inflation is sent to it
-     * @param _totalInflationAuthorizedWei          New total authorized inflation
-     * @param _totalClaimedWei                      Total value of claimed rewards
-    */
-    function updateRewardManagerData(
-        uint256 _totalInflationAuthorizedWei,
-        uint256 _totalClaimedWei
-    ) external onlyRewardManager {
-        assert(_totalInflationAuthorizedWei >= _totalClaimedWei);
-        InflationSupplyData storage data = rewardManagers[msg.sender];
-        _decreaseCirculatingSupply(_totalInflationAuthorizedWei.sub(data.totalInflationAuthorizedWei));
-        _increaseCirculatingSupply(_totalClaimedWei.sub(data.totalClaimedWei));
-        data.totalInflationAuthorizedWei = _totalInflationAuthorizedWei;
-        data.totalClaimedWei = _totalClaimedWei;
-    }
-
-    /**
-     * @notice Called from reward pool when some amount of FLRs is distributed (or once per day)
-     * @param _distributedAmountWei                 Total value of distributed amount
-    */
-    function updateRewardPoolDistributedAmount(uint256 _distributedAmountWei) external onlyRewardPool {
-        SupplyData storage data = rewardPools[msg.sender];
-        assert(data.totalSupplyWei >= _distributedAmountWei);
-        _increaseCirculatingSupply(_distributedAmountWei.sub(data.distributedSupplyWei));
-        data.distributedSupplyWei = _distributedAmountWei;
     }
     
     /**
@@ -209,6 +156,37 @@ contract Supply is Governed {
         circulatingSupply.writeValue(circulatingSupply.valueAtNow().sub(_descreaseBy));
     }
 
+    function _updateCirculatingSupply() internal {
+        uint256 len = rewardPools.length;
+        for (uint256 i = 0; i < len; i++) {
+            SupplyData storage data = rewardPools[i];
+
+            uint256 newFoundationAllocatedFundsWei;
+            uint256 newTotalInflationAuthorizedWei;
+            uint256 newTotalClaimedWei;
+            
+            (newFoundationAllocatedFundsWei, newTotalInflationAuthorizedWei, newTotalClaimedWei) = 
+                data.rewardPool.getRewardPoolSupplyData();
+            assert(newFoundationAllocatedFundsWei.add(newTotalInflationAuthorizedWei) >= newTotalClaimedWei);
+            
+            // updates total inflation authorized with daily authorized inflation
+            uint256 dailyInflationAuthorizedWei = newTotalInflationAuthorizedWei.sub(data.totalInflationAuthorizedWei);
+            totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(dailyInflationAuthorizedWei);
+
+            // updates circulating supply
+            _decreaseCirculatingSupply(newFoundationAllocatedFundsWei.sub(data.foundationAllocatedFundsWei));
+            _increaseCirculatingSupply(newTotalClaimedWei.sub(data.totalClaimedWei));
+
+            // update data
+            data.foundationAllocatedFundsWei = newFoundationAllocatedFundsWei;
+            data.totalInflationAuthorizedWei = newTotalInflationAuthorizedWei;
+            data.totalClaimedWei = newTotalClaimedWei;
+        }
+
+        _updateBurnAddressAmount();
+        lastUpdateTimestamp = block.timestamp;
+    }
+
     function _updateBurnAddressAmount() internal {
         uint256 newBalance = burnAddress.balance;
         _decreaseCirculatingSupply(newBalance.sub(burnAddressBalance));
@@ -216,18 +194,19 @@ contract Supply is Governed {
     }
 
     function _addRewardPool(IIRewardPool _rewardPool) internal {
-        SupplyData storage data = rewardPools[address(_rewardPool)];
-        require(data.totalSupplyWei == 0, ERR_REWARD_POOL_ALREADY_ADDED);
-
-        data.totalSupplyWei = _rewardPool.totalSupplyWei();
-        data.distributedSupplyWei = _rewardPool.distributedSupplyWei();
-
-        _decreaseCirculatingSupply(data.totalSupplyWei.sub(data.distributedSupplyWei));
+        uint256 len = rewardPools.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_rewardPool == rewardPools[i].rewardPool) {
+                revert(ERR_REWARD_POOL_ALREADY_ADDED);
+            }
+        }
+        rewardPools.push();
+        rewardPools[len].rewardPool = _rewardPool;
     }
     
     function _decreaseFoundationSupply(uint256 _amountWei) internal {
-        assert(foundationSupply.totalSupplyWei.sub(foundationSupply.distributedSupplyWei) >= _amountWei);
+        assert(totalFoundationSupplyWei.sub(distributedFoundationSupplyWei) >= _amountWei);
         _increaseCirculatingSupply(_amountWei);
-        foundationSupply.distributedSupplyWei = foundationSupply.distributedSupplyWei.add(_amountWei);
+        distributedFoundationSupplyWei = distributedFoundationSupplyWei.add(_amountWei);
     }
 }
