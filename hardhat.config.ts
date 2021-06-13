@@ -127,10 +127,6 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
-      "contracts/rewardPool/mock/RewardPoolMock.sol": {
-        version: "0.6.12",
-        settings: { }
-      },
       "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
         version: "0.6.12",
         settings: { }
