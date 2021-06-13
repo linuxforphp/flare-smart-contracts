@@ -121,10 +121,10 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // a2 should be = (1000000 / 720) * 0.75 = 1041
             // There is a remainder. It is not being allocated. It should get progressively
             // smaller using a double declining balance allocation.
-            let a1UnclaimedReward = await ftsoRewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[1]);
-            let a2UnclaimedReward = await ftsoRewardManager.unclaimedRewardsPerRewardEpoch(0, accounts[2]);
-            assert.equal(a1UnclaimedReward.toString(), "347");
-            assert.equal(a2UnclaimedReward.toString(), "1041");
+            let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
+            let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
+            assert.equal(a1UnclaimedReward[0].toString(), "347");
+            assert.equal(a2UnclaimedReward[0].toString(), "1041");
         });
     });
 

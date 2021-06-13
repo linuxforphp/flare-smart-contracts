@@ -20,7 +20,8 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
         address ftso,
         uint256 priceEpochDurationSec,
         uint256 currentRewardEpoch,
-        uint256 priceEpochEndTime
+        uint256 priceEpochEndTime,
+        uint256 votePowerBlock
     ) external;
 
     function setFTSOManager(IIFtsoManager _ftsoManager) external;

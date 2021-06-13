@@ -102,6 +102,19 @@ interface IFtsoRewardManager {
     );
 
     /**
+     * @notice Returns information on epoch reward
+     * @param _rewardEpoch          reward epoch number
+     * @return _totalReward         number representing the total epoch reward
+     * @return _claimedReward       number representing the amount of total epoch reward that has been claimed
+     */
+    function getEpochReward(
+        uint256 _rewardEpoch
+    ) external view returns (
+        uint256 _totalReward,
+        uint256 _claimedReward
+    );
+
+    /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
      * @param _beneficiary          address of reward beneficiary
      * @param _rewardEpoch          reward epoch number
@@ -138,6 +151,38 @@ interface IFtsoRewardManager {
         uint256[] memory _rewardAmounts,
         bool[] memory _claimed,
         bool _claimable
+    );
+
+    /**
+     * @notice Returns the information on unclaimed reward of `_dataProvider` for `_rewardEpoch`
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing the data provider
+     * @return _amount              number representing the unclaimed amount
+     * @return _weight              number representing the share that has not yet been claimed
+     */
+    function getUnclaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider
+    ) external view returns (
+        uint256 _amount,
+        uint256 _weight
+    );
+
+    /**
+     * @notice Returns the information on claimed reward of `_dataProvider` for `_rewardEpoch` by `_claimer`
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing the data provider
+     * @param _claimer              address representing the claimer
+     * @return _claimed             boolean indicating if reward has been claimed
+     * @return _amount              number representing the claimed amount
+     */
+    function getClaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider,
+        address _claimer
+    ) external view returns (
+        bool _claimed,
+        uint256 _amount
     );
 
     /**
