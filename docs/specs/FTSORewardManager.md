@@ -11,7 +11,7 @@ The FLR token will launch with planned annual inflation of 10%. A large part of 
 Inflation will be handled in two separate flows: one involves rewarding inflation amounts, and the other minting FLR when those rewards are claimed. 
 
 *   The FTSO Reward manager will allocate portions of the inflation to “good” price providers per price epoch. Each price epoch, the allocated portions will be divided between winning addresses and added to each address account in the reward contract. This process can be seen as time driven - or price epoch driven.
-*   Another system will handle minting new tokens. This process is claim driven; i.e., many FLR can be awarded to different addresses, but if no claim is done, minting will not occur. Once claims are done, new minting will occur with time locks in place to address possible issues in the reward process.
+*   Another system will handle minting new tokens. This process is claim driven; i.e., many FLR can be awarded to different addresses, but if no claim is done, minting will not occur. Once claims are done, new minting will occur with time locks in place to address possible risks of holding large FLR balances to facilitated the claim process.
 
 The above flow is detailed in the [inflation] documentation.
 
@@ -22,7 +22,7 @@ Price epochs are rather rapid, and rewarding involves many addresses. That being
 The aggregation will be done by using the same vote power block for all price epochs inside a reward epoch.
 
 # Rewarding
-The FTSO rewarding process is implemented in the [FTSO Reward Manager] file.
+The FTSO rewarding process is implemented in the [Ftso Reward Manager] contract.
 
 ### Distributing rewards per price epoch
 
@@ -53,4 +53,4 @@ From a delegator’s perspective, two factors can be used to predict its APY whe
 When distributing rewards, the Flare keeper will accredit each address balance automatically, so users will only have to call the claim function every once in a while. Unclaimed rewards will have an expiration time. The expiration time will be set in the reward manager. Rewards not claimed during this time period will be returned to the rewarding pool for redistribution. Current expiration time is planned to be at least a year.
 
 [inflation]: ./Inflation.md "Inflation"
-[FTSO Reward Manager]: ../../contracts/ftso/implementation/FTSORewardManager.sol "FTSO Reward Manager"
+[Ftso Reward Manager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "Ftso Reward Manager"
