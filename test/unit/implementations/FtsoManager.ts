@@ -778,7 +778,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockFtso.address,
                 120,
                 0,
-                startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+                startTs.addn(PRICE_EPOCH_DURATION_S - 1),
+                await ftsoManager.getRewardEpochVotePowerBlock(0)
             ).encodeABI();
 
             // Assert
@@ -823,7 +824,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockFtso.address,
                 120,
                 0,
-                startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+                startTs.addn(PRICE_EPOCH_DURATION_S - 1),
+                await ftsoManager.getRewardEpochVotePowerBlock(0)
             ).encodeABI();
 
             await mockRewardManager.givenMethodRevert(distributeRewards);
@@ -1165,7 +1167,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockFtso.address,
                 yearSeconds / 10,
                 1,
-                startTs.addn((yearSeconds / 10 * 13) - 1)
+                startTs.addn((yearSeconds / 10 * 13) - 1),
+                await ftsoManager.getRewardEpochVotePowerBlock(1)
             ).encodeABI();
 
             // Assert

@@ -28,9 +28,16 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         uint16 value;               // fee percentage value (value between 0 and 1e4)
         uint240 validFromEpoch;     // id of the reward epoch from which the value is valid
     }
+
+    struct RewardClaim {            // used for storing reward claim info
+        bool claimed;               // indicates if reward has been claimed
+        uint256 amount;             // amount claimed
+    }
+
     struct RewardState {            // used for local storage of reward state
         address[] dataProviders;    // positional array of addresses representing data providers
-        uint256[] rewardAmounts;    // positional array of numbers representing reward amount
+        uint256[] weights;          // positional array of numbers representing reward weights
+        uint256[] amounts;          // positional array of numbers representing reward amounts
         bool[] claimed;             // positional array of booleans indicating if reward has already been claimed
     }
 
@@ -63,13 +70,13 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     /**
      * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed rewards.
      */
-    mapping(uint256 => mapping(address => uint256)) public unclaimedRewardsPerRewardEpoch;
-    mapping(uint256 => mapping(address => uint256)) public totalRewardsPerRewardEpoch;
-    mapping(uint256 => mapping(address => mapping(address => bool))) public rewardClaimed;
-    mapping(uint256 => uint256) public totalRewardEpochRewards;
-    mapping(uint256 => uint256) public claimedRewardEpochRewards;
+    mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardWeight;
+    mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardAmount;    
+    mapping(uint256 => mapping(address => mapping(address => RewardClaim))) private epochProviderClaimerReward;
+    mapping(uint256 => uint256) private totalRewardEpochRewards;
+    mapping(uint256 => uint256) private claimedRewardEpochRewards;
 
-    mapping(address => FeePercentage[]) public dataProviderFeePercentages;
+    mapping(address => FeePercentage[]) private dataProviderFeePercentages;
 
     // Totals
     uint256 public totalAwardedWei;
@@ -279,7 +286,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address _ftso,
         uint256 _priceEpochDurationSec,
         uint256 _currentRewardEpoch,
-        uint256 _priceEpochEndTime // end time included in epoch
+        uint256 _priceEpochEndTime, // end time included in epoch
+        uint256 _votePowerBlock
     ) external override onlyFtsoManager {
         // FTSO manager should never call with bad values.
         assert (_totalWeight != 0 && _addresses.length != 0);
@@ -290,26 +298,24 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
             _getDistributableFtsoInflationBalance()
             .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
         // console.log("totalPriceEpochReward = ", totalPriceEpochReward);
-        uint256 currentDistributedSoFar = 0;
 
         uint256[] memory rewards = new uint256[](_addresses.length);
+        rewards[0] = totalPriceEpochReward;
+        _weights[0] = _totalWeight;
 
-        for (uint i = _addresses.length - 1; i > 0; i--) {
-            uint256 rewardAmount = totalPriceEpochReward * _weights[i] / _totalWeight;
-            currentDistributedSoFar += rewardAmount;
-            rewards[i] = rewardAmount;
-            unclaimedRewardsPerRewardEpoch[_currentRewardEpoch][_addresses[i]] +=
-                rewardAmount;
-            totalRewardsPerRewardEpoch[_currentRewardEpoch][_addresses[i]] +=
-                rewardAmount;
+        uint256 i = _addresses.length - 1;
+        while (true) {
+            rewards[i] = rewards[0].mulDiv(_weights[i], _weights[0]);
+            epochProviderUnclaimedRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
+            epochProviderUnclaimedRewardWeight[_currentRewardEpoch][_addresses[i]] =
+                wFlr.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);            
+            if (i == 0) {
+                break;
+            }
+            rewards[0] -= rewards[i];
+            _weights[0] -= _weights[i];
+            i--;
         }
-
-        // give remaining amount to last address.
-        unclaimedRewardsPerRewardEpoch[_currentRewardEpoch][_addresses[0]] += 
-            totalPriceEpochReward - currentDistributedSoFar;
-        totalRewardsPerRewardEpoch[_currentRewardEpoch][_addresses[0]] +=
-            totalPriceEpochReward - currentDistributedSoFar;
-        rewards[0] = totalPriceEpochReward - currentDistributedSoFar;
 
         totalRewardEpochRewards[_currentRewardEpoch] += totalPriceEpochReward;
 
@@ -374,6 +380,22 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     }
 
     /**
+     * @notice Returns information on epoch reward
+     * @param _rewardEpoch          reward epoch number
+     * @return _totalReward         number representing the total epoch reward
+     * @return _claimedReward       number representing the amount of total epoch reward that has been claimed
+     */
+    function getEpochReward(
+        uint256 _rewardEpoch
+    ) external view override returns (
+        uint256 _totalReward,
+        uint256 _claimedReward
+    ) {
+        _totalReward = totalRewardEpochRewards[_rewardEpoch];
+        _claimedReward = claimedRewardEpochRewards[_rewardEpoch];
+    }
+
+    /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
      * @param _beneficiary          address of reward beneficiary
      * @param _rewardEpoch          reward epoch number
@@ -394,7 +416,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     ) {
         RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
         _dataProviders = rewardState.dataProviders;
-        _rewardAmounts = rewardState.rewardAmounts;
+        _rewardAmounts = rewardState.amounts;
         _claimed = rewardState.claimed;
         _claimable = _isRewardClaimable(_rewardEpoch, ftsoManager.getCurrentRewardEpoch());
     }
@@ -423,9 +445,48 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
             _dataProviders,
             false
         );
-        _rewardAmounts = rewardState.rewardAmounts;
+        _rewardAmounts = rewardState.amounts;
         _claimed = rewardState.claimed;
         _claimable = _isRewardClaimable(_rewardEpoch, ftsoManager.getCurrentRewardEpoch());
+    }
+
+    /**
+     * @notice Returns the information on unclaimed reward of `_dataProvider` for `_rewardEpoch`
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing the data provider
+     * @return _amount              number representing the unclaimed amount
+     * @return _weight              number representing the share that has not yet been claimed
+     */
+    function getUnclaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider
+    ) external view override returns (
+        uint256 _amount,
+        uint256 _weight
+    ) {
+        _amount = epochProviderUnclaimedRewardAmount[_rewardEpoch][_dataProvider];
+        _weight = epochProviderUnclaimedRewardWeight[_rewardEpoch][_dataProvider];
+    }
+
+    /**
+     * @notice Returns the information on claimed reward of `_dataProvider` for `_rewardEpoch` by `_claimer`
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing the data provider
+     * @param _claimer              address representing the claimer
+     * @return _claimed             boolean indicating if reward has been claimed
+     * @return _amount              number representing the claimed amount
+     */
+    function getClaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider,
+        address _claimer
+    ) external view override returns(
+        bool _claimed,
+        uint256 _amount
+    ) {
+        RewardClaim storage rewardClaim = epochProviderClaimerReward[_rewardEpoch][_dataProvider][_claimer];
+        _claimed = rewardClaim.claimed;
+        _amount = rewardClaim.amount;
     }
 
     /**
@@ -514,17 +575,24 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
             if (_rewardState.claimed[i]) {
                 continue;
             }
-            address dataProvider = _rewardState.dataProviders[i];
-            uint256 rewardAmount = _rewardState.rewardAmounts[i];
 
-            rewardClaimed[_rewardEpoch][dataProvider][msg.sender] = true;
-            
+            address dataProvider = _rewardState.dataProviders[i];            
+
+            uint256 rewardWeight = _rewardState.weights[i];            
+            if (rewardWeight > 0) {
+                epochProviderUnclaimedRewardWeight[_rewardEpoch][dataProvider] -= rewardWeight; // can not underflow
+            }
+
+            uint256 rewardAmount = _rewardState.amounts[i];
             if (rewardAmount > 0) {
-                assert(unclaimedRewardsPerRewardEpoch[_rewardEpoch][dataProvider] >= rewardAmount); // sanity check
-                unclaimedRewardsPerRewardEpoch[_rewardEpoch][dataProvider] -= rewardAmount;
+                epochProviderUnclaimedRewardAmount[_rewardEpoch][dataProvider] -= rewardAmount; // can not underflow
                 totalClaimedWei += rewardAmount;
                 totalRewardAmount += rewardAmount;
             }
+
+            RewardClaim storage rewardClaim = epochProviderClaimerReward[_rewardEpoch][dataProvider][msg.sender];
+            rewardClaim.claimed = true;
+            rewardClaim.amount = rewardAmount;
 
             emit RewardClaimed({
                 dataProvider: dataProvider,
@@ -589,40 +657,68 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     ) internal view returns (RewardState memory _rewardState)
     {
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(_rewardEpoch);
-
+        
+        // setup for data provider reward
         bool dataProviderClaimed = _isRewardClaimed(_rewardEpoch, _beneficiary, _beneficiary);
-        uint256 dataProviderAmount = _getRewardAmountForDataProvider(_beneficiary, _rewardEpoch, votePowerBlock);
-        uint256 dataProviderReward = (dataProviderClaimed || dataProviderAmount > 0) ? 1 : 0;
+        
+        // gather data provider reward info
+        uint256 dataProviderRewardWeight;
+        RewardClaim memory dataProviderReward;
+        if (dataProviderClaimed) {
+            if (!_zeroForClaimed) {
+                // weight is irrelevant
+                dataProviderReward.amount = _getClaimedReward(_rewardEpoch, _beneficiary, _beneficiary);
+            }
+        } else {
+            dataProviderRewardWeight = _getRewardWeightForDataProvider(_beneficiary, _rewardEpoch, votePowerBlock);
+            dataProviderReward.amount = _getRewardAmount(_rewardEpoch, _beneficiary, dataProviderRewardWeight);
+        }
+        // flag if data is to be included
+        dataProviderReward.claimed = dataProviderClaimed || dataProviderReward.amount > 0;
 
+        // setup for delegation rewards
         address[] memory delegates;
         uint256[] memory bips;
         (delegates, bips, , ) = wFlr.delegatesOfAt(_beneficiary, votePowerBlock);
         
-        _rewardState.dataProviders = new address[](dataProviderReward + delegates.length);
-        _rewardState.rewardAmounts = new uint256[](dataProviderReward + delegates.length);
-        _rewardState.claimed = new bool[](dataProviderReward + delegates.length);
+        // reward state setup
+        _rewardState.dataProviders = new address[]((dataProviderReward.claimed ? 1 : 0) + delegates.length);
+        _rewardState.weights = new uint256[](_rewardState.dataProviders.length);
+        _rewardState.amounts = new uint256[](_rewardState.dataProviders.length);
+        _rewardState.claimed = new bool[](_rewardState.dataProviders.length);
 
-        if (dataProviderReward == 1) {
+        // data provider reward
+        if (dataProviderReward.claimed) {
             _rewardState.dataProviders[0] = _beneficiary;
             _rewardState.claimed[0] = dataProviderClaimed;
-            _rewardState.rewardAmounts[0] = (_zeroForClaimed && dataProviderClaimed) ? 0 : dataProviderAmount;
+            _rewardState.weights[0] = dataProviderRewardWeight;
+            _rewardState.amounts[0] = dataProviderReward.amount;            
         }
 
+        // delegation rewards
         if (delegates.length > 0) {
             uint256 delegatorBalance = wFlr.balanceOfAt(_beneficiary, votePowerBlock);
             for (uint256 i = 0; i < delegates.length; i++) {
-                uint256 index = dataProviderReward + i;
-                _rewardState.dataProviders[index] = delegates[i];
-                _rewardState.claimed[index] = _isRewardClaimed(_rewardEpoch, delegates[i], _beneficiary);
-                if (_rewardState.claimed[index] && _zeroForClaimed) {
-                    continue;
+                uint256 p = (dataProviderReward.claimed ? 1 : 0) + i;
+                _rewardState.dataProviders[p] = delegates[i];
+                _rewardState.claimed[p] = _isRewardClaimed(_rewardEpoch, delegates[i], _beneficiary);
+                if (_rewardState.claimed[p]) {
+                    if (!_zeroForClaimed) {
+                        // weight is irrelevant
+                        _rewardState.amounts[p] = _getClaimedReward(_rewardEpoch, delegates[i], _beneficiary);
+                    }
+                } else {
+                    _rewardState.weights[p] = _getRewardWeightForDelegator(
+                        delegates[i],
+                        delegatorBalance.mulDiv(bips[i], MAX_BIPS),
+                        _rewardEpoch
+                    );
+                    _rewardState.amounts[p] = _getRewardAmount(
+                        _rewardEpoch,
+                        delegates[i],
+                        _rewardState.weights[p]
+                    );
                 }
-                _rewardState.rewardAmounts[index] = _getRewardAmountForDelegator(
-                    delegates[i],
-                    delegatorBalance.mulDiv(bips[i], MAX_BIPS),
-                    _rewardEpoch,
-                    votePowerBlock
-                );
             }
         }
     }
@@ -645,30 +741,39 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
 
         uint256 count = _dataProviders.length;
         _rewardState.dataProviders = _dataProviders;
-        _rewardState.rewardAmounts = new uint256[](count);
+        _rewardState.weights = new uint256[](count);
+        _rewardState.amounts = new uint256[](count);
         _rewardState.claimed = new bool[](count);
 
         for (uint256 i = 0; i < count; i++) {
             _rewardState.claimed[i] = _isRewardClaimed(_rewardEpoch, _dataProviders[i], _beneficiary);
-            if (_rewardState.claimed[i] && _zeroForClaimed) {
+            if (_rewardState.claimed[i]) {
+                if (!_zeroForClaimed) {
+                    // weight is irrelevant
+                    _rewardState.amounts[i] = _getClaimedReward(_rewardEpoch, _dataProviders[i], _beneficiary);
+                }
                 continue;
             }
 
             if (_dataProviders[i] == _beneficiary) {
-                _rewardState.rewardAmounts[i] = _getRewardAmountForDataProvider(
+                _rewardState.weights[i] = _getRewardWeightForDataProvider(
                     _beneficiary,
                     _rewardEpoch,
                     votePowerBlock
                 );
             } else {
                 uint256 delegatedVotePower = wFlr.votePowerFromToAt(_beneficiary, _dataProviders[i], votePowerBlock);
-                _rewardState.rewardAmounts[i] = _getRewardAmountForDelegator(
+                _rewardState.weights[i] = _getRewardWeightForDelegator(
                     _dataProviders[i],
                     delegatedVotePower,
-                    _rewardEpoch,
-                    votePowerBlock
+                    _rewardEpoch
                 );
             }
+            _rewardState.amounts[i] = _getRewardAmount(
+                _rewardEpoch,
+                _dataProviders[i],
+                _rewardState.weights[i]
+            );
         }
     }
 
@@ -701,90 +806,113 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address _claimer
     ) internal view returns (bool)
     {
-        return rewardClaimed[_rewardEpoch][_dataProvider][_claimer];
+        return epochProviderClaimerReward[_rewardEpoch][_dataProvider][_claimer].claimed;
+    }
+
+    /**
+     * @notice Returns the reward amount at `_rewardEpoch` for `_dataProvider` claimed by `_claimer`.
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing a data provider
+     * @param _claimer              address representing a reward claimer
+     */
+    function _getClaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider,
+        address _claimer
+    ) internal view returns (uint256)
+    {
+        return epochProviderClaimerReward[_rewardEpoch][_dataProvider][_claimer].amount;
     }
 
     /**
      * @notice Returns the reward amount for `_dataProvider` at `_rewardEpoch`
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing a data provider     
+     * @param _rewardWeight         number representing reward weight
+     */
+    function _getRewardAmount(
+        uint256 _rewardEpoch,
+        address _dataProvider,
+        uint256 _rewardWeight
+    ) internal view returns (uint256)
+    {
+        if (_rewardWeight == 0) {
+            return 0;
+        }
+        uint256 unclaimedRewardAmount = epochProviderUnclaimedRewardAmount[_rewardEpoch][_dataProvider];
+        if (unclaimedRewardAmount == 0) {
+            return 0;
+        }
+        uint256 unclaimedRewardWeight = epochProviderUnclaimedRewardWeight[_rewardEpoch][_dataProvider];
+        if (_rewardWeight == unclaimedRewardWeight) {
+            return unclaimedRewardAmount;
+        }
+        assert(_rewardWeight < unclaimedRewardWeight);
+        return unclaimedRewardAmount.mulDiv(_rewardWeight, unclaimedRewardWeight);
+    }
+
+    /**
+     * @notice Returns reward weight for `_dataProvider` at `_rewardEpoch`
      * @param _dataProvider         address representing a data provider
      * @param _rewardEpoch          reward epoch number
      * @param _votePowerBlock       block number used to determine the vote power for reward computation
      */
-    function _getRewardAmountForDataProvider(
+    function _getRewardWeightForDataProvider(
         address _dataProvider,
         uint256 _rewardEpoch,
         uint256 _votePowerBlock
     ) internal view returns (uint256)
     {
-        uint256 totalReward = totalRewardsPerRewardEpoch[_rewardEpoch][_dataProvider];
-        if (totalReward == 0) {
-            return 0;
-        }
-
         uint256 dataProviderVotePower = wFlr.undelegatedVotePowerOfAt(_dataProvider, _votePowerBlock);
         uint256 votePower = wFlr.votePowerOfAt(_dataProvider, _votePowerBlock);
 
         if (dataProviderVotePower == votePower) {
             // shortcut, but also handles (unlikely) zero vote power case
-            return totalReward;
+            return votePower.mul(MAX_BIPS);
         }
         assert(votePower > dataProviderVotePower);
 
-        uint256 reward = 0;
+        uint256 rewardWeight = 0;
 
-        // data provider share (without fee)
+        // weight share based on data provider undelagated vote power
         if (dataProviderVotePower > 0) {
-            reward += totalReward.mulDiv(dataProviderVotePower, votePower);
+            rewardWeight += dataProviderVotePower.mul(MAX_BIPS);
         }
 
-        // data provider fee (fee is taken from the total vote power delegated to data provider)
+        // weight share based on data provider fee
         uint256 feePercentageBIPS = _getDataProviderFeePercentage(_dataProvider, _rewardEpoch);
         if (feePercentageBIPS > 0) {
-            reward += totalReward.mulDiv(
-                (votePower - dataProviderVotePower).mul(feePercentageBIPS),
-                votePower.mul(MAX_BIPS)
-            );
+            rewardWeight += (votePower - dataProviderVotePower).mul(feePercentageBIPS);
         }
 
-        return reward;
+        return rewardWeight;
     }
 
     /**
-     * @notice Returns reward amount at `_rewardEpoch` for delegator delegating `_delegatedVotePower` to `_delegate`.
+     * @notice Returns reward weight at `_rewardEpoch` for delegator delegating `_delegatedVotePower` to `_delegate`.
      * @param _delegate             address representing a delegate (data provider)
      * @param _delegatedVotePower   number representing vote power delegated by delegator
      * @param _rewardEpoch          reward epoch number
-     * @param _votePowerBlock       block number used to determine the vote power for reward computation
      */
-    function _getRewardAmountForDelegator(        
+    function _getRewardWeightForDelegator(        
         address _delegate,
         uint256 _delegatedVotePower,
-        uint256 _rewardEpoch,
-        uint256 _votePowerBlock
+        uint256 _rewardEpoch
     ) internal view returns (uint256)
     {
         if (_delegatedVotePower == 0) {
             return 0;
         }
 
-        uint256 totalReward = totalRewardsPerRewardEpoch[_rewardEpoch][_delegate];
-        if (totalReward == 0) {
-            return 0;
-        }
+        uint256 rewardWeight = 0;
 
-        uint256 reward = 0;
-
-        // reward earned by vote power share
+        // reward weight determined by vote power share
         uint256 feePercentageBIPS = _getDataProviderFeePercentage(_delegate, _rewardEpoch);
-        if (feePercentageBIPS < MAX_BIPS) {            
-            uint256 votePower = wFlr.votePowerOfAt(_delegate, _votePowerBlock);
-            reward += totalReward.mulDiv(
-                _delegatedVotePower.mul(MAX_BIPS - feePercentageBIPS),
-                votePower.mul(MAX_BIPS)
-            );
+        if (feePercentageBIPS < MAX_BIPS) {
+            rewardWeight += _delegatedVotePower.mul(MAX_BIPS - feePercentageBIPS);
         }
 
-        return reward;
+        return rewardWeight;
     }
 
     /**

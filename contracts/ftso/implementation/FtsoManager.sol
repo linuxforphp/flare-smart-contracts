@@ -521,7 +521,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
                     lastUnprocessedPriceEpoch, rewardedFtsoAddress,
                     priceEpochDurationSec,
                     currentRewardEpoch,
-                    _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1) { // actual end time (included)
+                    _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1, // actual end time (included)
+                    rewardEpochs[currentRewardEpoch].votepowerBlock)
+                {
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
                 } catch {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
