@@ -115,47 +115,6 @@ library FtsoMedian {
         _d.rewardedWeightSum = _d.leftSum2 + _d.rightSum2 + _d.medianWeight - _d.lowWeightSum - _d.highWeightSum;
     }
 
-    function _swap(uint256 _i, uint256 _j, uint256[] memory _index) internal pure {
-        if (_i == _j) return;
-        uint256 tmp = _index[_i];
-        _index[_i] = _index[_j];
-        _index[_j] = tmp;
-    }
-
-    function _partition(
-        uint256 left0,
-        uint256 right0,
-        uint256 pivotId,
-        uint256 leftSum0, 
-        uint256 rightSum0,
-        uint256[] memory index,
-        uint256[] memory price, 
-        uint256[] memory weight
-    )
-        internal pure returns (uint256, uint256, uint256)
-    {
-        uint256 pivotValue = price[index[pivotId]];
-        uint256[] memory sums = new uint256[](2);
-        sums[0] = leftSum0;
-        sums[1] = rightSum0;
-        uint256 left = left0;
-        uint256 right = right0;
-        _swap(pivotId, right, index);
-        uint256 storeIndex = left;
-        for (uint256 i = left; i < right; i++) {
-            uint256 eltId = index[i];
-            if (price[eltId] < pivotValue) {
-                sums[0] += weight[eltId];
-                _swap(storeIndex, i, index);
-                storeIndex++;
-            } else {
-                sums[1] += weight[eltId];
-            }
-        }
-        _swap(right, storeIndex, index);
-        return (storeIndex, sums[0], sums[1]);
-    }
-
     function _quickSelect(
         uint256 _k,
         uint256 _start,
@@ -242,6 +201,47 @@ library FtsoMedian {
         // should never happen
         assert(false);
         return (0, 0, 0);
+    }
+
+    function _swap(uint256 _i, uint256 _j, uint256[] memory _index) internal pure {
+        if (_i == _j) return;
+        uint256 tmp = _index[_i];
+        _index[_i] = _index[_j];
+        _index[_j] = tmp;
+    }
+
+    function _partition(
+        uint256 left0,
+        uint256 right0,
+        uint256 pivotId,
+        uint256 leftSum0, 
+        uint256 rightSum0,
+        uint256[] memory index,
+        uint256[] memory price, 
+        uint256[] memory weight
+    )
+        internal pure returns (uint256, uint256, uint256)
+    {
+        uint256 pivotValue = price[index[pivotId]];
+        uint256[] memory sums = new uint256[](2);
+        sums[0] = leftSum0;
+        sums[1] = rightSum0;
+        uint256 left = left0;
+        uint256 right = right0;
+        _swap(pivotId, right, index);
+        uint256 storeIndex = left;
+        for (uint256 i = left; i < right; i++) {
+            uint256 eltId = index[i];
+            if (price[eltId] < pivotValue) {
+                sums[0] += weight[eltId];
+                _swap(storeIndex, i, index);
+                storeIndex++;
+            } else {
+                sums[1] += weight[eltId];
+            }
+        }
+        _swap(right, storeIndex, index);
+        return (storeIndex, sums[0], sums[1]);
     }
 
     function _samePriceFix(

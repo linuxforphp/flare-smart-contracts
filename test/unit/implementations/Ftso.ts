@@ -58,7 +58,7 @@ async function setMockVotePowerAtMultiple(blockNumber: number, wflrVotePower: nu
         await mockFtsos[i].givenMethodReturn(fasset_ftso, fassetReturn_ftso);
 
         const currentPrice_ftso = ftso.contract.methods.getCurrentPrice().encodeABI();
-        const currentPriceReturn_ftso = web3.eth.abi.encodeParameter('uint256', currentPrices[i]);
+        const currentPriceReturn_ftso = web3.eth.abi.encodeParameters(['uint256', 'uint256'], [currentPrices[i], 1]);
         await mockFtsos[i].givenMethodReturn(currentPrice_ftso, currentPriceReturn_ftso);
     }
 }
@@ -107,12 +107,49 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should know about PriceSubmitter", async() => {
             await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
             expect(await ftso.priceSubmitter()).to.equals(accounts[4]);
-          });
+        });
 
         it("Should not activate ftso if already activated", async() => {
             await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
             await expectRevert(ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]}), "FTSO already activated");
             await expectRevert(ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[1]}), "Access denied");
+        });
+
+        it("Should deactivate ftso", async() => {
+            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            expect(await ftso.active()).to.be.true;
+            await ftso.deactivateFtso({from: accounts[10]});
+            expect(await ftso.active()).to.be.false;
+        });
+
+        it("Should not deactivate ftso if not ftso manager", async() => {
+            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            expect(await ftso.active()).to.be.true;
+            await expectRevert(ftso.deactivateFtso({from: accounts[1]}), "Access denied");
+            expect(await ftso.active()).to.be.true;
+        });
+
+        it("Should not deactivate ftso if already deactivated", async() => {
+            await expectRevert(ftso.deactivateFtso({from: accounts[10]}), "FTSO not active");
+            await expectRevert(ftso.deactivateFtso({from: accounts[1]}), "FTSO not active");
+        });
+
+        it("Should update initial price", async() => {
+            await ftso.updateInitialPrice(900, 5000, {from: accounts[10]});
+            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            let data = await ftso.getCurrentPrice();
+            expect(data[0].toNumber()).to.equals(900);
+            expect(data[1].toNumber()).to.equals(5000);
+        });
+
+        it("Should not update initial price if not ftso manager", async() => {
+            await expectRevert(ftso.updateInitialPrice(500, 8000, {from: accounts[1]}), "Access denied");
+        });
+
+        it("Should not update initial price if already activated", async() => {
+            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await expectRevert(ftso.updateInitialPrice(900, 3000, {from: accounts[10]}), "FTSO already activated");
+            expect((await ftso.getCurrentPrice())[0].toNumber()).to.equals(1);
         });
 
         it("Should revert at submit price if not activated", async() => {
@@ -907,9 +944,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 {epochId: toBN(0), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(5)});
         });
 
-        it("Should force finalize price epoch", async() => {
+        it("Should force finalize price epoch - price timestamp should not change", async() => {
+            let priceData = await ftso.getCurrentPrice();
             expectEvent(await ftso.forceFinalizePriceEpoch(0, {from: accounts[10]}), "PriceFinalized",
                 {epochId: toBN(0), price: toBN(0), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(5)});
+            let priceData2 = await ftso.getCurrentPrice();
+            expect(priceData2[1].toNumber()).to.equals(priceData[1].toNumber());
         });
 
         it("Should not force finalize using average price epoch if not ftso manager", async() => {
@@ -1182,7 +1222,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should get initial asset price", async () => {
             let price = await ftso.getCurrentPrice();
-            expect(price.toNumber()).to.equals(1);
+            expect(price[0].toNumber()).to.equals(1);
+            expect(price[1].toNumber()).to.be.gt(0);
         });
 
         it("Should not get fasset if fasset is not set", async() => {
@@ -1198,7 +1239,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should get current price", async() => {
             let price = await ftso.getCurrentPrice();
-            expect(price.toNumber()).to.equals(1);
+            expect(price[0].toNumber()).to.equals(1);
 
             await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), {from: accounts[1]});
             await ftso.submitPriceHash(submitPriceHash(250, 124, accounts[2]), {from: accounts[2]});
@@ -1220,7 +1261,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}); // finalize price -> new current price = 250
 
             let price2 = await ftso.getCurrentPrice();
-            expect(price2.toNumber()).to.equals(250);
+            expect(price2[0].toNumber()).to.equals(250);
         });
 
         it("Should get epoch price", async() => {
@@ -1853,7 +1894,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             
             await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
 
+            let priceData = await ftso.getCurrentPrice();
             expectEvent(await ftso.averageFinalizePriceEpoch(epochId, {from: accounts[10]}), "PriceFinalized", {epochId: toBN(epochId), price: toBN(450), finalizationType: toBN(4)});
+            let priceData2 = await ftso.getCurrentPrice();
 
             // after price finalization
             let epochData = await ftso.getFullEpochReport(epochId);
@@ -1871,6 +1914,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expect(epochData[10]).to.eqls([accounts[5], accounts[6], accounts[7]]);
             expect(epochData[11]).to.equals(false);
             expect(epochData[12]).to.equals(false);
+
+            expect(priceData2[1].toNumber()).to.be.gt(priceData[1].toNumber());
         });
 
         it("Should get epoch info after finalizing price epoch using force finalization when epoch has low flr turnout and no votes from trusted addresses", async() => {
@@ -2117,7 +2162,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should get current price", async () => {
             let price = await ftso.getCurrentPrice();
-            expect(price.toNumber()).to.equals(1);
+            expect(price[0].toNumber()).to.equals(1);
 
             await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] });
             await ftso.submitPriceHash(submitPriceHash(250, 124, accounts[2]), { from: accounts[2] });
@@ -2139,7 +2184,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }); // finalize price -> new current price = 250
 
             let price2 = await ftso.getCurrentPrice();
-            expect(price2.toNumber()).to.equals(250);
+            expect(price2[0].toNumber()).to.equals(250);
+            expect(price2[1].toNumber()).to.be.gt(price[1].toNumber());
         });
 
         it("Should get epoch price", async () => {
@@ -2499,6 +2545,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), {from: accounts[1]});
             await ftso.submitPriceHash(submitPriceHash(250, 124, accounts[2]), {from: accounts[2]});
             await ftso.submitPriceHash(submitPriceHash(400, 125, accounts[3]), {from: accounts[3]});
+        
+            const currentPrice_ftso = ftso.contract.methods.getCurrentPrice().encodeABI();
+            const currentPriceReturn_ftso = web3.eth.abi.encodeParameters(['uint256', 'uint256'], [500, 1]);
+            await mockFtsoWithoutFasset.givenMethodReturn(currentPrice_ftso, currentPriceReturn_ftso);
 
             await setMockVotePowerAtMultiple(10, 50000, [5000000, 200000, 7500], [1000, 3, 800]);
             await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});

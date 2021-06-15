@@ -16,56 +16,58 @@ wFlr.delegate(providerAddress, percentToBips(100)){from: BobAddress};
 // price provider steps
 ///////////////////////
 main() {
-   while (true) {
+    while (true) {
  
-       let providerVotePower;
-       let validFtsoAddressList[];
-       let ftsoPriceHashes[];
-       let ftsoPrices[];
-       let ftsoRandoms[];
- 
-       for (uint i = 0; i < FTSOAddressList.length; i++) { 
-           address ftso = FTSOAddressList[i];
+        let providerVotePower;
+        let validFtsoAddressList[];
+        let ftsoPriceHashes[];
+        let ftsoPrices[];
+        let ftsoRandoms[];
+    
+        for (uint i = 0; i < FTSOAddressList.length; i++) { 
+            address ftso = FTSOAddressList[i];
             {
                 epochId;
                 epochSubmitEndTime;
                 epochRevealEndTime;
                 votePowerBlock;
                 lowFlrVotePowerThreshold;
-                isFallBackMode;
+                isFallbackMode;
             } = ftso.getPriceEpochData();
 
             // note price epochs have fixed time frames
             // note vote power block for each price epoch is shared between all FTSOs
-            if(providerVotePower == 0) providerVotePower =              wFlr.votePowerOfAt(providerAddress, votePowerBlock))
+            if (providerVotePower == 0) {
+                providerVotePower = wFlr.votePowerOfAt(providerAddress, votePowerBlock));
+            }
  
-           if (isFallBackMode || providerVotePower < lowFlrVotePowerThreshold) {
-               // not enough VP to post to this FTSO. go to next
-               continue;
-           }
- 
-           validFtsoAddressList.push(FTSOAddressList[i]);
- 
-           // create a new random
-           ftsoRandoms.push(rand());
- 
-           // read token symbol
-           let symbol = symbolftso.symbol();
- 
-           // read price from any chosen price source provider wishes to use
-           ftsoPrices.push(priceSource.getPrice(symbol));
- 
-           uint currentFtso = ftsoPrices.length - 1;
-           // create hash of above values and submit
-           ftsoPriceHashes[currentFtso] = solidityKeccak256(
-               ["uint256", "uint256", "address"],
-               [ftsoPrices[currentFtso], ftsoRandoms[currentFtso], providerAddress]
-           );
+            if (isFallbackMode || providerVotePower < lowFlrVotePowerThreshold) {
+                // not enough VP to post to this FTSO. go to next
+                continue;
+            }
+    
+            validFtsoAddressList.push(FTSOAddressList[i]);
+    
+            // create a new random
+            ftsoRandoms.push(rand());
+    
+            // read token symbol
+            let symbol = symbolftso.symbol();
+    
+            // read price from any chosen price source provider wishes to use
+            ftsoPrices.push(priceSource.getPrice(symbol));
+    
+            uint currentFtso = ftsoPrices.length - 1;
+            // create hash of above values and submit
+            ftsoPriceHashes[currentFtso] = solidityKeccak256(
+                ["uint256", "uint256", "address"],
+                [ftsoPrices[currentFtso], ftsoRandoms[currentFtso], providerAddress]
+            );
         }
  
         // submit hashes in batch
         if (validFtsoAddressList > 0) {
-            priceSubmitter.submitPriceHashes(validFtsoAddressList, ftsoRandoms);
+            priceSubmitter.submitPriceHashes(validFtsoAddressList, ftsoPriceHashes);
         }
  
         // wait for this commit period to end
@@ -80,14 +82,15 @@ main() {
             );
         }
     }
+}
  
-   function percentToBips(percent) {
-        return percent * 100;
-    }
+function percentToBips(percent) {
+    return percent * 100;
+}
 
-    function waitUntil(linuxTs) {
-        while(now() < linuxTs) {
-            // sleep 1 second
-            sleep(1);
-        }
+function waitUntil(linuxTs) {
+    while(now() < linuxTs) {
+        // sleep 1 second
+        sleep(1);
     }
+}

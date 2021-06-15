@@ -171,7 +171,7 @@ const ftsoManagerAddress = (() => {
     let js = 'Index\tcontract address\tasset name\tlast $ price\n'
     for (let i = 0; i < 8; i++) {
       js += `${i}\t${ftsoData[i].address}\t${ftsoData[i].symbol}\t${
-        (await ftsoData[i].contract.methods.getCurrentPrice().call()) / 10 ** decimal
+        (await ftsoData[i].contract.methods.getCurrentPrice().call())[0] / 10 ** decimal
       }\n`
     }
     let slackBody = {
@@ -293,7 +293,7 @@ const ftsoManagerAddress = (() => {
 
     let id = ftsos.indexOf(callingAddress)
     try {
-      let result = (await ftsoData[id].contract.methods.getCurrentPrice().call()) / 10 ** decimal
+      let result = (await ftsoData[id].contract.methods.getCurrentPrice().call())[0] / 10 ** decimal
       let slackBody = {
         mkdwn: true,
         text: `Current Price for ${callingAddress} (${ftsoData[id].symbol}) `,

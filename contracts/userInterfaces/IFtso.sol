@@ -111,9 +111,10 @@ interface IFtso {
 
     /**
      * @notice Returns current FAsset price
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return _price               Price in USD multiplied by fAssetUSDDecimals
+     * @return _timestamp           Time when price was updated for the last time
      */
-    function getCurrentPrice() external view returns (uint256);
+    function getCurrentPrice() external view returns (uint256 _price, uint256 _timestamp);
 
     /**
      * @notice Returns current random number

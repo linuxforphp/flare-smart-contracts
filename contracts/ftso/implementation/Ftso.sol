@@ -39,6 +39,7 @@ contract Ftso is IIFtso {
     bool public override active;                // activation status of FTSO
     string public override symbol;              // asset symbol that identifies FTSO
     uint256 internal fAssetPriceUSD;            // current FAsset USD price
+    uint256 internal fAssetPriceTimestamp;      // time when price was updated
     FtsoEpoch.State internal epochs;            // epoch storage
     FtsoVote.State internal votes;              // vote storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
@@ -49,18 +50,6 @@ contract Ftso is IIFtso {
     IPriceSubmitter public priceSubmitter;       // Price submitter contract
     IIVPToken[] public fAssets;                  // array of assets
     IIFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
-
-    constructor(
-        string memory _symbol,
-        IIVPToken _wFlr,
-        IIFtsoManager _ftsoManager,
-        uint256 _initialPriceUSD
-    ) {
-        symbol = _symbol;
-        wFlr = _wFlr;
-        ftsoManager = _ftsoManager;
-        fAssetPriceUSD = _initialPriceUSD;
-    }
 
     modifier whenActive {
         require(active, ERR_NOT_ACTIVE);
@@ -75,6 +64,19 @@ contract Ftso is IIFtso {
     modifier onlyPriceSubmitter {
         require(msg.sender == address(priceSubmitter), ERR_NO_ACCESS);
         _;
+    }
+
+    constructor(
+        string memory _symbol,
+        IIVPToken _wFlr,
+        IIFtsoManager _ftsoManager,
+        uint256 _initialPriceUSD
+    ) {
+        symbol = _symbol;
+        wFlr = _wFlr;
+        ftsoManager = _ftsoManager;
+        fAssetPriceUSD = _initialPriceUSD;
+        fAssetPriceTimestamp = block.timestamp;
     }
 
     /**
@@ -224,7 +226,6 @@ contract Ftso is IIFtso {
      * @param _firstEpochStartTime  Timestamp of the first epoch as seconds from unix epoch
      * @param _submitPeriod         Duration of epoch submission period in seconds
      * @param _revealPeriod         Duration of epoch reveal period in seconds
-     * @dev This method can only be called once
      */
     function activateFtso(
         IPriceSubmitter _priceSubmitter,
@@ -241,17 +242,23 @@ contract Ftso is IIFtso {
         active = true;
     }
 
-    function getPriceEpochConfiguration() external view override returns (
-        uint256 _firstEpochStartTime,
-        uint256 _submitPeriod,
-        uint256 _revealPeriod
-    ) 
-    {
-        return (
-            epochs.firstEpochStartTime, 
-            epochs.submitPeriod,
-            epochs.revealPeriod
-        );
+    /**
+     * @notice Deactivates oracle
+     */
+    function deactivateFtso() external override whenActive onlyFtsoManager {
+        active = false;
+    }
+
+    /**
+     * Updates initial/current fasset price, but only if not active
+     */
+    function updateInitialPrice(
+        uint256 _initialPriceUSD,
+        uint256 _initialPriceTimestamp
+    ) external override onlyFtsoManager {
+        require(!active, ERR_ALREADY_ACTIVATED);
+        fAssetPriceUSD = _initialPriceUSD;
+        fAssetPriceTimestamp = _initialPriceTimestamp;
     }
 
     /**
@@ -316,7 +323,6 @@ contract Ftso is IIFtso {
      * @param _fAsset               Asset
      */
     function setFAsset(IIVPToken _fAsset) external override onlyFtsoManager {
-        symbol = _fAsset.symbol();
         fAssetFtsos = [ IIFtso(this) ];
         fAssets = [ _fAsset ];
         epochs.assetNorm[_fAsset] = 10**_fAsset.decimals();
@@ -361,6 +367,25 @@ contract Ftso is IIFtso {
         );
 
         emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId), block.timestamp);
+    }
+
+    /**
+     * @notice Returns current epoch data
+     * @return _firstEpochStartTime         First epoch start time
+     * @return _submitPeriod                Submit period in seconds
+     * @return _revealPeriod                Reveal period in seconds
+     */
+    function getPriceEpochConfiguration() external view override returns (
+        uint256 _firstEpochStartTime,
+        uint256 _submitPeriod,
+        uint256 _revealPeriod
+    ) 
+    {
+        return (
+            epochs.firstEpochStartTime, 
+            epochs.submitPeriod,
+            epochs.revealPeriod
+        );
     }
 
     /**
@@ -410,10 +435,11 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Returns current FAsset price
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return _price               Price in USD multiplied by fAssetUSDDecimals
+     * @return _timestamp           Time when price was updated for the last time
      */
-    function getCurrentPrice() external view override returns (uint256) {
-        return fAssetPriceUSD;
+    function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
+        return (fAssetPriceUSD, fAssetPriceTimestamp);
     }
 
     /**
@@ -682,7 +708,7 @@ contract Ftso is IIFtso {
         _prices = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
             _votePowers[i] = _getVotePowerAt(_assets[i], epochs.votePowerBlock);
-            _prices[i] = fAssetFtsos[i].getCurrentPrice();
+            (_prices[i], ) = fAssetFtsos[i].getCurrentPrice();
         }
     }
     
@@ -734,6 +760,7 @@ contract Ftso is IIFtso {
 
             // update price
             fAssetPriceUSD = _epoch.price;
+            fAssetPriceTimestamp = block.timestamp;
 
             // inform about epoch result
             emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, _epoch.finalizationType, block.timestamp);
@@ -765,29 +792,6 @@ contract Ftso is IIFtso {
             PriceFinalizationType.PREVIOUS_PRICE_COPIED_EXCEPTION : PriceFinalizationType.PREVIOUS_PRICE_COPIED;
 
         emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, _epoch.finalizationType, block.timestamp);
-    }
-
-    /**
-     * @notice Extract trusted vote data from epoch
-     * @param _epoch                Epoch instance
-     * @return _priceSum            Sum of all prices submitted by trusted addresses
-     * @return _count               Number of prices submitted by trusted addresses
-     */
-    function _readTrustedVotes(FtsoEpoch.Instance storage _epoch) internal view returns (
-        uint256 _priceSum,
-        uint256 _count
-    ) {
-        uint256 length = _epoch.trustedAddresses.length;
-
-        for(uint256 i = 0; i < length; i++) {
-            address a = _epoch.trustedAddresses[i];
-            uint256 id = _epoch.votes[a];
-            if (id > 0) {
-                FtsoVote.Instance storage v = votes.instance[id];
-                _priceSum += v.price; // no overflow as v.price < 2**128
-                _count++;
-            }
-        }
     }
 
     /**
@@ -862,45 +866,7 @@ contract Ftso is IIFtso {
 
         // update price
         fAssetPriceUSD = _data.finalMedianPrice;
-    }
-
-    /**
-     * @notice Extracts reward data for epoch
-     * @param _data                 Median computation data
-     * @param _index                Array of vote indices
-     * @param _weightFlr            Array of FLR weights
-     * @param _vote                 Array of vote ids
-     */
-    function _readRewardData(
-        FtsoMedian.Data memory _data,
-        uint256[] memory _index, 
-        uint256[] memory _weightFlr,
-        uint256[] memory _vote
-    ) internal view returns (
-        address[] memory _eligibleAddresses, 
-        uint256[] memory _flrWeights,
-        uint256 _flrWeightsSum
-    ) {
-        uint256 voteRewardCount = 0;
-        for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
-            if (_weightFlr[_index[i]] > 0) {
-                voteRewardCount++;
-            }
-        }
-
-        _eligibleAddresses = new address[](voteRewardCount);
-        _flrWeights = new uint256[](voteRewardCount);
-        uint256 cnt = 0;
-        for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
-            uint256 weight = _weightFlr[_index[i]];
-            if (weight > 0) {
-                uint256 id = _vote[_index[i]];
-                _eligibleAddresses[cnt] = votes.sender[id];
-                _flrWeights[cnt] = weight;
-                _flrWeightsSum += weight;
-                cnt++;
-            }
-        }        
+        fAssetPriceTimestamp = block.timestamp;
     }
 
     /**
@@ -967,6 +933,68 @@ contract Ftso is IIFtso {
         } else {
             return _vp.votePowerOfAtCached(_owner, _vpBlock);
         }
+    }
+        
+    /**
+     * @notice Extract trusted vote data from epoch
+     * @param _epoch                Epoch instance
+     * @return _priceSum            Sum of all prices submitted by trusted addresses
+     * @return _count               Number of prices submitted by trusted addresses
+     */
+    function _readTrustedVotes(FtsoEpoch.Instance storage _epoch) internal view returns (
+        uint256 _priceSum,
+        uint256 _count
+    ) {
+        uint256 length = _epoch.trustedAddresses.length;
+
+        for(uint256 i = 0; i < length; i++) {
+            address a = _epoch.trustedAddresses[i];
+            uint256 id = _epoch.votes[a];
+            if (id > 0) {
+                FtsoVote.Instance storage v = votes.instance[id];
+                _priceSum += v.price; // no overflow as v.price < 2**128
+                _count++;
+            }
+        }
+    }
+
+    /**
+     * @notice Extracts reward data for epoch
+     * @param _data                 Median computation data
+     * @param _index                Array of vote indices
+     * @param _weightFlr            Array of FLR weights
+     * @param _vote                 Array of vote ids
+     */
+    function _readRewardData(
+        FtsoMedian.Data memory _data,
+        uint256[] memory _index, 
+        uint256[] memory _weightFlr,
+        uint256[] memory _vote
+    ) internal view returns (
+        address[] memory _eligibleAddresses, 
+        uint256[] memory _flrWeights,
+        uint256 _flrWeightsSum
+    ) {
+        uint256 voteRewardCount = 0;
+        for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
+            if (_weightFlr[_index[i]] > 0) {
+                voteRewardCount++;
+            }
+        }
+
+        _eligibleAddresses = new address[](voteRewardCount);
+        _flrWeights = new uint256[](voteRewardCount);
+        uint256 cnt = 0;
+        for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
+            uint256 weight = _weightFlr[_index[i]];
+            if (weight > 0) {
+                uint256 id = _vote[_index[i]];
+                _eligibleAddresses[cnt] = votes.sender[id];
+                _flrWeights[cnt] = weight;
+                _flrWeightsSum += weight;
+                cnt++;
+            }
+        }        
     }
 
    /**

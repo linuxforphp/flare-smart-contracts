@@ -152,6 +152,55 @@ library FtsoEpoch {
         _instance.random += _random;
         _instance.votes[_voter] = _voteId;
     }
+    
+    /**
+     * @notice Sets epoch instance data related to assets
+     * @param _state                Epoch state
+     * @param _instance             Epoch instance
+     * @param _assets               List of assets
+     * @param _assetVotePowers      List of asset vote powers
+     * @param _assetPrices          List of asset prices
+     */
+    function _setAssets(
+        State storage _state,
+        Instance storage _instance,
+        IIVPToken[] memory _assets,
+        uint256[] memory _assetVotePowers,
+        uint256[] memory _assetPrices
+    ) internal
+    {
+        _instance.assets = _assets;
+        uint256 count = _assets.length;
+
+        // compute sum of vote powers in USD
+        uint256 votePowerSumUSD = 0;
+        uint256[] memory values = new uint256[](count); // array of values which eventually contains weighted prices
+        for (uint256 i = 0; i < count; i++) {
+            if (address(_assets[i]) == address(0)) {
+                continue;
+            }
+            uint256 votePowerUSD = _assetVotePowers[i].mulDiv(_assetPrices[i], _state.assetNorm[_assets[i]]);
+            values[i] = votePowerUSD;
+            votePowerSumUSD = votePowerSumUSD.add(votePowerUSD);
+        }
+
+        // determine asset weighted prices
+        if (votePowerSumUSD > 0) {
+            // determine shares based on asset vote powers in USD
+            for (uint256 i = 0; i < count; i++) {
+                // overriding/reusing array slots
+                values[i] = values[i].mulDiv(_assetPrices[i].mul(BIPS100), votePowerSumUSD);
+            }
+        }
+        _instance.assetWeightedPrices = values;
+
+        // compute vote power
+        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);
+        _instance.votePowerAsset = votePower;
+
+        // compute base weight ratio between asset and FLR
+        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePower);
+    }
 
     /**
      * @notice Returns the id of the epoch opened for price submission at the given timestamp
@@ -209,55 +258,6 @@ library FtsoEpoch {
     function _epochRevealInProcess(State storage _state, uint256 _epochId) internal view returns (bool) {
         uint256 revealStartTime = _epochSubmitEndTime(_state, _epochId);
         return revealStartTime <= block.timestamp && block.timestamp < revealStartTime + _state.revealPeriod;
-    }
-
-    /**
-     * @notice Sets epoch instance data related to assets
-     * @param _state                Epoch state
-     * @param _instance             Epoch instance
-     * @param _assets               List of assets
-     * @param _assetVotePowers      List of asset vote powers
-     * @param _assetPrices          List of asset prices
-     */
-    function _setAssets(
-        State storage _state,
-        Instance storage _instance,
-        IIVPToken[] memory _assets,
-        uint256[] memory _assetVotePowers,
-        uint256[] memory _assetPrices
-    ) internal
-    {
-        _instance.assets = _assets;
-        uint256 count = _assets.length;
-
-        // compute sum of vote powers in USD
-        uint256 votePowerSumUSD = 0;
-        uint256[] memory values = new uint256[](count); // array of values which eventually contains weighted prices
-        for (uint256 i = 0; i < count; i++) {
-            if (address(_assets[i]) == address(0)) {
-                continue;
-            }
-            uint256 votePowerUSD = _assetVotePowers[i].mulDiv(_assetPrices[i], _state.assetNorm[_assets[i]]);
-            values[i] = votePowerUSD;
-            votePowerSumUSD = votePowerSumUSD.add(votePowerUSD);
-        }
-
-        // determine asset weighted prices
-        if (votePowerSumUSD > 0) {
-            // determine shares based on asset vote powers in USD
-            for (uint256 i = 0; i < count; i++) {
-                // overriding/reusing array slots
-                values[i] = values[i].mulDiv(_assetPrices[i].mul(BIPS100), votePowerSumUSD);
-            }
-        }
-        _instance.assetWeightedPrices = values;
-
-        // compute vote power
-        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);
-        _instance.votePowerAsset = votePower;
-
-        // compute base weight ratio between asset and FLR
-        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePower);
     }
 
     /**
