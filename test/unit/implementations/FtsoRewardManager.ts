@@ -329,6 +329,9 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
 
     describe("getters and setters", async () => {
         it("Should get reward pool supply data", async () => {
+            // deposit some wflrs
+            await wFlr.deposit({ from: accounts[1], value: "100" });
+
             let data = await ftsoRewardManager.getRewardPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(1000000);

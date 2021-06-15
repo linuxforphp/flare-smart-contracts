@@ -110,9 +110,9 @@ Example reward flow:
 
 Last point above means we will give rewards to 50% of submitted weight or more if required.
 
-[FTSO Reward Manager]: ../../contracts/ftso/implementation/FTSORewardManager.sol "FTSO Reward Manager"
+[FTSO Reward Manager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "FTSO Reward Manager"
 [FTSO contract]: ../../contracts/ftso/implementation/Ftso.sol "FTSO"
-[FTSO Manager]: ../../contracts/ftso/implementation/Ftso.sol "FTSO Manager"
+[FTSO Manager]: ../../contracts/ftso/implementation/FtsoManager.sol "FTSO Manager"
 [Flare Keeper]: ./flareKeeper.md "flare keeper"
 [rewarding]: ./FTSORewardManager.md "rewarding"
 [price submitter contract]: ../../contracts/utils/implementation/PriceSubmitter.sol "price submitter contract"

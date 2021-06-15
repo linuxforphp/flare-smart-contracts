@@ -36,7 +36,7 @@ Alice has 10 FLR, she has no vote power delegated to her.
 Alice wraps her 10 FLR by calling WFLR.deposit(), thus she now has vote power of 10.
 Bob has 30 WFLR so he has vote power of 30.
 Bob decides to delegate 50% of his vote power to Alice. Now Alice has vote power of 25 and Bob has vote power of 15. 
-Bob receives 20 more WFLRtokens, so now Alice has vote power of 35 and Bob has vote power of 25.
+Bob receives 20 more WFLR tokens, so now Alice has vote power of 35 and Bob has vote power of 25.
 
 Notice how when a delegator receives additional WFLR, the contract automatically updates vote power for all relevant delegatees according to their delegation percentage. It is important to note that although Bob has delegated 50% of his vote power to Alice, he still retains his 30 WFLR.
 
@@ -156,99 +156,6 @@ Due to the above, it is advised that price providers:
 *   Do not send PriceReveal and PriceSubmit calls near the end of the allowed time frame. Congested networks can cause price reveals to confirm after the reveal period ends **even if the transaction was initiated within the reveal period**.
 
 ### Price provider pseudocode
-```
-const BobAddress;
-const providerAddress; // price provider address
-// below values should be obtained from deployment json file
-const wFlr;
-const xrpFtso;
-const priceEpochDurationSec;
-// FTSO address list should be loaded from a json that will be published
-const FTSOAddressList {XRP_FTSO_Address, LTC_FTSO_Address, DOGE_FTSO_Address};
-// preliminary steps of wrapping flare and delegating vote power.
-// these steps will usually be done in a different scope
-/////////////////////////////////////////////////////////////////
-// Bob wrapps 100 FLR
-wFlr.deposit(){from: BobAddress, amount: 100};
-// Bob delegates 100% of his vote power to a price provider
-wFlr.delegate(providerAddress, percentToBips(100)){from: BobAddress};
-// price provider steps
-///////////////////////
-main() {
-   while (true) {
+Price provider pseudocode is given in [PriceProviderPseudoCode].
 
-       let providerVotePower;
-       let validFtsoAddressList[];
-       let ftsoPriceHashes[];
-       let ftsoPrices[];
-       let ftsoRandoms[];
-
-       for (uint i = 0; i < FTSOAddressList.length; i++) {
-
-           address ftso = FTSOAddressList[i];
-
-           {
-               epochId;
-               epochSubmitEndTime;
-               epochRevealEndTime;
-               votePowerBlock;
-               lowFlrVotePowerThreshold;
-               isFallBackMode;
-           } = ftso.getPriceEpochData();
-
-
-    // note price epochs have fixed time frames
-           // note vote power block for each price epoch is shared between all FTSOs
-           if(providerVotePower == 0) providerVotePower =              wFlr.votePowerOfAt(providerAddress, votePowerBlock))
-
-           if (isFallBackMode || providerVotePower < lowFlrVotePowerThreshold) {
-               // not enough VP to post to this FTSO. go to next
-               continue;
-           }
-
-           validFtsoAddressList.push(FTSOAddressList[i]);
-
-           // create a new random
-           ftsoRandoms.push(rand());
-
-           // read token symbol
-           let symbol = symbolftso.symbol();
-
-           // read price from any chosen price source provider wishes to use
-           ftsoPrices.push(priceSource.getPrice(symbol));
-
-           uint currentFtso = ftsoPrices.length - 1;
-           // create hash of above values and submit
-           ftsoPriceHashes[currentFtso] = solidityKeccak256(
-               ["uint256", "uint256", "address"],
-               [ftsoPrices[currentFtso], ftsoRandoms[currentFtso], providerAddress]
-           );
-       }
-
-       // submit hashes in batch
-       if (validFtsoAddressList > 0) {
-           priceSubmitter.submitPriceHashes(validFtsoAddressList, ftsoRandoms);
-       }
-
-       // wait for this commit period to end
-       waitUntil(epochSubmitEndTime);
-
-       // send reveal batch
-       if (validFtsoAddressList > 0) {
-           priceSubmitter.revealPrices(
-               validFtsoAddressList,
-               ftsoPrices,
-               ftsoRandoms
-           );
-       }
-   }
-
-   function percentToBips(percent) {
-       return percent * 100;
-   }
-   function waitUntil(linuxTs) {
-      while(now() < linuxTs) {
-          // sleep 1 second
-           sleep(1);
-       }
-   }
+[PriceProviderPseudoCode]: ./PriceProviderPseudoCode.sol "PriceProviderPseudoCode"

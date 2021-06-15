@@ -54,6 +54,11 @@ interface IIFtso is IFtso {
         uint256 _revealPeriod
     ) external;
 
+    function deactivateFtso() external;
+
+    // update initial price and timestamp - only if not active
+    function updateInitialPrice(uint256 _initialPriceUSD, uint256 _initialPriceTimestamp) external;
+
     function configureEpochs(
         uint256 _minVotePowerFlrThreshold,
         uint256 _minVotePowerAssetThreshold,

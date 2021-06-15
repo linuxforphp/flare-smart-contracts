@@ -43,6 +43,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
     string internal constant ERR_GOV_PARAMS_INVALID = "Gov. params invalid";
     string internal constant ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
     string internal constant ERR_NOT_FOUND = "Not found";
+    string internal constant ERR_ALREADY_ADDED = "Already added";
+    string internal constant ERR_FTSO_FASSET_FTSO_ZERO = "fAsset ftsos list empty";
+    string internal constant ERR_FTSO_EQUALS_FASSET_FTSO = "ftso equals fAsset ftso";
+    string internal constant ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
 
     bool public override active;
     RewardEpochData[] public rewardEpochs;
@@ -175,63 +179,77 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
      * All ftsos in multi fasset ftso must be managed by this ftso manager
      */
     function addFtso(IIFtso _ftso) external override onlyGovernance {
-        require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
-        
-        _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
-
-        uint256 len = ftsos.length;
-        for (uint256 i = 0; i < len; i++) {
-            if (_ftso == ftsos[i]) {
-                return; // already registered
-            }
-        }
-
-        _ftso.activateFtso(priceSubmitter, firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
-
-        // Set the vote power block
-        if(!justStarted) {
-            _ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
-        }
-
-        // Configure 
-        _ftso.configureEpochs(
-            settings.minVotePowerFlrThreshold,
-            settings.minVotePowerAssetThreshold,
-            settings.maxVotePowerFlrThreshold,
-            settings.maxVotePowerAssetThreshold,
-            settings.lowAssetUSDThreshold,
-            settings.highAssetUSDThreshold,
-            settings.highAssetTurnoutBIPSThreshold,
-            settings.lowFlrTurnoutBIPSThreshold,
-            settings.trustedAddresses
-        );
-
-        // Add the ftso
-        ftsos.push(_ftso);
-        managedFtsos[_ftso] = true;
-
-        emit FtsoAdded(_ftso, true);
+        _addFtso(_ftso);
     }
 
     /**
      * @notice Removes FTSO from the list of the rewarded FTSOs - revert if ftso is used in multi fasset ftso
+     * @dev Deactivates _ftso
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
-        uint256 len = ftsos.length;
+        _removeFtso(_ftso);
+    }
+    
+    /**
+     * @notice Replaces one ftso with another - symbols must match
+     * All ftsos in multi fasset ftso must be managed by this ftso manager
+     * @dev Deactivates _ftsoToRemove
+     */
+    function replaceFtso(
+        IIFtso _ftsoToRemove,
+        IIFtso _ftsoToAdd,
+        bool copyCurrentPrice,
+        bool copyFAssetOrFAssetFtsos
+    ) external override onlyGovernance {
+        // should compare strings but it is not supported - comparing hashes instead
+        require(keccak256(abi.encode(_ftsoToRemove.symbol())) == keccak256(abi.encode(_ftsoToAdd.symbol())), 
+            ERR_FTSO_SYMBOLS_MUST_MATCH);
+        
+        if (copyCurrentPrice) {
+            (uint256 currentPrice, uint256 timestamp) = _ftsoToRemove.getCurrentPrice();
+            _ftsoToAdd.updateInitialPrice(currentPrice, timestamp);
+        }
 
-        for (uint256 i = 0; i < len; ++i) {
-            if (_ftso == ftsos[i]) {
-                ftsos[i] = ftsos[len - 1];
-                ftsos.pop();
-                ftsoInFallbackMode[_ftso] = false;
-                managedFtsos[_ftso] = false;
-                _checkMultiFassetFtsosAreManaged();
-                emit FtsoAdded(_ftso, false);
-                return;
+        if (copyFAssetOrFAssetFtsos) {
+            IIVPToken fAsset = _ftsoToRemove.getFAsset();
+            if (address(fAsset) != address(0)) { // copy fAsset if exists
+                _ftsoToAdd.setFAsset(fAsset);
+            } else { // copy fAssetFtsos list if not empty
+                IIFtso[] memory fAssetFtsos = _ftsoToRemove.getFAssetFtsos();
+                if (fAssetFtsos.length > 0) {
+                    _ftsoToAdd.setFAssetFtsos(fAssetFtsos);
+                }
             }
         }
 
-        revert(ERR_NOT_FOUND);
+        // add new contract
+        _addFtso(_ftsoToAdd);
+
+        // replace old contract with the new one in multi fAsset ftsos
+        uint256 ftsosLen = ftsos.length;
+        for (uint256 i = 0; i < ftsosLen; i++) {
+            IIFtso ftso = ftsos[i];
+            if (ftso == _ftsoToRemove) {
+                continue;
+            }
+            IIFtso[] memory fAssetFtsos = ftso.getFAssetFtsos();
+            uint256 fAssetFtsosLen = fAssetFtsos.length;
+            if (fAssetFtsosLen > 0) {
+                bool changed = false;
+                for (uint256 j = 0; j < fAssetFtsosLen; j++) {
+                    if (fAssetFtsos[j] == _ftsoToRemove) {
+                        fAssetFtsos[j] = _ftsoToAdd;
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    ftso.setFAssetFtsos(fAssetFtsos);
+                }
+            }
+        }
+
+        // remove old contract
+        _removeFtso(_ftsoToRemove);
     }
     
     /**
@@ -245,6 +263,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
      * @notice Set FAsset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
      */
     function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external override onlyGovernance {
+        uint256 len = _fAssetFtsos.length;
+        require (len > 0, ERR_FTSO_FASSET_FTSO_ZERO);
+        for (uint256 i = 0; i < len; i++) {
+            if (_ftso == _fAssetFtsos[i]) {
+                revert(ERR_FTSO_EQUALS_FASSET_FTSO);
+            }
+        }
+
         _checkFAssetFtsosAreManaged(_fAssetFtsos);
         _ftso.setFAssetFtsos(_fAssetFtsos);
     }
@@ -349,6 +375,64 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
         uint256 _revealEpochDurationSec
     ) {
         return (firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
+    }
+
+    function _addFtso(IIFtso _ftso) internal {
+        require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
+        
+        _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
+
+        uint256 len = ftsos.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_ftso == ftsos[i]) {
+                revert(ERR_ALREADY_ADDED);
+            }
+        }
+
+        _ftso.activateFtso(priceSubmitter, firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
+
+        // Set the vote power block
+        if(!justStarted) {
+            _ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
+        }
+
+        // Configure 
+        _ftso.configureEpochs(
+            settings.minVotePowerFlrThreshold,
+            settings.minVotePowerAssetThreshold,
+            settings.maxVotePowerFlrThreshold,
+            settings.maxVotePowerAssetThreshold,
+            settings.lowAssetUSDThreshold,
+            settings.highAssetUSDThreshold,
+            settings.highAssetTurnoutBIPSThreshold,
+            settings.lowFlrTurnoutBIPSThreshold,
+            settings.trustedAddresses
+        );
+
+        // Add the ftso
+        ftsos.push(_ftso);
+        managedFtsos[_ftso] = true;
+
+        emit FtsoAdded(_ftso, true);
+    }
+
+    function _removeFtso(IIFtso _ftso) internal {
+        uint256 len = ftsos.length;
+
+        for (uint256 i = 0; i < len; ++i) {
+            if (_ftso == ftsos[i]) {
+                ftsos[i] = ftsos[len - 1];
+                ftsos.pop();
+                _ftso.deactivateFtso();
+                ftsoInFallbackMode[_ftso] = false;
+                managedFtsos[_ftso] = false;
+                _checkMultiFassetFtsosAreManaged();
+                emit FtsoAdded(_ftso, false);
+                return;
+            }
+        }
+
+        revert(ERR_NOT_FOUND);
     }
 
     /**
