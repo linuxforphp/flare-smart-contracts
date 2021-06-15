@@ -198,6 +198,80 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         });
     });
 
+    describe("min/max vote power threshold", async() => {
+        beforeEach(async() => {
+            wflrInterface = await Wflr.new();
+            mockWflr = await MockWflr.new();
+            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            mockVpToken = await MockVpToken.new();
+            ftso = await Ftso.new(
+                "ATOK",
+                mockWflr.address,
+                accounts[10],
+                1 // initial token price 0.00001$
+            );
+
+            await ftso.setFAsset(mockVpToken.address, {from: accounts[10]});
+            // await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
+            await ftso.configureEpochs(100, 100, 50, 50, 1000, 10000, 50, 15, [], {from: accounts[10]});
+            await ftso.setVotePowerBlock(10, {from: accounts[10]});
+            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+
+            // Force a block in order to get most up to date time
+            await time.advanceBlock();
+            // Get the timestamp for the just mined block
+            let timestamp = await time.latest();
+            epochId = Math.floor(timestamp / 120) + 1;
+            await increaseTimeTo(epochId * 120);
+        });
+
+        it("Should change vote power to allowed max threshold", async() => {
+            // round 1 - current fasset price = 0
+            let hash = submitPriceHash(250, 123, accounts[1]);
+            await ftso.submitPriceHash(hash, {from: accounts[1]});
+            await setMockVotePowerAt(10, 100000, 1000000);
+            await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await setMockVotePowerOfAt(10, 21000, 0, accounts[1]);
+            await ftso.revealPrice(epochId, 250, 123, {from: accounts[1]});
+            
+            await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+            expectEvent(await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}), "PriceFinalized", 
+                {epochId: toBN(epochId), price: toBN(250), rewardedFtso: false, lowRewardPrice: toBN(250), highRewardPrice: toBN(250),  finalizationType: toBN(1)});
+            
+            let votesDataFlr = await ftso.getEpochVotes(epochId);
+            expect(votesDataFlr[0]).to.eqls([accounts[1]]);
+            expect(votesDataFlr[1]).to.eqls([toBN(250)]);
+            expect(votesDataFlr[2]).to.eqls([toBN(1000000000000)]);
+            expect(votesDataFlr[3]).to.eqls([toBN(20000000000)]);
+            expect(votesDataFlr[4]).to.eqls([toBN(0)]);
+            expect(votesDataFlr[5]).to.eqls([true]);            
+            
+            // round 2 - current fasset price = 250
+            await ftso.configureEpochs(100, 100, 50, 50, 1000, 10000, 50, 15, [], {from: accounts[10]});
+            await ftso.setVotePowerBlock(12, {from: accounts[10]});
+
+            let hash1 = submitPriceHash(500, 123, accounts[1]);
+            await ftso.submitPriceHash(hash1, {from: accounts[1]});
+            
+            await setMockVotePowerAt(12, 100000, 1000000);
+            await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+
+            await increaseTimeTo((epochId + 2) * 120); // reveal period start
+            await setMockVotePowerOfAt(12, 0, 21000, accounts[1]); 
+            await ftso.revealPrice(epochId+1, 500, 123, {from: accounts[1]});
+            
+            let votesDataAsset = await ftso.getEpochVotes(epochId+1);
+            expect(votesDataAsset[0]).to.eqls([accounts[1]]);
+            expect(votesDataAsset[1]).to.eqls([toBN(500)]);
+            expect(votesDataAsset[2]).to.eqls([toBN(0)]);
+            expect(votesDataAsset[3]).to.eqls([toBN(0)]);
+            expect(votesDataAsset[4]).to.eqls([toBN(20000000000)]);
+            expect(votesDataAsset[5]).to.eqls([false]);
+        });
+    })
+
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
             wflrInterface = await Wflr.new();
