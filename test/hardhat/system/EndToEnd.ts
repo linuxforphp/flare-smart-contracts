@@ -19,7 +19,7 @@ import {
   WFlrInstance
 } from "../../../typechain-truffle";
 
-import { Contracts } from "../../../scripts/Contracts";
+import { Contracts } from "../../../deployment/scripts/Contracts";
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils"
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";

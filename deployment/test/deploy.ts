@@ -1,5 +1,6 @@
 const {constants, time} = require('@openzeppelin/test-helpers');
 
+import { waitFinalize3 } from "../../test/utils/test-helpers";
 import { DummyFAssetMinterContract, 
   FAssetTokenContract,
   FtsoContract,
@@ -18,14 +19,14 @@ import { DummyFAssetMinterContract,
   FtsoManagerContract,
   FtsoManagerInstance,
   FlareKeeperInstance} from "../../typechain-truffle";
-import { Contracts } from "../../scripts/Contracts";
+import { Contracts } from "../scripts/Contracts";
 
 // import { serializedParameters } from "../../../scripts/DeploymentParameters";
 
 // console.log(process.argv)
 // // const parameters = JSON.parse(serializedParameters);
 
-const parameters = require(`../../scripts/chain-config/${process.env.CHAIN_CONFIG}.json`)
+const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
 const BN = web3.utils.toBN;
 
 async function findKeptContract(contracts: Contracts, address: string): Promise<boolean> {
@@ -189,7 +190,7 @@ contract(`deploy.ts system tests`, async accounts => {
         ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    // After deploy delay introduced this is not relevant test
+    // After deploy delay introduced this is not a relevant test
     // it.skip("Should by kept by keeper", async() => {
     //     // Assemble
     //     // Act
@@ -277,7 +278,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const wflr = await WFLR.at(contracts.getContractAddress(Contracts.WFLR));
         const openingBalance = await wflr.balanceOf(accounts[1])
         // Act
-        await wflr.deposit({from: accounts[1], value: BN(10)})
+        await waitFinalize3(accounts[1], () =>  wflr.deposit({from: accounts[1], value: BN(10)}));
         // Assert
         const balance = await wflr.balanceOf(accounts[1])
         assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
@@ -293,7 +294,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const fxrp = await FXRP.at(contracts.getContractAddress(Contracts.FXRP));
         const openingBalance = await fxrp.balanceOf(accounts[1])
         // Act
-        await dummyFxrpMinter.mintRequest(10, accounts[1], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () => dummyFxrpMinter.mintRequest(10, accounts[1], constants.ZERO_ADDRESS));
         // Assert
         const balance = await fxrp.balanceOf(accounts[1])
         assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
@@ -309,7 +310,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const fltc = await FLTC.at(contracts.getContractAddress(Contracts.FLTC));
         const openingBalance = await fltc.balanceOf(accounts[2])
         // Act
-        await dummyFltcMinter.mintRequest(10, accounts[2], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () =>  dummyFltcMinter.mintRequest(10, accounts[2], constants.ZERO_ADDRESS));
         // Assert
         const balance = await fltc.balanceOf(accounts[2])
         assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
@@ -325,7 +326,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const fxdg = await FXDG.at(contracts.getContractAddress(Contracts.FXDG));
         const openingBbalance = await fxdg.balanceOf(accounts[3])
         // Act
-        await dummyFxdgMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () =>  dummyFxdgMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS));
         // Assert
         const balance = await fxdg.balanceOf(accounts[3])
         assert.equal(balance.toNumber() - openingBbalance.toNumber(), 10);
@@ -341,7 +342,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const fada = await FADA.at(contracts.getContractAddress(Contracts.FADA));
         const openingBbalance = await fada.balanceOf(accounts[3])
         // Act
-        await dummyFadaMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () =>  dummyFadaMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS));
         // Assert
         const balance = await fada.balanceOf(accounts[3])
         assert.equal(balance.toNumber() - openingBbalance.toNumber(), 10);
@@ -357,7 +358,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const falgo = await FALGO.at(contracts.getContractAddress(Contracts.FALGO));
         const openingBbalance = await falgo.balanceOf(accounts[3])
         // Act
-        await dummyFalgoMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () =>  dummyFalgoMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS));
         // Assert
         const balance = await falgo.balanceOf(accounts[3])
         assert.equal(balance.toNumber() - openingBbalance.toNumber(), 10);
@@ -373,7 +374,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const fbch = await FBCH.at(contracts.getContractAddress(Contracts.FBCH));
         const openingBbalance = await fbch.balanceOf(accounts[3])
         // Act
-        await dummyFbchMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () =>  dummyFbchMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS));
         // Assert
         const balance = await fbch.balanceOf(accounts[3])
         assert.equal(balance.toNumber() - openingBbalance.toNumber(), 10);
@@ -389,7 +390,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const fdgb = await FDGB.at(contracts.getContractAddress(Contracts.FDGB));
         const openingBbalance = await fdgb.balanceOf(accounts[3])
         // Act
-        await dummyFdgbMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS);
+        await waitFinalize3(accounts[0], () =>  dummyFdgbMinter.mintRequest(10, accounts[3], constants.ZERO_ADDRESS));
         // Assert
         const balance = await fdgb.balanceOf(accounts[3])
         assert.equal(balance.toNumber() - openingBbalance.toNumber(), 10);

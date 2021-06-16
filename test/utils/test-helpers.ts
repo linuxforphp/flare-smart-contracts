@@ -104,8 +104,8 @@ export async function waitFinalize3(address: string, func: () => any) {
     let nonce = await web3.eth.getTransactionCount(address);
     let res = await func();
     while ((await web3.eth.getTransactionCount(address)) == nonce) {
-        await new Promise((resolve: any) => { setTimeout(() => { resolve() }, 100) })
-        console.log("Waiting...")
+        await new Promise((resolve: any) => { setTimeout(() => { resolve() }, 1000) })
+        // console.log("Waiting...")
     }
     return res;
 }

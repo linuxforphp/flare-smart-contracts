@@ -1,98 +1,86 @@
-Flare README.md
+# Flare Network smart contracts repository
 
-# FLR smart contracts repository
-
-Contracts will cover the following flare network building blocks:
-- Token contracts.
-- FTSO  (Flare time series oracle)
+Contracts cover the following *Flare network* building blocks:
+- [Token](contracts/token/implementation) contracts.
+- [FTSO](contract/ftso/implementation/Ftso.sol) (Flare time series oracle).
+- [FTSO Manager](contract/ftso/implementation/FtsoManager.sol).
 - Reward manager.
-   - FTSO Reward manager.
-   - FLR incentive pools for incentivizing fAsset holders.
-- Flare Keeper, a special system trigger contract
-- Flare Inflation tracking and allocation
-- Accounting system for FLR tokens
-- fAsset contracts for minting fAssets
-- FLR distribution contracts.
-## Token contracts 
-Will be used for wrapped FLR (F-FLR) and fAssets minted on Flare network. These tokens will expose delegate API and query votePower API. Vote power is checkpointed, meaning votePower for previous blocks can be queried.
-## FTSO 
-Will enable users to supply $ <> fAsset price feeds. The FTSO will determine the vote power of each address by calling vote power API on the token contract.
-## Reward contracts
-Will enable claiming of FLR rewards.
-Users will be eligible to claim tokens through two methods:
-- by holding fAssets from a dedicated pool
-- by supplying FTSO price feeds 
-## Inflation
-FLR Inflation will be distributed according to decisions made by governance. A large part of the inflation will flow to FTSO price providers who provide "good" price feeds. Inflation will be awarded per price epoch. Inflation will only be minted when rewards are claimed by eligible addresses.
-## Accounting
-The Accounting system will keep track of and monitor minted inflation. The system will also monitor circulating FLR Supply. During the first period after launch, much of the FLR will be locked in pools such as the incentive pool. FLR distribution is done in phases, and Flare tokens that have been earned are considered locked until they are distributed.. The Accounting system will keep track of these amounts and report FLR accounting details.
-## fAsset
-These contract(s) will handle both the process of minting and the redemption of fAssets, checking collateral levels and liquidating (auctioning) defaulting agents with lower collateral levels.
-## Distribution contracts
-The air dropped Flare will be distributed gradually through a dedicated contract(s).
-## Setup
-1. Clone this repo
-2. Make sure gsed is installed, `brew install gnu-sed`
-3. `yarn`
-## Compilation
-`yarn c`
-## Coverage report
-yarn cov
-## Running with Flare local chain
-For running tests against a local Flare chain.
-- clone Flare repository
-- choose one of the following launch scripts:
-   - scdev1.sh - Recommended; smart contract dev chain, 1 validator node.
-   - scdev.sh - smart contract dev chain, 4 validator nodes.
-   - others are less relevant.
+   - [FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol).
+   - FLR incentive pools.
+- [Flare Keeper](contracts/utils/implementation/FlareKeeper.sol), a special system trigger contract.
+- [Flare Inflation](contracts/inflation/implementation/Inflation.sol) tracking and [allocation](contracts/governance/implementation/InflationAllocation.sol).
+- [Supply accounting system](contracts/supply/implementation/Supply.sol) of FLR tokens.
+- fAsset contracts for minting fAssets (to be implemented).
+- FLR distribution contracts (to be implemented).
 
-See below for relevant test scripts that run against the scDev chain.
-## Test
+## Token contracts 
+
+Are used for wrapped FLR ([WFLR](contracts/token/implementation/WFlr.sol)) and [fAssets](contracts/token/implementation/VPToken.sol) minted on *Flare network*. These tokens expose delegate API and query votePower API. Vote power is checkpointed, meaning votePower for previous blocks can be queried.
+
+## FTSO system
+
+Enables users to supply USD prices for fAsset's price feeds. The FTSO determines the vote power of each address by calling vote power API on the token contract. Each fAsset's price feeds are handled by a separate FTSO contract. All FTSO contracts are managed by FTSO Manager contract. See further information for details [here](docs/specs/FTSOManagerAndRewardManagerCodeFlows.md).
+
+## Reward contracts
+
+Enable claiming of FLR rewards.
+Users will be eligible to claim tokens through the following methods:
+- by supplying FTSO price feeds ([FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol)), 
+- being validators and providing external chain data (to be implemented),
+- by acting as agents in fAsset system (to be implemented).
+
+## Inflation
+
+FLR Inflation will be distributed according to decisions made by governance. A large part of the inflation will flow to FTSO price providers who provide "good" price feeds. Inflation will be awarded per price epoch. Inflation will be minted on demand subject to preceeding approvals.
+
+## Supply accounting
+
+The supply accounting system monitors circulating FLR Supply. During the first period after launch, much of the FLR will be locked in pools such as the incentive pool. FLR distribution is done in phases, and Flare tokens that have been earned are considered locked until they are distributed. The Supply keeps track of these amounts.
+
+## fAsset
+
+These contract(s) will handle both the process of minting and the redemption of fAssets, checking collateral levels and liquidating (auctioning) defaulting agents with lower collateral levels.
+
+## Distribution contracts
+
+The air dropped FLR will be distributed gradually through a dedicated contract(s).
+
+## Getting started
+
+1. Clone this repo.
+2. Run `yarn`.
+3. Compile the solidity code: `yarn c`.
+4. Run basic tests `yarn testHH`.
+
+## Testing
+
 Note: be sure to compile (`yarn c`) after any solidity code changes or if starting a clean project as Typescript stubs need to be generated as part of the compilation. 
-### local Flare chain vs hardhat chain
-Some parts of the code can only be tested against a "real" Flare block chain which adds some special features on top of the regular EVM. Any test below that has 'HH' in the script name will run against an auto-launched hardhat chain. Some tests can only run against a Flare chain.
-A few options exist for running a Flare chain, with the simplest one described above.
-### test scripts
+
 Then one can run different types of tests.
 
-- `yarn testHH` - all tests in hardhat environment
-- `yarn test_unit_hh` - only unit tests in hardhat environment
-- `yarn test_performance_hh` - only performance tests in hardhat environment
-- `yarn test_timeshift` - all tests on local test Flare chain if ran in multipass virtual machine with time shifting
-- `yarn test_timewait` - all test on local test Flare chain with no time shifting but time waiting instead
+- `yarn testHH` - all tests in hardhat environment (includes next three types of tests).
+- `yarn test_unit_hh` - only unit tests in hardhat environment.
+- `yarn test_performance_hh` - only performance tests in hardhat environment.
+- `test_integration_hh` - only integration tests in hardhat environment.
 
 Each of these calls can have additional parameters, namely paths to specific files with tests. Glob expressions can be used, but note that glob expressions are expanded in `bash` to a sequence of space separated paths. Keep in mind that glob expressions in bash containing `/**/` do not by default expand to all files, so one can switch on full expansion by setting `shopt -s globstar`, and if needed, later switch it off with `shopt -u globstar`.
-## Running tests VM with time-shifts
-See [`scripts/local-flare-chain-vm/README.md`](scripts/local-flare-chain-vm/README.md).
 
-## Deployment on SC private test network
-yarn deploy_local_scdev
-## Testing with Remix
+Some parts of the code can only be tested against a "real" Flare block chain which adds some special features on top of the regular EVM. Any test below that has `HH` in the script name will run against an auto-launched hardhat chain. Some tests can only run against a Flare chain.
+A few options exist for running a Flare chain, with the simplest one described above.
 
-Important: you must work in a browser that has Metamask installed and configured to the network stated above, and have the first account from `test-1020-accounts.json` configured in it. The metamask should also be connected to that network (Coston SC Team).
-Link to Remix: (https://remix.ethereum.org/)
+To check test coverage run `yarn cov`.
 
-### Configuring compiler
+## Running with Flare local chain
 
-Choose `Solidity compiler` icon on the left (the second one) and set the following:
+For running tests against a local Flare chain.
+- clone [Flare repository](https://gitlab.com/flarenetwork/flare)
+- choose one of the following launch scripts:
+   - `scdev1.sh` - Recommended; smart contract dev chain, 1 validator node.
+   - `scdev.sh` - smart contract dev chain, 4 validator nodes.
+   - others are less relevant.
 
-- Compiler: 0.7.6+commit ...
-- Tick the checkboxes:
-   - Autocompile
-   - Enable optimization. Also set 100000 (the number should match the one in `hardhat.config.ts`) as the number of runs of the optimizer
+## Deployment of smart contaracts on `scdev` network
 
-### Configuring deployment
+see [deployment](deployment/README.md)
 
-Choose the `Deploy & run transactions` icon on the left (the third one)
-Set as `Environment`: `Injected Web3`. This will open Metamask. Select the account `Ftso MVP 0`.
-The account number should appear selected in Account dropdown in Remix.
 
-### Deploying contract
-
-For a particular contract, run a script. For example:
-
-`./scripts/flatten.sh contracts/implementations/Ftso.sol`
-
-This generates a flattened contract in the relevant subfolder of the `flattened` folder.
-
-Choose the `File explorers` icon on the left (the first one). Load a flattened file into workspace. 
