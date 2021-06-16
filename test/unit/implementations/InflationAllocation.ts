@@ -12,6 +12,7 @@ const ERR_OUT_OF_BOUNDS = "annual inflation out of bounds";
 const ERR_TOO_MANY = "too many";
 const ERR_NOT_100_PCT = "sum sharing percentage not 100%";
 const ERR_ONLY_GOVERNANCE = "only governance";
+const ERR_ONLY_INFLATION = "only inflation";
 const ERR_ZERO_ADDRESS = "address is 0";
 const ERR_LENGTH_MISMATCH = "length mismatch";
 
@@ -23,7 +24,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should not accept an initial percentage greater than max", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], 1001);
+      const promise = InflationAllocation.new(accounts[0], accounts[0], 1001);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
@@ -31,7 +32,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should require initial percentage greater than 0", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], 0);
+      const promise = InflationAllocation.new(accounts[0], accounts[0], 0);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
@@ -39,7 +40,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
 
   describe("annual inflation percentage schedule", async() => {
     beforeEach(async() => {
-      inflationAllocation = await InflationAllocation.new(accounts[0], 1000);
+      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], 1000);
     });
     
     it("Should get the initial annual percentage if no schedule", async() => {
@@ -50,12 +51,12 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       assert.equal(percentage.toNumber(), 1000);
     });
 
-    it("Should not get the initial annual percentage if not from governance", async() => {
+    it("Should not get the initial annual percentage if not from inflation", async() => {
       // Assemble
       // Act
       const promise = inflationAllocation.getAnnualPercentageBips({from: accounts[1]});
       // Assert
-      await expectRevert(promise, ERR_ONLY_GOVERNANCE);
+      await expectRevert(promise, ERR_ONLY_INFLATION);
     });
 
     it("Should accept an inflation percentage schedule", async() => {
@@ -151,6 +152,10 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
   });
 
   describe("sharing percentages", async() => {
+    beforeEach(async() => {
+      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], 1000);
+    });
+
     it("Should require sharing percentages to sum to 100%", async() => {
       // Assemble
       const inflationReceivers: string[] = [];

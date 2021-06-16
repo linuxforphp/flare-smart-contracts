@@ -70,8 +70,8 @@ async function main(parameters: any) {
   const WFLR = artifacts.require("WFlr");
 
   // InflationAllocation contract
-  // ftsoRewardManager will be set to 0 for now...it will be set shortly.
-  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, parameters.inflationPercentageBips);
+  // Inflation will be set to 0 for now...it will be set shortly.
+  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBips);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address);
 
   // Initialize the keeper
@@ -108,6 +108,8 @@ async function main(parameters: any) {
   spewNewContractInfo(contracts, Inflation.contractName, inflation.address);
   // The keeper needs a reference to the inflation contract.
   await flareKeeper.setInflation(inflation.address);
+  // InflationAllocation needs a reference to the inflation contract.
+  await inflationAllocation.setInflation(inflation.address);
 
   // Supply contract
   const supply = await Supply.new(
