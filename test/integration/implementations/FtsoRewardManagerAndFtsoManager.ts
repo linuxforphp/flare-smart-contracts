@@ -6,6 +6,7 @@ import {
     WFlrInstance
 } from "../../../typechain-truffle";
 import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
@@ -72,7 +73,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
-        wFlr = await WFLR.new();
+        wFlr = await WFLR.new(accounts[0]);
+        await setDefaultVPContract(wFlr, accounts[0]);
 
         await ftsoRewardManager.setFTSOManager(ftsoManager.address);
         await ftsoRewardManager.setWFLR(wFlr.address);

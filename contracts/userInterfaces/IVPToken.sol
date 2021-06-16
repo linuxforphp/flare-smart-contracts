@@ -5,19 +5,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IVPToken is IERC20 {
     /**
-     * Event triggered when an account delegates or undelegates another account. 
-     * For undelegation, newVotePower is 0.
-     */
-    event Delegate(address indexed from, address indexed to, uint priorVotePower, uint newVotePower, uint blockNumber);
-    
-    /**
-     * Event triggered only when account `delegator` revokes delegation to `delegatee`
-     * for a single block in the past (typically the current vote block).
-     */
-    event Revoke(address indexed delegator, address indexed delegatee, uint votePower, uint blockNumber);
-    
-    
-    /**
      * @notice Delegate by percentage `_bips` of voting power to `_to` from `msg.sender`.
      * @param _to The address of the recipient
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).

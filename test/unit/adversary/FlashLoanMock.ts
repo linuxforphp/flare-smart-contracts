@@ -1,6 +1,7 @@
 import { soliditySha3Raw as soliditySha3 } from "web3-utils";
 import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const { getTestFile } = require('../../utils/constants');
 
@@ -46,7 +47,8 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
 
     describe("vote with real flares", async () => {
         beforeEach(async () => {
-            wflr = await Wflr.new();
+            wflr = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflr, accounts[0]);
             ftso = await Ftso.new(
                 "ATOK",
                 wflr.address,

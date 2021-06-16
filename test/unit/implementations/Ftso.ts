@@ -1,5 +1,6 @@
 import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
@@ -80,9 +81,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("initialize and configure", async() => {
         beforeEach(async() => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -200,9 +202,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("min/max vote power threshold", async() => {
         beforeEach(async() => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -274,9 +276,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -579,9 +582,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("submit and reveal price (without fAsset)", async () => {
         beforeEach(async () => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -653,9 +657,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("finalize price", async() => {
         beforeEach(async() => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -1037,9 +1042,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("finalize price (without fAsset)", async () => {
         beforeEach(async () => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -1244,9 +1250,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("getters", async() => {
         beforeEach(async() => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -2205,9 +2212,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("getters (without fAsset)", async () => {
         beforeEach(async () => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
             ftso = await Ftso.new(
                 "ATOK",
@@ -2527,9 +2535,10 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("multi fasset ftsos", async() => {
         beforeEach(async() => {
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
-            vpTokenInterface = await VpToken.new("A token", "ATOK");
+            vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockFtsos = [];
             mockFtsos[0] = await MockFtso.new();
             mockFtsos[1] = await MockFtso.new();

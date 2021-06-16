@@ -1,8 +1,9 @@
 import { WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 import { toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const calcGasCost = require('../../utils/eth').calcGasCost;
-const {expectRevert} = require('@openzeppelin/test-helpers');
+const { constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const WFLR = artifacts.require("WFlr") as WFlrContract;
@@ -16,7 +17,8 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
-    wflr = await WFLR.new();
+    wflr = await WFLR.new(accounts[0]);
+    await setDefaultVPContract(wflr, accounts[0]);
   });
 
   it("Should accept FLR deposits.", async () => {
@@ -43,6 +45,14 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
     assert.equal(totalBalance as any, 20);
   });
   
+  it("Should not deposit to zero", async () => {
+    // Assemble
+    // Act
+    let callPromise = wflr.depositTo(constants.ZERO_ADDRESS, { value: toBN(2000) });
+    // Assert
+    await expectRevert(callPromise, "Cannot deposit to zero address");
+  });
+
   it("Should burn WFLR when FLR withdrawn.", async () => {
     // Assemble
     await wflr.deposit({value: toBN(50), from:accounts[1]});
@@ -166,5 +176,38 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
     await expectRevert(callPromise, "function selector was not recognized and there's no fallback function");
   });
 
-  // TODO: Test Deposit and Withdrawal events
+  it("Should emit event on deposit.", async () => {
+    // Assemble
+    // Act
+    let depositResult = await wflr.deposit({ value: toBN(20), from: accounts[1] });
+    // Assert
+    expectEvent(depositResult, "Deposit", { dst: accounts[1], amount: toBN(20) });
+  });
+
+  it("Should emit event on depositTo.", async () => {
+    // Assemble
+    // Act
+    let depositResult = await wflr.depositTo(accounts[2], { value: toBN(20), from: accounts[1] });
+    // Assert
+    expectEvent(depositResult, "Deposit", { dst: accounts[2], amount: toBN(20) });
+  });
+
+  it("Should emit event on withdrawal.", async () => {
+    // Assemble
+    await wflr.deposit({ value: toBN(20), from: accounts[1] });
+    // Act
+    let withdrawResult = await wflr.withdraw(toBN(10), { from: accounts[1] });
+    // Assert
+    expectEvent(withdrawResult, "Withdrawal", { src: accounts[1], amount: toBN(10) });
+  });
+
+  it("Should emit event on withdrawalFrom.", async () => {
+    // Assemble
+    await wflr.deposit({ value: toBN(20), from: accounts[1] });
+    await wflr.approve(accounts[2], toBN(10), { from: accounts[1] });
+    // Act
+    let withdrawResult = await wflr.withdrawFrom(accounts[1], toBN(10), { from: accounts[2] });
+    // Assert
+    expectEvent(withdrawResult, "Withdrawal", { src: accounts[1], amount: toBN(10) });
+  });
 });

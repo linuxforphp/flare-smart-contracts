@@ -1,44 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
+
 import {CheckPointable} from "./CheckPointable.sol";
-import {Delegatable} from "./Delegatable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import {IIVPToken} from "../interface/IIVPToken.sol";
+import {IIVPContract} from "../interface/IIVPContract.sol";
+import {Governed} from "../../governance/implementation/Governed.sol";
 
 /**
  * @title Vote Power Token
  * @dev An ERC20 token to enable the holder to delegate voting power
  *  equal 1-1 to their balance, with history tracking by block.
  **/
-contract VPToken is ERC20, CheckPointable, Delegatable {
+contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     using SafeMath for uint256;
     using SafePct for uint256;
 
-    string constant private ALREADY_EXPLICIT_MSG = "Already delegated explicitly";
-    string constant private ALREADY_PERCENT_MSG = "Already delegated by percentage";
-
+    IIVPContract private vpContract;
+    
     constructor(
+        address _governance,
         //slither-disable-next-line shadowing-local
         string memory _name, 
         //slither-disable-next-line shadowing-local
         string memory _symbol
-    ) ERC20(_name, _symbol) {
+    ) Governed(_governance) ERC20(_name, _symbol) {
     }
     
-    modifier onlyPercent {
-        // If a delegate cannot be added by percentage, revert.
-        require(_canDelegateByPct(msg.sender), ALREADY_EXPLICIT_MSG);
-        _;
-    }
-
-    modifier onlyExplicit {
-        // If a delegate cannot be added by explicit amount, revert.
-        require(_canDelegateByAmount(msg.sender), ALREADY_PERCENT_MSG);
-        _;
-    }
-
     /**
      * @dev Should be compatible with ERC20 method
      */
@@ -88,9 +79,9 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/
-    function delegate(address _to, uint256 _bips) external override onlyPercent {
+    function delegate(address _to, uint256 _bips) external override {
         // Get the current balance of sender and delegate by percentage _to recipient
-        _delegateByPercentage(_to, balanceOf(msg.sender), _bips);
+        _checkVpContract().delegate(msg.sender, _to, balanceOf(msg.sender), _bips);
     }
 
     /**
@@ -99,8 +90,8 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @param _amount An explicit vote power amount to be delegated.
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/    
-    function delegateExplicit(address _to, uint256 _amount) external override onlyExplicit {
-        _delegateByAmount(_to, balanceOf(msg.sender), _amount);
+    function delegateExplicit(address _to, uint256 _amount) external override {
+        _checkVpContract().delegateExplicit(msg.sender, _to, balanceOf(msg.sender), _amount);
     }
 
     /**
@@ -108,8 +99,8 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @param _owner The address to get undelegated voting power.
      * @return The unallocated vote power of `_owner`
      */
-    function undelegatedVotePowerOf(address _owner) public view override returns(uint256) {
-        return _undelegatedVotePowerOf(_owner, balanceOf(_owner));
+    function undelegatedVotePowerOf(address _owner) external view override returns(uint256) {
+        return _checkVpContract().undelegatedVotePowerOf(_owner, balanceOf(_owner));
     }
 
     /**
@@ -118,15 +109,15 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      * @param _blockNumber The block number at which to fetch.
      * @return The unallocated vote power of `_owner`
      */
-    function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) public view override returns (uint256) {
-        return _undelegatedVotePowerOfAt(_owner, balanceOfAt(_owner, _blockNumber), _blockNumber);
+    function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) external view override returns (uint256) {
+        return _checkVpContract().undelegatedVotePowerOfAt(_owner, balanceOfAt(_owner, _blockNumber), _blockNumber);
     }
 
     /**
      * @notice Undelegate all voting power for delegates of `msg.sender`
      **/
-    function undelegateAll() external override onlyPercent {
-        _undelegateAllByPercentage(balanceOf(msg.sender));
+    function undelegateAll() external override {
+        _checkVpContract().undelegateAll(msg.sender, balanceOf(msg.sender));
     }
 
     /**
@@ -137,8 +128,8 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
      */
     function undelegateAllExplicit(
         address[] memory _delegateAddresses
-    ) external override onlyExplicit returns (uint256 _remainingDelegation) {
-        return _undelegateAllByAmount(_delegateAddresses);
+    ) external override returns (uint256 _remainingDelegation) {
+        return _checkVpContract().undelegateAllExplicit(msg.sender, _delegateAddresses);
     }
     
     /**
@@ -149,7 +140,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
     */
     function revokeDelegationAt(address _who, uint256 _blockNumber) public override {
-        _revokeDelegationAt(_who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
+        _checkVpContract().revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
     }
 
     /**
@@ -162,7 +153,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
         address _from, 
         address _to
     ) external view override returns(uint256) {
-        return _votePowerFromTo(_from, _to, balanceOf(_from));
+        return _checkVpContract().votePowerFromTo(_from, _to, balanceOf(_from));
     }
     
     /**
@@ -177,14 +168,14 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
         address _to, 
         uint256 _blockNumber
     ) external view override returns(uint256) {
-        return _votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
+        return _checkVpContract().votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
     
     /**
      * @notice Get the current vote power.
      * @return The current vote power.
      */
-    function votePower() public view override returns(uint256) {
+    function votePower() external view override returns(uint256) {
         return totalSupply();
     }
 
@@ -193,7 +184,7 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     * @param _blockNumber The block number at which to fetch.
     * @return The vote power at the block.
     */
-    function votePowerAt(uint256 _blockNumber) public view override returns(uint256) {
+    function votePowerAt(uint256 _blockNumber) external view override returns(uint256) {
         return totalSupplyAt(_blockNumber);
     }
 
@@ -207,33 +198,145 @@ contract VPToken is ERC20, CheckPointable, Delegatable {
     function votePowerAtCached(uint256 _blockNumber) public override returns(uint256) {
         return _totalSupplyAtCached(_blockNumber);
     }
+    
+    /**
+     * @notice Get the delegation mode for '_who'. This mode determines whether vote power is
+     *  allocated by percentage or by explicit value. Once the delegation mode is set, 
+     *  it never changes, even if all delegations are removed.
+     * @param _who The address to get delegation mode.
+     * @return delegation mode: 0 = NOTSET, 1 = PERCENTAGE, 2 = AMOUNT (i.e. explicit)
+     */
+    function delegationModeOf(address _who) external view override returns (uint256) {
+        return _checkVpContract().delegationModeOf(_who);
+    }
+
+
+    /**
+     * @notice Get the current vote power of `_owner`.
+     * @param _owner The address to get voting power.
+     * @return Current vote power of `_owner`.
+     */
+    function votePowerOf(address _owner) external view override returns(uint256) {
+        return _checkVpContract().votePowerOf(_owner);
+    }
+
+
+    /**
+    * @notice Get the vote power of `_owner` at block `_blockNumber`
+    * @param _owner The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_owner` at `_blockNumber`.
+    */
+    function votePowerOfAt(address _owner, uint256 _blockNumber) external view override returns(uint256) {
+        return _checkVpContract().votePowerOfAt(_owner, _blockNumber);
+    }
+    
+    /**
+    * @notice Get the vote power of `_owner` at block `_blockNumber` using cache.
+    *   It tries to read the cached value and if not found, reads the actual value and stores it in cache.
+    *   Can only be used if _blockNumber is in the past, otherwise reverts.    
+    * @param _owner The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_owner` at `_blockNumber`.
+    */
+    function votePowerOfAtCached(address _owner, uint256 _blockNumber) public override returns(uint256) {
+        return _checkVpContract().votePowerOfAtCached(_owner, _blockNumber);
+    }
+    
+    /**
+    * @notice Get the vote power delegation `delegationAddresses` 
+    *  and `_bips` of `_who`. Returned in two separate positional arrays.
+    * @param _owner The address to get delegations.
+    * @return _delegateAddresses Positional array of delegation addresses.
+    * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
+    * @return _count The number of delegates.
+    * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
+    */
+    function delegatesOf(
+        address _owner
+    ) external view override returns (
+        address[] memory _delegateAddresses, 
+        uint256[] memory _bips,
+        uint256 _count,
+        uint256 _delegationMode
+    ) {
+        return _checkVpContract().delegatesOf(_owner);
+    }
+    
+    /**
+    * @notice Get the vote power delegation `delegationAddresses` 
+    *  and `pcts` of `_who`. Returned in two separate positional arrays.
+    * @param _owner The address to get delegations.
+    * @param _blockNumber The block for which we want to know the delegations.
+    * @return _delegateAddresses Positional array of delegation addresses.
+    * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
+    * @return _count The number of delegates.
+    * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
+    */
+    function delegatesOfAt(
+        address _owner,
+        uint256 _blockNumber
+    ) external view override returns (
+        address[] memory _delegateAddresses, 
+        uint256[] memory _bips,
+        uint256 _count,
+        uint256 _delegationMode
+    ) {
+        return _checkVpContract().delegatesOfAt(_owner, _blockNumber);
+    }
 
     // Update vote power and balance checkpoints before balances are modified. This is implemented
     // in the _beforeTokenTransfer hook, which is executed for _mint, _burn, and _transfer operations.
     function _beforeTokenTransfer(
         address _from, 
         address _to, 
-        uint256 _amount) internal virtual override(ERC20) {
-        
+        uint256 _amount
+    ) internal virtual override(ERC20) {
         require(_from != _to, "Cannot transfer to self");
         
-        ERC20._beforeTokenTransfer(_from, _to, _amount);
+        // update vote powers
+        _checkVpContract().updateAtTokenTransfer(_from, _to, balanceOf(_from), balanceOf(_to), _amount);
 
+        // update balance
         if (_from == address(0)) {
-            // mint new vote power
-            _mintVotePower(_to, balanceOf(_to), _amount);
             // mint checkpoint balance data for transferee
             _mintForAtNow(_to, _amount);
         } else if (_to == address(0)) {
-            // burn vote power
-            _burnVotePower(_from, balanceOf(_from), _amount);
             // burn checkpoint data for transferer
             _burnForAtNow(_from, _amount);
         } else {
-            // transmit vote power _to receiver
-            _transmitVotePower(_from, _to, balanceOf(_from), balanceOf(_to), _amount);
             // transfer checkpoint balance data
             _transmitAtNow(_from, _to, _amount);
         }
+    }
+    
+    /**
+     * Call from governance to set VpContract on token, e.g. 
+     * `vpToken.setVpContract(new VPContract(address(vpToken)))`
+     * VPContract must be set before any of the VPToken delegation or vote power methods are called, 
+     * otherwise they will revert.
+     * VPContract may only be set once.
+     * @param _vpContract Vote power contract to be used by this token.
+     */
+    function setVpContract(IIVPContract _vpContract) external onlyGovernance {
+        require(address(_vpContract) != address(0), "May not set null VPContract");
+        require(address(vpContract) == address(0), "VPContract already set on VPToken");
+        vpContract = _vpContract;
+    }
+    
+    /**
+     * Return vpContract, ensuring that it is not zero.
+     */
+    function _checkVpContract() internal view returns (IIVPContract) {
+        IIVPContract vpc = vpContract;
+        require(address(vpc) != address(0), "Missing VPContract on VPToken");
+        return vpc;
+    }
+    
+    /**
+     * Return vpContract, may be zero.
+     */
+    function _getVpContract() internal view returns (IIVPContract) {
+        return vpContract;
     }
 }

@@ -2,8 +2,9 @@ import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { artifacts, assert, contract, ethers, web3 } from "hardhat";
 import { VPToken } from "../../../typechain";
-import { VPTokenMockContract, VPTokenMockInstance } from "../../../typechain-truffle";
+import { VPContractContract, VPTokenMockContract, VPTokenMockInstance } from "../../../typechain-truffle";
 import { newContract, waitFinalize3 } from "../../utils/test-helpers";
+import { setDefaultVPContract, setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
 // const { expectRevert } = require('@openzeppelin/test-helpers');
 chai.use(solidity);
@@ -29,8 +30,10 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
     let signers = await ethers.getSigners();
-    vpToken = await waitFinalize3(accounts[0], () => VPTokenA.new("A token", "ATOK"));   
-    vpTokenETH = await newContract<VPToken>("VPTokenMock", signers[0], "A token", "ATOK") 
+    vpToken = await waitFinalize3(accounts[0], () => VPTokenA.new(accounts[0], "A token", "ATOK"));
+    await waitFinalize3(accounts[0], () => setDefaultVPContract(vpToken, accounts[0]));
+    vpTokenETH = await newContract<VPToken>("VPTokenMock", signers[0], signers[0].address, "A token", "ATOK");
+    await setDefaultVPContract_ethers(vpTokenETH, signers[0]);
   });
 
   it("Should be checkpointable", async () => {
@@ -60,14 +63,14 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     await waitFinalize3(accounts[1], () => vpToken.delegate(accounts[2], 50, { from: accounts[1] }));
     await waitFinalize3(accounts[1], () => vpToken.delegate(accounts[3], 50, { from: accounts[1] }));
     // Act
-    const {delegateAddresses, amountOrBips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
+    const {_delegateAddresses, _bips, _count, _delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
     // Assert
-    assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 50);
-    assert.equal(delegateAddresses[1], accounts[3]);
-    assert.equal(amountOrBips[1], 50);
-    assert.equal(count, 2);
-    assert.equal(delegationMode, 1);
+    assert.equal(_delegateAddresses[0], accounts[2]);
+    assert.equal(_bips[0], 50);
+    assert.equal(_delegateAddresses[1], accounts[3]);
+    assert.equal(_bips[1], 50);
+    assert.equal(_count, 2);
+    assert.equal(_delegationMode, 1);
   });
 
   it("Should undelegate all", async () => {
@@ -77,9 +80,9 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     // Act
     await waitFinalize3(accounts[1], () => vpToken.undelegateAll({ from: accounts[1] }));
     // Assert
-    const {delegateAddresses, amountOrBips, count, delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
-    assert.equal(count, 0);
-    assert.equal(delegationMode, 0);
+    const {_count, _delegationMode} = await vpToken.delegatesOf(accounts[1]) as any;
+    assert.equal(_count, 0);
+    assert.equal(_delegationMode, 1); // undelegateAll doesn't change delegation mode
   });
 
   it("Should be explicitly delegatable", async () => {
@@ -87,10 +90,9 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     await waitFinalize3(accounts[0], () => vpToken.mint(accounts[1], 100));
     await waitFinalize3(accounts[1], () => vpToken.delegateExplicit(accounts[2], 75, { from: accounts[1] }));
     // Act
-    const {delegateAddresses, amountOrBips} = await vpToken.delegatesOf(accounts[1]) as any;
+    let undelegatedVotePower = await vpToken.undelegatedVotePowerOf(accounts[1]);
     // Assert
-    assert.equal(delegateAddresses[0], accounts[2]);
-    assert.equal(amountOrBips[0], 75);
+    assert.equal(undelegatedVotePower.toNumber(), 25);
   });
 
   it("Should retrieve undelegated vote power", async () => {

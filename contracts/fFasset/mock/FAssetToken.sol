@@ -5,6 +5,7 @@ import {ICollateralizable} from "../interface/ICollateralizable.sol";
 import {Governed} from "../../governance/implementation/Governed.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {VPToken} from "../../token/implementation/VPToken.sol";
+import {VPContract} from "../../token/implementation/VPContract.sol";
 
 /**
  * @title FAsset Token
@@ -12,14 +13,15 @@ import {VPToken} from "../../token/implementation/VPToken.sol";
  * @dev An ERC20 token to enable the holder to delegate voting power
  *  equal 1-1 to their balance, with history tracking by block, and collateralized minting.
  **/
-contract FAssetToken is Governed, VPToken {
+contract FAssetToken is VPToken {
     using SafeMath for uint256;
     
     constructor(
-        address governance_,
-        string memory name_, 
-        string memory symbol_,
-        uint8 decimals_) Governed(governance_) VPToken(name_, symbol_) {
+        address _governance,
+        string memory _name, 
+        string memory _symbol,
+        uint8 decimals_
+    ) VPToken(_governance, _name, _symbol) {
         _setupDecimals(decimals_);
     }
 

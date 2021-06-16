@@ -7,7 +7,7 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {VotePower} from "../lib/VotePower.sol";
 import {VotePowerCache} from "../lib/VotePowerCache.sol";
-import {IIVPToken} from "../interface/IIVPToken.sol";
+import {IVPTokenEvents} from "../../userInterfaces/IVPTokenEvents.sol";
 
 /**
  * @title Delegateable ERC20 behavior
@@ -15,7 +15,7 @@ import {IIVPToken} from "../interface/IIVPToken.sol";
  *  of a token to delegates. This contract orchestrates interaction between
  *  managing a delegation and the vote power allocations that result.
  **/
-abstract contract Delegatable is IIVPToken {
+contract Delegatable is IVPTokenEvents {
     using PercentageDelegation for PercentageDelegation.DelegationState;
     using ExplicitDelegation for ExplicitDelegation.DelegationState;
     using SafeMath for uint256;
@@ -121,18 +121,24 @@ abstract contract Delegatable is IIVPToken {
     }
 
     /**
-     * @notice Delegate `_amount` of voting power to `_to` from `msg.sender`
+     * @notice Delegate `_amount` of voting power to `_to` from `_from`
+     * @param _from The address of the delegator
      * @param _to The address of the recipient
      * @param _senderCurrentBalance The senders current balance (not their voting power)
      * @param _amount The amount of voting power to be delegated
      **/
-    function _delegateByAmount(address _to, uint256 _senderCurrentBalance, uint256 _amount) internal virtual {
+    function _delegateByAmount(
+        address _from, 
+        address _to, 
+        uint256 _senderCurrentBalance, 
+        uint256 _amount
+    ) internal virtual {
         require (_to != address(0), "Cannot delegate to zero");
-        require (_to != msg.sender, "Cannot delegate to self");
-        require (_canDelegateByAmount(msg.sender), "Cannot delegate by amount");
+        require (_to != _from, "Cannot delegate to self");
+        require (_canDelegateByAmount(_from), "Cannot delegate by amount");
         
         // Get the vote power delegation for the sender
-        ExplicitDelegation.DelegationState storage delegation = explicitDelegations[msg.sender];
+        ExplicitDelegation.DelegationState storage delegation = explicitDelegations[_from];
         
         // the prior value
         uint256 priorAmount = delegation.getDelegatedValue(_to);
@@ -140,40 +146,46 @@ abstract contract Delegatable is IIVPToken {
         // Delegate new power
         if (_amount < priorAmount) {
             // Prior amount is greater, just reduce the delegated amount.
-            votePower.undelegate(msg.sender, _to, priorAmount - _amount);
+            votePower.undelegate(_from, _to, priorAmount - _amount);
         } else {
             // Is there enough undelegated vote power?
-            uint256 availableAmount = _undelegatedVotePowerOf(msg.sender, _senderCurrentBalance).add(priorAmount);
+            uint256 availableAmount = _undelegatedVotePowerOf(_from, _senderCurrentBalance).add(priorAmount);
             require(availableAmount >= _amount, UNDELEGATED_VP_TOO_SMALL_MSG);
             // Increase the delegated amount of vote power.
-            votePower.delegate(msg.sender, _to, _amount - priorAmount);
+            votePower.delegate(_from, _to, _amount - priorAmount);
         }
         
         // Add/replace delegate
         delegation.addReplaceDelegate(_to, _amount);
 
         // update mode if needed
-        if (delegationModes[msg.sender] != DelegationMode.AMOUNT) {
-            delegationModes[msg.sender] = DelegationMode.AMOUNT;
+        if (delegationModes[_from] != DelegationMode.AMOUNT) {
+            delegationModes[_from] = DelegationMode.AMOUNT;
         }
         
         // emit event for delegation change
-        emit Delegate(msg.sender, _to, priorAmount, _amount, block.number);
+        emit Delegate(_from, _to, priorAmount, _amount, block.number);
     }
 
     /**
-     * @notice Delegate `_bips` of voting power to `_to` from `msg.sender`
+     * @notice Delegate `_bips` of voting power to `_to` from `_from`
+     * @param _from The address of the delegator
      * @param _to The address of the recipient
      * @param _senderCurrentBalance The senders current balance (not their voting power)
      * @param _bips The percentage of voting power in basis points (1/100 of 1 percent) to be delegated
      **/
-    function _delegateByPercentage(address _to, uint256 _senderCurrentBalance, uint256 _bips) internal virtual {
+    function _delegateByPercentage(
+        address _from, 
+        address _to, 
+        uint256 _senderCurrentBalance, 
+        uint256 _bips
+    ) internal virtual {
         require (_to != address(0), "Cannot delegate to zero");
-        require (_to != msg.sender, "Cannot delegate to self");
-        require (_canDelegateByPct(msg.sender), "Cannot delegate by percentage");
+        require (_to != _from, "Cannot delegate to self");
+        require (_canDelegateByPct(_from), "Cannot delegate by percentage");
         
         // Get the vote power delegation for the sender
-        PercentageDelegation.DelegationState storage delegation = percentageDelegations[msg.sender];
+        PercentageDelegation.DelegationState storage delegation = percentageDelegations[_from];
 
         // Get prior percent for delegate if exists
         uint256 priorBips = delegation.getDelegatedValue(_to);
@@ -195,67 +207,42 @@ abstract contract Delegatable is IIVPToken {
 
         // Delegate new power
         if (newVotePower < reverseVotePower) {
-            votePower.undelegate(msg.sender, _to, reverseVotePower - newVotePower);
+            votePower.undelegate(_from, _to, reverseVotePower - newVotePower);
         } else {
-            votePower.delegate(msg.sender, _to, newVotePower - reverseVotePower);
+            votePower.delegate(_from, _to, newVotePower - reverseVotePower);
         }
         
         // update mode if needed
-        if (delegationModes[msg.sender] != DelegationMode.PERCENTAGE) {
-            delegationModes[msg.sender] = DelegationMode.PERCENTAGE;
+        if (delegationModes[_from] != DelegationMode.PERCENTAGE) {
+            delegationModes[_from] = DelegationMode.PERCENTAGE;
         }
 
         // emit event for delegation change
-        emit Delegate(msg.sender, _to, reverseVotePower, newVotePower, block.number);
+        emit Delegate(_from, _to, reverseVotePower, newVotePower, block.number);
     }
 
     /**
      * @notice Get the delegation mode for '_who'. This mode determines whether vote power is
      *  allocated by percentage or by explicit value.
      * @param _who The address to get delegation mode.
-     * @return _delegationMode (NOTSET=0, PERCENTAGE=1, AMOUNT=2))
+     * @return Delegation mode
      */
-    function delegationModeOf(address _who) public view override returns (uint256 _delegationMode) {
-        return uint256(delegationModes[_who]);
+    function _delegationModeOf(address _who) internal view returns (DelegationMode) {
+        return delegationModes[_who];
     }
 
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
-    *  and `pcts` of an `_owner`. Returned in two separate positional arrays.
+    *  and `_bips` of an `_owner`. Returned in two separate positional arrays.
     * @param _owner The address to get delegations.
     * @param _blockNumber The block for which we want to know the delegations.
     * @return _delegateAddresses Positional array of delegation addresses.
     * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
-    * @return _count The number of delegates.
-    * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOfAt(
-        address _owner,
-        uint256 _blockNumber
-    ) public view override returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
-        DelegationMode mode = delegationModes[_owner];
-        if (mode == DelegationMode.PERCENTAGE) {
-            // Get the vote power delegation for the _owner
-            (_delegateAddresses, _bips) = _percentageDelegatesOfAt(_owner, _blockNumber);
-        } else if (mode == DelegationMode.NOTSET) {
-            _delegateAddresses = new address[](0);
-            _bips = new uint256[](0);
-        } else {
-            revert ("delegatesOf does not work in AMOUNT delegation mode");
-        }
-        _count = _delegateAddresses.length;
-        _delegationMode = delegationModeOf(_owner);
-    }
-    
     function _percentageDelegatesOfAt(
         address _owner,
         uint256 _blockNumber
-    ) private view returns (
+    ) internal view returns (
         address[] memory _delegateAddresses, 
         uint256[] memory _bips
     ) {
@@ -283,26 +270,6 @@ abstract contract Delegatable is IIVPToken {
                 destIndex++;
             }
         }
-    }
-
-    /**
-    * @notice Get the vote power delegation `_delegateAddresses` 
-    *  and `pcts` of an `_owner`. Returned in two separate positional arrays.
-    * @param _owner The address to get delegations.
-    * @return _delegateAddresses Positional array of delegation addresses.
-    * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
-    * @return _count The number of delegates.
-    * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
-    */
-    function delegatesOf(
-        address _owner
-    ) public view override returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
-        return delegatesOfAt(_owner, block.number);
     }
 
     /**
@@ -341,19 +308,25 @@ abstract contract Delegatable is IIVPToken {
     
     /**
     * @notice Revoke the vote power of `_who` at block `_blockNumber`
+    * @param _from The address of the delegator
     * @param _who The delegatee address of vote power to revoke.
     * @param _senderBalanceAt The sender's balance at the block to be revoked.
     * @param _blockNumber The block number at which to revoke.
     */
-    function _revokeDelegationAt(address _who, uint256 _senderBalanceAt, uint256 _blockNumber) internal {
+    function _revokeDelegationAt(
+        address _from, 
+        address _who, 
+        uint256 _senderBalanceAt, 
+        uint256 _blockNumber
+    ) internal {
         require(_blockNumber < block.number, "Revoke is only for the past, use undelegate for the present");
         
         // Revoke vote power and get amount revoked
-        uint256 votePowerRevoked = _votePowerFromToAtNoRevokeCheck(msg.sender, _who, _senderBalanceAt, _blockNumber);
-        votePowerCache.revokeAt(votePower, msg.sender, _who, votePowerRevoked, _blockNumber);
+        uint256 votePowerRevoked = _votePowerFromToAtNoRevokeCheck(_from, _who, _senderBalanceAt, _blockNumber);
+        votePowerCache.revokeAt(votePower, _from, _who, votePowerRevoked, _blockNumber);
 
         // Emit revoke event
-        emit Revoke(msg.sender, _who, votePowerRevoked, _blockNumber);
+        emit Revoke(_from, _who, votePowerRevoked, _blockNumber);
     }
 
     /**
@@ -384,18 +357,20 @@ abstract contract Delegatable is IIVPToken {
 
     /**
      * @notice Undelegate all vote power by percentage for `delegation` of `_who`.
+     * @param _from The address of the delegator
      * @param _senderCurrentBalance The current balance of message sender.
      * precondition: delegationModes[_who] == DelegationMode.PERCENTAGE
      */
     function _undelegateAllByPercentage(
+        address _from,
         uint256 _senderCurrentBalance
     ) internal {
-        DelegationMode delegationMode = delegationModes[msg.sender];
+        DelegationMode delegationMode = delegationModes[_from];
         if (delegationMode == DelegationMode.NOTSET) return;
         require(delegationMode == DelegationMode.PERCENTAGE,
             "undelegateAll can only be used in percentage delegation mode");
             
-        PercentageDelegation.DelegationState storage delegation = percentageDelegations[msg.sender];
+        PercentageDelegation.DelegationState storage delegation = percentageDelegations[_from];
         
         // Iterate over the delegates
         (address[] memory delegates, uint256[] memory _bips) = delegation.getDelegations();
@@ -403,9 +378,9 @@ abstract contract Delegatable is IIVPToken {
             // Compute vote power to be reversed for the delegate
             uint256 reverseVotePower = _senderCurrentBalance.mulDiv(_bips[i], PercentageDelegation.MAX_BIPS);
             // Transmit vote power back to _owner
-            votePower.undelegate(msg.sender, delegates[i], reverseVotePower);
+            votePower.undelegate(_from, delegates[i], reverseVotePower);
             // Emit vote power reversal event
-            emit Delegate(msg.sender, delegates[i], reverseVotePower, 0, block.number);
+            emit Delegate(_from, delegates[i], reverseVotePower, 0, block.number);
         }
 
         // Clear delegates
@@ -413,29 +388,31 @@ abstract contract Delegatable is IIVPToken {
     }
 
     /**
-     * @notice Undelegate all vote power by amount delegates for `msg.sender`.
+     * @notice Undelegate all vote power by amount delegates for `_from`.
+     * @param _from The address of the delegator
      * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
      *   so the caller must supply them.
      */
     function _undelegateAllByAmount(
+        address _from,
         address[] memory _delegateAddresses
     ) internal returns (uint256 _remainingDelegation) {
-        DelegationMode delegationMode = delegationModes[msg.sender];
+        DelegationMode delegationMode = delegationModes[_from];
         if (delegationMode == DelegationMode.NOTSET) return 0;
         require(delegationMode == DelegationMode.AMOUNT,
             "undelegateAllExplicit can only be used in explicit delegation mode");
             
-        ExplicitDelegation.DelegationState storage delegation = explicitDelegations[msg.sender];
+        ExplicitDelegation.DelegationState storage delegation = explicitDelegations[_from];
         
         // Iterate over the delegates
         for (uint256 i = 0; i < _delegateAddresses.length; i++) {
             // Compute vote power _to be reversed for the delegate
             uint256 reverseVotePower = delegation.getDelegatedValue(_delegateAddresses[i]);
             // Transmit vote power back _to _owner
-            votePower.undelegate(msg.sender, _delegateAddresses[i], reverseVotePower);
+            votePower.undelegate(_from, _delegateAddresses[i], reverseVotePower);
             delegation.addReplaceDelegate(_delegateAddresses[i], 0);
             // Emit vote power reversal event
-            emit Delegate(msg.sender, _delegateAddresses[i], reverseVotePower, 0, block.number);
+            emit Delegate(_from, _delegateAddresses[i], reverseVotePower, 0, block.number);
         }
         
         return delegation.getDelegatedTotal();
@@ -562,7 +539,7 @@ abstract contract Delegatable is IIVPToken {
      * @param _who The address to get voting power.
      * @return Current vote power of `_who`.
      */
-    function votePowerOf(address _who) public view override returns(uint256) {
+    function _votePowerOf(address _who) internal view returns(uint256) {
         return votePower.votePowerOfAtNow(_who);
     }
 
@@ -572,7 +549,7 @@ abstract contract Delegatable is IIVPToken {
     * @param _blockNumber The block number at which to fetch.
     * @return Vote power of `_who` at `_blockNumber`.
     */
-    function votePowerOfAt(address _who, uint256 _blockNumber) public view override returns(uint256) {
+    function _votePowerOfAt(address _who, uint256 _blockNumber) internal view returns(uint256) {
         // read cached value for past blocks to respect revocations (and possibly get a cache speedup)
         if (_blockNumber < block.number) {
             return votePowerCache.valueOfAtReadonly(votePower, _who, _blockNumber);
@@ -588,7 +565,7 @@ abstract contract Delegatable is IIVPToken {
     * @param _blockNumber The block number at which to fetch.
     * @return Vote power of `_who` at `_blockNumber`.
     */
-    function votePowerOfAtCached(address _who, uint256 _blockNumber) public override returns(uint256) {
+    function _votePowerOfAtCached(address _who, uint256 _blockNumber) internal returns(uint256) {
         require(_blockNumber < block.number, "Can only be used for past blocks");
         return votePowerCache.valueOfAt(votePower, _who, _blockNumber);
     }

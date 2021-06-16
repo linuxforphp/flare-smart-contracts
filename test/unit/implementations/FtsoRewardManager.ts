@@ -10,6 +10,7 @@ import {
     WFlrInstance
 } from "../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -153,7 +154,8 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
-        wFlr = await WFLR.new();
+        wFlr = await WFLR.new(accounts[0]);
+        await setDefaultVPContract(wFlr, accounts[0]);
 
         await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
         await ftsoRewardManager.setWFLR(wFlr.address);

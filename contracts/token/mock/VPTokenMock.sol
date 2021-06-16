@@ -2,6 +2,8 @@
 pragma solidity 0.7.6;
 
 import {VPToken} from "../implementation/VPToken.sol";
+import {VPContract} from "../implementation/VPContract.sol";
+import {IIVPContract} from "../interface/IIVPContract.sol";
 
 /**
  * @title Vote Power Token mock contract
@@ -10,8 +12,10 @@ import {VPToken} from "../implementation/VPToken.sol";
 contract VPTokenMock is VPToken {
 
     constructor(
+        address _governance,
         string memory _name, 
-        string memory _symbol) VPToken(_name, _symbol) {
+        string memory _symbol
+    ) VPToken(_governance, _name, _symbol) {
     }
 
     function mint(address _to, uint256 _amount) public virtual {
@@ -39,4 +43,9 @@ contract VPTokenMock is VPToken {
     function votePowerAtNowCached() public returns (uint256) {
         return votePowerAtCached(block.number);
     }
+    
+    function getVpContract() public view returns (IIVPContract) {
+        return _getVpContract();
+    }
+
 }
