@@ -4,6 +4,7 @@ import path from "path";
 import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
 import { checkTestCase, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
+import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
 const fs = require('fs');
 
@@ -39,12 +40,14 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
 
             // Contract deployment
-            let flrToken: WFlr = await newContract<WFlr>("WFlr", signers[0]);
+            let flrToken: WFlr = await newContract<WFlr>("WFlr", signers[0], signers[0].address);
+            await setDefaultVPContract_ethers(flrToken, signers[0]);
             for (let i = 0; i < testExample.weightsFlr.length; i++) {
                 await flrToken.connect(signers[i]).depositTo(signers[i].address, {value: testExample.weightsFlr[i]})
             }
 
-            let assetToken = await newContract<VPTokenMock>("VPTokenMock", signers[0], "fAsset", "FASSET");
+            let assetToken = await newContract<VPTokenMock>("VPTokenMock", signers[0], signers[0].address, "fAsset", "FASSET");
+            await setDefaultVPContract_ethers(assetToken, signers[0]);
             await assetToken.setDecimals(0);
             for (let i = 0; i < testExample.weightsAsset.length; i++) {
                 await assetToken.mint(signers[i].address, testExample.weightsAsset[i])

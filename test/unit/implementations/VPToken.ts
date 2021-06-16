@@ -1,11 +1,13 @@
-import { VPTokenMockContract, VPTokenMockInstance } from "../../../typechain-truffle";
-import { compareArrays, toBN } from "../../utils/test-helpers";
+import { VPTokenMockInstance } from "../../../typechain-truffle";
+import { compareArrays } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
 const {constants, expectRevert, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
-const VPToken = artifacts.require("VPTokenMock") as VPTokenMockContract;
+const VPToken = artifacts.require("VPTokenMock");
+const VPContract = artifacts.require("VPContract");
 
 const ALREADY_DELEGATED_EXPLICIT_MSG = "Already delegated explicitly";
 const ALREADY_DELEGATED_PERCENT_MSG = "Already delegated by percentage";
@@ -17,7 +19,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
-    vpToken = await VPToken.new("A token", "ATOK");
+    vpToken = await VPToken.new(accounts[0], "A token", "ATOK");
+    await setDefaultVPContract(vpToken, accounts[0]);
   });
 
   it("Should return name", async () => {
@@ -616,4 +619,56 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
       "Can only be used for past blocks");
   });
 
+  it("Should not transfer tokens to oneself (amount)", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    // Act
+    // Assert
+    await expectRevert(vpToken.transfer(accounts[1], 10, { from: accounts[1] }),
+      "Cannot transfer to self");
+  });
+
+  it("Should not delegate to oneself (percent)", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    // Act
+    // Assert
+    await expectRevert(vpToken.delegate(accounts[1], 1000, { from: accounts[1] }),
+      "Cannot delegate to self");
+  });
+
+  it("Should not delegate to oneself (amount)", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    // Act
+    // Assert
+    await expectRevert(vpToken.delegateExplicit(accounts[1], 10, { from: accounts[1] }),
+      "Cannot delegate to self");
+  });
+
+  it("Should not use vpToken without VPContract", async () => {
+    // Assemble
+    const vpToken1 = await VPToken.new(accounts[0], "A token without VPContract", "ATOK");
+    // Act
+    // Assert
+    await expectRevert(vpToken1.mint(accounts[1], 100),
+      "Missing VPContract on VPToken");
+    await expectRevert(vpToken1.transfer(accounts[2], 10, { from: accounts[1] }),
+      "Missing VPContract on VPToken");
+    await expectRevert(vpToken1.delegate(accounts[2], 10, { from: accounts[1] }),
+      "Missing VPContract on VPToken");
+    await expectRevert(vpToken1.delegateExplicit(accounts[2], 10, { from: accounts[1] }),
+      "Missing VPContract on VPToken");
+    await expectRevert(vpToken1.votePowerOf(accounts[2]),
+      "Missing VPContract on VPToken");
+  });
+
+  it("Should not change vpContract once it is set", async () => {
+    // Assemble
+    const newVpContract = await VPContract.new(vpToken.address);
+    // Act
+    // Assert
+    await expectRevert(vpToken.setVpContract(newVpContract.address),
+      "VPContract already set on VPToken");
+  });
 });

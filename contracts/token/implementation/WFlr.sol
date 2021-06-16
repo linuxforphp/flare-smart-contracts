@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import {VPToken} from "./VPToken.sol";
+import {VPContract} from "./VPContract.sol";
 import {IWFlr} from "../../userInterfaces/IWFlr.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -19,7 +20,7 @@ contract WFlr is VPToken, IWFlr {
     /**
      * Construct an ERC20 token.
      */
-    constructor() VPToken("Wrapped FLR", "WFLR") {
+    constructor(address _governance) VPToken(_governance, "Wrapped FLR", "WFLR") {
     }
     
     receive() external payable {
@@ -53,7 +54,7 @@ contract WFlr is VPToken, IWFlr {
      * @param recipient A payable address to receive Flare and minted WFLR.
      */
     function depositTo(address payable recipient) external payable override {
-        require(recipient != address(0));
+        require(recipient != address(0), "Cannot deposit to zero address");
         // Mint WFLR
         _mint(recipient, msg.value);
         // Emit deposit event

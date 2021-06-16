@@ -1,4 +1,5 @@
 import { FAssetTokenContract, FAssetTokenInstance } from "../../../typechain-truffle";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -13,6 +14,7 @@ contract(`FAssetToken.sol; ${getTestFile(__filename)}; FAsset token unit tests`,
 
   beforeEach(async() => {
     fassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK", 18);
+    await setDefaultVPContract(fassetToken, accounts[1]);
   });
 
   it("Should not mint if not from governance", async() => {
@@ -54,6 +56,7 @@ contract(`FAssetToken.sol; ${getTestFile(__filename)}; FAsset token unit tests`,
   it("Should set decimals", async() => {
     // Assemble
     const anotherFassetToken = await FAssetToken.new(accounts[1], "A Token", "ATOK", 6);
+    await setDefaultVPContract(anotherFassetToken, accounts[1]);
     // Act
     const decimals = await anotherFassetToken.decimals();
     // Assert

@@ -1,4 +1,5 @@
 import { VPTokenMockContract, VPTokenMockInstance } from "../../../typechain-truffle";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "./FuzzingUtils";
 import { VPTokenChecker } from "./VPTokenChecker";
 import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator";
@@ -46,7 +47,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
 
     let governance = availableAccounts[0];
     let plainuser = availableAccounts[1];
-    let accounts = availableAccounts.slice(2, N_ACCOUNTS + 2);
+    let accounts = availableAccounts.slice(2, N_ACCOUNTS + 2).concat(constants.ZERO_ADDRESS);
 
     let percentageAccounts = accounts.slice(0, N_PERC_DLG);
     let explicitAccounts = accounts.slice(N_PERC_DLG, N_PERC_DLG + N_AMOUNT_DLG);
@@ -54,7 +55,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
 
     // VPToken wrappers
     before(async () => {
-        vpToken = await VPToken.new("Test token", "TTOK");
+        vpToken = await VPToken.new(governance, "Test token", "TTOK");
+        await setDefaultVPContract(vpToken, governance);
         history = new VPTokenHistory(vpToken);
         simulator = new VPTokenSimulator(history);
     });

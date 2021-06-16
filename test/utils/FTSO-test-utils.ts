@@ -10,6 +10,7 @@ import { Ftso, MockFtso, MockVPToken } from "../../typechain";
 import { FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
 import { increaseTimeTo, newContract, submitPriceHash, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
+import { setDefaultVPContract_ethers } from "./token-test-helpers";
 
 const { exec } = require("child_process");
 const { constants } = require('@openzeppelin/test-helpers');

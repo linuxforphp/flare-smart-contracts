@@ -1,5 +1,6 @@
 import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, increaseTimeTo, lastOf, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
@@ -26,7 +27,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
             ftsos = [];
-            wflrInterface = await Wflr.new();
+            wflrInterface = await Wflr.new(accounts[0]);
+            await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
             priceSubmitter = await PriceSubmitter.new();
             for (let i = 0; i < 3; i++) {

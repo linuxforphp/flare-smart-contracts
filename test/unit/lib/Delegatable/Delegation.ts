@@ -130,4 +130,23 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     // Assert
     assert.equal(delegationMode as any, 2);
   });
+  
+  it("Should not delegate to oneself (percent)", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    // Act
+    // Assert
+    await expectRevert(delegatable.delegate(accounts[1], 1000, { from: accounts[1] }),
+      "Cannot delegate to self");
+  });
+
+  it("Should not delegate to oneself (amount)", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    // Act
+    // Assert
+    await expectRevert(delegatable.delegateExplicit(accounts[1], 10, { from: accounts[1] }),
+      "Cannot delegate to self");
+  });
+
 });

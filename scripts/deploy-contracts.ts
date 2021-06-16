@@ -17,6 +17,7 @@ import {
 import { Contract, Contracts } from "./Contracts";
 import { pascalCase } from "pascal-case";
 import { Account } from "web3/eth/accounts";
+import { setDefaultVPContract } from "../test/utils/token-test-helpers";
 
 // import { serializedParameters } from "./DeploymentParameters";
 
@@ -172,7 +173,8 @@ async function main(parameters: any) {
   await flareKeeper.registerToKeep(ftsoManager.address);
 
   // Deploy wrapped FLR
-  const wflr = await WFLR.new();
+  const wflr = await WFLR.new(deployerAccount.address);
+  await setDefaultVPContract(wflr, deployerAccount.address);
   spewNewContractInfo(contracts, WFLR.contractName, wflr.address);
   await ftsoRewardManager.setWFLR(wflr.address);
 
@@ -342,6 +344,7 @@ async function deployNewFAsset(
 
   // Deploy FAsset
   const fAssetToken = await FAssetToken.new(deployerAccountAddress, name, symbol, decimals);
+  await setDefaultVPContract(fAssetToken, deployerAccountAddress);
   spewNewContractInfo(contracts, symbol, fAssetToken.address);
 
   // Deploy dummy FAsset minter
