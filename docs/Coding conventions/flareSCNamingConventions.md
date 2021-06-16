@@ -10,6 +10,14 @@
 > function getValue() external view returns(uint256 _theValue);
 > function _privateFunction(uint256 _someValue) private returns(_otherValue);
  
+ ## Parameter names
+ Each parameter that deals with amounts, like token amounts, or time frames the name must include the denomination / units being used.
+ ### Example:
+ - priceEpochTimeFrameSec
+ - tokenAmountWei 
+
+ * note for vote power. the denomination is always the token balance.
+
 ## Solidity Interfaces
 For solidity interface files the name should start with a capital I, followed by the name of the contract that implements this interface Example: 'IFtso'.
 User facing interfaces will be placed in folder: contracts/userInterfaces while internal interfaces should be placed in folder, contracts/"module folder"/interface.
