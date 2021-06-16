@@ -7,10 +7,10 @@
  * json defining the created contracts.
  */
 
-import { FlareKeeperContract } from "../typechain-truffle";
+import { FlareKeeperContract } from "../../typechain-truffle";
 
 const fs = require('fs');
-const parameters = require(`./chain-config/${ process.env.CHAIN_CONFIG }.json`)
+const parameters = require(`../chain-config/${ process.env.CHAIN_CONFIG }.json`)
 
 // let res = data.find((x: any) => x.name == process.argv[3])
 // if(!res) throw Error(`Invalid contract alias: '${process.argv[3]}'`)

@@ -16,7 +16,7 @@ import {
   WFlrContract,
   WFlrInstance} from "../../typechain-truffle";
 
-import { Contracts } from "../../scripts/Contracts";
+import { Contracts } from "../../deployment/scripts/Contracts";
 import { PriceInfo } from '../utils/PriceInfo';
 import { submitPriceHash, advanceBlock } from '../utils/test-helpers';
 import { spewKeeperErrors } from "../utils/FlareKeeperTestUtils";

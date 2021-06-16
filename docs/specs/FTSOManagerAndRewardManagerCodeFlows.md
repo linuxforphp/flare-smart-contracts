@@ -3,7 +3,7 @@
 
 [FTSO manager] contract manages the following aspects of the FTSO system.
 
-- Maintains the list of awarded FTSOs.
+- Maintains the list of rewarded FTSOs.
 - Is being triggered by the Keeper contract.
 - Accepts calls from governance contract to update the FTSO list
 - Accepts calls from governance contract to change FTSO governance parameters,

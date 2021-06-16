@@ -53,8 +53,8 @@ flattened
 .DS_Store
 
 ## Test deploys info
-deploys/*
-!deploys/coston-private-beta.json
+deployment/deploys/*
+!deployment/deploys/coston-private-beta.json
 
 ## .env
 .env

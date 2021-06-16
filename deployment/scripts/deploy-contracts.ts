@@ -6,6 +6,9 @@
  * @dev Do not send anything out via console.log unless it is
  * json defining the created contracts.
  */
+
+import { pascalCase } from "pascal-case";
+import { setDefaultVPContract } from "../../test/utils/token-test-helpers";
 import {
   DummyFAssetMinterInstance,
   FAssetTokenInstance,
@@ -13,11 +16,8 @@ import {
   FtsoInstance,
   FtsoManagerInstance,
   PriceSubmitterInstance
-} from "../typechain-truffle";
+} from "../../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
-import { pascalCase } from "pascal-case";
-import { Account } from "web3/eth/accounts";
-import { setDefaultVPContract } from "../test/utils/token-test-helpers";
 
 // import { serializedParameters } from "./DeploymentParameters";
 
@@ -25,7 +25,7 @@ const BN = web3.utils.toBN;
 const { constants, time } = require('@openzeppelin/test-helpers');
 
 // const parameters = JSON.parse(serializedParameters);
-const parameters = require(`./chain-config/${ process.env.CHAIN_CONFIG }.json`)
+const parameters = require(`../chain-config/${ process.env.CHAIN_CONFIG }.json`)
 
 
 // inject private keys from .env, if they exist
