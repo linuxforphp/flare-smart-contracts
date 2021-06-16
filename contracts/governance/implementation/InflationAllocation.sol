@@ -26,13 +26,17 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
     string internal constant ERR_HIGH_SHARING_PERCENTAGE = "high sharing percentage";
     string internal constant ERR_SUM_SHARING_PERCENTAGE = "sum sharing percentage not 100%";
     string internal constant ERR_IS_ZERO = "address is 0"; 
-    string internal constant ANNUAL_INFLATION_OUT_OF_BOUNDS = "annual inflation out of bounds"; 
+    string internal constant ANNUAL_INFLATION_OUT_OF_BOUNDS = "annual inflation out of bounds";
+    string internal constant ERR_TOO_MANY = "too many";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
-    uint256 internal constant MAX_ANNUAL_INFLATION = BIPS100 * 10;      // to have some kind of
+    uint256 internal constant MAX_ANNUAL_INFLATION_BIPS = 1e3;          // 10% in BIPS
+    uint8 internal constant MAX_SCHEDULE_COUNT = 10;
+    uint8 internal constant MAX_SHARING_PERCENTAGES = 5;
 
     InflationReceiver[] internal inflationReceivers;
-    uint256 internal annualInflationPercentageBips;
+    uint256 public lastAnnualInflationPercentageBips;
+    uint256[] public annualInflationPercentagesBips;
 
     modifier notZero(address _address) {
         require(_address != address(0), ERR_IS_ZERO);
@@ -44,8 +48,11 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
     ) 
         Governed(_governance)
     {
-        // due to circular reference between contracts, can't yet set contracts sharing inflation
-        setAnnualInflation(_annualInflationBips);
+        require(
+            _annualInflationBips <= MAX_ANNUAL_INFLATION_BIPS && 
+            _annualInflationBips > 0,
+            ANNUAL_INFLATION_OUT_OF_BOUNDS);
+        lastAnnualInflationPercentageBips = _annualInflationBips;
     }
 
     function setSharingPercentages (
@@ -53,6 +60,10 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
         uint256[] memory _percentagePerReceiverBips
         ) external onlyGovernance 
     {
+        require (
+            _inflationRecievers.length <= MAX_SHARING_PERCENTAGES && 
+            _percentagePerReceiverBips.length <= MAX_SHARING_PERCENTAGES,
+            ERR_TOO_MANY);
         require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
 
         uint256 sumSharingPercentage;
@@ -77,17 +88,46 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
         require (sumSharingPercentage == BIPS100, ERR_SUM_SHARING_PERCENTAGE);
     }
 
-    function setAnnualInflation (uint256 _annualInflationBips) public onlyGovernance {
-        require(_annualInflationBips <= MAX_ANNUAL_INFLATION, ANNUAL_INFLATION_OUT_OF_BOUNDS);
-        require(_annualInflationBips > 0, ANNUAL_INFLATION_OUT_OF_BOUNDS);
-        // TODO: prevent big annual changes. 
-        // TODO: prevent 
+    function setAnnualInflation (uint256[] calldata _annualInflationScheduleBips) external onlyGovernance {
+        require(_annualInflationScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
+        // Validate the schedule...percentages must be the same or decay, and cannot be greater than last given.
+        uint256 len = _annualInflationScheduleBips.length;
+        uint256 lastOne = lastAnnualInflationPercentageBips;
+        for(uint256 i = 0; i < len; i++) {
+            require(
+                _annualInflationScheduleBips[i] <= lastOne && 
+                _annualInflationScheduleBips[i] > 0, 
+                ANNUAL_INFLATION_OUT_OF_BOUNDS);
+                lastOne = _annualInflationScheduleBips[i];
+        }
 
-        annualInflationPercentageBips = _annualInflationBips;
+        // Clear the existing schedule
+        uint256 lenExistingSchedule = annualInflationPercentagesBips.length;
+        for(uint256 i = 0; i < lenExistingSchedule; i++) {
+            annualInflationPercentagesBips.pop();
+        }
+
+        // Push in the new schedule
+        for(uint256 i = 0; i < len; i++) {
+            annualInflationPercentagesBips.push(_annualInflationScheduleBips[i]);
+        }
     }
 
-    function getAnnualPercentageBips() external view override returns(uint256) {
-        return annualInflationPercentageBips;
+    function getAnnualPercentageBips() external override onlyGovernance returns(uint256) {
+        // If there is not a schedule of percentages, return the last one given (or set).
+        if (annualInflationPercentagesBips.length > 0) {
+            // Since there is a schedule, get the next percentage.
+            lastAnnualInflationPercentageBips = annualInflationPercentagesBips[0];
+            // Iterate over the schedule, shifting each down an index
+            uint256 len = annualInflationPercentagesBips.length;
+            if (len > 1) {
+                for (uint256 i = 0; i < len - 1; i++) {
+                    annualInflationPercentagesBips[i] = annualInflationPercentagesBips[i+1];
+                }
+            }
+            annualInflationPercentagesBips.pop();
+        }
+        return lastAnnualInflationPercentageBips;
     }
 
     function getSharingPercentages() external view override returns(SharingPercentage[] memory _sharingPercentages) {
@@ -99,5 +139,5 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
             _sharingPercentages[i].percentBips = inflationReceivers[i].percentageBips;
             _sharingPercentages[i].inflationReceiver = inflationReceivers[i].receiverContract;
         }
-    }
+    }    
 }
