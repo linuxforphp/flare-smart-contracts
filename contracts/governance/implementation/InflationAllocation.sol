@@ -196,5 +196,5 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
             _sharingPercentages[i].percentBips = inflationReceivers[i].percentageBips;
             _sharingPercentages[i].inflationReceiver = inflationReceivers[i].receiverContract;
         }
-    }    
+    }
 }
