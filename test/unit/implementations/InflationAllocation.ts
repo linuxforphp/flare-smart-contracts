@@ -218,9 +218,25 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
         (await MockContract.new()).address, 
         (await MockContract.new()).address, 
         (await MockContract.new()).address, 
+        (await MockContract.new()).address, 
+        (await MockContract.new()).address, 
+        (await MockContract.new()).address, 
+        (await MockContract.new()).address, 
+        (await MockContract.new()).address, 
         (await MockContract.new()).address
       ];
-      const percentages: BN[] = [BN(5000), BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
+      const percentages: BN[] = [
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(1000), 
+        BN(500), 
+        BN(500)];
       // Act
       const promise = inflationAllocation.setSharingPercentages(inflationReceivers, percentages);
       // Assert

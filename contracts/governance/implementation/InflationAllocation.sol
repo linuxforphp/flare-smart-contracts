@@ -32,8 +32,8 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
     uint256 internal constant MAX_ANNUAL_INFLATION_BIPS = 1e3;          // 10% in BIPS
-    uint8 internal constant MAX_SCHEDULE_COUNT = 10;
-    uint8 internal constant MAX_SHARING_PERCENTAGES = 5;
+    uint256 internal constant MAX_SCHEDULE_COUNT = 10;
+    uint256 internal constant MAX_INFLATION_RECEIVERS = 10;
 
     InflationReceiver[] public inflationReceivers;
     Inflation public inflation;
@@ -98,8 +98,8 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
         ) external onlyGovernance 
     {
         require (
-            _inflationRecievers.length <= MAX_SHARING_PERCENTAGES && 
-            _percentagePerReceiverBips.length <= MAX_SHARING_PERCENTAGES,
+            _inflationRecievers.length <= MAX_INFLATION_RECEIVERS && 
+            _percentagePerReceiverBips.length <= MAX_INFLATION_RECEIVERS,
             ERR_TOO_MANY);
         require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
 
