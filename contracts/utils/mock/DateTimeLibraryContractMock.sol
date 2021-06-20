@@ -94,6 +94,10 @@ contract BokkyPooBahsDateTimeContract {
         weekEnd = BokkyPooBahsDateTimeLibrary.isWeekEnd(timestamp);
     }
 
+    function getDaysInYear(uint timestamp) public pure returns (uint daysInYear) {
+        daysInYear = BokkyPooBahsDateTimeLibrary.getDaysInYear(timestamp);
+    }
+
     function getDaysInMonth(uint timestamp) public pure returns (uint daysInMonth) {
         daysInMonth = BokkyPooBahsDateTimeLibrary.getDaysInMonth(timestamp);
     }
