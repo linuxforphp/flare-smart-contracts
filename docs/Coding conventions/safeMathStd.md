@@ -13,7 +13,7 @@ Usage of smaller 'uint' types is relevant when trying to "squeeze" data inside s
 
 Example:<br>
 ```js
-for (uint i = 0; i < 5; i++) {}
+for (uint256 i = 0; i < 5; i++) {}
 ```
 Clearly, `uint8` could be used here, but it saves no space and takes extra gas to compute<br>
 (TODO: Show opcode differences to illustrate?).
@@ -25,7 +25,7 @@ Example:<br>
 ```js
 // Permissible use: i cannot overflow
 
-for (uint i = 0; i < 5; i++) {}
+for (uint256 i = 0; i < 5; i++) {}
 ```
 
 ## Otherwise, Use `SafeMath`
@@ -34,16 +34,16 @@ There is no current need yet identified that requires data types greater than 25
 Example:<br>
 ```js
 // Do not do...
-function transfer(uint storage _source, uint storage _dest, uint _amount) public returns (bool) {
+function transfer(uint256 storage _source, uint256 storage _dest, uint256 _amount) public returns (bool) {
   _source -= _amount;
   _dest += _amount;
   return true;
 }
 
 // Do this instead...
-function transfer(uint storage _source, uint storage _dest, uint _amount) public returns (bool) {
-  // Attach SafeMath library to uint type
-  using SafeMath for uint;
+function transfer(uint256 storage _source, uint256 storage _dest, uint256 _amount) public returns (bool) {
+  // Attach SafeMath library to uint256 type
+  using SafeMath for uint256;
   // Use SafeMath methods for arithmetic
   _source = _source.sub(_amount);
   _dest = _dest.add(_amount);
@@ -65,30 +65,30 @@ called `mulDiv`. Phantom overflows, or intermediate overflows, can occur as part
 Example:<br>
 ```js
 // Do not do...
-function pctOf(uint _value, uint _pct) public returns (uint) {
+function pctOf(uint256 _value, uint256 _pct) public returns (uint256) {
   return (_value * _pct) / 100;
 }
 
 // Do this instead...
-function pctOf(uint _value, uint _pct) public returns (uint) {
-  // Attach SafePct library to uint type
-  using SafePct for uint;
+function pctOf(uint256 _value, uint256 _pct) public returns (uint256) {
+  // Attach SafePct library to uint256 type
+  using SafePct for uint256;
 
   return _value.mulDiv(_pct, 100);
 }
 ```
 
 ## Casting
-Down casting from uint/int does not revert on overflow, nor does int/uint casting revert for negative values, opening up code to a variety of vulnerabilities. The `SafeCast` library contains safe down and sign casting functions which will assert on unsafe behavior. If this library is not used on  such casts, code must contain a comment justifying unsafe use.
+Down casting from uint256/int256 does not revert on overflow, nor does int256/uint256 casting revert for negative values, opening up code to a variety of vulnerabilities. The `SafeCast` library contains safe down and sign casting functions which will assert on unsafe behavior. If this library is not used on  such casts, code must contain a comment justifying unsafe use.
 
 Example:<br>
 ```js
 // Do not do this...
-uint haveUnsignedValue = 0;
-int needSignedValue = (int) haveUnsignedValue;
+uint256 haveUnsignedValue = 0;
+int256 needSignedValue = (int256) haveUnsignedValue;
 
 // Do this instead...
-using SafeCast for uint;
-uint haveUnsignedValue = 0;
-int needSignedValue = haveUnsignedValue.toInt256();
+using SafeCast for uint256;
+uint256 haveUnsignedValue = 0;
+int256 needSignedValue = haveUnsignedValue.toInt256();
 ```
