@@ -56,10 +56,8 @@ library InflationAnnum {
      * @param _startTimeStamp   The start time of the annum in question.
      * @return  The number of days in the annum.
      */
-    function _computeDaysInAnnum(uint256 _startTimeStamp) internal pure returns(uint16) {
-        // This should cover passing through Feb 29
-        uint256 nextYearTimeStamp = _startTimeStamp.addYears(1);
-        uint256 daysInAnnum = _startTimeStamp.diffDays(nextYearTimeStamp);
+    function _computeDaysInAnnum(uint256 _startTimeStamp, uint256 _endTimeStamp) internal pure returns(uint16) { 
+        uint256 daysInAnnum = _startTimeStamp.diffDays(_endTimeStamp.add(1));
         return daysInAnnum.toUint16();
     }
 
@@ -90,6 +88,7 @@ library InflationAnnum {
      * @return The end time stamp for the annum.
      */
     function _getAnnumEndsTs(uint256 _startTimeStamp) internal pure returns (uint256) {
+        // This should cover passing through Feb 29
         return _startTimeStamp.addYears(1).subSeconds(1);
     }
 
@@ -131,6 +130,6 @@ library InflationAnnum {
             _inflatableBalanceWei, 
             _annualInflationPercentageBips);
         _self.endTimeStamp = _getAnnumEndsTs(_startTimeStamp);
-        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp);
+        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp, _self.endTimeStamp);
     }
 }
