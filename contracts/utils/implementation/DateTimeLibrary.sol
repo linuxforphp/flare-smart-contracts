@@ -111,6 +111,7 @@ library BokkyPooBahsDateTimeLibrary {
     function timestampFromDate(uint year, uint month, uint day) internal pure returns (uint timestamp) {
         timestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY;
     }
+
     function timestampFromDateTime(
         uint year, 
         uint month, 
@@ -127,9 +128,11 @@ library BokkyPooBahsDateTimeLibrary {
             SECONDS_PER_MINUTE + 
             second;
     }
+
     function timestampToDate(uint timestamp) internal pure returns (uint year, uint month, uint day) {
         (year, month, day) = _daysToDate(timestamp / SECONDS_PER_DAY);
     }
+
     function timestampToDateTime(uint timestamp) internal pure returns (
         uint year, 
         uint month, 
@@ -153,6 +156,7 @@ library BokkyPooBahsDateTimeLibrary {
             }
         }
     }
+
     function isValidDateTime(
         uint year, 
         uint month, 
@@ -166,23 +170,29 @@ library BokkyPooBahsDateTimeLibrary {
             }
         }
     }
+
     function isLeapYear(uint timestamp) internal pure returns (bool leapYear) {
         (uint year,,) = _daysToDate(timestamp / SECONDS_PER_DAY);
         leapYear = _isLeapYear(year);
     }
+
     function _isLeapYear(uint year) internal pure returns (bool leapYear) {
         leapYear = ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
     }
+
     function isWeekDay(uint timestamp) internal pure returns (bool weekDay) {
         weekDay = getDayOfWeek(timestamp) <= DOW_FRI;
     }
+
     function isWeekEnd(uint timestamp) internal pure returns (bool weekEnd) {
         weekEnd = getDayOfWeek(timestamp) >= DOW_SAT;
     }
+
     function getDaysInMonth(uint timestamp) internal pure returns (uint daysInMonth) {
         (uint year, uint month,) = _daysToDate(timestamp / SECONDS_PER_DAY);
         daysInMonth = _getDaysInMonth(year, month);
     }
+
     function _getDaysInMonth(uint year, uint month) internal pure returns (uint daysInMonth) {
         if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
             daysInMonth = 31;
@@ -192,6 +202,7 @@ library BokkyPooBahsDateTimeLibrary {
             daysInMonth = _isLeapYear(year) ? 29 : 28;
         }
     }
+
     // 1 = Monday, 7 = Sunday
     function getDayOfWeek(uint timestamp) internal pure returns (uint dayOfWeek) {
         uint _days = timestamp / SECONDS_PER_DAY;
@@ -201,20 +212,25 @@ library BokkyPooBahsDateTimeLibrary {
     function getYear(uint timestamp) internal pure returns (uint year) {
         (year,,) = _daysToDate(timestamp / SECONDS_PER_DAY);
     }
+
     function getMonth(uint timestamp) internal pure returns (uint month) {
         (,month,) = _daysToDate(timestamp / SECONDS_PER_DAY);
     }
+
     function getDay(uint timestamp) internal pure returns (uint day) {
         (,,day) = _daysToDate(timestamp / SECONDS_PER_DAY);
     }
+
     function getHour(uint timestamp) internal pure returns (uint hour) {
         uint secs = timestamp % SECONDS_PER_DAY;
         hour = secs / SECONDS_PER_HOUR;
     }
+
     function getMinute(uint timestamp) internal pure returns (uint minute) {
         uint secs = timestamp % SECONDS_PER_HOUR;
         minute = secs / SECONDS_PER_MINUTE;
     }
+
     function getSecond(uint timestamp) internal pure returns (uint second) {
         second = timestamp % SECONDS_PER_MINUTE;
     }
@@ -223,12 +239,14 @@ library BokkyPooBahsDateTimeLibrary {
         (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
         year += _years;
         uint daysInMonth = _getDaysInMonth(year, month);
+        // When adding a year to feb 29th
         if (day > daysInMonth) {
             day = daysInMonth;
         }
         newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
         require(newTimestamp >= timestamp);
     }
+
     function addMonths(uint timestamp, uint _months) internal pure returns (uint newTimestamp) {
         (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
         month += _months;
@@ -241,18 +259,22 @@ library BokkyPooBahsDateTimeLibrary {
         newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
         require(newTimestamp >= timestamp);
     }
+
     function addDays(uint timestamp, uint _days) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp + _days * SECONDS_PER_DAY;
         require(newTimestamp >= timestamp);
     }
+
     function addHours(uint timestamp, uint _hours) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp + _hours * SECONDS_PER_HOUR;
         require(newTimestamp >= timestamp);
     }
+
     function addMinutes(uint timestamp, uint _minutes) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp + _minutes * SECONDS_PER_MINUTE;
         require(newTimestamp >= timestamp);
     }
+
     function addSeconds(uint timestamp, uint _seconds) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp + _seconds;
         require(newTimestamp >= timestamp);
@@ -268,6 +290,7 @@ library BokkyPooBahsDateTimeLibrary {
         newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
         require(newTimestamp <= timestamp);
     }
+
     function subMonths(uint timestamp, uint _months) internal pure returns (uint newTimestamp) {
         (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
         uint yearMonth = year * 12 + (month - 1) - _months;
@@ -280,18 +303,22 @@ library BokkyPooBahsDateTimeLibrary {
         newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
         require(newTimestamp <= timestamp);
     }
+
     function subDays(uint timestamp, uint _days) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp - _days * SECONDS_PER_DAY;
         require(newTimestamp <= timestamp);
     }
+
     function subHours(uint timestamp, uint _hours) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp - _hours * SECONDS_PER_HOUR;
         require(newTimestamp <= timestamp);
     }
+
     function subMinutes(uint timestamp, uint _minutes) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp - _minutes * SECONDS_PER_MINUTE;
         require(newTimestamp <= timestamp);
     }
+
     function subSeconds(uint timestamp, uint _seconds) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp - _seconds;
         require(newTimestamp <= timestamp);
@@ -303,28 +330,34 @@ library BokkyPooBahsDateTimeLibrary {
         (uint toYear,,) = _daysToDate(toTimestamp / SECONDS_PER_DAY);
         _years = toYear - fromYear;
     }
+
     function diffMonths(uint fromTimestamp, uint toTimestamp) internal pure returns (uint _months) {
         require(fromTimestamp <= toTimestamp);
         (uint fromYear, uint fromMonth,) = _daysToDate(fromTimestamp / SECONDS_PER_DAY);
         (uint toYear, uint toMonth,) = _daysToDate(toTimestamp / SECONDS_PER_DAY);
         _months = toYear * 12 + toMonth - fromYear * 12 - fromMonth;
     }
+
     function diffDays(uint fromTimestamp, uint toTimestamp) internal pure returns (uint _days) {
         require(fromTimestamp <= toTimestamp);
         _days = (toTimestamp - fromTimestamp) / SECONDS_PER_DAY;
     }
+
     function diffHours(uint fromTimestamp, uint toTimestamp) internal pure returns (uint _hours) {
         require(fromTimestamp <= toTimestamp);
         _hours = (toTimestamp - fromTimestamp) / SECONDS_PER_HOUR;
     }
+
     function diffMinutes(uint fromTimestamp, uint toTimestamp) internal pure returns (uint _minutes) {
         require(fromTimestamp <= toTimestamp);
         _minutes = (toTimestamp - fromTimestamp) / SECONDS_PER_MINUTE;
     }
+
     function diffSeconds(uint fromTimestamp, uint toTimestamp) internal pure returns (uint _seconds) {
         require(fromTimestamp <= toTimestamp);
         _seconds = toTimestamp - fromTimestamp;
     }
+    
     function getDaysInYear(uint timestamp) internal pure returns (uint daysInYear) {
         return isLeapYear(timestamp) ? 366 : 365;
     }
