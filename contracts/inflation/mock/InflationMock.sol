@@ -11,9 +11,14 @@ contract InflationMock is MockContract {
     address private flareKeeper;
     address private inflationReceiver;
     uint256 public doNotReceiveMoreThan;
+    uint256 public ticker;
 
     function setDoNotReceiveNoMoreThan(uint256 _doNotReceiveMoreThan) public {
         doNotReceiveMoreThan = _doNotReceiveMoreThan;
+    }
+
+    function tick() public {
+        ticker += 1;
     }
 
     function setFlareKeeper(address _flareKeeper) public {
