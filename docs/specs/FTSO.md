@@ -71,7 +71,7 @@ When an FTSO is used for asset/$ calculations, ex: XRP/$, fXRP and wFLR holders 
 [![](https://mermaid.ink/img/eyJjb2RlIjoiZ3JhcGggTFJcbiAgICBBW1ZQIGRlbGVnYXRlZCBmcm9tIHVzZXJzXS0tPiBCW0NhbGN1bGF0ZWQgVlAgcGVyIGFkZHJlc3NdXG4gICAgQ1t3RkxSIGhlbGQgYnkgYWRkcmVzc10gLS0-IEJbQ2FsY3VsYXRlZCBWUCBwZXIgYWRkcmVzc11cbiAgICBEW1ZQIGZyb20gbGlzdGVkIGZBc3NldHNdLS0-IEJbQ2FsY3VsYXRlZCBWUCBwZXIgYWRkcmVzc11cbiAgICBCIC0tPiBFW1ZQIGFnZ3JlZ2F0ZSB1c2VkIGJ5IEZMUi8kIEZUU09dIiwibWVybWFpZCI6eyJ0aGVtZSI6ImRlZmF1bHQifSwidXBkYXRlRWRpdG9yIjpmYWxzZSwiYXV0b1N5bmMiOnRydWUsInVwZGF0ZURpYWdyYW0iOmZhbHNlfQ)](https://mermaid-js.github.io/mermaid-live-editor/edit/##eyJjb2RlIjoiZ3JhcGggTFJcbiAgICBBW1ZQIGRlbGVnYXRlZCBmcm9tIHVzZXJzXS0tPiBCW0NhbGN1bGF0ZWQgVlAgcGVyIGFkZHJlc3NdXG4gICAgQ1t3RkxSIGhlbGQgYnkgYWRkcmVzc10gLS0-IEJbQ2FsY3VsYXRlZCBWUCBwZXIgYWRkcmVzc11cbiAgICBEW1ZQIGZyb20gbGlzdGVkIGZBc3NldHNdLS0-IEJbQ2FsY3VsYXRlZCBWUCBwZXIgYWRkcmVzc11cbiAgICBCIC0tPiBFW1ZQIGFnZ3JlZ2F0ZSB1c2VkIGJ5IEZMUi8kRlRTT10iLCJtZXJtYWlkIjoie1xuICBcInRoZW1lXCI6IFwiZGVmYXVsdFwiXG59IiwidXBkYXRlRWRpdG9yIjpmYWxzZSwiYXV0b1N5bmMiOnRydWUsInVwZGF0ZURpYWdyYW0iOmZhbHNlfQ)
 
 ## Data transparency
-The price data of each provider will be transparent. Therefore, any external contract can use any data from any provider. Mapping (address => mapping (uint => uint)); /// dataProvider -> epoch → submission
+The price data of each provider will be transparent. Therefore, any external contract can use any data from any provider. Mapping (address => mapping (uint256 => uint256)); /// dataProvider -> epoch → submission
 
 # FTSO Manager
 [FTSO Manager] contract will have a single running instance in the system. As its name implies, it will manage many FTSO operations such as:
