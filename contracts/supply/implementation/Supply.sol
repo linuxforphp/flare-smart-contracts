@@ -35,9 +35,9 @@ contract Supply is Governed {
 
     uint256 immutable public initialGenesisAmountWei;
     uint256 public totalInflationAuthorizedWei;
-    uint256 public lastUpdateTimestamp;
     uint256 public totalFoundationSupplyWei;
     uint256 public distributedFoundationSupplyWei;
+
     SupplyData[] public rewardPools;
 
     Inflation public inflation;
@@ -45,6 +45,9 @@ contract Supply is Governed {
 
     // balance of burn address at last check - needed for updating circulating supply
     uint256 private burnAddressBalance;
+
+    // events
+    event AuthorizedInflationUpdateError(uint256 actual, uint256 expected);
 
     modifier onlyInflation {
         require(msg.sender == address(inflation), ERR_INFLATION_ONLY);
@@ -79,8 +82,17 @@ contract Supply is Governed {
      * @notice Update circulating supply
      * @dev Also updates the burn address amount
     */
-    function updateCirculatingSupply() external onlyInflation {
+    function updateAuthorizedInflationAndCirculatingSupply(uint256 inflationAuthorizedWei) external onlyInflation {
+        // Save old total inflation authorized value to compare with after update.
+        uint256 oldTotalInflationAuthorizedWei = totalInflationAuthorizedWei;
+        
         _updateCirculatingSupply();
+        
+        // Check if new authorized inflation was distributed and updated correctly.
+        if (totalInflationAuthorizedWei != oldTotalInflationAuthorizedWei.add(inflationAuthorizedWei)) {
+            emit AuthorizedInflationUpdateError(totalInflationAuthorizedWei - oldTotalInflationAuthorizedWei,
+                inflationAuthorizedWei);
+        }
     }
 
     /**
@@ -184,7 +196,6 @@ contract Supply is Governed {
         }
 
         _updateBurnAddressAmount();
-        lastUpdateTimestamp = block.timestamp;
     }
 
     function _updateBurnAddressAmount() internal {

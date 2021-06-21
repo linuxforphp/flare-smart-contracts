@@ -99,7 +99,32 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         await updateRewardPoolReturnData(mockRewardPools[3], 1000, 0, 300);
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
         
-        await supply.updateCirculatingSupply({ from: inflationAddress });
+        let tx = await supply.updateAuthorizedInflationAndCirculatingSupply(100, { from: inflationAddress });
+        expectEvent.notEmitted(tx, "AuthorizedInflationUpdateError");
+
+        expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
+        expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei + 200 + 5000);
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 150 + 1500 - 1000 - 1000 + 300 + 300 + 10 + 5 - 100);
+    });
+
+    it("Should update circulating supply and emit event for inflation authorized error", async() => {
+        await createRewardPools([0, 0, 1000, 500], [100, 5000, 0, 0], [50, 1000, 200, 100]);
+        await supply.addRewardPool(mockRewardPools[0].address, 0, {from: governanceAddress});
+        await supply.addRewardPool(mockRewardPools[1].address, 0, {from: governanceAddress});
+        await supply.addRewardPool(mockRewardPools[2].address, 10, {from: governanceAddress});
+        await supply.addRewardPool(mockRewardPools[3].address, 5, {from: governanceAddress});
+        expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
+        expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei + 100 + 5000);
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 50 + 1000 - 1000 - 500 + 200 + 100 + 10 + 5);
+    
+        await updateRewardPoolReturnData(mockRewardPools[0], 0, 200, 150);
+        await updateRewardPoolReturnData(mockRewardPools[1], 0, 5000, 1500);
+        await updateRewardPoolReturnData(mockRewardPools[2], 1000, 0, 300);
+        await updateRewardPoolReturnData(mockRewardPools[3], 1000, 0, 300);
+        await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
+        
+        let tx = await supply.updateAuthorizedInflationAndCirculatingSupply(400, { from: inflationAddress });
+        expectEvent(tx, "AuthorizedInflationUpdateError", {actual: toBN(100), expected: toBN(400)});
 
         expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
         expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei + 200 + 5000);
@@ -107,7 +132,7 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     });
 
     it("Should revert updating circulating supply if not from inflation", async() => {
-        await expectRevert(supply.updateCirculatingSupply(), "inflation only");
+        await expectRevert(supply.updateAuthorizedInflationAndCirculatingSupply(100), "inflation only");
     });
 
     it("Should get circulating supply (cached)", async() => {

@@ -54,9 +54,6 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
     uint256 internal constant DEFAULT_TOPUP_FACTOR_X100 = 120;
     uint256 internal constant AUTHORIZE_TIME_FRAME_SEC = 1 days;
 
-    // events
-    event AuthorizedInflationUpdateError();
-
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
      */
@@ -294,9 +291,6 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
 
             // Update time we last authorized.
             lastAuthorizationTs = block.timestamp;
-            
-            // Save old total inflation authorized value to compare with after distribution.
-            uint256 oldTotalInflationAuthorizedWei = supply.totalInflationAuthorizedWei();
 
             // Authorize inflation for current sharing percentges.
             uint256 amountAuthorizedWei = inflationAnnums.authorizeDailyInflation(
@@ -304,14 +298,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
                 inflationSharingPercentageProvider.getSharingPercentages()
             );
 
-            // Call update circulating supply method to keep inflatable balance and circulating supply updated.
-            supply.updateCirculatingSupply();
-
-            // Check if new authorized inflation was distributed correctly and updated at supply contract.
-            uint256 newTotalInflationAuthorizedWei = supply.totalInflationAuthorizedWei();
-            if (newTotalInflationAuthorizedWei != oldTotalInflationAuthorizedWei.add(amountAuthorizedWei)) {
-                emit AuthorizedInflationUpdateError();
-            }
+            // Call supply contract to keep inflatable balance and circulating supply updated.
+            supply.updateAuthorizedInflationAndCirculatingSupply(amountAuthorizedWei);
 
             // Time to compute topup amount for inflation receivers.
             uint256 topupRequestWei = inflationAnnums.computeTopupRequest(this);
