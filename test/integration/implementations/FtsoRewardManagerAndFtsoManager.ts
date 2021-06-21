@@ -42,7 +42,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             "FLR",
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
-            0
+            0,
+            1e10
         );
 
         mockInflation = await InflationMock.new();

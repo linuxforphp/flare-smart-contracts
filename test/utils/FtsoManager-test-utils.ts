@@ -60,7 +60,8 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         "FA1", flrToken.address, ftsoManager.address,  // _symbol, address _wFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
-        0 //uint256 _initialPrice
+        0, //uint256 _initialPrice
+        1e10
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
 
@@ -68,7 +69,8 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         "FA2", flrToken.address, ftsoManager.address,  // _symbol, address _wFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
-        0 //uint256 _initialPrice
+        0, //uint256 _initialPrice
+        1e10
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
 
@@ -95,7 +97,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         flrContract ? "FLR" : "FA1", flrToken.address, ftsoManager.address,  // _symbol, address _wFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
-        0 //uint256 _initialPrice
+        0, //uint256 _initialPrice
+        1e10
     ) as MockFtsoInstance;
     if (!flrContract) {
         await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
@@ -105,7 +108,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         "FA2", flrToken.address, ftsoManager.address,  // _symbol, address _wFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
-        0 //uint256 _initialPrice
+        0, //uint256 _initialPrice
+        1e10
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
 
@@ -113,7 +117,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         "FA3", flrToken.address, ftsoManager.address,  // _symbol, address _wFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
-        0 //uint256 _initialPrice
+        0, //uint256 _initialPrice
+        1e10
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso3.address, fasset3Token.address);
 
@@ -121,7 +126,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         "FA4", flrToken.address, ftsoManager.address,  // _symbol, address _wFlr, address _ftsoManager,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
-        0 //uint256 _initialPrice
+        0, //uint256 _initialPrice
+        1e10
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso4.address, fasset4Token.address);
 

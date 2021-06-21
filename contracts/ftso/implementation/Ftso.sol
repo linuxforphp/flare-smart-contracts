@@ -35,11 +35,12 @@ contract Ftso is IIFtso {
     string internal constant ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL = "Epoch not initialized for reveal";
     string internal constant ERR_EPOCH_UNKNOWN = "Unknown epoch";
 
-    // storage    
+    // storage
+    uint256 public immutable priceDeviationThresholdBIPS; // threshold for price deviation between consecutive epochs
     bool public override active;                // activation status of FTSO
     string public override symbol;              // asset symbol that identifies FTSO
     uint256 internal fAssetPriceUSD;            // current FAsset USD price
-    uint256 internal fAssetPriceTimestamp;      // time when price was updated
+    uint256 internal fAssetPriceTimestamp;      // time when price was updated    
     FtsoEpoch.State internal epochs;            // epoch storage
     FtsoVote.State internal votes;              // vote storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
@@ -70,13 +71,15 @@ contract Ftso is IIFtso {
         string memory _symbol,
         IIVPToken _wFlr,
         IIFtsoManager _ftsoManager,
-        uint256 _initialPriceUSD
+        uint256 _initialPriceUSD,
+        uint256 _priceDeviationThresholdBIPS
     ) {
         symbol = _symbol;
         wFlr = _wFlr;
         ftsoManager = _ftsoManager;
         fAssetPriceUSD = _initialPriceUSD;
         fAssetPriceTimestamp = block.timestamp;
+        priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
     }
 
     /**
@@ -167,7 +170,7 @@ contract Ftso is IIFtso {
 
             // return empty reward data
             return (_eligibleAddresses, _flrWeights, _flrWeightsSum);
-        } 
+        }
 
         // finalizationType = PriceFinalizationType.MEDIAN
         // extract data from epoch votes to memory
@@ -181,6 +184,14 @@ contract Ftso is IIFtso {
         uint256[] memory index;
         FtsoMedian.Data memory data;
         (index, data) = FtsoMedian._compute(price, weight);
+
+        // check price deviation
+        if (epochs._getPriceDeviation(_epochId, data.finalMedianPrice) > priceDeviationThresholdBIPS) {
+            // revert to average price calculation
+            _averageFinalizePriceEpoch(_epochId, epoch, false);
+            // return empty reward data
+            return (_eligibleAddresses, _flrWeights, _flrWeightsSum);
+        }
 
         // store epoch results
         _writeEpochPriceData(epoch, data, index, price, vote);

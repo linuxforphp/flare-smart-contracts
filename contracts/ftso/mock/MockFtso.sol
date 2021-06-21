@@ -13,8 +13,9 @@ contract MockFtso is Ftso {
         uint256 _startTimestamp,
         uint256 _submitPeriod,
         uint256 _revealPeriod,
-        uint256 _initialPrice
-    ) Ftso(_symbol, _wFlr, _ftsoManager, _initialPrice) {
+        uint256 _initialPrice,
+        uint256 _priceDeviationThresholdBIPS
+    ) Ftso(_symbol, _wFlr, _ftsoManager, _initialPrice, _priceDeviationThresholdBIPS) {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol
         if (_submitPeriod != 0 && _revealPeriod != 0) {
 

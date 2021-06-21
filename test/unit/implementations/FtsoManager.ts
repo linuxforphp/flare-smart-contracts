@@ -54,7 +54,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             "FLR",
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
-            0
+            0,
+            1e10
         );
         
         // Force a block in order to get most up to date time
@@ -521,7 +522,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should sucessfully replace an FTSO and change fasset ftso", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
-            let multiFtso = await Ftso.new('FLR', constants.ZERO_ADDRESS, ftsoManager.address, 0);
+            let multiFtso = await Ftso.new('FLR', constants.ZERO_ADDRESS, ftsoManager.address, 0, 1e10);
             await ftsoManager.addFtso(multiFtso.address);
             await ftsoManager.addFtso(mockFtso.address);
             await ftsoManager.setFtsoFAssetFtsos(multiFtso.address, [mockFtso.address]);

@@ -53,7 +53,8 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "ATOK",
                 wflr.address,
                 accounts[10],
-                1
+                1,
+                1e10
             );
             await ftso.configureEpochs(10, 10, 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
             await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });

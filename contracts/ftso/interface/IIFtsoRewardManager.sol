@@ -26,4 +26,19 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
 
     function setFTSOManager(IIFtsoManager _ftsoManager) external;
     function setWFLR(WFlr _wFlr) external;
+
+    /**
+     * @notice Returns the information on unclaimed reward of `_dataProvider` for `_rewardEpoch`
+     * @param _rewardEpoch          reward epoch number
+     * @param _dataProvider         address representing the data provider
+     * @return _amount              number representing the unclaimed amount
+     * @return _weight              number representing the share that has not yet been claimed
+     */
+    function getUnclaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider
+    ) external view returns (
+        uint256 _amount,
+        uint256 _weight
+    );
 }

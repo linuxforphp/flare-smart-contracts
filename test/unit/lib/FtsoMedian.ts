@@ -191,7 +191,7 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.lowWeightSum).to.equals('500');
         expect(d.rewardedWeightSum).to.equals('1500');
         expect(d.highWeightSum).to.equals('500');
-        expect(d.totalSum).to.equals('2500');
+        expect(Number(d.leftSum) + Number(d.medianWeight) + Number(d.rightSum)).to.equals(2500);
         expect(d.finalMedianPrice).to.equals('40');
     });
 
@@ -210,7 +210,7 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.lowWeightSum).to.equals('0');
         expect(d.rewardedWeightSum).to.equals('2500');
         expect(d.highWeightSum).to.equals('0');
-        expect(d.totalSum).to.equals('2500');
+        expect(Number(d.leftSum) + Number(d.medianWeight) + Number(d.rightSum)).to.equals(2500);
         expect(d.finalMedianPrice).to.equals('40');
     });
 
@@ -229,7 +229,7 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.lowWeightSum).to.equals('200');
         expect(d.rewardedWeightSum).to.equals('1700');
         expect(d.highWeightSum).to.equals('300');
-        expect(d.totalSum).to.equals('2200');
+        expect(Number(d.leftSum) + Number(d.medianWeight) + Number(d.rightSum)).to.equals(2200);
         expect(d.finalMedianPrice).to.equals('35');
     });
 });

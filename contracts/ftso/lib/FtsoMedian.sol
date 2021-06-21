@@ -3,41 +3,43 @@ pragma solidity 0.7.6;
 
 library FtsoMedian {
 
-    struct Data {
-        uint256 medianIndex;
-        uint256 quartile1Index;
-        uint256 quartile3Index;
-        uint256 leftSum1;
-        uint256 rightSum1;
-        uint256 leftSum2;
-        uint256 rightSum2; 
-        uint256 leftSum3;
-        uint256 rightSum3;
-        uint256 medianWeight;
-        uint256 lowWeightSum;
-        uint256 rewardedWeightSum;
-        uint256 highWeightSum;
-        uint256 totalSum;
-        uint256 finalMedianPrice;
+    struct Data {                   // used for storing the results of weighted median calculation
+        uint256 medianIndex;        // index of the median price
+        uint256 quartile1Index;     // index of the first price corresponding to the first quartile price
+        uint256 quartile3Index;     // index of the last price corresponding to the third quartil price        
+        uint256 leftSum;            // auxiliary sum of weights left from the median price
+        uint256 rightSum;           // auxiliary sum of weights right from the median price
+        uint256 medianWeight;       // weight of the median price
+        uint256 lowWeightSum;       // sum of weights corresponding to the prices too low for reward
+        uint256 rewardedWeightSum;  // sum of weights corresponding to the prices eligible for reward
+        uint256 highWeightSum;      // sum of weights corresponding to the prices too high for reward
+        uint256 finalMedianPrice;   // median price
     }
 
-    struct QSVariables {
-        uint256 leftSum;
-        uint256 rightSum;
-        uint256 newLeftSum;
-        uint256 newRightSum;
-        uint256 pivotWeight;
-        uint256 leftMedianWeight;
-        uint256 rightMedianWeight;
+    struct QSVariables {            // used for storing variables in quick select algorithm
+        uint256 leftSum;            // sum of values left to the current position
+        uint256 rightSum;           // sum of values right to the current position
+        uint256 newLeftSum;         // updated sum of values left to the current position
+        uint256 newRightSum;        // updated sum of values right to the current position
+        uint256 pivotWeight;        // weight associated with the pivot index
+        uint256 leftMedianWeight;   // sum of weights left to the median
+        uint256 rightMedianWeight;  // sum of weights right to the median
     }
 
-    struct QSPositions {
-        uint256 pos;
-        uint256 left;
-        uint256 right;
-        uint256 pivotId;
+    struct QSPositions {            // used for storing positions in quick select algorithm
+        uint256 pos;                // position index
+        uint256 left;               // index left to the position index
+        uint256 right;              // index right to the position index
+        uint256 pivotId;            // pivot index
     }
 
+    /**
+     * @notice Computes the weighted median price and accompanying data
+     * @param _price                positional array of prices
+     * @param _weight               positional array of weights
+     * @return _index               permutation of indices of the input arrays that determines the sorting of _price
+     * @return _d                   struct storing the weighted median price and accompanying data
+     */
     function _compute(
         uint256[] memory _price,
         uint256[] memory _weight
@@ -47,12 +49,14 @@ library FtsoMedian {
     {
         uint256 count = _price.length;
 
+        // initial index state
         _index = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
             _index[i] = i;
         }
 
-        (_d.medianIndex, _d.leftSum2, _d.rightSum2) = _quickSelect(
+        // quick select algorithm to find the weighted median
+        (_d.medianIndex, _d.leftSum, _d.rightSum) = _quickSelect(
             2,
             0,
             count - 1,
@@ -62,39 +66,44 @@ library FtsoMedian {
             _price,
             _weight
         );
-
         _d.medianWeight = _weight[_index[_d.medianIndex]];
+        uint256 totalSum = _d.medianWeight + _d.leftSum + _d.rightSum;
 
-        _d.totalSum = _d.medianWeight + _d.leftSum2 + _d.rightSum2;
-
-        // calculate quartile bounds without moving the median element
+        // procedure to find the first quartile bound
         if (_d.medianIndex == 0) {
-            (_d.quartile1Index, _d.leftSum1, _d.rightSum1) = (_d.medianIndex, 0, _d.rightSum2);
-        } else if (_d.leftSum2 <= _d.totalSum / 4) { 
-            (_d.quartile1Index, _d.leftSum1, _d.rightSum1) = (_d.medianIndex, _d.leftSum2, _d.rightSum2);
+            // first quartile index is 0
+            (_d.quartile1Index, _d.lowWeightSum, ) = (_d.medianIndex, 0, _d.rightSum);
+        } else if (_d.leftSum <= totalSum / 4) { 
+            // left sum for median is below the first quartile threshold
+            (_d.quartile1Index, _d.lowWeightSum, ) = (_d.medianIndex, _d.leftSum, _d.rightSum);
         } else {
-            (_d.quartile1Index, _d.leftSum1, _d.rightSum1) = _quickSelect(
+            // quick select algorithm to find the first quartile bound (without moving the median index)
+            (_d.quartile1Index, _d.lowWeightSum, ) = _quickSelect(
                 1,
                 0,
                 _d.medianIndex - 1,
                 0,
-                _d.rightSum2 + _d.medianWeight,
+                _d.rightSum + _d.medianWeight,
                 _index,
                 _price,
                 _weight
             );
         }
 
+        // procedure to find the third quartile bound
         if (_d.medianIndex == count - 1) {
-            (_d.quartile3Index, _d.leftSum3, _d.rightSum3) = (_d.medianIndex, _d.leftSum2, 0);
-        } else if (_d.rightSum2 <= _d.totalSum / 4) { 
-            (_d.quartile3Index, _d.leftSum3, _d.rightSum3) = (_d.medianIndex, _d.leftSum2, _d.rightSum2);
+            // third quartile index is count - 1
+            (_d.quartile3Index, , _d.highWeightSum) = (_d.medianIndex, _d.leftSum, 0);
+        } else if (_d.rightSum <= totalSum / 4) {
+            // right sum for median is below the third quartile threshold
+            (_d.quartile3Index, , _d.highWeightSum) = (_d.medianIndex, _d.leftSum, _d.rightSum);
         } else {
-            (_d.quartile3Index, _d.leftSum3, _d.rightSum3) = _quickSelect(
+            // quick select algorithm to find the third quartile bound (without moving the median index)
+            (_d.quartile3Index, , _d.highWeightSum) = _quickSelect(
                 3,
                 _d.medianIndex + 1,
                 count - 1,
-                _d.leftSum2 + _d.medianWeight,
+                _d.leftSum + _d.medianWeight,
                 0,
                 _index,
                 _price,
@@ -102,19 +111,27 @@ library FtsoMedian {
             );
         }
 
+        // final median price computation
         _d.finalMedianPrice = _price[_index[_d.medianIndex]];
-        if (_d.leftSum2 + _d.medianWeight == _d.totalSum / 2 && _d.totalSum % 2 == 0) {
+        if (_d.leftSum + _d.medianWeight == totalSum / 2 && totalSum % 2 == 0) {
+            // if median is "in the middle", take the average price of the two consecutive prices
             _d.finalMedianPrice =
                 (_d.finalMedianPrice + _closestPriceFix(_d.medianIndex, count - 1, _index, _price)) / 2;
         }
 
+        // calculation of first and third quartile index to include indices with the same price
         (_d.quartile1Index, _d.lowWeightSum) = _samePriceFix(
-            _d.quartile1Index, 0, -1, _d.leftSum1, _index, _price, _weight);
+            _d.quartile1Index, 0, -1, _d.lowWeightSum, _index, _price, _weight);
         (_d.quartile3Index, _d.highWeightSum) = _samePriceFix(
-            _d.quartile3Index, count - 1, 1, _d.rightSum3, _index, _price, _weight);
-        _d.rewardedWeightSum = _d.leftSum2 + _d.rightSum2 + _d.medianWeight - _d.lowWeightSum - _d.highWeightSum;
+            _d.quartile3Index, count - 1, 1, _d.highWeightSum, _index, _price, _weight);
+
+        // reward weight sum
+        _d.rewardedWeightSum = totalSum - _d.lowWeightSum - _d.highWeightSum;
     }
 
+    /**
+     * @notice Performs quick select algorithm
+     */
     function _quickSelect(
         uint256 _k,
         uint256 _start,
@@ -203,13 +220,9 @@ library FtsoMedian {
         return (0, 0, 0);
     }
 
-    function _swap(uint256 _i, uint256 _j, uint256[] memory _index) internal pure {
-        if (_i == _j) return;
-        uint256 tmp = _index[_i];
-        _index[_i] = _index[_j];
-        _index[_j] = tmp;
-    }
-
+    /**
+     * @notice Partitions the index array `index` according to the pivot
+     */
     function _partition(
         uint256 left0,
         uint256 right0,
@@ -234,6 +247,7 @@ library FtsoMedian {
             uint256 eltId = index[i];
             if (price[eltId] < pivotValue) {
                 sums[0] += weight[eltId];
+                // move index to the left
                 _swap(storeIndex, i, index);
                 storeIndex++;
             } else {
@@ -244,6 +258,19 @@ library FtsoMedian {
         return (storeIndex, sums[0], sums[1]);
     }
 
+    /**
+     * @notice Swaps indices `_i` and `_j` in the index array `_index` 
+     */
+    function _swap(uint256 _i, uint256 _j, uint256[] memory _index) internal pure {
+        if (_i == _j) return;
+        uint256 tmp = _index[_i];
+        _index[_i] = _index[_j];
+        _index[_j] = tmp;
+    }
+
+    /**
+     * @notice Handles the same price at the first or third quartile index
+     */
     function _samePriceFix(
         uint256 _start,
         uint256 _end,
@@ -271,6 +298,10 @@ library FtsoMedian {
         return (uint256(storeIndex - _direction), weightSum);
     }
 
+    /**
+     * @notice Finds the price between `_start + 1` and `_end`that is the closest to the price at `_start` index
+     * @dev If _start = _end, _price[_start] is returned
+     */
     function _closestPriceFix(
         uint256 _start,
         uint256 _end,
@@ -280,11 +311,13 @@ library FtsoMedian {
         internal pure returns (uint256)
     {
         if (_start == _end) {
+            // special case
             return _price[_index[_start]];
         }
 
-        uint closestPrice = _price[_index[_start + 1]];
-        uint newPrice;
+        // find the closest price between `_start + 1` and `_end`
+        uint256 closestPrice = _price[_index[_start + 1]];
+        uint256 newPrice;
         for (uint256 i = _start + 2; i <= _end; i++) {
             newPrice = _price[_index[i]];
             // assumes all the elements to the right of start are greater or equal 
