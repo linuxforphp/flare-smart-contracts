@@ -98,4 +98,21 @@ library CheckPointsByAddress {
         // Write the value
         history.writeValue(_value);
     }
+    
+    /**
+     * Delete at most `_count` of the oldest checkpoints.
+     * At least one checkpoint at or before `_cleanupBlockNumber` will remain 
+     * (unless the history was empty to start with).
+     */    
+    function cleanupOldCheckpoints(
+        CheckPointsByAddressState storage _self, 
+        address _owner, 
+        uint256 _count,
+        uint256 _cleanupBlockNumber
+    ) internal {
+        if (_owner != address(0)) {
+            _self.historyByAddress[_owner].cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+        }
+    }
+    
 }

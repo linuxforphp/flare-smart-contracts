@@ -3,7 +3,7 @@
 import { DelegatableMockContract, DelegatableMockInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
-const { expectRevert } = require('@openzeppelin/test-helpers');
+const { expectRevert, time } = require('@openzeppelin/test-helpers');
 const {getTestFile} = require('../../../utils/constants');
 
 const truffleAssert = require('truffle-assertions');
@@ -147,6 +147,90 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     // Assert
     await expectRevert(delegatable.delegateExplicit(accounts[1], 10, { from: accounts[1] }),
       "Cannot delegate to self");
+  });
+  
+  it("Should set cleanup block", async () => {
+    // Assemble
+    time.advanceBlock();
+    const blk = await web3.eth.getBlockNumber();
+    time.advanceBlock();
+    // Act
+    await delegatable.setCleanupBlockNumber(blk);
+    // Assert
+    const cleanblk = await delegatable.getCleanupBlockNumber();
+    assert.equal(cleanblk.toNumber(), blk);
+  });
+
+  it("Should check cleanup block validity", async () => {
+    // Assemble
+    time.advanceBlock();
+    const blk = await web3.eth.getBlockNumber();
+    time.advanceBlock();
+    // Act
+    await delegatable.setCleanupBlockNumber(blk);
+    // Assert
+    await expectRevert(delegatable.setCleanupBlockNumber(blk - 1), "Cleanup block number must never decrease");
+    const blk2 = await web3.eth.getBlockNumber();
+    await expectRevert(delegatable.setCleanupBlockNumber(blk2 + 1), "Cleanup block must be in the past");
+  });
+
+  it("Should cleanup history (vote power)", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await delegatable.mintVotePower(accounts[1], 50);
+    const blk2 = await web3.eth.getBlockNumber();
+    // Act
+    await delegatable.setCleanupBlockNumber(toBN(blk2));
+    await delegatable.mintVotePower(accounts[1], 30);
+    // Assert
+    // should fail at blk1
+    await expectRevert(delegatable.votePowerOfAt(accounts[1], blk1), 
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const value = await delegatable.votePowerOfAt(accounts[1], blk2);
+    assert.equal(value.toNumber(), 150);
+  });
+
+  it("Should cleanup history (percentage)", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    await delegatable.delegate(accounts[2], toBN(1000), { from: accounts[1] });
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await delegatable.delegate(accounts[2], toBN(3000), { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    // Act
+    await delegatable.setCleanupBlockNumber(toBN(blk2));
+    await delegatable.delegate(accounts[2], toBN(5000), { from: accounts[1] });
+    // Assert
+    // should fail at blk1
+    await expectRevert(delegatable.undelegatedVotePowerOfAt(accounts[1], blk1),
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const undelegated = await delegatable.undelegatedVotePowerOfAt(accounts[1], blk2);
+    assert.equal(undelegated.toNumber(), 70);
+  });
+  
+  it("Should cleanup history (explicit)", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 100);
+    await delegatable.delegateExplicit(accounts[2], toBN(10), { from: accounts[1] });
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await delegatable.delegateExplicit(accounts[2], toBN(30), { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    // Act
+    await delegatable.setCleanupBlockNumber(toBN(blk2));
+    await delegatable.delegateExplicit(accounts[2], toBN(50), { from: accounts[1] });
+    // Assert
+    // should fail at blk1
+    await expectRevert(delegatable.undelegatedVotePowerOfAt(accounts[1], blk1),
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const undelegated = await delegatable.undelegatedVotePowerOfAt(accounts[1], blk2);
+    assert.equal(undelegated.toNumber(), 70);
   });
 
 });

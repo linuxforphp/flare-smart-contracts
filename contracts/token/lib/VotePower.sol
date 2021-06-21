@@ -141,6 +141,20 @@ library VotePower {
     }
 
     /**
+     * Delete at most `_count` of the oldest checkpoints.
+     * At least one checkpoint at or before `_cleanupBlockNumber` will remain 
+     * (unless the history was empty to start with).
+     */    
+    function cleanupOldCheckpoints(
+        VotePowerState storage _self, 
+        address _owner, 
+        uint256 _count,
+        uint256 _cleanupBlockNumber
+    ) internal {
+        _self.votePowerByAddress.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
+    }
+
+    /**
      * @notice Get the vote power of `_who` at `_blockNumber`.
      * @param _self A VotePowerState instance to manage.
      * @param _who Address to get vote power.

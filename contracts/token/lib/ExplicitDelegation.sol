@@ -46,6 +46,22 @@ library ExplicitDelegation {
         _self.delegatedTotal.writeValue(newTotal);
     }
     
+
+    /**
+     * Delete at most `_count` of the oldest checkpoints.
+     * At least one checkpoint at or before `_cleanupBlockNumber` will remain 
+     * (unless the history was empty to start with).
+     */    
+    function cleanupOldCheckpoints(
+        DelegationState storage _self, 
+        address _owner, 
+        uint256 _count,
+        uint256 _cleanupBlockNumber
+    ) internal {
+        _self.delegatedTotal.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+        _self.delegatedVotePower.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
+    }
+    
     /**
      * @notice Get the _total of the explicit vote power delegation amount.
      * @param _self A DelegationState instance to manage.

@@ -17,4 +17,10 @@ contract CheckPointableMock is CheckPointable {
     function transmitAtNow(address from, address to, uint256 _amount) public {
         _transmitAtNow(from, to, _amount);
     }
+    function setCleanupBlockNumber(uint256 _blockNumber) public {
+        _setCleanupBlockNumber(_blockNumber);
+    }
+    function getCleanupBlockNumber() public view returns (uint256) {
+        return _cleanupBlockNumber();
+    }
 }

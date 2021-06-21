@@ -21,4 +21,7 @@ contract CheckPointHistoryMock {
     function writeValue(uint256 _value) public {
         state.writeValue(_value);
     }
+    function cleanupOldCheckpoints(uint256 _count, uint256 _cleanupBlockNumber) public {
+        state.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+    }
 }

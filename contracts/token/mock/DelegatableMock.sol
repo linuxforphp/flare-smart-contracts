@@ -135,4 +135,12 @@ contract DelegatableMock is Delegatable {
         _count = _delegateAddresses.length;
         _delegationMode = uint256(mode);
     }
+
+    function setCleanupBlockNumber(uint256 _blockNumber) public {
+        _setCleanupBlockNumber(_blockNumber);
+    }
+    
+    function getCleanupBlockNumber() public view returns (uint256) {
+        return _cleanupBlockNumber();
+    }
 }

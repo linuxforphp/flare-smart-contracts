@@ -2,7 +2,7 @@ import { CheckPointableMockContract, CheckPointableMockInstance } from "../../..
 import { toBN } from "../../utils/test-helpers";
 
 // Unit tests for CheckPointable through CheckPointableMock contract
-const {expectRevert, constants} = require('@openzeppelin/test-helpers');
+const {expectRevert, constants, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const CheckPointable = artifacts.require("CheckPointableMock") as CheckPointableMockContract;
@@ -57,4 +57,52 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
     assert.equal(account2PastValue as any, 10);
     assert.equal(account2Value as any, 0);
   });
+  
+  it("Should set cleanup block", async () => {
+    // Assemble
+    time.advanceBlock();
+    const blk = await web3.eth.getBlockNumber();
+    time.advanceBlock();
+    // Act
+    await checkPointable.setCleanupBlockNumber(blk);
+    // Assert
+    const cleanblk = await checkPointable.getCleanupBlockNumber();
+    assert.equal(cleanblk.toNumber(), blk);
+  });
+
+  it("Should check cleanup block validity", async () => {
+    // Assemble
+    time.advanceBlock();
+    const blk = await web3.eth.getBlockNumber();
+    time.advanceBlock();
+    // Act
+    await checkPointable.setCleanupBlockNumber(blk);
+    // Assert
+    await expectRevert(checkPointable.setCleanupBlockNumber(blk - 1), "Cleanup block number must never decrease");
+    const blk2 = await web3.eth.getBlockNumber();
+    await expectRevert(checkPointable.setCleanupBlockNumber(blk2 + 1), "Cleanup block must be in the past");
+  });
+
+  it("Should cleanup history", async () => {
+    // Assemble
+    await checkPointable.mintForAtNow(accounts[1], 100);
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await checkPointable.transmitAtNow(accounts[1], accounts[2], toBN(10), { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    // Act
+    await checkPointable.setCleanupBlockNumber(toBN(blk2));
+    await checkPointable.transmitAtNow(accounts[1], accounts[2], toBN(10), { from: accounts[1] });
+    const blk3 = await web3.eth.getBlockNumber();
+    // Assert
+    // should fail at blk1
+    await expectRevert(checkPointable.balanceOfAt(accounts[1], blk1),
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const value = await checkPointable.balanceOfAt(accounts[1], blk2);
+    assert.equal(value.toNumber(), 90);
+    const value2 = await checkPointable.balanceOfAt(accounts[1], blk3);
+    assert.equal(value2.toNumber(), 80);
+  });
+
 });

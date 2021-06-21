@@ -15,18 +15,34 @@ abstract contract CheckPointable {
     using CheckPointHistoryCache for CheckPointHistoryCache.CacheState;
     using SafeMath for uint256;
 
+    // The number of history cleanup steps executed for every write operation.
+    // It is more than 1 to make as certain as possible that all history gets cleaned eventually.
+    uint256 private constant CLEANUP_COUNT = 2;
+    
     // Private member variables
     CheckPointsByAddress.CheckPointsByAddressState private balanceHistory;
     CheckPointHistory.CheckPointHistoryState private totalSupply;
     CheckPointHistoryCache.CacheState private totalSupplyCache;
 
+    // Historic data for the blocks before `cleanupBlockNumber` can be erased,
+    // history before that block should never be used since it can be inconsistent.
+    uint256 private cleanupBlockNumber;
+    
+    modifier notBeforeCleanupBlock(uint256 _blockNumber) {
+        require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
+        _;
+    }
+    
     /**
      * @dev Queries the token balance of `_owner` at a specific `_blockNumber`.
      * @param _owner The address from which the balance will be retrieved.
      * @param _blockNumber The block number when the balance is queried.
      * @return _balance The balance at `_blockNumber`.
      **/
-    function balanceOfAt(address _owner, uint256 _blockNumber) public virtual view returns (uint256 _balance) {
+    function balanceOfAt(
+        address _owner, 
+        uint256 _blockNumber
+    ) public virtual view notBeforeCleanupBlock(_blockNumber) returns (uint256 _balance) {
         return balanceHistory.valueOfAt(_owner, _blockNumber);
     }
 
@@ -38,7 +54,9 @@ abstract contract CheckPointable {
     function _burnForAtNow(address _owner, uint256 _amount) internal virtual {
         uint256 newBalance = balanceOfAt(_owner, block.number).sub(_amount, "Burn too big for owner");
         balanceHistory.writeValue(_owner, newBalance);
+        balanceHistory.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
         totalSupply.writeValue(totalSupplyAt(block.number).sub(_amount, "Burn too big for total supply"));
+        totalSupply.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
     }
 
     /**
@@ -49,7 +67,9 @@ abstract contract CheckPointable {
     function _mintForAtNow(address _owner, uint256 _amount) internal virtual {
         uint256 newBalance = balanceOfAt(_owner, block.number).add(_amount);
         balanceHistory.writeValue(_owner, newBalance);
+        balanceHistory.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
         totalSupply.writeValue(totalSupplyAt(block.number).add(_amount));
+        totalSupply.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
     }
 
     /**
@@ -57,7 +77,9 @@ abstract contract CheckPointable {
      * @param _blockNumber The block number when the _totalSupply is queried
      * @return _totalSupply The total amount of tokens at `_blockNumber`
      **/
-    function totalSupplyAt(uint256 _blockNumber) public virtual view returns(uint256 _totalSupply) {
+    function totalSupplyAt(
+        uint256 _blockNumber
+    ) public virtual view notBeforeCleanupBlock(_blockNumber) returns(uint256 _totalSupply) {
         return totalSupply.valueAt(_blockNumber);
     }
 
@@ -66,7 +88,9 @@ abstract contract CheckPointable {
      * @param _blockNumber The block number when the _totalSupply is queried
      * @return _totalSupply The total amount of tokens at `_blockNumber`
      **/
-    function _totalSupplyAtCached(uint256 _blockNumber) internal returns(uint256 _totalSupply) {
+    function _totalSupplyAtCached(
+        uint256 _blockNumber
+    ) internal notBeforeCleanupBlock(_blockNumber) returns(uint256 _totalSupply) {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
         return totalSupplyCache.valueAt(totalSupply, _blockNumber);
@@ -80,5 +104,23 @@ abstract contract CheckPointable {
      */
     function _transmitAtNow(address _from, address _to, uint256 _amount) internal virtual {
         balanceHistory.transmit(_from, _to, _amount);
+        balanceHistory.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
+        balanceHistory.cleanupOldCheckpoints(_to, CLEANUP_COUNT, cleanupBlockNumber);
+    }
+    
+    /**
+     * Set the cleanup block number.
+     */
+    function _setCleanupBlockNumber(uint256 _blockNumber) internal {
+        require(_blockNumber >= cleanupBlockNumber, "Cleanup block number must never decrease");
+        require(_blockNumber < block.number, "Cleanup block must be in the past");
+        cleanupBlockNumber = _blockNumber;
+    }
+
+    /**
+     * Get the cleanup block number.
+     */
+    function _cleanupBlockNumber() internal view returns (uint256) {
+        return cleanupBlockNumber;
     }
 }

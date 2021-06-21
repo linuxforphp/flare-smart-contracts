@@ -1,5 +1,5 @@
 import { VPTokenMockInstance } from "../../../typechain-truffle";
-import { compareArrays } from "../../utils/test-helpers";
+import { compareArrays, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
@@ -671,4 +671,60 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await expectRevert(vpToken.setVpContract(newVpContract.address),
       "VPContract already set on VPToken");
   });
+  
+  it("Should check cleanup block validity", async () => {
+    // Assemble
+    time.advanceBlock();
+    const blk = await web3.eth.getBlockNumber();
+    time.advanceBlock();
+    // Act
+    await vpToken.setCleanupBlockNumber(blk);
+    // Assert
+    await expectRevert(vpToken.setCleanupBlockNumber(blk - 1), "Cleanup block number must never decrease");
+    const blk2 = await web3.eth.getBlockNumber();
+    await expectRevert(vpToken.setCleanupBlockNumber(blk2 + 1), "Cleanup block must be in the past");
+  });
+
+  it("Should cleanup history", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await vpToken.transfer(accounts[2], toBN(10), { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    // Act
+    await vpToken.setCleanupBlockNumber(toBN(blk2));
+    await vpToken.transfer(accounts[2], toBN(10), { from: accounts[1] });
+    const blk3 = await web3.eth.getBlockNumber();
+    // Assert
+    // should fail at blk1
+    await expectRevert(vpToken.balanceOfAt(accounts[1], blk1),
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const value = await vpToken.balanceOfAt(accounts[1], blk2);
+    assert.equal(value.toNumber(), 90);
+    const value2 = await vpToken.balanceOfAt(accounts[1], blk3);
+    assert.equal(value2.toNumber(), 80);
+  });
+
+  it("Should cleanup history (delegation)", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.delegate(accounts[2], toBN(1000), { from: accounts[1] });
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await vpToken.delegate(accounts[2], toBN(3000), { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    // Act
+    await vpToken.setCleanupBlockNumber(toBN(blk2));
+    await vpToken.delegate(accounts[2], toBN(5000), { from: accounts[1] });
+    // Assert
+    // should fail at blk1
+    await expectRevert(vpToken.undelegatedVotePowerOfAt(accounts[1], blk1),
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const undelegated = await vpToken.undelegatedVotePowerOfAt(accounts[1], blk2);
+    assert.equal(undelegated.toNumber(), 70);
+  });
+
 });

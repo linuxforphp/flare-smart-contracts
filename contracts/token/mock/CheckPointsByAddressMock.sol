@@ -25,4 +25,7 @@ contract CheckPointsByAddressMock {
     function writeValue(address _owner, uint256 _value) public {
         state.writeValue(_owner, _value);
     }
+    function cleanupOldCheckpoints(address _owner, uint256 _count, uint256 _cleanupBlockNumber) public {
+        state.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
+    }
 }

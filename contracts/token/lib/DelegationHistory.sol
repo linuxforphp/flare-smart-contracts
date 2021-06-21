@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import {Math} from "@openzeppelin/contracts/math/Math.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../../utils/implementation/SafePct.sol";
 
@@ -31,8 +32,11 @@ library DelegationHistory {
     }
 
     struct CheckPointHistoryState {
-        // `checkpoints` is an array that tracks checkpoints at non-contiguous block numbers
+        // `checkpoints` is an array that tracks delegations at non-contiguous block numbers
         CheckPoint[] checkpoints;
+        // `checkpoints` before `startIndex` have been deleted
+        // INVARIANT: checkpoints.length == 0 || startIndex < checkpoints.length      (strict!)
+        uint256 startIndex;
     }
 
     /**
@@ -47,7 +51,7 @@ library DelegationHistory {
         address _delegate, 
         uint256 _blockNumber
     ) internal view returns (uint256 _value) {
-        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
 
         // find the delegate and return the corresponding value
@@ -126,7 +130,7 @@ library DelegationHistory {
         address[] memory _delegates,
         uint256[] memory _values
     ) {
-        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) {
             return (new address[](0), new uint256[](0));
         }
@@ -168,7 +172,7 @@ library DelegationHistory {
         CheckPointHistoryState storage _self, 
         uint256 _blockNumber
     ) internal view returns (uint256 _total) {
-        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
         
         CheckPoint storage cp = _self.checkpoints[index];
@@ -191,7 +195,7 @@ library DelegationHistory {
     }
 
     /**
-     * Get the sum of all delegation values, every one scale by `_mul/_div`.
+     * Get the sum of all delegation values, every one scaled by `_mul/_div`.
      * @param _self A CheckPointHistoryState instance to query.
      * @param _mul The multiplier.
      * @param _div The divisor.
@@ -204,7 +208,7 @@ library DelegationHistory {
         uint256 _div,
         uint256 _blockNumber
     ) internal view returns (uint256 _total) {
-        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _blockNumber);
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
         
         CheckPoint storage cp = _self.checkpoints[index];
@@ -224,6 +228,32 @@ library DelegationHistory {
             // add an empty checkpoint
             CheckPoint storage cp = _self.checkpoints.push();
             cp.fromBlock = block.number;
+        }
+    }
+
+    /**
+     * Delete at most `_count` of the oldest checkpoints.
+     * At least one checkpoint at or before `_cleanupBlockNumber` will remain 
+     * (unless the history was empty to start with).
+     */    
+    function cleanupOldCheckpoints(
+        CheckPointHistoryState storage _self, 
+        uint256 _count,
+        uint256 _cleanupBlockNumber
+    ) internal {
+        if (_cleanupBlockNumber == 0) return;   // optimization for when cleaning is not enabled
+        uint256 length = _self.checkpoints.length;
+        if (length == 0) return;
+        uint256 startIndex = _self.startIndex;
+        uint256 endIndex = Math.min(startIndex.add(_count), length - 1);    // last element can never be deleted
+        uint256 index = startIndex;
+        // we can delete `checkpoint[index]` while the next checkpoint is at `_cleanupBlockNumber` or before
+        while (index < endIndex && _self.checkpoints[index + 1].fromBlock <= _cleanupBlockNumber) {
+            delete _self.checkpoints[index];
+            index++;
+        }
+        if (index > startIndex) {   // index is the first not deleted index
+            _self.startIndex = index;
         }
     }
 
@@ -295,14 +325,16 @@ library DelegationHistory {
     /**
      * @notice Binary search of _checkpoints array.
      * @param _checkpoints An array of CheckPoint to search.
+     * @param _startIndex Smallest possible index to be returned.
      * @param _blockNumber The block number to search for.
      */
     function _binarySearchGreatestBlockLessThan(
         CheckPoint[] storage _checkpoints, 
+        uint256 _startIndex,
         uint256 _blockNumber
     ) private view returns (uint256 _index) {
         // Binary search of the value by given block number in the array
-        uint256 min = 0;
+        uint256 min = _startIndex;
         uint256 max = _checkpoints.length.sub(1);
         while (max > min) {
             uint256 mid = (max.add(min).add(1)).div(2);
@@ -319,6 +351,7 @@ library DelegationHistory {
      * @notice Binary search of _checkpoints array. Extra optimized for the common case when we are 
      *   searching for the last block.
      * @param _checkpoints An array of CheckPoint to search.
+     * @param _startIndex Smallest possible index to be returned.
      * @param _blockNumber The block number to search for.
      * @return _found true if value was found (only `false` if `_blockNumber` is before first 
      *   checkpoint or the checkpoint array is empty)
@@ -326,6 +359,7 @@ library DelegationHistory {
      */
     function _findGreatestBlockLessThan(
         CheckPoint[] storage _checkpoints, 
+        uint256 _startIndex,
         uint256 _blockNumber
     ) private view returns (
         bool _found,
@@ -337,11 +371,13 @@ library DelegationHistory {
         } else if (_blockNumber >= _checkpoints[historyCount - 1].fromBlock) {
             _found = true;
             _index = historyCount - 1;
-        } else if (_blockNumber < _checkpoints[0].fromBlock) {
+        } else if (_blockNumber < _checkpoints[_startIndex].fromBlock) {
+            // reading data before `_startIndex` is only safe before first cleanup
+            require(_startIndex == 0, "Reading from old (cleaned-up) block");
             _found = false;
         } else {
             _found = true;
-            _index = _binarySearchGreatestBlockLessThan(_checkpoints, _blockNumber);
+            _index = _binarySearchGreatestBlockLessThan(_checkpoints, _startIndex, _blockNumber);
         }
     }
 }

@@ -250,4 +250,39 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assert
     await expectRevert(delegatePromise, MAX_TOTAL_PCT_MSG);
   });
+  
+  it("Should delete old checkpoints", async () => {
+    // Assemble
+    const b = [];
+    for (let i = 0; i < 10; i++) {
+      await delegation.addReplaceDelegate(accounts[1], i);
+      b.push(await web3.eth.getBlockNumber());
+    }
+    // Act
+    const cleanupBlock = b[5];
+    for (let i = 0; i < 4; i++) {
+      await delegation.cleanupOldCheckpoints(2, cleanupBlock);
+    }
+    // Assert
+    for (let i = 0; i < 5; i++) {
+      await expectRevert(delegation.getDelegatedValueAt(accounts[1], b[i]), "Reading from old (cleaned-up) block");
+      await expectRevert(delegation.getDelegationsAt(b[i]), "Reading from old (cleaned-up) block");
+      await expectRevert(delegation.getDelegatedTotalAt(b[i]), "Reading from old (cleaned-up) block");
+    }
+    for (let i = 5; i < 10; i++) {
+      const value = await delegation.getDelegatedValueAt(accounts[1], b[i]);
+      assert.equal(value.toNumber(), i);
+    }
+  });
+
+  it("Delete old checkpoints shouldn't fail with empty history", async () => {
+    // Assemble
+    const cleanupBlock = await web3.eth.getBlockNumber();
+    // Act
+    await delegation.cleanupOldCheckpoints(2, cleanupBlock);
+    // Assert
+    const value = await delegation.getDelegatedValueAt(accounts[1], cleanupBlock);
+    assert.equal(value.toNumber(), 0);
+  });
+
 });
