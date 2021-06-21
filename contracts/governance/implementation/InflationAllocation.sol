@@ -60,7 +60,7 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
 
     /**
      * @dev _inflation contract need not be set here, but must be set at the point that
-     *   that annual inflation percentages are to be retrieved from the schedule.
+     *   annual inflation percentages are to be retrieved from the schedule.
      */
     constructor(
         address _governance,
