@@ -377,4 +377,35 @@ library FtsoEpoch {
         }
     }
 
+    /**
+     * @notice Computes price deviation from the previous epoch in BIPS
+     * @param _state                Epoch state
+     * @param _epochId              Epoch id
+     * @param _epochPrice           Epoch price
+     */
+    function _getPriceDeviation(
+        State storage _state,
+        uint256 _epochId,
+        uint256 _epochPrice
+    ) internal view returns (uint256)
+    {
+        if (_epochId == 0) {
+            return 0;
+        }
+        uint256 previousEpochPrice = _state.instance[_epochId - 1].price;
+        if (_epochPrice == previousEpochPrice) {
+            return 0;
+        }
+        if (_epochPrice == 0) {
+            return TERA; // "infinity"
+        }        
+        uint256 priceEpochDiff;
+        if (previousEpochPrice > _epochPrice) {
+            priceEpochDiff = previousEpochPrice - _epochPrice;
+        } else {
+            priceEpochDiff = _epochPrice - previousEpochPrice;
+        }
+        return priceEpochDiff.mulDiv(BIPS100, _epochPrice);
+    }
+
 }

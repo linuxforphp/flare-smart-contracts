@@ -18,7 +18,8 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
         "FASSET", flrToken.address, signer.address,  // symbol, address _wFlr, address _ftsoManager,
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
-        1 //uint256 _initialPrice
+        1, //uint256 _initialPrice
+        1e10
     );
     await ftso.connect(signer).setFAsset(assetToken.address);
 

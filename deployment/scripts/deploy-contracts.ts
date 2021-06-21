@@ -182,7 +182,7 @@ async function main(parameters: any) {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, parameters.initialWflrPrice);
+  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, parameters.initialWflrPrice, parameters.priceDeviationThresholdBIPS);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address);
 
   // Deploy FAsset, minter, and ftso for XRP
@@ -196,7 +196,8 @@ async function main(parameters: any) {
     parameters.XRP.fAssetSymbol,
     parameters.XRP.fAssetDecimals,
     parameters.XRP.dummyFAssetMinterMax,
-    parameters.XRP.initialPrice);
+    parameters.XRP.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Deploy FAsset, minter, and ftso for LTC
   console.error("Rigging LTC...");
@@ -209,7 +210,8 @@ async function main(parameters: any) {
     parameters.LTC.fAssetSymbol,
     parameters.LTC.fAssetDecimals,
     parameters.LTC.dummyFAssetMinterMax,
-    parameters.LTC.initialPrice);
+    parameters.LTC.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Deploy FAsset, minter, and ftso for XDG
   console.error("Rigging XDG...");
@@ -222,7 +224,8 @@ async function main(parameters: any) {
     parameters.XDG.fAssetSymbol,
     parameters.XDG.fAssetDecimals,
     parameters.XDG.dummyFAssetMinterMax,
-    parameters.XDG.initialPrice);
+    parameters.XDG.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Deploy FAsset, minter, and ftso for ADA
   console.error("Rigging ADA...");
@@ -235,7 +238,8 @@ async function main(parameters: any) {
     parameters.ADA.fAssetSymbol,
     parameters.ADA.fAssetDecimals,
     parameters.ADA.dummyFAssetMinterMax,
-    parameters.ADA.initialPrice);
+    parameters.ADA.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Deploy FAsset, minter, and ftso for ALGO
   console.error("Rigging ALGO...");
@@ -248,7 +252,8 @@ async function main(parameters: any) {
     parameters.ALGO.fAssetSymbol,
     parameters.ALGO.fAssetDecimals,
     parameters.ALGO.dummyFAssetMinterMax,
-    parameters.ALGO.initialPrice);
+    parameters.ALGO.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Deploy FAsset, minter, and ftso for BCH
   console.error("Rigging BCH...");
@@ -261,7 +266,8 @@ async function main(parameters: any) {
     parameters.BCH.fAssetSymbol,
     parameters.BCH.fAssetDecimals,
     parameters.BCH.dummyFAssetMinterMax,
-    parameters.BCH.initialPrice);
+    parameters.BCH.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Deploy FAsset, minter, and ftso for DGB
   console.error("Rigging DGB...");
@@ -274,7 +280,8 @@ async function main(parameters: any) {
     parameters.DGB.fAssetSymbol,
     parameters.DGB.fAssetDecimals,
     parameters.DGB.dummyFAssetMinterMax,
-    parameters.DGB.initialPrice);
+    parameters.DGB.initialPrice,
+    parameters.priceDeviationThresholdBIPS);
 
   // Setup governance parameters for the ftso manager
   console.error("Setting FTSO manager governance parameters...");
@@ -335,7 +342,8 @@ async function deployNewFAsset(
   symbol: string,
   decimals: number,
   maxMintRequestTwei: number,
-  initialPrice: number):
+  initialPrice: number,
+  priceDeviationThresholdBIPS: number):
   Promise<[fAssetToken: FAssetTokenInstance,
     dummyFAssetMinter: DummyFAssetMinterInstance,
     ftso: FtsoInstance]> {
@@ -358,7 +366,7 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, initialPrice);
+  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, initialPrice, priceDeviationThresholdBIPS);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${ symbol }`, ftso.address);
 

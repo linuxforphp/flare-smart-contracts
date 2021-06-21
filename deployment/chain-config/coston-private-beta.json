@@ -32,7 +32,8 @@
       "0x92561f28ec438ee9831d00d1d59fbdc981b762b2",
       "0x2ffd013aaa7b5a7da93336c2251075202b33fb2b"
   ],
-  "initialWflrPrice": 0,   
+  "initialWflrPrice": 0,
+  "priceDeviationThresholdBIPS": 10000,
   "XRP": {
       "fAssetName": "Flare Asset XRP",
       "fAssetSymbol": "FXRP",

@@ -90,7 +90,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
         });
 
@@ -210,7 +211,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             await ftso.setFAsset(mockVpToken.address, {from: accounts[10]});
@@ -285,7 +287,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             await ftso.setFAsset(mockVpToken.address, {from: accounts[10]});
@@ -591,7 +594,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [], { from: accounts[10] });
@@ -666,7 +670,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                10000 // price deviation threshold in BIPS (100%)
             );
 
             await ftso.setFAsset(mockVpToken.address, {from: accounts[10]});
@@ -950,6 +955,48 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 {epochId: toBN(epochId), price: toBN(450), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(2)});
         });
 
+        it("Should finalize price epoch using trusted addresses votes if epoch has large price deviation", async() => {
+            // round 1 - current fasset price = 0
+            await ftso.submitPriceHash(submitPriceHash(5000, 123, accounts[1]), {from: accounts[1]});
+            await ftso.submitPriceHash(submitPriceHash(2500, 124, accounts[2]), {from: accounts[2]});
+            await ftso.submitPriceHash(submitPriceHash(4000, 125, accounts[3]), {from: accounts[3]});
+
+            await setMockVotePowerAt(10, 50000, 1000000);
+            await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await setMockVotePowerOfAt(10, 1000, 100, accounts[1]);
+            await ftso.revealPrice(epochId, 5000, 123, {from: accounts[1]});
+            await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
+            await ftso.revealPrice(epochId, 2500, 124, {from: accounts[2]});
+            await setMockVotePowerOfAt(10, 0, 500, accounts[3]);
+            await ftso.revealPrice(epochId, 4000, 125, {from: accounts[3]});
+
+            await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+            expectEvent(await ftso.finalizePriceEpoch(epochId, false, {from: accounts[10]}), "PriceFinalized",
+                {epochId: toBN(epochId), price: toBN(2500), rewardedFtso: false, lowRewardPrice: toBN(2500), highRewardPrice: toBN(2500), finalizationType: toBN(1)});
+
+            // round 2 - current fasset price = 2500
+            await ftso.submitPriceHash(submitPriceHash(300, 123, accounts[1]), {from: accounts[1]});
+            await ftso.submitPriceHash(submitPriceHash(400, 124, accounts[6]), {from: accounts[6]});
+            await ftso.submitPriceHash(submitPriceHash(500, 125, accounts[7]), {from: accounts[7]});
+            
+            await setMockVotePowerAt(12, 20000, 100000);
+            await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            
+            await increaseTimeTo((epochId + 2) * 120); // reveal period start
+            await setMockVotePowerOfAt(12, 2000, 0, accounts[1]);
+            await ftso.revealPrice(epochId+1, 300, 123, {from: accounts[1]});
+            await setMockVotePowerOfAt(12, 2000, 80000, accounts[6]);
+            await ftso.revealPrice(epochId+1, 400, 124, {from: accounts[6]});
+            await setMockVotePowerOfAt(12, 2000, 10000, accounts[7]);
+            await ftso.revealPrice(epochId+1, 500, 125, {from: accounts[7]});
+
+            await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
+            expectEvent(await ftso.finalizePriceEpoch(epochId+1, false, {from: accounts[10]}), "PriceFinalized",
+                {epochId: toBN(epochId+1), price: toBN(450), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(2)});
+        });
+
         it("Should finalize price epoch using force finalization if epoch has low flr turnout and trusted addresses are not set", async() => {
             await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [], {from: accounts[10]});
             await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), {from: accounts[1]});
@@ -1051,7 +1098,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [], { from: accounts[10] });
@@ -1259,7 +1307,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             await ftso.setFAsset(mockVpToken.address, {from: accounts[10]});
@@ -1312,7 +1361,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "WFLR",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             let address = await ftso.getFAsset();
             expect(address).to.equals(constants.ZERO_ADDRESS);
@@ -1479,7 +1529,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             // Force a block in order to get most up to date time
@@ -1751,7 +1802,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 mockWflr.address,
                 mockVpToken.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             await ftso.activateFtso(accounts[4], 500, 120, 60, {from: accounts[10]});
 
@@ -1762,7 +1814,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 mockWflr.address,
                 mockVpToken.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             await ftso.activateFtso(accounts[4], await time.latest() + 500, 120, 60, {from: accounts[10]});
 
@@ -2221,7 +2274,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
 
             await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [accounts[6]], { from: accounts[10] });
@@ -2551,7 +2605,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "WFLR",
                 mockWflr.address,
                 accounts[10],
-                0
+                0,
+                1e10
             );
 
             const fasset_vpToken = ftso.contract.methods.getFAsset().encodeABI();

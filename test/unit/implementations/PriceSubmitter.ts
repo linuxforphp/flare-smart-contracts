@@ -36,7 +36,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                     "ATOK",
                     mockWflr.address,
                     accounts[10],
-                    1 // initial token price 0.00001$
+                    1, // initial token price 0.00001$
+                    1e10
                 );
                 await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
                 await ftso.setVotePowerBlock(1, {from: accounts[10]});
@@ -80,7 +81,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             let hash1 = submitPriceHash(500, 123, accounts[1]);
             let hash2 = submitPriceHash(200, 124, accounts[1]);
@@ -101,7 +103,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
@@ -166,7 +169,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             
             let prices = [500, 200, 300, 100];
@@ -203,7 +207,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
-                1 // initial token price 0.00001$
+                1, // initial token price 0.00001$
+                1e10
             );
             await ftso.configureEpochs(1e10, 1e10, 1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});

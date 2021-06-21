@@ -765,7 +765,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
-        1 //uint256 _initialPrice
+        1, //uint256 _initialPrice
+        1e10
     );
     ftso.setFAsset(assetToken.address);
 
