@@ -18,6 +18,7 @@ export type VPTokenAction = { context: any, sender: string } &
         | { name: 'undelegateAllExplicit', delegateAddresses: string[] }
         | { name: 'votePowerAtCached', checkpointId: string }
         | { name: 'votePowerOfAtCached', who: string, checkpointId: string }
+        | { name: 'setCleanupBlock', checkpointId: string }
     );
 
 export interface Checkpoint {
@@ -38,6 +39,10 @@ export class VPTokenHistory {
     run(action: VPTokenAction) {
         this.history.push(action);
         return this.execute(action);
+    }
+    
+    checkpointList() {
+        return Array.from(this.checkpoints.values());
     }
 
     async createCheckpoint(checkpointId: string) {
@@ -125,6 +130,10 @@ export class VPTokenHistory {
                     const checkpoint = this.checkpoint(method.checkpointId);
                     return this.vpToken.votePowerOfAtCached(method.who, checkpoint.blockNumber, { from: method.sender });
                 }
+                case "setCleanupBlock": {
+                    const checkpoint = this.checkpoint(method.checkpointId);
+                    const result = await this.vpToken.setCleanupBlockNumber(checkpoint.blockNumber, { from: method.sender });
+                }
             }
         } catch (e) {
             const msg = e instanceof Error ? e.message : e;
@@ -177,7 +186,12 @@ export class VPTokenSimulator {
     votePowerAtCached(sender: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "votePowerAtCached", sender, checkpointId });
     }
+    
     votePowerOfAtCached(sender: string, who: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "votePowerOfAtCached", sender, who, checkpointId });
+    }
+    
+    setCleanupBlock(sender: string, checkpointId: string) {
+        return this.history.run({ context: this.context, name: "setCleanupBlock", sender, checkpointId });
     }
 }

@@ -2,6 +2,7 @@
 import { CheckPointsByAddressMockContract, CheckPointsByAddressMockInstance } from "../../../typechain-truffle";
 import { toBN } from "../../utils/test-helpers";
 
+const { constants, expectRevert } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 // const { artifacts } = require("hardhat");
 
@@ -126,4 +127,36 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
     assert.equal(address1Value as any, 10);
     assert.equal(address2Value as any, 20);
   });
+  
+  it("Should delete old checkpoints", async () => {
+    // Assemble
+    const b = [];
+    for (let i = 0; i < 10; i++) {
+      await checkPointsByAddressMock.writeValue(accounts[1], i);
+      b.push(await web3.eth.getBlockNumber());
+    }
+    // Act
+    const cleanupBlock = b[5];
+    for (let i = 0; i < 4; i++) {
+      await checkPointsByAddressMock.cleanupOldCheckpoints(accounts[1], 2, cleanupBlock);
+    }
+    // Assert
+    for (let i = 0; i < 5; i++) {
+      await expectRevert(checkPointsByAddressMock.valueOfAt(accounts[1], b[i]), "Reading from old (cleaned-up) block");
+    }
+    for (let i = 5; i < 10; i++) {
+      const value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[i]);
+      assert.equal(value.toNumber(), i);
+    }
+  });
+
+  it("Delete old checkpoints ignored for zero address", async () => {
+    // Assemble
+    const cleanupBlock = await web3.eth.getBlockNumber();
+    // Act
+    const res = await checkPointsByAddressMock.cleanupOldCheckpoints(constants.ZERO_ADDRESS, 2, cleanupBlock);
+    // Assert
+    assert.notEqual(res, null);
+  });
+
 });

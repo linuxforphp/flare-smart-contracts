@@ -339,4 +339,16 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function _getVpContract() internal view returns (IIVPContract) {
         return vpContract;
     }
+
+    /**
+     * Set the cleanup block number.
+     * Historic data for the blocks before `cleanupBlockNumber` can be erased,
+     * history before that block should never be used since it can be inconsistent.
+     * In particular, cleanup block number must be before current vote power block.
+     * @param _blockNumber The new cleanup block number.
+     */
+    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyGovernance {
+        _setCleanupBlockNumber(_blockNumber);
+        _checkVpContract().setCleanupBlockNumber(_blockNumber);
+    }
 }

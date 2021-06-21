@@ -3,6 +3,15 @@ pragma solidity 0.7.6;
 
 interface IIVPContract {
     /**
+     * Set the cleanup block number.
+     * Historic data for the blocks before `cleanupBlockNumber` can be erased,
+     * history before that block should never be used since it can be inconsistent.
+     * In particular, cleanup block number must be before current vote power block.
+     * @param _blockNumber The new cleanup block number.
+     */
+    function setCleanupBlockNumber(uint256 _blockNumber) external;
+    
+    /**
      * Update vote powers when tokens are transfered.
      * Also update delegated vote powers for percentage delegation
      * and check for enough funds for explicit delegations.

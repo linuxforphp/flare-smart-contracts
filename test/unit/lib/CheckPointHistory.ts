@@ -1,6 +1,7 @@
 import { CheckPointHistoryMockContract, CheckPointHistoryMockInstance } from "../../../typechain-truffle";
 import { toBN } from "../../utils/test-helpers";
 
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock") as CheckPointHistoryMockContract;
 
@@ -58,4 +59,37 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
     // This is actually 300000+ if checkpoints specifier is memory vs storage
     assert(gas < 75000);
   });
+  
+  it("Should delete old checkpoints", async () => {
+    // Assemble
+    const b = [];
+    for (let i = 0; i < 10; i++) {
+      await checkPointHistoryMock.writeValue(i);
+      b.push(await web3.eth.getBlockNumber());
+    }
+    // Act
+    const cleanupBlock = b[5];
+    for (let i = 0; i < 4; i++) {
+      await checkPointHistoryMock.cleanupOldCheckpoints(2, cleanupBlock);
+    }
+    // Assert
+    for (let i = 0; i < 5; i++) {
+      await expectRevert(checkPointHistoryMock.valueAt(b[i]), "Reading from old (cleaned-up) block") ;
+    }
+    for (let i = 5; i < 10; i++) {
+      const value = await checkPointHistoryMock.valueAt(b[i]);
+      assert.equal(value.toNumber(), i);
+    }
+  });
+  
+  it("Delete old checkpoints shouldn't fail with empty history", async () => {
+    // Assemble
+    const cleanupBlock = await web3.eth.getBlockNumber();
+    // Act
+    await checkPointHistoryMock.cleanupOldCheckpoints(2, cleanupBlock);
+    // Assert
+    const value = await checkPointHistoryMock.valueAt(cleanupBlock);
+    assert.equal(value.toNumber(), 0);
+  });
+
 });

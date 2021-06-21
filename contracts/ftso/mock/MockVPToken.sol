@@ -31,6 +31,7 @@ contract MockVPToken is IIVPToken {
     function approve(address spender, uint256 amount) external override returns (bool) {}
     function transfer(address recipient, uint256 amount) external override returns (bool) {}
     function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {}
+    function setCleanupBlockNumber(uint256 _blockNumber) external override {}
     function delegate(address to, uint256 bips) external override {}
     function delegateExplicit(address to, uint256 amount) external override {}
     function revokeDelegationAt(address who, uint blockNumber) external override {}

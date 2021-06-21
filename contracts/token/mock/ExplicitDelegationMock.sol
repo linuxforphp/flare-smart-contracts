@@ -32,4 +32,7 @@ contract ExplicitDelegationMock {
     function getDelegatedValue(address _delegate) public view returns (uint256 _bips) {
         return self.getDelegatedValue(_delegate);
     }
+    function cleanupOldCheckpoints(address _delegate, uint256 _count, uint256 _cleanupBlockNumber) public {
+        self.cleanupOldCheckpoints(_delegate, _count, _cleanupBlockNumber);
+    }
 }

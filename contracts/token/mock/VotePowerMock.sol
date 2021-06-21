@@ -46,6 +46,10 @@ contract VotePowerMock {
         self.undelegate(_delegator, _delegatee, _amount);
     }
 
+    function cleanupOldCheckpoints(address _owner, uint256 _count, uint256 _cleanupBlockNumber) public {
+        self.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
+    }
+    
     function votePowerOfAt(
         address _who, 
         uint256 _blockNumber)

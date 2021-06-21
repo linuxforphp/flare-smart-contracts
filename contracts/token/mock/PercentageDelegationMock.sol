@@ -56,4 +56,8 @@ contract PercentageDelegationMock {
     function clear() public {
         self.clear();
     }
+    
+    function cleanupOldCheckpoints(uint256 _count, uint256 _cleanupBlockNumber) public {
+        self.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+    }
 }

@@ -26,8 +26,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     
     // the length of the run (i.e. the number of actions executed)
     let LENGTH = env.LENGTH ? Number(env.LENGTH) : 3000;
-    
-    // create a checkpoint after every CHECKPOINT_EVERY actions
+
+    // there are two ways to set checkpoint indices:
+    // 1) create a checkpoint at each index in the checkpoint list
+    let CHECKPOINT_LIST = env.CHECKPOINT_LIST ? env.CHECKPOINT_LIST.split(',').map(s => Number(s)) : null;
+
+    // 2) create a checkpoint after every CHECKPOINT_EVERY actions
     let CHECKPOINT_EVERY = env.CHECKPOINT_EVERY ? Number(env.CHECKPOINT_EVERY) : 1000;
 
     // the number of accounts participating in tests (actually, there are 2 more - governance and a user)
@@ -109,10 +113,20 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
             const action = weightedRandomChoice(actions);
             simulator.context = i;
             await action();
-            if (i < LENGTH && i % CHECKPOINT_EVERY === 0) {
+            const isCheckpoint = CHECKPOINT_LIST != null ? CHECKPOINT_LIST.includes(i) : (i < LENGTH && i % CHECKPOINT_EVERY === 0);
+            if (isCheckpoint) {
                 await history.createCheckpoint('CP' + i);
+                // can only enable cleanup before first checkpoint, aince all checkpoints will be read at the end
+                if (history.checkpoints.size === 1) {
+                    await setCleanupBlock(0);
+                }
             }
         }
+    }
+    
+    async function setCleanupBlock(index: number) {
+        const cp = history.checkpointList()[index];
+        await simulator.setCleanupBlock(governance, cp.id);
     }
     
     async function testTransfer() {
@@ -139,7 +153,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     }
 
     async function testRevokeDelegationAt() {
-        const checkpoints = Array.from(history.checkpoints.values());
+        const checkpoints = history.checkpointList();
         if (checkpoints.length === 0) return;
         const cp = checkpoints[checkpoints.length - 1];
         const from = randomChoice(accounts);
@@ -160,14 +174,14 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     }
 
     async function testVotePowerAtCached() {
-        const checkpoints = Array.from(history.checkpoints.values());
+        const checkpoints = history.checkpointList();
         if (checkpoints.length === 0) return;
         const cp = randomChoice(checkpoints);
         await simulator.votePowerAtCached(plainuser, cp.id);
     }
 
     async function testVotePowerOfAtCached() {
-        const checkpoints = Array.from(history.checkpoints.values());
+        const checkpoints = history.checkpointList();
         if (checkpoints.length === 0) return;
         const cp = randomChoice(checkpoints);
         const from = randomChoice(accounts);
