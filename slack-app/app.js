@@ -252,7 +252,7 @@ const ftsoManagerAddress = (() => {
         .call()
         .then((data) => {
           let size = Object.keys(data).length
-          for (var i = 0; i <= size / 2; i++) {
+          for (let i = 0; i <= size / 2; i++) {
             delete data[i]
           }
           for (j in data) {
@@ -426,7 +426,7 @@ const ftsoManagerAddress = (() => {
         .getEpochVotes(callingEpochId)
         .call()
         .then((data) => {
-          for (var i = 0; i <= 5; i++) {
+          for (let i = 0; i <= 5; i++) {
             delete data[i]
           }
 
