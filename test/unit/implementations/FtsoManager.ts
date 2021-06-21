@@ -912,11 +912,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             compareArrays(trustedAddresses, trustedAddresses2 as string[]);
         });
 
-        it("Should emit event if initialize price epoch fails", async () => {
+        it("Should emit event if initialize price epoch fails and catches reverted error", async () => {
             // Assemble
             // stub ftso initialize
             const initializePriceEpoch = ftsoInterface.contract.methods.initializeCurrentEpochStateForReveal(false).encodeABI();
-            await mockFtso.givenMethodRevert(initializePriceEpoch);
+            await mockFtso.givenMethodRevertWithMessage(initializePriceEpoch,"I am broken");
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -931,9 +931,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Act
             // Simulate the keeper tickling reward manager
             let tx = await ftsoManager.keep();
-
             // Assert
             expectEvent(tx, "InitializingCurrentEpochStateForRevealFailed", {ftso: mockFtso.address, epochId: toBN(1)})
+
+            const { 
+                0: lastErrorBlockArr,
+                1: numErrorsArr,
+                2: errorStringArr,
+                3: errorContractArr,
+                4: totalKeptErrors
+               } = await ftsoManager.showRevertedErrors(0, 1);
+
+            assert.equal(lastErrorBlockArr[0].toNumber(), tx.logs[2].blockNumber);
+            assert.equal(numErrorsArr[0].toNumber(), 1);
+            assert.equal(errorStringArr[0], "I am broken");
+            assert.equal(errorContractArr[0], ftsoManager.address);
+            assert.equal(totalKeptErrors.toNumber(), 1);    
         });
 
     });
@@ -1088,7 +1101,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 await ftsoManager.getRewardEpochVotePowerBlock(0)
             ).encodeABI();
 
-            await mockRewardManager.givenMethodRevert(distributeRewards);
+            await mockRewardManager.givenMethodRevertWithMessage(distributeRewards,"I am broken");
             // Act
             // Simulate the keeper tickling reward manager
             let tx = await ftsoManager.keep();
@@ -1201,9 +1214,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
             const averageFinalizePriceEpoch = ftsoInterface.contract.methods.averageFinalizePriceEpoch(0).encodeABI();
             const forceFinalizePriceEpoch = ftsoInterface.contract.methods.forceFinalizePriceEpoch(0).encodeABI();
-            await mockFtso.givenMethodRevert(finalizePriceEpoch);
-            await mockFtso.givenMethodRevert(averageFinalizePriceEpoch);
-            await mockFtso.givenMethodRevert(forceFinalizePriceEpoch);
+            await mockFtso.givenMethodRevertWithMessage(finalizePriceEpoch,"I am broken");
+            await mockFtso.givenMethodRevertWithMessage(averageFinalizePriceEpoch,"averageFinalizePriceEpoch broken too");
+            await mockFtso.givenMethodRevertWithMessage(forceFinalizePriceEpoch,"forceFinalizePriceEpoch broken too");
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -1225,7 +1238,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     });
     
     describe("Reward epochs, finalization", async () => {
-
         it("Should finalize a reward epoch", async () => {
             // Assemble
             await ftsoManager.activate();
@@ -1348,7 +1360,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Assemble
             // stub ftso initialize
             const closeExpiredRewardEpochs = ftsoRewardManagerInterface.contract.methods.closeExpiredRewardEpochs().encodeABI();
-            await mockRewardManager.givenMethodRevert(closeExpiredRewardEpochs);
+            await mockRewardManager.givenMethodRevertWithMessage(closeExpiredRewardEpochs,"I am broken");
 
             await setDefaultGovernanceParameters(ftsoManager);
             // activte ftso manager

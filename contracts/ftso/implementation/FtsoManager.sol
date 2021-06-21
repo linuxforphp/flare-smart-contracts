@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
+pragma abicoder v2;
 
 import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtsoRewardManager.sol";
@@ -10,6 +11,8 @@ import "../../utils/implementation/FlareKeeper.sol";
 import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
+import "../../utils/implementation/RevertErrorTracking.sol";
+
 
 /**
  * FtsoManager is in charge of:
@@ -21,7 +24,7 @@ import "../lib/FtsoManagerSettings.sol";
  *    - trigger finalize price reveal epoch
  *    - determines addresses and reward weights and triggers rewardDistribution
  */    
-contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
+contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertErrorTracking {
     using FtsoManagerSettings for FtsoManagerSettings.State;
 
     struct PriceEpochData {
@@ -513,10 +516,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
 
     function _closeExpiredRewardEpochs() internal {
         try rewardManager.closeExpiredRewardEpochs() {
-        } catch {
+        } catch Error(string memory message) {
             // closing of expired failed, which is not critical
             // just emit event for diagnostics
             emit ClosingExpiredRewardEpochsFailed();
+            addRevertError(address(this),message);
         }        
     }
 
@@ -528,8 +532,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
         if(numFtsos > 0) {
             for(uint256 i = 0; i < numFtsos; i++) {
                 try ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                } catch {
+                } catch Error(string memory message) {
                     emit FinalizingPriceEpochFailed(ftsos[i], lastUnprocessedPriceEpoch);
+                    addRevertError(address(this),message);
                 }
             }
         }
@@ -586,8 +591,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
                     try ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                     } catch {
                         try ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                        } catch {
+                        } catch Error(string memory message) {
                             emit FinalizingPriceEpochFailed(ftsos[id], lastUnprocessedPriceEpoch);
+                            addRevertError(address(this),message);
                         }
                     }
                 }
@@ -609,8 +615,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
                     rewardEpochs[currentRewardEpoch].votepowerBlock)
                 {
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
-                } catch {
+                } catch Error(string memory message) {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
+                    addRevertError(address(this),message);
                 }
             }
 
@@ -653,8 +660,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep {
             }
 
             try ftsos[i].initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[ftsos[i]]) {
-            } catch {
+            } catch Error(string memory message) {
                 emit InitializingCurrentEpochStateForRevealFailed(ftsos[i], _getCurrentPriceEpochId());
+                addRevertError(address(this),message);
             }
         }
         settings.changed = false;
