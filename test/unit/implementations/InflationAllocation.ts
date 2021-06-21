@@ -20,15 +20,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
   // contains a fresh contract for each test
   let inflationAllocation: InflationAllocationInstance;
 
-  describe("initialization", async() => {      
-    it("Should not accept an initial percentage greater than max", async() => {
-      // Assemble
-      // Act
-      const promise = InflationAllocation.new(accounts[0], accounts[0], 1001);
-      // Assert
-      await expectRevert(promise, ERR_OUT_OF_BOUNDS);
-    });
-
+  describe("initialization", async() => {
     it("Should require initial percentage greater than 0", async() => {
       // Assemble
       // Act
