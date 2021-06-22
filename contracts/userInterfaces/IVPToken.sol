@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IGovernanceVotePower} from "./IGovernanceVotePower.sol";
 
 interface IVPToken is IERC20 {
     /**
@@ -181,4 +182,10 @@ interface IVPToken is IERC20 {
         uint256[] memory _bips, 
         uint256 _count, 
         uint256 _delegationMode);
+
+    /**
+     * When set, allows token owners to participate in governance voting
+     * and delegate governance vote power. 
+     */
+    function governanceVotePower() external view returns (IGovernanceVotePower);
 }

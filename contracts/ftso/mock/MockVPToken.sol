@@ -32,6 +32,7 @@ contract MockVPToken is IIVPToken {
     function transfer(address recipient, uint256 amount) external override returns (bool) {}
     function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {}
     function setCleanupBlockNumber(uint256 _blockNumber) external override {}
+    function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override {}
     function delegate(address to, uint256 bips) external override {}
     function delegateExplicit(address to, uint256 amount) external override {}
     function revokeDelegationAt(address who, uint blockNumber) external override {}
@@ -61,6 +62,7 @@ contract MockVPToken is IIVPToken {
     }
 
     // empty implementations, to satisfy the IIVPToken contract    
+    function governanceVotePower() external view override returns (IGovernanceVotePower) {}
     function allowance(address owner, address spender) external override view returns (uint256) {}
     function balanceOf(address account) external override view returns (uint256) {}
     function totalSupply() external override view returns (uint256) {}
