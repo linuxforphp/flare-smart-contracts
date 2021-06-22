@@ -15,6 +15,7 @@ import {
   FlareKeeperInstance,
   FtsoInstance,
   FtsoManagerInstance,
+  FtsoRegistryInstance,
   PriceSubmitterInstance,
   StateConnectorInstance
 } from "../../typechain-truffle";
@@ -67,6 +68,7 @@ async function main(parameters: any) {
   const Ftso = artifacts.require("Ftso");
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
+  const FtsoRegistry = artifacts.require("FtsoRegistry");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
   const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
@@ -181,12 +183,16 @@ try {
   // Delayed reward epoch start time
   let rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours * 60 * 60)));
 
+  // FtsoRegistryContract
+  const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
+
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     flareKeeper.address,
     ftsoRewardManager.address,
     priceSubmitter.address,
+    ftsoRegistry.address,
     parameters.priceEpochDurationSec,
     startTs,
     parameters.revealEpochDurationSec,
@@ -194,6 +200,8 @@ try {
     rewardEpochStartTs,
     parameters.votePowerBoundaryFraction);
   spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address);
+
+  await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
 
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
