@@ -15,7 +15,8 @@ import {
   FlareKeeperInstance,
   FtsoInstance,
   FtsoManagerInstance,
-  PriceSubmitterInstance
+  PriceSubmitterInstance,
+  StateConnectorInstance
 } from "../../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
 
@@ -61,11 +62,13 @@ async function main(parameters: any) {
 
   // Contract definitions
   const InflationAllocation = artifacts.require("InflationAllocation");
+  const StateConnector = artifacts.require("StateConnector");
   const FlareKeeper = artifacts.require("FlareKeeper");
   const Ftso = artifacts.require("Ftso");
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
+  const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
   const WFLR = artifacts.require("WFlr");
@@ -74,6 +77,22 @@ async function main(parameters: any) {
   // Inflation will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBips);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address);
+
+  // Initialize the state connector
+  let stateConnector: StateConnectorInstance;
+  try {
+    stateConnector = await StateConnector.at(parameters.stateConnectorAddress);
+  } catch (e) {
+    console.error("StateConnector not in genesis...creating new.")
+    stateConnector = await StateConnector.new();
+  }
+  spewNewContractInfo(contracts, StateConnector.contractName, stateConnector.address);
+  
+try {
+    stateConnector.initialiseChains();
+  } catch (e) {
+    // state connector might be already initialized if redeploy
+  }
 
   // Initialize the keeper
   let flareKeeper: FlareKeeperInstance;
@@ -123,19 +142,28 @@ async function main(parameters: any) {
   );
   spewNewContractInfo(contracts, Supply.contractName, supply.address);
 
-  // RewardManager contract
+  // FtsoRewardManager contract
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     parameters.rewardFeePercentageUpdateOffset,
     parameters.defaultRewardFeePercentage,
-    parameters.rewardExpiryOffset,
+    parameters.ftsoRewardExpiryOffset,
     inflation.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address);
 
-  // Inflation allocation needs to know about ftso reward manager
-  await inflationAllocation.setSharingPercentages([ftsoRewardManager.address], [10000]);
-  // Supply contract needs to know about ftso reward manager
+  // ValidatorRewardManager contract
+  const validatorRewardManager = await ValidatorRewardManager.new(
+    deployerAccount.address,
+    parameters.validatorRewardExpiryOffset,
+    stateConnector.address,
+    inflation.address);
+  spewNewContractInfo(contracts, ValidatorRewardManager.contractName, validatorRewardManager.address);
+
+  // Inflation allocation needs to know about reward managers
+  await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
+  // Supply contract needs to know about reward managers
   await supply.addRewardPool(ftsoRewardManager.address, 0);
+  await supply.addRewardPool(validatorRewardManager.address, 0);
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);
@@ -316,6 +344,7 @@ async function main(parameters: any) {
   console.error("Activating managers...");
   await ftsoManager.activate();
   await ftsoRewardManager.activate();
+  await validatorRewardManager.activate();
 
   // Turn over governance
   console.error("Transfering governance...");
@@ -324,6 +353,7 @@ async function main(parameters: any) {
   await inflationAllocation.proposeGovernance(governanceAccount.address);
   await flareKeeper.proposeGovernance(governanceAccount.address);
   await ftsoRewardManager.proposeGovernance(governanceAccount.address);
+  await validatorRewardManager.proposeGovernance(governanceAccount.address);
   await ftsoManager.proposeGovernance(governanceAccount.address);
 
   console.error("Contracts in JSON:");

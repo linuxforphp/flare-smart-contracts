@@ -19,8 +19,10 @@ export class Contracts {
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";
   public static readonly FTSO_REWARD_MANAGER = "FtsoRewardManager";
+  public static readonly VALIDATOR_REWARD_MANAGER = "ValidatorRewardManager";
   public static readonly PRICE_SUBMITTER = "PriceSubmitter";
   public static readonly FTSO_MANAGER = "FtsoManager";
+  public static readonly STATE_CONNECTOR = "StateConnector";
   public static readonly FLARE_KEEPER = "FlareKeeper";
   public static readonly WFLR = "WFlr";
   public static readonly FXRP = "Fxrp";

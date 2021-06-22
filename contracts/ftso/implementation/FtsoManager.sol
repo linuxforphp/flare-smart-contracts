@@ -4,10 +4,10 @@ pragma abicoder v2;
 
 import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtsoRewardManager.sol";
-import "../../utils/interfaces/IFlareKeep.sol";
+import "../../genesis/interface/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
-import "../../utils/implementation/FlareKeeper.sol";
+import "../../genesis/implementation/FlareKeeper.sol";
 import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";

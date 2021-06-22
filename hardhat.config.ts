@@ -123,7 +123,7 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
-      "contracts/utils/mock/FlareKeeperMock.sol": {
+      "contracts/genesis/mock/FlareKeeperMock.sol": {
         version: "0.6.12",
         settings: { }
       },

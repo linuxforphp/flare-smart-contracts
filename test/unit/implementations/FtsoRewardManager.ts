@@ -20,7 +20,6 @@ const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const WFLR = artifacts.require("WFlr") as WFlrContract;
 const InflationMock = artifacts.require("InflationMock");
-const MockContract = artifacts.require("MockContract");
 const SuicidalMock = artifacts.require("SuicidalMock");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
@@ -67,7 +66,7 @@ async function distributeRewards(
         votePowerBlock
     );
 
-    await time.increaseTo((await time.latest()).addn(120));
+    await time.increaseTo((await time.latest()).addn(PRICE_EPOCH_DURATION_S));
 
     // Let's do another price epoch
     await mockFtsoManager.distributeRewardsCall(
@@ -91,24 +90,24 @@ async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN)
     // What reward epoch are we on based on current block time, given our startTs?
     const currentRewardEpoch = (await time.latest()).sub(startTs).div(toBN(REWARD_EPOCH_DURATION_S)).toNumber();
     for (let rewardEpoch = currentRewardEpoch; rewardEpoch < newRewardEpoch; rewardEpoch++) {
-      // Time travel through each daily cycle as we work our way through to the next
-      // reward epoch.
-      for (let dailyCycle = 0; dailyCycle < (REWARD_EPOCH_DURATION_S / 86400); dailyCycle++) {
-        try {
-          await time.increaseTo(startTs.addn((rewardEpoch * REWARD_EPOCH_DURATION_S) + (dailyCycle * 86400)));
-          await mockInflation.setDailyAuthorizedInflation(1000000);
-        } catch (e) {
-          if (e instanceof Error && e.message.includes("to a moment in the past")) {
-            // Assume that if this is being done in the past, then it does not need to be done again.
-            // So just skip.          
-          } else {
-            throw e;
-          }
+        // Time travel through each daily cycle as we work our way through to the next
+        // reward epoch.
+        for (let dailyCycle = 0; dailyCycle < (REWARD_EPOCH_DURATION_S / 86400); dailyCycle++) {
+            try {
+                await time.increaseTo(startTs.addn((rewardEpoch * REWARD_EPOCH_DURATION_S) + (dailyCycle * 86400)));
+                await mockInflation.setDailyAuthorizedInflation(1000000);
+            } catch (e) {
+                if (e instanceof Error && e.message.includes("to a moment in the past")) {
+                    // Assume that if this is being done in the past, then it does not need to be done again.
+                    // So just skip.          
+                } else {
+                    throw e;
+                }
+            }
         }
-      }
-      // Travel to reach next reward epoch
-      await time.increaseTo(startTs.addn((rewardEpoch + 1) * REWARD_EPOCH_DURATION_S));
-      await mockInflation.setDailyAuthorizedInflation(1000000);
+        // Travel to reach next reward epoch
+        await time.increaseTo(startTs.addn((rewardEpoch + 1) * REWARD_EPOCH_DURATION_S));
+        await mockInflation.setDailyAuthorizedInflation(1000000);
     }
     // Fake Trigger reward epoch finalization
     const getCurrentRewardEpoch = ftsoManagerInterface.contract.methods.getCurrentRewardEpoch().encodeABI();
@@ -118,7 +117,6 @@ async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN)
 
 contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manager unit tests`, async accounts => {
 
-    let fakeFlareKeeperAddress = accounts[0];
     let mockSuicidal: SuicidalMockInstance;
 
     beforeEach(async () => {
@@ -964,54 +962,52 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - with self-destruct proceeds", async () => { 
-          // deposit some wflrs
-          await wFlr.deposit({ from: accounts[1], value: "100" });
-          await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wflrs
+            await wFlr.deposit({ from: accounts[1], value: "100" });
+            await wFlr.deposit({ from: accounts[4], value: "100" });
 
-          // delegate some wflrs
-          await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
-          
-          await distributeRewards(accounts, startTs);
-          await travelToAndSetNewRewardEpoch(1, startTs);
+            // delegate some wflrs
+            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs);
 
-          // Give suicidal some FLR
-          await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
-          // Sneak it into ftso reward manager
-          await mockSuicidal.die();
-          
-          // Act
-          // Claim reward to a3 - test both 3rd party claim and avoid
-          // having to calc gas fees            
-          let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-          await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
-          // Assert
-          // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-          let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-          assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
-          let selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
-          assert.equal(selfDestructProceeds.toNumber(), 1);
+            // Give suicidal some FLR
+            await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
+            // Sneak it into ftso reward manager
+            await mockSuicidal.die();
+            
+            // Act
+            // Claim reward to a3 - test both 3rd party claim and avoid
+            // having to calc gas fees            
+            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
+            // Assert
+            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
+            let selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            assert.equal(selfDestructProceeds.toNumber(), 1);
 
-          // Create another suicidal
-          const anotherMockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
-          // Give suicidal some FLR
-          await web3.eth.sendTransaction({from: accounts[0], to: anotherMockSuicidal.address, value: 1});
-          // Sneak it into ftso reward manager
-          await anotherMockSuicidal.die();
-          
-          // Act
-          // Claim reward to a5 - test both 3rd party claim and avoid
-          // having to calc gas fees            
-          let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-          await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-          // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-          let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-          assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
-          selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
-          assert.equal(selfDestructProceeds.toNumber(), 2);
+            // Create another suicidal
+            const anotherMockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
+            // Give suicidal some FLR
+            await web3.eth.sendTransaction({from: accounts[0], to: anotherMockSuicidal.address, value: 1});
+            // Sneak it into ftso reward manager
+            await anotherMockSuicidal.die();
+            
+            // Act
+            // Claim reward to a5 - test both 3rd party claim and avoid
+            // having to calc gas fees            
+            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
+            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
+            selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            assert.equal(selfDestructProceeds.toNumber(), 2);
         });
       
-
-
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage - should not claim twice", async () => { 
 
             // deposit some wflrs
