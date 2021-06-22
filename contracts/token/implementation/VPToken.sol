@@ -8,6 +8,8 @@ import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
 import {IIVPToken} from "../interface/IIVPToken.sol";
 import {IIVPContract} from "../interface/IIVPContract.sol";
+import {IIGovernanceVotePower} from "../interface/IIGovernanceVotePower.sol";
+import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
 import {Governed} from "../../governance/implementation/Governed.sol";
 
 /**
@@ -21,6 +23,8 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
 
     // the VPContract to use
     IIVPContract private vpContract;
+    
+    IIGovernanceVotePower private governanceVP;
     
     /**
      * When true, the argument to `setVpContract` must be a vpContract
@@ -301,14 +305,23 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     ) internal virtual override(ERC20) {
         require(_from != _to, "Cannot transfer to self");
         
+        uint256 fromBalance = balanceOf(_from);
+        uint256 toBalance = balanceOf(_to);
+        
         // update vote powers
         IIVPContract vpc = vpContract;
         if (address(vpc) != address(0)) {
-            vpc.updateAtTokenTransfer(_from, _to, balanceOf(_from), balanceOf(_to), _amount);
+            vpc.updateAtTokenTransfer(_from, _to, fromBalance, toBalance, _amount);
         } else if (!needsReplacementVPContract) {
             // transfers without vpcontract are allowed, but after they are made
             // any added vpcontract must have isReplacement set
             needsReplacementVPContract = true;
+        }
+        
+        // update governance vote powers
+        IIGovernanceVotePower gvp = governanceVP;
+        if (address(gvp) != address(0)) {
+            gvp.updateAtTokenTransfer(_from, _to, fromBalance, toBalance, _amount);
         }
 
         // update balance history
@@ -361,5 +374,26 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function setCleanupBlockNumber(uint256 _blockNumber) external override onlyGovernance {
         _setCleanupBlockNumber(_blockNumber);
         _checkVpContract().setCleanupBlockNumber(_blockNumber);
+        if (address(governanceVP) != address(0)) {
+            governanceVP.setCleanupBlockNumber(_blockNumber);
+        }
     }
+    
+    /**
+     * Sets new governance vote power contract that allows token owners to participate in governance voting
+     * and delegate governance vote power. 
+     */
+    function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override onlyGovernance {
+        require(address(_governanceVotePower.ownerToken()) == address(this), 
+            "Governance vote power contract does not belong to this token.");
+        governanceVP = _governanceVotePower;
+    }
+
+    /**
+     * When set, allows token owners to participate in governance voting
+     * and delegate governance vote power. 
+     */
+     function governanceVotePower() external view override returns (IGovernanceVotePower) {
+         return governanceVP;
+     }
 }

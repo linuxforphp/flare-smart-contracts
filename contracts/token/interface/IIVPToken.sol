@@ -2,6 +2,8 @@
 pragma solidity 0.7.6;
 
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
+import {IIGovernanceVotePower} from "./IIGovernanceVotePower.sol";
 
 interface IIVPToken is IVPToken {
     /**
@@ -12,6 +14,12 @@ interface IIVPToken is IVPToken {
      * @param _blockNumber The new cleanup block number.
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external;
+    
+    /**
+     * Sets new governance vote power contract that allows token owners to participate in governance voting
+     * and delegate governance vote power. 
+     */
+    function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external;
     
     /**
     * @notice Get the vote power at block `_blockNumber` using cache.

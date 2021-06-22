@@ -8,6 +8,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
 const VPContract = artifacts.require("VPContract");
+const MockContract = artifacts.require("MockContract");
 
 const ALREADY_DELEGATED_EXPLICIT_MSG = "Already delegated explicitly";
 const ALREADY_DELEGATED_PERCENT_MSG = "Already delegated by percentage";
@@ -699,6 +700,44 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // and work at blk2
     const undelegated = await vpToken.undelegatedVotePowerOfAt(accounts[1], blk2);
     assert.equal(undelegated.toNumber(), 70);
+  });
+  
+  it("Can add governance vote power contract", async () => {
+    // Assemble
+    const governanceVotePower = await MockContract.new();
+    const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+    await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, vpToken.address);
+    // Act
+    await vpToken.setGovernanceVotePower(governanceVotePower.address);
+    // Assert
+    assert.equal(await vpToken.governanceVotePower(), governanceVotePower.address);
+  });
+
+  it("Cannot set governance vote power contract if not owned by this token", async () => {
+    // Assemble
+    const governanceVotePower = await MockContract.new();
+    const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+    await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, constants.ZERO_ADDRESS);
+    // Act
+    // Assert
+    await expectRevert(vpToken.setGovernanceVotePower(governanceVotePower.address),
+      "Governance vote power contract does not belong to this token.");
+  });
+
+  it("Can execute methods with governance vote power set", async () => {
+    // Assemble
+    const governanceVotePower = await MockContract.new();
+    const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+    await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, vpToken.address);
+    await vpToken.setGovernanceVotePower(governanceVotePower.address);
+    await governanceVotePower.givenAnyReturnBool(true);
+    // Act
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.transfer(accounts[2], 50, { from: accounts[1] });
+    await vpToken.setCleanupBlockNumber(1);
+    // Assert
+    const invocations = await governanceVotePower.invocationCount.call();
+    assert.equal(invocations.toNumber(), 3);  // updateAtTokenTransfer*2, setCleanupBlockNumber*1
   });
 
   it("May use vpToken transfer without VPContract", async () => {
