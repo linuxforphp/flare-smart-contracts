@@ -1,6 +1,7 @@
 import {
     FtsoInstance,
     FtsoManagerInstance,
+    FtsoRegistryInstance,
     FtsoRewardManagerInstance, MockContractInstance,
     MockVPTokenContract,
     MockVPTokenInstance
@@ -21,10 +22,12 @@ import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN 
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
+const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const FtsoManager = artifacts.require("FtsoManager");
 const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
+const MockFtsoContract = artifacts.require("MockFtso");
 const MockContract = artifacts.require("MockContract");
 const MockRewardManager = artifacts.require("MockContract");
 
@@ -36,8 +39,10 @@ const VOTE_POWER_BOUNDARY_FRACTION = 7;
 const ERR_GOVERNANCE_ONLY = "only governance"
 const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized"
 const ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
-const ERR_NOT_FOUND = "Not found";
+const ERR_NOT_FOUND = "FTSO symbol not supported";
 const ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
+
+
 
 contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests`, async accounts => {
     // contains a fresh contract for each test
@@ -47,6 +52,14 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let ftsoRewardManagerInterface: FtsoRewardManagerInstance;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
+    let ftsoRegistry: FtsoRegistryInstance;
+
+    async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance){        
+        const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
+        const symbolReturn = web3.eth.abi.encodeParameter('string', symbol);
+        await mockContract.givenMethodReturn(encodedMethod, symbolReturn);
+    }
+
 
     beforeEach(async () => {
         mockFtso = await MockFtso.new();
@@ -57,6 +70,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             0,
             1e10
         );
+
+        await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
         
         // Force a block in order to get most up to date time
         await time.advanceBlock();
@@ -72,11 +87,14 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             (await MockContract.new()).address
         );
 
+        ftsoRegistry = await FtsoRegistry.new(accounts[0]);
+
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
             mockRewardManager.address,
             accounts[7],
+            ftsoRegistry.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -84,6 +102,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             startTs,
             VOTE_POWER_BOUNDARY_FRACTION
         );
+
+        ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
+
     });
 
     describe("basic", async () => {
@@ -93,6 +114,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
+                ftsoRegistry.address,
                 0,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -106,6 +128,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
+                ftsoRegistry.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 0,
@@ -119,6 +142,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
+                ftsoRegistry.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -132,6 +156,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
+                ftsoRegistry.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs.addn(500),
                 REVEAL_EPOCH_DURATION_S,
@@ -283,6 +308,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
+                ftsoRegistry.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -290,6 +316,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs.addn(500),
                 VOTE_POWER_BOUNDARY_FRACTION
             );
+            
+            ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
             await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
@@ -441,10 +469,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(mockFtso.address);
             let mockFtso2 = await MockFtso.new();
 
-            const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
-            const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
-            await mockFtso.givenMethodReturn(symbol, symbolReturn);
-            await mockFtso2.givenMethodReturn(symbol, symbolReturn);
+            mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
+            mockFtsoSymbol("ATOK", mockFtso2, ftsoInterface);
 
             const currentPrice = ftsoInterface.contract.methods.getCurrentPrice().encodeABI();
             const currentPriceReturn = web3.eth.abi.encodeParameters(['uint256','uint256'], [500, 1]);
@@ -528,15 +554,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.setFtsoFAssetFtsos(multiFtso.address, [mockFtso.address]);
             let mockFtso2 = await MockFtso.new();
 
-            const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
-            const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
-            await mockFtso.givenMethodReturn(symbol, symbolReturn);
-            await mockFtso2.givenMethodReturn(symbol, symbolReturn);
+            await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
+            await mockFtsoSymbol("ATOK", mockFtso2, ftsoInterface);
 
             // Act
-            let tx = await ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, false);
+            let tx = await ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, false); 
 
-            // Assert
+            // // Assert
             expectEvent(tx, "FtsoAdded", {ftso: mockFtso.address, add: false});
             expectEvent(tx, "FtsoAdded", {ftso: mockFtso2.address, add: true});
             assert.equal((await ftsoManager.getFtsos()).length, 2);
@@ -568,16 +592,14 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             let mockFtso2 = await MockFtso.new();
 
-            const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
-            const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
-            await mockFtso.givenMethodReturn(symbol, symbolReturn);
-            await mockFtso2.givenMethodReturn(symbol, symbolReturn);
+            await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
+            await mockFtsoSymbol("ATOK", mockFtso2, ftsoInterface);
 
             // Act
             let replacePromise = ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, false);
 
             // Assert
-            await expectRevert(replacePromise, ERR_NOT_FOUND);
+            await expectRevert(replacePromise, "Not found");
         });
 
         it("Should not remove an FTSO if not from governance", async () => {
@@ -1388,6 +1410,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 mockRewardManager.address,
                 accounts[7],
+                ftsoRegistry.address,
                 yearSeconds / 10,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -1395,6 +1418,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs,
                 VOTE_POWER_BOUNDARY_FRACTION
             );
+
+            ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
             // stub ftso randomizer
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
@@ -1478,7 +1503,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         
         it("Should not set fallback mode for ftso if not managed", async () => {
             let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
-            await expectRevert(ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] }), ERR_NOT_FOUND);
+            await expectRevert(ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] }), "Not found");
         });
 
         it("Should not set fallback mode for ftso if not from governance", async () => {

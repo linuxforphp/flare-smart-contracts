@@ -3,6 +3,7 @@ import {
     FtsoManagerInstance,
     FtsoManagerMockContract,
     FtsoManagerMockInstance,
+    FtsoRegistryInstance,
     FtsoRewardManagerContract,
     FtsoRewardManagerInstance,
     InflationMockInstance,
@@ -15,6 +16,7 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../utils/constants').getTestFile;
 
+const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
@@ -118,6 +120,7 @@ async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN)
 contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manager unit tests`, async accounts => {
 
     let mockSuicidal: SuicidalMockInstance;
+    let ftsoRegistry: FtsoRegistryInstance;
 
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
@@ -139,11 +142,14 @@ contract(`FtsoRewardManager.sol; ${ getTestFile(__filename) }; Ftso reward manag
         // Get the timestamp for the just mined block
         startTs = await time.latest();
 
+        ftsoRegistry = await FtsoRegistry.new(accounts[0]);
+
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
             accounts[0],
             ftsoRewardManager.address,
             accounts[7],
+            ftsoRegistry.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,

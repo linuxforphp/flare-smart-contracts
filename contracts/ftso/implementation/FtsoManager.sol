@@ -8,6 +8,7 @@ import "../../genesis/interface/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../genesis/implementation/FlareKeeper.sol";
+import "../../genesis/interface//IFtsoRegistry.sol";
 import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
@@ -72,11 +73,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     uint256 internal currentRewardEpochEnds;
     uint256 internal votePowerBoundaryFraction;
 
-    // list of ftsos eligible for reward
-    IIFtso[] internal ftsos;
     mapping(IIFtso => bool) internal managedFtsos;
     IIFtsoRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
+
+    IFtsoRegistry public immutable ftsoRegistry;
 
     // flags
     bool private justStarted;
@@ -92,6 +93,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         FlareKeeper _flareKeeper,
         IIFtsoRewardManager _rewardManager,
         IPriceSubmitter _priceSubmitter,
+        IFtsoRegistry _ftsoRegistry,
         uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
         uint256 _revealEpochDurationSec,
@@ -122,6 +124,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         votePowerBoundaryFraction = _votePowerBoundaryFraction;
         rewardManager = _rewardManager;
         priceSubmitter = _priceSubmitter;
+        ftsoRegistry = _ftsoRegistry;
         justStarted = true;
     }
 
@@ -153,25 +156,27 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         emit KeepTrigger(block.number, block.timestamp);
         if (!active) return false;
 
+        IIFtso[] memory _ftsos = _getFtsos();
+
         if (justStarted) {
-            _initializeRewardEpoch();
+            _initializeRewardEpoch(_ftsos);
         } else {
             if (lastUnprocessedPriceEpochEnds < rewardEpochsStartTs) {
                 // Force closing ftsos before start of the first reward epoch
-                _forceFinalizePriceEpochBeforeRewardEpochStarts();
+                _forceFinalizePriceEpochBeforeRewardEpochStarts(_ftsos);
             } else if (lastUnprocessedPriceEpochEnds + revealEpochDurationSec <= block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
-                _finalizePriceEpoch();
+                _finalizePriceEpoch(_ftsos);
             }
             // Note: prices should be first finalized and then new reward epoch can start
             if (currentRewardEpochEnds <= block.timestamp) {
-                _finalizeRewardEpoch();
+                _finalizeRewardEpoch(_ftsos);
                 _closeExpiredRewardEpochs();
             }
 
             if(currentPriceEpochEnds <= block.timestamp) {
                 // sets governance parameters on ftsos
-                _initializeCurrentEpochFTSOStatesForReveal();
+                _initializeCurrentEpochFTSOStatesForReveal(_ftsos);
             }
         }
         return true;
@@ -182,7 +187,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * All ftsos in multi fasset ftso must be managed by this ftso manager
      */
     function addFtso(IIFtso _ftso) external override onlyGovernance {
-        _addFtso(_ftso);
+        _addFtso(_ftso, true);
     }
 
     /**
@@ -190,7 +195,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * @dev Deactivates _ftso
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
-        _removeFtso(_ftso);
+        ftsoRegistry.removeFtso(_ftso.symbol());
+        _cleanFtso(_ftso);
     }
     
     /**
@@ -201,19 +207,28 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     function replaceFtso(
         IIFtso _ftsoToRemove,
         IIFtso _ftsoToAdd,
-        bool copyCurrentPrice,
-        bool copyFAssetOrFAssetFtsos
+        bool _copyCurrentPrice,
+        bool _copyFAssetOrFAssetFtsos
     ) external override onlyGovernance {
         // should compare strings but it is not supported - comparing hashes instead
         require(keccak256(abi.encode(_ftsoToRemove.symbol())) == keccak256(abi.encode(_ftsoToAdd.symbol())), 
             ERR_FTSO_SYMBOLS_MUST_MATCH);
-        
-        if (copyCurrentPrice) {
+        // Check if it already exists
+        try ftsoRegistry.getFtso(_ftsoToRemove.symbol()) returns(IIFtso _addr) {
+            if (_addr != _ftsoToRemove){
+                revert(ERR_NOT_FOUND);
+            }
+        } catch {
+            revert(ERR_NOT_FOUND);
+        }
+
+
+        if (_copyCurrentPrice) {
             (uint256 currentPrice, uint256 timestamp) = _ftsoToRemove.getCurrentPrice();
             _ftsoToAdd.updateInitialPrice(currentPrice, timestamp);
         }
 
-        if (copyFAssetOrFAssetFtsos) {
+        if (_copyFAssetOrFAssetFtsos) {
             IIVPToken fAsset = _ftsoToRemove.getFAsset();
             if (address(fAsset) != address(0)) { // copy fAsset if exists
                 _ftsoToAdd.setFAsset(fAsset);
@@ -224,14 +239,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                 }
             }
         }
-
-        // add new contract
-        _addFtso(_ftsoToAdd);
+        // Add without duplicate check
+        _addFtso(_ftsoToAdd, false);
 
         // replace old contract with the new one in multi fAsset ftsos
-        uint256 ftsosLen = ftsos.length;
+        IIFtso[] memory contracts = ftsoRegistry.getSupportedFtsos();
+
+        uint256 ftsosLen = contracts.length;
         for (uint256 i = 0; i < ftsosLen; i++) {
-            IIFtso ftso = ftsos[i];
+            IIFtso ftso = contracts[i];
             if (ftso == _ftsoToRemove) {
                 continue;
             }
@@ -251,8 +267,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             }
         }
 
-        // remove old contract
-        _removeFtso(_ftsoToRemove);
+        // cleanup old contract
+        _cleanFtso(_ftsoToRemove);
     }
     
     /**
@@ -369,7 +385,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * @notice Returns the list of FTSOs
      */
     function getFtsos() external view override returns (IIFtso[] memory _ftsos) {
-        return ftsos;
+        return _getFtsos();
     }
 
     function getPriceEpochConfiguration() external view override returns (
@@ -380,15 +396,16 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         return (firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
     }
 
-    function _addFtso(IIFtso _ftso) internal {
+    function _addFtso(IIFtso _ftso, bool _checkExists) internal {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
         
         _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
 
-        uint256 len = ftsos.length;
-        for (uint256 i = 0; i < len; i++) {
-            if (_ftso == ftsos[i]) {
+        if(_checkExists){
+            // Check if it already exists
+            try ftsoRegistry.getFtso(_ftso.symbol()) {
                 revert(ERR_ALREADY_ADDED);
+            } catch {
             }
         }
 
@@ -413,37 +430,26 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         );
 
         // Add the ftso
-        ftsos.push(_ftso);
+        ftsoRegistry.addFtso(_ftso);
         managedFtsos[_ftso] = true;
-
         emit FtsoAdded(_ftso, true);
     }
 
-    function _removeFtso(IIFtso _ftso) internal {
-        uint256 len = ftsos.length;
-
-        for (uint256 i = 0; i < len; ++i) {
-            if (_ftso == ftsos[i]) {
-                ftsos[i] = ftsos[len - 1];
-                ftsos.pop();
-                _ftso.deactivateFtso();
-                ftsoInFallbackMode[_ftso] = false;
-                managedFtsos[_ftso] = false;
-                _checkMultiFassetFtsosAreManaged();
-                emit FtsoAdded(_ftso, false);
-                return;
-            }
-        }
-
-        revert(ERR_NOT_FOUND);
+    function _cleanFtso(IIFtso _ftso) internal {
+        _ftso.deactivateFtso();
+        // Since this is as mapping, we can also just delete it, as false is default value for non-existing keys
+        delete ftsoInFallbackMode[_ftso];
+        delete managedFtsos[_ftso];
+        _checkMultiFassetFtsosAreManaged(_getFtsos());
+        emit FtsoAdded(_ftso, false);
     }
 
     /**
      * @notice Initializes reward epochs. Also sets vote power block to FTSOs
      */
-    function _initializeRewardEpoch() internal {
+    function _initializeRewardEpoch(IIFtso[] memory _ftsos) internal {
         if (block.timestamp >= currentRewardEpochEnds - rewardEpochDurationSec) {
-            uint256 numFtsos = ftsos.length;
+            uint256 numFtsos = _ftsos.length;
             // Prime the reward epoch array with a new reward epoch
             RewardEpochData memory epochData = RewardEpochData({
                 votepowerBlock: block.number - 1,
@@ -454,7 +460,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             currentRewardEpoch = 0;
 
             for (uint256 i = 0; i < numFtsos; ++i) {
-                ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
+                _ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
             justStarted = false;
         }
@@ -463,14 +469,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     /**
      * @notice Finalizes reward epoch
      */
-    function _finalizeRewardEpoch() internal {
-        uint256 numFtsos = ftsos.length;
+    function _finalizeRewardEpoch(IIFtso[] memory _ftsos) internal {
+        uint256 numFtsos = _ftsos.length;
 
         uint256 lastRandom = block.timestamp;
         // Are there any FTSOs to process?
         if (numFtsos > 0) {
             for (uint256 i = 0; i < numFtsos; ++i) {
-                lastRandom += ftsos[i].getCurrentRandom();
+                lastRandom += _ftsos[i].getCurrentRandom();
             }
         }
 
@@ -505,7 +511,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
 
         currentRewardEpoch = rewardEpochs.length - 1;
         for (uint256 i = 0; i < numFtsos; i++) {
-            ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
+            _ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
         }
 
         emit RewardEpochFinalized(epochData.votepowerBlock, epochData.startBlock);
@@ -527,13 +533,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     /**
      * @notice Force finalizes price epochs that expired before reward epochs start
      */
-    function _forceFinalizePriceEpochBeforeRewardEpochStarts() internal {
-        uint256 numFtsos = ftsos.length;
+    function _forceFinalizePriceEpochBeforeRewardEpochStarts(IIFtso[] memory _ftsos) internal {
+        uint256 numFtsos = _ftsos.length;
         if(numFtsos > 0) {
             for(uint256 i = 0; i < numFtsos; i++) {
-                try ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+                try _ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                 } catch Error(string memory message) {
-                    emit FinalizingPriceEpochFailed(ftsos[i], lastUnprocessedPriceEpoch);
+                    emit FinalizingPriceEpochFailed(_ftsos[i], lastUnprocessedPriceEpoch);
                     addRevertError(address(this),message);
                 }
             }
@@ -544,8 +550,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     /**
      * @notice Finalizes price epoch
      */
-    function _finalizePriceEpoch() internal {
-        uint256 numFtsos = ftsos.length;
+    function _finalizePriceEpoch(IIFtso[] memory _ftsos) internal {
+        uint256 numFtsos = _ftsos.length;
 
         // Are there any FTSOs to process?
         if(numFtsos > 0) {
@@ -577,7 +583,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             for(uint256 i = 0; i < numFtsos; i++) {
                 //slither-disable-next-line weak-prng           // not a random, just choosing next
                 uint256 id = (chosenFtsoId + i) % numFtsos;
-                try ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
+                try _ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
                     address[] memory _addresses,
                     uint256[] memory _weights,
                     uint256 _totalWeight
@@ -585,14 +591,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                     if (!wasDistributed && _addresses.length > 0) { // change also in FTSO if condition changes
                         (addresses, weights, totalWeight) = (_addresses, _weights, _totalWeight);
                         wasDistributed = true;
-                        rewardedFtsoAddress = address(ftsos[id]);
+                        rewardedFtsoAddress = address(_ftsos[id]);
                     }
                 } catch {
-                    try ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+                    try _ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                     } catch {
-                        try ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+                        try _ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                         } catch Error(string memory message) {
-                            emit FinalizingPriceEpochFailed(ftsos[id], lastUnprocessedPriceEpoch);
+                            emit FinalizingPriceEpochFailed(_ftsos[id], lastUnprocessedPriceEpoch);
                             addRevertError(address(this),message);
                         }
                     }
@@ -642,11 +648,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * Prior to initialization it sets governance parameters, if 
      * governance has changed them.
      */
-    function _initializeCurrentEpochFTSOStatesForReveal() internal {
-        uint256 numFtsos = ftsos.length;
+    function _initializeCurrentEpochFTSOStatesForReveal(IIFtso[] memory _ftsos) internal {
+        uint256 numFtsos = _ftsos.length;
         for (uint256 i = 0; i < numFtsos; i++) {
             if(settings.changed) {
-                ftsos[i].configureEpochs(
+                _ftsos[i].configureEpochs(
                     settings.minVotePowerFlrThreshold,
                     settings.minVotePowerAssetThreshold,
                     settings.maxVotePowerFlrThreshold,
@@ -659,9 +665,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                 );
             }
 
-            try ftsos[i].initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[ftsos[i]]) {
+            try _ftsos[i].initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[_ftsos[i]]) {
             } catch Error(string memory message) {
-                emit InitializingCurrentEpochStateForRevealFailed(ftsos[i], _getCurrentPriceEpochId());
+                emit InitializingCurrentEpochStateForRevealFailed(_ftsos[i], _getCurrentPriceEpochId());
                 addRevertError(address(this),message);
             }
         }
@@ -685,10 +691,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     /**
      * @notice Check if all multi fasset ftsos are managed by this ftso manager, revert otherwise
      */
-    function _checkMultiFassetFtsosAreManaged() internal view {
-        uint256 len = ftsos.length;
+    function _checkMultiFassetFtsosAreManaged(IIFtso[] memory _ftsos) internal view {
+        uint256 len = _ftsos.length;
         for (uint256 i = 0; i < len; i++) {
-            _checkFAssetFtsosAreManaged(ftsos[i].getFAssetFtsos());
+            _checkFAssetFtsosAreManaged(_ftsos[i].getFAssetFtsos());
         }
     }
 
@@ -716,5 +722,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      */
     function _getCurrentPriceEpochId() internal view returns (uint256) {
         return (block.timestamp - firstPriceEpochStartTs) / priceEpochDurationSec;
+    }
+
+    function _getFtsos() private view returns (IIFtso[] memory) {
+        return ftsoRegistry.getSupportedFtsos();
     }
 }

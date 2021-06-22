@@ -1,6 +1,7 @@
 import {
     FtsoInstance,
     FtsoManagerInstance,
+    FtsoRegistryInstance,
     FtsoRewardManagerInstance,
     InflationMockInstance, MockContractInstance,
     WFlrInstance
@@ -14,6 +15,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const BN = web3.utils.toBN;
 
+const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const FtsoManager = artifacts.require("FtsoManager");
 const Ftso = artifacts.require("Ftso");
@@ -35,9 +37,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let ftsoInterface: FtsoInstance;
     let wFlr: WFlrInstance;
     let mockInflation: InflationMockInstance;
+    let ftsoRegistry: FtsoRegistryInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
+        ftsoRegistry = await FtsoRegistry.new(accounts[0]);
         ftsoInterface = await Ftso.new(
             "FLR",
             constants.ZERO_ADDRESS as any,
@@ -66,6 +70,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             accounts[0],
             ftsoRewardManager.address,
             accounts[7],
+            ftsoRegistry.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -73,6 +78,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             startTs,
             VOTE_POWER_BOUNDARY_FRACTION
         );
+        ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
         wFlr = await WFLR.new(accounts[0]);
         await setDefaultVPContract(wFlr, accounts[0]);
