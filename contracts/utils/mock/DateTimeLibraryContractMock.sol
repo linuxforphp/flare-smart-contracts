@@ -158,13 +158,13 @@ contract BokkyPooBahsDateTimeContract {
         newTimestamp = BokkyPooBahsDateTimeLibrary.addSeconds(timestamp, _seconds);
     }
 
-    function subYears(uint timestamp, uint _years) public pure returns (uint newTimestamp) {
-        newTimestamp = BokkyPooBahsDateTimeLibrary.subYears(timestamp, _years);
-    }
+    // function subYears(uint timestamp, uint _years) public pure returns (uint newTimestamp) {
+    //     newTimestamp = BokkyPooBahsDateTimeLibrary.subYears(timestamp, _years);
+    // }
 
-    function subMonths(uint timestamp, uint _months) public pure returns (uint newTimestamp) {
-        newTimestamp = BokkyPooBahsDateTimeLibrary.subMonths(timestamp, _months);
-    }
+    // function subMonths(uint timestamp, uint _months) public pure returns (uint newTimestamp) {
+    //     newTimestamp = BokkyPooBahsDateTimeLibrary.subMonths(timestamp, _months);
+    // }
 
     function subDays(uint timestamp, uint _days) public pure returns (uint newTimestamp) {
         newTimestamp = BokkyPooBahsDateTimeLibrary.subDays(timestamp, _days);

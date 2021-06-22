@@ -280,29 +280,41 @@ library BokkyPooBahsDateTimeLibrary {
         require(newTimestamp >= timestamp);
     }
 
-    function subYears(uint timestamp, uint _years) internal pure returns (uint newTimestamp) {
-        (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
-        year -= _years;
-        uint daysInMonth = _getDaysInMonth(year, month);
-        if (day > daysInMonth) {
-            day = daysInMonth;
-        }
-        newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
-        require(newTimestamp <= timestamp);
-    }
+    /**
+     * @dev removed since it can be a cause of errors 
+     * adding and removing a year may not end up on the same point in time    
+     */
+    // function subYears(uint timestamp, uint _years) internal pure returns (uint newTimestamp) {
+    //     (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
+    //     year -= _years;
+    //     uint daysInMonth = _getDaysInMonth(year, month);
+    //     if (day > daysInMonth) {
+    //         day = daysInMonth;
+    //     }
+    //     newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
+    //     require(newTimestamp <= timestamp);
+    // }
 
-    function subMonths(uint timestamp, uint _months) internal pure returns (uint newTimestamp) {
-        (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
-        uint yearMonth = year * 12 + (month - 1) - _months;
-        year = yearMonth / 12;
-        month = yearMonth % 12 + 1;
-        uint daysInMonth = _getDaysInMonth(year, month);
-        if (day > daysInMonth) {
-            day = daysInMonth;
-        }
-        newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
-        require(newTimestamp <= timestamp);
-    }
+    /**
+     * @dev removed since it can be a cause of errors 
+     * adding and removing a month may not end up on the same point in time 
+     * Intendet functionality:
+     * 31.5 + 1 month => 30.6
+     * 30.6 - 1 month => 30.5 
+     * this may cause problems
+     */
+    // function subMonths(uint timestamp, uint _months) internal pure returns (uint newTimestamp) {
+    //     (uint year, uint month, uint day) = _daysToDate(timestamp / SECONDS_PER_DAY);
+    //     uint yearMonth = year * 12 + (month - 1) - _months;
+    //     year = yearMonth / 12;
+    //     month = yearMonth % 12 + 1;
+    //     uint daysInMonth = _getDaysInMonth(year, month);
+    //     if (day > daysInMonth) {
+    //         day = daysInMonth;
+    //     }
+    //     newTimestamp = _daysFromDate(year, month, day) * SECONDS_PER_DAY + timestamp % SECONDS_PER_DAY;
+    //     require(newTimestamp <= timestamp);
+    // }
 
     function subDays(uint timestamp, uint _days) internal pure returns (uint newTimestamp) {
         newTimestamp = timestamp - _days * SECONDS_PER_DAY;
