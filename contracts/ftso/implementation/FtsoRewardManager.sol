@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "../interface/IIFtsoRewardManager.sol";
 import "../../governance/implementation/Governed.sol";
-import "../../token/implementation/WFlr.sol";
 import "../../utils/implementation/SafePct.sol";
 import { Inflation } from "../../inflation/implementation/Inflation.sol";
 import "../../supply/interface/IIRewardPool.sol";

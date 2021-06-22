@@ -2,8 +2,8 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { FlareKeeper } from "../../utils/implementation/FlareKeeper.sol";
-import { IFlareKeep } from "../../utils/interfaces/IFlareKeep.sol";
+import { FlareKeeper } from "../../genesis/implementation/FlareKeeper.sol";
+import { IFlareKeep } from "../../genesis/interface/IFlareKeep.sol";
 import { GovernedAndFlareKept } from "../../utils/implementation/GovernedAndFlareKept.sol";
 import { InflationAnnum } from "../lib/InflationAnnum.sol";
 import { InflationAnnums } from "../lib/InflationAnnums.sol";

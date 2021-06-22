@@ -17,5 +17,5 @@ The [Flare Keeper] contract will be loaded to the chain in the Genesis block and
 
 Each contract that needs a keeper trigger will implement the [Keep Interface]. Per call from the validator, the keeper contract will iterate all registered contracts and trigger each of them. If any of these contracts revert, the keeper will save revert data and continue to the next kept contract.
 
-[Flare Keeper]: ../../contracts/utils/implementation/FlareKeeper.sol "Flare Keeper"
-[Keep Interface]: ../../contracts/utils/interfaces/IFlareKeep.sol "Keep interface"
+[Flare Keeper]: ../../contracts/genesis/implementation/FlareKeeper.sol "Flare Keeper"
+[Keep Interface]: ../../contracts/genesis/interface/IFlareKeep.sol "Keep interface"

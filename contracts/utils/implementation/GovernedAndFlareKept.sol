@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import { FlareKeeper } from "./FlareKeeper.sol";
+import { FlareKeeper } from "../../genesis/implementation/FlareKeeper.sol";
 import { Governed } from "../../governance/implementation/Governed.sol";
 
 

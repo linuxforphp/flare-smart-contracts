@@ -8,9 +8,9 @@ pragma abicoder v2;
 
 import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGenesis.sol";
 import { Inflation } from "../../inflation/implementation/Inflation.sol";
-import { IFlareKeep } from "../interfaces/IFlareKeep.sol";
+import { IFlareKeep } from "../interface/IFlareKeep.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "./SafePct.sol";
+import { SafePct } from "../../utils/implementation/SafePct.sol";
 
 
 /**
