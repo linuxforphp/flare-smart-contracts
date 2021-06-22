@@ -72,8 +72,8 @@ library CheckPointHistory {
         // No _checkpoints, return 0
         if (historyCount == 0) return 0;
 
-        // Shortcut for the actual value
-        if (_blockNumber >= _self.checkpoints[historyCount - 1].fromBlock) {
+        // Shortcut for the actual value (extra optimized for current block, to save one storage read)
+        if (_blockNumber >= block.number || _blockNumber >= _self.checkpoints[historyCount - 1].fromBlock) {
             return _self.checkpoints[historyCount - 1].value;
         }
         
@@ -87,7 +87,6 @@ library CheckPointHistory {
 
         // Find the block with number less than or equal to block given
         uint256 index = _indexOfGreatestBlockLessThan(_self.checkpoints, startIndex, _blockNumber);
-        
 
         return _self.checkpoints[index].value;
     }
@@ -129,7 +128,7 @@ library CheckPointHistory {
             }
         }
     }
-
+    
     /**
      * Delete at most `_count` of the oldest checkpoints.
      * At least one checkpoint at or before `_cleanupBlockNumber` will remain 

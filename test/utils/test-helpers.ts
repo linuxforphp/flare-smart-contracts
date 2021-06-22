@@ -195,6 +195,10 @@ export function compareArrays<T>(a: T[], b: T[]) {
     }
 }
 
+export function assertNumberEqual(a: BN, b: number, message?: string) {
+    return assert.equal(a.toNumber(), b, message);
+}
+
 export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber, address: string,): string {
     return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint256", "uint256", "address" ], [ price.toString(), random.toString(), address]))
 }

@@ -163,6 +163,21 @@ library DelegationHistory {
     }
     
     /**
+     * Get the number of delegations.
+     * @param _self A CheckPointHistoryState instance to query.
+     * @param _blockNumber The block number to query. 
+     * @return _count Count of delegations at the time.
+     **/
+    function countAt(
+        CheckPointHistoryState storage _self,
+        uint256 _blockNumber
+    ) internal view returns (uint256 _count) {
+        (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
+        if (!found) return 0;
+        return _self.checkpoints[index].delegates.length;
+    }
+    
+    /**
      * Get the sum of all delegation values.
      * @param _self A CheckPointHistoryState instance to query.
      * @param _blockNumber The block number to query. 
@@ -368,7 +383,8 @@ library DelegationHistory {
         uint256 historyCount = _checkpoints.length;
         if (historyCount == 0) {
             _found = false;
-        } else if (_blockNumber >= _checkpoints[historyCount - 1].fromBlock) {
+        } else if (_blockNumber >= block.number || _blockNumber >= _checkpoints[historyCount - 1].fromBlock) {
+            // _blockNumber >= block.number saves one storage read for reads ...AtNow
             _found = true;
             _index = historyCount - 1;
         } else if (_blockNumber < _checkpoints[_startIndex].fromBlock) {

@@ -137,6 +137,30 @@ library PercentageDelegation {
     }
     
     /**
+     * Get the number of delegations.
+     * @param _self A DelegationState instance to manage.
+     * @param _blockNumber The block number to query. 
+     * @return _count Count of delegations at the time.
+     **/
+    function getCountAt(
+        DelegationState storage _self,
+        uint256 _blockNumber
+    ) internal view returns (uint256 _count) {
+        return _self.delegation.countAt(_blockNumber);
+    }
+
+    /**
+     * Get the number of delegations.
+     * @param _self A DelegationState instance to manage.
+     * @return _count Count of delegations at the time.
+     **/
+    function getCount(
+        DelegationState storage _self
+    ) internal view returns (uint256 _count) {
+        return _self.delegation.countAt(block.number);
+    }
+    
+    /**
      * @notice Get the total amount (absolute) of the vote power delegation of all delegates.
      * @param _self A DelegationState instance to manage.
      * @param _balance Owner's balance.

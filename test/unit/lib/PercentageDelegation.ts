@@ -285,4 +285,19 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     assert.equal(value.toNumber(), 0);
   });
 
+  it("Should get delegate count", async () => {
+    // Assemble
+    // Act
+    await delegation.addReplaceDelegate(accounts[1], 5000);
+    const blk1 = await web3.eth.getBlockNumber();
+    await delegation.addReplaceDelegate(accounts[2], 3000);
+    // Assert
+    const cnt1 = await delegation.getCount();
+    assert.equal(cnt1.toNumber(), 2);
+    const cnt2 = await delegation.getCountAt(blk1);
+    assert.equal(cnt2.toNumber(), 1);
+    const cnt3 = await delegation.getCountAt(0);
+    assert.equal(cnt3.toNumber(), 0);
+  });
+
 });
