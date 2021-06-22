@@ -8,6 +8,7 @@ const Governed = artifacts.require("Governed");
 const ALREADY_INIT_MSG = "initialised != false";
 const ONLY_GOVERNANCE_MSG = "only governance";
 const NOT_CLAIMAINT = "not claimaint";
+const GOVERNANCE_ZERO = "_governance zero";
 
 const GOVERNANCEUPDATED_EVENT = "GovernanceUpdated";
 const GOVERNANCE_PROPOSED = "GovernanceProposed";
@@ -17,23 +18,20 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
     let governed: GovernedInstance;
 
     beforeEach(async() => {
-        governed = await Governed.new(constants.ZERO_ADDRESS);
+        governed = await Governed.new(accounts[1]);
     });
 
     describe("initialise", async() => {
-        it("Should initialize with parameterized governance", async() => {
+        it("Should only initialize with non-zero governance", async() => {
             // Assemble
             // Act
-            const tx = await governed.initialise(accounts[1]);
+            const promise = Governed.new(constants.ZERO_ADDRESS);
             // Assert
-            const currentGovernance = await governed.governance();
-            assert.equal(currentGovernance, accounts[1]);
-            expectEvent(tx, GOVERNANCEUPDATED_EVENT);
+            await expectRevert(promise, GOVERNANCE_ZERO);
         });
 
         it("Should only be initializable once", async() => {
             // Assemble
-            await governed.initialise(accounts[1]);
             // Act
             const initPromise = governed.initialise(accounts[2]);
             // Assert
@@ -47,7 +45,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
     describe("propose", async() => {
         it("Should accept a governance proposal", async() => {
             // Assemble
-            await governed.initialise(accounts[1]);
             // Act
             const tx = await governed.proposeGovernance(accounts[2], {from: accounts[1]});
             // Assert
@@ -60,7 +57,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
         it("Should emit governance proposal event", async() => {
           // Assemble
-          await governed.initialise(accounts[1]);
           // Act
           const tx = await governed.proposeGovernance(accounts[2], {from: accounts[1]});
           // Assert
@@ -69,7 +65,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
         it("Should reject a governance proposal if not proposed from governed address", async() => {
             // Assemble
-            await governed.initialise(accounts[1]);
             // Act
             const proposePromise = governed.proposeGovernance(accounts[2]);
             // Assert
@@ -80,7 +75,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
     describe("claim", async() => {
         it("Should claim a governance proposal", async() => {
             // Assemble
-            await governed.initialise(accounts[1]);
             await governed.proposeGovernance(accounts[2], {from: accounts[1]});
             // Act
             const tx = await governed.claimGovernance({from: accounts[2]});
@@ -92,7 +86,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
         it("Should reject a governance claim if not from claimaint", async() => {
             // Assemble
-            await governed.initialise(accounts[1]);
             await governed.proposeGovernance(accounts[2], {from: accounts[1]});
             // Act
             const claimPromise = governed.claimGovernance();
@@ -102,7 +95,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
         it("Should clear proposed address after claiming", async() => {
             // Assemble
-            await governed.initialise(accounts[1]);
             await governed.proposeGovernance(accounts[2], {from: accounts[1]});
             // Act
             await governed.claimGovernance({from: accounts[2]});
@@ -115,7 +107,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
     describe("transfer", async() => {
       it("Should transfer governance", async() => {
         // Assemble
-        await governed.initialise(accounts[1]);
         // Act
         const tx = await governed.transferGovernance(accounts[2], {from: accounts[1]});
         // Assert
@@ -126,7 +117,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
       it("Should reject transfer governance if not from governed address", async() => {
         // Assemble
-        await governed.initialise(accounts[1]);
         // Act
         const promiseTransfer = governed.transferGovernance(accounts[2], {from: accounts[3]});
         // Assert
@@ -135,7 +125,6 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
       it("Should clear proposed governance if sucessfully transferred", async() => {
         // Assemble
-        await governed.initialise(accounts[1]);
         await governed.proposeGovernance(accounts[2], {from: accounts[1]});
         // Act
         await governed.transferGovernance(accounts[3], {from: accounts[1]});
