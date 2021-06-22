@@ -437,6 +437,7 @@ contract Delegatable is IVPTokenEvents {
         for (uint256 i = 0; i < _delegateAddresses.length; i++) {
             // Compute vote power _to be reversed for the delegate
             uint256 reverseVotePower = delegation.getDelegatedValue(_delegateAddresses[i]);
+            if (reverseVotePower == 0) continue;
             // Transmit vote power back _to _owner
             votePower.undelegate(_from, _delegateAddresses[i], reverseVotePower);
             votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
@@ -449,6 +450,22 @@ contract Delegatable is IVPTokenEvents {
         }
         
         return delegation.getDelegatedTotal();
+    }
+    
+    /**
+     * @notice Check if the `_owner` has made any delegations.
+     * @param _owner The address of owner to get delegated vote power.
+     * @return The total delegated vote power at block.
+     */
+    function _hasAnyDelegations(address _owner) internal view returns(bool) {
+        DelegationMode delegationMode = delegationModes[_owner];
+        if (delegationMode == DelegationMode.NOTSET) {
+            return false;
+        } else if (delegationMode == DelegationMode.AMOUNT) {
+            return explicitDelegations[_owner].getDelegatedTotal() > 0;
+        } else { // delegationMode == DelegationMode.PERCENTAGE
+            return percentageDelegations[_owner].getCount() > 0;
+        }
     }
 
     /**

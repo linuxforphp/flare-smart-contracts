@@ -9,7 +9,7 @@ const VPContract = artifacts.require("VPContract");
 
 contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, async accounts => {
   it("Should not create VPContract without owner", async () => {
-    await expectRevert(VPContract.new(constants.ZERO_ADDRESS),
+    await expectRevert(VPContract.new(constants.ZERO_ADDRESS, false),
       "VPContract must belong to a VPToken");
   });
 

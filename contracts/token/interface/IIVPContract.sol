@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+
 interface IIVPContract {
     /**
      * Set the cleanup block number.
@@ -23,7 +25,7 @@ interface IIVPContract {
         uint256 _toBalance,
         uint256 _amount
     ) external;
-    
+
     /**
      * @notice Delegate `_bips` percentage of voting power to `_to` from `_from`
      * @param _from The address of the delegator
@@ -217,4 +219,20 @@ interface IIVPContract {
         uint256 _count,
         uint256 _delegationMode
     );
+ 
+    /**
+     * The VPToken (or some other contract) that owns this VPContract.
+     * All state changing methods may be called only from this address.
+     * This is because original msg.sender is sent in `_from` parameter
+     * and we must be sure that it cannot be faked by directly calling VPContract.
+     * Owner token is also used in case of replacement to recover vote powers from balances.
+     */
+    function ownerToken() external view returns (IVPToken);
+    
+    /**
+     * Return true if this IIVPContract is configured to be used as a replacement for other contract.
+     * It means that vote powers are not necessarily correct at the initialization, therefore
+     * every method that reads vote power must check whether it is initialized for that address and block.
+     */
+    function isReplacement() external view returns (bool);
 }

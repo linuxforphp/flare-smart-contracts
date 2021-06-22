@@ -74,6 +74,12 @@ export class VPTokenState {
         return this.amountDelegations.get(from, to);    // if missing, zero will be returned anyway
     }
     
+    // to simulate vpcontract replacement
+    clearAllDelegations() {
+        this.bipsDelegations.clear();
+        this.amountDelegations.clear();
+    }
+    
     save(file: string, indent?: string | number) {
         const obj = {
             balances: this.balances.toObject(),

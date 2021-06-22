@@ -2,6 +2,8 @@ import { VPTokenMockInstance } from "../../../typechain-truffle";
 import { loadJson, saveJson, toBN } from "./FuzzingUtils";
 import { VPTokenState } from "./VPTokenState";
 
+const VPContract = artifacts.require("VPContract");
+
 export type BNArg = number | BN;
 
 export type VPTokenAction = { context: any, sender: string } &
@@ -19,6 +21,7 @@ export type VPTokenAction = { context: any, sender: string } &
         | { name: 'votePowerAtCached', checkpointId: string }
         | { name: 'votePowerOfAtCached', who: string, checkpointId: string }
         | { name: 'setCleanupBlock', checkpointId: string }
+        | { name: 'replaceVpContract' }
     );
 
 export interface Checkpoint {
@@ -132,7 +135,17 @@ export class VPTokenHistory {
                 }
                 case "setCleanupBlock": {
                     const checkpoint = this.checkpoint(method.checkpointId);
-                    const result = await this.vpToken.setCleanupBlockNumber(checkpoint.blockNumber, { from: method.sender });
+                    return await this.vpToken.setCleanupBlockNumber(checkpoint.blockNumber, { from: method.sender });
+                }
+                case "replaceVpContract": {
+                    const vpContractRepl = await VPContract.new(this.vpToken.address, true);
+                    const result = await this.vpToken.setVpContract(vpContractRepl.address, { from: method.sender });
+                    // replacing vpcontract clears delegations for all history until now
+                    this.state.clearAllDelegations();
+                    for (const cp of this.checkpointList()) {
+                        cp.state.clearAllDelegations();
+                    }
+                    return result;
                 }
             }
         } catch (e) {
@@ -193,5 +206,9 @@ export class VPTokenSimulator {
     
     setCleanupBlock(sender: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "setCleanupBlock", sender, checkpointId });
+    }
+    
+    replaceVpContract(sender: string) {
+        return this.history.run({ context: this.context, name: "replaceVpContract", sender });
     }
 }

@@ -265,6 +265,17 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     assert.equal<any>(mode2, 2);   // 2 == DelegationMode.AMOUNT (must not be reset)
   });
 
+  it("Any undelegate should work with empty delegation", async () => {
+    // Assemble
+    await delegatable.mintVotePower(accounts[1], 200);
+    // Act
+    await delegatable.undelegateAll({ from: accounts[1] });
+    await delegatable.undelegateAllExplicit([], { from: accounts[1] });
+    // Assert
+    const mode = await delegatable.delegationModeOf(accounts[1]);
+    assert.equal(mode.toNumber(), 0); // NOT_SET
+  });
+
   it("Should not explicitly delegate if not enough vote power", async () => {
     // Assemble
     // Act

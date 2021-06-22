@@ -46,6 +46,9 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     // the initial amount of tokens minted to all participating accounts
     let INIT_AMOUNT = env.INIT_AMOUNT ? Number(env.INIT_AMOUNT) : 1_000_000;
 
+    // the number of accounts participating in tests (actually, there are 2 more - governance and a user)
+    let REPLACE_VPCONTRACT_AT = env.REPLACE_VPCONTRACT_AT ? Number(env.REPLACE_VPCONTRACT_AT) : null;
+
     // END PARAMETERS
     ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -113,6 +116,9 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
             const action = weightedRandomChoice(actions);
             simulator.context = i;
             await action();
+            if (i === REPLACE_VPCONTRACT_AT) {
+                await replaceVpContract();
+            }
             const isCheckpoint = CHECKPOINT_LIST != null ? CHECKPOINT_LIST.includes(i) : (i < LENGTH && i % CHECKPOINT_EVERY === 0);
             if (isCheckpoint) {
                 await history.createCheckpoint('CP' + i);
@@ -122,6 +128,11 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
                 }
             }
         }
+
+    }
+    
+    async function replaceVpContract() {
+        await simulator.replaceVpContract(governance);
     }
     
     async function setCleanupBlock(index: number) {

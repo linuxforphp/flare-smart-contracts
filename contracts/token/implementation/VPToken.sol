@@ -19,7 +19,14 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     using SafeMath for uint256;
     using SafePct for uint256;
 
+    // the VPContract to use
     IIVPContract private vpContract;
+    
+    /**
+     * When true, the argument to `setVpContract` must be a vpContract
+     * with `isReplacement` set to `true`. To be used  for creating the correct VPContract.
+     */
+    bool public needsReplacementVPContract = false;
     
     constructor(
         address _governance,
@@ -295,19 +302,17 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         require(_from != _to, "Cannot transfer to self");
         
         // update vote powers
-        _checkVpContract().updateAtTokenTransfer(_from, _to, balanceOf(_from), balanceOf(_to), _amount);
-
-        // update balance
-        if (_from == address(0)) {
-            // mint checkpoint balance data for transferee
-            _mintForAtNow(_to, _amount);
-        } else if (_to == address(0)) {
-            // burn checkpoint data for transferer
-            _burnForAtNow(_from, _amount);
-        } else {
-            // transfer checkpoint balance data
-            _transmitAtNow(_from, _to, _amount);
+        IIVPContract vpc = vpContract;
+        if (address(vpc) != address(0)) {
+            vpc.updateAtTokenTransfer(_from, _to, balanceOf(_from), balanceOf(_to), _amount);
+        } else if (!needsReplacementVPContract) {
+            // transfers without vpcontract are allowed, but after they are made
+            // any added vpcontract must have isReplacement set
+            needsReplacementVPContract = true;
         }
+
+        // update balance history
+        _updateBalanceHistoryAtTransfer(_from, _to, _amount);
     }
     
     /**
@@ -319,8 +324,14 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @param _vpContract Vote power contract to be used by this token.
      */
     function setVpContract(IIVPContract _vpContract) external onlyGovernance {
-        require(address(_vpContract) != address(0), "May not set null VPContract");
-        require(address(vpContract) == address(0), "VPContract already set on VPToken");
+        if (address(_vpContract) != address(0)) {
+            require(address(_vpContract.ownerToken()) == address(this),
+                "VPContract not owned by this token");
+            require(!needsReplacementVPContract || _vpContract.isReplacement(),
+                "VPContract not configured for replacement");
+            // once a non-null vpcontract is set, every other has to have isReplacement flag set
+            needsReplacementVPContract = true;
+        }
         vpContract = _vpContract;
     }
     

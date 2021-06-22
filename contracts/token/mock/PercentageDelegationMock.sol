@@ -53,6 +53,14 @@ contract PercentageDelegationMock {
         return self.getDelegations();
     }
     
+    function getCountAt(uint256 _blockNumber) public view returns (uint256) {
+        return self.getCountAt(_blockNumber);
+    }
+
+    function getCount() public view returns (uint256) {
+        return self.getCount();
+    }
+    
     function clear() public {
         self.clear();
     }
