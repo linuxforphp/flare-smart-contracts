@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { Governed } from "./Governed.sol";
+import { GovernedBase } from "./GovernedBase.sol";
 
 /**
  * @title Governed At Genesis
@@ -11,13 +11,12 @@ import { Governed } from "./Governed.sol";
  *  where theoretically no accounts yet exist, and leaving it ungoverned could result in a race
  *  to claim governance by an unauthorized address.
  **/
-contract GovernedAtGenesis is Governed {
-    constructor(address _governance) Governed(_governance) { }
+contract GovernedAtGenesis is GovernedBase {
+    constructor(address _governance) GovernedBase(_governance) { }
 
     /**
      * @notice Set governance to a fixed address when constructor is not called.
      **/
-     
     function initialiseFixedAddress() public virtual returns (address) {
         address governanceAddress = address(0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7);
         

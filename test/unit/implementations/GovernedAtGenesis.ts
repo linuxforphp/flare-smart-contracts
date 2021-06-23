@@ -6,6 +6,8 @@ const getTestFile = require('../../utils/constants').getTestFile;
 const GovernedAtGenesis = artifacts.require("GovernedAtGenesis");
 
 const ALREADY_INIT_MSG = "initialised != false";
+const ONLY_GOVERNANCE_MSG = "only governance";
+
 
 contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts => {
   // contains a fresh contract for each test
@@ -40,6 +42,14 @@ contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts =>
       let initializePromise = governedAtGenesis.initialiseFixedAddress();
       // Assert
       await expectRevert(initializePromise, ALREADY_INIT_MSG);
-    });      
+    });
+
+    it("Should not propose governance if not initialized to fixed address", async() => {
+      // Assemble
+      // Act
+      const promise = governedAtGenesis.proposeGovernance(accounts[1]);
+      // Assert
+      await expectRevert(promise, ONLY_GOVERNANCE_MSG);
+    });
   });
 });
