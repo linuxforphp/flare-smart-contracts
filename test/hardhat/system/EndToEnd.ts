@@ -15,6 +15,8 @@ import {
   PriceSubmitterInstance,
   SuicidalMockContract,
   SuicidalMockInstance,
+  SupplyContract,
+  SupplyInstance,
   WFlrContract,
   WFlrInstance
 } from "../../../typechain-truffle";
@@ -136,14 +138,16 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
   let contracts: Contracts;
   let FlareKeeper: FlareKeeperContract;
   let flareKeeper: FlareKeeperInstance;
-  let RewardManager: FtsoRewardManagerContract;
-  let rewardManager: FtsoRewardManagerInstance;
+  let FtsoRewardManager: FtsoRewardManagerContract;
+  let ftsoRewardManager: FtsoRewardManagerInstance;
   let FtsoManager: FtsoManagerContract;
   let ftsoManager: FtsoManagerInstance;
   let PriceSubmitter: PriceSubmitterContract;
   let priceSubmiter: PriceSubmitterInstance;
   let WFlr: WFlrContract;
   let wFLR: WFlrInstance;
+  let Supply: SupplyContract;
+  let supply: SupplyInstance;
   let Ftso: FtsoContract;
   let ftsoFltc: FtsoInstance;
   let ftsoFxdg: FtsoInstance;
@@ -169,14 +173,16 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
     // Wire up needed contracts
     FlareKeeper = artifacts.require("FlareKeeper");
     flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
-    RewardManager = artifacts.require("FtsoRewardManager");
-    rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
+    FtsoRewardManager = artifacts.require("FtsoRewardManager");
+    ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     FtsoManager = artifacts.require("FtsoManager");
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     PriceSubmitter = artifacts.require("PriceSubmitter");
     priceSubmiter = await PriceSubmitter.at(contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     WFlr = artifacts.require("WFlr");
     wFLR = await WFlr.at(contracts.getContractAddress(Contracts.WFLR));
+    Supply = artifacts.require("Supply");
+    supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     Ftso = artifacts.require("Ftso");
     ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FLTC));
     ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXDG));
@@ -224,6 +230,11 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
 
     // Prime the keeper to establish vote power block.
     await flareKeeper.trigger();
+
+    // Supply contract - inflatable balance should be updated
+    const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
+    const inflatableBalanceWei = await supply.getInflatableBalance();
+    assert(inflatableBalanceWei.gt(initialGenesisAmountWei), "Authorized inflation not distributed...");
 
     // A minting request should be pending...
     const mintingRequestWei = await flareKeeper.totalMintingRequestedWei();
@@ -295,9 +306,9 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
       testPriceEpoch);
 
     await flareKeeper.trigger({ gas: 10000000 });
-    
+
     // There should be a balance to claim within reward manager at this point
-    assert(BN(await web3.eth.getBalance(rewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
+    assert(BN(await web3.eth.getBalance(ftsoRewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
 
     // Finalize all possible past price epochs including the last one we are testing 
     // Rewards should now be claimable 
@@ -337,25 +348,25 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
     console.log(`Claiming rewards for reward epoch ${ rewardEpochId }`);
     let gasCost = BN(0);
     try {
-      const tx = await rewardManager.claimReward(p1, rewardEpochs, { from: p1 });
+      const tx = await ftsoRewardManager.claimReward(p1, rewardEpochs, { from: p1 });
       gasCost = gasCost.add(await calcGasCost(tx));
     } catch (e: unknown) {
       spewClaimError("p1", e);
     }
     try {
-      const tx = await rewardManager.claimReward(p2, rewardEpochs, { from: p2 });
+      const tx = await ftsoRewardManager.claimReward(p2, rewardEpochs, { from: p2 });
       gasCost = gasCost.add(await calcGasCost(tx));
     } catch (e: unknown) {
       spewClaimError("p2", e);
     }
     try {
-      const tx = await rewardManager.claimReward(p3, rewardEpochs, { from: p3 });
+      const tx = await ftsoRewardManager.claimReward(p3, rewardEpochs, { from: p3 });
       gasCost = gasCost.add(await calcGasCost(tx));
     } catch (e: unknown) {
       spewClaimError("p3", e);
     }
     try {
-      const tx = await rewardManager.claimReward(d1, rewardEpochs, { from: d1 });
+      const tx = await ftsoRewardManager.claimReward(d1, rewardEpochs, { from: d1 });
       gasCost = gasCost.add(await calcGasCost(tx));
     } catch (e: unknown) {
       spewClaimError("d1", e);
@@ -377,22 +388,19 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
         .add(gasCost);
 
     // Compute what we should have distributed for one price epoch
-    const numberOfSecondsInDay = BN(3600 * 24);
+    const almostFullDaySec = BN(3600 * 24 - 1);
     // Get the daily inflation authorized on ftso reward manager
-    const dailyAuthorizedInflation = await rewardManager.dailyAuthorizedInflation();
-    // 1 subtracted from period remaining because first price epoch was used to prime
-    // vote power block; no prices were voted on.
-    const shouldaClaimed = dailyAuthorizedInflation
-      .div(
-        numberOfSecondsInDay.div(priceEpochDurationSec).sub(BN(1))
-      );
+    const dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
+    const authorizedInflationTimestamp = await ftsoRewardManager.lastInflationAuthorizationReceivedTs();
 
-    // Account for allocation truncation during distribution calc
-    // TODO: This should be fixed with a double declining balance allocation, where ever it is that
-    // is causing this rounding problem.
-    const differenceBetweenActualAndExpected = shouldaClaimed.sub(computedRewardClaimed);
+    // use the same formula as in ftso reward manager to calculate claimable value
+    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almostFullDaySec);
+    const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (testPriceEpoch + 1) * priceEpochDurationSec.toNumber() - 1);
+    const shouldaClaimed = dailyAuthorizedInflation.div( 
+        (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSec).add(BN(1))
+    );
 
     // After all that, one little test...
-    assert(differenceBetweenActualAndExpected.lte(BN(0)), `should have claimed ${ shouldaClaimed } but actually claimed ${ computedRewardClaimed }`);
+    assert(shouldaClaimed.eq(computedRewardClaimed), `should have claimed ${ shouldaClaimed } but actually claimed ${ computedRewardClaimed }`);
   });
 });

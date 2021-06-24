@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
-import { checkTestCase, finalizePriceEpochWithResult, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
+import { checkTestCase, createMockSupplyContract, finalizePriceEpochWithResult, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { TestExampleLogger } from "../../utils/TestExampleLogger";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
@@ -14,8 +14,11 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
     await setDefaultVPContract_ethers(flrToken, signer);
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, signer.address, "fAsset", "FASSET");
     await setDefaultVPContract_ethers(assetToken, signer);
+
+    let mockSupply = await createMockSupplyContract(signer.address, 1000);
+
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
-        "FASSET", flrToken.address, signer.address,  // symbol, address _wFlr, address _ftsoManager,
+        "FASSET", flrToken.address, signer.address, mockSupply.address, // symbol, address _wFlr, address _ftsoManager, address _supply
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
         1, //uint256 _initialPrice

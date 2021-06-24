@@ -136,10 +136,10 @@ try {
   // Supply contract
   const supply = await Supply.new(
     deployerAccount.address,
-    constants.ZERO_ADDRESS,
+    parameters.burnAddress,
     inflation.address,
     BN(parameters.totalFlrSupply).mul(BN(10).pow(BN(18))),
-    BN(0), // TODO - locked foundation supply
+    BN(parameters.totalFoundationSupply).mul(BN(10).pow(BN(18))),
     []
   );
   spewNewContractInfo(contracts, Supply.contractName, supply.address);
@@ -218,7 +218,7 @@ try {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, parameters.initialWflrPrice, parameters.priceDeviationThresholdBIPS);
+  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPrice, parameters.priceDeviationThresholdBIPS);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address);
 
   // Deploy FAsset, minter, and ftso for XRP
@@ -227,6 +227,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.XRP.fAssetName,
     parameters.XRP.fAssetSymbol,
@@ -241,6 +242,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.LTC.fAssetName,
     parameters.LTC.fAssetSymbol,
@@ -255,6 +257,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.XDG.fAssetName,
     parameters.XDG.fAssetSymbol,
@@ -269,6 +272,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.ADA.fAssetName,
     parameters.ADA.fAssetSymbol,
@@ -283,6 +287,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.ALGO.fAssetName,
     parameters.ALGO.fAssetSymbol,
@@ -297,6 +302,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.BCH.fAssetName,
     parameters.BCH.fAssetSymbol,
@@ -311,6 +317,7 @@ try {
     contracts,
     deployerAccount.address,
     ftsoManager,
+    supply.address,
     wflr.address,
     parameters.DGB.fAssetName,
     parameters.DGB.fAssetSymbol,
@@ -375,6 +382,7 @@ async function deployNewFAsset(
   contracts: Contracts,
   deployerAccountAddress: string,
   ftsoManager: FtsoManagerInstance,
+  supplyAddress: string,
   wflrAddress: string,
   name: string,
   symbol: string,
@@ -404,7 +412,7 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, initialPrice, priceDeviationThresholdBIPS);
+  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, supplyAddress,  initialPrice, priceDeviationThresholdBIPS);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${ symbol }`, ftso.address);
 

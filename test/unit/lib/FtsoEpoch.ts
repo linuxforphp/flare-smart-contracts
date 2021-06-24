@@ -47,8 +47,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should create new epoch`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
         const epoch = await ftsoEpoch.getEpochInstance(1);
+        expect(epoch.circulatingSupplyFlr).to.equals('50');
         expect(epoch.votePowerFlr).to.equals('40');
         expect(epoch.votePowerAsset).to.equals('120');
         expect(epoch.maxVotePowerFlr).to.equals('40');
@@ -60,7 +61,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should add vote to epoch`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
         await ftsoEpoch.addVote(1, accounts[1], 10, 25, 20, 5, {from: accounts[1]});
         const epoch = await ftsoEpoch.getEpochInstance(1);
@@ -73,7 +74,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should set voter vote id correctly`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
         await ftsoEpoch.addVote(1, accounts[1], 10, 25, 20, 5, {from: accounts[1]});
         expect((await ftsoEpoch.getVoterVoteId(1, {from: accounts[1]})).toNumber()).to.equals(10);
@@ -82,7 +83,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should sum vote power of voters correctly`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
         await ftsoEpoch.addVote(1, accounts[1], 10, 5, 20, 5, {from: accounts[1]});
         await ftsoEpoch.addVote(1, accounts[2], 11, 15, 10, 15, {from: accounts[2]});
@@ -97,10 +98,10 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should not change the epoch instance if vote is added to a new epoch instance`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
         await ftsoEpoch.addVote(1, accounts[1], 10, 25, 20, 5, {from: accounts[1]});
-        await ftsoEpoch.initializeInstanceForReveal(2, 30, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(2, 40, 30, [mockVpToken.address], [60000], [2]);
         // _epochId, _voteId, _votePowerFlr, _votePowerAsset, _random
         await ftsoEpoch.addVote(2, accounts[1], 12, 28, 18, 52, {from: accounts[1]});
 
@@ -114,11 +115,12 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should change state of a new epoch only`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [3]);
         await ftsoEpoch.configureEpochs(20, 5, 2, 1, 1000, 10000, 40, 1400, []);
-        await ftsoEpoch.initializeInstanceForReveal(2, 60, [mockVpToken.address], [50000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(2, 70, 60, [mockVpToken.address], [50000], [2]);
 
         const epoch = await ftsoEpoch.getEpochInstance(1);
+        expect(epoch.circulatingSupplyFlr).to.equals('50');
         expect(epoch.votePowerFlr).to.equals('40');
         expect(epoch.votePowerAsset).to.equals('180');
         expect(epoch.maxVotePowerFlr).to.equals('40');
@@ -129,6 +131,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.lowFlrTurnoutBIPSThreshold).to.equals('1500');
 
         const epoch2 = await ftsoEpoch.getEpochInstance(2);
+        expect(epoch2.circulatingSupplyFlr).to.equals('70');
         expect(epoch2.votePowerFlr).to.equals('60');
         expect(epoch2.votePowerAsset).to.equals('100');
         expect(epoch2.maxVotePowerFlr).to.equals('30');
@@ -140,9 +143,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it(`Should change vote power block of a new epoch only`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [60000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
         await ftsoEpoch.setVotePowerBlock(3);
-        await ftsoEpoch.initializeInstanceForReveal(2, 60, [mockVpToken.address], [50000], [2]);
+        await ftsoEpoch.initializeInstanceForReveal(2, 70, 60, [mockVpToken.address], [50000], [2]);
 
         const epoch = await ftsoEpoch.getEpochInstance(1);
         expect(epoch.votePowerBlock).to.equals('1');
@@ -180,33 +183,33 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         // await ftsoEpoch.configureEpochs(0, 500, 1000, 1, 2, 1000, 10000, 50);
         let weightRatio;
         //_assetVotePowerUSD == 0
-        await ftsoEpoch.initializeInstanceForReveal(1, 40, [mockVpToken.address], [0], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [0], [3]);
         await ftsoEpoch.setWeightsParameters(1, 0, 0);
         weightRatio = await ftsoEpoch.getWeightRatio(1);
         expect(weightRatio.toNumber()).to.equals(0);
         
         //_assetVotePowerUSD < _state.lowAssetUSDThreshold
-        await ftsoEpoch.initializeInstanceForReveal(2, 40, [mockVpToken.address], [60000], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(2, 50, 40, [mockVpToken.address], [60000], [3]);
         await ftsoEpoch.setWeightsParameters(2, 0, 0);
         weightRatio = await ftsoEpoch.getWeightRatio(2);
         expect(weightRatio.toNumber()).to.equals(0);
 
         //turnout >= _state.highAssetTurnoutBIPSThreshold
-        await ftsoEpoch.initializeInstanceForReveal(3, 40, [mockVpToken.address], [500000], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(3, 50, 40, [mockVpToken.address], [500000], [3]);
         await ftsoEpoch.addVote(3, accounts[0], 1, 5, 600, 123);
         await ftsoEpoch.setWeightsParameters(3, 125000000000, 400000000000);
         weightRatio = await ftsoEpoch.getWeightRatio(3);
         expect(weightRatio.toNumber()).to.equals(750);
 
         //turnout < _state.highAssetTurnoutBIPSThreshold
-        await ftsoEpoch.initializeInstanceForReveal(4, 40, [mockVpToken.address], [500000], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(4, 50, 40, [mockVpToken.address], [500000], [3]);
         await ftsoEpoch.addVote(4, accounts[0], 2, 5, 6, 123);
         await ftsoEpoch.setWeightsParameters(4, 125000000000, 4000000000);
         weightRatio = await ftsoEpoch.getWeightRatio(4);
         expect(weightRatio.toNumber()).to.equals(600);
 
         //_assetVotePowerUSD >= _state.highAssetUSDThreshold)
-        await ftsoEpoch.initializeInstanceForReveal(5, 40, [mockVpToken.address], [50000000], [3]);
+        await ftsoEpoch.initializeInstanceForReveal(5, 50, 40, [mockVpToken.address], [50000000], [3]);
         await ftsoEpoch.addVote(5, accounts[0], 3, 5, 90000, 123);
         await ftsoEpoch.setWeightsParameters(5, 125000000000, 600000000000);
         weightRatio = await ftsoEpoch.getWeightRatio(5);
@@ -244,7 +247,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     it("Should compute weights correctly", async () => {
         let highAssetTurnoutBIPSThreshold = 9000;
         await ftsoEpoch.configureEpochs(500, 1000, 1, 2, 1000, 10000, highAssetTurnoutBIPSThreshold, 1500, []);
-        await ftsoEpoch.initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 500, 400, [mockVpToken.address], [700000], [11]);
         await ftsoEpoch.addVote(1, accounts[0], 5, 50, 400000, 123);
         await ftsoEpoch.addVote(1, accounts[0], 6, 70, 200000, 321);
         let weightFlr1 = Math.floor(50/400*1e12);//125.000.000.000
@@ -282,7 +285,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it("Should compute weights correctly - zero asset vote power sum", async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 500, 400, [mockVpToken.address], [700000], [11]);
         await ftsoEpoch.addVote(1, accounts[0], 5, 50, 0, 123);
         await ftsoEpoch.addVote(1, accounts[0], 6, 70, 0, 321);
         let weightFlr1 = Math.floor(50/400*1e12);
@@ -302,7 +305,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it("Should compute weights correctly - zero flr vote power sum", async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 500, 400, [mockVpToken.address], [700000], [11]);
         await ftsoEpoch.addVote(1, accounts[0], 5, 0, 400000, 123);
         await ftsoEpoch.addVote(1, accounts[0], 6, 0, 200000, 321);
 

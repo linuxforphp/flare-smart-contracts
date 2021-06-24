@@ -96,7 +96,7 @@ library FtsoEpoch {
     function _initializeInstanceForReveal(
         State storage _state,
         Instance storage _instance,
-        // uint256 _circulatingSupplyFlr,
+        uint256 _circulatingSupplyFlr,
         uint256 _votePowerFlr,
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
@@ -108,7 +108,7 @@ library FtsoEpoch {
         _instance.votePowerBlock = _state.votePowerBlock;
         _instance.highAssetTurnoutBIPSThreshold = _state.highAssetTurnoutBIPSThreshold;
         _instance.lowFlrTurnoutBIPSThreshold = _state.lowFlrTurnoutBIPSThreshold;
-        _instance.circulatingSupplyFlr = _votePowerFlr; // TODO _circulatingSupplyFlr;
+        _instance.circulatingSupplyFlr = _circulatingSupplyFlr;
         _instance.votePowerFlr = _votePowerFlr;
         _instance.minVotePowerFlr = _votePowerFlr / _state.minVotePowerFlrThreshold;
         _instance.minVotePowerAsset = _instance.votePowerAsset / _state.minVotePowerAssetThreshold;

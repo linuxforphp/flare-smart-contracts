@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import path from "path";
 import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
-import { checkTestCase, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
+import { checkTestCase, createMockSupplyContract, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
@@ -55,8 +55,10 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
 
             let blockNumber = await ethers.provider.getBlockNumber();
 
+            let mockSupply = await createMockSupplyContract(signers[0].address, 1000);
+
             let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signers[0],
-                "FASSET", flrToken.address, signers[0].address,  // symbol, address _wFlr, address _ftsoManager,
+                "FASSET", flrToken.address, signers[0].address, mockSupply.address, // symbol, address _wFlr, address _ftsoManager, address _supply
                 epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
                 1, //uint256 _initialPrice

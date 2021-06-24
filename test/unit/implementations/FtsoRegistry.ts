@@ -1,5 +1,6 @@
 
 import { FtsoRegistryInstance, MockContractInstance } from "../../../typechain-truffle";
+import { createMockSupplyContract } from "../../utils/FTSO-test-utils";
 
 const getTestFile = require('../../utils/constants').getTestFile;
 const MockFtso = artifacts.require("MockFtso");
@@ -12,8 +13,10 @@ const ONLY_GOVERNANCE_MSG = "only governance";
 const ONLY_FTSO_MANAGER_MSG = "FTSO manager only";
 const ERR_TOKEN_NOT_SUPPORTED = "FTSO symbol not supported";
 
+let mockSupplyContract: MockContractInstance;
+
 async function mockFtso(symbol: string){
-  return await MockFtso.new(symbol, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0);
+  return await MockFtso.new(symbol, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, mockSupplyContract.address, 0, 0, 0, 0, 0);
 }
 
 
@@ -27,6 +30,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS);
     ftsoRegistryContract.setFtsoManagerAddress(MOCK_FTSO_ADDRESS, {from: GOVERNANCE_ADDRESS});
     mockFtsoContract = await MockContract.new();
+    mockSupplyContract = await createMockSupplyContract(GOVERNANCE_ADDRESS, 10000);
   });
 
   it("Shoud get zero adress for unnsupported symbol ", async() => {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../interface/IISupply.sol";
 import "../interface/IIRewardPool.sol";
 import { CheckPointHistory } from "../../token/lib/CheckPointHistory.sol";
 import { CheckPointHistoryCache } from "../../token/lib/CheckPointHistoryCache.sol";
@@ -13,7 +14,7 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
  * @notice This contract maintains and computes various FLR supply totals.
  **/
 
-contract Supply is Governed {
+contract Supply is Governed, IISupply {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointHistoryCache for CheckPointHistoryCache.CacheState;
     using SafeMath for uint256;
@@ -30,8 +31,8 @@ contract Supply is Governed {
     string internal constant ERR_REWARD_POOL_ALREADY_ADDED = "reward pool already added";
     string internal constant ERR_INITIAL_GENESIS_AMOUNT_ZERO = "initial genesis amount zero";
 
-    CheckPointHistory.CheckPointHistoryState private circulatingSupply;
-    CheckPointHistoryCache.CacheState private circulatingSupplyCache;
+    CheckPointHistory.CheckPointHistoryState private circulatingSupplyWei;
+    CheckPointHistoryCache.CacheState private circulatingSupplyWeiCache;
 
     uint256 immutable public initialGenesisAmountWei;
     uint256 public totalInflationAuthorizedWei;
@@ -79,19 +80,22 @@ contract Supply is Governed {
     }
 
     /**
-     * @notice Update circulating supply
+     * @notice Updates authorized inflation and circulating supply - emits event if error
+     * @param _inflationAuthorizedWei               Authorized inflation
      * @dev Also updates the burn address amount
     */
-    function updateAuthorizedInflationAndCirculatingSupply(uint256 inflationAuthorizedWei) external onlyInflation {
+    function updateAuthorizedInflationAndCirculatingSupply(
+            uint256 _inflationAuthorizedWei
+        ) external override onlyInflation {
         // Save old total inflation authorized value to compare with after update.
         uint256 oldTotalInflationAuthorizedWei = totalInflationAuthorizedWei;
         
         _updateCirculatingSupply();
         
         // Check if new authorized inflation was distributed and updated correctly.
-        if (totalInflationAuthorizedWei != oldTotalInflationAuthorizedWei.add(inflationAuthorizedWei)) {
+        if (totalInflationAuthorizedWei != oldTotalInflationAuthorizedWei.add(_inflationAuthorizedWei)) {
             emit AuthorizedInflationUpdateError(totalInflationAuthorizedWei - oldTotalInflationAuthorizedWei,
-                inflationAuthorizedWei);
+                _inflationAuthorizedWei);
         }
     }
 
@@ -135,37 +139,41 @@ contract Supply is Governed {
     /**
      * @notice Get approximate circulating supply for given block number from cache - only past block
      * @param _blockNumber                          Block number
-     * @return Return approximate circulating supply for last known block <= _blockNumber
+     * @return _circulatingSupplyWei Return approximate circulating supply for last known block <= _blockNumber
     */
-    function getCirculatingSupplyAtCached(uint256 _blockNumber) external returns(uint256) {
+    function getCirculatingSupplyAtCached(
+        uint256 _blockNumber
+    ) external override returns(uint256 _circulatingSupplyWei) {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
-        return circulatingSupplyCache.valueAt(circulatingSupply, _blockNumber);
+        return circulatingSupplyWeiCache.valueAt(circulatingSupplyWei, _blockNumber);
     }
 
     /**
      * @notice Get approximate circulating supply for given block number
      * @param _blockNumber                          Block number
-     * @return Return approximate circulating supply for last known block <= _blockNumber
+     * @return _circulatingSupplyWei Return approximate circulating supply for last known block <= _blockNumber
     */
-    function getCirculatingSupplyAt(uint256 _blockNumber) external view returns(uint256) {
-        return circulatingSupply.valueAt(_blockNumber);
+    function getCirculatingSupplyAt(
+        uint256 _blockNumber
+    ) external view override returns(uint256 _circulatingSupplyWei) {
+        return circulatingSupplyWei.valueAt(_blockNumber);
     }
 
     /**
      * @notice Get total inflatable balance (initial genesis amount + total authorized inflation)
-     * @return Return inflatable balance
+     * @return _inflatableBalanceWei Return inflatable balance
     */
-    function getInflatableBalance() external view returns(uint256) {
+    function getInflatableBalance() external view override returns(uint256 _inflatableBalanceWei) {
         return initialGenesisAmountWei.add(totalInflationAuthorizedWei);
     }
 
     function _increaseCirculatingSupply(uint256 _increaseBy) internal {
-        circulatingSupply.writeValue(circulatingSupply.valueAtNow().add(_increaseBy));
+        circulatingSupplyWei.writeValue(circulatingSupplyWei.valueAtNow().add(_increaseBy));
     }
 
     function _decreaseCirculatingSupply(uint256 _descreaseBy) internal {
-        circulatingSupply.writeValue(circulatingSupply.valueAtNow().sub(_descreaseBy));
+        circulatingSupplyWei.writeValue(circulatingSupplyWei.valueAtNow().sub(_descreaseBy));
     }
 
     function _updateCirculatingSupply() internal {

@@ -10,8 +10,6 @@ import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiv
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
-// import "hardhat/console.sol";
-
 /**
  * FTSORewardManager is in charge of:
  * - distributing rewards according to instructions from FTSO Manager
@@ -274,12 +272,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         // FTSO manager should never call with bad values.
         assert (_totalWeight != 0 && _addresses.length != 0);
 
-        // console.log("_getDistributableFtsoInflationBalance() = ", _getDistributableFtsoInflationBalance());
-        // console.log("count = ", _getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
         uint256 totalPriceEpochReward = 
             _getDistributableFtsoInflationBalance()
             .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
-        // console.log("totalPriceEpochReward = ", totalPriceEpochReward);
 
         uint256[] memory rewards = new uint256[](_addresses.length);
         rewards[0] = totalPriceEpochReward;

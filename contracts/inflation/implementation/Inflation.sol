@@ -11,7 +11,7 @@ import { IIInflationPercentageProvider } from "../interface/IIInflationPercentag
 import { IIInflationReceiver } from "../interface/IIInflationReceiver.sol";
 import { IIInflationSharingPercentageProvider } from "../interface/IIInflationSharingPercentageProvider.sol";
 import { TopupConfiguration, TopupType } from "../lib/RewardService.sol"; 
-import { Supply } from "../../supply/implementation/Supply.sol";
+import { IISupply } from "../../supply/interface/IISupply.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { SafePct } from "../../utils/implementation/SafePct.sol";
 
@@ -29,7 +29,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
     // Composable contracts
     IIInflationPercentageProvider public inflationPercentageProvider;
     IIInflationSharingPercentageProvider public inflationSharingPercentageProvider;
-    Supply public supply;
+    IISupply public supply;
 
     // The annums
     InflationAnnums.InflationAnnumsState private inflationAnnums;       // Inflation annum data
@@ -52,6 +52,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
     uint256 internal constant DEFAULT_TOPUP_FACTOR_X100 = 120;
+    // DO NOT UPDATE - this affects supply contract, which is expected to be updated once a day
     uint256 internal constant AUTHORIZE_TIME_FRAME_SEC = 1 days;
 
     /**
@@ -186,7 +187,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
      * @param _supply   The Supply contract.
      * @dev The supply contract is used to get and update the inflatable balance.
      */
-    function setSupply(Supply _supply) external notZero(address(_supply)) onlyGovernance {
+    function setSupply(IISupply _supply) external notZero(address(_supply)) onlyGovernance {
         supply = _supply;
     }
 
