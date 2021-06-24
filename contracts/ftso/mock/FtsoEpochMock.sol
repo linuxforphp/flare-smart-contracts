@@ -65,6 +65,7 @@ contract FtsoEpochMock {
 
     function initializeInstanceForReveal(
         uint256 _epochId,
+        uint256 _circulatingSupplyFlr,
         uint256 _votePowerFlr,
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
@@ -73,6 +74,7 @@ contract FtsoEpochMock {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         state._initializeInstanceForReveal(
             epoch,
+            _circulatingSupplyFlr,
             _votePowerFlr, 
             _assets,
             _assetVotePowers,
@@ -116,6 +118,26 @@ contract FtsoEpochMock {
     function setVotePowerBlock(uint256 _votePowerBlock) public {
         state.votePowerBlock = _votePowerBlock;
     }
+    
+    function setAssets(
+        uint256 _epochId, 
+        IIVPToken[] memory _assets,
+        uint256[] memory _assetVotePowers,
+        uint256[] memory _assetPrices
+    ) public {
+        FtsoEpoch.Instance storage epoch = state.instance[_epochId];
+        state._setAssets(epoch, _assets, _assetVotePowers, _assetPrices);
+    }
+    
+    function setWeightsParameters(
+        uint256 _epochId,
+        uint256 _weightFlrSum,
+        uint256 _weightAssetSum
+    ) public {
+        FtsoEpoch.Instance storage epoch = state.instance[_epochId];
+        epoch.weightFlrSum = _weightFlrSum;
+        epoch.weightAssetSum = _weightAssetSum;
+    }
 
     function getEpochInstance(uint256 _epochId) public view returns(Instance memory) {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
@@ -124,6 +146,7 @@ contract FtsoEpochMock {
         result.votePowerBlock = epoch.votePowerBlock;
         result.highAssetTurnoutBIPSThreshold = epoch.highAssetTurnoutBIPSThreshold;
         result.lowFlrTurnoutBIPSThreshold = epoch.lowFlrTurnoutBIPSThreshold;
+        result.circulatingSupplyFlr = epoch.circulatingSupplyFlr;
         result.votePowerFlr = epoch.votePowerFlr;
         result.votePowerAsset = epoch.votePowerAsset;
         result.minVotePowerFlr = epoch.minVotePowerFlr;
@@ -162,16 +185,6 @@ contract FtsoEpochMock {
         return epoch.votes[msg.sender];
     }
 
-    function setAssets(
-        uint256 _epochId, 
-        IIVPToken[] memory _assets,
-        uint256[] memory _assetVotePowers,
-        uint256[] memory _assetPrices
-    ) public {
-        FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        state._setAssets(epoch, _assets, _assetVotePowers, _assetPrices);
-    }
-
     function getAssetBaseWeightRatio(uint256 _assetVotePowerUSD) public view returns (uint256) {
         return state._getAssetBaseWeightRatio(_assetVotePowerUSD);
     }
@@ -179,16 +192,6 @@ contract FtsoEpochMock {
     function getWeightRatio(uint256 _epochId) public view returns (uint256) {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         return FtsoEpoch._getWeightRatio(epoch);
-    }
-
-    function setWeightsParameters(
-        uint256 _epochId,
-        uint256 _weightFlrSum,
-        uint256 _weightAssetSum
-    ) public {
-        FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        epoch.weightFlrSum = _weightFlrSum;
-        epoch.weightAssetSum = _weightAssetSum;
     }
 
     function computeWeights(

@@ -6,12 +6,14 @@ const getTestFile = require('../../utils/constants').getTestFile;
 
 const Wflr = artifacts.require("WFlr") as WFlrContract;
 const MockWflr = artifacts.require("MockContract") as MockContractContract;
+const MockSupply = artifacts.require("MockContract") as MockContractContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
 const PriceSubmitter = artifacts.require("PriceSubmitter") as PriceSubmitterContract;
 
 // contains a fresh contract for each test 
 let wflrInterface: WFlrInstance;
 let mockWflr: MockContractInstance;
+let mockSupply: MockContractInstance;
 let ftsos: FtsoInstance[];
 let priceSubmitter: PriceSubmitterInstance;
 let epochId: number;
@@ -30,12 +32,14 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             wflrInterface = await Wflr.new(accounts[0]);
             await setDefaultVPContract(wflrInterface, accounts[0]);
             mockWflr = await MockWflr.new();
+            mockSupply = await MockSupply.new();
             priceSubmitter = await PriceSubmitter.new();
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
                     "ATOK",
                     mockWflr.address,
                     accounts[10],
+                    mockSupply.address,
                     1, // initial token price 0.00001$
                     1e10
                 );
@@ -81,6 +85,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -103,6 +108,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -169,6 +175,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -207,6 +214,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );

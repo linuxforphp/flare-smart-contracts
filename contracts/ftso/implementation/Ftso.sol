@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../../token/interface/IIVPToken.sol";
+import "../../supply/interface/IISupply.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
@@ -48,6 +49,7 @@ contract Ftso is IIFtso {
     // external contracts
     IIVPToken public immutable wFlr;             // wrapped FLR
     IIFtsoManager public immutable ftsoManager;  // FTSO manager contract
+    IISupply public immutable supply;            // Supply contract
     IPriceSubmitter public priceSubmitter;       // Price submitter contract
     IIVPToken[] public fAssets;                  // array of assets
     IIFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
@@ -71,12 +73,14 @@ contract Ftso is IIFtso {
         string memory _symbol,
         IIVPToken _wFlr,
         IIFtsoManager _ftsoManager,
+        IISupply _supply,
         uint256 _initialPriceUSD,
         uint256 _priceDeviationThresholdBIPS
     ) {
         symbol = _symbol;
         wFlr = _wFlr;
         ftsoManager = _ftsoManager;
+        supply = _supply;
         fAssetPriceUSD = _initialPriceUSD;
         fAssetPriceTimestamp = block.timestamp;
         priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
@@ -371,6 +375,7 @@ contract Ftso is IIFtso {
 
         epochs._initializeInstanceForReveal(
             epoch,
+            supply.getCirculatingSupplyAtCached(epochs.votePowerBlock),
             _getVotePowerAt(wFlr, epochs.votePowerBlock),
             assets,
             assetVotePowers,

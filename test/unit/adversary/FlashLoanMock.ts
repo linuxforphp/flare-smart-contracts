@@ -1,5 +1,5 @@
 import { soliditySha3Raw as soliditySha3 } from "web3-utils";
-import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
+import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
@@ -10,6 +10,8 @@ const FlashLoanMock = artifacts.require("FlashLoanMock");
 const VotingFlashLoanMock = artifacts.require("VotingFlashLoanMock");
 const Wflr = artifacts.require("WFlr");
 const Ftso = artifacts.require("Ftso");
+const MockSupply = artifacts.require("MockContract");
+const Supply = artifacts.require("Supply");
 
 const FLARE = toBN(1e18);
 
@@ -30,6 +32,8 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
     let votingFlashLoanMock: VotingFlashLoanMockInstance;
     let wflr: WFlrInstance;
     let vpToken: VPTokenInstance;
+    let mockSupply: MockContractInstance;
+    let supplyInterface: SupplyInstance;
     let ftso: FtsoInstance;
     let epochId: number;
     
@@ -49,10 +53,13 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         beforeEach(async () => {
             wflr = await Wflr.new(accounts[0]);
             await setDefaultVPContract(wflr, accounts[0]);
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 wflr.address,
                 accounts[10],
+                mockSupply.address,
                 1,
                 1e10
             );
@@ -66,6 +73,10 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             const accountAmount = toBN(3).mul(AMOUNT);
             await flashLenderMock.donateTo(accounts[1], accountAmount);
             await wflr.deposit({ from: accounts[1], value: accountAmount });  // mint wflr for contract
+
+            const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(0).encodeABI();
+            const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', accountAmount);
+            await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
         });
 
         it("Should be able to vote with donated flares", async () => {

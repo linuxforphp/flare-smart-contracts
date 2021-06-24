@@ -665,7 +665,18 @@ export function randomizePriceGenerator(testExample: TestExample) {
     }
 }
 
+export async function createMockSupplyContract(address: string, circulatingSupply: number): Promise<MockContractInstance> {
+    const Supply = artifacts.require("Supply");
+    const MockSupply = artifacts.require("MockContract");
 
+    let supplyInterface = await Supply.new(address, constants.ZERO_ADDRESS, address, 1000, 0, []);
+    let mockSupply = await MockSupply.new();
+    const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(0).encodeABI();
+    const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', circulatingSupply);
+    await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
+
+    return mockSupply;
+}
 
 /**
  * given current epoch it moves blockchain time (hardhat) to the (approx) beginning of the next epoch, given
@@ -760,8 +771,11 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
     let assetToken = await newContract<MockVPToken>("MockVPToken", signers[0],
         signers.slice(0, len).map(signer => signer.address), testExample.weightsAsset
     )
+
+    let mockSupply = await createMockSupplyContract(signers[0].address, 1000);
+
     let ftso = await newContract<MockFtso>("MockFtso", signers[0],
-        assetToken._symbol(), flrToken.address, signers[0].address,  // address _wFlr, address _fAsset,
+        assetToken._symbol(), flrToken.address, signers[0].address, mockSupply.address,  // address _wFlr, address _fAsset, address _supply
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod

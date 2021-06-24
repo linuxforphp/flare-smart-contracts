@@ -1,4 +1,4 @@
-import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
+import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, SupplyContract, SupplyInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
@@ -8,6 +8,8 @@ const Wflr = artifacts.require("WFlr") as WFlrContract;
 const MockWflr = artifacts.require("MockContract") as MockContractContract;
 const VpToken = artifacts.require("VPToken") as VPTokenContract;
 const MockVpToken = artifacts.require("MockContract") as MockContractContract;
+const Supply = artifacts.require("Supply") as SupplyContract;
+const MockSupply = artifacts.require("MockContract") as MockContractContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
 
@@ -16,6 +18,8 @@ let wflrInterface: WFlrInstance;
 let mockWflr: MockContractInstance;
 let vpTokenInterface: VPTokenInstance;
 let mockVpToken: MockContractInstance;
+let supplyInterface: SupplyInstance;
+let mockSupply: MockContractInstance;
 let ftso: FtsoInstance;
 let epochId: number;
 
@@ -27,6 +31,11 @@ async function setMockVotePowerAt(blockNumber: number, wflrVotePower: number, fa
     const votePowerAtCached_wflr = wflrInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
     const votePowerAtCachedReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
     await mockWflr.givenMethodReturn(votePowerAtCached_wflr, votePowerAtCachedReturn_wflr);
+
+    const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
+    const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
+    await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
+
     const votePowerAtCached_vpToken = vpTokenInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
     const votePowerAtCachedReturn_vpToken = web3.eth.abi.encodeParameter('uint256', fassetVotePower);
     await mockVpToken.givenMethodReturn(votePowerAtCached_vpToken, votePowerAtCachedReturn_vpToken);
@@ -49,6 +58,11 @@ async function setMockVotePowerAtMultiple(blockNumber: number, wflrVotePower: nu
     const votePowerAtCached_wflr = wflrInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
     const votePowerAtCachedReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
     await mockWflr.givenMethodReturn(votePowerAtCached_wflr, votePowerAtCachedReturn_wflr);
+
+    const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
+    const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
+    await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
+
     for (let i = 0; i < len; i++) {
         const votePowerAtCached_vpToken = vpTokenInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
         const votePowerAtCachedReturn_vpToken = web3.eth.abi.encodeParameter('uint256', fassetVotePowers[i]);
@@ -86,10 +100,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -207,10 +224,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -283,10 +303,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -590,10 +613,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -666,10 +692,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 10000 // price deviation threshold in BIPS (100%)
             );
@@ -1094,10 +1123,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -1303,10 +1335,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -1361,6 +1396,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "WFLR",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -1529,6 +1565,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -1802,6 +1839,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 mockWflr.address,
                 mockVpToken.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -1814,6 +1852,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 mockWflr.address,
                 mockVpToken.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -2270,10 +2309,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWflr = await MockWflr.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "ATOK",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 1, // initial token price 0.00001$
                 1e10
             );
@@ -2601,10 +2643,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpTokens[0] = await MockVpToken.new();
             mockVpTokens[1] = await MockVpToken.new();
             mockVpTokens[2] = await MockVpToken.new();
+            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
+            mockSupply = await MockSupply.new();
             ftso = await Ftso.new(
                 "WFLR",
                 mockWflr.address,
                 accounts[10],
+                mockSupply.address,
                 0,
                 1e10
             );
