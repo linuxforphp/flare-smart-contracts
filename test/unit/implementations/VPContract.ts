@@ -17,7 +17,7 @@ contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, as
     // Assemble
     const vpToken = await VPToken.new(accounts[0], "A token", "ATOK");
     await setDefaultVPContract(vpToken, accounts[0]);
-    const vpContractAddr = await vpToken.getVpContract();
+    const vpContractAddr = await vpToken.getWriteVpContract();
     const vpContract = await VPContract.at(vpContractAddr);
     // Act
     // Assert

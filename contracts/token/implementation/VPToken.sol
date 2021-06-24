@@ -21,14 +21,22 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     using SafeMath for uint256;
     using SafePct for uint256;
 
-    // the VPContract to use
-    IIVPContract private vpContract;
+    // the VPContract to use for reading vote powers and delegations
+    IIVPContract private readVpContract;
+
+    // the VPContract to use for writing vote powers and delegations
+    // normally same as `readVpContract` except during switch
+    // when reading happens from the old and writing goes to the new VPContract
+    IIVPContract private writeVpContract;
     
+    // the contract to use for governance vote power and delegation
+    // here only to properly update governance vp during transfers -
+    // all actual operations go directly to governance vp contract
     IIGovernanceVotePower private governanceVP;
     
     /**
-     * When true, the argument to `setVpContract` must be a vpContract
-     * with `isReplacement` set to `true`. To be used  for creating the correct VPContract.
+     * When true, the argument to `setWriteVpContract` must be a vpContract
+     * with `isReplacement` set to `true`. To be used for creating the correct VPContract.
      */
     bool public needsReplacementVPContract = false;
     
@@ -92,7 +100,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      **/
     function delegate(address _to, uint256 _bips) external override {
         // Get the current balance of sender and delegate by percentage _to recipient
-        _checkVpContract().delegate(msg.sender, _to, balanceOf(msg.sender), _bips);
+        _checkWriteVpContract().delegate(msg.sender, _to, balanceOf(msg.sender), _bips);
     }
 
     /**
@@ -102,7 +110,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/    
     function delegateExplicit(address _to, uint256 _amount) external override {
-        _checkVpContract().delegateExplicit(msg.sender, _to, balanceOf(msg.sender), _amount);
+        _checkWriteVpContract().delegateExplicit(msg.sender, _to, balanceOf(msg.sender), _amount);
     }
 
     /**
@@ -111,7 +119,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @return The unallocated vote power of `_owner`
      */
     function undelegatedVotePowerOf(address _owner) external view override returns(uint256) {
-        return _checkVpContract().undelegatedVotePowerOf(_owner, balanceOf(_owner));
+        return _checkReadVpContract().undelegatedVotePowerOf(_owner, balanceOf(_owner));
     }
 
     /**
@@ -121,14 +129,15 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @return The unallocated vote power of `_owner`
      */
     function undelegatedVotePowerOfAt(address _owner, uint256 _blockNumber) external view override returns (uint256) {
-        return _checkVpContract().undelegatedVotePowerOfAt(_owner, balanceOfAt(_owner, _blockNumber), _blockNumber);
+        return _checkReadVpContract()
+            .undelegatedVotePowerOfAt(_owner, balanceOfAt(_owner, _blockNumber), _blockNumber);
     }
 
     /**
      * @notice Undelegate all voting power for delegates of `msg.sender`
      **/
     function undelegateAll() external override {
-        _checkVpContract().undelegateAll(msg.sender, balanceOf(msg.sender));
+        _checkWriteVpContract().undelegateAll(msg.sender, balanceOf(msg.sender));
     }
 
     /**
@@ -140,7 +149,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function undelegateAllExplicit(
         address[] memory _delegateAddresses
     ) external override returns (uint256 _remainingDelegation) {
-        return _checkVpContract().undelegateAllExplicit(msg.sender, _delegateAddresses);
+        return _checkWriteVpContract().undelegateAllExplicit(msg.sender, _delegateAddresses);
     }
     
     /**
@@ -151,7 +160,15 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
     */
     function revokeDelegationAt(address _who, uint256 _blockNumber) public override {
-        _checkVpContract().revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
+        IIVPContract writeVPC = writeVpContract;
+        IIVPContract readVPC = readVpContract;
+        if (address(writeVPC) != address(0)) {
+            writeVPC.revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
+        }
+        if (address(readVPC) != address(writeVPC) && address(readVPC) != address(0)) {
+            try readVPC.revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber) {} 
+            catch Error(string memory) {}
+        }
     }
 
     /**
@@ -164,7 +181,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         address _from, 
         address _to
     ) external view override returns(uint256) {
-        return _checkVpContract().votePowerFromTo(_from, _to, balanceOf(_from));
+        return _checkReadVpContract().votePowerFromTo(_from, _to, balanceOf(_from));
     }
     
     /**
@@ -179,7 +196,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         address _to, 
         uint256 _blockNumber
     ) external view override returns(uint256) {
-        return _checkVpContract().votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
+        return _checkReadVpContract().votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
     
     /**
@@ -218,9 +235,8 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @return delegation mode: 0 = NOTSET, 1 = PERCENTAGE, 2 = AMOUNT (i.e. explicit)
      */
     function delegationModeOf(address _who) external view override returns (uint256) {
-        return _checkVpContract().delegationModeOf(_who);
+        return _checkReadVpContract().delegationModeOf(_who);
     }
-
 
     /**
      * @notice Get the current vote power of `_owner`.
@@ -228,7 +244,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @return Current vote power of `_owner`.
      */
     function votePowerOf(address _owner) external view override returns(uint256) {
-        return _checkVpContract().votePowerOf(_owner);
+        return _checkReadVpContract().votePowerOf(_owner);
     }
 
 
@@ -239,7 +255,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     * @return Vote power of `_owner` at `_blockNumber`.
     */
     function votePowerOfAt(address _owner, uint256 _blockNumber) external view override returns(uint256) {
-        return _checkVpContract().votePowerOfAt(_owner, _blockNumber);
+        return _checkReadVpContract().votePowerOfAt(_owner, _blockNumber);
     }
     
     /**
@@ -251,7 +267,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     * @return Vote power of `_owner` at `_blockNumber`.
     */
     function votePowerOfAtCached(address _owner, uint256 _blockNumber) public override returns(uint256) {
-        return _checkVpContract().votePowerOfAtCached(_owner, _blockNumber);
+        return _checkReadVpContract().votePowerOfAtCached(_owner, _blockNumber);
     }
     
     /**
@@ -271,7 +287,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         uint256 _count,
         uint256 _delegationMode
     ) {
-        return _checkVpContract().delegatesOf(_owner);
+        return _checkReadVpContract().delegatesOf(_owner);
     }
     
     /**
@@ -293,7 +309,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         uint256 _count,
         uint256 _delegationMode
     ) {
-        return _checkVpContract().delegatesOfAt(_owner, _blockNumber);
+        return _checkReadVpContract().delegatesOfAt(_owner, _blockNumber);
     }
 
     // Update vote power and balance checkpoints before balances are modified. This is implemented
@@ -309,7 +325,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         uint256 toBalance = balanceOf(_to);
         
         // update vote powers
-        IIVPContract vpc = vpContract;
+        IIVPContract vpc = writeVpContract;
         if (address(vpc) != address(0)) {
             vpc.updateAtTokenTransfer(_from, _to, fromBalance, toBalance, _amount);
         } else if (!needsReplacementVPContract) {
@@ -327,41 +343,77 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
     }
-    
+
     /**
-     * Call from governance to set VpContract on token, e.g. 
-     * `vpToken.setVpContract(new VPContract(address(vpToken)))`
-     * VPContract must be set before any of the VPToken delegation or vote power methods are called, 
+     * Call from governance to set read VpContract on token, e.g. 
+     * `vpToken.setReadVpContract(new VPContract(vpToken))`
+     * Read VPContract must be set before any of the VPToken delegation or vote power reading methods are called, 
      * otherwise they will revert.
-     * VPContract may only be set once.
-     * @param _vpContract Vote power contract to be used by this token.
+     * NOTE: If readVpContract differs from writeVpContract all reads will be "frozen" and will not reflect
+     * changes (not even revokes; they may or may not reflect balance transfers).
+     * @param _vpContract Read vote power contract to be used by this token.
      */
-    function setVpContract(IIVPContract _vpContract) external onlyGovernance {
+    function setReadVpContract(IIVPContract _vpContract) external onlyGovernance {
+        if (address(_vpContract) != address(0)) {
+            require(address(_vpContract.ownerToken()) == address(this),
+                "VPContract not owned by this token");
+            // set contract's cleanup block
+            _vpContract.setCleanupBlockNumber(_cleanupBlockNumber());
+        }
+        readVpContract = _vpContract;
+    }
+
+    /**
+     * Call from governance to set write VpContract on token, e.g. 
+     * `vpToken.setWriteVpContract(new VPContract(vpToken))`
+     * Write VPContract must be set before any of the VPToken delegation modifying methods are called, 
+     * otherwise they will revert.
+     * @param _vpContract Write vote power contract to be used by this token.
+     */
+    function setWriteVpContract(IIVPContract _vpContract) external onlyGovernance {
         if (address(_vpContract) != address(0)) {
             require(address(_vpContract.ownerToken()) == address(this),
                 "VPContract not owned by this token");
             require(!needsReplacementVPContract || _vpContract.isReplacement(),
                 "VPContract not configured for replacement");
+            // set contract's cleanup block
+            _vpContract.setCleanupBlockNumber(_cleanupBlockNumber());
             // once a non-null vpcontract is set, every other has to have isReplacement flag set
             needsReplacementVPContract = true;
         }
-        vpContract = _vpContract;
+        writeVpContract = _vpContract;
     }
     
     /**
-     * Return vpContract, ensuring that it is not zero.
+     * Return read vpContract, ensuring that it is not zero.
      */
-    function _checkVpContract() internal view returns (IIVPContract) {
-        IIVPContract vpc = vpContract;
-        require(address(vpc) != address(0), "Missing VPContract on VPToken");
+    function _checkReadVpContract() internal view returns (IIVPContract) {
+        IIVPContract vpc = readVpContract;
+        require(address(vpc) != address(0), "Token missing read VPContract");
+        return vpc;
+    }
+
+    /**
+     * Return write vpContract, ensuring that it is not zero.
+     */
+    function _checkWriteVpContract() internal view returns (IIVPContract) {
+        IIVPContract vpc = writeVpContract;
+        require(address(vpc) != address(0), "Token missing write VPContract");
         return vpc;
     }
     
     /**
-     * Return vpContract, may be zero.
+     * Return vpContract use for reading, may be zero.
      */
-    function _getVpContract() internal view returns (IIVPContract) {
-        return vpContract;
+    function _getReadVpContract() internal view returns (IIVPContract) {
+        return readVpContract;
+    }
+
+    /**
+     * Return vpContract use for writing, may be zero.
+     */
+    function _getWriteVpContract() internal view returns (IIVPContract) {
+        return writeVpContract;
     }
 
     /**
@@ -373,7 +425,12 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external override onlyGovernance {
         _setCleanupBlockNumber(_blockNumber);
-        _checkVpContract().setCleanupBlockNumber(_blockNumber);
+        if (address(readVpContract) != address(0)) {
+            readVpContract.setCleanupBlockNumber(_blockNumber);
+        }
+        if (address(writeVpContract) != address(0) && address(writeVpContract) != address(readVpContract)) {
+            writeVpContract.setCleanupBlockNumber(_blockNumber);
+        }
         if (address(governanceVP) != address(0)) {
             governanceVP.setCleanupBlockNumber(_blockNumber);
         }

@@ -44,8 +44,12 @@ contract VPTokenMock is VPToken {
         return votePowerAtCached(block.number);
     }
     
-    function getVpContract() public view returns (IIVPContract) {
-        return _getVpContract();
+    function getReadVpContract() public view returns (IIVPContract) {
+        return _getReadVpContract();
+    }
+
+    function getWriteVpContract() public view returns (IIVPContract) {
+        return _getWriteVpContract();
     }
 
 }
