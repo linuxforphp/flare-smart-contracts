@@ -701,7 +701,36 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     const undelegated = await vpToken.undelegatedVotePowerOfAt(accounts[1], blk2);
     assert.equal(undelegated.toNumber(), 70);
   });
-  
+
+  it("May set cleanup block without VPContract", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.delegate(accounts[2], 1000, { from: accounts[1] });
+    await time.advanceBlock();
+    const blk1 = await web3.eth.getBlockNumber();
+    await vpToken.delegate(accounts[2], 3000, { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    await vpToken.delegate(accounts[3], 2000, { from: accounts[1] });
+    const blk3 = await web3.eth.getBlockNumber();
+    // Act
+    await vpToken.setWriteVpContract(constants.ZERO_ADDRESS);
+    await vpToken.setReadVpContract(constants.ZERO_ADDRESS);
+    await vpToken.setCleanupBlockNumber(blk2);
+    const vpcontract = await VPContract.new(vpToken.address, true);
+    await vpToken.setWriteVpContract(vpcontract.address);
+    await vpToken.delegate(accounts[2], 4000, { from: accounts[1] }); // trigger some cleanup
+    await vpToken.setCleanupBlockNumber(blk3);
+    await vpToken.delegate(accounts[2], 5000, { from: accounts[1] }); // trigger some cleanup
+    await vpToken.setReadVpContract(vpcontract.address);
+    // Assert
+    // should fail at blk1
+    await expectRevert(vpToken.undelegatedVotePowerOfAt(accounts[1], blk2),
+      "Reading from old (cleaned-up) block");
+    // and work at blk2
+    const undelegated = await vpToken.undelegatedVotePowerOfAt(accounts[1], blk3);
+    assert.equal(undelegated.toNumber(), 100);
+  });
+
   it("Can add governance vote power contract", async () => {
     // Assemble
     const governanceVotePower = await MockContract.new();
@@ -761,58 +790,104 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     // Assert
     await expectRevert(vpToken1.delegate(accounts[2], 10, { from: accounts[1] }),
-      "Missing VPContract on VPToken");
+      "Token missing write VPContract");
     await expectRevert(vpToken1.delegateExplicit(accounts[2], 10, { from: accounts[1] }),
-      "Missing VPContract on VPToken");
-    await expectRevert(vpToken1.votePowerOf(accounts[2]),
-      "Missing VPContract on VPToken");
+      "Token missing write VPContract");
+    // revokeDelegationAt is exception - it is noop without vpcontracts
+    // await expectRevert(vpToken1.revokeDelegationAt(accounts[2], 3, { from: accounts[1] }),
+    //   "Token missing write VPContract");
+    await expectRevert(vpToken1.undelegateAll({ from: accounts[1] }),
+      "Token missing write VPContract");
+    await expectRevert(vpToken1.undelegateAllExplicit([accounts[2]], { from: accounts[1] }),
+      "Token missing write VPContract");
   });
-  
+
+  it("Should not use vote power read methods without VPContract", async () => {
+    // Assemble
+    const vpToken1 = await VPToken.new(accounts[0], "A token without VPContract", "ATOK");
+    await vpToken1.mint(accounts[1], 100);
+    // Act
+    // Assert
+    await expectRevert(vpToken1.votePowerOf(accounts[1]), 
+      "Token missing read VPContract");
+    await expectRevert(vpToken1.votePowerOfAt(accounts[1], 3),
+      "Token missing read VPContract");
+    await expectRevert(vpToken1.votePowerOfAtCached(accounts[1], 3),
+      "Token missing read VPContract");
+    await expectRevert(vpToken1.delegatesOf(accounts[1]),
+      "Token missing read VPContract");
+    await expectRevert(vpToken1.delegatesOfAt(accounts[1], 3),
+      "Token missing read VPContract");
+    await expectRevert(vpToken1.votePowerFromTo(accounts[1], accounts[2]),
+      "Token missing read VPContract");
+    await expectRevert(vpToken1.votePowerFromToAt(accounts[1], accounts[2], 3),
+      "Token missing read VPContract");
+  });
+
   it("Should not set vpContract if owned by different token", async () => {
     // Assemble
     const newVpContract = await VPContract.new(vpToken.address, false);
     const newVpToken = await VPToken.new(accounts[0], "A token", "ATOK");
     // Act
     // Assert
-    await expectRevert(newVpToken.setVpContract(newVpContract.address),
+    await expectRevert(newVpToken.setWriteVpContract(newVpContract.address),
+      "VPContract not owned by this token");
+    await expectRevert(newVpToken.setReadVpContract(newVpContract.address),
       "VPContract not owned by this token");
   });
 
-  it("Should not change vpContract once it is set if replacement is not correctly configured", async () => {
+  it("Should not change writeVpContract once it is set if replacement is not correctly configured", async () => {
     // Assemble
     const newVpContract = await VPContract.new(vpToken.address, false);
     // Act
     // Assert
-    await expectRevert(vpToken.setVpContract(newVpContract.address),
+    await expectRevert(vpToken.setWriteVpContract(newVpContract.address),
       "VPContract not configured for replacement");
+  });
+
+  it("May change readVpContract even if not configured for replacement", async () => {
+    // Assemble
+    const newVpContract = await VPContract.new(vpToken.address, false);
+    // Act
+    await vpToken.setReadVpContract(newVpContract.address)
+    // Assert
+    assert.equal(await vpToken.getReadVpContract(), newVpContract.address);
   });
 
   it("May change vpContract if replacement is suitable", async () => {
     // Assemble
     const newVpContract = await VPContract.new(vpToken.address, true);
     // Act
-    await vpToken.setVpContract(newVpContract.address);
+    await vpToken.setWriteVpContract(newVpContract.address);
+    await vpToken.setReadVpContract(newVpContract.address)
     // Assert
-    assert.equal(await vpToken.getVpContract(), newVpContract.address);
+    assert.equal(await vpToken.getWriteVpContract(), newVpContract.address);
+    assert.equal(await vpToken.getReadVpContract(), newVpContract.address);
   });
 
   it("Initial VPContract should have isReplacement false", async () => {
     // Assemble
     // Act
-    const vpContractAddr = await vpToken.getVpContract();
-    const vpContract = await VPContract.at(vpContractAddr);
+    const writeVpContractAddr = await vpToken.getWriteVpContract();
+    const writeVpContract = await VPContract.at(writeVpContractAddr);
+    const readVpContractAddr = await vpToken.getReadVpContract();
+    const readVpContract = await VPContract.at(readVpContractAddr);
     // Assert
-    assert.isFalse(await vpContract.isReplacement());
+    assert.isFalse(await writeVpContract.isReplacement());
+    assert.isFalse(await readVpContract.isReplacement());
   });
 
   it("Replacement VPContract should have isReplacement true", async () => {
     // Assemble
     await setDefaultVPContract(vpToken, accounts[0]);
     // Act
-    const vpContractAddr = await vpToken.getVpContract();
-    const vpContract = await VPContract.at(vpContractAddr);
+    const writeVpContractAddr = await vpToken.getWriteVpContract();
+    const writeVpContract = await VPContract.at(writeVpContractAddr);
+    const readVpContractAddr = await vpToken.getReadVpContract();
+    const readVpContract = await VPContract.at(readVpContractAddr);
     // Assert
-    assert.isTrue(await vpContract.isReplacement());
+    assert.isTrue(await writeVpContract.isReplacement());
+    assert.isTrue(await readVpContract.isReplacement());
   });
 
   it("After transfer without VPContract, VPContract must have isReplacement true", async () => {
@@ -823,7 +898,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken1.transfer(accounts[2], 10, { from: accounts[1] });
     const newVpContract = await VPContract.new(vpToken1.address, false);
     // Assert
-    await expectRevert(vpToken1.setVpContract(newVpContract.address),
+    await expectRevert(vpToken1.setWriteVpContract(newVpContract.address),
       "VPContract not configured for replacement");
   });
 
@@ -834,7 +909,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken1.mint(accounts[1], 100);
     await vpToken1.transfer(accounts[2], 10, { from: accounts[1] });
     await setDefaultVPContract(vpToken1, accounts[0]);
-    const vpContractAddr = await vpToken1.getVpContract();
+    const vpContractAddr = await vpToken1.getWriteVpContract();
     const vpContract = await VPContract.at(vpContractAddr);
     // Assert
     assert.isTrue(await vpContract.isReplacement());
@@ -842,7 +917,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   it("Can remove VPContract and then set it again", async () => {
     // Assemble
-    await vpToken.setVpContract(constants.ZERO_ADDRESS);
+    await vpToken.setWriteVpContract(constants.ZERO_ADDRESS);
+    await vpToken.setReadVpContract(constants.ZERO_ADDRESS);
     // Act
     await vpToken.mint(accounts[1], 100);
     await vpToken.transfer(accounts[2], 10, { from: accounts[1] });

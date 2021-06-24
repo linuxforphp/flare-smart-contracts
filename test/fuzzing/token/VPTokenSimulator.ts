@@ -21,7 +21,8 @@ export type VPTokenAction = { context: any, sender: string } &
         | { name: 'votePowerAtCached', checkpointId: string }
         | { name: 'votePowerOfAtCached', who: string, checkpointId: string }
         | { name: 'setCleanupBlock', checkpointId: string }
-        | { name: 'replaceVpContract' }
+        | { name: 'replaceWriteVpContract' }
+        | { name: 'replaceReadVpContract' }
     );
 
 export interface Checkpoint {
@@ -137,15 +138,19 @@ export class VPTokenHistory {
                     const checkpoint = this.checkpoint(method.checkpointId);
                     return await this.vpToken.setCleanupBlockNumber(checkpoint.blockNumber, { from: method.sender });
                 }
-                case "replaceVpContract": {
+                case "replaceWriteVpContract": {
                     const vpContractRepl = await VPContract.new(this.vpToken.address, true);
-                    const result = await this.vpToken.setVpContract(vpContractRepl.address, { from: method.sender });
+                    const result = await this.vpToken.setWriteVpContract(vpContractRepl.address, { from: method.sender });
                     // replacing vpcontract clears delegations for all history until now
                     this.state.clearAllDelegations();
                     for (const cp of this.checkpointList()) {
                         cp.state.clearAllDelegations();
                     }
                     return result;
+                }
+                case "replaceReadVpContract": {
+                    const writeVpContract = await this.vpToken.getWriteVpContract();
+                    return await this.vpToken.setReadVpContract(writeVpContract, { from: method.sender });
                 }
             }
         } catch (e) {
@@ -208,7 +213,11 @@ export class VPTokenSimulator {
         return this.history.run({ context: this.context, name: "setCleanupBlock", sender, checkpointId });
     }
     
-    replaceVpContract(sender: string) {
-        return this.history.run({ context: this.context, name: "replaceVpContract", sender });
+    replaceWriteVpContract(sender: string) {
+        return this.history.run({ context: this.context, name: "replaceWriteVpContract", sender });
+    }
+
+    replaceReadVpContract(sender: string) {
+        return this.history.run({ context: this.context, name: "replaceReadVpContract", sender });
     }
 }

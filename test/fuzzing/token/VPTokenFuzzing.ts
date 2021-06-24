@@ -46,8 +46,11 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     // the initial amount of tokens minted to all participating accounts
     let INIT_AMOUNT = env.INIT_AMOUNT ? Number(env.INIT_AMOUNT) : 1_000_000;
 
-    // the number of accounts participating in tests (actually, there are 2 more - governance and a user)
+    // the block number to replace write vpcontract
     let REPLACE_VPCONTRACT_AT = env.REPLACE_VPCONTRACT_AT ? Number(env.REPLACE_VPCONTRACT_AT) : null;
+    
+    // the number of blocks to work with differrent read and write vpcontracts
+    let SPLIT_VPCONTRACTS_BLOCKS = env.SPLIT_VPCONTRACTS_BLOCKS ? Number(env.SPLIT_VPCONTRACTS_BLOCKS) : 0;
 
     // END PARAMETERS
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -116,8 +119,13 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
             const action = weightedRandomChoice(actions);
             simulator.context = i;
             await action();
-            if (i === REPLACE_VPCONTRACT_AT) {
-                await replaceVpContract();
+            if (REPLACE_VPCONTRACT_AT != null) {
+                if (i === REPLACE_VPCONTRACT_AT) {
+                    await replaceWriteVpContract();
+                }
+                if (i === REPLACE_VPCONTRACT_AT + SPLIT_VPCONTRACTS_BLOCKS) {
+                    await replaceReadVpContract();
+                }
             }
             const isCheckpoint = CHECKPOINT_LIST != null ? CHECKPOINT_LIST.includes(i) : (i < LENGTH && i % CHECKPOINT_EVERY === 0);
             if (isCheckpoint) {
@@ -131,10 +139,14 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
 
     }
     
-    async function replaceVpContract() {
-        await simulator.replaceVpContract(governance);
+    async function replaceWriteVpContract() {
+        await simulator.replaceWriteVpContract(governance);
     }
-    
+
+    async function replaceReadVpContract() {
+        await simulator.replaceReadVpContract(governance);
+    }
+
     async function setCleanupBlock(index: number) {
         const cp = history.checkpointList()[index];
         await simulator.setCleanupBlock(governance, cp.id);
