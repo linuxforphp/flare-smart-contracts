@@ -27,8 +27,7 @@ const BN = web3.utils.toBN;
 const { constants, time } = require('@openzeppelin/test-helpers');
 
 // const parameters = JSON.parse(serializedParameters);
-const parameters = require(`../chain-config/${ process.env.CHAIN_CONFIG }.json`)
-
+const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
 
 // inject private keys from .env, if they exist
 if (process.env.DEPLOYER_PRIVATE_KEY) {
@@ -89,8 +88,8 @@ async function main(parameters: any) {
     stateConnector = await StateConnector.new();
   }
   spewNewContractInfo(contracts, StateConnector.contractName, stateConnector.address);
-  
-try {
+
+  try {
     stateConnector.initialiseChains();
   } catch (e) {
     // state connector might be already initialized if redeploy
@@ -405,22 +404,22 @@ async function deployNewFAsset(
 
   // Deploy dummy FAsset minter
   const dummyFAssetMinter = await DummyFAssetMinter.new(fAssetToken.address, maxMintRequestTwei);
-  spewNewContractInfo(contracts, `Dummy ${ symbol } minter`, dummyFAssetMinter.address);
+  spewNewContractInfo(contracts, `Dummy ${symbol} minter`, dummyFAssetMinter.address);
 
   // Establish governance over FAsset by minter
   await fAssetToken.proposeGovernance(dummyFAssetMinter.address, { from: deployerAccountAddress });
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, supplyAddress,  initialPrice, priceDeviationThresholdBIPS);
+  const ftso = await Ftso.new(symbol, wflrAddress, ftsoManager.address, supplyAddress, initialPrice, priceDeviationThresholdBIPS);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
-  spewNewContractInfo(contracts, `FTSO ${ symbol }`, ftso.address);
+  spewNewContractInfo(contracts, `FTSO ${symbol}`, ftso.address);
 
   return [fAssetToken, dummyFAssetMinter, ftso];
 }
 
 function spewNewContractInfo(contracts: Contracts, name: string, address: string) {
-  console.error(`${ name } contract: `, address);
+  console.error(`${name} contract: `, address);
   contracts.add(new Contract(pascalCase(name), address));
 }
 

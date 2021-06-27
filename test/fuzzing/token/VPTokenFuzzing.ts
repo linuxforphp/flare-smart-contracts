@@ -6,7 +6,7 @@ import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
 const { constants, expectRevert, time } = require('@openzeppelin/test-helpers');
-const getTestFile = require('../../utils/constants').getTestFile;
+const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock") as VPTokenMockContract;
 

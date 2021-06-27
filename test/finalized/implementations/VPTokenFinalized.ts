@@ -13,7 +13,7 @@ const { expect } = chai;
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
 // const { constants } = require('@openzeppelin/test-helpers');
-const getTestFile = require('../../utils/constants').getTestFile;
+const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPTokenA = artifacts.require("VPTokenMock") as VPTokenMockContract
 
