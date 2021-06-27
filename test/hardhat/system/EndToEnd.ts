@@ -48,7 +48,7 @@ async function submitPrice(ftso: FtsoInstance, price: number, by: string): Promi
     let random = await getRandom();
     let hash = submitPriceHash(preparedPrice, random, by);
 
-    console.log(`Submitting price ${ preparedPrice } by ${ by } for epoch ${ epochId }`);
+    console.log(`Submitting price ${preparedPrice} by ${by} for epoch ${epochId}`);
 
     await ftso.submitPriceHash(hash!, { from: by });
 
@@ -75,8 +75,7 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
     hashes.push(hash);
   }
 
-  console.log(`Submitting prices ${ preparedPrices } by ${ by } for epoch ${ epochId }`);
-
+  console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
   await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, { from: by })
   for (let i = 0; i < ftsos.length; i++) {
@@ -89,7 +88,7 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
 
 async function revealPrice(ftso: FtsoInstance, priceInfo: PriceInfo, by: string): Promise<void> {
   if (priceInfo?.isSubmitted()) {
-    console.log(`Revealing price by ${ by } for epoch ${ priceInfo.epochId }`);
+    console.log(`Revealing price by ${by} for epoch ${priceInfo.epochId}`);
 
     priceInfo.moveToNextStatus();
 
@@ -106,7 +105,8 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
     priceInfo.moveToNextStatus();
   })
 
-  console.log(`Revealing price by ${ by } for epoch ${ epochId }`);
+  console.log(`Revealing price by ${by} for epoch ${epochId}`);
+
   let tx = await priceSubmitter.revealPrices(
     epochId,
     ftsos.map(ftso => ftso.address),
@@ -114,19 +114,20 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
     priceInfos.map(priceInfo => priceInfo.random),
     { from: by }
   )
+  expectEvent(tx, "PricesRevealed", { success: priceInfos.map(x => true) });
 };
 
 
 function spewClaimError(account: string, e: unknown) {
   if (e instanceof Error) {
     if (e.message.includes("no rewards")) {
-      console.log(`${ account } has no reward to claim.`);
+      console.log(`${account} has no reward to claim.`);
     } else {
-      console.log(`Reward claiming failed for ${ account }. Error was:`);
+      console.log(`Reward claiming failed for ${account}. Error was:`);
       console.log(e);
     }
   } else {
-    console.log(`Reward claiming failed for ${ account }. Error was:`);
+    console.log(`Reward claiming failed for ${account}. Error was:`);
     console.log(e);
   }
 }
@@ -134,7 +135,7 @@ function spewClaimError(account: string, e: unknown) {
 /**
  * Test to see if minting faucet will topup reward manager FLR balance at next topup interval.
  */
-contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price submission, and claiming system tests`, async accounts => {
+contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
   let contracts: Contracts;
   let FlareKeeper: FlareKeeperContract;
   let flareKeeper: FlareKeeperInstance;
@@ -253,7 +254,7 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
     // Jump to reward epoch start
     await time.increaseTo(rewardEpochsStartTs.sub(BN(1)));
     await time.advanceBlock();
-    await time.increaseTo(rewardEpochsStartTs);
+    await time.increaseTo(rewardEpochsStartTs.add(BN(1))); // sometimes we get a glitch
 
     await flareKeeper.trigger();
     let firstRewardEpoch = await ftsoManager.rewardEpochs(0);
@@ -345,7 +346,9 @@ contract(`RewardManager.sol; ${ getTestFile(__filename) }; Delegation, price sub
 
     const rewardEpochs = [];
     rewardEpochs[0] = rewardEpochId;
-    console.log(`Claiming rewards for reward epoch ${ rewardEpochId }`);
+    
+    console.log(`Claiming rewards for reward epoch ${rewardEpochId}`);
+    
     let gasCost = BN(0);
     try {
       const tx = await ftsoRewardManager.claimReward(p1, rewardEpochs, { from: p1 });

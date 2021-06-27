@@ -4,7 +4,13 @@ stages:
 
 ### Variables
 variables:
-    TEST_HARDHAT: "testHH"
+    TEST_UNIT: "test_unit_hh"
+    TEST_INTEGRATION: "test_integration_hh"
+    TEST_PERFORMANCE: "test_performance_hh"
+    TEST_END_TO_END: "test_endtoend_hardhat"
+    DEPLOYER_PRIVATE_KEY: "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122"
+    GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
+    GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
     TEST_LINTER: "lint"
 
 ### Templates
@@ -14,13 +20,77 @@ variables:
         - yarn install --frozen-lockfile
         
 ### Jobs
-test-contract:
+test-contract-unit-1:
     stage: test
     <<: *yarn-setup
     script:
         - yarn c
-        - yarn $TEST_LINTER
-        - yarn $TEST_HARDHAT
+        - env TEST_PATH=./test/unit/ftso/lib yarn hardhat test --network hardhat
+        - yarn hardhat test --network hardhat test/unit/ftso/implementation/Ftso.ts
+
+test-contract-unit-2:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn hardhat test --network hardhat test/unit/ftso/implementation/FtsoManager.ts
+        - yarn hardhat test --network hardhat test/unit/ftso/implementation/FTSOMedian.ts
+
+test-contract-unit-3:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn hardhat test --network hardhat test/unit/ftso/implementation/FtsoRewardManager.ts
+
+test-contract-unit-4:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c        
+        - env TEST_PATH=./test/unit/adversary yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/fFasset yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/inflation yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/supply yarn hardhat test --network hardhat
+
+test-contract-unit-5:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - env TEST_PATH=./test/unit/token yarn hardhat test --network hardhat
+
+test-contract-unit-6:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn $TEST_LINTER        
+        - env TEST_PATH=./test/unit/utils yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/validator yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/genesis yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/governance yarn hardhat test --network hardhat
+
+test-contract-integration:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn $TEST_INTEGRATION
+
+test-contract-performance:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn $TEST_PERFORMANCE
+
+test-contract-end-to-end:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn $TEST_END_TO_END
 
 slither-check:
     stage: test
