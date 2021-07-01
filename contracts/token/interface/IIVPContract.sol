@@ -2,17 +2,10 @@
 pragma solidity 0.7.6;
 
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
+import {IICleanable} from "./IICleanable.sol";
 
-interface IIVPContract {
-    /**
-     * Set the cleanup block number.
-     * Historic data for the blocks before `cleanupBlockNumber` can be erased,
-     * history before that block should never be used since it can be inconsistent.
-     * In particular, cleanup block number must be before current vote power block.
-     * @param _blockNumber The new cleanup block number.
-     */
-    function setCleanupBlockNumber(uint256 _blockNumber) external;
-    
+interface IIVPContract is IICleanable, IVPContractEvents {
     /**
      * Update vote powers when tokens are transfered.
      * Also update delegated vote powers for percentage delegation

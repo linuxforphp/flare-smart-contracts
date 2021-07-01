@@ -43,7 +43,7 @@ contract VPContract is IIVPContract, Delegatable {
      * All external methods in VPContract can only be executed by the owner token.
      */
     modifier onlyOwnerToken {
-        require(msg.sender == address(ownerToken));
+        require(msg.sender == address(ownerToken), "only owner token");
         _;
     }
 
@@ -77,6 +77,13 @@ contract VPContract is IIVPContract, Delegatable {
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerToken {
         _setCleanupBlockNumber(_blockNumber);
+    }
+
+    /**
+     * Set the contract that is allowed to call history cleaning methods.
+     */
+    function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
+        _setCleanerContract(_cleanerContract);
     }
     
     /**
@@ -230,6 +237,13 @@ contract VPContract is IIVPContract, Delegatable {
             uninitializedVotePowerCache[key] = balance.add(1);
             return balance;
         }
+    }
+    
+    /**
+     * Get the current cleanup block number.
+     */
+    function cleanupBlockNumber() external view override returns (uint256) {
+        return _cleanupBlockNumber();
     }
     
     /**

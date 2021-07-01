@@ -7,7 +7,7 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {VotePower} from "../lib/VotePower.sol";
 import {VotePowerCache} from "../lib/VotePowerCache.sol";
-import {IVPTokenEvents} from "../../userInterfaces/IVPTokenEvents.sol";
+import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
 
 /**
  * @title Delegateable ERC20 behavior
@@ -15,7 +15,7 @@ import {IVPTokenEvents} from "../../userInterfaces/IVPTokenEvents.sol";
  *  of a token to delegates. This contract orchestrates interaction between
  *  managing a delegation and the vote power allocations that result.
  **/
-contract Delegatable is IVPTokenEvents {
+contract Delegatable is IVPContractEvents {
     using PercentageDelegation for PercentageDelegation.DelegationState;
     using ExplicitDelegation for ExplicitDelegation.DelegationState;
     using SafeMath for uint256;
@@ -55,11 +55,43 @@ contract Delegatable is IVPTokenEvents {
     // history before that block should never be used since it can be inconsistent.
     uint256 private cleanupBlockNumber;
     
+    // Address of the contract that is allowed to call methods for history cleaning.
+    address private cleanerContract;
+    
+    // events used for history cleanup
+    event CreatedVotePowerCache(address _owner, uint256 _blockNumber);
+    
+    // Most cleanup opportunities can be deduced from standard events:
+    // Transfer(from, to, amount):
+    //  - vote power checkpoints for `from` (if nonzero) and `to` (if nonzero)
+    //  - vote power checkpoints for percentage delegatees of `from` and `to` are also created,
+    //    but they don't have to be checked since Delegate events are also emitted in case of 
+    //    percentage delegation vote power change due to delegators balance change
+    // Delegate(from, to, priorVP, newVP):
+    //  - vote power checkpoints for `from` and `to`
+    //  - percentage delegation checkpoint for `from` (if `from` uses percentage delegation mode)
+    //  - explicit delegation checkpoint from `from` to `to` (if `from` uses explicit delegation mode)
+    // Revoke(from, to, vp, block):
+    //  - vote power cache for `from` and `to` at `block`
+    //  - revocation cache block from `from` to `to` at `block`
+    
+    /**
+     * Reading from history is not allowed before `cleanupBlockNumber`, since databa before that
+     * mat have been deleted and is thus unreliable.
+     */    
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
         _;
     }
     
+    /**
+     * History cleaning methods can be called only from the cleaner address.
+     */
+    modifier onlyCleaner {
+        require(msg.sender == cleanerContract, "Only cleaner contract");
+        _;
+    }
+
     /**
      * @notice (Un)Allocate `_owner` vote power of `_amount` across owner delegate
      *  vote power percentages.
@@ -90,7 +122,7 @@ contract Delegatable is IVPTokenEvents {
                 votePower.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
                 votePower.cleanupOldCheckpoints(delegatee, CLEANUP_COUNT, cleanupBlockNumber);
                 
-                emit Delegate(_owner, delegatee, priorValue, newValue, block.number);
+                emit Delegate(_owner, delegatee, priorValue, newValue);
             }
         }
     }
@@ -184,7 +216,7 @@ contract Delegatable is IVPTokenEvents {
         }
         
         // emit event for delegation change
-        emit Delegate(_from, _to, priorAmount, _amount, block.number);
+        emit Delegate(_from, _to, priorAmount, _amount);
     }
 
     /**
@@ -241,7 +273,7 @@ contract Delegatable is IVPTokenEvents {
         }
 
         // emit event for delegation change
-        emit Delegate(_from, _to, reverseVotePower, newVotePower, block.number);
+        emit Delegate(_from, _to, reverseVotePower, newVotePower);
     }
 
     /**
@@ -331,26 +363,28 @@ contract Delegatable is IVPTokenEvents {
     }
     
     /**
-    * @notice Revoke the vote power of `_who` at block `_blockNumber`
+    * @notice Revoke the vote power of `_to` at block `_blockNumber`
     * @param _from The address of the delegator
-    * @param _who The delegatee address of vote power to revoke.
+    * @param _to The delegatee address of vote power to revoke.
     * @param _senderBalanceAt The sender's balance at the block to be revoked.
     * @param _blockNumber The block number at which to revoke.
     */
     function _revokeDelegationAt(
         address _from, 
-        address _who, 
+        address _to, 
         uint256 _senderBalanceAt, 
         uint256 _blockNumber
     ) internal notBeforeCleanupBlock(_blockNumber) {
         require(_blockNumber < block.number, "Revoke is only for the past, use undelegate for the present");
         
-        // Revoke vote power and get amount revoked
-        uint256 votePowerRevoked = _votePowerFromToAtNoRevokeCheck(_from, _who, _senderBalanceAt, _blockNumber);
-        votePowerCache.revokeAt(votePower, _from, _who, votePowerRevoked, _blockNumber);
+        // Get amount revoked
+        uint256 votePowerRevoked = _votePowerFromToAtNoRevokeCheck(_from, _to, _senderBalanceAt, _blockNumber);
+        
+        // Revoke vote power
+        votePowerCache.revokeAt(votePower, _from, _to, votePowerRevoked, _blockNumber);
 
         // Emit revoke event
-        emit Revoke(_from, _who, votePowerRevoked, _blockNumber);
+        emit Revoke(_from, _to, votePowerRevoked, _blockNumber);
     }
 
     /**
@@ -401,14 +435,15 @@ contract Delegatable is IVPTokenEvents {
         // Iterate over the delegates
         (address[] memory delegates, uint256[] memory _bips) = delegation.getDelegations();
         for (uint256 i = 0; i < delegates.length; i++) {
+            address to = delegates[i];
             // Compute vote power to be reversed for the delegate
             uint256 reverseVotePower = _senderCurrentBalance.mulDiv(_bips[i], PercentageDelegation.MAX_BIPS);
             // Transmit vote power back to _owner
-            votePower.undelegate(_from, delegates[i], reverseVotePower);
+            votePower.undelegate(_from, to, reverseVotePower);
             votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
-            votePower.cleanupOldCheckpoints(delegates[i], CLEANUP_COUNT, cleanupBlockNumber);
+            votePower.cleanupOldCheckpoints(to, CLEANUP_COUNT, cleanupBlockNumber);
             // Emit vote power reversal event
-            emit Delegate(_from, delegates[i], reverseVotePower, 0, block.number);
+            emit Delegate(_from, to, reverseVotePower, 0);
         }
 
         // Clear delegates
@@ -435,18 +470,19 @@ contract Delegatable is IVPTokenEvents {
         
         // Iterate over the delegates
         for (uint256 i = 0; i < _delegateAddresses.length; i++) {
+            address to = _delegateAddresses[i];
             // Compute vote power _to be reversed for the delegate
-            uint256 reverseVotePower = delegation.getDelegatedValue(_delegateAddresses[i]);
+            uint256 reverseVotePower = delegation.getDelegatedValue(to);
             if (reverseVotePower == 0) continue;
             // Transmit vote power back _to _owner
-            votePower.undelegate(_from, _delegateAddresses[i], reverseVotePower);
+            votePower.undelegate(_from, to, reverseVotePower);
             votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
-            votePower.cleanupOldCheckpoints(_delegateAddresses[i], CLEANUP_COUNT, cleanupBlockNumber);
+            votePower.cleanupOldCheckpoints(to, CLEANUP_COUNT, cleanupBlockNumber);
             // change delagation
-            delegation.addReplaceDelegate(_delegateAddresses[i], 0);
-            delegation.cleanupOldCheckpoints(_delegateAddresses[i], CLEANUP_COUNT, cleanupBlockNumber);
+            delegation.addReplaceDelegate(to, 0);
+            delegation.cleanupOldCheckpoints(to, CLEANUP_COUNT, cleanupBlockNumber);
             // Emit vote power reversal event
-            emit Delegate(_from, _delegateAddresses[i], reverseVotePower, 0, block.number);
+            emit Delegate(_from, to, reverseVotePower, 0);
         }
         
         return delegation.getDelegatedTotal();
@@ -624,7 +660,9 @@ contract Delegatable is IVPTokenEvents {
         uint256 _blockNumber
     ) internal notBeforeCleanupBlock(_blockNumber) returns(uint256) {
         require(_blockNumber < block.number, "Can only be used for past blocks");
-        return votePowerCache.valueOfAt(votePower, _who, _blockNumber);
+        (uint256 vp, bool createdCache) = votePowerCache.valueOfAt(votePower, _who, _blockNumber);
+        if (createdCache) emit CreatedVotePowerCache(_who, _blockNumber);
+        return vp;
     }
     
     /**
@@ -641,5 +679,47 @@ contract Delegatable is IVPTokenEvents {
      */
     function _cleanupBlockNumber() internal view returns (uint256) {
         return cleanupBlockNumber;
+    }
+    
+    /**
+     * Set the contract that is allowed to call history cleaning methods.
+     */
+    function _setCleanerContract(address _cleanerContract) internal {
+        cleanerContract = _cleanerContract;
+    }
+    
+    // history cleanup methods
+    
+    function votePowerHistoryCleanup(address _owner, uint256 _count) external onlyCleaner returns (uint256) {
+        return votePower.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
+    }
+
+    function votePowerCacheCleanup(address _owner, uint256 _blockNumber) external onlyCleaner returns (uint256) {
+        require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
+        return votePowerCache.deleteValueAt(_owner, _blockNumber);
+    }
+
+    function revocationCleanup(
+        address _from, 
+        address _to, 
+        uint256 _blockNumber
+    ) external onlyCleaner returns (uint256) {
+        require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
+        return votePowerCache.deleteRevocationAt(_from, _to, _blockNumber);
+    }
+    
+    function percentageDelegationHistoryCleanup(
+        address _owner, 
+        uint256 _count
+    ) external onlyCleaner returns (uint256) {
+        return percentageDelegations[_owner].cleanupOldCheckpoints(_count, cleanupBlockNumber);
+    }
+    
+    function explicitDelegationHistoryCleanup(
+        address _from, 
+        address _to, 
+        uint256 _count
+    ) external onlyCleaner returns (uint256) {
+        return explicitDelegations[_from].cleanupOldCheckpoints(_to, _count, cleanupBlockNumber);
     }
 }

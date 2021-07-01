@@ -109,10 +109,11 @@ library CheckPointsByAddress {
         address _owner, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal {
+    ) internal returns (uint256) {
         if (_owner != address(0)) {
-            _self.historyByAddress[_owner].cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+            return _self.historyByAddress[_owner].cleanupOldCheckpoints(_count, _cleanupBlockNumber);
         }
+        return 0;
     }
     
 }

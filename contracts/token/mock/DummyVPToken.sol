@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
 import "../interface/IIVPToken.sol";
 
 contract DummyVPToken is ERC20, IIVPToken {
@@ -14,6 +15,7 @@ contract DummyVPToken is ERC20, IIVPToken {
 
     // empty implementations, to satisfy the IIVPToken contract    
     function setCleanupBlockNumber(uint256 _blockNumber) external override {}
+    function setCleanerContract(address _cleanerContract) external override {}
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override {}
     function delegate(address _to, uint256 _bips) external override {}
     function delegateExplicit(address _to, uint256 _amount) external override {}
@@ -22,8 +24,12 @@ contract DummyVPToken is ERC20, IIVPToken {
     function revokeDelegationAt(address _who, uint256 _blockNumber) external override {}
     function votePowerAtCached(uint256 _blockNumber) external override returns(uint256) {}
     function votePowerOfAtCached(address _owner, uint256 _blockNumber) external override returns(uint256) {}
+    
     function totalSupplyAt(uint256 _blockNumber) external view override returns(uint256) {}
+    function cleanupBlockNumber() external view override returns (uint256) {}
     function balanceOfAt(address _owner, uint256 _blockNumber) external view override returns (uint256) {}
+    function readVotePowerContract() external view override returns (IVPContractEvents) {}
+    function writeVotePowerContract() external view override returns (IVPContractEvents) {}
     function governanceVotePower() external view override returns (IGovernanceVotePower) {}
     function delegationModeOf(address _who) external view override returns (uint256 _delegationMode) {}
     function undelegatedVotePowerOf(address _owner) external view override returns(uint256) {}

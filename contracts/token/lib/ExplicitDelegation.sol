@@ -57,9 +57,9 @@ library ExplicitDelegation {
         address _owner, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal {
-        _self.delegatedTotal.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
-        _self.delegatedVotePower.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
+    ) internal returns (uint256 _deleted) {
+        _deleted = _self.delegatedTotal.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+        _deleted += _self.delegatedVotePower.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
     }
     
     /**

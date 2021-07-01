@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IGovernanceVotePower} from "./IGovernanceVotePower.sol";
+import {IVPContractEvents} from "./IVPContractEvents.sol";
 
 interface IVPToken is IERC20 {
     /**
@@ -184,8 +185,40 @@ interface IVPToken is IERC20 {
         uint256 _delegationMode);
 
     /**
+     * Returns VPContract used for readonly operations (view methods).
+     * The only non-view method that might be called on it is `revokeDelegationAt`.
+     *
+     * @notice `readVotePowerContract` is almost always equal to `writeVotePowerContract`
+     * except during upgrade from one VPContract to a new version (which should happen
+     * rarely or never and will be anounced before).
+     *
+     * @notice You shouldn't call any methods on VPContract directly, all are exposed
+     * via VPToken (and state changing methods are forbidden from direct calls). 
+     * This is the reason why this method returns `IVPContractEvents` - it should only be used
+     * for listening to events (`Revoke` only).
+     */
+    function readVotePowerContract() external view returns (IVPContractEvents);
+
+    /**
+     * Returns VPContract used for state changing operations (non-view methods).
+     * The only non-view method that might be called on it is `revokeDelegationAt`.
+     *
+     * @notice `writeVotePowerContract` is almost always equal to `readVotePowerContract`
+     * except during upgrade from one VPContract to a new version (which should happen
+     * rarely or never and will be anounced before). In the case of upgrade,
+     * `writeVotePowerContract` will be replaced first to establish delegations, and
+     * after some perio (e.g. after a reward epoch ends) `readVotePowerContract` will be set equal to it.
+     *
+     * @notice You shouldn't call any methods on VPContract directly, all are exposed
+     * via VPToken (and state changing methods are forbidden from direct calls). 
+     * This is the reason why this method returns `IVPContractEvents` - it should only be used
+     * for listening to events (`Delegate` and `Revoke` only).
+     */
+    function writeVotePowerContract() external view returns (IVPContractEvents);
+    
+    /**
      * When set, allows token owners to participate in governance voting
-     * and delegate governance vote power. 
+     * and delegate governance vote power.
      */
     function governanceVotePower() external view returns (IGovernanceVotePower);
 }

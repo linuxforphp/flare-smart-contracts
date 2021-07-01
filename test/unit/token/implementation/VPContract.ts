@@ -21,17 +21,22 @@ contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, as
     const vpContract = await VPContract.at(vpContractAddr);
     // Act
     // Assert
+    
     await expectRevert(vpContract.updateAtTokenTransfer(accounts[1], accounts[2], 500, 200, 250),
-      "Transaction reverted without a reason");
+      "only owner token");
     await expectRevert(vpContract.delegate(accounts[1], accounts[2], 500, 2000),
-      "Transaction reverted without a reason");
+      "only owner token");
     await expectRevert(vpContract.delegateExplicit(accounts[1], accounts[2], 500, 200),
-      "Transaction reverted without a reason");
+      "only owner token");
     await expectRevert(vpContract.revokeDelegationAt(accounts[1], accounts[2], 500, 15),
-      "Transaction reverted without a reason");
+      "only owner token");
     await expectRevert(vpContract.undelegateAll(accounts[1], 500),
-      "Transaction reverted without a reason");
+      "only owner token");
     await expectRevert(vpContract.undelegateAllExplicit(accounts[1], [accounts[2], accounts[3]]),
-      "Transaction reverted without a reason");
+      "only owner token");
+    await expectRevert(vpContract.setCleanupBlockNumber(1),
+      "only owner token");
+    await expectRevert(vpContract.setCleanerContract(accounts[3]),
+      "only owner token");
   });
 });

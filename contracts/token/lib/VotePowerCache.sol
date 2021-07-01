@@ -18,8 +18,8 @@ library VotePowerCache {
         
         // revoking delegation only affects cached value therefore we have to track
         // the revocation in order not to revoke twice
-        // mapping delegatee => isRevoked?
-        mapping(address => bool) revocations;
+        // mapping delegatee => revokedValue
+        mapping(address => uint256) revocations;
     }
     
     /**
@@ -49,17 +49,17 @@ library VotePowerCache {
         VotePower.VotePowerState storage _votePower,
         address _who,
         uint256 _blockNumber
-    ) internal returns (uint256 _value) {
+    ) internal returns (uint256 _value, bool _createdCache) {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
         if (cachedValue != 0) {
-            return cachedValue - 1;
+            return (cachedValue - 1, false);
         }
         // read from _votePower
         uint256 votePowerValue = _votePower.votePowerOfAt(_who, _blockNumber);
         _writeCacheValue(_self, key, votePowerValue);
-        return votePowerValue;
+        return (votePowerValue, true);
     }
 
     /**
@@ -88,6 +88,28 @@ library VotePowerCache {
     }
     
     /**
+    * @notice Delete cached value for `_who` at given block.
+    *   Only used for history cleanup.
+    * @param _self A VotePowerCache instance to manage.
+    * @param _who Address to get vote power.
+    * @param _blockNumber Block number of the block to fetch vote power.
+    * @return _deleted The number of cache items deleted (always 0 or 1).
+    * precondition: _blockNumber < cleanupBlockNumber
+    */
+    function deleteValueAt(
+        CacheState storage _self,
+        address _who,
+        uint256 _blockNumber
+    ) internal returns (uint256 _deleted) {
+        bytes32 key = keccak256(abi.encode(_who, _blockNumber));
+        if (_self.valueCache[key] != 0) {
+            delete _self.valueCache[key];
+            return 1;
+        }
+        return 0;
+    }
+    
+    /**
     * @notice Revoke vote power delegation from `from` to `to` at given block.
     *   Updates cached values so they are the only vote power values respecting revocation.
     * @param _self A VotePowerCache instance to manage.
@@ -108,19 +130,45 @@ library VotePowerCache {
     ) internal {
         if (_revokedValue == 0) return;
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
-        if (_self.revocationCache[keyFrom].revocations[_to]) {
+        if (_self.revocationCache[keyFrom].revocations[_to] != 0) {
             revert("Already revoked");
         }
         // read values and prime cacheOf
-        uint256 valueFrom = valueOfAt(_self, _votePower, _from, _blockNumber);
-        uint256 valueTo = valueOfAt(_self, _votePower, _to, _blockNumber);
+        (uint256 valueFrom,) = valueOfAt(_self, _votePower, _from, _blockNumber);
+        (uint256 valueTo,) = valueOfAt(_self, _votePower, _to, _blockNumber);
         // write new values
         bytes32 keyTo = keccak256(abi.encode(_to, _blockNumber));
         _self.revocationCache[keyFrom].revokedTotal = _self.revocationCache[keyFrom].revokedTotal.add(_revokedValue);
         _writeCacheValue(_self, keyFrom, valueFrom.add(_revokedValue));
         _writeCacheValue(_self, keyTo, valueTo.sub(_revokedValue, "Revoked value too large"));
         // mark as revoked
-        _self.revocationCache[keyFrom].revocations[_to] = true;
+        _self.revocationCache[keyFrom].revocations[_to] = _revokedValue;
+    }
+    
+    /**
+    * @notice Delete revocation from `_from` to `_to` at block `_blockNumber`.
+    *   Only used for history cleanup.
+    * @param _self A VotePowerCache instance to manage.
+    * @param _from The delegator.
+    * @param _to The delegatee.
+    * @param _blockNumber Block number of the block to modify.
+    * precondition: _blockNumber < cleanupBlockNumber
+    */
+    function deleteRevocationAt(
+        CacheState storage _self,
+        address _from,
+        address _to,
+        uint256 _blockNumber
+    ) internal returns (uint256 _deleted) {
+        bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
+        RevocationCacheRecord storage revocationRec = _self.revocationCache[keyFrom];
+        uint256 value = revocationRec.revocations[_to];
+        if (value != 0) {
+            delete revocationRec.revocations[_to];
+            revocationRec.revokedTotal = revocationRec.revokedTotal.sub(value);
+            return 1;
+        }
+        return 0;
     }
 
     /**
@@ -154,7 +202,7 @@ library VotePowerCache {
         uint256 _blockNumber
     ) internal view returns (bool revoked) {
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
-        return _self.revocationCache[keyFrom].revocations[_to];
+        return _self.revocationCache[keyFrom].revocations[_to] != 0;
     }
     
     function _writeCacheValue(CacheState storage _self, bytes32 _key, uint256 _value) private {

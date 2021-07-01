@@ -146,7 +146,7 @@ contract Supply is Governed, IISupply {
     ) external override returns(uint256 _circulatingSupplyWei) {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
-        return circulatingSupplyWeiCache.valueAt(circulatingSupplyWei, _blockNumber);
+        (_circulatingSupplyWei,) = circulatingSupplyWeiCache.valueAt(circulatingSupplyWei, _blockNumber);
     }
 
     /**
