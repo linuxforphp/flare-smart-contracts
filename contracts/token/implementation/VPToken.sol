@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SafePct} from "../../utils/implementation/SafePct.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
 import {IIVPToken} from "../interface/IIVPToken.sol";
 import {IIVPContract} from "../interface/IIVPContract.sol";
 import {IIGovernanceVotePower} from "../interface/IIGovernanceVotePower.sol";
@@ -34,11 +35,24 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     // all actual operations go directly to governance vp contract
     IIGovernanceVotePower private governanceVP;
     
+    // Some contract besides governance (e.g. ftsoRewardManager) may need to 
+    // set cleanup block number, so governance may give it the privilege.
+    address private cleanupBlockNumberManager;
+    
     /**
      * When true, the argument to `setWriteVpContract` must be a vpContract
      * with `isReplacement` set to `true`. To be used for creating the correct VPContract.
      */
     bool public needsReplacementVPContract = false;
+    
+    /**
+     * Event used to track history of VPToken -> VPContract / GovernanceVotePower 
+     * associations (e.g. by external cleaners).
+     * @param _contractType 0 = read VPContract, 1 = write VPContract, 2 = governance vote power
+     * @param _oldContractAddress vote power contract address before change
+     * @param _newContractAddress vote power contract address after change
+     */ 
+    event VotePowerContractChanged(uint256 _contractType, address _oldContractAddress, address _newContractAddress);
     
     constructor(
         address _governance,
@@ -360,6 +374,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
             // set contract's cleanup block
             _vpContract.setCleanupBlockNumber(_cleanupBlockNumber());
         }
+        emit VotePowerContractChanged(0, address(readVpContract), address(_vpContract));
         readVpContract = _vpContract;
     }
 
@@ -381,6 +396,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
             // once a non-null vpcontract is set, every other has to have isReplacement flag set
             needsReplacementVPContract = true;
         }
+        emit VotePowerContractChanged(1, address(writeVpContract), address(_vpContract));
         writeVpContract = _vpContract;
     }
     
@@ -417,13 +433,29 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
 
     /**
+     * Returns VPContract event interface used for readonly operations (view methods).
+     */
+    function readVotePowerContract() external view override returns (IVPContractEvents) {
+        return readVpContract;
+    }
+
+    /**
+     * Returns VPContract event interface used for state changing operations (non-view methods).
+     */
+    function writeVotePowerContract() external view override returns (IVPContractEvents) {
+        return writeVpContract;
+    }
+
+    /**
      * Set the cleanup block number.
      * Historic data for the blocks before `cleanupBlockNumber` can be erased,
      * history before that block should never be used since it can be inconsistent.
      * In particular, cleanup block number must be before current vote power block.
      * @param _blockNumber The new cleanup block number.
      */
-    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyGovernance {
+    function setCleanupBlockNumber(uint256 _blockNumber) external override {
+        require(msg.sender == address(governance) || msg.sender == cleanupBlockNumberManager, 
+            "only governance or manager");
         _setCleanupBlockNumber(_blockNumber);
         if (address(readVpContract) != address(0)) {
             readVpContract.setCleanupBlockNumber(_blockNumber);
@@ -437,12 +469,44 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
     
     /**
+     * Get the current cleanup block number.
+     */
+    function cleanupBlockNumber() external view override returns (uint256) {
+        return _cleanupBlockNumber();
+    }
+    
+    /**
+     * Some contract besides governance (e.g. ftsoRewardManager) may need to 
+     * set cleanup block number, so governance may give it the privilege.
+    */
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external onlyGovernance {
+        cleanupBlockNumberManager = _cleanupBlockNumberManager;
+    }
+    
+    /**
+     * Set the contract that is allowed to call history cleaning methods.
+     */
+    function setCleanerContract(address _cleanerContract) external override onlyGovernance {
+        _setCleanerContract(_cleanerContract);
+        if (address(readVpContract) != address(0)) {
+            readVpContract.setCleanerContract(_cleanerContract);
+        }
+        if (address(writeVpContract) != address(0) && address(writeVpContract) != address(readVpContract)) {
+            writeVpContract.setCleanerContract(_cleanerContract);
+        }
+        if (address(governanceVP) != address(0)) {
+            governanceVP.setCleanerContract(_cleanerContract);
+        }
+    }
+    
+    /**
      * Sets new governance vote power contract that allows token owners to participate in governance voting
      * and delegate governance vote power. 
      */
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override onlyGovernance {
         require(address(_governanceVotePower.ownerToken()) == address(this), 
             "Governance vote power contract does not belong to this token.");
+        emit VotePowerContractChanged(2, address(governanceVP), address(_governanceVotePower));
         governanceVP = _governanceVotePower;
     }
 

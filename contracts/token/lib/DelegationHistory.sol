@@ -255,10 +255,10 @@ library DelegationHistory {
         CheckPointHistoryState storage _self, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal {
-        if (_cleanupBlockNumber == 0) return;   // optimization for when cleaning is not enabled
+    ) internal returns (uint256) {
+        if (_cleanupBlockNumber == 0) return 0;   // optimization for when cleaning is not enabled
         uint256 length = _self.checkpoints.length;
-        if (length == 0) return;
+        if (length == 0) return 0;
         uint256 startIndex = _self.startIndex;
         uint256 endIndex = Math.min(startIndex.add(_count), length - 1);    // last element can never be deleted
         uint256 index = startIndex;
@@ -270,6 +270,7 @@ library DelegationHistory {
         if (index > startIndex) {   // index is the first not deleted index
             _self.startIndex = index;
         }
+        return index - startIndex;  // always index >= startIndex
     }
 
     /////////////////////////////////////////////////////////////////////////////////

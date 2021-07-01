@@ -25,6 +25,11 @@ interface IIGovernanceVotePower is IGovernanceVotePower {
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external;
     
+    /**
+     * Set the contract that is allowed to call history cleaning methods.
+     */
+    function setCleanerContract(address _cleanerContract) external;
+        
    /**
     * @notice Get the token that this governance vote power contract belongs to.
     */

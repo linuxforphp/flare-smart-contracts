@@ -150,8 +150,8 @@ library VotePower {
         address _owner, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal {
-        _self.votePowerByAddress.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
+    ) internal returns (uint256) {
+        return _self.votePowerByAddress.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
     }
 
     /**

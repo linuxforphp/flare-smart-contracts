@@ -24,9 +24,13 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await setDefaultVPContract(vpToken, accounts[0]);
   });
 
-  it("Should return name", async () => {
+  it("Should return token name", async () => {
     assert.equal(await vpToken.name(), "A token");
     assert.equal(await vpToken.symbol(), "ATOK");
+  });
+
+  it("Token decimals default to 18", async () => {
+    assertNumberEqual(await vpToken.decimals(), 18);
   });
 
   it("Should be checkpointable", async() => {
@@ -702,7 +706,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assert.equal(undelegated.toNumber(), 70);
   });
 
-  it("May set cleanup block without VPContract", async () => {
+  it("May set cleaner and cleanup block without VPContract", async () => {
     // Assemble
     await vpToken.mint(accounts[1], 100);
     await vpToken.delegate(accounts[2], 1000, { from: accounts[1] });
@@ -715,10 +719,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     await vpToken.setWriteVpContract(constants.ZERO_ADDRESS);
     await vpToken.setReadVpContract(constants.ZERO_ADDRESS);
+    await vpToken.setCleanerContract(accounts[5]);
     await vpToken.setCleanupBlockNumber(blk2);
     const vpcontract = await VPContract.new(vpToken.address, true);
     await vpToken.setWriteVpContract(vpcontract.address);
     await vpToken.delegate(accounts[2], 4000, { from: accounts[1] }); // trigger some cleanup
+    await vpToken.setCleanerContract(accounts[5]);
     await vpToken.setCleanupBlockNumber(blk3);
     await vpToken.delegate(accounts[2], 5000, { from: accounts[1] }); // trigger some cleanup
     await vpToken.setReadVpContract(vpcontract.address);
@@ -764,9 +770,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.mint(accounts[1], 100);
     await vpToken.transfer(accounts[2], 50, { from: accounts[1] });
     await vpToken.setCleanupBlockNumber(1);
+    await vpToken.setCleanerContract(accounts[5]);
     // Assert
     const invocations = await governanceVotePower.invocationCount.call();
-    assert.equal(invocations.toNumber(), 3);  // updateAtTokenTransfer*2, setCleanupBlockNumber*1
+    assert.equal(invocations.toNumber(), 4);  // updateAtTokenTransfer*2, setCleanupBlockNumber*1, setCleanerContract*1
   });
 
   it("May use vpToken transfer without VPContract", async () => {
@@ -787,6 +794,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assemble
     const vpToken1 = await VPToken.new(accounts[0], "A token without VPContract", "ATOK");
     await vpToken1.mint(accounts[1], 100);
+    const blk1 = await web3.eth.getBlockNumber();
+    await time.advanceBlock();
     // Act
     // Assert
     await expectRevert(vpToken1.delegate(accounts[2], 10, { from: accounts[1] }),
@@ -794,8 +803,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await expectRevert(vpToken1.delegateExplicit(accounts[2], 10, { from: accounts[1] }),
       "Token missing write VPContract");
     // revokeDelegationAt is exception - it is noop without vpcontracts
-    // await expectRevert(vpToken1.revokeDelegationAt(accounts[2], 3, { from: accounts[1] }),
-    //   "Token missing write VPContract");
+    await vpToken1.revokeDelegationAt(accounts[2], blk1, { from: accounts[1] });
     await expectRevert(vpToken1.undelegateAll({ from: accounts[1] }),
       "Token missing write VPContract");
     await expectRevert(vpToken1.undelegateAllExplicit([accounts[2]], { from: accounts[1] }),
@@ -863,6 +871,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     assert.equal(await vpToken.getWriteVpContract(), newVpContract.address);
     assert.equal(await vpToken.getReadVpContract(), newVpContract.address);
+    assert.equal(await vpToken.writeVotePowerContract(), newVpContract.address);
+    assert.equal(await vpToken.readVotePowerContract(), newVpContract.address);
   });
 
   it("Initial VPContract should have isReplacement false", async () => {
@@ -927,6 +937,52 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 80);
     assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 20);
+  });
+  
+  it("Only governance can set vp contracts", async () => {
+    // Assemble
+    const newVpContract = await VPContract.new(vpToken.address, true);
+    // Act
+    // Assert
+    await expectRevert(vpToken.setWriteVpContract(newVpContract.address, { from: accounts[1] }),
+      "only governance");
+    await expectRevert(vpToken.setReadVpContract(newVpContract.address, { from: accounts[1] }),
+      "only governance");
+  });
+
+  it("Only governance can set governance vp contracts", async () => {
+    // Assemble
+    const governanceVotePower = await MockContract.new();
+    const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+    await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, vpToken.address);
+    // Act
+    // Assert
+    await expectRevert(vpToken.setGovernanceVotePower(governanceVotePower.address, { from: accounts[1] }),
+      "only governance");
+  });
+
+  it("Only governance can set cleaner contract", async () => {
+    // Assemble
+    const historyCleaner = await MockContract.new();
+    // Act
+    // Assert
+    await expectRevert(vpToken.setCleanerContract(historyCleaner.address, { from: accounts[1] }),
+      "only governance");
+  });
+
+  it("Only governance or cleanup block number manager can set cleanup block", async () => {
+    // Assemble
+    await vpToken.setCleanupBlockNumberManager(accounts[10]);
+    time.advanceBlock();
+    time.advanceBlock();
+    // Act
+    // Assert
+    await vpToken.setCleanupBlockNumber(1, { from: accounts[0] });  // governance
+    assertNumberEqual(await vpToken.cleanupBlockNumber(), 1);
+    await vpToken.setCleanupBlockNumber(2, { from: accounts[10] });  // cleanup block number manager
+    assertNumberEqual(await vpToken.cleanupBlockNumber(), 2);
+    await expectRevert(vpToken.setCleanupBlockNumber(1, { from: accounts[1] }),
+      "only governance or manager");
   });
 
 });

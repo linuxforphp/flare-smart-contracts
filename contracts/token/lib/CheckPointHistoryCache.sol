@@ -16,15 +16,26 @@ library CheckPointHistoryCache {
         CacheState storage _self,
         CheckPointHistory.CheckPointHistoryState storage _checkPointHistory,
         uint256 _blockNumber
-    ) internal returns (uint256 value) {
+    ) internal returns (uint256 _value, bool _cacheCreated) {
         // is it in cache?
         uint256 cachedValue = _self.cache[_blockNumber];
         if (cachedValue != 0) {
-            return cachedValue - 1;
+            return (cachedValue - 1, false);
         }
         // read from _checkPointHistory
         uint256 historyValue = _checkPointHistory.valueAt(_blockNumber);
         _self.cache[_blockNumber] = historyValue.add(1);  // store to cache (add 1 to differentiate from empty)
-        return historyValue;
+        return (historyValue, true);
+    }
+    
+    function deleteAt(
+        CacheState storage _self,
+        uint256 _blockNumber
+    ) internal returns (uint256 _deleted) {
+        if (_self.cache[_blockNumber] != 0) {
+            _self.cache[_blockNumber] = 0;
+            return 1;
+        }
+        return 0;
     }
 }

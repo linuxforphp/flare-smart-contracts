@@ -28,8 +28,23 @@ abstract contract CheckPointable {
     // history before that block should never be used since it can be inconsistent.
     uint256 private cleanupBlockNumber;
     
+    // Address of the contract that is allowed to call methods for history cleaning.
+    address private cleanerContract;
+    
+    // events used for history cleanup    
+    event CreatedTotalSupplyCache(uint256 _blockNumber);
+    
+    // Most cleanup opportunities can be deduced from standard event `Transfer(from, to, amount)`:
+    //  - balance history for `from` (if nonzero) and `to` (if nonzero)
+    //  - total supply history when either `from` or `to` is zero
+    
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
+        _;
+    }
+    
+    modifier onlyCleaner {
+        require(msg.sender == cleanerContract, "Only cleaner contract");
         _;
     }
     
@@ -93,7 +108,9 @@ abstract contract CheckPointable {
     ) internal notBeforeCleanupBlock(_blockNumber) returns(uint256 _totalSupply) {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
-        return totalSupplyCache.valueAt(totalSupply, _blockNumber);
+        (uint256 value, bool cacheCreated) = totalSupplyCache.valueAt(totalSupply, _blockNumber);
+        if (cacheCreated) emit CreatedTotalSupplyCache(_blockNumber);
+        return value;
     }
 
     /**
@@ -141,5 +158,27 @@ abstract contract CheckPointable {
             // transfer checkpoint balance data
             _transmitAtNow(_from, _to, _amount);
         }
+    }
+
+    // history cleanup methods
+
+    /**
+     * Set the contract that is allowed to call history cleaning methods.
+     */
+    function _setCleanerContract(address _cleanerContract) internal {
+        cleanerContract = _cleanerContract;
+    }
+    
+    function balanceHistoryCleanup(address _owner, uint256 _count) external onlyCleaner returns (uint256) {
+        return balanceHistory.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
+    }
+    
+    function totalSupplyHistoryCleanup(uint256 _count) external onlyCleaner returns (uint256) {
+        return totalSupply.cleanupOldCheckpoints(_count, cleanupBlockNumber);
+    }
+    
+    function totalSupplyCacheCleanup(uint256 _blockNumber) external onlyCleaner returns (uint256) {
+        require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
+        return totalSupplyCache.deleteAt(_blockNumber);
     }
 }

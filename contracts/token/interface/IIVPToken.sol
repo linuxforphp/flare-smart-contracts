@@ -3,18 +3,11 @@ pragma solidity 0.7.6;
 
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
 import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
+import {IIVPContract} from "./IIVPContract.sol";
 import {IIGovernanceVotePower} from "./IIGovernanceVotePower.sol";
+import {IICleanable} from "./IICleanable.sol";
 
-interface IIVPToken is IVPToken {
-    /**
-     * Set the cleanup block number.
-     * Historic data for the blocks before `cleanupBlockNumber` can be erased,
-     * history before that block should never be used since it can be inconsistent.
-     * In particular, cleanup block number must be before current vote power block.
-     * @param _blockNumber The new cleanup block number.
-     */
-    function setCleanupBlockNumber(uint256 _blockNumber) external;
-    
+interface IIVPToken is IVPToken, IICleanable {
     /**
      * Sets new governance vote power contract that allows token owners to participate in governance voting
      * and delegate governance vote power. 

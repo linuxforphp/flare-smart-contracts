@@ -2,7 +2,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, Signer } from "ethers";
 import { ethers } from "hardhat";
 
-const { time } = require('@openzeppelin/test-helpers');
+const { time, constants } = require('@openzeppelin/test-helpers');
+
+export const ZERO_ADDRESS: string = constants.ZERO_ADDRESS;
 
 /**
  * Helper function for instantiating and deploying a contract by using factory.
@@ -215,3 +217,6 @@ export function computeVoteRandom(price_random: number[][] | BN[][] | BigNumber[
     return  sum.mod(toBN(2).pow(toBN(256))).toString();
 }
 
+export async function sleep(ms: number) {
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
+}

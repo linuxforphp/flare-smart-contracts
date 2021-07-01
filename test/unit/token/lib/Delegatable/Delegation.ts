@@ -42,8 +42,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
       return ev.from == accounts[1] 
         && ev.to == accounts[2] 
         && ev.priorVotePower == 0
-        && ev.newVotePower == 50 
-        && ev.blockNumber == blockNumber;
+        && ev.newVotePower == 50;
     });
   });
 
@@ -60,8 +59,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
       return ev.from == accounts[1]
         && ev.to == accounts[2]
         && ev.priorVotePower == 50
-        && ev.newVotePower == 0
-        && ev.blockNumber == blockNumber;
+        && ev.newVotePower == 0;
     });
   });
 
@@ -89,8 +87,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
       return ev.from == accounts[1]
         && ev.to == accounts[2]
         && ev.priorVotePower == 0
-        && ev.newVotePower == 50
-        && ev.blockNumber == blockNumber;
+        && ev.newVotePower == 50;
     });
   });
 
@@ -107,8 +104,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
       return ev.from == accounts[1]
         && ev.to == accounts[2]
         && ev.priorVotePower == 50
-        && ev.newVotePower == 0
-        && ev.blockNumber == blockNumber;
+        && ev.newVotePower == 0;
     });
   });
 

@@ -193,7 +193,7 @@ library PercentageDelegation {
         DelegationState storage _self, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal {
-        _self.delegation.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+    ) internal returns (uint256) {
+        return _self.delegation.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
     }
 }
