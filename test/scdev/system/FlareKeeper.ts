@@ -47,11 +47,11 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper system tests`
           keep = web3.utils.sha3("keep()")!.slice(0,10); // first 4 bytes is function selector
           // Give our contract to keep a keep method so our poor validator's head does not explode...
           await contractToKeep.givenMethodReturnBool(keep, true);
-          await flareKeeper.registerToKeep(contractToKeep.address, {from: genesisGovernance});
+          await flareKeeper.registerToKeep([{keptContract: contractToKeep.address, gasLimit: 0}], {from: genesisGovernance});
         });
 
         afterEach(async() => {
-            await flareKeeper.unregisterToKeep(contractToKeep.address, {from: genesisGovernance});
+            await flareKeeper.unregisterAll({from: genesisGovernance});
         });
 
         it("Should keep a contract", async() => {

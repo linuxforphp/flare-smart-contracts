@@ -71,7 +71,12 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
   console.log(`Submitting prices ${ preparedPrices } by ${ by } for epoch ${ epochId }`);
 
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
-  await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, {from: by, gas: "50000"})
+  // TODO: This was limited to 50000 gas, and would not execute.
+  //   I increased to 100000 and it still did not work.
+  //   I bumped it up to 1000000, probably excessively, but now it executes.
+  //   Bump down to a realistic number, or investigate why 50000 is not sufficient if that is supposed
+  //   to be an upper limit.
+  await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, {from: by, gas: "1000000"})
   for (let i = 0; i < ftsos.length; i++) {
     const priceInfo = new PriceInfo(epochId, preparedPrices[i], randoms[i]);
     priceInfo.moveToNextStatus();
@@ -101,12 +106,16 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
 
   console.log(`Revealing price by ${ by } for epoch ${ epochId }`);
 
+  // TODO: This was limited to 50000 gas, and would not execute.
+  //   I bumped it up to 1000000, probably excessively, but now it executes.
+  //   Bump down to a realistic number, or investigate why 50000 is not sufficient if that is supposed
+  //   to be an upper limit.
   await priceSubmitter.revealPrices(
     epochId, 
     ftsos.map(ftso => ftso.address), 
     priceInfos.map(priceInfo => priceInfo.priceSubmitted),
     priceInfos.map(priceInfo => priceInfo.random),
-    {from: by, gas: "50000"}
+    {from: by, gas: "1000000"}
   )
 };
 
@@ -367,7 +376,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // By the time we get here, reward manager better have some FLR for claiming...
     const rewardManagerBalance = BN(await web3.eth.getBalance(rewardManager.address));
     console.log(`Reward manager balance = ${rewardManagerBalance.toString()}`);
-    assert(rewardManagerBalance.gt(BN(0)));
+    assert(rewardManagerBalance.gt(BN(0)), "Reward manager expected to have a balance by now to distribute rewards");
 
     // Claim rewards
     try {
@@ -436,12 +445,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 //      assert.equal((await spewKeeperErrors(flareKeeper)), 0);
 
       // Account for allocation truncation during distribution calc
-      // TODO: This should be fixed with a double declining balance allocation, where ever it is that
-      // is causing this rounding problem.
       const differenceBetweenActualAndExpected = shouldaClaimed.sub(computedRewardClaimed);
 
       // After all that, one little test...
-      assert(differenceBetweenActualAndExpected.lt(BN(10)), "Claimed amount and amount should have claimed are not equal.");
+      assert(shouldaClaimed.sub(computedRewardClaimed).eq(BN(0)), "Claimed amount and amount should have claimed are not equal.");
     } catch (e) {
       // Any keeper errors? Better spew them to the console and fail if so.
       await spewKeeperErrors(flareKeeper);

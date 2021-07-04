@@ -43,23 +43,9 @@ async function main(parameters: any) {
     console.log("Waiting for governance claim ...")
   }
 
-  let address: any = null;
-  while (true) {
-    try {
-      let newAddress = await flareKeeper.keepContracts(0);
-      if (newAddress == address) { // not yet finalized
-        await sleep(2000);
-        continue;
-      }
-      address = newAddress;
-    } catch (e) {
-      console.log("No keeper contracts")
-      break;
-    }
-    console.log("Unregistring: ", address)
-    await flareKeeper.unregisterToKeep(address!, { from: governanceAccount.address });
-    await sleep(2000);
-  }
+  console.log("Unregistring all")
+  await flareKeeper.unregisterAll({ from: governanceAccount.address });
+  await sleep(2000);
   console.log("KEEPER GOV:", await flareKeeper.governance())
   console.error("Unregister complete.");
 }
