@@ -78,6 +78,13 @@ test-contract-integration:
         - yarn c
         - yarn $TEST_INTEGRATION
 
+test-contract-token-fuzzing:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn test_fuzzing_token
+
 test-contract-performance:
     stage: test
     <<: *yarn-setup

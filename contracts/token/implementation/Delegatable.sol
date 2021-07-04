@@ -58,15 +58,20 @@ contract Delegatable is IVPContractEvents {
     // Address of the contract that is allowed to call methods for history cleaning.
     address private cleanerContract;
     
-    // events used for history cleanup
+    /**
+     * Emitted when a vote power cache entry is created.
+     * Allows history cleaners to track vote power cache cleanup opportunities off-chain.
+     */
     event CreatedVotePowerCache(address _owner, uint256 _blockNumber);
     
-    // Most cleanup opportunities can be deduced from standard events:
+    // Most history cleanup opportunities can be deduced from standard events:
     // Transfer(from, to, amount):
     //  - vote power checkpoints for `from` (if nonzero) and `to` (if nonzero)
     //  - vote power checkpoints for percentage delegatees of `from` and `to` are also created,
     //    but they don't have to be checked since Delegate events are also emitted in case of 
     //    percentage delegation vote power change due to delegators balance change
+    //  - Note: Transfer event is emitted from VPToken but vote power checkpoint delegationModes
+    //    must be called on its writeVotePowerContract
     // Delegate(from, to, priorVP, newVP):
     //  - vote power checkpoints for `from` and `to`
     //  - percentage delegation checkpoint for `from` (if `from` uses percentage delegation mode)
@@ -76,8 +81,8 @@ contract Delegatable is IVPContractEvents {
     //  - revocation cache block from `from` to `to` at `block`
     
     /**
-     * Reading from history is not allowed before `cleanupBlockNumber`, since databa before that
-     * mat have been deleted and is thus unreliable.
+     * Reading from history is not allowed before `cleanupBlockNumber`, since data before that
+     * might have been deleted and is thus unreliable.
      */    
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
@@ -690,15 +695,37 @@ contract Delegatable is IVPContractEvents {
     
     // history cleanup methods
     
+    /**
+     * Delete vote power checkpoints that expired (i.e. are before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _owner vote power owner account address
+     * @param _count maximum number of checkpoints to delete
+     * @return the number of checkpoints deleted
+     */    
     function votePowerHistoryCleanup(address _owner, uint256 _count) external onlyCleaner returns (uint256) {
         return votePower.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
     }
 
+    /**
+     * Delete vote power cache entry that expired (i.e. is before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _owner vote power owner account address
+     * @param _blockNumber the block number for which total supply value was cached
+     * @return the number of cache entries deleted (always 0 or 1)
+     */    
     function votePowerCacheCleanup(address _owner, uint256 _blockNumber) external onlyCleaner returns (uint256) {
         require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
         return votePowerCache.deleteValueAt(_owner, _blockNumber);
     }
 
+    /**
+     * Delete revocation entry that expired (i.e. is before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _from the delegator address
+     * @param _to the delegatee address
+     * @param _blockNumber the block number for which total supply value was cached
+     * @return the number of revocation entries deleted (always 0 or 1)
+     */    
     function revocationCleanup(
         address _from, 
         address _to, 
@@ -708,6 +735,13 @@ contract Delegatable is IVPContractEvents {
         return votePowerCache.deleteRevocationAt(_from, _to, _blockNumber);
     }
     
+    /**
+     * Delete percentage delegation checkpoints that expired (i.e. are before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _owner balance owner account address
+     * @param _count maximum number of checkpoints to delete
+     * @return the number of checkpoints deleted
+     */    
     function percentageDelegationHistoryCleanup(
         address _owner, 
         uint256 _count
@@ -715,6 +749,14 @@ contract Delegatable is IVPContractEvents {
         return percentageDelegations[_owner].cleanupOldCheckpoints(_count, cleanupBlockNumber);
     }
     
+    /**
+     * Delete explicit delegation checkpoints that expired (i.e. are before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _from the delegator address
+     * @param _to the delegatee address
+     * @param _count maximum number of checkpoints to delete
+     * @return the number of checkpoints deleted
+     */    
     function explicitDelegationHistoryCleanup(
         address _from, 
         address _to, 
