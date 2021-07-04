@@ -39,24 +39,32 @@ contract FlareKeeper is GovernedAtGenesis {
         uint64 lastErrorTypeIndex;
     }
 
+    struct Registration {
+        IFlareKeep keptContract;
+        uint256 gasLimit;
+    }
+
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_NOT_INFLATION = "not inflation";
     string internal constant ERR_TOO_MANY = "too many";
     string internal constant ERR_TOO_BIG = "too big";
     string internal constant ERR_TOO_OFTEN = "too often";
-    string internal constant ERR_CONTRACT_NOT_FOUND = "contract not found";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
     string internal constant ERR_BLOCK_NUMBER_SMALL = "block.number small";
-    string internal constant ERR_TRANSFER_FAILED = "transfer failed";
     string internal constant INDEX_TOO_HIGH = "start index high";
     string internal constant UPDATE_GAP_TOO_SHORT = "time gap too short";
-    string internal constant MAX_MINT_TOO_HIGH = "Max mint too high";
+    string internal constant MAX_MINT_TOO_HIGH = "max mint too high";
+    string internal constant ERR_DUPLICATE_ADDRESS = "dup address";
+    string internal constant ERR_ADDRESS_ZERO = "address zero";
+    string internal constant ERR_OUT_OF_GAS = "out of gas";
 
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
     uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether; // 50 million FLR
-    uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 82800; // 23 hours constant
+    uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours; // 23 hours constant
 
     IFlareKeep[] public keepContracts;
+    mapping (IFlareKeep => uint256) public gasLimits;
+    mapping (IFlareKeep => uint256) public blockHoldoffsRemaining;
     Inflation public inflation;
     uint256 public systemLastTriggeredAt;
     uint256 public totalMintingRequestedWei;
@@ -68,6 +76,8 @@ contract FlareKeeper is GovernedAtGenesis {
     uint256 public maxMintingRequestWei;
     uint256 public lastMintRequestTs;
     uint256 public lastUpdateMaxMintRequestTs;
+    LastErrorData public errorData;
+    uint256 public blockHoldoff;
 
     uint256 private lastBalance;
     uint256 private expectedMintRequest;
@@ -75,28 +85,16 @@ contract FlareKeeper is GovernedAtGenesis {
     // track keep errors
     mapping(bytes32 => KeptError) internal keptErrors;
     bytes32 [] internal keepErrorHashes;
-    LastErrorData public errorData;
 
     event ContractKept(address theContract);
     event ContractKeepErrored(address theContract, uint256 atBlock, string theMessage);
+    event ContractHeldOff(address theContract, uint256 blockHoldoffsRemaining);
     event MintingRequested (uint256 amountWei);
     event MintingReceived (uint256 amountWei);
     event MintingWithdrawn(uint256 amountWei);
     event RegistrationUpdated (IFlareKeep theContract, bool add);
     event SelfDestructReceived (uint256 amountWei);
     event InflationSet(Inflation theNewContract, Inflation theOldContract);
-
-    //====================================================================
-    // Constructor for pre-compiled code
-    //====================================================================
-
-    /**
-     * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
-     *   The super constructor is called for testing convenience.
-     */
-    constructor() GovernedAtGenesis(address(0)) {
-        /* empty block */
-    }
 
     /**
      * @dev As there is not a constructor, this modifier exists to make sure the inflation
@@ -132,41 +130,58 @@ contract FlareKeeper is GovernedAtGenesis {
     }
 
     //====================================================================
+    // Constructor for pre-compiled code
+    //====================================================================
+
+    /**
+     * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
+     *   The super constructor is called for testing convenience.
+     */
+    constructor() GovernedAtGenesis(address(0)) {
+        /* empty block */
+    }
+
+    //====================================================================
     // Functions
     //====================================================================  
 
     /**
-     * @notice Set the governance address to a hard-coded known address.
-     * @dev This should be done at contract deployment time.
-     * @return The governance address.
+     * @notice Register contracts to be polled by the keeper process.
+     * @param _registrations    An array of Registration structures of IFlareKeep contracts to keep
+     *                          and gas limits for each contract.
+     * @dev A gas limit of zero will set no limit for the contract but the validator has an overall
+     *   limit for the trigger() method.
+     * @dev If any registrations already exist, they will be unregistered.
+     * @dev Contracts will be kept in the order in which presented via the _registrations array.
      */
-    function initialiseFixedAddress() public override returns(address) {
-        if (!initialized) {
-            initialized = true;
-            address governanceAddress = super.initialiseFixedAddress();
-            return governanceAddress;
-        } else {
-            return governance;
-        }
-    }
+    function registerToKeep(Registration[] calldata _registrations) external onlyGovernance {
+        // Make sure there are not too many contracts to register.
+        uint256 registrationsLength = _registrations.length;
+        require(registrationsLength <= MAX_KEEP_CONTRACTS, ERR_TOO_MANY);
 
-    /**
-     * @notice Register a contract to be polled by the keeper process.
-     * @param _keep     The address of the contract to poll.
-     */
-    function registerToKeep(IFlareKeep _keep) external onlyGovernance {
+        // Unregister everything first
+        _unregisterAll();
 
-        uint256 len = keepContracts.length;
-        require(len + 1 < MAX_KEEP_CONTRACTS, ERR_TOO_MANY);
+        // Loop over all contracts to register
+        for (uint256 registrationIndex = 0; registrationIndex < registrationsLength; registrationIndex++) {
+            // Address cannot be zero
+            require(address(_registrations[registrationIndex].keptContract) != address(0), ERR_ADDRESS_ZERO);
 
-        for (uint256 i = 0; i < len; i++) {
-            if (_keep == keepContracts[i]) {
-                return; // already registered
+            uint256 keepContractsLength = keepContracts.length;
+            // Make sure no dups...yes, inefficient. Registration should not be done often.
+            for (uint256 i = 0; i < keepContractsLength; i++) {
+                require(_registrations[registrationIndex].keptContract != keepContracts[i], 
+                    ERR_DUPLICATE_ADDRESS); // already registered
             }
+            // Store off the registered contract to keep, in the order presented.
+            keepContracts.push(_registrations[registrationIndex].keptContract);
+            // Record the gas limit for the contract.
+            gasLimits[_registrations[registrationIndex].keptContract] = _registrations[registrationIndex].gasLimit;
+            // Clear any blocks being held off for the given contract, if any. Contracts may be re-presented
+            // if only order is being modified, for example.
+            blockHoldoffsRemaining[_registrations[registrationIndex].keptContract] = 0;
+            emit RegistrationUpdated (_registrations[registrationIndex].keptContract, true);
         }
-
-        keepContracts.push(_keep);
-        emit RegistrationUpdated (_keep, true);
     }
 
     /**
@@ -181,6 +196,15 @@ contract FlareKeeper is GovernedAtGenesis {
             totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
             emit MintingRequested(_amountWei);
         }
+    }
+
+    /**
+     * @notice Set number of blocks that must elapse before a kept contract exceeding gas limit can have
+     *   its keep() method called again.
+     * @param _blockHoldoff    The number of blocks to holdoff.
+     */
+    function setBlockHoldoff(uint256 _blockHoldoff) external onlyGovernance {
+        blockHoldoff = _blockHoldoff;
     }
 
     /**
@@ -210,26 +234,6 @@ contract FlareKeeper is GovernedAtGenesis {
         if (maxMintingRequestWei == 0) {
             maxMintingRequestWei = MAX_MINTING_REQUEST_DEFAULT;
         }
-    }
-
-    /**
-     * @notice Unregister a contract from being polled by the keeper process.
-     * @param _keep     The address of the contract to unregister.
-     */
-    function unregisterToKeep(IFlareKeep _keep) external onlyGovernance {
-
-        uint256 len = keepContracts.length;
-
-        for (uint256 i = 0; i < len; i++) {
-            if (_keep == keepContracts[i]) {
-                keepContracts[i] = keepContracts[len -1];
-                keepContracts.pop();
-                emit RegistrationUpdated (_keep, false);
-                return;
-            }
-        }
-
-        revert(ERR_CONTRACT_NOT_FOUND);
     }
 
     /**
@@ -292,15 +296,37 @@ contract FlareKeeper is GovernedAtGenesis {
             }
         }
 
-        // Perform trigger operations here
         uint256 len = keepContracts.length;
 
+        // Perform trigger operations here
         for (uint256 i = 0; i < len; i++) {
-            // Consume errors and record
-            try keepContracts[i].keep() {
-                emit ContractKept(address(keepContracts[i]));
-            } catch Error(string memory message) {
-                addKeepError(address(keepContracts[i]), message);
+            uint256 blockHoldoffRemainingForContract = blockHoldoffsRemaining[keepContracts[i]];
+            if (blockHoldoffRemainingForContract > 0) {
+                blockHoldoffsRemaining[keepContracts[i]] = blockHoldoffRemainingForContract - 1;
+                emit ContractHeldOff(address(keepContracts[i]), blockHoldoffRemainingForContract);
+            } else {
+                // Run keep for the contract, consume errors, and record
+                uint256 startGas = gasleft();
+                // Use ternary in needless variable because slither has problems with some ternary expressions
+                uint256 useGas = gasLimits[keepContracts[i]] > 0 ? gasLimits[keepContracts[i]] : startGas; 
+                try keepContracts[i].keep{gas: useGas} ()
+                {
+                    emit ContractKept(address(keepContracts[i]));
+                // Catch all requires with messages
+                } catch Error(string memory message) {
+                    addKeepError(address(keepContracts[i]), message);
+                // Catch everything else...out of gas, div by zero, asserts, etc.
+                } catch {
+                    uint256 endGas = gasleft();
+                    // Interpret out of gas errors
+                    if (startGas.sub(endGas) >= gasLimits[keepContracts[i]]) {
+                        blockHoldoffsRemaining[keepContracts[i]] = blockHoldoff;
+                        addKeepError(address(keepContracts[i]), ERR_OUT_OF_GAS);
+                    } else {
+                        // Don't know error cause...just log it as unknown
+                        addKeepError(address(keepContracts[i]), "unknown");
+                    }
+                }
             }
         }
 
@@ -317,13 +343,37 @@ contract FlareKeeper is GovernedAtGenesis {
     }
 
     /**
-     * @notice Net totals to obtain the expected balance of the contract.
+     * @notice Unregister all contracts from being polled by the keeper process.
      */
-    function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
-        _balanceExpectedWei = totalMintingReceivedWei.
-            sub(totalMintingWithdrawnWei).
-            add(totalSelfDestructReceivedWei).
-            sub(totalSelfDestructWithdrawnWei);
+    function unregisterAll() external onlyGovernance {
+        _unregisterAll();
+    }
+
+    function showLastKeptError () external view 
+        returns(
+            uint256[] memory _lastErrorBlock,
+            uint256[] memory _numErrors,
+            string[] memory _errorString,
+            address[] memory _erroringContract,
+            uint256 _totalKeptErrors
+        )
+    {
+        return showKeptErrors(errorData.lastErrorTypeIndex, 1);
+    }
+
+    /**
+     * @notice Set the governance address to a hard-coded known address.
+     * @dev This should be done at contract deployment time.
+     * @return The governance address.
+     */
+    function initialiseFixedAddress() public override returns(address) {
+        if (!initialized) {
+            initialized = true;
+            address governanceAddress = super.initialiseFixedAddress();
+            return governanceAddress;
+        } else {
+            return governance;
+        }
     }
 
     function showKeptErrors (uint startIndex, uint numErrorTypesToShow) public view 
@@ -363,25 +413,6 @@ contract FlareKeeper is GovernedAtGenesis {
         _totalKeptErrors = errorData.totalKeptErrors;
     }
 
-    function showLastKeptError () external view 
-        returns(
-            uint256[] memory _lastErrorBlock,
-            uint256[] memory _numErrors,
-            string[] memory _errorString,
-            address[] memory _erroringContract,
-            uint256 _totalKeptErrors
-        )
-    {
-        return showKeptErrors(errorData.lastErrorTypeIndex, 1);
-    }
-
-    /**
-     * @notice Net total received from total requested.
-     */
-    function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
-        _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
-    }
-
     function addKeepError(address keptContract, string memory message) internal {
         bytes32 errorStringHash = keccak256(abi.encode(keptContract, message));
 
@@ -403,5 +434,36 @@ contract FlareKeeper is GovernedAtGenesis {
         keptErrors[errorStringHash].errorTypeIndex = uint64(keepErrorHashes.length - 1);
 
         errorData.lastErrorTypeIndex = keptErrors[errorStringHash].errorTypeIndex;        
+    }
+
+    /**
+     * @notice Unregister all contracts from being polled by the keeper process.
+     */
+    function _unregisterAll() private {
+
+        uint256 len = keepContracts.length;
+
+        for (uint256 i = 0; i < len; i++) {
+            IFlareKeep keptContract = keepContracts[keepContracts.length - 1];
+            keepContracts.pop();
+            emit RegistrationUpdated (keptContract, false);
+        }
+    }
+
+    /**
+     * @notice Net totals to obtain the expected balance of the contract.
+     */
+    function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
+        _balanceExpectedWei = totalMintingReceivedWei.
+            sub(totalMintingWithdrawnWei).
+            add(totalSelfDestructReceivedWei).
+            sub(totalSelfDestructWithdrawnWei);
+    }
+
+    /**
+     * @notice Net total received from total requested.
+     */
+    function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
+        _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
     }
 }

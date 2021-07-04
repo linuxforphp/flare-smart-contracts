@@ -93,6 +93,7 @@ async function main(parameters: any) {
     stateConnector.initialiseChains();
   } catch (e) {
     // state connector might be already initialized if redeploy
+    console.error(`stateConnector.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
   }
 
   // Initialize the keeper
@@ -119,6 +120,10 @@ async function main(parameters: any) {
   // Inflation contract
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
+
+  // Delayed reward epoch start time
+  const rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours * 60 * 60)));
+
   const inflation = await Inflation.new(
     deployerAccount.address,
     flareKeeper.address,
@@ -179,9 +184,6 @@ async function main(parameters: any) {
   }
   spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address);
 
-  // Delayed reward epoch start time
-  let rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours * 60 * 60)));
-
   // FtsoRegistryContract
   const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
 
@@ -206,8 +208,11 @@ async function main(parameters: any) {
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
 
   // Register kept contracts to the keeper...order matters. Inflation first.
-  await flareKeeper.registerToKeep(inflation.address);
-  await flareKeeper.registerToKeep(ftsoManager.address);
+  const registrations = [
+    {keptContract: inflation.address, gasLimit: 10000000},
+    {keptContract: ftsoManager.address, gasLimit: 10000000}
+  ];
+  await flareKeeper.registerToKeep(registrations);
 
   // Deploy wrapped FLR
   const wflr = await WFLR.new(deployerAccount.address);

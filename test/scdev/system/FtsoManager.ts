@@ -72,7 +72,7 @@ const MockContract = artifacts.require("MockContract");
               0
             );
             const fromBlock = await flareKeeper.systemLastTriggeredAt();
-            await flareKeeper.registerToKeep(ftsoManager.address, {from: genesisGovernance});
+            await flareKeeper.registerToKeep([{keptContract: ftsoManager.address, gasLimit: 0}], {from: genesisGovernance});
             // Act
             await ftsoManager.activate({from: accounts[1]});
             // Wait for some blocks to mine...

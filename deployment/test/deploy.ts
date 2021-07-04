@@ -152,7 +152,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should fetch an ftso annual inflation percentage", async() => {
       // Assemble
       // Act
-      const percentage = await inflationAllocation.getAnnualPercentageBips.call();
+      const percentage = await inflationAllocation.lastAnnualInflationPercentageBips();
       // Assert
       assert(percentage.gt(BN(0)));
     });
@@ -198,16 +198,19 @@ contract(`deploy.ts system tests`, async accounts => {
         ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    // After deploy delay introduced this is not a relevant test
-    // it.skip("Should by kept by keeper", async() => {
-    //     // Assemble
-    //     // Act
-    //     const startBlock = (await ftsoManager.rewardEpochs(0))[0];
-    //     // Assert
-    //     // If the keeper is calling keep on the RewardManager, then there should be
-    //     // an active reward epoch.
-    //     assert(startBlock.toNumber() != 0);
-    // });
+    it("Should have a reward epoch if rewarding started and being kept by keeper", async() => {
+       // Assemble
+       const startTs = BN(await time.latest());
+       const rewardEpochStartTs = await ftsoManager.rewardEpochsStartTs();
+       if (rewardEpochStartTs.lt(startTs)) {
+        // Act
+        const startBlock = (await ftsoManager.rewardEpochs(0))[0];
+        // Assert
+        // If the keeper is calling keep on the RewardManager, then there should be
+        // an active reward epoch.
+        assert(startBlock.toNumber() != 0);
+       }
+    });
 
     it("Should know about PriceSubmitter", async() => {
       // Assemble
@@ -235,13 +238,17 @@ contract(`deploy.ts system tests`, async accounts => {
         flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
     });
 
-    it("Should have recognized inflation set", async() => {
+    it("Should have recognized inflation set if rewarding started", async() => {
         // Assemble
+        const rewardEpochStartTs = await inflation.rewardEpochStartTs();
+        const startTs = BN(await time.latest());
         // Act
         await flareKeeper.trigger();
         // Assert
-        const { 0: recognizedInflationWei } = await inflation.getCurrentAnnum() as any;
-        assert(BN(recognizedInflationWei).gt(BN(0)));
+        if (rewardEpochStartTs.lt(startTs)) {
+          const { 0: recognizedInflationWei } = await inflation.getCurrentAnnum() as any;
+          assert(BN(recognizedInflationWei).gt(BN(0)));  
+        }
     });
 
     it("Should know about supply contract", async() => {
