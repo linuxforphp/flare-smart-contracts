@@ -305,10 +305,12 @@ contract FlareKeeper is GovernedAtGenesis {
                 blockHoldoffsRemaining[keepContracts[i]] = blockHoldoffRemainingForContract - 1;
                 emit ContractHeldOff(address(keepContracts[i]), blockHoldoffRemainingForContract);
             } else {
-                // Run keep for the contract, consume errors, and record
+                // Figure out what gas to limit call by
                 uint256 startGas = gasleft();
-                // Use ternary in needless variable because slither has problems with some ternary expressions
-                uint256 useGas = gasLimits[keepContracts[i]] > 0 ? gasLimits[keepContracts[i]] : startGas; 
+                uint256 gasLimit = gasLimits[keepContracts[i]];
+                // Use ternary in needless variable because slither has problems with some in-line ternary expressions
+                uint256 useGas = gasLimit > 0 ? gasLimit : startGas; 
+                // Run keep for the contract, consume errors, and record
                 try keepContracts[i].keep{gas: useGas} ()
                 {
                     emit ContractKept(address(keepContracts[i]));

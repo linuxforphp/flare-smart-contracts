@@ -116,6 +116,8 @@ async function main(parameters: any) {
   }
   await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareKeeper.claimGovernance({ from: deployerAccount.address });
+  // Set the block holdoff should a kept contract exceeded its max gas allocation
+  await flareKeeper.setBlockHoldoff(parameters.flareKeeperGasExceededBlockHoldoff);
 
   // Inflation contract
   // Get the timestamp for the just mined block

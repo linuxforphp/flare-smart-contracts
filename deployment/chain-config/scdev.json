@@ -14,6 +14,7 @@
   "priceEpochDurationSec": 90,
   "rewardEpochsStartDelayInHours": 0.17,
   "votePowerBoundaryFraction": 7,
+  "flareKeeperGasExceededBlockHoldoff": 100,
   "minVotePowerFlrThreshold": 10000000000,
   "minVotePowerAssetThreshold": 10000000000,
   "maxVotePowerFlrThreshold": 10,

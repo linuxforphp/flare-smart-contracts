@@ -1,6 +1,7 @@
 const {constants, time} = require('@openzeppelin/test-helpers');
 
 import { waitFinalize3 } from "../../test/utils/test-helpers";
+import { FlareKeeper } from "../../typechain";
 import { DummyFAssetMinterContract, 
   FAssetTokenContract,
   FtsoContract,
@@ -159,11 +160,17 @@ contract(`deploy.ts system tests`, async accounts => {
   });
 
   describe(Contracts.FLARE_KEEPER, async() => {
+    let FlareKeeper: FlareKeeperContract;
+    let flareKeeper: FlareKeeperInstance;
+
+    beforeEach(async() => {
+      FlareKeeper = artifacts.require("FlareKeeper") as FlareKeeperContract;
+      flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
+    });
+
     it("Should be keeping", async() => {
       // Assemble
-      const FlareKeeper = artifacts.require("FlareKeeper") as FlareKeeperContract;
-      const flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
-        // Act
+      // Act
       if (flareKeeper.address != parameters.flareKeeperAddress) {
         await flareKeeper.trigger();
       }
@@ -187,6 +194,14 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assert
       assert(found);
     });
+
+    it("Should have block holdoff set", async() => {
+      // Assemble
+      // Act
+      const blockHoldoff = await flareKeeper.blockHoldoff();
+      // Assert
+      assert.equal(blockHoldoff.toString(), parameters.flareKeeperGasExceededBlockHoldoff.toString());
+    })
   });
 
   describe(Contracts.FTSO_MANAGER, async() => {
