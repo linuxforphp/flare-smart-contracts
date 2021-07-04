@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {Delegatable} from "./Delegatable.sol";
 import {IIVPContract} from "../interface/IIVPContract.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
@@ -47,6 +48,19 @@ contract VPContract is IIVPContract, Delegatable {
         _;
     }
 
+    /**
+     * Setting cleanup block number and cleaner contract is allowed from
+     * owner token or owner token's governance (when VPContract is detached,
+     * methods can no longer be called via the owner token, but the VPContract
+     * still remembers the old owner token and can see its governance).
+     */
+    modifier onlyOwnerOrGovernance {
+        require(msg.sender == address(ownerToken) || 
+            msg.sender == GovernedBase(address(ownerToken)).governance(),
+             "only owner or governance");
+        _;
+    }
+
     modifier onlyPercent(address sender) {
         // If a delegate cannot be added by percentage, revert.
         require(_canDelegateByPct(sender), ALREADY_EXPLICIT_MSG);
@@ -73,16 +87,18 @@ contract VPContract is IIVPContract, Delegatable {
      * Historic data for the blocks before `cleanupBlockNumber` can be erased,
      * history before that block should never be used since it can be inconsistent.
      * In particular, cleanup block number must be before current vote power block.
+     * The method can be called by the owner token or its governance.
      * @param _blockNumber The new cleanup block number.
      */
-    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerToken {
+    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerOrGovernance {
         _setCleanupBlockNumber(_blockNumber);
     }
 
     /**
      * Set the contract that is allowed to call history cleaning methods.
+     * The method can be called by the owner token or its governance.
      */
-    function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
+    function setCleanerContract(address _cleanerContract) external override onlyOwnerOrGovernance {
         _setCleanerContract(_cleanerContract);
     }
     

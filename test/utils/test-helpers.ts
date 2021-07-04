@@ -7,6 +7,15 @@ const { time, constants } = require('@openzeppelin/test-helpers');
 export const ZERO_ADDRESS: string = constants.ZERO_ADDRESS;
 
 /**
+ * From constants.js, gets truncated file path.
+ * @param file module filename
+ * @returns file path from `test/` on, separated by `'/'`
+ */
+export function getTestFile(file: string) {
+    return file.slice(file.replace(/\\/g, '/').indexOf("test/"));
+}
+
+/**
  * Helper function for instantiating and deploying a contract by using factory.
  * @param name Name of the contract
  * @param signer signer

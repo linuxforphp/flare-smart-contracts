@@ -31,13 +31,21 @@ abstract contract CheckPointable {
     // Address of the contract that is allowed to call methods for history cleaning.
     address private cleanerContract;
     
-    // events used for history cleanup    
+    /**
+     * Emitted when a total supply cache entry is created.
+     * Allows history cleaners to track total supply cache cleanup opportunities off-chain.
+     */
     event CreatedTotalSupplyCache(uint256 _blockNumber);
     
-    // Most cleanup opportunities can be deduced from standard event `Transfer(from, to, amount)`:
-    //  - balance history for `from` (if nonzero) and `to` (if nonzero)
-    //  - total supply history when either `from` or `to` is zero
+    // Most cleanup opportunities can be deduced from standard event 
+    // Transfer(from, to, amount):
+    //   - balance history for `from` (if nonzero) and `to` (if nonzero)
+    //   - total supply history when either `from` or `to` is zero
     
+    /**
+     * Reading from history is not allowed before `cleanupBlockNumber`, since data before that
+     * might have been deleted and is thus unreliable.
+     */    
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
         _;
@@ -168,15 +176,34 @@ abstract contract CheckPointable {
     function _setCleanerContract(address _cleanerContract) internal {
         cleanerContract = _cleanerContract;
     }
-    
+
+    /**
+     * Delete balance checkpoints that expired (i.e. are before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _owner balance owner account address
+     * @param _count maximum number of checkpoints to delete
+     * @return the number of checkpoints deleted
+     */    
     function balanceHistoryCleanup(address _owner, uint256 _count) external onlyCleaner returns (uint256) {
         return balanceHistory.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
     }
     
+    /**
+     * Delete total supply checkpoints that expired (i.e. are before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _count maximum number of checkpoints to delete
+     * @return the number of checkpoints deleted
+     */    
     function totalSupplyHistoryCleanup(uint256 _count) external onlyCleaner returns (uint256) {
         return totalSupply.cleanupOldCheckpoints(_count, cleanupBlockNumber);
     }
     
+    /**
+     * Delete total supply cache entry that expired (i.e. is before `cleanupBlockNumber`).
+     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
+     * @param _blockNumber the block number for which total supply value was cached
+     * @return the number of cache entries deleted (always 0 or 1)
+     */    
     function totalSupplyCacheCleanup(uint256 _blockNumber) external onlyCleaner returns (uint256) {
         require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
         return totalSupplyCache.deleteAt(_blockNumber);
