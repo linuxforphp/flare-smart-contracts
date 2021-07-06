@@ -1313,6 +1313,44 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expectEvent(tx, "RewardEpochFinalized");
         });
 
+        it("Should set cleanup block after finalization", async () => {
+            // Assemble
+            await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
+            await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
+            const mockVpToken = await MockContract.new();
+            await cleanupBlockNumberManager.registerToken(mockVpToken.address);
+            await ftsoManager.activate();
+            // Time travel 2 days
+            await time.increaseTo(startTs.addn(172800));
+            await ftsoManager.keep();
+            // Time travel another 2 days
+            await time.increaseTo(startTs.addn(172800 * 2));
+            // Act
+            let receipt = await ftsoManager.keep();
+            // Assert
+            await expectEvent.inTransaction(receipt.tx, cleanupBlockNumberManager, 
+                "CleanupBlockNumberSet", { theContract: mockVpToken.address, success: true });
+        });
+
+        it("Must be set as trigger to allow setting cleanup block", async () => {
+            // Assemble
+            await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
+            const mockVpToken = await MockContract.new();
+            await cleanupBlockNumberManager.registerToken(mockVpToken.address);
+            await ftsoManager.activate();
+            // Time travel 2 days
+            await time.increaseTo(startTs.addn(172800));
+            await ftsoManager.keep();
+            // Time travel another 2 days
+            await time.increaseTo(startTs.addn(172800 * 2));
+            // Act
+            let receipt = await ftsoManager.keep();
+            // Assert
+            expectEvent(receipt, "CleanupBlockNumberManagerFailedForBlock", {});
+            await expectEvent.notEmitted.inTransaction(receipt.tx, cleanupBlockNumberManager, "CleanupBlockNumberSet")
+        });
+
+
         it("Should setup a reward epoch when initial startup time passes", async () => {
             // Assemble
             // Store block numbers
