@@ -136,6 +136,12 @@ export class VPTokenHistory {
                 }
                 case "setCleanupBlock": {
                     const checkpoint = this.checkpoint(method.checkpointId);
+                    // discard all checkpoints before checkpoint.blockNumber, since data there will be invalid
+                    for (const cp of this.checkpointList()) {
+                        if (cp.blockNumber < checkpoint.blockNumber) {
+                            this.checkpoints.delete(cp.id);
+                        }
+                    }
                     return await this.vpToken.setCleanupBlockNumber(checkpoint.blockNumber, { from: method.sender });
                 }
                 case "replaceWriteVpContract": {
