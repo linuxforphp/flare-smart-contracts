@@ -1,15 +1,10 @@
-# Safe Math Standards Proposal
-Due to Solidity's type system (or lack thereof, as it were), I propose that standards be set for how the project deals with safe arithmetic operations to prevent incorrect or unexpected results from leaking into monied transactions. This is particularly important for Solidity code compiled prior to revision v0.8.0, as native arithmetic operators prior to that revision silently overflow/underflow. 
+# Math coding conventions
+Due to Solidity's type system (or lack thereof, as it were), we should align how to handle math operations and parameters to prevent incorrect or unexpected results from leaking into monied transactions. This is particularly important for Solidity code compiled prior to revision v0.8.0, as native arithmetic operators prior to that revision silently overflow/underflow. 
 
 These recommendations (in no particular order) were made based upon the very good series of articles located at [Math In Solidity](https://medium.com/coinmonks/math-in-solidity-part-1-numbers-384c8377f26d).
 
 ## Use Native Types Where Possible
 Use `uint256` or `int256` data types and avoid the use of smaller uint types when masking is not directly required. All `uintx` and `intx` types are compiled to native 256 byte values by the EVM, and the most significant bits are masked, which needlessly takes additional operations and gas.
-Usage of smaller 'uint' types is relevant when trying to "squeeze" data inside structures. Example below will squeeze two numbers in one storage slot:
-> struct Squeeze {
->    int248 num1;
->    int8   num2;
-> }
 
 Example:<br>
 ```js
@@ -18,6 +13,14 @@ for (uint256 i = 0; i < 5; i++) {}
 Clearly, `uint8` could be used here, but it saves no space and takes extra gas to compute<br>
 (TODO: Show opcode differences to illustrate?).
 
+### using smaller int / uint types
+Usage of smaller 'uint' types is relevant when trying to "squeeze" data inside structures. Example below will squeeze two numbers in one storage slot:
+> struct Squeeze {
+>    int248 num1;
+>    int8   num2;
+> }
+
+This structure can help save gas by reducing read / write sotrage operations. This will have affect only of the read / write operations are done in adjacent lines. So if the variables that are squeezed are being written or read in different functions or different code flow, the result would be higher gas for storage read / write.
 ## Use Native Arithmetic Operators Only In Specific Cases
 It is permissible to use native arithmetic operators for such things as indexes, counters, or buffer sizes, i.e. for values limited by the size of data being processed. However, a comment should be place above each location that indicates positive confirmation that no overflow or underflow could occur. This will enable security audits to proceed more quickly if auditors recognize that developers were required to consider Solidity limitations for each computation.
 
