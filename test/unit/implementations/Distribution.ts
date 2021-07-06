@@ -86,14 +86,14 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       "0x79560b567e16F98F6b5Fa2deD7fD8286433b4fAb"
     ]
     let balances = [BN(420),BN(320)];
-    let totalBalance = BN(740-(63+48));  // We must igonore initial 15%
+    let totalBalance = BN(740-(63+48));  // We must ignore initial 15%
     let now = BN(0);
 
     beforeEach(async() => {
       for (let txNumber = 0; txNumber < 1; txNumber++) {
         // Add addresses to airdrop
         await distribution.setClaimBalance(addresses,balances, {from: genesisGovernance});
-        // Alocate the right ammount of wei
+        // Allocate the right amount of wei
         await bestowClaimableBalance(totalBalance);
         now = await time.latest();
         // Start the rewarding process
@@ -105,16 +105,16 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       // Act
       const {
-        1: entitlementBalanceWei1,
-        2: totalClaimedWei1,
-        3: optOutBalance1,
-        4: atGenesisWei1
+        0: entitlementBalanceWei1,
+        1: totalClaimedWei1,
+        2: optOutBalance1,
+        3: atGenesisWei1
       } = await distribution.airdropAccounts(addresses[0]);
       const {
-        1: entitlementBalanceWei2,
-        2: totalClaimedWei2,
-        3: optOutBalance2,
-        4: atGenesisWei2
+        0: entitlementBalanceWei2,
+        1: totalClaimedWei2,
+        2: optOutBalance2,
+        3: atGenesisWei2
       } = await distribution.airdropAccounts(addresses[1]);
       const totalEntitlementWei = await distribution.totalEntitlementWei();
       const totalClaimedWei = await distribution.totalClaimedWei();
@@ -134,8 +134,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     it("Should not be able to claim anything on day 1", async() => {
       // Assemble
       // Act
-      const claimable1 = await distribution.getClaimableAmount(addresses[0]);
-      const claimable2 = await distribution.getClaimableAmount(addresses[1]);
+      const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
+      const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
       assert.equal(claimable1.toNumber(),0);
       assert.equal(claimable2.toNumber(),0);
@@ -145,8 +145,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await time.increaseTo(now.addn(86400 * 28));
       // Act
-      const claimable1 = await distribution.getClaimableAmount(addresses[0]);
-      const claimable2 = await distribution.getClaimableAmount(addresses[1]);
+      const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
+      const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
       assert.equal(claimable1.toNumber(),0);
       assert.equal(claimable2.toNumber(),0);
@@ -156,8 +156,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await time.increaseTo(now.addn(86400 * 30 + 20));
       // Act
-      const claimable1 = await distribution.getClaimableAmount(addresses[0]);
-      const claimable2 = await distribution.getClaimableAmount(addresses[1]);
+      const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
+      const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
       assert.equal(claimable1.toNumber(),12);
       assert.equal(claimable2.toNumber(),9);
@@ -167,8 +167,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await time.increaseTo(now.addn(86400 * 90 + 20));
       // Act
-      const claimable1 = await distribution.getClaimableAmount(addresses[0]);
-      const claimable2 = await distribution.getClaimableAmount(addresses[1]);
+      const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
+      const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
       assert.equal(claimable1.toNumber(),37);
       assert.equal(claimable2.toNumber(),28);
@@ -178,8 +178,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await time.increaseTo(now.add(BN(86400).muln(870).addn(20)));
       // Act
-      const claimable1 = await distribution.getClaimableAmount(addresses[0]);
-      const claimable2 = await distribution.getClaimableAmount(addresses[1]);
+      const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
+      const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
       assert.equal(claimable1.toNumber(),357);
       assert.equal(claimable2.toNumber(),272);
@@ -221,8 +221,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
 
     it("Should Revert after 29 months has passed", async() => {
       await time.increaseTo(nowTs.add(BN(86400 * 30).muln(29)));
-      const timeTillClaim_promisse = distribution.secondsTillNextClaim({from: claimants[0]});
-      await expectRevert(timeTillClaim_promisse, ERR_FULLY_CLAIMED);
+      const timeTillClaim_promise = distribution.secondsTillNextClaim({from: claimants[0]});
+      await expectRevert(timeTillClaim_promise, ERR_FULLY_CLAIMED);
     });
   });
 
@@ -262,7 +262,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       // Act
       // Assert
-      const {1: entitlementBalanceWei} = await distribution.airdropAccounts(claimants[0]);
+      const {0: entitlementBalanceWei} = await distribution.airdropAccounts(claimants[0]);
       assert.equal(entitlementBalanceWei.toNumber(), 850);
     });
   });
@@ -300,9 +300,9 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bestowClaimableBalance(BN(8000));
       // Act
       const now = await time.latest();
-      let start_prommise = distribution.setEntitlementStart(now, {from: genesisGovernance});
+      let start_promise = distribution.setEntitlementStart(now, {from: genesisGovernance});
       // Assert
-      await expectRevert(start_prommise, ERR_OUT_OF_BALANCE);
+      await expectRevert(start_promise, ERR_OUT_OF_BALANCE);
     });
 
     it("Should not start entitlement if not from governance", async() => {
@@ -310,9 +310,9 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bestowClaimableBalance(BN(8500));
       // Act
       const now = await time.latest();
-      let start_prommise = distribution.setEntitlementStart(now);
+      let start_promise = distribution.setEntitlementStart(now);
       // Assert
-      await expectRevert(start_prommise, ERR_ONLY_GOVERNANCE);
+      await expectRevert(start_promise, ERR_ONLY_GOVERNANCE);
     });
 
     it("Should not allow entitlement start to be reset", async() => {
@@ -324,9 +324,9 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert(entitlementStartTs.eq(now));
       // Act
       const later = now.addn(60*60*24*5);
-      const restart_prommise = distribution.setEntitlementStart(now, {from: genesisGovernance});
+      const restart_promise = distribution.setEntitlementStart(now, {from: genesisGovernance});
       // Assert
-      await expectRevert(restart_prommise, ERR_NOT_ZERO);
+      await expectRevert(restart_promise, ERR_NOT_ZERO);
     });    
   });
 
@@ -386,14 +386,16 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 1000 * 3 / 100);
       // Act
       const {
-        1: entitlementBalanceWei1,
-        2: totalClaimedWei1,
-        3: optOutBalance1
+        0: entitlementBalanceWei1,
+        1: totalClaimedWei1,
+        2: optOutBalance1,
+        3: airdroppedWei1
       } = await distribution.airdropAccounts(claimants[0]);
       const {
-        1: entitlementBalanceWei2,
-        2: totalClaimedWei2,
-        3: optOutBalance2
+        0: entitlementBalanceWei2,
+        1: totalClaimedWei2,
+        2: optOutBalance2,
+        3: airdroppedWei2
       } = await distribution.airdropAccounts(claimants[1]);
       const totalEntitlementWei = await distribution.totalEntitlementWei();
       const totalClaimedWei = await distribution.totalClaimedWei();
@@ -401,9 +403,11 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert.equal(entitlementBalanceWei1.toNumber(),850);
       assert.equal(totalClaimedWei1.toNumber(),30);
       assert.equal(optOutBalance1.toNumber(),0);
+      assert.equal(airdroppedWei1.toNumber(),150);
       assert.equal(entitlementBalanceWei2.toNumber(),850);
       assert.equal(totalClaimedWei2.toNumber(),0);
       assert.equal(optOutBalance2.toNumber(),0);
+      assert.equal(airdroppedWei2.toNumber(),150);
       assert.equal(totalEntitlementWei.toNumber(),8500);
       assert.equal(totalClaimedWei.toNumber(),30);
     });
@@ -455,8 +459,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assert
       await expectRevert(claimResult, ERR_OPT_OUT);
       const {
-        2: cl0totalClaimed,
-        3: cl0totalOptOut,
+        1: cl0totalClaimed,
+        2: cl0totalOptOut,
       } = await distribution.airdropAccounts(claimants[0]);
       assert.equal(cl0totalClaimed.toNumber(),0);
       assert.equal(cl0totalOptOut.toNumber(),850);
@@ -469,7 +473,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bestowClaimableBalance(BN(8500));
     });
 
-    it("Should not be able to withdraw before entitlment started", async() => {
+    it("Should not be able to withdraw before entitlement started", async() => {
       // Assemble
       // Act
       const withdrawPrommise = distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: genesisGovernance});
@@ -566,7 +570,18 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       await distribution.setEntitlementStart(now, {from: genesisGovernance});
       // Act
-      const entitlementPending = await distribution.getClaimableAmount(claimants[0]);
+      const entitlementPending = await distribution.getClaimableAmountOf(claimants[0]);
+      // Assert
+      assert.equal(entitlementPending.toNumber(), 0);
+    });
+
+    it("Should not have a pending claimable entitlement since just started 2", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      // Act
+      const entitlementPending = await distribution.getClaimableAmount({from: claimants[0]});
       // Assert
       assert.equal(entitlementPending.toNumber(), 0);
     });
@@ -600,25 +615,25 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       // Assert
       // ACC 0 balance
-      const midval0 = BN(await calcGasCost(claimResult0));
-      assert.equal(midval0.add(midBalance0).sub(openingBalance0).toNumber(), 30);
-      const endval0 = BN(await calcGasCost(claimResult0_1));
-      assert.equal(endval0.add(endBalance0).sub(midBalance0).toNumber(), 30);
-      assert.equal(midval0.add(endval0).add(endBalance0).sub(openingBalance0).toNumber(), 60);
+      const midVal0 = BN(await calcGasCost(claimResult0));
+      assert.equal(midVal0.add(midBalance0).sub(openingBalance0).toNumber(), 30);
+      const endVal0 = BN(await calcGasCost(claimResult0_1));
+      assert.equal(endVal0.add(endBalance0).sub(midBalance0).toNumber(), 30);
+      assert.equal(midVal0.add(endVal0).add(endBalance0).sub(openingBalance0).toNumber(), 60);
       // ACC 1 balance 
       assert.isTrue(openingBalance1.eq(midBalance1));
-      const endval1 = BN(await calcGasCost(claimResult1));
-      assert.equal(endval1.add(endBalance1).sub(midBalance1).toNumber(),60);
+      const endVal1 = BN(await calcGasCost(claimResult1));
+      assert.equal(endVal1.add(endBalance1).sub(midBalance1).toNumber(),60);
       // ACC 5 balance 
-      const midval5 = BN(await calcGasCost(claimResult5));
-      assert.equal(midval5.add(midBalance5).sub(openingBalance5).toNumber(),30);
+      const midVal5 = BN(await calcGasCost(claimResult5));
+      assert.equal(midVal5.add(midBalance5).sub(openingBalance5).toNumber(),30);
       assert.isTrue(midBalance5.eq(endBalance5));
       // ACC 6 balance 
       assert.isTrue(openingBalance6.eq(midBalance6));
       assert.isTrue(midBalance6.eq(endBalance6));
     });
 
-    it("Should claim the whole thing after the end of claimal", async() => {
+    it("Should claim the whole thing after the end of claimant", async() => {
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
@@ -626,21 +641,21 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       // It takes 29 months to claim all 
       await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150))); 
-      const entitlementPending = await distribution.getClaimableAmount(claimants[0]);
+      const entitlementPending = await distribution.getClaimableAmountOf(claimants[0]);
       // Assert
       assert.equal(entitlementPending.toNumber(), 850);
     });
 
-    it("Should not be able to get pending ammount after opt out", async() => {
+    it("Should not be able to get pending amount after opt out", async() => {
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
       await distribution.setEntitlementStart(now, {from: genesisGovernance});
       // Act
       await distribution.optOutOfAirdrop({from: claimants[0]});
-      const pendigPrommise = distribution.getClaimableAmount(claimants[0]);
+      const pendingPrommise = distribution.getClaimableAmountOf(claimants[0]);
       // Assert
-      await expectRevert(pendigPrommise, ERR_OPT_OUT);
+      await expectRevert(pendingPrommise, ERR_OPT_OUT);
     });
   });
 });
