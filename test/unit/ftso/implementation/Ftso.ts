@@ -1,5 +1,6 @@
+import exp from "constants";
 import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, SupplyContract, SupplyInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../../typechain-truffle";
-import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, submitPriceHash, toBN } from "../../../utils/test-helpers";
+import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, isAddressEligible, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
@@ -939,15 +940,17 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             await increaseTimeTo((epochId + 3) * 120 + 60 + 1); // reveal period end (+1 as call does not increase time)
             let data3 = await ftso.contract.methods.finalizePriceEpoch(epochId+2, true).call({from: accounts[10]});
-            expect(data3._eligibleAddresses.length).to.equals(2);
+            let random = await ftso.getCurrentRandom();
+            expect(isAddressEligible(random, accounts[1])).is.true;
+            expect(isAddressEligible(random, accounts[2])).is.false;
+            expect(data3._eligibleAddresses.length).to.equals(1);
             let id1 = data3._eligibleAddresses.indexOf(accounts[1]);
             let id2 = data3._eligibleAddresses.indexOf(accounts[2]);
+            expect(id2).to.equals(-1);
             expect(data3._eligibleAddresses[id1]).to.equals(accounts[1]);
-            expect(data3._eligibleAddresses[id2]).to.equals(accounts[2]);
-            expect(data3._flrWeights.length).to.equals(2);
+            expect(data3._flrWeights.length).to.equals(1);
             expect(data3._flrWeights[id1]).to.equals('200000000000');
-            expect(data3._flrWeights[id2]).to.equals('150000000000');
-            expect(data3._flrWeightsSum).to.equals('350000000000');
+            expect(data3._flrWeightsSum).to.equals('200000000000');
             await ftso.finalizePriceEpoch(epochId+2, true, {from: accounts[10]});
         });
 
@@ -1316,15 +1319,14 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             await increaseTimeTo((epochId + 3) * 120 + 60 + 1); // reveal period end (+1 as call does not increase time)
             let data3 = await ftso.contract.methods.finalizePriceEpoch(epochId + 2, true).call({ from: accounts[10] });
-            expect(data3._eligibleAddresses.length).to.equals(2);
+            expect(data3._eligibleAddresses.length).to.equals(1);
             let id1 = data3._eligibleAddresses.indexOf(accounts[1]);
             let id2 = data3._eligibleAddresses.indexOf(accounts[2]);
+            expect(id2).to.equals(-1);
             expect(data3._eligibleAddresses[id1]).to.equals(accounts[1]);
-            expect(data3._eligibleAddresses[id2]).to.equals(accounts[2]);
-            expect(data3._flrWeights.length).to.equals(2);
+            expect(data3._flrWeights.length).to.equals(1);
             expect(data3._flrWeights[id1]).to.equals('200000000000');
-            expect(data3._flrWeights[id2]).to.equals('150000000000');
-            expect(data3._flrWeightsSum).to.equals('350000000000');
+            expect(data3._flrWeightsSum).to.equals('200000000000');
             await ftso.finalizePriceEpoch(epochId + 2, true, { from: accounts[10] });
         });
     });

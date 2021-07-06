@@ -206,11 +206,12 @@ contract Ftso is IIFtso {
         }
 
         // store epoch results
-        _writeEpochPriceData(epoch, data, index, price, vote);
+        _writeEpochPriceData(epoch, data, index, vote);
 
         // return reward data if requested
         if (_returnRewardData) {
-            (_eligibleAddresses, _flrWeights, _flrWeightsSum) = _readRewardData(data, index, weightFlr, vote);
+            (_eligibleAddresses, _flrWeights, _flrWeightsSum) = _readRewardData(
+                data, index, weightFlr, vote, epoch.random);
             if (_eligibleAddresses.length > 0) {
                 epoch.rewardedFtso = true;
             }
@@ -879,14 +880,12 @@ contract Ftso is IIFtso {
      * @param _epoch                Epoch instance
      * @param _data                 Median computation data
      * @param _index                Array of vote indices
-     * @param _price                Array of prices
      * @param _vote                 Array of vote ids
      */
     function _writeEpochPriceData(
         FtsoEpoch.Instance storage _epoch,
         FtsoMedian.Data memory _data, 
         uint256[] memory _index,
-        uint256[] memory _price,
         uint256[] memory _vote
     ) internal
     {
@@ -900,9 +899,9 @@ contract Ftso is IIFtso {
         _epoch.lastVoteId = _vote[_index[_index.length - 1]];
         _epoch.truncatedFirstQuartileVoteId = _vote[_index[_data.quartile1Index]];
         _epoch.truncatedLastQuartileVoteId = _vote[_index[_data.quartile3Index]];
-        _epoch.lowRewardedPrice = _price[_index[_data.quartile1Index]];
+        _epoch.lowRewardedPrice = _data.quartile1Price;
         _epoch.price = _data.finalMedianPrice; 
-        _epoch.highRewardedPrice = _price[_index[_data.quartile3Index]];
+        _epoch.highRewardedPrice = _data.quartile3Price;
         _epoch.finalizedTimestamp = block.timestamp;
         _epoch.finalizationType = PriceFinalizationType.MEDIAN;
 
@@ -1012,12 +1011,14 @@ contract Ftso is IIFtso {
      * @param _index                Array of vote indices
      * @param _weightFlr            Array of FLR weights
      * @param _vote                 Array of vote ids
+     * @param _random               Random from the current reward epoch
      */
     function _readRewardData(
         FtsoMedian.Data memory _data,
         uint256[] memory _index, 
         uint256[] memory _weightFlr,
-        uint256[] memory _vote
+        uint256[] memory _vote,
+        uint256 _random
     ) internal view returns (
         address[] memory _eligibleAddresses, 
         uint256[] memory _flrWeights,
@@ -1025,7 +1026,14 @@ contract Ftso is IIFtso {
     ) {
         uint256 voteRewardCount = 0;
         for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
-            if (_weightFlr[_index[i]] > 0) {
+            uint256 idx = _index[i];
+            uint256 id = _vote[idx];
+            if (_weightFlr[idx] > 0) {
+                uint128 price = votes.instance[id].price;
+                if ((price == _data.quartile1Price || price == _data.quartile3Price) &&
+                    ! _isAddressEligible(_random, votes.sender[id])) {
+                        continue;
+                }
                 voteRewardCount++;
             }
         }
@@ -1034,9 +1042,15 @@ contract Ftso is IIFtso {
         _flrWeights = new uint256[](voteRewardCount);
         uint256 cnt = 0;
         for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
-            uint256 weight = _weightFlr[_index[i]];
+            uint256 idx = _index[i];
+            uint256 weight = _weightFlr[idx];
             if (weight > 0) {
-                uint256 id = _vote[_index[i]];
+                uint256 id = _vote[idx];
+                uint128 price = votes.instance[id].price;
+                if ((price == _data.quartile1Price || price == _data.quartile3Price) &&
+                    ! _isAddressEligible(_random, votes.sender[id])) {
+                    continue;
+                }
                 _eligibleAddresses[cnt] = votes.sender[id];
                 _flrWeights[cnt] = weight;
                 _flrWeightsSum += weight;
@@ -1054,6 +1068,16 @@ contract Ftso is IIFtso {
         require(block.timestamp >= epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
         _epoch = epochs.instance[_epochId];
         require(_epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
+    }
+
+    /**
+     * @notice Checks if an address is eligible for reward (for edge quartile cases)
+     * @param _random               Current random for this Ftso
+     * @param _address              Address that submitted the price
+     * @return _eligible            Return True if the address should be rewarded
+     */
+    function _isAddressEligible(uint256 _random, address _address) internal pure returns (bool _eligible) {
+        _eligible = ((uint256(keccak256(abi.encode(_random, _address))) % 2) == 1);
     }
 
     function revertNoAccess() internal pure {

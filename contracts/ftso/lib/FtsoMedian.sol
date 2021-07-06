@@ -14,6 +14,8 @@ library FtsoMedian {
         uint256 rewardedWeightSum;  // sum of weights corresponding to the prices eligible for reward
         uint256 highWeightSum;      // sum of weights corresponding to the prices too high for reward
         uint256 finalMedianPrice;   // median price
+        uint256 quartile1Price;     // first quartile price
+        uint256 quartile3Price;     // third quartile price
     }
 
     struct QSVariables {            // used for storing variables in quick select algorithm
@@ -124,6 +126,10 @@ library FtsoMedian {
             _d.quartile1Index, 0, -1, _d.lowWeightSum, _index, _price, _weight);
         (_d.quartile3Index, _d.highWeightSum) = _samePriceFix(
             _d.quartile3Index, count - 1, 1, _d.highWeightSum, _index, _price, _weight);
+
+        // store the first and third quartile prices
+        _d.quartile1Price = _price[_index[_d.quartile1Index]];
+        _d.quartile3Price = _price[_index[_d.quartile3Index]];
 
         // reward weight sum
         _d.rewardedWeightSum = totalSum - _d.lowWeightSum - _d.highWeightSum;
