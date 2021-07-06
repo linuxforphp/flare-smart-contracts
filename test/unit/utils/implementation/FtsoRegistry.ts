@@ -298,6 +298,16 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     assert.equal(f1, constants.ZERO_ADDRESS);
     assert.equal(f2, XPRFtsoContractMock_2.address);
     assert.equal(f3, ADAFtsoContractMock_1.address);
+
+    const {
+      0: [sy1, sy2],
+      1: [ft1, ft2],
+    } = await ftsoRegistryContract.getSupportedSymbolsAndFtsos();
+
+    assert.equal(sy1, "XPR");
+    assert.equal(sy2, "ADA");
+    assert.equal(ft1, XPRFtsoContractMock_2.address);
+    assert.equal(ft2, ADAFtsoContractMock_1.address);
   });
 
   it("Should not keep old history after reinsert", async() => {

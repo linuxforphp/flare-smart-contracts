@@ -4,14 +4,14 @@ pragma abicoder v2;
 
 
 import "../../ftso/interface/IIFtso.sol";
-import "../../genesis/interface/IFtsoRegistry.sol";
+import "../../genesis/interface/IIFtsoRegistry.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/Governed.sol";
 
 /**
  * @title A contract for FTSO registry
  */
-contract FtsoRegistry is Governed, IFtsoRegistry{
+contract FtsoRegistry is Governed, IIFtsoRegistry{
 
     // constants
     uint256 internal constant MAX_HISTORY_LENGTH = 5;
@@ -104,6 +104,16 @@ contract FtsoRegistry is Governed, IFtsoRegistry{
     }
 
     /**
+     * @dev Reverts if unsupported symbol is passed
+     * @return _activeFtso FTSO contract for provided symbol
+     */
+    function getFtsoBySymbol(string memory _symbol) external view override 
+        returns(IIFtso _activeFtso) 
+    {
+        return _getFtso(_getFtsoIndex(_symbol));
+    }
+
+    /**
      * @notice Public view function to get the price of active FTSO for given asset index
      * @dev Reverts if unsupported index is passed
      * @return _price current price of asset in USD
@@ -147,6 +157,26 @@ contract FtsoRegistry is Governed, IFtsoRegistry{
         while(len > 0){
             --len;
             _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
+        }
+    }
+
+    /**
+     * @notice Get array of all supported symbols and corresponding FTSOs
+     * @return _supportedSymbols the array of all supported symbols
+     * @return _ftsos the array of all supported ftsos
+     */
+    function getSupportedSymbolsAndFtsos() external view override
+        returns(string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
+    {   
+
+        uint256[] memory _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _ftsos = new IIFtso[](len);
+        _supportedSymbols = new string[](len);
+        while(len > 0){
+            --len;
+            _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = _ftsos[len].symbol();
         }
     }
 

@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../governance/implementation/GovernedAtGenesis.sol";
-import "../interface/IFtsoRegistry.sol";
+import "../interface/IIFtsoRegistry.sol";
 
 
 /**
@@ -26,19 +26,19 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
     // Currency indices
     uint256 internal constant WFLR_INDEX = 255;
 
-    // Most common used asset indices, order is the same as in `specs/PriceProvider.md`
-    uint256 public constant override WFLR_ASSET_INDEX  = 0;
-    uint256 public constant override FXRP_ASSET_INDEX  = 1;
-    uint256 public constant override FLTC_ASSET_INDEX  = 2;
-    uint256 public constant override FXLM_ASSET_INDEX  = 3;
-    uint256 public constant override FXDG_ASSET_INDEX  = 4;
-    uint256 public constant override FADA_ASSET_INDEX  = 5;
-    uint256 public constant override FALGO_ASSET_INDEX = 6;
-    uint256 public constant override FBCH_ASSET_INDEX  = 7;
-    uint256 public constant override FDGB_ASSET_INDEX  = 8;
-    uint256 public constant override FBTC_ASSET_INDEX  = 9;
+    // Most common used ftso indices, order is the same as in `specs/PriceProvider.md`
+    uint256 public constant override FLR_FTSO_INDEX  = 0;
+    uint256 public constant override FXRP_FTSO_INDEX  = 1;
+    uint256 public constant override FLTC_FTSO_INDEX  = 2;
+    uint256 public constant override FXLM_FTSO_INDEX  = 3;
+    uint256 public constant override FXDG_FTSO_INDEX  = 4;
+    uint256 public constant override FADA_FTSO_INDEX  = 5;
+    uint256 public constant override FALGO_FTSO_INDEX = 6;
+    uint256 public constant override FBCH_FTSO_INDEX  = 7;
+    uint256 public constant override FDGB_FTSO_INDEX  = 8;
+    uint256 public constant override FBTC_FTSO_INDEX  = 9;
 
-    IFtsoRegistry internal ftsoRegistry; 
+    IIFtsoRegistry internal ftsoRegistry; 
     IIFtsoManager internal ftsoManager;
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
@@ -65,7 +65,7 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
         ftsoManager = _ftsoManager;
     }
 
-    function setFtsoRegistry(IFtsoRegistry _ftsoRegistryToSet) external override onlyGovernance {
+    function setFtsoRegistry(IIFtsoRegistry _ftsoRegistryToSet) external override onlyGovernance {
         ftsoRegistry = _ftsoRegistryToSet;
     }
 
@@ -81,27 +81,28 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
         currencyBitmask[symbolHash] = _ftsoIndex;
     }   
     /**
-     * @notice Recalculates whitelisted bitmask for provided address and specific asset index.
-     * Other parts are left untouched. 
+     * @notice Recalculates whitelisted bitmask for provided address and just 
+     * for specified ftso index.
+     * Whitelisting information for other assets and WFlr is not updated 
      */
-    function requestFtsoWhiteListingFassetHolder(address _voter, uint256 _assetIndex) external override {
-        require(_assetIndex != WFLR_INDEX, ERR_INVALID_INDEX);
+    function requestFtsoWhiteListingFassetHolder(address _voter, uint256 _ftsoIndex) external override {
+        require(_ftsoIndex != WFLR_INDEX, ERR_INVALID_INDEX);
         uint256 currentVotingPower = whiteListedFtsoBitMap[_voter];
         bool hasVotePower;
  
-        IIFtso ftso = ftsoRegistry.getFtso(_assetIndex);
+        IIFtso ftso = ftsoRegistry.getFtso(_ftsoIndex);
         hasVotePower = ftso.hasSufficientFassetVotePower(_voter);
         if(hasVotePower){
-            currentVotingPower |= (1 << _assetIndex);
+            currentVotingPower |= (1 << _ftsoIndex);
         }else{
-            currentVotingPower &= ~(1 << _assetIndex);
+            currentVotingPower &= ~(1 << _ftsoIndex);
         }
         whiteListedFtsoBitMap[_voter] = currentVotingPower;
     }
 
     /**
      * @notice Recalculates whitelist bitmask for WFLR (Wrapped Flare) for _voter address.
-     * Fasset indices are left untouched 
+     * Whitelisting information for fAssets is not updated. 
      */
     function requestFtsoWhiteListingWflrHolder(address _voter) external override {
         IIFtso[] memory ftsos = ftsoRegistry.getSupportedFtsos();
@@ -119,7 +120,7 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
     }
 
     /**
-     * @notice Recalculates full whitelist bitmask for WFLR (Wrapped Flare) and all fasset for _voter address. 
+     * @notice Recalculates full whitelist bitmask for WFLR (Wrapped Flare) and all fAsset for _voter address. 
      */
     function requestFtsoFullVoterWhitelisting(address _voter) external override {
         
@@ -145,20 +146,20 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
 
     /**
      * @notice Submits price hashes for current epoch
-     * @param _assetIndices         List of ftso indices
+     * @param _ftsoIndices          List of ftso indices
      * @param _hashes               List of hashed price and random number
      * @notice Emits PriceHashesSubmitted event
      */
-    function submitPriceHashes(uint256[] memory _assetIndices, bytes32[] memory _hashes) external override {
+    function submitPriceHashes(uint256[] memory _ftsoIndices, bytes32[] memory _hashes) external override {
         uint256 allowedBitmask = whiteListedFtsoBitMap[msg.sender];
         uint256 bitmask = 0;
-        uint256 length = _assetIndices.length;
+        uint256 length = _ftsoIndices.length;
         if(WFLR_BITMASK & allowedBitmask == 0){ 
             // If address does not have the wflr power we check each fasset power
 
             // Construct bitmask for all ftso indices to vote for
             for(uint256 i = 0; i < length; ++i){
-                bitmask |= (1 << _assetIndices[i]);
+                bitmask |= (1 << _ftsoIndices[i]);
             }
 
             uint256 result = allowedBitmask & bitmask;
@@ -174,7 +175,7 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
         uint256 numberOfReverts;
 
         for (uint256 i = 0; i < length; i++) {
-            uint256 ind = _assetIndices[i];
+            uint256 ind = _ftsoIndices[i];
             ftsos[i] = ftsoRegistry.getFtso(ind);
             try ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]) returns (uint256 _epochId) {
                 success[i] = true;
@@ -190,7 +191,7 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
     /**
      * @notice Reveals submitted prices during epoch reveal period
      * @param _epochId              Id of the epoch in which the price hashes was submitted
-     * @param _assetIndices         List of asset indices
+     * @param _ftsoIndices          List of ftso indices
      * @param _prices               List of submitted prices in USD
      * @param _randoms              List of submitted random numbers
      * @notice The hash of _price and _random must be equal to the submitted hash
@@ -198,11 +199,11 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
      */
     function revealPrices(
         uint256 _epochId,
-        uint256[] memory _assetIndices,
+        uint256[] memory _ftsoIndices,
         uint256[] memory _prices,
         uint256[] memory _randoms
     ) external override {
-        uint256 len  = _assetIndices.length;
+        uint256 len  = _ftsoIndices.length;
         require(len == _prices.length, ERR_ARRAY_LENGTHS);
         require(len == _randoms.length, ERR_ARRAY_LENGTHS);
 
@@ -211,7 +212,7 @@ contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
         uint256 numberOfReverts;
 
         for (uint256 i = 0; i < len; i++) {
-            uint256 ind = _assetIndices[i];
+            uint256 ind = _ftsoIndices[i];
             ftsos[i] = ftsoRegistry.getFtso(ind);
             try ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i]) {
                 success[i] = true;
