@@ -7,6 +7,9 @@ import "../../token/implementation/WFlr.sol";
 
 interface IIFtsoRewardManager is IFtsoRewardManager {
 
+    event DailyAuthorizedInflationSet(uint256 authorizedAmountWei);
+    event InflationReceived(uint256 amountReceivedWei);
+
     function activate() external;
     function deactivate() external;
     function closeExpiredRewardEpoch(uint256 _rewardEpochId, uint256 _currentRewardEpoch) external;

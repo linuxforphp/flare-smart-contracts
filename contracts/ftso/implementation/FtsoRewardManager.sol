@@ -240,14 +240,16 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         dailyAuthorizedInflation = _toAuthorizeWei;
         totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(_toAuthorizeWei);
         lastInflationAuthorizationReceivedTs = block.timestamp;
-        // TODO: event
+
+        emit DailyAuthorizedInflationSet(_toAuthorizeWei);
     }
 
     function receiveInflation() external payable override mustBalance onlyInflation {
         (uint256 currentBalance, ) = _handleSelfDestructProceeds();
         totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
         lastBalance = currentBalance;
-        // TODO: fire event
+
+        emit InflationReceived(msg.value);
     }
 
     /**
