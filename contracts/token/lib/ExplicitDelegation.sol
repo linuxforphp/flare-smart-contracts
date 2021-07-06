@@ -59,6 +59,7 @@ library ExplicitDelegation {
         uint256 _cleanupBlockNumber
     ) internal returns (uint256 _deleted) {
         _deleted = _self.delegatedTotal.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
+        // safe: cleanupOldCheckpoints always returns the number of deleted elements which is small, so no owerflow
         _deleted += _self.delegatedVotePower.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
     }
     

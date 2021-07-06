@@ -73,6 +73,7 @@ library CheckPointHistory {
         if (historyCount == 0) return 0;
 
         // Shortcut for the actual value (extra optimized for current block, to save one storage read)
+        // historyCount - 1 is safe, since historyCount != 0
         if (_blockNumber >= block.number || _blockNumber >= _self.checkpoints[historyCount - 1].fromBlock) {
             return _self.checkpoints[historyCount - 1].value;
         }
@@ -114,6 +115,7 @@ library CheckPointHistory {
             // checkpoints array empty, push new CheckPoint
             _self.checkpoints.push(CheckPoint({fromBlock: block.number, value: _value}));
         } else {
+            // historyCount - 1 is safe, since historyCount != 0
             CheckPoint storage lastCheckpoint = _self.checkpoints[historyCount - 1];
             uint256 lastBlock = lastCheckpoint.fromBlock;
             // slither-disable-next-line incorrect-equality
@@ -143,6 +145,7 @@ library CheckPointHistory {
         uint256 length = _self.checkpoints.length;
         if (length == 0) return 0;
         uint256 startIndex = _self.startIndex;
+        // length - 1 is safe, since length != 0 (check above)
         uint256 endIndex = Math.min(startIndex.add(_count), length - 1);    // last element can never be deleted
         uint256 index = startIndex;
         // we can delete `checkpoint[index]` while the next checkpoint is at `_cleanupBlockNumber` or before
@@ -153,6 +156,6 @@ library CheckPointHistory {
         if (index > startIndex) {   // index is the first not deleted index
             _self.startIndex = index;
         }
-        return index - startIndex;  // always index >= startIndex
+        return index - startIndex;  // safe: index >= startIndex at start and then increases
     }
 }

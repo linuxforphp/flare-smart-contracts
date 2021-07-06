@@ -54,7 +54,7 @@ library VotePowerCache {
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
         if (cachedValue != 0) {
-            return (cachedValue - 1, false);
+            return (cachedValue - 1, false);    // safe, cachedValue != 0
         }
         // read from _votePower
         uint256 votePowerValue = _votePower.votePowerOfAt(_who, _blockNumber);
@@ -81,7 +81,7 @@ library VotePowerCache {
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
         if (cachedValue != 0) {
-            return cachedValue - 1;
+            return cachedValue - 1;     // safe, cachedValue != 0
         }
         // read from _votePower
         return _votePower.votePowerOfAt(_who, _blockNumber);

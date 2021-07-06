@@ -21,6 +21,7 @@ contract HistoryCleanerMock {
         require(_targets.length == _methodCalls.length, "Mismatched length of call targets and methods");
         _deletedCounts = new uint256[](_targets.length);
         for (uint256 i = 0; i < _targets.length; i++) {
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory result) = _targets[i].call(_methodCalls[i]);
             require(success, appendUintToString("Cleanup method call failed at ", i));
             _deletedCounts[i] = abi.decode(result, (uint256));
