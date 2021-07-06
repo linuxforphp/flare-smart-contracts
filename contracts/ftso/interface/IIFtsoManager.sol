@@ -7,7 +7,10 @@ import "../../userInterfaces/IFtsoManager.sol";
 
 interface IIFtsoManager is IFtsoManager {
 
-    event ClosingExpiredRewardEpochsFailed();
+    event ClosingExpiredRewardEpochFailed(uint256 _rewardEpoch);
+    event CleanupBlockNumberManagerUnset();
+    event CleanupBlockNumberManagerFailedForBlock(uint256 blockNumber);
+
     // TODO: Remove this event for production
     event KeepTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring keep() calls
 
@@ -23,6 +26,7 @@ interface IIFtsoManager is IFtsoManager {
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutBIPSThreshold,
         uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external;
 

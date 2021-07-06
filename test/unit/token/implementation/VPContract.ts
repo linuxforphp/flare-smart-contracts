@@ -44,7 +44,7 @@ contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, as
     // Act
     // Assert
     await expectRevert(vpContract.setCleanupBlockNumber(1, { from: accounts[1] }),
-      "only owner or governance");
+      "only owner, governance or cleanup block manager");
     await expectRevert(vpContract.setCleanerContract(accounts[3], { from: accounts[1] }),
       "only owner or governance");
     // there should be no revert when called via token

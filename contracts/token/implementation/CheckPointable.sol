@@ -42,10 +42,6 @@ abstract contract CheckPointable {
     //   - balance history for `from` (if nonzero) and `to` (if nonzero)
     //   - total supply history when either `from` or `to` is zero
     
-    /**
-     * Reading from history is not allowed before `cleanupBlockNumber`, since data before that
-     * might have been deleted and is thus unreliable.
-     */    
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
         _;

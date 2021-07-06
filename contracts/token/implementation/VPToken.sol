@@ -35,8 +35,8 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     // all actual operations go directly to governance vp contract
     IIGovernanceVotePower private governanceVP;
     
-    // Some contract besides governance (e.g. ftsoRewardManager) may need to 
-    // set cleanup block number, so governance may give it the privilege.
+    // the contract that is allowed to set cleanupBlockNumber
+    // usually this will be an instance of CleanupBlockNumberManager
     address private cleanupBlockNumberManager;
     
     /**
@@ -44,7 +44,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * with `isReplacement` set to `true`. To be used for creating the correct VPContract.
      */
     bool public needsReplacementVPContract = false;
-    
+
     /**
      * Event used to track history of VPToken -> VPContract / GovernanceVotePower 
      * associations (e.g. by external cleaners).
@@ -476,10 +476,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
     
     /**
-     * Some contract besides governance (e.g. ftsoRewardManager) may need to 
-     * set cleanup block number, so governance may give it the privilege.
-    */
-    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external onlyGovernance {
+     * Set the contract that is allowed to set cleanupBlockNumber.
+     * Usually this will be an instance of CleanupBlockNumberManager.
+     */
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external override onlyGovernance {
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
     

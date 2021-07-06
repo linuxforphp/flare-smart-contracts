@@ -1,4 +1,5 @@
 import {
+    CleanupBlockNumberManagerInstance,
     FtsoInstance,
     FtsoManagerInstance,
     FtsoRegistryInstance,
@@ -25,6 +26,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const FtsoManager = artifacts.require("FtsoManager");
+const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
 const MockFtsoContract = artifacts.require("MockFtso");
@@ -42,11 +44,13 @@ const ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
 const ERR_NOT_FOUND = "FTSO symbol not supported";
 const ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
 
+const DAY = 60*60*24;
 
 
 contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests`, async accounts => {
     // contains a fresh contract for each test
     let ftsoManager: FtsoManagerInstance;
+    let cleanupBlockNumberManager: CleanupBlockNumberManagerInstance;
     let startTs: BN;
     let mockRewardManager: MockContractInstance;
     let ftsoRewardManagerInterface: FtsoRewardManagerInstance;
@@ -84,7 +88,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             accounts[0],
             3,
             0,
-            100,
             (await MockContract.new()).address
         );
 
@@ -103,6 +106,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             startTs,
             VOTE_POWER_BOUNDARY_FRACTION
         );
+
+        cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0]);
 
         ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
@@ -209,7 +214,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(0);
             await ftsoManager.activate();
             await ftsoManager.keep();
-
             await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S));
             await ftsoManager.keep();
 
@@ -226,21 +230,21 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should not set governance paramters if not from governance", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 5000, [], { from: accounts[2] }), "only governance");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 5000, 10*DAY,[], { from: accounts[2] }), "only governance");
         });
 
         it("Should not set governance paramters if not from governance", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 5000, [], { from: accounts[2] }), "only governance");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 5000, 10*DAY,[], { from: accounts[2] }), "only governance");
         });
 
         it("Should revert setting invalid governance parameters", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(0, 10, 5, 5, 50, 500, 500, 5000, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 0, 5, 5, 50, 500, 500, 5000, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 0, 5, 50, 500, 500, 5000, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 0, 50, 500, 500, 5000, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 500, 50, 500, 5000, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 50000, 5000, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 50000, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(0, 10, 5, 5, 50, 500, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 0, 5, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 0, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 0, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 500, 50, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 50000, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 50000, 10*DAY,[]), "Gov. params invalid");
         });
 
         it("Should activate", async () => {
@@ -818,20 +822,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             // init reward epoch
-            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500];
+            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
             let paramListBN = paramList.map(x => toBN(x));
+            let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
             let trustedAddresses = [accounts[8], accounts[9]]
+
             // setup governance parameters
             await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
-            
+
             // add ftsos, parameters should be set by FTSOManager
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso3.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso4.address, { from: accounts[0] });
             await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
-            
+
             await ftsoManager.activate();
             // await ftsoManager.keep();
 
@@ -839,29 +845,30 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
             let ftso3Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
             let ftso4Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
-            
+
             let trustedAddresses1 = ftso1Params.pop();
             let trustedAddresses2 = ftso2Params.pop();
             let trustedAddresses3 = ftso3Params.pop();
             let trustedAddresses4 = ftso4Params.pop();
 
             // numeric epoch configuration should match the set one
-            assert(doBNListsMatch(paramListBN, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso3Params as BN[]), "Wrong FTSO 3 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso4Params as BN[]), "Wrong FTSO 4 governance parameters");
+            assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
+            assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
+            assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso3Params as BN[]), "Wrong FTSO 3 governance parameters");
+            assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso4Params as BN[]), "Wrong FTSO 4 governance parameters");
 
             compareArrays(trustedAddresses, trustedAddresses1 as string[]);
             compareArrays(trustedAddresses, trustedAddresses2 as string[]);
             compareArrays(trustedAddresses, trustedAddresses3 as string[]);
             compareArrays(trustedAddresses, trustedAddresses4 as string[]);
+
         });
 
         it("Should governance set FTSO parameters after two price finalizations", async () => {
             let [ftso1, ftso2] = await settingWithFourFTSOs(accounts, ftsoManager, true);
 
             // init reward epoch
-            let defaultParamList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500];
+            let defaultParamList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500, 10*DAY];
             let defaultParamListBN = defaultParamList.map(x => toBN(x));
             await (ftsoManager.setGovernanceParameters as any)(...defaultParamListBN, [accounts[6], accounts[7]]);   
 
@@ -906,8 +913,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500];
+            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
             let paramListBN = paramList.map(x => toBN(x));
+            let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
             let trustedAddresses = [accounts[8], accounts[9]];
             await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
@@ -929,8 +937,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let trustedAddresses1 = ftso1Params.pop();
             let trustedAddresses2 = ftso2Params.pop();
 
-            assert(doBNListsMatch(paramListBN, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
-            assert(doBNListsMatch(paramListBN, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
+            assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
+            assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
             assert(!doBNListsMatch(paramListBN, defaultParamListBN), "Changed parameters should not match the default ones.");
             compareArrays(trustedAddresses, trustedAddresses1 as string[]);
             compareArrays(trustedAddresses, trustedAddresses2 as string[]);
@@ -1383,23 +1391,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should emit event if close expired reward epochs fails", async () => {
             // Assemble
             // stub ftso initialize
-            const closeExpiredRewardEpochs = ftsoRewardManagerInterface.contract.methods.closeExpiredRewardEpochs().encodeABI();
-            await mockRewardManager.givenMethodRevertWithMessage(closeExpiredRewardEpochs,"I am broken");
+            const closeExpiredRewardEpoch = ftsoRewardManagerInterface.contract.methods.closeExpiredRewardEpoch(0,1).encodeABI();
+            await mockRewardManager.givenMethodRevertWithMessage(closeExpiredRewardEpoch,"I am broken");
 
             await setDefaultGovernanceParameters(ftsoManager);
             // activte ftso manager
             await ftsoManager.activate();
             await ftsoManager.keep();
 
-            
-            await time.increaseTo(startTs.addn(172800)); // two days
-
-            // Act
-            // Simulate the keeper tickling reward manager
-            let tx = await ftsoManager.keep();
-
+            // act - go through 6 2-day rewardEpochs, so the first can be expired
+            let tx = null;
+            for(let i = 1; i <= 6; i++) {
+                await time.increaseTo(startTs.addn(i*2*DAY)); // i*two days
+                tx = await ftsoManager.keep();
+            }
             // Assert
-            expectEvent(tx, "ClosingExpiredRewardEpochsFailed");
+            expectEvent(tx, "ClosingExpiredRewardEpochFailed");
         });
 
         it("Should call distribute rewards with 0 remaining price epochs", async () => {

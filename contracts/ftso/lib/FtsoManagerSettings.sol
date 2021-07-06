@@ -17,6 +17,8 @@ library FtsoManagerSettings {
         uint256 highAssetUSDThreshold; // threshold for high asset vote power (in scaled USD)
         uint256 highAssetTurnoutBIPSThreshold; // threshold for high asset turnout (in BIPS)
         uint256 lowFlrTurnoutBIPSThreshold; // actual vote power in (W)FLRs / total FLR circulating supply (in BIPS)
+        uint256 rewardExpiryOffsetSeconds; // Reward epoch closed earlier than 
+                                           //block.timestamp - rewardExpiryOffsetSeconds expire
         address[] trustedAddresses; //trusted addresses will be used as a fallback mechanism for setting the price
         bool changed;
         bool initialized;
@@ -32,6 +34,7 @@ library FtsoManagerSettings {
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutBIPSThreshold,
         uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) internal {
         if(_state.minVotePowerFlrThreshold != _minVotePowerFlrThreshold) {
@@ -65,6 +68,10 @@ library FtsoManagerSettings {
         if(_state.lowFlrTurnoutBIPSThreshold != _lowFlrTurnoutBIPSThreshold) {
             _state.changed = true;
             _state.lowFlrTurnoutBIPSThreshold = _lowFlrTurnoutBIPSThreshold;
+        }
+        if(_state.rewardExpiryOffsetSeconds != _rewardExpiryOffsetSeconds) {
+            _state.changed = true;
+            _state.rewardExpiryOffsetSeconds = _rewardExpiryOffsetSeconds;
         }
         if(_state.trustedAddresses.length != _trustedAddresses.length) {            
             _state.trustedAddresses = _trustedAddresses;

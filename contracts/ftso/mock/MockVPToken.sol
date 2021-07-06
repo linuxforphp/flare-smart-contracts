@@ -4,7 +4,6 @@ pragma solidity 0.7.6;
 import "../../token/interface/IIVPToken.sol";
 import "../../token/interface/IIVPContract.sol";
 
-// import "hardhat/console.sol";
 
 contract MockVPToken is IIVPToken {
     uint8 public _decimals = 0;
@@ -33,6 +32,7 @@ contract MockVPToken is IIVPToken {
     function transfer(address recipient, uint256 amount) external override returns (bool) {}
     function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {}
     function setCleanupBlockNumber(uint256 _blockNumber) external override {}
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external override {}
     function setCleanerContract(address _cleanerContract) external override {}
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override {}
     function delegate(address to, uint256 bips) external override {}

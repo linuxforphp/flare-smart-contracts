@@ -57,11 +57,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
 
     uint256 internal immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
     uint256 public immutable defaultFeePercentage; // default value for fee percentage
-    
-    uint256 public immutable rewardExpiryOffset; // period of reward expiry (in reward epochs)
-    
+        
     // id of the first epoch to expire. Closed = expired and unclaimed funds sent back
-    uint256 private firstEpochToCheckExpiry; 
+    uint256 private nextRewardEpochToExpire; 
     
     /**
      * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed rewards.
@@ -116,7 +114,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address _governance,
         uint256 _feePercentageUpdateOffset,
         uint256 _defaultFeePercentage,
-        uint256 _rewardExpiryOffset,
         Inflation _inflation
     ) Governed(_governance)
     {
@@ -125,7 +122,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         inflation = _inflation;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
-        rewardExpiryOffset = _rewardExpiryOffset;
     }
 
     /**
@@ -342,16 +338,21 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     /**
      * @notice Collects funds from expired reward epochs and totals.
      * @dev Triggered by ftsoManager on finalization of a reward epoch.
+     * Operation is irreversible: when some reward epoch is closed according to current
+     * settings of parameters, it cannot be reopened even if new parameters would 
+     * allow it since nextRewardEpochToExpire never decreases.
      */
-    function closeExpiredRewardEpochs() external override onlyFtsoManager {
+    function closeExpiredRewardEpoch(
+        uint256 _rewardEpoch, uint256 _currentRewardEpoch
+    ) external override onlyFtsoManager {
         uint256 expiredRewards = 0;
-        uint256 current = ftsoManager.getCurrentRewardEpoch();
-        while(firstEpochToCheckExpiry < current && !_isRewardClaimable(firstEpochToCheckExpiry, current)) {
+        // uint256 current = ftsoManager.getCurrentRewardEpoch();
+        while(nextRewardEpochToExpire < _currentRewardEpoch && nextRewardEpochToExpire <= _rewardEpoch) {
             expiredRewards += 
-                totalRewardEpochRewards[firstEpochToCheckExpiry] - 
-                claimedRewardEpochRewards[firstEpochToCheckExpiry];
-            emit RewardClaimsExpired(firstEpochToCheckExpiry);
-            firstEpochToCheckExpiry++;
+                totalRewardEpochRewards[nextRewardEpochToExpire] - 
+                claimedRewardEpochRewards[nextRewardEpochToExpire];
+            emit RewardClaimsExpired(nextRewardEpochToExpire);
+            nextRewardEpochToExpire++;
         }
         totalExpiredWei = totalExpiredWei.add(expiredRewards);
     }
@@ -514,13 +515,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
      * @return Reward epoch id that will expire next
      */
     function getRewardEpochToExpireNext() external view override returns (uint256) {
-        uint256 current = ftsoManager.getCurrentRewardEpoch();
-        if (current > rewardExpiryOffset) {
-            return current - rewardExpiryOffset;
-        }
-        return 0;
+        return nextRewardEpochToExpire;
     }
-    
+
     /**
      * @notice Return reward pool supply data
      * @return _foundationAllocatedFundsWei     Foundation allocated funds (wei)
@@ -774,12 +771,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
      * @param _currentRewardEpoch   number of the current reward epoch
      */
     function _isRewardClaimable(uint256 _rewardEpoch, uint256 _currentRewardEpoch) internal view returns (bool) {
-        if (_rewardEpoch + rewardExpiryOffset < _currentRewardEpoch) {
-                // reward expired
-                return false;
-        }
-        if (_rewardEpoch >= _currentRewardEpoch) {
-            // reward not ready for distribution
+        if (_rewardEpoch < nextRewardEpochToExpire || _rewardEpoch >= _currentRewardEpoch) {
+            // reward expired and closed or current or future
             return false;
         }
         return true;

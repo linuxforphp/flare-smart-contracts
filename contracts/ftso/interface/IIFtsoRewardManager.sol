@@ -9,7 +9,7 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
 
     function activate() external;
     function deactivate() external;
-    function closeExpiredRewardEpochs() external;
+    function closeExpiredRewardEpoch(uint256 _rewardEpochId, uint256 _currentRewardEpoch) external;
 
     function distributeRewards(
         address[] memory addresses,
@@ -40,4 +40,5 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
         uint256 _amount,
         uint256 _weight
     );
+
 }

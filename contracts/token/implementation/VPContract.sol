@@ -4,7 +4,9 @@ pragma solidity 0.7.6;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {Delegatable} from "./Delegatable.sol";
+import {IICleanable} from "../interface/IIVPContract.sol";
 import {IIVPContract} from "../interface/IIVPContract.sol";
+import {IIVPToken} from "../interface/IIVPToken.sol";
 import {IVPToken} from "../../userInterfaces/IVPToken.sol";
 
 contract VPContract is IIVPContract, Delegatable {
@@ -25,6 +27,11 @@ contract VPContract is IIVPContract, Delegatable {
      * every method that reads vote power must check whether it is initialized for that address and block.
      */
     bool public immutable override isReplacement;
+
+    // the contract that is allowed to set cleanupBlockNumber
+    // usually this will be an instance of CleanupBlockNumberManager
+    // only set when detached from vptoken and directly registered to CleanupBlockNumberManager
+    address private cleanupBlockNumberManager;
     
     // The block number when vote power for an address was first set.
     // Reading vote power before this block would return incorrect result and must revert.
@@ -49,7 +56,7 @@ contract VPContract is IIVPContract, Delegatable {
     }
 
     /**
-     * Setting cleanup block number and cleaner contract is allowed from
+     * Setting cleaner contract is allowed from
      * owner token or owner token's governance (when VPContract is detached,
      * methods can no longer be called via the owner token, but the VPContract
      * still remembers the old owner token and can see its governance).
@@ -57,7 +64,7 @@ contract VPContract is IIVPContract, Delegatable {
     modifier onlyOwnerOrGovernance {
         require(msg.sender == address(ownerToken) || 
             msg.sender == GovernedBase(address(ownerToken)).governance(),
-             "only owner or governance");
+            "only owner or governance");
         _;
     }
 
@@ -87,13 +94,26 @@ contract VPContract is IIVPContract, Delegatable {
      * Historic data for the blocks before `cleanupBlockNumber` can be erased,
      * history before that block should never be used since it can be inconsistent.
      * In particular, cleanup block number must be before current vote power block.
-     * The method can be called by the owner token or its governance.
+     * The method can be called by the owner token, its governance or cleanupBlockNumberManager.
      * @param _blockNumber The new cleanup block number.
      */
-    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerOrGovernance {
+    function setCleanupBlockNumber(uint256 _blockNumber) external override {
+        require(msg.sender == address(ownerToken) || 
+            msg.sender == cleanupBlockNumberManager ||
+            msg.sender == GovernedBase(address(ownerToken)).governance(),
+            "only owner, governance or cleanup block manager");
         _setCleanupBlockNumber(_blockNumber);
     }
 
+    /**
+     * Set the contract that is allowed to set cleanupBlockNumber.
+     * Usually this will be an instance of CleanupBlockNumberManager.
+     * Only to be set when detached from the owner token and directly attached to cleanup block number manager.
+     */
+    function setCleanupBlockNumberManager(address _cbnManager) external override onlyOwnerOrGovernance {
+        cleanupBlockNumberManager = _cbnManager;
+    }
+    
     /**
      * Set the contract that is allowed to call history cleaning methods.
      * The method can be called by the owner token or its governance.

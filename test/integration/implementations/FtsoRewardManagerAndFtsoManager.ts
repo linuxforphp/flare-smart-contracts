@@ -57,7 +57,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             accounts[0],
             3,
             0,
-            100,
             mockInflation.address
         );
 
