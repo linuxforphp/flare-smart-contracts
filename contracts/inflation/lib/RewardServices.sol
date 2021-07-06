@@ -43,6 +43,9 @@ library RewardServices {
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
 
+    event RewardServiceDailyAuthorizedInflationComputed(IIInflationReceiver inflationReceiver, uint256 amountWei);
+    event RewardServiceTopupRequestReceived(IIInflationReceiver inflationReceiver, uint256 amountWei);
+
     /**
      * @notice For all sharing percentages, compute authorized daily inflation for current cycle
      *  and then allocate it across associated inflation receivers according to their sharing percentages, 
@@ -115,7 +118,10 @@ library RewardServices {
             // Signal the inflation receiver of the reward service (the actual rewarding contract)
             // with amount just authorized.
             _sharingPercentages[i].inflationReceiver.setDailyAuthorizedInflation(toAuthorizeWei);
-            // TODO: Fire event
+            
+            emit RewardServiceDailyAuthorizedInflationComputed(
+                _sharingPercentages[i].inflationReceiver, 
+                toAuthorizeWei);
         }
     }
 
@@ -195,7 +201,8 @@ library RewardServices {
             _self.totalInflationTopupWithdrawnWei = _self.totalInflationTopupWithdrawnWei.add(pendingTopupWei);
             // Accumulate amount posted
             _amountPostedWei = _amountPostedWei.add(pendingTopupWei);
-            // TODO: Fire events
+            
+            emit RewardServiceTopupRequestReceived(_self.rewardServices[i].inflationReceiver, pendingTopupWei);
         }
     }
 }

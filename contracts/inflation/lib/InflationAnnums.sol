@@ -198,6 +198,5 @@ library InflationAnnums {
         if (_self.inflationAnnums.length > 1) {
             _self.currentAnnum = _self.currentAnnum.add(1);
         }
-        // TODO: Fire event
     }
 }
