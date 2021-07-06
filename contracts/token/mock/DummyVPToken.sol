@@ -15,6 +15,7 @@ contract DummyVPToken is ERC20, IIVPToken {
 
     // empty implementations, to satisfy the IIVPToken contract    
     function setCleanupBlockNumber(uint256 _blockNumber) external override {}
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external override {}
     function setCleanerContract(address _cleanerContract) external override {}
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override {}
     function delegate(address _to, uint256 _bips) external override {}

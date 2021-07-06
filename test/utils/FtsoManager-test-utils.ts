@@ -146,7 +146,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
 
 
 export async function setDefaultGovernanceParameters(ftsoManager: FtsoManagerInstance) {
-    let paramList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500];
+    let paramList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500, 60*60*24*10];
     let paramListBN = paramList.map(x => toBN(x));
     await (ftsoManager.setGovernanceParameters as any)(...paramListBN, []);   
     return paramListBN;

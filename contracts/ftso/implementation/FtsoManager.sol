@@ -8,12 +8,12 @@ import "../../genesis/interface/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../genesis/implementation/FlareKeeper.sol";
-import "../../genesis/interface//IFtsoRegistry.sol";
+import "../../genesis/interface/IFtsoRegistry.sol";
 import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
 import "../../utils/implementation/RevertErrorTracking.sol";
-
+import "../../token/implementation/CleanupBlockNumberManager.sol";
 
 /**
  * FtsoManager is in charge of:
@@ -37,6 +37,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     struct RewardEpochData {
         uint256 votepowerBlock;
         uint256 startBlock;
+        uint256 startTimestamp;
     }
 
     string internal constant ERR_FIRST_EPOCH_START_TS_IN_FUTURE = "First epoch start timestamp in future";
@@ -51,6 +52,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     string internal constant ERR_FTSO_FASSET_FTSO_ZERO = "fAsset ftsos list empty";
     string internal constant ERR_FTSO_EQUALS_FASSET_FTSO = "ftso equals fAsset ftso";
     string internal constant ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
+    string internal constant ERR_REWARD_EXPIRY_OFFSET_INVALID = "Reward expiry invalid";
 
     bool public override active;
     RewardEpochData[] public rewardEpochs;
@@ -72,12 +74,16 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     uint256 immutable public rewardEpochsStartTs;
     uint256 internal currentRewardEpochEnds;
     uint256 internal votePowerBoundaryFraction;
+    uint256 internal nextRewardEpochToExpire;
+
 
     mapping(IIFtso => bool) internal managedFtsos;
     IIFtsoRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
 
     IFtsoRegistry public immutable ftsoRegistry;
+
+    CleanupBlockNumberManager public cleanupBlockNumberManager;
 
     // flags
     bool private justStarted;
@@ -125,7 +131,17 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         rewardManager = _rewardManager;
         priceSubmitter = _priceSubmitter;
         ftsoRegistry = _ftsoRegistry;
+
         justStarted = true;
+    }
+
+    /**
+     * @notice Sets history cleanup manager.
+     */
+    function setCleanupBlockNumberManager(
+        CleanupBlockNumberManager _cleanupBlockNumberManager
+    ) external onlyGovernance {
+        cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
 
     /**
@@ -168,10 +184,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                 // finalizes price epoch, completely finalizes reward epoch
                 _finalizePriceEpoch(_ftsos);
             }
+            // Note: Expired reward offset should be determined and set before finalizing reward epoch
+            // _manageExpiringRewardEpochs();            
             // Note: prices should be first finalized and then new reward epoch can start
             if (currentRewardEpochEnds <= block.timestamp) {
                 _finalizeRewardEpoch(_ftsos);
                 _closeExpiredRewardEpochs();
+                _cleanupOnRewardEpochFinalization();
             }
 
             if(currentPriceEpochEnds <= block.timestamp) {
@@ -323,6 +342,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutBIPSThreshold,
         uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external override onlyGovernance {
         require(_minVotePowerFlrThreshold > 0, ERR_GOV_PARAMS_INVALID);
@@ -332,7 +352,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         require(_highAssetUSDThreshold >= _lowAssetUSDThreshold, ERR_GOV_PARAMS_INVALID);
         require(_highAssetTurnoutBIPSThreshold <= 1e4, ERR_GOV_PARAMS_INVALID);
         require(_lowFlrTurnoutBIPSThreshold <= 1e4, ERR_GOV_PARAMS_INVALID);
-
+        require(_rewardExpiryOffsetSeconds > 600, ERR_REWARD_EXPIRY_OFFSET_INVALID);
         settings._setState(
             _minVotePowerFlrThreshold,
             _minVotePowerAssetThreshold,
@@ -342,6 +362,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             _highAssetUSDThreshold,
             _highAssetTurnoutBIPSThreshold,
             _lowFlrTurnoutBIPSThreshold,
+            _rewardExpiryOffsetSeconds,
             _trustedAddresses
         );
     }
@@ -453,7 +474,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             // Prime the reward epoch array with a new reward epoch
             RewardEpochData memory epochData = RewardEpochData({
                 votepowerBlock: block.number - 1,
-                startBlock: block.number
+                startBlock: block.number,
+                startTimestamp: block.timestamp
             });
 
             rewardEpochs.push(epochData);
@@ -484,7 +506,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         // @dev when considering block boundary for vote power block:
         // - if far from now, it doesn't reflect last vote power changes
         // - if too small, possible loan attacks.     
-        // IMPORTANT: currentRewardEpoch is actually the one just expired!
+        // IMPORTANT: currentRewardEpoch is actually the one just geting finalized!
         uint256 votepowerBlockBoundary = 
             (block.number - rewardEpochs[currentRewardEpoch].startBlock) / 
               (votePowerBoundaryFraction == 0 ? 1 : votePowerBoundaryFraction);
@@ -505,10 +527,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         
         RewardEpochData memory epochData = RewardEpochData({
             votepowerBlock: block.number - votepowerBlocksAgo, 
-            startBlock: block.number
+            startBlock: block.number,
+            startTimestamp: block.timestamp
         });
         rewardEpochs.push(epochData);
-
         currentRewardEpoch = rewardEpochs.length - 1;
         for (uint256 i = 0; i < numFtsos; i++) {
             _ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
@@ -520,12 +542,48 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         currentRewardEpochEnds += rewardEpochDurationSec;
     }
 
+    /**
+     * @notice Closes expired reward epochs
+     */
     function _closeExpiredRewardEpochs() internal {
-        try rewardManager.closeExpiredRewardEpochs() {
+        uint256 expiryThreshold = block.timestamp - settings.rewardExpiryOffsetSeconds;
+        // NOTE: start time of (i+1)th reward epoch is the end time of i-th  
+        // This loop is clearly bounded by the value currentRewardEpoch, which is
+        // always kept to the value of rewardEpochs.length - 1 in code and this value
+        // does not change in the loop.  
+        while(
+            nextRewardEpochToExpire < currentRewardEpoch && 
+            rewardEpochs[nextRewardEpochToExpire + 1].startTimestamp <= expiryThreshold) 
+        {   // Note: Since nextRewardEpochToExpire + 1 starts at that time
+            // nextRewardEpochToExpire ends strictly before expiryThreshold, 
+            try rewardManager.closeExpiredRewardEpoch(nextRewardEpochToExpire, currentRewardEpoch) {
+                nextRewardEpochToExpire++;
+            } catch Error(string memory message) {
+                // closing of expired failed, which is not critical
+                // just emit event for diagnostics
+                emit ClosingExpiredRewardEpochFailed(nextRewardEpochToExpire);
+                addRevertError(address(this),message);
+                // Do not proceed with the loop.
+                break;
+            }                    
+        }
+    }
+
+    /**
+     * @notice Performs any cleanup needed immediately after a reward epoch is finalized
+     */
+    function _cleanupOnRewardEpochFinalization() internal {
+        if(address(cleanupBlockNumberManager) == address(0)) {
+            emit CleanupBlockNumberManagerUnset();
+            return;
+        }
+        uint256 cleanupBlock = rewardEpochs[nextRewardEpochToExpire].votepowerBlock;
+        
+        try cleanupBlockNumberManager.cleanupUpToBlock(cleanupBlock) {
         } catch Error(string memory message) {
             // closing of expired failed, which is not critical
             // just emit event for diagnostics
-            emit ClosingExpiredRewardEpochsFailed();
+            emit CleanupBlockNumberManagerFailedForBlock(cleanupBlock);
             addRevertError(address(this),message);
         }        
     }

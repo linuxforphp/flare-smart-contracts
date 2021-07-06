@@ -27,7 +27,7 @@
   "lowFlrTurnoutBIPSThreshold": 300,
   "rewardFeePercentageUpdateOffset": 3,
   "defaultRewardFeePercentage": 0,
-  "ftsoRewardExpiryOffset": 100,
+  "ftsoRewardExpiryOffsetDays": 30,
   "validatorRewardExpiryOffset": 100,
   "trustedAddresses": [
       "0xc783df8a850f42e7f7e57013759c285caa701eb6",

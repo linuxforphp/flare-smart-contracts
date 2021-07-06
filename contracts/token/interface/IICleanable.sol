@@ -17,6 +17,12 @@ interface IICleanable {
     function setCleanupBlockNumber(uint256 _blockNumber) external;
     
     /**
+     * Set the contract that is allowed to set cleanupBlockNumber.
+     * Usually this will be an instance of CleanupBlockNumberManager.
+     */
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external;
+    
+    /**
      * Get the current cleanup block number.
      */
     function cleanupBlockNumber() external view returns (uint256);

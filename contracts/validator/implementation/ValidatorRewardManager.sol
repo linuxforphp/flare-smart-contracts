@@ -11,8 +11,6 @@ import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiv
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
-// import "hardhat/console.sol";
-
 /**
  * ValidatorRewardManager is in charge of:
  * - distributing rewards according to state of StateConnector
