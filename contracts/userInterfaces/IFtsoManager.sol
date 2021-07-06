@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "./IPriceSubmitter.sol";
-import "../genesis/interface/IFtsoRegistry.sol";
+import "../genesis/interface/IIFtsoRegistry.sol";
 import "../ftso/interface/IIFtso.sol";
 
 interface IFtsoManager {
@@ -20,7 +20,7 @@ interface IFtsoManager {
     
     function priceSubmitter() external view returns (IPriceSubmitter);
 
-    function ftsoRegistry() external view returns (IFtsoRegistry);
+    function ftsoRegistry() external view returns (IIFtsoRegistry);
 
     function getCurrentRewardEpoch() external view returns (uint256);
 

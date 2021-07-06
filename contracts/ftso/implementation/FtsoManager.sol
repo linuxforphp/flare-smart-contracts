@@ -8,7 +8,7 @@ import "../../genesis/interface/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../genesis/implementation/FlareKeeper.sol";
-import "../../genesis/interface/IFtsoRegistry.sol";
+import "../../genesis/interface/IIFtsoRegistry.sol";
 import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
@@ -81,7 +81,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     IIFtsoRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
 
-    IFtsoRegistry public immutable override ftsoRegistry;
+    IIFtsoRegistry public immutable override ftsoRegistry;
 
     CleanupBlockNumberManager public cleanupBlockNumberManager;
 
@@ -92,14 +92,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     bool public fallbackMode; // all ftsos in fallback mode
     mapping(IIFtso => bool) public ftsoInFallbackMode;
 
-    // IPriceSubmitter should be a new contract for a new deploy or at least
+    // Testing information:
+    // IIPriceSubmitter should be a new contract for a new deploy or at least
     // _priceEpochDurationSec, _firstEpochStartTs and _revealEpochDurationSec must match
     constructor(
         address _governance,
         FlareKeeper _flareKeeper,
         IIFtsoRewardManager _rewardManager,
         IPriceSubmitter _priceSubmitter,
-        IFtsoRegistry _ftsoRegistry,
+        IIFtsoRegistry _ftsoRegistry,
         uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
         uint256 _revealEpochDurationSec,

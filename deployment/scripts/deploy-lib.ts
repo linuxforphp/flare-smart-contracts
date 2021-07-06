@@ -337,13 +337,13 @@ export async function fullDeploy(parameters: any, quiet = false) {
   let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
   for (let asset of ['FLR', ...assets]){
     const assetContract = assetToContracts.get(asset)!; 
-    const encodedName = (asset == 'FLR') ? 'WFLR' : 'F' + asset;
+    const encodedName = (asset == 'FLR') ? 'FLR' : 'F' + asset;
 
     // Dynamically get hardcoded method name
-    const func_name = encodedName + "_ASSET_INDEX";
+    const func_name = encodedName + '_FTSO_INDEX';
     const hardcodedIndex = (priceSubmitter as any)[func_name]() as Promise<BN>;
     
-    assert((await registry.getFtsoIndex(await assetContract.ftso.symbol())).eq(await hardcodedIndex), "INVALID FTSO CONFIGURATION")
+    assert((await registry.getFtsoIndex(await assetContract.ftso.symbol())).eq(await hardcodedIndex), 'INVALID FTSO CONFIGURATION')
   }
 
 
