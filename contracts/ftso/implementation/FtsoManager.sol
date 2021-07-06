@@ -81,7 +81,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     IIFtsoRewardManager internal rewardManager;
     IPriceSubmitter public immutable override priceSubmitter;
 
-    IFtsoRegistry public immutable ftsoRegistry;
+    IFtsoRegistry public immutable override ftsoRegistry;
 
     CleanupBlockNumberManager public cleanupBlockNumberManager;
 
@@ -214,7 +214,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * @dev Deactivates _ftso
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
-        ftsoRegistry.removeFtso(_ftso.symbol());
+        priceSubmitter.removeFtso(_ftso);
+        ftsoRegistry.removeFtso(_ftso);
         _cleanFtso(_ftso);
     }
     
@@ -232,12 +233,18 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         // should compare strings but it is not supported - comparing hashes instead
         require(keccak256(abi.encode(_ftsoToRemove.symbol())) == keccak256(abi.encode(_ftsoToAdd.symbol())), 
             ERR_FTSO_SYMBOLS_MUST_MATCH);
+
         // Check if it already exists
-        try ftsoRegistry.getFtso(_ftsoToRemove.symbol()) returns(IIFtso _addr) {
-            if (_addr != _ftsoToRemove){
-                revert(ERR_NOT_FOUND);
+        IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
+        uint256 len = availableFtsos.length;
+        uint256 k = 0;
+        while(k < len){
+            if(availableFtsos[k] == _ftsoToRemove){
+                break;
             }
-        } catch {
+            ++k;
+        }
+        if(k == len){
             revert(ERR_NOT_FOUND);
         }
 
@@ -260,7 +267,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         }
         // Add without duplicate check
         _addFtso(_ftsoToAdd, false);
-
+        
         // replace old contract with the new one in multi fAsset ftsos
         IIFtso[] memory contracts = ftsoRegistry.getSupportedFtsos();
 
@@ -417,16 +424,20 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         return (firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
     }
 
-    function _addFtso(IIFtso _ftso, bool _checkExists) internal {
+    function _addFtso(IIFtso _ftso, bool _updatingExistingFtso) internal {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
-        
+
         _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
 
-        if(_checkExists){
+        if(_updatingExistingFtso){
             // Check if it already exists
-            try ftsoRegistry.getFtso(_ftso.symbol()) {
-                revert(ERR_ALREADY_ADDED);
-            } catch {
+            IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
+            uint256 len = availableFtsos.length;
+            while(len > 0){
+                --len;
+                if(availableFtsos[len] == _ftso){
+                    revert(ERR_ALREADY_ADDED);
+                }
             }
         }
 
@@ -449,10 +460,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             settings.lowFlrTurnoutBIPSThreshold,
             settings.trustedAddresses
         );
-
-        // Add the ftso
-        ftsoRegistry.addFtso(_ftso);
+        
         managedFtsos[_ftso] = true;
+        ftsoRegistry.addFtso(_ftso);
+
+        if(!_updatingExistingFtso){
+            uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());      
+            priceSubmitter.addFtso(_ftso, ftsoIndex);
+        }
+        
         emit FtsoAdded(_ftso, true);
     }
 

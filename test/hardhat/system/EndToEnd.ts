@@ -18,7 +18,8 @@ import {
   SupplyContract,
   SupplyInstance,
   WFlrContract,
-  WFlrInstance
+  WFlrInstance,
+  FtsoRegistryInstance,
 } from "../../../typechain-truffle";
 
 import { Contracts } from "../../../deployment/scripts/Contracts";
@@ -58,7 +59,7 @@ async function submitPrice(ftso: FtsoInstance, price: number, by: string): Promi
   }
 };
 
-async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: PriceSubmitterInstance, prices: number[], by: string): Promise<PriceInfo[] | undefined> {
+async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[], priceSubmitter: PriceSubmitterInstance, prices: number[], by: string): Promise<PriceInfo[] | undefined> {
   if (!ftsos || !prices || ftsos.length != prices.length) throw Error("Lists of ftsos and prices illegal or do not match")
   let epochId = ((await ftsos[0].getCurrentEpochId()) as BN).toString();
   let hashes: string[] = [];
@@ -77,7 +78,7 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
 
   console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
-  await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, { from: by })
+  await priceSubmitter.submitPriceHashes(ftsoIndices, hashes, { from: by })
   for (let i = 0; i < ftsos.length; i++) {
     const priceInfo = new PriceInfo(epochId, preparedPrices[i], randoms[i]);
     priceInfo.moveToNextStatus();
@@ -96,7 +97,7 @@ async function revealPrice(ftso: FtsoInstance, priceInfo: PriceInfo, by: string)
   }
 };
 
-async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: PriceSubmitterInstance, priceInfos: PriceInfo[], by: string): Promise<void> {
+async function revealPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[], priceSubmitter: PriceSubmitterInstance, priceInfos: PriceInfo[], by: string): Promise<void> {
   if (!ftsos || !priceInfos || ftsos.length == 0 || ftsos.length != priceInfos.length) throw Error("Lists of ftsos and priceInfos illegal or they do not match")
   let epochId = priceInfos[0].epochId;
 
@@ -109,7 +110,7 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
 
   let tx = await priceSubmitter.revealPrices(
     epochId,
-    ftsos.map(ftso => ftso.address),
+    ftsoIndices,
     priceInfos.map(priceInfo => priceInfo.priceSubmitted),
     priceInfos.map(priceInfo => priceInfo.random),
     { from: by }
@@ -165,6 +166,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let rewardEpochsStartTs: BN;
   let SuicidalMock: SuicidalMockContract;
   let suicidalMock: SuicidalMockInstance;
+  let registry: FtsoRegistryInstance;
 
   before(async () => {
     // Get contract addresses of deployed contracts
@@ -206,6 +208,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Set up the suicidal mock contract so we can conjure FLR into the keeper by self-destruction
     SuicidalMock = artifacts.require("SuicidalMock");
     suicidalMock = await SuicidalMock.new(flareKeeper.address);
+
+    const FtsoRegistry = artifacts.require("FtsoRegistry");
+    registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
+
   });
 
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async () => {
@@ -278,14 +284,23 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let algoPrices = [1.00, 1.33, 1.35];
     let bchPrices = [1100, 1203, 1210];
     let ftsos = [ftsoWflr, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFdgb, ftsoFada, ftsoFalgo, ftsoFbch];
+    let ftsoIndices = [];
+
+
+    for(let ftso of ftsos){
+      ftsoIndices.push(await registry.getFtsoIndex( await ftso.symbol()));
+    }
+
     let pricesMatrix = [flrPrices, xrpPrices, ltcPrices, xdgPrices, dgbPrices, adaPrices, algoPrices, bchPrices];
     // transpose
     let priceSeries = pricesMatrix[0].map((_, colIndex) => pricesMatrix.map(row => row[colIndex]));
 
     let submitterPrices: PriceInfo[][] = [];
     let submitters = [p1, p2, p3];
+
     for (let i = 0; i < submitters.length; i++) {
-      let priceInfo = await submitPricePriceSubmitter(ftsos, priceSubmiter, priceSeries[i], submitters[i]);
+      priceSubmiter.requestFtsoFullVoterWhitelisting(submitters[i]);
+      let priceInfo = await submitPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, priceSeries[i], submitters[i]);
       submitterPrices.push(priceInfo!);
     }
 
@@ -296,7 +311,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Reveal prices
     for (let i = 0; i < submitters.length; i++) {
-      await revealPricePriceSubmitter(ftsos, priceSubmiter, submitterPrices[i]!, submitters[i]);
+      await revealPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, submitterPrices[i]!, submitters[i]);
     }
 
     // Time travel to price epoch finalization -> using ~3.2M gas

@@ -54,18 +54,26 @@ contract Ftso is IIFtso {
     IIVPToken[] public fAssets;                  // array of assets
     IIFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
 
+    // Revert strings get inlined and take a lot of contract space
+    // Calling them from auxiliary functions removes used space
     modifier whenActive {
-        require(active, ERR_NOT_ACTIVE);
+        if(!active){
+            revertNotActive();
+        }
         _;
     }
 
     modifier onlyFtsoManager {
-        require(msg.sender == address(ftsoManager), ERR_NO_ACCESS);
+        if(msg.sender != address(ftsoManager)){
+            revertNoAccess();
+        }
         _;
     }
 
     modifier onlyPriceSubmitter {
-        require(msg.sender == address(priceSubmitter), ERR_NO_ACCESS);
+        if(msg.sender != address(priceSubmitter)){
+            revertNoAccess();
+        }
         _;
     }
 
@@ -383,6 +391,24 @@ contract Ftso is IIFtso {
         );
 
         emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId), block.timestamp);
+    }
+
+    function hasSufficientFassetVotePower(address _owner) external override returns(bool) {
+        uint256 epochId = getCurrentEpochId();
+        FtsoEpoch.Instance storage _epoch = epochs.instance[epochId];
+
+        uint256 votePowerAsset = _calculateFAssetVotePower(_epoch, _owner);
+        // votePower > 0 is needed in scenario when no assets are present in the network
+        return (votePowerAsset > 0 && votePowerAsset >= _epoch.minVotePowerAsset);
+    }
+
+    function hasSufficientWflrVotePower(address _owner) external override returns(bool) {
+        uint256 epochId = getCurrentEpochId();
+        FtsoEpoch.Instance storage _epoch = epochs.instance[epochId];
+
+        uint256 votePowerFlr = _getVotePowerOfAt(wFlr, _owner, _epoch.votePowerBlock);
+        // votePower > 0 is needed in scenario when no assets are present in the network
+        return (votePowerFlr > 0 && votePowerFlr >= _epoch.minVotePowerFlr);
     }
 
     /**
@@ -901,12 +927,8 @@ contract Ftso is IIFtso {
 
         _votePowerFlr = _getVotePowerOfAt(wFlr, _owner, _epoch.votePowerBlock);
         
-        uint256[] memory votePowersAsset = new uint256[](_epoch.assets.length);
-        for (uint256 i = 0; i < _epoch.assets.length; i++) {
-            votePowersAsset[i] = _getVotePowerOfAt(_epoch.assets[i], _owner, _epoch.votePowerBlock);
-        }
-        _votePowerAsset = epochs._getAssetVotePower(_epoch, votePowersAsset);
-        
+        _votePowerAsset = _calculateFAssetVotePower(_epoch, _owner);
+        // votePower > 0 is needed in scenario when no assets are present in the network
         require(
             (_votePowerFlr > 0 && _votePowerFlr >= _epoch.minVotePowerFlr) || 
                 (_votePowerAsset > 0 && _votePowerAsset >= _epoch.minVotePowerAsset),
@@ -949,6 +971,16 @@ contract Ftso is IIFtso {
         } else {
             return _vp.votePowerOfAtCached(_owner, _vpBlock);
         }
+    }
+
+    function _calculateFAssetVotePower(FtsoEpoch.Instance storage _epoch, address _owner) internal 
+        returns (uint256 _votePowerAsset)
+    {
+        uint256[] memory votePowersAsset = new uint256[](_epoch.assets.length);
+        for (uint256 i = 0; i < _epoch.assets.length; i++) {
+            votePowersAsset[i] = _getVotePowerOfAt(_epoch.assets[i], _owner, _epoch.votePowerBlock);
+        }
+        _votePowerAsset = epochs._getAssetVotePower(_epoch, votePowersAsset);
     }
         
     /**
@@ -1023,4 +1055,12 @@ contract Ftso is IIFtso {
         _epoch = epochs.instance[_epochId];
         require(_epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
     }
+
+    function revertNoAccess() internal pure {
+        revert(ERR_NO_ACCESS);
+    } 
+
+    function revertNotActive() internal pure {
+        revert(ERR_NOT_ACTIVE);
+    } 
 }

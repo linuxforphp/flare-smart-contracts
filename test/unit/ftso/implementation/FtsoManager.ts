@@ -29,9 +29,9 @@ const FtsoManager = artifacts.require("FtsoManager");
 const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
-const MockFtsoContract = artifacts.require("MockFtso");
 const MockContract = artifacts.require("MockContract");
 const MockRewardManager = artifacts.require("MockContract");
+const MockPriceSubmitter = artifacts.require("MockContract");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -41,7 +41,7 @@ const VOTE_POWER_BOUNDARY_FRACTION = 7;
 const ERR_GOVERNANCE_ONLY = "only governance"
 const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized"
 const ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
-const ERR_NOT_FOUND = "FTSO symbol not supported";
+const ERR_NOT_FOUND = "FTSO index not supported";
 const ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
 
 const DAY = 60*60*24;
@@ -57,6 +57,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
     let ftsoRegistry: FtsoRegistryInstance;
+    let mockPriceSubmitter: MockContractInstance;
 
     async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance){        
         const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
@@ -92,12 +93,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         );
 
         ftsoRegistry = await FtsoRegistry.new(accounts[0]);
+        
+        mockPriceSubmitter = await MockPriceSubmitter.new();
+        mockPriceSubmitter.givenMethodReturnUint(
+            web3.utils.sha3("addFtso(address)")!.slice(0,10),
+            0
+        )
+        mockPriceSubmitter.givenMethodReturnUint(
+            web3.utils.sha3("removeFtso(address)")!.slice(0,10),
+            0
+        )
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
             mockRewardManager.address,
-            accounts[7],
+            mockPriceSubmitter.address,
             ftsoRegistry.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
@@ -173,7 +184,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should return price submitter address", async () => {
-            expect(await ftsoManager.priceSubmitter()).to.equals(accounts[7]);
+            expect(await ftsoManager.priceSubmitter()).to.equals(mockPriceSubmitter.address);
         });
 
         it("Should return true when calling keep and ftso manager is active", async () => {
@@ -308,11 +319,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should initialize reward epoch only after reward epoch start timestamp", async () => {
+            mockPriceSubmitter = await MockPriceSubmitter.new();
+            mockPriceSubmitter.givenMethodReturnUint(
+                web3.utils.sha3("addFtso(address)")!.slice(0,10),
+                0
+            )
+
             ftsoManager = await FtsoManager.new(
                 accounts[0],
                 accounts[0],
                 mockRewardManager.address,
-                accounts[7],
+                mockPriceSubmitter.address,
                 ftsoRegistry.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,

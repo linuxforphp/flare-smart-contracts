@@ -217,6 +217,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
       console.error("PriceSubmitter not in genesis...creating new.")
     }
     priceSubmitter = await PriceSubmitter.new();
+    await priceSubmitter.initialiseFixedAddress();
   }
   spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
 
@@ -243,6 +244,8 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
   await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
 
+  await priceSubmitter.setFtsoRegistry(ftsoRegistry.address, { from: currentGovernanceAddress });
+  await priceSubmitter.setFtsoManager(ftsoManager.address, { from: currentGovernanceAddress });
 
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
@@ -277,8 +280,8 @@ export async function fullDeploy(parameters: any, quiet = false) {
     assetSymbol: 'FLR'
   })
 
-  // Deploy FAsset, minter, and ftso for XRP
-  let assets = ['XRP', 'LTC', 'XDG', 'ADA', 'ALGO', 'BCH', 'DGB'];
+  // Deploy FAsset, minter, and initial FTSOs 
+  let assets = ['XRP', 'LTC', 'XLM', 'XDG', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
 
 
   for (let asset of assets) {
@@ -328,6 +331,21 @@ export async function fullDeploy(parameters: any, quiet = false) {
     let ftsoContract = (assetToContracts.get(asset) as AssetContracts).ftso;
     await ftsoManager.addFtso(ftsoContract.address);
   }
+
+  // Precheck
+  // Hardcoded ftso indices have to coincide with added indices
+  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
+  for (let asset of ['FLR', ...assets]){
+    const assetContract = assetToContracts.get(asset)!; 
+    const encodedName = (asset == 'FLR') ? 'WFLR' : 'F' + asset;
+
+    // Dynamically get hardcoded method name
+    const func_name = encodedName + "_ASSET_INDEX";
+    const hardcodedIndex = (priceSubmitter as any)[func_name]() as Promise<BN>;
+    
+    assert((await registry.getFtsoIndex(await assetContract.ftso.symbol())).eq(await hardcodedIndex), "INVALID FTSO CONFIGURATION")
+  }
+
 
   // Set FTSOs to multi FAsset WFLR contract
   let multiAssets = ["XRP", "LTC", "XDG"]

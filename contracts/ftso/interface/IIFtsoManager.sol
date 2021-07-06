@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "../../ftso/interface/IIFtso.sol";
 import "../../userInterfaces/IFtsoManager.sol";
+import "../../token/interface/IIVPToken.sol";
 
 
 interface IIFtsoManager is IFtsoManager {
