@@ -8,7 +8,7 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { Ftso, MockFtso, MockVPToken } from "../../typechain";
 import { FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
-import { increaseTimeTo, newContract, submitPriceHash, waitFinalize } from "./test-helpers";
+import { computeVoteRandom, increaseTimeTo, isAddressEligible, newContract, submitPriceHash, toBN, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 import { setDefaultVPContract_ethers } from "./token-test-helpers";
 
@@ -373,7 +373,10 @@ export function priceToRandom(price: number) {
  * @param data 
  * @returns 
  */
-export function resultsFromTestData(data: TestExample, addresses: string[], flrSumOverride: number = 0, assetSumOverride: number = 0): EpochResult {
+export function resultsFromTestData(data: TestExample, addresses: string[], flrSumOverride: number = 0, assetSumOverride: number = 0, logger?: any): EpochResult {
+    if (!logger) {
+        logger = console;
+    }
     let votes: VoteInfo[] = [];
     let len = data.prices.length;
     if (len != data.weightsFlr.length) throw Error(`Wrong FLR weights length: ${ data.weightsFlr.length }. Should be ${ len }`);
@@ -387,7 +390,8 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
     }
     let TERA = 1e12;
     let flrWeightSum = 0;
-    let assetWeightSum = 0;    
+    let assetWeightSum = 0;
+    let price_random = [];
     for (let i = 0; i < len; i++) {
         let flrWeight: number;
         if (flrSumOverride > 0) {
@@ -403,15 +407,17 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
             assetWeight = assetSum == 0 ? 0 : Math.floor((data.weightsAsset[i] * TERA) / assetSum);
         }
         assetWeightSum += assetWeight
+        let price = data.prices[i];
         votes.push({
             id: i,
-            price: data.prices[i],
+            price: price,
             weightFlr: flrWeight,
             weightAsset: assetWeight,
             address: addresses[i],
             runningSumFlr: flrWeightSum,
             runningSumAsset: assetWeightSum
         })
+        price_random.push([price, priceToRandom(price)]);
     }
     votes.sort((a: VoteInfo, b: VoteInfo) => a.price < b.price ? -1 : (a.price > b.price ? 1 : 0));
     let totalSum = 0;
@@ -429,7 +435,11 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
 
 
     let medianWeight = Math.floor(totalSum / 2) + totalSum % 2;
-    // console.log("SORTED VOTES:", votes, "SUMS", assetSum, flrSum, totalSum, "MV", medianWeight);
+    logger.log(
+        `Sorted votes:\nID\tPRICE\tWFLR\tWASSET\n` +
+        votes.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }`).join("\n")
+    );
+    logger.log(`SUMS: ${ assetSum }, ${ flrSum }, ${ totalSum }, MV: ${ medianWeight.toString() }`);
     let medianIndex = 0;
     let medianSum = 0;
 
@@ -443,7 +453,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
     let firstQuartileWeight = totalSum - Math.floor(totalSum / 4);
     let firstQuartileIndex = len;
     let firstQuartileSum = 0;
-    // console.log("MI:", medianIndex, len, votes[medianIndex], medianWeight, "FKW", firstQuartileWeight);
+    logger.log(`MI: ${ medianIndex }, ${ len }, ${ votes[medianIndex].toString() }, ${ medianWeight }, FKW: ${ firstQuartileWeight }`);
 
     while (true) {
         if (firstQuartileSum >= firstQuartileWeight || firstQuartileIndex == 0) break;
@@ -469,6 +479,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
         if (votes[truncatedFirstQuartileIndex - 1].price != votes[firstQuartileIndex].price) break;
         truncatedFirstQuartileIndex--;
     }
+    let truncatedFirstQuartilePrice = votes[truncatedFirstQuartileIndex].price;
 
     let truncatedLastQuartileIndex = lastQuartileIndex;
 
@@ -476,6 +487,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
         if (votes[truncatedLastQuartileIndex + 1].price != votes[lastQuartileIndex].price) break;
         truncatedLastQuartileIndex++;
     }
+    let truncatedLastQuartilePrice = votes[truncatedLastQuartileIndex].price;
 
     let lowWeightSum = 0
     let highWeightSum = 0;
@@ -491,15 +503,27 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
     if (totalSum % 2 == 0 && Math.floor(totalSum / 2) == medianSum && medianIndex < len - 1) {
         medianPrice = Math.floor((medianPrice + votes[medianIndex + 1].price) / 2);
     }
-
+    let random = toBN(computeVoteRandom(price_random));
+    logger.log(`Computed FTSO random: ${ random.toString() }`);
     let rewardedVotes: RewardedVoteInfo[] = [];
+    logger.log("Start filtering the reward addresses")
     for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
         let voteInfo = votes[i];
+        logger.log(`Considering ${ voteInfo.id }\t${ voteInfo.price }\t${ voteInfo.weightFlr }\t${ voteInfo.weightAsset }\t${ voteInfo.address! }`)
         if (voteInfo.weightFlr > 0) {
+            if (voteInfo.price == truncatedFirstQuartilePrice || voteInfo.price == truncatedLastQuartilePrice) {
+                logger.log("\tEdge case");
+                if (!isAddressEligible(random, voteInfo.address!)) {
+                    logger.log(`\t\t=> Address ${ voteInfo.address! } not chosen, price = ${ voteInfo.price }`);
+                    continue;
+                }
+            }
             rewardedVotes.push({ weightFlr: voteInfo.weightFlr, address: voteInfo.address! } as RewardedVoteInfo);
         }
     }
+    logger.log("Done filtering the reward addresses");
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
+    logger.log(`Rewarded:` + rewardedVotes.map(rewarded => `${ rewarded.address }`).join(`, `));
 
     return {
         votes,
@@ -508,9 +532,9 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
             truncatedLastQuartileIndex
         },
         prices: {
-            lowRewardedPrice: votes[truncatedFirstQuartileIndex].price,
+            lowRewardedPrice: truncatedFirstQuartilePrice,
             medianPrice,
-            highRewardedPrice: votes[truncatedLastQuartileIndex].price
+            highRewardedPrice: truncatedLastQuartilePrice
         },
         weights: {
             lowWeightSum,
@@ -829,9 +853,13 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     logger.log(`REVEAL PRICE ${ len }`)
     await revealPrice(signers, ftso, testExample.prices, epoch);
 
+    let random = await ftso.getCurrentRandom();
+    logger.log(`AFTER REVEAL, test RANDOM = ${ random }`);
+
     // Finalize
     await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
     let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+    logger.log(`Rewarded addresses ${ epochFinalizeResponse._eligibleAddresses }`);
     logger.log(`epoch finalization, ${ len }`);
         
     // Print epoch submission prices
@@ -845,7 +873,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     let voterRes = toEpochResult(res, resVoteInfo);
     let testCase = {
         example: testExample,
-        targetResult: resultsFromTestData(testExample, signers.slice(0, len).map(signer => signer.address)),
+        targetResult: resultsFromTestData(testExample, signers.slice(0, len).map(signer => signer.address), undefined, undefined, logger),
         testResult: updateWithRewardedVotesInfo(voterRes, epochFinalizeResponse)
     } as TestCase;
 

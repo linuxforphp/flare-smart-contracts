@@ -15,11 +15,18 @@ The "gold standard" algorithm that shows how weighted median price and rewarded 
 
 Note that while median price, lowest reward price, and highest reward price are uniquely defined, the corresponding indices of votes depend on a sort order and are not unique over all possible sort orders.
 
-The final set of rewarded votes is defined as the set of votes `(price, weight)`, such that 
+The final set of rewarded votes is defined as a subset of votes `(price, weight)`, such that
 
 `lowest rewarded price <= price <= highest rewarded price`
 
-Hence the sum of weights of the rewarded votes can be in range from floor`(totalWeight/2)` to `totalWeight` (the latter clearly happens with only one vote, but many other such cases can be easily constructed, like `(1,1), (2,1), (3,1)`, etc.)
+with the condition that the submissions that are on the lower and upper edge are selected pseudorandomly: for each vote that satisfies either `price = lowest reward price` or
+`price = highest rewarded price`, a random number `x` is computed as `x = keccak256(random, vote address)`, where `random` is the FTSO random number for the current reward
+epoch, computed from all the submissions. If `x` is odd, the vote is included in the final set of rewarded votes, otherwise not.
+
+Hence the sum of weights of the rewarded votes can be in range from `0` to `totalWeight` (with only one vote, the former clearly happens when the computed value `x` is even and
+the latter happens when `x` is odd, but other cases can be constructed that achieve an arbitrary weight of the rewarded votes between these two extremes). On average, there will be
+several hundred votes and the proportion of the votes that are exactly on the edge should be small, so that the sum of weights of the rewarded vodes is roughly `totalWeight/2`.
+
 ## Implementation in smart contract
 The actual algorithm does not use the sorting function, but a variant (extension) of a well known QuickSelect algorithm, which in the original version, searches for a `k`-th element (ordering by price) in an unordered list without actually ordering the list. The most important result of the QuickSelect algorithm is actually reordering the sequence in such a way that the `k`-th element ends up on the `k`-th index. To the left of it are elements that have smaller or equal price and to the right of it are elements that have greater or equal price. Note that standard QuickSelect is basically the weighted version with all weights equal to 1. The weighted version is a straightforward extension. Instead of the `k`-th element, we are seeking for the element in which it would be true in the ordered list that the sum of weights of the elements left of the chosen element and the very element itself would reach a certain fraction of the total sum of weights `(totalWeight)`. When calculating the median, the fraction is `floor(totalWeight/2) + (totalWeight % 2)`. When finding the third quartile price, we are targeting the fraction `(totalWeight) - floor(totalWeight/4)`. For the first quartile price we are targeting the same thing, but with the sum from right to left.
 

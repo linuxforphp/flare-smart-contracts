@@ -218,12 +218,17 @@ function computeOneVoteRandom(price: number | BN | BigNumber, random: number | B
     return  web3.utils.toBN(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ random.toString(), price.toString() ]));
 }
 
+// price_random is an array of pairs [price, random] that are being submitted
 export function computeVoteRandom(price_random: number[][] | BN[][] | BigNumber[][]): string {
     let sum = toBN(0);
     for (let i = 0; i < price_random.length; i++) {
         sum = sum.add(computeOneVoteRandom(price_random[i][0], price_random[i][1]));
     }
     return  sum.mod(toBN(2).pow(toBN(256))).toString();
+}
+
+export function isAddressEligible(random: number | BN | BigNumber, address: string): boolean {
+    return web3.utils.toBN(ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint256", "address" ], [ random.toString(), address]))).mod(toBN(2)).eq(toBN(1));
 }
 
 export async function sleep(ms: number) {

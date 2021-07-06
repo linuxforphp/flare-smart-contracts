@@ -193,6 +193,8 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.highWeightSum).to.equals('500');
         expect(Number(d.leftSum) + Number(d.medianWeight) + Number(d.rightSum)).to.equals(2500);
         expect(d.finalMedianPrice).to.equals('40');
+        expect(d.quartile1Price).to.equals('35');
+        expect(d.quartile3Price).to.equals('40');
     });
 
     it(`Should compute median correctly - same prices`, async () => {
@@ -212,6 +214,8 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.highWeightSum).to.equals('0');
         expect(Number(d.leftSum) + Number(d.medianWeight) + Number(d.rightSum)).to.equals(2500);
         expect(d.finalMedianPrice).to.equals('40');
+        expect(d.quartile1Price).to.equals('40');
+        expect(d.quartile3Price).to.equals('40');
     });
 
     it(`Should compute median correctly - middle price`, async () => {
@@ -231,5 +235,23 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.highWeightSum).to.equals('300');
         expect(Number(d.leftSum) + Number(d.medianWeight) + Number(d.rightSum)).to.equals(2200);
         expect(d.finalMedianPrice).to.equals('35');
+        expect(d.quartile1Price).to.equals('25');
+        expect(d.quartile3Price).to.equals('40');
+    });
+
+    it(`Should compute median correctly - quartile prices`, async () => {
+        let weight: number[] = [20,20,20,20,20];
+
+        let price: number[] = [10,20,30,40,50];
+        let data = await ftsoMedian.compute(price, weight);
+        compareNumberArrays(data[2], price);
+        compareNumberArrays(data[3], weight);
+        let index = data[0];
+        expect(index.length).to.equals(5);
+        let d = data[1];
+        expect(d.quartile1Index).to.equals('1');
+        expect(d.quartile3Index).to.equals('3');
+        expect(d.quartile1Price).to.equals('20');
+        expect(d.quartile3Price).to.equals('40');
     });
 });
