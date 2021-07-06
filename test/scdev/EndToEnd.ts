@@ -70,13 +70,7 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
 
   console.log(`Submitting prices ${ preparedPrices } by ${ by } for epoch ${ epochId }`);
 
-  // await priceSubmitter.submitPriceHash(hash!, {from: by});
-  // TODO: This was limited to 50000 gas, and would not execute.
-  //   I increased to 100000 and it still did not work.
-  //   I bumped it up to 1000000, probably excessively, but now it executes.
-  //   Bump down to a realistic number, or investigate why 50000 is not sufficient if that is supposed
-  //   to be an upper limit.
-  await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, {from: by, gas: "1000000"})
+  await priceSubmitter.submitPriceHashes(ftsos.map(ftso => ftso.address), hashes, {from: by})
   for (let i = 0; i < ftsos.length; i++) {
     const priceInfo = new PriceInfo(epochId, preparedPrices[i], randoms[i]);
     priceInfo.moveToNextStatus();
@@ -106,16 +100,12 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], priceSubmitter: 
 
   console.log(`Revealing price by ${ by } for epoch ${ epochId }`);
 
-  // TODO: This was limited to 50000 gas, and would not execute.
-  //   I bumped it up to 1000000, probably excessively, but now it executes.
-  //   Bump down to a realistic number, or investigate why 50000 is not sufficient if that is supposed
-  //   to be an upper limit.
   await priceSubmitter.revealPrices(
     epochId, 
     ftsos.map(ftso => ftso.address), 
     priceInfos.map(priceInfo => priceInfo.priceSubmitted),
     priceInfos.map(priceInfo => priceInfo.random),
-    {from: by, gas: "1000000"}
+    {from: by}
   )
 };
 

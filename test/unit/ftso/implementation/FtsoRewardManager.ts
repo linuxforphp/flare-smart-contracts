@@ -302,6 +302,15 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             expect(await ftsoRewardManager.inflation()).to.equals(accounts[8]);
         });
 
+        it("Should issue event when daily authorized infaltion is set", async () => {
+            const txReceipt = await mockInflation.setDailyAuthorizedInflation(1000000);
+            await expectEvent.inTransaction(
+                txReceipt.tx,
+                ftsoRewardManager,
+                "DailyAuthorizedInflationSet", {authorizedAmountWei: toBN(1000000)}
+            );
+        });
+
         it("Should revert calling setInflation if not from governance", async () => {
             await expectRevert(ftsoRewardManager.setInflation(accounts[2], { from: accounts[1] }), "only governance");
         });
@@ -924,7 +933,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Assemble
             // Act
             // Inflation must call ftso reward manager during funding, and this proxy does it.
-            await mockInflation.receiveInflation({ value: "1000000" });
+            const txReceipt = await mockInflation.receiveInflation({ value: "1000000" });
+            await expectEvent.inTransaction( txReceipt.tx,
+                ftsoRewardManager,
+                "InflationReceived", {amountReceivedWei: toBN(1000000)}
+            );
+
             // Assert
             let balance = web3.utils.toBN(await web3.eth.getBalance(ftsoRewardManager.address));
             assert.equal(balance.toNumber(), 1000000);
@@ -1595,7 +1609,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0, 1), "ftso manager only");
         });
 
-        // it.only("Should expire rewards after set time in days", async () => {
+        // it("Should expire rewards after set time in days", async () => {
 
         //     let fixture = await allDeployedContractsFixture();
         //     let expiryDays = deploymentParameters.ftsoRewardExpiryOffsetDays;            
