@@ -184,7 +184,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should return price submitter address", async () => {
-            expect(await ftsoManager.priceSubmitter()).to.equals(mockPriceSubmitter.address);
+            expect(await ftsoManager.getPriceSubmitter()).to.equals(mockPriceSubmitter.address);
         });
 
         it("Should return true when calling keep and ftso manager is active", async () => {

@@ -6,9 +6,9 @@ import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtsoRewardManager.sol";
 import "../../genesis/interface/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
-import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../genesis/implementation/FlareKeeper.sol";
 import "../../genesis/interface/IIFtsoRegistry.sol";
+import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../utils/implementation/GovernedAndFlareKept.sol";
 import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
@@ -79,7 +79,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
 
     mapping(IIFtso => bool) internal managedFtsos;
     IIFtsoRewardManager internal rewardManager;
-    IPriceSubmitter public immutable override priceSubmitter;
+    IIPriceSubmitter internal immutable priceSubmitter;
 
     IIFtsoRegistry public immutable override ftsoRegistry;
 
@@ -99,7 +99,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         address _governance,
         FlareKeeper _flareKeeper,
         IIFtsoRewardManager _rewardManager,
-        IPriceSubmitter _priceSubmitter,
+        IIPriceSubmitter _priceSubmitter,
         IIFtsoRegistry _ftsoRegistry,
         uint256 _priceEpochDurationSec,
         uint256 _firstEpochStartTs,
@@ -375,6 +375,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         );
     }
     
+    function getPriceSubmitter() external view override returns (IPriceSubmitter){
+        return priceSubmitter;
+    }
+
     /**
      * @notice Returns current reward epoch index (one currently running)
      */

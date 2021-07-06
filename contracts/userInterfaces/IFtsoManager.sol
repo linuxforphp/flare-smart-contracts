@@ -18,7 +18,7 @@ interface IFtsoManager {
 
     function active() external view returns (bool);
     
-    function priceSubmitter() external view returns (IPriceSubmitter);
+    function getPriceSubmitter() external view returns (IPriceSubmitter);
 
     function ftsoRegistry() external view returns (IIFtsoRegistry);
 

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../governance/implementation/GovernedAtGenesis.sol";
 import "../interface/IIFtsoRegistry.sol";
+import "../interface/IIPriceSubmitter.sol";
 
 
 /**
  * @title Price submitter
  * @notice A contract used to submit/reveal prices to multiple Flare Time Series Oracles in one transaction
  */
-contract PriceSubmitter is IPriceSubmitter, GovernedAtGenesis {
+contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
     string internal constant ERR_INSUFFICIENT_LISTED_VOTE_POWER = "Insufficient listed vote power";
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";

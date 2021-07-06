@@ -25,10 +25,6 @@ interface IPriceSubmitter {
         uint256 timestamp
     );
 
-
-    function setFtsoManager(IIFtsoManager _ftsoManager) external;
-    function setFtsoRegistry(IIFtsoRegistry _ftsoRegistryToSet) external;
-
     function requestFtsoFullVoterWhitelisting(address _voter) external;
     function requestFtsoWhiteListingFassetHolder(address _voter, uint256 _ftsoIndex) external;
     function requestFtsoWhiteListingWflrHolder(address _voter) external;
@@ -60,9 +56,6 @@ interface IPriceSubmitter {
         uint256[] memory _prices,
         uint256[] memory _randoms
     ) external;
-
-    function addFtso(IIFtso _ftso, uint256 _ftsoIndex) external;
-    function removeFtso(IIFtso _ftso) external;
 
     // Hardcoded FTSO indices for automatically deployed 
 
