@@ -95,6 +95,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
   const WFLR = artifacts.require("WFlr");
+  const Distribution = artifacts.require("Distribution");
 
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
@@ -224,6 +225,10 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // FtsoRegistryContract
   const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
   spewNewContractInfo(contracts, FtsoRegistry.contractName, ftsoRegistry.address, quiet);
+
+  // Distribution Contract
+  const distribution = await Distribution.new();
+  spewNewContractInfo(contracts, Distribution.contractName, distribution.address, quiet);
 
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(

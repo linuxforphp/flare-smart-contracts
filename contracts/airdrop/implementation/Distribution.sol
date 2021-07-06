@@ -20,11 +20,10 @@ contract Distribution is GovernedAtGenesis, IDistribution {
 
     // Airdrop Account stuct (for memory)
     struct AirdropAccount {
-        uint256 lastClaimedTs;                    // Timestamp of last claimed wei/ last activity
         uint256 entitlementBalanceWei;            // 100% of entitled airdrop in Wei
         uint256 totalClaimedWei;                  // already claimed Wei
         uint256 optOutBalanceWei;                 // The balance that accounts is opting out (per account)
-        uint256 airdroppedAtGenesisWei;           // Amount airdropped at genesis (initial 15%)
+        uint256 airdroppedAtGenesisWei;           // Amount airdropped at genesis (initial airdrop amount)
         // HealthChecks:
         // * entitlementBalanceWei >= totalClaimedWei 
         // * entitlementBalanceWei == totalClaimedWei + optOutBalanceWei if optOutBalanceWei > 0
@@ -45,7 +44,6 @@ contract Distribution is GovernedAtGenesis, IDistribution {
     uint256 public totalClaimedWei;       // All wei already claimed
     uint256 public totalOptOutWei;        // The total opt-out Wei of all accounts that opt-out
     uint256 public withdrawnOptOutWei;    // Amount of opt-out Wei that was withdrawn by governance
-    uint256 public lastWithdrawTs;        // Last time the opt-out Wei was withdrawn from contract
     uint256 public entitlementStartTs;    // Day 0 when contract starts
 
     // Errors
@@ -109,7 +107,6 @@ contract Distribution is GovernedAtGenesis, IDistribution {
             uint256 entiteledWei = balance[i].sub(claimedAtGenesis);
             airdropAccounts[toAddress[i]] =
                 AirdropAccount({
-                    lastClaimedTs: 0,
                     entitlementBalanceWei: entiteledWei,
                     totalClaimedWei: 0,
                     optOutBalanceWei: 0,
@@ -129,7 +126,7 @@ contract Distribution is GovernedAtGenesis, IDistribution {
     function setEntitlementStart(uint256 _entitlementStartTs) external onlyGovernance mustBalance {
         require(entitlementStartTs == 0, ERR_NOT_ZERO);
         entitlementStartTs = _entitlementStartTs;
-        emit EntitlementStarted(address(this));
+        emit EntitlementStarted();
     }
 
     /**
@@ -144,8 +141,6 @@ contract Distribution is GovernedAtGenesis, IDistribution {
         emit AccountOptOut(msg.sender);
         // set all unclaimed wei to opt-out balance
         airdropAccount.optOutBalanceWei = airdropAccount.entitlementBalanceWei - airdropAccount.totalClaimedWei;
-        // Set the last Claimed timestamp to now
-        airdropAccount.lastClaimedTs = block.timestamp;
         // Add this accounts opt-out balance to full opt-out balance
         totalOptOutWei = totalOptOutWei.add(airdropAccount.optOutBalanceWei);
     }
@@ -164,8 +159,6 @@ contract Distribution is GovernedAtGenesis, IDistribution {
         require(_amountWei > 0, ERR_NO_BALANCE_CLAIMABLE);
         // Update claimed balance
         airdropAccount.totalClaimedWei += _amountWei;
-        // Update last claimed date
-        airdropAccount.lastClaimedTs = block.timestamp;
         // Update grand total claimed
         totalClaimedWei = totalClaimedWei.add(_amountWei);
         // Emit the claim event
@@ -186,31 +179,38 @@ contract Distribution is GovernedAtGenesis, IDistribution {
         // Update opt-out balance
         _amountWei = totalOptOutWei.sub(withdrawnOptOutWei);
         withdrawnOptOutWei = totalOptOutWei;
-        // Update last withdraw date
-        lastWithdrawTs = block.timestamp;
         // emit the event
-        emit OptOutWeiWithdrawn(_targetAddress);
+        emit OptOutWeiWithdrawn();
         // Send Wei to address
         payable(_targetAddress).transfer(_amountWei);
     }
 
     /**
-     * @notice current claimable amount of wei for account
-     * @param account the address of an account we want to get the available wei
+     * @notice current claimable amount of wei for requesting account
      * @return _amountWei amount of wei available for this account at current time
      */
-    function getClaimableAmount(address account) external view override entitlementStarted 
+    function getClaimableAmount() external view override entitlementStarted 
+    returns(uint256 _amountWei) {
+        _amountWei = _getCurrentClaimableWei(msg.sender);
+    }
+
+    /**
+     * @notice current claimable amount of wei for account
+     * @param account the address of an account we want to get the available wei
+     * @return _amountWei amount of wei available for provided account at current time
+     */
+    function getClaimableAmountOf(address account) external view override entitlementStarted 
     returns(uint256 _amountWei) {
         _amountWei = _getCurrentClaimableWei(account);
     }
 
     /**
-     * @notice Time till next Wei will be claimable
-     * @return timetill Time till next claimable Wei in seconds
+     * @notice Time till next Wei will be claimable (in secods)
+     * @return timeTill (sec) Time till next claimable Wei in seconds
      */
     function secondsTillNextClaim() external view override entitlementStarted 
-    returns(uint256 timetill) {
-        timetill = _timeTillNextClaim(msg.sender);
+    returns(uint256 timeTill) {
+        timeTill = _timeTillNextClaim(msg.sender);
     }
 
     /**
