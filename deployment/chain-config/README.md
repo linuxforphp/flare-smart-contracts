@@ -25,18 +25,20 @@
 - `priceEpochDurationSec` - price epoch duration. Default is 180s.
 - `rewardEpochsStartDelayInHours` - ofset of the start of reward epochs according to the time of deploy in hours. Could be decimal number in hours. Default is 0.17 which is about 10 mins.
 - `votePowerBoundaryFraction` - defines interval from which vote power block is randomly selected for a new reward epoch at reward epoch finalization. Say the value is 7 (which is default). Then the interval of block numbers from the start block of last reward epoch to the current block number is taken, divided in 7 equal subintervals and the vote power block for the next reward epoch is chosen from this interval. In case the `rewardEpochDurationSec` is 7 days, this would imply the choice of vote power block from the last day of the reward epoch that is being finalized.
-- `minVotePowerFlrThreshold` - 10000000000,  // TODO
-- `minVotePowerAssetThreshold` - 10000000000 // TODO
-- `maxVotePowerFlrThreshold` - 10 // TODO
-- `maxVotePowerAssetThreshold` - 10 // TODO
-- `lowAssetUSDThreshold` -  200000000 // TODO
-- `highAssetUSDThreshold` - 3000000000 // TODO
-- `highAssetTurnoutBIPSThreshold` - 100 // TODO
-- `lowFlrTurnoutBIPSThreshold` -  300,
-- `rewardFeePercentageUpdateOffset` - 3, // TODO
-- `defaultRewardFeePercentage` - 0 // TODO
-- `rewardExpiryOffset` -  100 // TODO
-- `trustedAddresses`- // TODO
+- `minVotePowerFlrThreshold` - low threshold factor for FLR vote power when revealing a price vote. Price can be revealed by user whose vote power is at least total vote power divided by minVotePowerFlrThreshold. To make this limitation insignificant, a large number, e.g. 10000000000, can be used.
+- `minVotePowerAssetThreshold` - low threshold factor for asset vote power when revealing a price vote. Price can be revealed by user whose vote power is at least total vote power divided by minVotePowerAssetThreshold. To make this limitation insignificant, a large number, e.g. 10000000000, can be used.
+- `maxVotePowerFlrThreshold` - high threshold for FLR vote power when revealing a price vote. Price revealed by user with vote power higher than the total vote power divided by maxVotePowerFlrThreshold is trimmed to this value. To make this limitation insignificant, a small number, e.g. 10, can be used.
+- `maxVotePowerAssetThreshold` - high threshold for asset vote power when revealing a price vote. Price revealed by user with vote power higher than the total vote power divided by maxVotePowerAssetThreshold is trimmed to this value. To make this limitation insignificant, a small number, e.g. 10, can be used.
+- `lowAssetUSDThreshold` - threshold for low asset vote power (in scaled USD). This parameter determines the base weight ratio between FLR and asset vote power. For test purposes we recommend 200000000.
+- `highAssetUSDThreshold` - threshold for high asset vote power (in scaled USD). This parameter determines the base weight ratio between FLR and asset vote power. For test purposes we recommend 3000000000.
+- `highAssetTurnoutBIPSThreshold` - threshold for high asset turnout (in BIPS). This parameter determines the weight ratio between FLR and asset vote power. For test purposes we recommend 100.
+- `lowFlrTurnoutBIPSThreshold` - threshold for low FLR turnout (in BIPS). If the turnout is smaller than this parameter, trusted addresses are used to determine the price. For test purposes we recommend 300.
+- `trustedAddresses`- a list of addresses. If `lowFlrTurnoutBIPSThreshold` is not reached, the prices revealed by the addresses from this list are used.
+- `rewardFeePercentageUpdateOffset` - reward fee percentage update timelock measured in reward epochs. The parameter determines in how many reward epochs the new fee percentage submitted by a data provider becomes effective. For test purposes we recommend 3.
+- `defaultRewardFeePercentage` - default value for fee percentage. If a data provider does not change the fee percentage, this is the default percentage used for fee deduction. When set to 0, this means there is no fee.
+- `rewardExpiryOffset` - in number of epochs. For test purposes we recommend 100. so if current reward epoch is 120, reward epochs 20 and below will expire. 
+- `rewardExpiryOffsetDays` - After how many days reward epoch funds expire and can not be claimed any more. if expiry value is 90 days and reward epoch length is 10 days. any reward epoch that was opened more then 90 days ago will expire. 
+
 - `initialWflrPrice` - initial price of FLR currency on deploy. Usually 0.   
 
 ## Currency settings
