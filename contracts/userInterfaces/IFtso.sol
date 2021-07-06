@@ -58,6 +58,10 @@ interface IFtso {
      */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external;
     
+    function hasSufficientFassetVotePower(address _owner) external returns(bool);
+    
+    function hasSufficientWflrVotePower(address _owner) external returns(bool);
+
     /**
      * @notice Returns if FTSO is active
      */
@@ -120,4 +124,5 @@ interface IFtso {
      * @notice Returns current random number
      */
     function getCurrentRandom() external view returns (uint256);
+
 }

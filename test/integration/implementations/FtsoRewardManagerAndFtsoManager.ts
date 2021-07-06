@@ -22,6 +22,7 @@ const Ftso = artifacts.require("Ftso");
 const MockContract = artifacts.require("MockContract");
 const WFLR = artifacts.require("WFlr");
 const InflationMock = artifacts.require("InflationMock");
+const MockPriceSubmitter = artifacts.require("MockContract");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -38,6 +39,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let wFlr: WFlrInstance;
     let mockInflation: InflationMockInstance;
     let ftsoRegistry: FtsoRegistryInstance;
+    let mockPriceSubmitter: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
@@ -64,12 +66,21 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         await mockInflation.setDailyAuthorizedInflation(BN(1000000));
         // Get the timestamp for the just mined block
         startTs = await time.latest();
-
+        
+        mockPriceSubmitter = await MockPriceSubmitter.new();
+        mockPriceSubmitter.givenMethodReturnUint(
+            web3.utils.sha3("addFtso(address)")!.slice(0,10),
+            0
+        )
+        mockPriceSubmitter.givenMethodReturnUint(
+            web3.utils.sha3("removeFtso(address)")!.slice(0,10),
+            0
+        )
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
             ftsoRewardManager.address,
-            accounts[7],
+            mockPriceSubmitter.address,
             ftsoRegistry.address,
             PRICE_EPOCH_DURATION_S,
             startTs,

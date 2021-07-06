@@ -50,6 +50,13 @@
       "dummyFAssetMinterMax": 4000000000,
       "initialPrice": 0
   },
+  "XLM": {
+    "fAssetName": "Flare Asset XLM (Lumen)",
+    "fAssetSymbol": "FXLM",
+    "fAssetDecimals": 6,
+    "dummyFAssetMinterMax": 7000000000,
+    "initialPrice": 0
+  },
   "XDG": {
       "fAssetName": "Flare Asset Dogecoin",
       "fAssetSymbol": "FXDG",
@@ -84,5 +91,12 @@
       "fAssetDecimals": 8,
       "dummyFAssetMinterMax": 10000000000,
       "initialPrice": 0
+  },
+  "BTC": {
+    "fAssetName": "Flare Asset BTC",
+    "fAssetSymbol": "FBTC",
+    "fAssetDecimals": 6,
+    "dummyFAssetMinterMax": 7000000000,
+    "initialPrice": 0
   }
 }

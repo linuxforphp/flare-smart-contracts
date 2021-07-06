@@ -11,7 +11,7 @@ The FTSO or ‘Flare Time Series Oracle’ is a service to gather price (and dat
 
 Price submissions are considered good if they are within the interquartile range (within 25% of either side) of the submissions around the weighted median price. The rewards will be distributed between good submissions according to the relative weight (balance / vote power) of each address. 
 
-An FTSO contract will be deployed for any new data signal supported by the Flare network, as determined by governance. The Flare Foundation currently plans to deploy contracts that will provide USD prices of FLR, XRP, LTC, XLM, DOGE, ADA, Algo, BCH, Digi and more to come.
+An FTSO contract will be deployed for any new data signal supported by the Flare network, as determined by governance. The Flare Foundation currently plans to deploy contracts that will provide USD prices of FLR, XRP, LTC, XLM, DOGE, ADA, Algo, BCH, Digi, BTC and more to come.
 
 More detail about the FTSO can be found here: [https://blog.flare.xyz/ftso-a-breakdown/](https://blog.flare.xyz/ftso-a-breakdown/)
 
@@ -47,7 +47,7 @@ Price epochs follow the commit and reveal scheme. The commit period is the price
 
 Together with price data, any price provider must add a random number to their price submissions. This helps seed the source of randomness on the Flare chain for FTSO operations that require randomization.
 
-Together with random, sender's addres is included in commited hash to prevent "shadowing" attacks, where one would just copy some other node submissions.
+Together with random, sender's address is included in committed hash to prevent "shadowing" attacks, where one would just copy some other data provider submissions.
 
 # Coding
 Following files expose all relevant functions and events:
@@ -73,17 +73,17 @@ Price and random should be the same ones that were used to create the hash in th
 As soon as the reveal period ends, the weighted median algorithm will process all revealed prices, and publish the median as the current price of the asset.
 
 ## Price submitter contract
-A Price submitter contract will enable each provider to send the above Txs batched together. One Tx can be used to suנmitPrice to all FTSO contracts and later to revealPrice in all FTSO contracts. Contract interface is [here](../../contracts/userInterfaces/IPriceSubmitter.sol)
+A Price submitter contract will enable each provider to send the above Txs batched together. One Tx can be used to suנmitPrice to all FTSO contracts and later to revealPrice in all FTSO contracts. Each asset is assigned an unique asset index that is managed by the `ftsoRegistry`.  Contract interface is [here](../../contracts/userInterfaces/IPriceSubmitter.sol)
 
 ```
    function submitPriceHashes(
-       IIFtso[] memory _ftsos,
+       uint256[] memory _assetIndices,
        bytes32[] memory _hashes
    ) external;
 
    function revealPrices(
        uint256 _epochId,
-       IIFtso[] memory _ftsos,
+       uint256[] memory _assetIndices,
        uint256[] memory _prices,
        uint256[] memory _randoms
    ) external;
