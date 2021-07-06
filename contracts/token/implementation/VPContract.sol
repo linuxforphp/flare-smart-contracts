@@ -267,7 +267,7 @@ contract VPContract is IIVPContract, Delegatable {
             bytes32 key = keccak256(abi.encode(_who, _blockNumber));
             uint256 cached = uninitializedVotePowerCache[key];
             if (cached != 0) {
-                return cached - 1;
+                return cached - 1;  // safe, cached != 0
             }
             uint256 balance = ownerToken.balanceOfAt(_who, _blockNumber);
             uninitializedVotePowerCache[key] = balance.add(1);

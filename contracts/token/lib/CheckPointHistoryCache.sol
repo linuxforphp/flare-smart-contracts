@@ -20,7 +20,7 @@ library CheckPointHistoryCache {
         // is it in cache?
         uint256 cachedValue = _self.cache[_blockNumber];
         if (cachedValue != 0) {
-            return (cachedValue - 1, false);
+            return (cachedValue - 1, false);    // safe, cachedValue != 0
         }
         // read from _checkPointHistory
         uint256 historyValue = _checkPointHistory.valueAt(_blockNumber);

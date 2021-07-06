@@ -200,12 +200,14 @@ contract Delegatable is IVPContractEvents {
         // Delegate new power
         if (_amount < priorAmount) {
             // Prior amount is greater, just reduce the delegated amount.
+            // subtraction is safe since _amount < priorAmount
             votePower.undelegate(_from, _to, priorAmount - _amount);
         } else {
             // Is there enough undelegated vote power?
             uint256 availableAmount = _undelegatedVotePowerOf(_from, _senderCurrentBalance).add(priorAmount);
             require(availableAmount >= _amount, UNDELEGATED_VP_TOO_SMALL_MSG);
             // Increase the delegated amount of vote power.
+            // subtraction is safe since _amount >= priorAmount
             votePower.delegate(_from, _to, _amount - priorAmount);
         }
         votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
@@ -265,8 +267,10 @@ contract Delegatable is IVPContractEvents {
 
         // Delegate new power
         if (newVotePower < reverseVotePower) {
+            // subtraction is safe since newVotePower < reverseVotePower
             votePower.undelegate(_from, _to, reverseVotePower - newVotePower);
         } else {
+            // subtraction is safe since newVotePower >= reverseVotePower
             votePower.delegate(_from, _to, newVotePower - reverseVotePower);
         }
         votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);

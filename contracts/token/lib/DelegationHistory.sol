@@ -99,6 +99,7 @@ library DelegationHistory {
                 cp.values.push(_value);
             }
         } else {
+            // historyCount - 1 is safe, since historyCount != 0
             CheckPoint storage lastCheckpoint = _self.checkpoints[historyCount - 1];
             uint256 lastBlock = lastCheckpoint.fromBlock;
             // slither-disable-next-line incorrect-equality
@@ -194,7 +195,7 @@ library DelegationHistory {
         uint256 length = cp.values.length;
         _total = 0;
         for (uint256 i = 0; i < length; i++) {
-            _total += cp.values[i];
+            _total = _total.add(cp.values[i]);
         }
     }
 
@@ -230,7 +231,7 @@ library DelegationHistory {
         uint256 length = cp.values.length;
         _total = 0;
         for (uint256 i = 0; i < length; i++) {
-            _total += cp.values[i].mulDiv(_mul, _div);
+            _total = _total.add(cp.values[i].mulDiv(_mul, _div));
         }
     }
 
@@ -260,6 +261,7 @@ library DelegationHistory {
         uint256 length = _self.checkpoints.length;
         if (length == 0) return 0;
         uint256 startIndex = _self.startIndex;
+        // length - 1 is safe, since length != 0 (check above)
         uint256 endIndex = Math.min(startIndex.add(_count), length - 1);    // last element can never be deleted
         uint256 index = startIndex;
         // we can delete `checkpoint[index]` while the next checkpoint is at `_cleanupBlockNumber` or before
@@ -270,7 +272,7 @@ library DelegationHistory {
         if (index > startIndex) {   // index is the first not deleted index
             _self.startIndex = index;
         }
-        return index - startIndex;  // always index >= startIndex
+        return index - startIndex;  // safe: index = startIndex at start and increases in loop
     }
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +311,7 @@ library DelegationHistory {
             if (_value != 0) {
                 _cp.values[i] = _value;
             } else {
-                _deleteDelegate(_cp, i, length);
+                _deleteDelegate(_cp, i, length - 1);  // length - 1 is safe:  0 <= i < length
             }
         } else {
             _appendDelegate(_cp, _delegate, _value, length);
@@ -324,12 +326,10 @@ library DelegationHistory {
         }
     }
     
-    function _deleteDelegate(CheckPoint storage _cp, uint256 _index, uint256 _length) private {
-        // no check that length > 0 (not needed, since we only call this from _updateDelegates 
-        // where delegate was found, therefore length > 0)
-        if (_index + 1 < _length) {
-            _cp.delegates[_index] = _cp.delegates[_length - 1];
-            _cp.values[_index] = _cp.values[_length - 1];
+    function _deleteDelegate(CheckPoint storage _cp, uint256 _index, uint256 _last) private {
+        if (_index < _last) {
+            _cp.delegates[_index] = _cp.delegates[_last];
+            _cp.values[_index] = _cp.values[_last];
         }
         _cp.delegates.pop();
         _cp.values.pop();
@@ -385,9 +385,9 @@ library DelegationHistory {
         if (historyCount == 0) {
             _found = false;
         } else if (_blockNumber >= block.number || _blockNumber >= _checkpoints[historyCount - 1].fromBlock) {
-            // _blockNumber >= block.number saves one storage read for reads ...AtNow
+            // _blockNumber >= block.number saves one storage read for reads at current block
             _found = true;
-            _index = historyCount - 1;
+            _index = historyCount - 1;  // safe, historyCount != 0 in this branch
         } else if (_blockNumber < _checkpoints[_startIndex].fromBlock) {
             // reading data before `_startIndex` is only safe before first cleanup
             require(_startIndex == 0, "Reading from old (cleaned-up) block");
