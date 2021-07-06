@@ -31,7 +31,7 @@
 - Governance renounced from deployer’s address to the Flare Foundation’s address.
 
 ### Step 2: 1 - x months from launch
-- Each month, another 3% is unlocked for claiming.
+- Each month, another 3% of total value is unlocked for claiming.
 - People can claim any unlocked funds using API: claimUnlockedAirdrop
 - Per call to claimUnlockedAirdrop:
     - Send the user the relative airdrop amount that has been unlocked and not yet claimed.

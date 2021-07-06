@@ -118,5 +118,9 @@
   {
     "name": "FtsoFdgb",
     "address": "0xA40A2298B02a8597321580fdAD8518A6d6601b6C"
+  },
+  {
+    "name": "Distribution",
+    "address": "0x29296bF8A0cC6D5E1aC7c25613715315D264F6A4"
   }
 ]
