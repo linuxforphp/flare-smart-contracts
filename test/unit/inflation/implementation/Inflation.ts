@@ -19,6 +19,15 @@ const ERR_TOPUP_LOW = "topup low";
 const ONLY_GOVERNANCE_MSG = "only governance";
 const ERR_IS_ZERO = "address is 0";
 
+const INFLATIONRECOGNIZED_EVENT = "InflationRecognized";
+const INFLATIONAUTHORIZED_EVENT = "InflationAuthorized";
+const TOPUPREQUESTED_EVENT = "TopupRequested";
+const REWARDSERVICETOPUPCOMPUTED_EVENT = "RewardServiceTopupComputed";
+const REWARDSERVICEDAILYAUTHORIZEDINFLATIONCOMPUTED_EVENT = "RewardServiceDailyAuthorizedInflationComputed";
+const SUPPLYSET_EVENT = "SupplySet";
+const MINTINGRECEIVED_EVENT = "MintingReceived";
+const REWARDSERVICETOPUPREQUESTRECEIVED_EVENT = "RewardServiceTopupRequestReceived";
+
 enum TopupType{ FACTOROFDAILYAUTHORIZED, ALLAUTHORIZED }
 
 const DEFAULT_TOPUP_FACTOR_X100 = 120;
@@ -83,7 +92,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         // Assume blockchain start time is 1/1/2021 - not a leap year
         // Act
-        await mockFlareKeeper.trigger();
+        const response = await mockFlareKeeper.trigger();
         const nowTs = await time.latest() as BN;
         // Assert
         const { 
@@ -95,6 +104,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(daysInAnnum, 365);
         assert.equal(startTimeStamp, nowTs.toNumber());
         assert.equal(endTimeStamp, nowTs.addn((365 * 86400) - 1).toNumber());
+        await expectEvent.inTransaction(response.tx, inflation, INFLATIONRECOGNIZED_EVENT, { amountWei: recognizedInflationWei });
       });
     });
 
@@ -108,11 +118,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // A year passes...
         await time.increaseTo(nowTs.addn((365 * 86400)));
         // Act
-        await mockFlareKeeper.trigger();
+        const response = await mockFlareKeeper.trigger();
         // Assert
         const {4: recognizedInflation} = await inflation.getTotals();
         // We should have twice the recognized inflation accumulated...
         assert.equal(recognizedInflation.toNumber(), inflationForAnnum * 2);
+        await expectEvent.inTransaction(response.tx, inflation, INFLATIONRECOGNIZED_EVENT, { amountWei: inflationForAnnum.toString() });
       });
     });
 
@@ -232,15 +243,18 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         // Set up one sharing percentage
         const sharingPercentages = [];
-        sharingPercentages[0] = {inflationReceiver: (await MockContract.new()).address, percentBips: 10000};
+        const inflationReceiver = await MockContract.new();
+        sharingPercentages[0] = {inflationReceiver: inflationReceiver.address, percentBips: 10000};
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await mockFlareKeeper.trigger();
+        const response = await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
         const {0: actualAuthorizedInflation} = await inflation.getTotals();
         assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
+        await expectEvent.inTransaction(response.tx, inflation, INFLATIONAUTHORIZED_EVENT, { amountWei: expectedAuthorizedInflation.toString() });
+        await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICEDAILYAUTHORIZEDINFLATIONCOMPUTED_EVENT, { inflationReceiver: inflationReceiver.address, amountWei: expectedAuthorizedInflation.toString() });
       });
 
       it("Should authorize inflation - first cycle, 2 sharing percentages", async() => {
@@ -382,23 +396,28 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         // Set up two sharing percentages
         const sharingPercentages = [];
-        sharingPercentages[0] = {inflationReceiver: (await MockContract.new()).address, percentBips: 3000};
-        sharingPercentages[1] = {inflationReceiver: (await MockContract.new()).address, percentBips: 7000};
+        const inflationReceiver0 = await MockContract.new();
+        const inflationReceiver1 = await MockContract.new();
+        sharingPercentages[0] = {inflationReceiver: inflationReceiver0.address, percentBips: 3000};
+        sharingPercentages[1] = {inflationReceiver: inflationReceiver1.address, percentBips: 7000};
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Act
-        await mockFlareKeeper.trigger();
+        const response = await mockFlareKeeper.trigger();
         // Assert
         const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
         // This should cap at one days authorization...not the factor
-        const expectedTopupService1 = Math.floor(expectedAuthorizedInflation * 0.3);
-        const expectedTopupService2 = expectedAuthorizedInflation - expectedTopupService1;
+        const expectedTopupService0 = Math.floor(expectedAuthorizedInflation * 0.3);
+        const expectedTopupService1 = expectedAuthorizedInflation - expectedTopupService0;
         const { 
           4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
         // Check topup inflation for first reward service
-        assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService1);
+        assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService0);
+        await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICETOPUPCOMPUTED_EVENT, {inflationReceiver: inflationReceiver0.address, amountWei: expectedTopupService0.toString()});
         // Check topup inflation for the second reward service
-        assert.equal(rewardServicesState.rewardServices[1].inflationTopupRequestedWei, expectedTopupService2);
+        assert.equal(rewardServicesState.rewardServices[1].inflationTopupRequestedWei, expectedTopupService1);
+        await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICETOPUPCOMPUTED_EVENT, {inflationReceiver: inflationReceiver1.address, amountWei: expectedTopupService1.toString()});
+        await expectEvent.inTransaction(response.tx, inflation, TOPUPREQUESTED_EVENT, { amountWei: (expectedTopupService0 + expectedTopupService1).toString() });
       });
 
       it("Should request inflation to topup - second cycle, 2 sharing percentages, by factor type (default)", async() => {
@@ -486,29 +505,34 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         // Set up two sharing percentages
         const sharingPercentages = [];
-        sharingPercentages[0] = {inflationReceiver: (await MockContract.new()).address, percentBips: 3000};
-        sharingPercentages[1] = {inflationReceiver: (await MockContract.new()).address, percentBips: 7000};
+        const inflationReceiver0 = await MockContract.new();
+        const inflationReceiver1 = await MockContract.new();
+        sharingPercentages[0] = {inflationReceiver: inflationReceiver0.address, percentBips: 3000};
+        sharingPercentages[1] = {inflationReceiver: inflationReceiver1.address, percentBips: 7000};
         const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
         await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
         // Prime topup request buckets
         await mockFlareKeeper.trigger();
         const {1: toMint} = await inflation.getTotals();
         // Act
-        await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint});
+        const response = await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint});
         // Assert
         const expectedReceivedInflation = Math.floor(inflationForAnnum / 365);
         // This should cap at one days authorization...not the factor
-        const expectedTopupService1 = Math.floor(expectedReceivedInflation * 0.3);
-        const expectedTopupService2 = expectedReceivedInflation - expectedTopupService1;
+        const expectedTopupService0 = Math.floor(expectedReceivedInflation * 0.3);
+        const expectedTopupService1 = expectedReceivedInflation - expectedTopupService0;
         const {4: rewardServicesState} = await inflation.getCurrentAnnum() as any;
         // Check topup inflation for first reward service
-        assert.equal(rewardServicesState.rewardServices[0].inflationTopupReceivedWei, expectedTopupService1);
+        assert.equal(rewardServicesState.rewardServices[0].inflationTopupReceivedWei, expectedTopupService0);
+        await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICETOPUPREQUESTRECEIVED_EVENT, { inflationReceiver: inflationReceiver0.address,  amountWei: expectedTopupService0.toString() });
         // Check topup inflation for the second reward service
-        assert.equal(rewardServicesState.rewardServices[1].inflationTopupReceivedWei, expectedTopupService2);
+        assert.equal(rewardServicesState.rewardServices[1].inflationTopupReceivedWei, expectedTopupService1);
+        await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICETOPUPREQUESTRECEIVED_EVENT, { inflationReceiver: inflationReceiver1.address,  amountWei: expectedTopupService1.toString() });
         
         // Running sum should be correct
         const {2: receivedTopup} = await inflation.getTotals();
-        assert.equal(receivedTopup.toNumber(), expectedTopupService1 + expectedTopupService2);
+        assert.equal(receivedTopup.toNumber(), expectedTopupService0 + expectedTopupService1);
+        await expectEvent.inTransaction(response.tx, inflation, MINTINGRECEIVED_EVENT, { amountWei: (expectedTopupService0 + expectedTopupService1).toString() });
       });
     });
 
@@ -538,14 +562,16 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
             latest + 2 * 86400 // Set time sometime after now, but at least two days to trigger new inflation if not exiting preemptively
         );
 
-        await inflation.setSupply(mockSupply.address);
+        const tx = await inflation.setSupply(mockSupply.address);
         await mockFlareKeeper.registerToKeep(inflation.address);
        
         // Act
         await mockFlareKeeper.trigger();
+        // Assert
         // It should return directly and not change lastAuthorizationTs
         const lastTs = await inflation.lastAuthorizationTs();
         assert.equal(lastTs.toNumber(), 0);
+        expectEvent(tx, SUPPLYSET_EVENT, {oldSupply: constants.ZERO_ADDRESS, newSupply: mockSupply.address});
       });
 
       it("Should fund toped up inflation - first cycle, 2 sharing percentages, by factor type (default)", async() => {

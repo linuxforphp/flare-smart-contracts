@@ -55,6 +55,19 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
     // DO NOT UPDATE - this affects supply contract, which is expected to be updated once a day
     uint256 internal constant AUTHORIZE_TIME_FRAME_SEC = 1 days;
 
+    event InflationAuthorized(uint256 amountWei);
+    event InflationRecognized(uint256 amountWei);
+    event MintingReceived(uint256 amountWei, uint256 selfDestructAmountWei);
+    event TopupRequested(uint256 amountWei);
+    event InflationPercentageProviderSet(IIInflationPercentageProvider inflationPercentageProvider);
+    event InflationSharingPercentageProviderSet(
+        IIInflationSharingPercentageProvider inflationSharingPercentageProvider);
+    event RewardServiceTopupComputed(IIInflationReceiver inflationReceiver, uint256 amountWei);
+    event RewardServiceDailyAuthorizedInflationComputed(IIInflationReceiver inflationReceiver, uint256 amountWei);
+    event RewardServiceTopupRequestReceived(IIInflationReceiver inflationReceiver, uint256 amountWei);
+    event SupplySet(IISupply oldSupply, IISupply newSupply);
+    event TopupConfigurationSet(TopupConfiguration topupConfiguration);
+
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
      */
@@ -149,6 +162,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
         if (selfDestructProceeds > 0) {
             totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructProceeds);
         }
+        emit MintingReceived(amountPostedWei, selfDestructProceeds);
     }
 
     /**
@@ -164,6 +178,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
         onlyGovernance
     {
         inflationPercentageProvider = _inflationPercentageProvider;
+
+        emit InflationPercentageProviderSet(_inflationPercentageProvider);
     }
 
     /**
@@ -180,6 +196,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
         onlyGovernance
     {
         inflationSharingPercentageProvider = _inflationSharingPercentageProvider;
+
+        emit InflationSharingPercentageProviderSet(_inflationSharingPercentageProvider);
     }
 
     /**
@@ -188,6 +206,7 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
      * @dev The supply contract is used to get and update the inflatable balance.
      */
     function setSupply(IISupply _supply) external notZero(address(_supply)) onlyGovernance {
+        emit SupplySet(supply, _supply);
         supply = _supply;
     }
 
@@ -222,6 +241,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
         topupConfiguration.topupType = _topupType;
         topupConfiguration.topupFactorX100 = _topupFactorX100;
         topupConfiguration.configured = true;
+
+        emit TopupConfigurationSet(topupConfiguration);
     }
 
     /**
@@ -274,6 +295,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
                 supply.getInflatableBalance(), 
                 inflationPercentageProvider.getAnnualPercentageBips()
             );
+            InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+            emit InflationRecognized(inflationAnnum.recognizedInflationWei);
         }
 
         uint256 currentAnnumEndTimeStamp = inflationAnnums.getCurrentAnnum().endTimeStamp;
@@ -285,6 +308,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
                 supply.getInflatableBalance(), 
                 inflationPercentageProvider.getAnnualPercentageBips()
             );
+            InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+            emit InflationRecognized(inflationAnnum.recognizedInflationWei);
         }
 
         // Is it time to authorize new inflation? Do it daily.
@@ -299,11 +324,15 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
                 inflationSharingPercentageProvider.getSharingPercentages()
             );
 
+            emit InflationAuthorized(amountAuthorizedWei);
+
             // Call supply contract to keep inflatable balance and circulating supply updated.
             supply.updateAuthorizedInflationAndCirculatingSupply(amountAuthorizedWei);
 
             // Time to compute topup amount for inflation receivers.
             uint256 topupRequestWei = inflationAnnums.computeTopupRequest(this);
+
+            emit TopupRequested(topupRequestWei);
 
             // Send mint request to the keeper.
             flareKeeper.requestMinting(topupRequestWei);

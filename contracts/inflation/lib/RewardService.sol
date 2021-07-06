@@ -53,6 +53,8 @@ library RewardService {
         uint256 inflationTopupWithdrawnWei;             // Total inflation minting sent to rewarding service contract
     }
 
+    event RewardServiceTopupComputed(IIInflationReceiver inflationReceiver, uint256 amountWei);
+
     /**
      * @notice Maintain authorized inflation total for service.
      * @param _amountWei Amount to add.
@@ -124,7 +126,8 @@ library RewardService {
             assert(false);
         }
         _self.inflationTopupRequestedWei = _self.inflationTopupRequestedWei.add(_topupRequestWei);
-        // TODO: Fire event
+        
+        emit RewardServiceTopupComputed(_self.inflationReceiver, _topupRequestWei);
     }
 
     /**
