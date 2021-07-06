@@ -579,7 +579,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         }
         uint256 cleanupBlock = rewardEpochs[nextRewardEpochToExpire].votepowerBlock;
         
-        try cleanupBlockNumberManager.cleanupUpToBlock(cleanupBlock) {
+        try cleanupBlockNumberManager.setCleanUpBlockNumber(cleanupBlock) {
         } catch Error(string memory message) {
             // closing of expired failed, which is not critical
             // just emit event for diagnostics

@@ -346,7 +346,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         uint256 _rewardEpoch, uint256 _currentRewardEpoch
     ) external override onlyFtsoManager {
         uint256 expiredRewards = 0;
-        // uint256 current = ftsoManager.getCurrentRewardEpoch();
         while(nextRewardEpochToExpire < _currentRewardEpoch && nextRewardEpochToExpire <= _rewardEpoch) {
             expiredRewards += 
                 totalRewardEpochRewards[nextRewardEpochToExpire] - 

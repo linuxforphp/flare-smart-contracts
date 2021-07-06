@@ -79,10 +79,10 @@ contract CleanupBlockNumberManager is Governed {
     }
 
     /**
-     * @notice Triggers setting clean up block number on managed cleanable tokens
+     * @notice Sets clean up block number on managed cleanable tokens
      * @param _blockNumber cleanup block number
      */
-    function cleanupUpToBlock(uint256 _blockNumber) external onlyTriggerOrGovernance {
+    function setCleanUpBlockNumber(uint256 _blockNumber) external onlyTriggerOrGovernance {
         uint256 len = registeredTokens.length;
         for (uint256 i = 0; i < len; i++) {
             try registeredTokens[i].setCleanupBlockNumber(_blockNumber) {
