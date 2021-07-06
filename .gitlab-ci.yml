@@ -78,12 +78,26 @@ test-contract-integration:
         - yarn c
         - yarn $TEST_INTEGRATION
 
-test-contract-token-fuzzing:
+test-fuzzing-token:
     stage: test
     <<: *yarn-setup
     script:
         - yarn c
         - yarn test_fuzzing_token
+
+test-fuzzing-token-cleanup-block:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - env CLEANUP_BLOCK=1500 SET_CLEANUP_BLOCK_AT=2100 yarn test_fuzzing_token
+
+test-fuzzing-token-repl-vpcontract:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - env REPLACE_VPCONTRACT_AT=1100 SPLIT_VPCONTRACTS_BLOCKS=500 yarn test_fuzzing_token
 
 test-contract-performance:
     stage: test

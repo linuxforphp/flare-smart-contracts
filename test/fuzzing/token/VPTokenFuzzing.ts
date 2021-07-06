@@ -48,6 +48,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     
     // the number of blocks to work with differrent read and write vpcontracts
     let SPLIT_VPCONTRACTS_BLOCKS = env.SPLIT_VPCONTRACTS_BLOCKS ? Number(env.SPLIT_VPCONTRACTS_BLOCKS) : 0;
+    
+    // index of the checkpoint where cleanup block number will be set (previous checkpoints will be discarded)
+    let CLEANUP_BLOCK = env.CLEANUP_BLOCK ? Number(env.CLEANUP_BLOCK) : null;
+    
+    // the block at which cleanup block number will be set
+    let SET_CLEANUP_BLOCK_AT = env.SET_CLEANUP_BLOCK_AT ? Number(env.SET_CLEANUP_BLOCK_AT) : CLEANUP_BLOCK;
 
     // END PARAMETERS
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -112,10 +118,13 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         console.log("Running actions...");
         for (let i = 1; i <= LENGTH; i++) {
             if (i % 100 === 0) console.log("   ", i);
+            
             const actions = history.checkpoints.size === 0 ? presentActions : allActions;
             const action = weightedRandomChoice(actions);
             simulator.context = i;
+            
             await action();
+            
             if (REPLACE_VPCONTRACT_AT != null) {
                 if (i === REPLACE_VPCONTRACT_AT) {
                     await replaceWriteVpContract();
@@ -124,16 +133,19 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
                     await replaceReadVpContract();
                 }
             }
+            
             const isCheckpoint = CHECKPOINT_LIST != null ? CHECKPOINT_LIST.includes(i) : (i < LENGTH && i % CHECKPOINT_EVERY === 0);
             if (isCheckpoint) {
                 await history.createCheckpoint('CP' + i);
-                // can only enable cleanup before first checkpoint, aince all checkpoints will be read at the end
-                if (history.checkpoints.size === 1) {
-                    await setCleanupBlock(0);
-                }
+            }
+
+            if (i === CLEANUP_BLOCK) {
+                await history.createCheckpoint('CLEANUP');
+            }
+            if (i === SET_CLEANUP_BLOCK_AT) {
+                await setCleanupBlock('CLEANUP');
             }
         }
-
     }
     
     async function replaceWriteVpContract() {
@@ -144,9 +156,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         await simulator.replaceReadVpContract(governance);
     }
 
-    async function setCleanupBlock(index: number) {
-        const cp = history.checkpointList()[index];
-        await simulator.setCleanupBlock(governance, cp.id);
+    async function setCleanupBlock(checkpointId: string) {
+        await simulator.setCleanupBlock(governance, checkpointId);
     }
     
     async function testTransfer() {
