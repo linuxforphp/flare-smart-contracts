@@ -15,11 +15,11 @@ interface IIVPToken is IVPToken, IICleanable {
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external;
     
     /**
-    * @notice Get the vote power at block `_blockNumber` using cache.
+    * @notice Get the total vote power at block `_blockNumber` using cache.
     *   It tries to read the cached value and if not found, reads the actual value and stores it in cache.
-    *   Can only be used if _blockNumber is in the past, otherwise reverts.    
+    *   Can only be used if `_blockNumber` is in the past, otherwise reverts.    
     * @param _blockNumber The block number at which to fetch.
-    * @return The vote power at the block.
+    * @return The total vote power at the block (sum of all accounts' vote powers).
     */
     function votePowerAtCached(uint256 _blockNumber) external returns(uint256);
     
