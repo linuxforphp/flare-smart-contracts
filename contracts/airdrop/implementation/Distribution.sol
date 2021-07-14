@@ -56,6 +56,7 @@ contract Distribution is GovernedAtGenesis, IDistribution {
     string internal constant ERR_FULLY_CLAIMED = "already fully claimed";
     string internal constant ERR_OPT_OUT = "already opted out";
     string internal constant ERR_NO_BALANCE_CLAIMABLE = "no balance currently available";
+    string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -99,7 +100,7 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      */
     function setClaimBalance(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);
-        require(toAddress.length == balance.length);
+        require(toAddress.length == balance.length, ERR_ARRAY_MISMATCH);
         for(uint16 i = 0; i < toAddress.length; i++) {
             // Assume that when the initial 15% was allocated, that any remainder was truncated.
             // Therefore, compute the difference to obtain the remaining entitlement balance.

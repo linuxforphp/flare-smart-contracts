@@ -18,6 +18,9 @@ const ERR_OPT_OUT = "already opted out";
 const ERR_NOT_STARTED = "not started";
 const ERR_FULLY_CLAIMED = "already fully claimed";
 const ERR_NO_BALANCE_CLAIMABLE = "no balance currently available";
+const ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
+const ERR_TOO_MANY = "too many";
+const ERR_NOT_REGISTERED = "not registered";
 
 const EVENT_ENTITLEMENT_STARTED = "EntitlementStarted";
 const EVENT_ACCOUNT_CLAIM = "AccountClaimed";
@@ -78,6 +81,32 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assert
       await expectEvent(addingEvent, EVENT_ACCOUNTS_ADDED);
     });
+
+    it("Should revert if accounts and balance length don't agree", async() => {
+      // Assemble
+      const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000), 
+        BN(1000), BN(1000), BN(1000), BN(1000)];
+      // Act
+      const addingEvent = distribution.setClaimBalance(claimants, balances, {from: genesisGovernance});
+      // Assert
+      await expectRevert(addingEvent, ERR_ARRAY_MISMATCH);
+    });
+
+    it("Should revert if we add to many accounts at once", async() => {
+      // Assemble
+      let addresses = [];
+      let balances = [];
+      for(let i = 0; i < 1001; i++) {
+        let account = web3.eth.accounts.create();
+        addresses[i] = account.address;
+        balances[i] = web3.utils.toWei(BN(420));
+      }
+      // Act
+      const addingEvent = distribution.setClaimBalance(addresses, balances, {from: genesisGovernance});
+      // Assert
+      await expectRevert(addingEvent, ERR_TOO_MANY);
+    });
+
   });
 
   describe("Claiming amounts", async() => {
@@ -226,25 +255,6 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     });
   });
 
-
-  describe("performance", async() => {
-    it.skip("Should bulk add 100K addresses with balances (in separate process)", async() => {
-      let sum = {gas: 0};
-      for (let txNumber = 0; txNumber < 100; txNumber++) {
-        let addresses = [];
-        let balances = [];
-        for(let i = 0; i < 1000; i++) {
-          let account = web3.eth.accounts.create();
-          addresses[i] = account.address;
-          balances[i] = web3.utils.toWei(BN(420));
-        }
-        console.log(`Adding tranche ${txNumber}...`);
-        sumGas(await distribution.setClaimBalance(addresses, balances, {from: genesisGovernance}), sum);
-      }
-      console.log(`Gas used: ${sum.gas}`);
-    });
-  });
-
   describe("account load", async() => {
     beforeEach(async() => {
       await bulkLoad(BN(1000));
@@ -344,6 +354,17 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await expectRevert(claimPrommise, ERR_NOT_STARTED);
     });
 
+    it("Should not be able to claim if not registered to distribution", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      // Act
+      const optOutRevert = distribution.claim({from: accounts[150]});
+      // Assert
+      await expectRevert(optOutRevert, ERR_NOT_REGISTERED);
+    });
+
     it("Should claim claimable entitlement 1 month from start", async() => {
       // Assemble
       await bestowClaimableBalance(BN(8500));
@@ -412,15 +433,28 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert.equal(totalClaimedWei.toNumber(),30);
     });
 
-    it.skip("Should not be able to claim if noting is alocated", async() => {
+    it("Should not be able to claim if no funds are claimable at given time", async() => {
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
       await distribution.setEntitlementStart(now, {from: genesisGovernance});
       // Act
-
+      const claimResult = distribution.claim({from: claimants[0]});
       // Assert
+      await expectRevert(claimResult, ERR_NO_BALANCE_CLAIMABLE);
+    });
 
+    it("Should not be able to claim if already claimed in this month", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      // Act
+      await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
+      await distribution.claim({from: claimants[0]});
+      const claimResult = distribution.claim({from: claimants[0]});
+      // Assert
+      await expectRevert(claimResult, ERR_NO_BALANCE_CLAIMABLE);
     });
 
     it("Should not be able to claim after opt-out", async() => {
@@ -445,6 +479,30 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const optOutEvent = await distribution.optOutOfAirdrop({from: claimants[0]});
       // Assert
       await expectEvent(optOutEvent, EVENT_ACCOUNT_OPT_OUT);
+    });
+
+    it("Should not be able to opt-out if not registered to distribution", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      // Act
+      const optOutRevert = distribution.optOutOfAirdrop({from: accounts[150]});
+      // Assert
+      await expectRevert(optOutRevert, ERR_NOT_REGISTERED);
+    });
+
+    it("Should not be able to opt-out after fully claimed", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      // Act
+      await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
+      await distribution.claim({from: claimants[0]});
+      const optOutRevert = distribution.optOutOfAirdrop({from: claimants[0]});
+      // Assert
+      await expectRevert(optOutRevert, ERR_FULLY_CLAIMED);
     });
 
     it("Should not be able to claim wei after opt-out even if it was allocated", async() => {
@@ -646,7 +704,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert.equal(entitlementPending.toNumber(), 850);
     });
 
-    it("Should not be able to get pending amount after opt out", async() => {
+    it("Should not be able to get pending amount after opt-out", async() => {
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
