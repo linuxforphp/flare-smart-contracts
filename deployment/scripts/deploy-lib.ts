@@ -94,6 +94,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
+  const VoterWhitelister = artifacts.require("VoterWhitelister");
   const WFLR = artifacts.require("WFlr");
   const Distribution = artifacts.require("Distribution");
 
@@ -115,7 +116,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   spewNewContractInfo(contracts, StateConnector.contractName, stateConnector.address, quiet);
 
   try {
-    stateConnector.initialiseChains();
+    await stateConnector.initialiseChains();
   } catch (e) {
     // state connector might be already initialized if redeploy
     console.error(`stateConnector.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
@@ -226,6 +227,10 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
   spewNewContractInfo(contracts, FtsoRegistry.contractName, ftsoRegistry.address, quiet);
 
+  // VoterWhitelisting
+  const voterWhitelister = await VoterWhitelister.new(currentGovernanceAddress, priceSubmitter.address, parameters.defaultVoterWhitelistSize);
+  spewNewContractInfo(contracts, VoterWhitelister.contractName, voterWhitelister.address, quiet);
+
   // Distribution Contract
   const distribution = await Distribution.new();
   spewNewContractInfo(contracts, Distribution.contractName, distribution.address, quiet);
@@ -251,6 +256,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   await priceSubmitter.setFtsoRegistry(ftsoRegistry.address, { from: currentGovernanceAddress });
   await priceSubmitter.setFtsoManager(ftsoManager.address, { from: currentGovernanceAddress });
+  await priceSubmitter.setVoterWhitelister(voterWhitelister.address, { from: currentGovernanceAddress });
 
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
@@ -316,8 +322,6 @@ export async function fullDeploy(parameters: any, quiet = false) {
     console.error("Setting FTSO manager governance parameters...");
   }
   await ftsoManager.setGovernanceParameters(
-    parameters.minVotePowerFlrThreshold,
-    parameters.minVotePowerAssetThreshold,
     parameters.maxVotePowerFlrThreshold,
     parameters.maxVotePowerAssetThreshold,
     parameters.lowAssetUSDThreshold,
@@ -351,6 +355,13 @@ export async function fullDeploy(parameters: any, quiet = false) {
     assert((await registry.getFtsoIndex(await assetContract.ftso.symbol())).eq(await hardcodedIndex), 'INVALID FTSO CONFIGURATION')
   }
 
+  // Set initial number of voters
+  for (let asset of ['FLR', ...assets]){
+
+    const assetContract = assetToContracts.get(asset)!; 
+    const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
+    await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, {from: currentGovernanceAddress});
+  }
 
   // Set FTSOs to multi FAsset WFLR contract
   let multiAssets = ["XRP", "LTC", "XDG"]
@@ -377,6 +388,8 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await ftsoRewardManager.proposeGovernance(governanceAccount.address);
   await validatorRewardManager.proposeGovernance(governanceAccount.address);
   await ftsoManager.proposeGovernance(governanceAccount.address);
+  await priceSubmitter.proposeGovernance(governanceAccount.address, { from: currentGovernanceAddress });
+  await voterWhitelister.proposeGovernance(governanceAccount.address, { from: currentGovernanceAddress });
 
   if (!quiet) {
     console.error("Contracts in JSON:");

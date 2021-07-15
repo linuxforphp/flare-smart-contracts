@@ -31,6 +31,7 @@
     "test_timewait": "env VM_FLARE_TEST=real yarn hardhat test --network scdev",
     "test_timewait_help": "echo 'Run tests with actual delays'",
     "test_fuzzing_token": "yarn hardhat test --network hardhat test/fuzzing/token/VPTokenFuzzing.ts",
+    "eslint": "eslint . --ext .ts",
     "---------DEPLOY---TEST---SCRIPTS": "",
     "test_deploy_local_scdev": "cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev TEST_PATH=./deployment/test yarn --silent hardhat test --no-compile --network scdev ./deployment/test/deploy.ts",
     "test_deploy_network_coston_private_beta": "cat deployment/deploys/coston-private-beta.json | env CHAIN_CONFIG=coston-private-beta TEST_PATH=./deployment/test yarn hardhat test --network costonPrivateBeta ./deployment/test/deploy.ts",
@@ -68,7 +69,10 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "@typescript-eslint/parser": "^4.28.3",
     "dotenv": "8.2.0",
+    "eslint": "^7.30.0",
     "got": "11.8.2",
     "hardhat": "2.3.0",
     "solhint": "3.3.2",

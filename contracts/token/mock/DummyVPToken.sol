@@ -52,6 +52,8 @@ contract DummyVPToken is ERC20, IIVPToken {
     function votePowerFromTo(address _from, address _to) external view override returns(uint256) {}
     function votePowerFromToAt(address _from, address _to, uint256 _blockNumber) external view override 
         returns(uint256) {}
+    function batchVotePowerOfAt(address[] memory _owners, uint256 _blockNumber) 
+        external view override returns(uint256[] memory) {}
 
     function name() public view override(ERC20, IVPToken) returns (string memory) {
         return ERC20.name();

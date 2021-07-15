@@ -5,7 +5,19 @@ import "../ftso/interface/IIFtso.sol";
 import "../genesis/interface/IIFtsoRegistry.sol";
 
 interface IPriceSubmitter {
-    // events
+    /**
+     * Event emitted when price hashes were submitted through PriceSubmitter.
+     * @param submitter the address of the sender
+     * @param epochId current price epoch id
+     * @param ftsos array of ftsos the correspond to the indexes in call
+     *      NOTE: if price cannot be submitted for a certain FTSO because the sender is not on the whitelist,
+     *      the corresponding `ftso[i]` will be `address(0)`; this way sender can detect if the reason fo failure
+     *      was insufficient vote power or some error inside `ftso.submitPriceHash`
+     * @param hashes the submitted hashes
+     * @param success array of booleans, indicating whether the submission of the corresponding hash has succeeded
+     *      NOTE: when there are more than MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS failures, the whole operation reverts
+     * @param timestamp current block timestamp
+     */
     event PriceHashesSubmitted(
         address indexed submitter,
         uint256 indexed epochId,
@@ -15,6 +27,19 @@ interface IPriceSubmitter {
         uint256 timestamp
     );
 
+    /**
+     * Event emitted when prices were revealed through PriceSubmitter.
+     * @param voter the address of the sender
+     * @param epochId id of the epoch in which the price hash was submitted
+     * @param ftsos array of ftsos the correspond to the indexes in the call
+     *      NOTE: if price cannot be submitted for a certain FTSO because the sender is not on the whitelist,
+     *      the corresponding `ftso[i]` will be `address(0)`; this way sender can detect if the reason fo failure
+     *      was insufficient vote power or some error inside `ftso.revealPrice`
+     * @param prices the submitted prices
+     * @param success array of booleans, indicating whether the submission of the corresponding price has succeeded
+     *      NOTE: when there are more than MAX_ALLOWED_NUMBER_OF_REVEAL_REVERTS failures, the whole operation reverts
+     * @param timestamp current block timestamp
+     */
     event PricesRevealed(
         address indexed voter,
         uint256 indexed epochId,
@@ -24,12 +49,7 @@ interface IPriceSubmitter {
         bool[] success,
         uint256 timestamp
     );
-
-    function requestFtsoFullVoterWhitelisting(address _voter) external;
-    function requestFtsoWhiteListingFassetHolder(address _voter, uint256 _ftsoIndex) external;
-    function requestFtsoWhiteListingWflrHolder(address _voter) external;
-
-
+    
     /**
      * @notice Submits price hashes for current epoch
      * @param _ftsoIndices          List of ftso indices
@@ -56,6 +76,13 @@ interface IPriceSubmitter {
         uint256[] memory _prices,
         uint256[] memory _randoms
     ) external;
+
+    /**
+     * Returns bitmap of all ftso's for which `_voter` is allowed to submit prices/hashes.
+     * If voter is allowed to vote for ftso at index (see *_FTSO_INDEX), the corrsponding
+     * bit in the result will be 1.
+     */    
+    function voterWhitelistBitmap(address _voter) external view returns (uint256);
 
     // Hardcoded FTSO indices for automatically deployed 
 

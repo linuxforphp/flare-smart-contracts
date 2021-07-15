@@ -241,21 +241,19 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should not set governance paramters if not from governance", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 5000, 10*DAY,[], { from: accounts[2] }), "only governance");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY,[], { from: accounts[2] }), "only governance");
         });
 
         it("Should not set governance paramters if not from governance", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 5000, 10*DAY,[], { from: accounts[2] }), "only governance");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY,[], { from: accounts[2] }), "only governance");
         });
 
         it("Should revert setting invalid governance parameters", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(0, 10, 5, 5, 50, 500, 500, 5000, 10*DAY, []), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 0, 5, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 0, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 0, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 500, 50, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 50000, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(10, 10, 5, 5, 50, 500, 500, 50000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 0, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10*DAY,[]), "Gov. params invalid");
         });
 
         it("Should activate", async () => {
@@ -301,7 +299,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const invocationCount = await mockFtso.invocationCountForMethod.call(activate);
             assert.equal(invocationCount.toNumber(), 1);
 
-            const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0,10); // first 4 bytes is function selector
+            const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0,10); // first 4 bytes is function selector
             const invocationCount2 = await mockFtso.invocationCountForMethod.call(configureEpochs);
             assert.equal(invocationCount2.toNumber(), 1);
         });
@@ -396,7 +394,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const invocationCount = await mockFtso.invocationCountForMethod.call(activate);
             assert.equal(invocationCount.toNumber(), 1);
 
-            const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0,10); // first 4 bytes is function selector
+            const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0,10); // first 4 bytes is function selector
             const invocationCount2 = await mockFtso.invocationCountForMethod.call(configureEpochs);
             assert.equal(invocationCount2.toNumber(), 1);
             
@@ -839,7 +837,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             // init reward epoch
-            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
+            let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
             let paramListBN = paramList.map(x => toBN(x));
             let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
@@ -885,7 +883,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let [ftso1, ftso2] = await settingWithFourFTSOs(accounts, ftsoManager, true);
 
             // init reward epoch
-            let defaultParamList = [1e10, 1e10, 1, 1, 1000, 10000, 50, 1500, 10*DAY];
+            let defaultParamList = [1, 1, 1000, 10000, 50, 1500, 10*DAY];
             let defaultParamListBN = defaultParamList.map(x => toBN(x));
             await (ftsoManager.setGovernanceParameters as any)(...defaultParamListBN, [accounts[6], accounts[7]]);   
 
@@ -930,7 +928,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
 
-            let paramList = [1e10 + 1, 1e10 + 2, 1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
+            let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
             let paramListBN = paramList.map(x => toBN(x));
             let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
@@ -1479,7 +1477,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 REVEAL_EPOCH_DURATION_S,
                 yearSeconds,
                 startTs,
-                VOTE_POWER_BOUNDARY_FRACTION
+                VOTE_POWER_BOUNDARY_FRACTION,
             );
 
             ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});

@@ -23,6 +23,7 @@ export class Contracts {
   public static readonly PRICE_SUBMITTER = "PriceSubmitter";
   public static readonly FTSO_MANAGER = "FtsoManager";
   public static readonly STATE_CONNECTOR = "StateConnector";
+  public static readonly VOTER_WHITELISTER = "VoterWhitelister";
   public static readonly FLARE_KEEPER = "FlareKeeper";
   public static readonly WFLR = "WFlr";
   public static readonly FXRP = "Fxrp";

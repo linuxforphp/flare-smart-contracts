@@ -271,6 +271,19 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function votePowerOfAt(address _owner, uint256 _blockNumber) external view override returns(uint256) {
         return _checkReadVpContract().votePowerOfAt(_owner, _blockNumber);
     }
+
+    /**
+     * Return vote powers for several addresses in a batch.
+     * @param _owners The list of addresses to fetch vote power of.
+     * @param _blockNumber The block number at which to fetch.
+     * @return A list of vote powers.
+     */    
+    function batchVotePowerOfAt(
+        address[] memory _owners, 
+        uint256 _blockNumber
+    ) external view override returns(uint256[] memory) {
+        return _checkReadVpContract().batchVotePowerOfAt(_owners, _blockNumber);
+    }
     
     /**
     * @notice Get the vote power of `_owner` at block `_blockNumber` using cache.

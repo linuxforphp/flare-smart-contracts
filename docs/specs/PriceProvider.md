@@ -24,7 +24,11 @@ Note that although WFLR and FLR always have the same value, they differ in usage
 
 ### Who can submit prices
 
-Any account (Flare address) submitting prices will require a minimum amount of WFLR voting power, and vote power must be some minimal percentage of the total WFLR supply. WFLR vote power reflects any given account’s balance, plus the vote power delegated by any other account. Use _getpriceepochdata()_ (below), to query minimal required vote power.
+~~Any account (Flare address) submitting prices will require a minimum amount of WFLR voting power, and vote power must be some minimal percentage of the total WFLR supply. WFLR vote power reflects any given account’s balance, plus the vote power delegated by any other account. Use _getpriceepochdata()_ (below), to query minimal required vote power.~~
+
+Minimal voting power is not enforced. This can enable a broader range of participation and discourage hoarding. The `VoterWhitelister` contract is in charge of allowing/disallowing price submissions. For each Ftso, a whitelist of up to `N` allowed voters is kept. The number of voters per asset can vary and is settable by Governance. When a price provider tries to whitelist himself, his power is calculated as sum of normalized fAsset and Wflr power for that Ftso whitelist. Normalization is done with respect to all power currently in the whitelist (the same way as median is calculated) and not the full vote power per asset. The prerequisite for a price provider is explicit whitelisting. Each user can require any address to be whitelisted by the VoterWhitelister contract. The request calculates the requesting user's power and conditionally adds that address to the whitelist. If the whitelist is not full, the price provider is added immediately. If the list is full, the user with minimal voter power is found and replaced with the requesting user only if the new user's power is strictly greater. When the number of voter slots is lowered, the voters get removed from whitelist one by one by removing the one with minimal power on each step. Events are fired to notify voters about the change of voter status on the whitelist.
+
+
 
 Price providers must have WFLR voting power and/or FAsset (flare XRP, flare LTC, etc.) voting power. However, only WFLR holders will receive FLR rewards for good price submissions.
 
@@ -102,8 +106,6 @@ The time frame for an epoch can be taken from:
        uint256 _epochSubmitEndTime,
        uint256 _epochRevealEndTime,
        uint256 _votePowerBlock,
-       uint256 _minVotePowerFlr,
-       uint256 _minVotePowerAsset,
        bool _fallbackMode
    );
 

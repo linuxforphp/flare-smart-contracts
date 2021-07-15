@@ -20,6 +20,8 @@ import {
   WFlrContract,
   WFlrInstance,
   FtsoRegistryInstance,
+  VoterWhitelisterInstance,
+  VoterWhitelisterContract,
 } from "../../../typechain-truffle";
 
 import { Contracts } from "../../../deployment/scripts/Contracts";
@@ -40,23 +42,6 @@ async function getRandom() {
 function preparePrice(price: number) {
   // Assume 5 decimals
   return Math.floor(price * 10 ** 5);
-};
-
-async function submitPrice(ftso: FtsoInstance, price: number, by: string): Promise<PriceInfo | undefined> {
-  let epochId = ((await ftso.getCurrentEpochId()) as BN).toString();
-  if (price) {
-    let preparedPrice = preparePrice(price);
-    let random = await getRandom();
-    let hash = submitPriceHash(preparedPrice, random, by);
-
-    console.log(`Submitting price ${preparedPrice} by ${by} for epoch ${epochId}`);
-
-    await ftso.submitPriceHash(hash!, { from: by });
-
-    const priceInfo = new PriceInfo(epochId, preparedPrice, random);
-    priceInfo.moveToNextStatus();
-    return priceInfo;
-  }
 };
 
 async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[], priceSubmitter: PriceSubmitterInstance, prices: number[], by: string): Promise<PriceInfo[] | undefined> {
@@ -85,16 +70,6 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[
     priceInfos.push(priceInfo);
   }
   return priceInfos
-};
-
-async function revealPrice(ftso: FtsoInstance, priceInfo: PriceInfo, by: string): Promise<void> {
-  if (priceInfo?.isSubmitted()) {
-    console.log(`Revealing price by ${by} for epoch ${priceInfo.epochId}`);
-
-    priceInfo.moveToNextStatus();
-
-    await ftso.revealPrice(priceInfo.epochId, priceInfo.priceSubmitted, priceInfo.random, { from: by });
-  }
 };
 
 async function revealPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[], priceSubmitter: PriceSubmitterInstance, priceInfos: PriceInfo[], by: string): Promise<void> {
@@ -167,6 +142,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let SuicidalMock: SuicidalMockContract;
   let suicidalMock: SuicidalMockInstance;
   let registry: FtsoRegistryInstance;
+  let VoterWhitelister: VoterWhitelisterContract;
+  let voterWhitelister: VoterWhitelisterInstance;
 
   before(async () => {
     // Get contract addresses of deployed contracts
@@ -182,6 +159,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     PriceSubmitter = artifacts.require("PriceSubmitter");
     priceSubmiter = await PriceSubmitter.at(contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    VoterWhitelister = artifacts.require("VoterWhitelister");
+    voterWhitelister = await VoterWhitelister.at(contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
+    
     WFlr = artifacts.require("WFlr");
     wFLR = await WFlr.at(contracts.getContractAddress(Contracts.WFLR));
     Supply = artifacts.require("Supply");
@@ -299,7 +279,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let submitters = [p1, p2, p3];
 
     for (let i = 0; i < submitters.length; i++) {
-      priceSubmiter.requestFtsoFullVoterWhitelisting(submitters[i]);
+      voterWhitelister.requestFullVoterWhitelisting(submitters[i]);
       let priceInfo = await submitPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, priceSeries[i], submitters[i]);
       submitterPrices.push(priceInfo!);
     }

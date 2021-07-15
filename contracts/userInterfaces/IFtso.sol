@@ -42,27 +42,6 @@ interface IFtso {
     );
 
     /**
-     * @notice Submits price hash for current epoch
-     * @param _hash Hashed price and random number
-     * @notice Emits PriceHashSubmitted event
-     */
-    function submitPriceHash(bytes32 _hash) external;
-
-    /**
-     * @notice Reveals submitted price during epoch reveal period
-     * @param _epochId              Id of the epoch in which the price hash was submitted
-     * @param _price                Submitted price in USD
-     * @param _random               Submitted random number
-     * @notice The hash of _price and _random must be equal to the submitted hash
-     * @notice Emits PriceRevealed event
-     */
-    function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external;
-    
-    function hasSufficientFassetVotePower(address _owner) external returns(bool);
-    
-    function hasSufficientWflrVotePower(address _owner) external returns(bool);
-
-    /**
      * @notice Returns if FTSO is active
      */
     function active() external view returns (bool);
@@ -78,8 +57,6 @@ interface IFtso {
      * @return _epochSubmitEndTime      End time of the current epoch price submission as seconds from unix epoch
      * @return _epochRevealEndTime      End time of the current epoch price reveal as seconds from unix epoch
      * @return _votePowerBlock          Vote power block for the current epoch
-     * @return _minVotePowerFlr         Minimal vote power for WFLR (in WFLR) for the current epoch
-     * @return _minVotePowerAsset       Minimal vote power for FAsset (in scaled USD) for the current epoch
      * @return _fallbackMode            Current epoch in fallback mode - only votes from trusted addresses will be used
      * @dev half-closed intervals - end time not included
      */
@@ -88,8 +65,6 @@ interface IFtso {
         uint256 _epochSubmitEndTime,
         uint256 _epochRevealEndTime,
         uint256 _votePowerBlock,
-        uint256 _minVotePowerFlr,
-        uint256 _minVotePowerAsset,
         bool _fallbackMode
     );
 

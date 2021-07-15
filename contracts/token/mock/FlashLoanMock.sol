@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import { WFlr } from "../implementation/WFlr.sol";
-import { Ftso } from "../../ftso/implementation/Ftso.sol";
+import { MockFtso } from "../../ftso/mock/MockFtso.sol";
 
 interface IFlashLenderMock {
     function requestFlareLoan(uint256 value) external;
@@ -43,14 +43,14 @@ contract FlashLenderMock is IFlashLenderMock {
 contract FlashLoanMock is IFlashLoanMock {
     FlashLenderMock private flashLender;
     WFlr private wflr;
-    Ftso private ftso;
+    MockFtso private ftso;
     
     uint256 private requestedValue;
     
     constructor(
         FlashLenderMock _flashLender,
         WFlr _wflr,
-        Ftso _ftso
+        MockFtso _ftso
     ) {
         flashLender = _flashLender;
         wflr = _wflr;
@@ -104,7 +104,7 @@ contract VotingFlashLoanMock is FlashLoanMock {
     constructor(
         FlashLenderMock _flashLender,
         WFlr _wflr,
-        Ftso _ftso
+        MockFtso _ftso
     ) FlashLoanMock(_flashLender, _wflr, _ftso) {
     }
     

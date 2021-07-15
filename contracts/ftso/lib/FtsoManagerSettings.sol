@@ -9,8 +9,6 @@ library FtsoManagerSettings {
         // struct holding settings related to FTSOs
         // configurable settings
         uint256 votePowerBlock; // current block at which the vote power is checked
-        uint256 minVotePowerFlrThreshold; // low threshold for FLR vote power per voter
-        uint256 minVotePowerAssetThreshold; // low threshold for asset vote power per voter
         uint256 maxVotePowerFlrThreshold; // high threshold for FLR vote power per voter
         uint256 maxVotePowerAssetThreshold; // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold; // threshold for low asset vote power (in scaled USD)
@@ -26,8 +24,6 @@ library FtsoManagerSettings {
 
     function _setState (
         State storage _state,
-        uint256 _minVotePowerFlrThreshold,
-        uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
@@ -37,14 +33,6 @@ library FtsoManagerSettings {
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) internal {
-        if(_state.minVotePowerFlrThreshold != _minVotePowerFlrThreshold) {
-            _state.changed = true;
-            _state.minVotePowerFlrThreshold = _minVotePowerFlrThreshold;
-        }
-        if(_state.minVotePowerAssetThreshold != _minVotePowerAssetThreshold) {
-            _state.changed = true;
-            _state.minVotePowerAssetThreshold = _minVotePowerAssetThreshold;
-        }
         if(_state.maxVotePowerFlrThreshold != _maxVotePowerFlrThreshold) {
             _state.changed = true;
             _state.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;

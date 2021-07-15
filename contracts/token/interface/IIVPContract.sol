@@ -115,6 +115,17 @@ interface IIVPContract is IICleanable, IVPContractEvents {
     * @return Vote power of `_who` at `_blockNumber`.
     */
     function votePowerOfAt(address _who, uint256 _blockNumber) external view returns(uint256);
+
+    /**
+     * Return vote powers for several addresses in a batch.
+     * @param _owners The list of addresses to fetch vote power of.
+     * @param _blockNumber The block number at which to fetch.
+     * @return A list of vote powers.
+     */    
+    function batchVotePowerOfAt(
+        address[] memory _owners, 
+        uint256 _blockNumber
+    ) external view returns(uint256[] memory);
     
     /**
     * @notice Get current delegated vote power `_from` delegator delegated `_to` delegatee.

@@ -34,8 +34,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
 
         await ftsoEpoch.setVotePowerBlock(1);
 
-        // uint256 _minVotePowerFlrThreshold,
-        // uint256 _minVotePowerAssetThreshold,
         // uint256 _maxVotePowerFlrThreshold,
         // uint256 _maxVotePowerAssetThreshold,
         // uint256 _lowAssetUSDThreshold,
@@ -43,7 +41,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         // uint256 _highAssetTurnoutBIPSThreshold,
         // uint256 _lowFlrTurnoutBIPSThreshold,
         // address[] memory _trustedAddresses
-        await ftsoEpoch.configureEpochs(500, 1000, 1, 2, 1000, 10000, 50, 1500, []);
+        await ftsoEpoch.configureEpochs(1, 2, 1000, 10000, 50, 1500, []);
     });
 
     it(`Should create new epoch`, async () => {
@@ -54,8 +52,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.votePowerAsset).to.equals('120');
         expect(epoch.maxVotePowerFlr).to.equals('40');
         expect(epoch.maxVotePowerAsset).to.equals('60');
-        expect(epoch.minVotePowerFlr).to.equals('0');
-        expect(epoch.minVotePowerAsset).to.equals('0');
         expect(epoch.highAssetTurnoutBIPSThreshold).to.equals('50');
         expect(epoch.lowFlrTurnoutBIPSThreshold).to.equals('1500');
     });
@@ -116,7 +112,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
 
     it(`Should change state of a new epoch only`, async () => {
         await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [3]);
-        await ftsoEpoch.configureEpochs(20, 5, 2, 1, 1000, 10000, 40, 1400, []);
+        await ftsoEpoch.configureEpochs(2, 1, 1000, 10000, 40, 1400, []);
         await ftsoEpoch.initializeInstanceForReveal(2, 70, 60, [mockVpToken.address], [50000], [2]);
 
         const epoch = await ftsoEpoch.getEpochInstance(1);
@@ -125,8 +121,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.votePowerAsset).to.equals('180');
         expect(epoch.maxVotePowerFlr).to.equals('40');
         expect(epoch.maxVotePowerAsset).to.equals('90');
-        expect(epoch.minVotePowerFlr).to.equals('0');
-        expect(epoch.minVotePowerAsset).to.equals('0');
         expect(epoch.highAssetTurnoutBIPSThreshold).to.equals('50');
         expect(epoch.lowFlrTurnoutBIPSThreshold).to.equals('1500');
 
@@ -136,8 +130,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch2.votePowerAsset).to.equals('100');
         expect(epoch2.maxVotePowerFlr).to.equals('30');
         expect(epoch2.maxVotePowerAsset).to.equals('100');
-        expect(epoch2.minVotePowerFlr).to.equals('3');
-        expect(epoch2.minVotePowerAsset).to.equals('20');
         expect(epoch2.highAssetTurnoutBIPSThreshold).to.equals('40');
         expect(epoch2.lowFlrTurnoutBIPSThreshold).to.equals('1400');
     });
@@ -246,7 +238,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
 
     it("Should compute weights correctly", async () => {
         let highAssetTurnoutBIPSThreshold = 9000;
-        await ftsoEpoch.configureEpochs(500, 1000, 1, 2, 1000, 10000, highAssetTurnoutBIPSThreshold, 1500, []);
+        await ftsoEpoch.configureEpochs(1, 2, 1000, 10000, highAssetTurnoutBIPSThreshold, 1500, []);
         await ftsoEpoch.initializeInstanceForReveal(1, 500, 400, [mockVpToken.address], [700000], [11]);
         await ftsoEpoch.addVote(1, accounts[0], 5, 50, 400000, 123);
         await ftsoEpoch.addVote(1, accounts[0], 6, 70, 200000, 321);
@@ -404,4 +396,3 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(revealInProcess6).to.equals(true);
     });
 });
-
