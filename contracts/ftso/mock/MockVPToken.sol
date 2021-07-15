@@ -75,13 +75,15 @@ contract MockVPToken is IIVPToken {
     function balanceOfAt(address owner, uint blockNumber) external view override returns (uint256) {}
     function votePowerFromTo(address from, address to) external view override returns(uint256) {}
     function votePowerFromToAt(address from, address to, uint blockNumber) external view override returns(uint256) {}
-    function delegationModeOf(address who) public view override returns (uint256 delegationMode) {}
-    function undelegatedVotePowerOf(address owner) public view override returns(uint256) {}
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) public view override returns (uint256) {}
-    function delegatesOfAt(address owner, uint256 blockNumber) public view override 
+    function delegationModeOf(address who) external view override returns (uint256 delegationMode) {}
+    function undelegatedVotePowerOf(address owner) external view override returns(uint256) {}
+    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view override returns (uint256) {}
+    function delegatesOfAt(address owner, uint256 blockNumber) external view override 
         returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode) {}
-    function delegatesOf(address owner) public view override 
+    function delegatesOf(address owner) external view override 
         returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode) {}
+    function batchVotePowerOfAt(address[] memory _owners, uint256 _blockNumber) 
+        external view override returns(uint256[] memory) {}
 
     function votePower() public view override returns(uint256) {}
     

@@ -64,6 +64,7 @@ const MockContract = artifacts.require("MockContract");
               flareKeeper.address,
               rewardManagerMock.address,
               accounts[7],
+              accounts[8],
               60,
               startTs,
               5,

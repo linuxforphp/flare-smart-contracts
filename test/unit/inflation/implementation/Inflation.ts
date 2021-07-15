@@ -3,7 +3,7 @@ import {
   FlareKeeperMockInstance,
   InflationInstance,
   InflationReceiverMockInstance,
-  MockContractInstance } from "../../../../typechain-truffle";
+  MockContractInstance, BokkyPooBahsDateTimeContractInstance } from "../../../../typechain-truffle";
 
 const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
 const getTestFile = require('../../../utils/constants').getTestFile;
@@ -14,6 +14,10 @@ const SharingPercentageProviderMock = artifacts.require("SharingPercentageProvid
 const InflationReceiverMock = artifacts.require("InflationReceiverMock");
 const FlareKeeperMock = artifacts.require("FlareKeeperMock");
 const FlareKeeper = artifacts.require("FlareKeeper");
+
+// This library has a lot of unit tests, so it seems, that we should be able to use it for 
+// timestamp conversion
+const DateTimeContract = artifacts.require("BokkyPooBahsDateTimeContract");
 
 const ERR_TOPUP_LOW = "topup low";
 const ONLY_GOVERNANCE_MSG = "only governance";
@@ -44,6 +48,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     let mockFlareKeeper: FlareKeeperMockInstance;
     let mockFlareKeeperInterface: FlareKeeperInstance;
     let startTs: BN;
+    let dateTimeContract: BokkyPooBahsDateTimeContractInstance;
     const supply = 1000000;
     const inflationBips = 1000;
     const inflationFactor = inflationBips / 10000;
@@ -56,7 +61,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         mockInflationReceiverInterface = await InflationReceiverMock.new();
         mockFlareKeeper = await FlareKeeperMock.new();
         mockFlareKeeperInterface = await FlareKeeper.new();
-
+        dateTimeContract = await DateTimeContract.new()
         // Force a block in order to get most up to date time
         await time.advanceBlock();
         // Get the timestamp for the just mined block
@@ -132,11 +137,13 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 1/2/2030
-        const timestamp_1_2_2030 = 1896134400;
-        assert.isAtLeast(timestamp_1_2_2030, nowTs.toNumber());
+        // Make sure the current blockchain time is before 1/2/2035
+        const timestamp_1_2_2035 = await dateTimeContract.timestampFromDate(2035, 2, 1);
+        // If this assertion fails, too many tests were runn before inflation tests and
+        // the chain time has advanced too far. You need to adjust starting dates accordingly
+        assert.isAtLeast(timestamp_1_2_2035.toNumber(), nowTs.toNumber(), "Too many tests before this test, increase the starting time");
         // Act
-        await time.increaseTo(timestamp_1_2_2030);
+        await time.increaseTo(timestamp_1_2_2035);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -149,16 +156,16 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(endTimeStamp-startTimeStamp,365*24*60*60-1);
       });
 
-      it("Counting annum length starting from date not in leap year" +
+      it("Counting annum length starting from date not in leap year " +
         "but after march one year before leap year", async() => {
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 30/6/2023
-        const timestamp_30_6_2031 = 1940544000;
-        assert.isAtLeast(timestamp_30_6_2031, nowTs.toNumber());
+        // Make sure the current blockchain time is before 30/6/2039
+        const timestamp_30_6_2039 = await dateTimeContract.timestampFromDate(2039, 6, 30);
+        assert.isAtLeast(timestamp_30_6_2039.toNumber(), nowTs.toNumber());
         // Act
-        await time.increaseTo(timestamp_30_6_2031);
+        await time.increaseTo(timestamp_30_6_2039);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -169,16 +176,16 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(endTimeStamp-startTimeStamp,366*24*60*60-1);
       });
 
-      it("Counting annum length starting on 28/2 not in leap year" +
+      it("Counting annum length starting on 28/2 not in leap year " +
         "but one year before leap year", async() => {
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 28/2/2027
-        const timestamp_28_2_2035 = 2056233600;
-        assert.isAtLeast(timestamp_28_2_2035, nowTs.toNumber());
+        // Make sure the current blockchain time is before 28/2/2043
+        const timestamp_28_2_2043 = await dateTimeContract.timestampFromDate(2043, 2, 28);;
+        assert.isAtLeast(timestamp_28_2_2043.toNumber(), nowTs.toNumber());
         // Act
-        await time.increaseTo(timestamp_28_2_2035);
+        await time.increaseTo(timestamp_28_2_2043);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -189,16 +196,16 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(endTimeStamp-startTimeStamp,365*24*60*60-1);
       });
 
-      it("Counting annum length starting from date in leap year" +
+      it("Counting annum length starting from date in leap year " +
         "but after 29/2 in a leap year", async() => {
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 30/6/2028
-        const timestamp_30_6_2036 = 2098396800;
-        assert.isAtLeast(timestamp_30_6_2036, nowTs.toNumber());
+        // Make sure the current blockchain time is before 30/6/2044
+        const timestamp_30_6_2044 = await dateTimeContract.timestampFromDate(2044, 6, 30);
+        assert.isAtLeast(timestamp_30_6_2044.toNumber(), nowTs.toNumber());
         // Act
-        await time.increaseTo(timestamp_30_6_2036);
+        await time.increaseTo(timestamp_30_6_2044);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -213,11 +220,11 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 29/2/2032
-        const timestamp_29_2_2040 = 2214086400;
-        assert.isAtLeast(timestamp_29_2_2040, nowTs.toNumber());
+        // Make sure the current blockchain time is before 29/2/2048
+        const timestamp_29_2_2048 = await dateTimeContract.timestampFromDate(2048, 2, 29);;
+        assert.isAtLeast(timestamp_29_2_2048.toNumber(), nowTs.toNumber());
         // Act
-        await time.increaseTo(timestamp_29_2_2040);
+        await time.increaseTo(timestamp_29_2_2048);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -659,7 +666,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assert
         const lastTs = (await inflation.rewardEpochStartedTs()).toNumber();
         
-        assert.equal(lastTs - 1, rewardTime.toNumber()); // Hardhat automatically advances time for 1 second after each transaction.
+        assert.isTrue(lastTs - 1 == rewardTime.toNumber() || lastTs == rewardTime.toNumber()); // Hardhat automatically advances time for 1 second after each transaction.
       });
 
     });

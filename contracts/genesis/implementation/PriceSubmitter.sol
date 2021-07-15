@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "../../governance/implementation/GovernedAtGenesis.sol";
 import "../interface/IIFtsoRegistry.sol";
 import "../interface/IIPriceSubmitter.sol";
+import "../interface/IIVoterWhitelister.sol";
 
 
 /**
@@ -12,20 +13,17 @@ import "../interface/IIPriceSubmitter.sol";
  */
 contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
-    string internal constant ERR_INSUFFICIENT_LISTED_VOTE_POWER = "Insufficient listed vote power";
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
     string internal constant ERR_TOO_MANY_REVERTS = "Too many reverts";
     string internal constant ERR_INVALID_INDEX = "Invalid index";
     string internal constant ERR_FTSO_MANAGER_ONLY = "FTSOManager only";
+    string internal constant ERR_WHITELISTER_ONLY = "Voter whitelister only";
+    string internal constant ERR_ALREADY_ADDED = "Already added";
 
     uint256 internal constant MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS = 2;
     uint256 internal constant MAX_ALLOWED_NUMBER_OF_REVEAL_REVERTS = 2;
 
-    uint256 internal constant WFLR_BITMASK = 1 << WFLR_INDEX; 
-
     // Currency indices
-    uint256 internal constant WFLR_INDEX = 255;
-
     // Most common used ftso indices, order is the same as in `specs/PriceProvider.md`
     uint256 public constant override FLR_FTSO_INDEX  = 0;
     uint256 public constant override FXRP_FTSO_INDEX  = 1;
@@ -40,16 +38,21 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
     IIFtsoRegistry internal ftsoRegistry; 
     IIFtsoManager internal ftsoManager;
+    
+    IIVoterWhitelister public voterWhitelister;
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
-    // WFLR_INDEX (the index of the last bit) is special and does not correspond to any 
-    // existing ftsos but to WFLR vote power which allows voter to vote on any ftso.
-    mapping(address => uint256) private whiteListedFtsoBitMap; 
+    mapping(address => uint256) private whitelistedFtsoBitmap; 
 
     mapping(bytes32 => uint256) private currencyBitmask;
 
     modifier onlyFtsoManager {
         require(msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
+        _;
+    }
+
+    modifier onlyWhitelister {
+        require(msg.sender == address(voterWhitelister), ERR_WHITELISTER_ONLY);
         _;
     }
 
@@ -61,89 +64,84 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         /* empty block */
     }
 
+    /**
+     * Sets ftso manager that will be allowed to manipulate ftsos.
+     * Only governance can call this method.
+     */
     function setFtsoManager(IIFtsoManager _ftsoManager) external override onlyGovernance {
         ftsoManager = _ftsoManager;
     }
 
+    /**
+     * Sets ftso registry.
+     * Only governance can call this method.
+     */
     function setFtsoRegistry(IIFtsoRegistry _ftsoRegistryToSet) external override onlyGovernance {
         ftsoRegistry = _ftsoRegistryToSet;
+        // price submitter sets ftso registry on whitelister
+        if (address(voterWhitelister) != address(0)) {
+            voterWhitelister.setFtsoRegistry(ftsoRegistry);
+        }
+    }
+    
+    /**
+     * Sets voter whitelist contract.
+     * Only governance can call this method.
+     * If replacing the whitelist and the old one is not empty, make sure to replicate the state, otherwise
+     * internal whitelist bitmaps won't match.
+     */
+    function setVoterWhitelister(IIVoterWhitelister _voterWhitelister) external override onlyGovernance {
+        voterWhitelister = _voterWhitelister;
+        // price submitter sets ftso registry on whitelister
+        _voterWhitelister.setFtsoRegistry(ftsoRegistry);
     }
 
-    function removeFtso(IIFtso _ftso) external override onlyFtsoManager {
+    /**
+     * Remove ftso and disallow price submissions.
+     * Only ftso manager can call this method.
+     * `_ftso` must already be in ftso registry and `_ftsoIndex` must match that in the registry.
+     */
+    function removeFtso(IIFtso _ftso, uint256 _ftsoIndex) external override onlyFtsoManager {
+        voterWhitelister.removeFtso(_ftsoIndex);
         // Set the bitmask to zero => Any submission will fail
-        bytes32 symbolHash = hashSymbol(_ftso.symbol());
+        bytes32 symbolHash = _hashSymbol(_ftso.symbol());
         delete currencyBitmask[symbolHash];
     }
+    
+    /**
+     * Called from whitelister when new voter has been whitelisted.
+     */
+    function voterWhitelisted(
+        address _voter, 
+        uint256 _ftsoIndex
+    ) external override onlyWhitelister {
+        whitelistedFtsoBitmap[_voter] |= 1 << _ftsoIndex;
+    }
+    
+    /**
+     * Called from whitelister when one or more voters have been removed.
+     */
+    function votersRemovedFromWhitelist(
+        address[] memory _removedVoters, 
+        uint256 _ftsoIndex
+    ) external override onlyWhitelister {
+        for (uint256 i = 0; i < _removedVoters.length; i++) {
+            whitelistedFtsoBitmap[_removedVoters[i]]  &= ~(1 << _ftsoIndex);
+        }
+    }
 
+    /**
+     * Add ftso to allow price submissions.
+     * Only ftso manager can call this method.
+     * `_ftso` must already be in ftso registry and `_ftsoIndex` must match that in the registry.
+     */
     function addFtso(IIFtso _ftso, uint256 _ftsoIndex) external override onlyFtsoManager {
-        bytes32 symbolHash = hashSymbol(_ftso.symbol());
-        require(currencyBitmask[symbolHash] == 0, "Already added");
+        bytes32 symbolHash = _hashSymbol(_ftso.symbol());
+        require(currencyBitmask[symbolHash] == 0, ERR_ALREADY_ADDED);
         currencyBitmask[symbolHash] = _ftsoIndex;
-    }   
-    /**
-     * @notice Recalculates whitelisted bitmask for provided address and just 
-     * for specified ftso index.
-     * Whitelisting information for other assets and WFlr is not updated 
-     */
-    function requestFtsoWhiteListingFassetHolder(address _voter, uint256 _ftsoIndex) external override {
-        require(_ftsoIndex != WFLR_INDEX, ERR_INVALID_INDEX);
-        uint256 currentVotingPower = whiteListedFtsoBitMap[_voter];
-        bool hasVotePower;
- 
-        IIFtso ftso = ftsoRegistry.getFtso(_ftsoIndex);
-        hasVotePower = ftso.hasSufficientFassetVotePower(_voter);
-        if(hasVotePower){
-            currentVotingPower |= (1 << _ftsoIndex);
-        }else{
-            currentVotingPower &= ~(1 << _ftsoIndex);
-        }
-        whiteListedFtsoBitMap[_voter] = currentVotingPower;
+        voterWhitelister.addFtso(_ftsoIndex);
     }
-
-    /**
-     * @notice Recalculates whitelist bitmask for WFLR (Wrapped Flare) for _voter address.
-     * Whitelisting information for fAssets is not updated. 
-     */
-    function requestFtsoWhiteListingWflrHolder(address _voter) external override {
-        IIFtso[] memory ftsos = ftsoRegistry.getSupportedFtsos();
-        uint256 len = ftsos.length;
-        if(len == 0){
-            return;
-        }
-        IIFtso dummyFtso = ftsos[0];
-
-        if(dummyFtso.hasSufficientWflrVotePower(_voter)){
-            whiteListedFtsoBitMap[_voter] = whiteListedFtsoBitMap[_voter] | WFLR_BITMASK;
-        }else{
-            whiteListedFtsoBitMap[_voter] = whiteListedFtsoBitMap[_voter] & ~WFLR_BITMASK;
-        }
-    }
-
-    /**
-     * @notice Recalculates full whitelist bitmask for WFLR (Wrapped Flare) and all fAsset for _voter address. 
-     */
-    function requestFtsoFullVoterWhitelisting(address _voter) external override {
-        
-        (uint256[] memory indices, IIFtso[] memory ftsos) = ftsoRegistry.getSupportedIndicesAndFtsos();
-        uint256 len = ftsos.length;
-        if(len == 0){
-            return;
-        }
-        IIFtso dummyFtso = ftsos[0];
-        uint256 voterMask = 0;
-        // Check WFLR power
-        if(dummyFtso.hasSufficientWflrVotePower(_voter)){
-            voterMask = WFLR_BITMASK; // equivalent to voterMask |= WFLR_MASK since voterMask == 0
-        }
-        // Check vote power for each active ftso
-        for(uint256 i = 0; i < len; ++i){
-            if(ftsos[i].hasSufficientFassetVotePower(_voter)) {
-                voterMask |= indices[i];
-            }
-        }
-        whiteListedFtsoBitMap[_voter] = voterMask;
-    }
-
+    
     /**
      * @notice Submits price hashes for current epoch
      * @param _ftsoIndices          List of ftso indices
@@ -151,31 +149,20 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      * @notice Emits PriceHashesSubmitted event
      */
     function submitPriceHashes(uint256[] memory _ftsoIndices, bytes32[] memory _hashes) external override {
-        uint256 allowedBitmask = whiteListedFtsoBitMap[msg.sender];
-        uint256 bitmask = 0;
+        // Submit the prices
         uint256 length = _ftsoIndices.length;
-        if(WFLR_BITMASK & allowedBitmask == 0){ 
-            // If address does not have the wflr power we check each fasset power
-
-            // Construct bitmask for all ftso indices to vote for
-            for(uint256 i = 0; i < length; ++i){
-                bitmask |= (1 << _ftsoIndices[i]);
-            }
-
-            uint256 result = allowedBitmask & bitmask;
-            // 
-            if(result != bitmask){
-                revert(ERR_INSUFFICIENT_LISTED_VOTE_POWER); 
-            } // result == _ftsoBitmask : \forall i. _ftsoBitmask[i] => allowedBitmask[i] 
-        
-        } // otherwise user has enough wflr power, fasset power is irrelevant
         bool[] memory success = new bool[](length);
         IIFtso[] memory ftsos = new IIFtso[](length);
         uint256 epochId;
-        uint256 numberOfReverts;
+        uint256 numberOfReverts = 0;
+        uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
         for (uint256 i = 0; i < length; i++) {
             uint256 ind = _ftsoIndices[i];
+            if (allowedBitmask & (1 << ind) == 0) {
+                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
+                continue;
+            }
             ftsos[i] = ftsoRegistry.getFtso(ind);
             try ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]) returns (uint256 _epochId) {
                 success[i] = true;
@@ -209,10 +196,15 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
         IIFtso[] memory ftsos = new IIFtso[](len);
         bool[] memory success = new bool[](len);
-        uint256 numberOfReverts;
+        uint256 numberOfReverts = 0;
+        uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
         for (uint256 i = 0; i < len; i++) {
             uint256 ind = _ftsoIndices[i];
+            if (allowedBitmask & (1 << ind) == 0) {
+                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
+                continue;
+            }
             ftsos[i] = ftsoRegistry.getFtso(ind);
             try ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i]) {
                 success[i] = true;
@@ -222,8 +214,17 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         }
         emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, success, block.timestamp);
     }
-
-    function hashSymbol(string memory _symbol) private pure returns(bytes32) {
+    
+    /**
+     * Returns bitmap of all ftso's for which `_voter` is allowed to submit prices/hashes.
+     * If voter is allowed to vote for ftso at index (see *_FTSO_INDEX), the corrsponding
+     * bit in the result will be 1.
+     */    
+    function voterWhitelistBitmap(address _voter) external view override returns (uint256) {
+        return whitelistedFtsoBitmap[_voter];
+    }
+    
+    function _hashSymbol(string memory _symbol) private pure returns(bytes32) {
         return keccak256(abi.encode(_symbol));
     }
 

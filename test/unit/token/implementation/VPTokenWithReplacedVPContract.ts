@@ -1,5 +1,5 @@
 import { VPContractInstance, VPTokenMockInstance } from "../../../../typechain-truffle";
-import { assertNumberEqual, compareArrays, toBN } from "../../../utils/test-helpers";
+import { assertNumberEqual, compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
@@ -79,6 +79,14 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[3], initBlk2), 0);
         });
 
+        it("Batch vote power should work, too", async () => {
+            // Assemble
+            // Act
+            const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3]], initBlk2);
+            // Assert
+            compareNumberArrays(result, [100, 100, 0]);
+        });
+
         it("Should delegate after replacement", async () => {
             // Assemble
             // Act
@@ -90,6 +98,19 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 140);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 10);
             assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 10);
+        });
+
+        it("Batch vote power should work after delegate", async () => {
+            // Assemble
+            // Act
+            await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
+            await vpToken.delegate(accounts[3], 4000, { from: accounts[1] });
+            await vpToken.delegate(accounts[4], 2000, { from: accounts[1] });
+            const blk1 = await web3.eth.getBlockNumber();
+            time.advanceBlock();
+            const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3], accounts[4]], blk1);
+            // Assert
+            compareNumberArrays(result, [0, 140, 40, 20]);
         });
 
         it("Should delegate explicit after replacement", async () => {

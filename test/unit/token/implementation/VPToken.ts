@@ -1,5 +1,5 @@
 import { VPTokenMockInstance } from "../../../../typechain-truffle";
-import { assertNumberEqual, compareArrays, toBN } from "../../../utils/test-helpers";
+import { assertNumberEqual, compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
@@ -983,6 +983,31 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assertNumberEqual(await vpToken.cleanupBlockNumber(), 2);
     await expectRevert(vpToken.setCleanupBlockNumber(1, { from: accounts[1] }),
       "only governance or manager");
+  });
+
+  it("Can read batch vote powers", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.mint(accounts[2], 200);
+    await vpToken.delegate(accounts[3], 5000, { from: accounts[1] });
+    const blk1 = await web3.eth.getBlockNumber();
+    time.advanceBlock();
+    // Act
+    const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3]], blk1);
+    // Assert
+    compareNumberArrays(result, [50, 200, 50]);
+  });
+
+  it("Can only read batch vote powers from the past", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    await vpToken.mint(accounts[2], 200);
+    await vpToken.delegate(accounts[3], 5000, { from: accounts[1] });
+    const blk1 = await web3.eth.getBlockNumber();
+    // Act
+    // Assert
+    await expectRevert(vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3]], blk1 + 2),
+      "a");
   });
 
 });

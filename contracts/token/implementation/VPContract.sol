@@ -301,11 +301,32 @@ contract VPContract is IIVPContract, Delegatable {
     * @param _blockNumber The block number at which to fetch.
     * @return Vote power of `_who` at `_blockNumber`.
     */
-    function votePowerOfAt(address _who, uint256 _blockNumber) external view override returns(uint256) {
+    function votePowerOfAt(address _who, uint256 _blockNumber) public view override returns(uint256) {
         if (_votePowerInitializedAt(_who, _blockNumber)) {
             return _votePowerOfAt(_who, _blockNumber);
         } else {
             return ownerToken.balanceOfAt(_who, _blockNumber);
+        }
+    }
+    
+    /**
+     * Return vote powers for several addresses in a batch.
+     * @param _owners The list of addresses to fetch vote power of.
+     * @param _blockNumber The block number at which to fetch.
+     * @return _votePowers A list of vote powers corresponding to _owners.
+     */    
+    function batchVotePowerOfAt(
+        address[] memory _owners, 
+        uint256 _blockNumber
+    ) external view override returns(uint256[] memory _votePowers) {
+        _votePowers = _batchVotePowerOfAt(_owners, _blockNumber);
+        // zero results might not have been initialized
+        if (isReplacement) {
+            for (uint256 i = 0; i < _votePowers.length; i++) {
+                if (_votePowers[i] == 0 && !_votePowerInitializedAt(_owners[i], _blockNumber)) {
+                    _votePowers[i] = ownerToken.balanceOfAt(_owners[i], _blockNumber);
+                }
+            }
         }
     }
     

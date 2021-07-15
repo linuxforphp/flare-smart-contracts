@@ -985,8 +985,6 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       const settings = await ftsoManager.settings();
       // Act
-      const minVotePowerFlrThreshold = settings[1];
-      const minVotePowerAssetThreshold = settings[2];
       const maxVotePowerFlrThreshold = settings[3];
       const maxVotePowerAssetThreshold = settings[4];
       const lowAssetUSDThreshold = settings[5];
@@ -994,8 +992,6 @@ contract(`deploy.ts system tests`, async accounts => {
       const highAssetTurnoutBIPSThreshold = settings[7];
       const lowFlrTurnoutBIPSThreshold = settings[8];
       // Assert
-      assert.equal(minVotePowerFlrThreshold.toNumber(), parameters.minVotePowerFlrThreshold);
-      assert.equal(minVotePowerAssetThreshold.toNumber(), parameters.minVotePowerAssetThreshold);
       assert.equal(maxVotePowerFlrThreshold.toNumber(), parameters.maxVotePowerFlrThreshold);
       assert.equal(maxVotePowerAssetThreshold.toNumber(), parameters.maxVotePowerAssetThreshold);
       assert.equal(lowAssetUSDThreshold.toNumber(), parameters.lowAssetUSDThreshold);

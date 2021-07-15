@@ -20,8 +20,6 @@ contract FtsoEpochMock {
         uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
-        uint256 minVotePowerFlr;                // min FLR vote power required for voting
-        uint256 minVotePowerAsset;              // min asset vote power required for voting
         uint256 maxVotePowerFlr;                // max FLR vote power required for voting
         uint256 maxVotePowerAsset;              // max asset vote power required for voting
         uint256 accumulatedVotePowerFlr;        // total FLR vote power accumulated from votes in epoch
@@ -94,8 +92,6 @@ contract FtsoEpochMock {
     }
 
     function configureEpochs(
-        uint256 _minVotePowerFlrThreshold,
-        uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
@@ -104,8 +100,6 @@ contract FtsoEpochMock {
         uint256 _lowFlrTurnoutBIPSThreshold,
         address[] memory _trustedAddresses
     ) public {
-        state.minVotePowerFlrThreshold = _minVotePowerFlrThreshold;
-        state.minVotePowerAssetThreshold = _minVotePowerAssetThreshold;
         state.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;
         state.maxVotePowerAssetThreshold = _maxVotePowerAssetThreshold;
         state.lowAssetUSDThreshold = _lowAssetUSDThreshold;
@@ -149,8 +143,6 @@ contract FtsoEpochMock {
         result.circulatingSupplyFlr = epoch.circulatingSupplyFlr;
         result.votePowerFlr = epoch.votePowerFlr;
         result.votePowerAsset = epoch.votePowerAsset;
-        result.minVotePowerFlr = epoch.minVotePowerFlr;
-        result.minVotePowerAsset = epoch.minVotePowerAsset;
         result.maxVotePowerFlr = epoch.maxVotePowerFlr;
         result.maxVotePowerAsset = epoch.maxVotePowerAsset;
         result.accumulatedVotePowerFlr = epoch.accumulatedVotePowerFlr;

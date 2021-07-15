@@ -206,6 +206,17 @@ export function compareArrays<T>(a: T[], b: T[]) {
     }
 }
 
+export function compareSets<T>(a: T[] | Iterable<T>, b: T[] | Iterable<T>) {
+    const aset = new Set(a);
+    const bset = new Set(b);
+    for (const elt of aset) {
+        assert.isTrue(bset.has(elt), `Element ${elt} missing in second set`);
+    }
+    for (const elt of bset) {
+        assert.isTrue(aset.has(elt), `Element ${elt} missing in first set`);
+    }
+}
+
 export function assertNumberEqual(a: BN, b: number, message?: string) {
     return assert.equal(a.toNumber(), b, message);
 }

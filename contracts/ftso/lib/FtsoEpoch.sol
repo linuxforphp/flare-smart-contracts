@@ -27,8 +27,6 @@ library FtsoEpoch {
         
         // configurable settings
         uint256 votePowerBlock;                 // current block at which the vote power is checked
-        uint256 minVotePowerFlrThreshold;       // low threshold for FLR vote power per voter
-        uint256 minVotePowerAssetThreshold;     // low threshold for asset vote power per voter
         uint256 maxVotePowerFlrThreshold;       // high threshold for FLR vote power per voter
         uint256 maxVotePowerAssetThreshold;     // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power (in scaled USD)
@@ -47,8 +45,6 @@ library FtsoEpoch {
         uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
-        uint256 minVotePowerFlr;                // min FLR vote power required for voting
-        uint256 minVotePowerAsset;              // min asset vote power required for voting
         uint256 maxVotePowerFlr;                // max FLR vote power required for voting
         uint256 maxVotePowerAsset;              // max asset vote power required for voting
         uint256 accumulatedVotePowerFlr;        // total FLR vote power accumulated from votes in epoch
@@ -110,8 +106,6 @@ library FtsoEpoch {
         _instance.lowFlrTurnoutBIPSThreshold = _state.lowFlrTurnoutBIPSThreshold;
         _instance.circulatingSupplyFlr = _circulatingSupplyFlr;
         _instance.votePowerFlr = _votePowerFlr;
-        _instance.minVotePowerFlr = _votePowerFlr / _state.minVotePowerFlrThreshold;
-        _instance.minVotePowerAsset = _instance.votePowerAsset / _state.minVotePowerAssetThreshold;
         _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrThreshold;
         _instance.maxVotePowerAsset = _instance.votePowerAsset / _state.maxVotePowerAssetThreshold;
         _instance.initializedForReveal = true;
@@ -285,6 +279,30 @@ library FtsoEpoch {
             );
         }
         return votePower;
+    }
+
+    /**
+     * Get multipliers for converting asset vote powers to asset vote power weights as in
+     * FTSO price calculation. Weights are multiplied by (TERA / BIPS100 * 1e18).
+     * Used in VoterWhitelister to emulate ftso weight calculation.
+     */
+    function _getAssetVoteMultipliers(
+        FtsoEpoch.State storage _state,
+        FtsoEpoch.Instance storage _instance
+    ) internal view returns (uint256[] memory _assetMultipliers) {
+        uint256 numAssets = _instance.assets.length;
+        _assetMultipliers = new uint256[](numAssets);
+        for (uint256 i = 0; i < numAssets; i++) {
+            if (address(_instance.assets[i]) != address(0)) {
+                uint256 divisor = _state.assetNorm[_instance.assets[i]];
+                // Since we divide by `_state.assetNorm[_instance.assets[i]]` we multiply by 1e18 to prevent underflow
+                // (we assume that assetNorm is never much bigger than that)
+                // The value is only used in VoterWhitelister._getAssetVotePowerWeights, where we divide by 1e18
+                _assetMultipliers[i] = _instance.assetWeightedPrices[i].mulDiv(TERA / BIPS100 * 1e18, divisor);
+            } else {
+                _assetMultipliers[i] = 0;
+            }
+        }
     }
 
     /**

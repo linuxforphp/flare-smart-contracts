@@ -60,8 +60,6 @@ interface IIFtso is IFtso {
     function updateInitialPrice(uint256 _initialPriceUSD, uint256 _initialPriceTimestamp) external;
 
     function configureEpochs(
-        uint256 _minVotePowerFlrThreshold,
-        uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
@@ -130,8 +128,6 @@ interface IIFtso is IFtso {
     
     /**
      * @notice Returns current configuration of epoch state
-     * @return _minVotePowerFlrThreshold        Low threshold for FLR vote power per voter
-     * @return _minVotePowerAssetThreshold      Low threshold for asset vote power per voter
      * @return _maxVotePowerFlrThreshold        High threshold for FLR vote power per voter
      * @return _maxVotePowerAssetThreshold      High threshold for FLR vote power per voter
      * @return _lowAssetUSDThreshold            Threshold for low asset vote power
@@ -141,8 +137,6 @@ interface IIFtso is IFtso {
      * @return _trustedAddresses                Trusted addresses - use their prices if low flr turnout is not achieved
      */
     function epochsConfiguration() external view returns (
-        uint256 _minVotePowerFlrThreshold,
-        uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
@@ -195,4 +189,24 @@ interface IIFtso is IFtso {
      * @return Price in USD multiplied by fAssetUSDDecimals
      */
     function getEpochPrice(uint256 _epochId) external view returns (uint256);
+
+    /**
+     * @notice Returns parameters necessary for approximately replicating vote weighting.
+     * @return _assets                  the list of fAssets that are accounted in vote
+     * @return _assetMultipliers        weight of each asset in (multiasset) ftso, mutiplied by TERA
+     * @return _totalVotePowerFlr       total FLR vote power at block
+     * @return _totalVotePowerAsset     total combined asset vote power at block
+     * @return _assetWeightRatio        ratio of combined asset vp vs. FLR vp (in BIPS)
+     * @return _votePowerBlock          vote powewr block for given epoch
+     */
+    function getVoteWeightingParameters() external view returns (
+        IIVPToken[] memory _assets,
+        uint256[] memory _assetMultipliers,
+        uint256 _totalVotePowerFlr,
+        uint256 _totalVotePowerAsset,
+        uint256 _assetWeightRatio,
+        uint256 _votePowerBlock
+    );
+    
+    function wFlr() external view returns (IIVPToken);
 }

@@ -880,7 +880,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     return testCase;
 }
 
-export async function submitPrice(signers: readonly SignerWithAddress[], ftso: Ftso, prices: number[]): Promise<{ epoch: number; }> {
+export async function submitPrice(signers: readonly SignerWithAddress[], ftso: MockFtso, prices: number[]): Promise<{ epoch: number; }> {
     const len = prices.length;
     let promises = [];
     let epochs: number[] = [];
@@ -901,7 +901,7 @@ export async function submitPrice(signers: readonly SignerWithAddress[], ftso: F
     return { epoch: uniqueEpochs[0] };
 }
 
-export async function revealPrice(signers: readonly SignerWithAddress[], ftso: Ftso, prices: number[], epoch: number) {
+export async function revealPrice(signers: readonly SignerWithAddress[], ftso: MockFtso, prices: number[], epoch: number) {
     const len = prices.length;
     let epochPromises = [];
     for (let i = 0; i < len; i++) {

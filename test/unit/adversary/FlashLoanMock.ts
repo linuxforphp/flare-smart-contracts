@@ -1,5 +1,5 @@
 import { soliditySha3Raw as soliditySha3 } from "web3-utils";
-import { FlashLenderMockInstance, FlashLoanMockInstance, FtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
+import { FlashLenderMockInstance, FlashLoanMockInstance, MockFtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
@@ -9,9 +9,10 @@ const FlashLenderMock = artifacts.require("FlashLenderMock");
 const FlashLoanMock = artifacts.require("FlashLoanMock");
 const VotingFlashLoanMock = artifacts.require("VotingFlashLoanMock");
 const Wflr = artifacts.require("WFlr");
-const Ftso = artifacts.require("Ftso");
+const Ftso = artifacts.require("MockFtso");
 const MockSupply = artifacts.require("MockContract");
 const Supply = artifacts.require("Supply");
+const MockFtso = artifacts.require("MockFtso");
 
 const FLARE = toBN(1e18);
 
@@ -34,7 +35,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
     let vpToken: VPTokenInstance;
     let mockSupply: MockContractInstance;
     let supplyInterface: SupplyInstance;
-    let ftso: FtsoInstance;
+    let ftso: MockFtsoInstance;
     let epochId: number;
     
     describe("take a loan", async () => {
@@ -55,15 +56,16 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             await setDefaultVPContract(wflr, accounts[0]);
             supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
             mockSupply = await MockSupply.new();
-            ftso = await Ftso.new(
+            ftso = await MockFtso.new(
                 "ATOK",
                 wflr.address,
                 accounts[10],
                 mockSupply.address,
+                0, 0, 0,    // special mock settings, not needed here
                 1,
                 1e10
             );
-            await ftso.configureEpochs(10, 10, 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
+            await ftso.configureEpochs( 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
             await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });
             // init lender
             flashLenderMock = await FlashLenderMock.new();
@@ -110,7 +112,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         });
         
         it("Should not be able to vote with flash loaned flares (vote power block equals loan block)", async () => {
-            const amount = toBN(5).mul(AMOUNT);
+            const amount = toBN(2).mul(AMOUNT);
             flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wflr.address, ftso.address);
             // request flash loan
             await flashLoanMock.testRequestLoan(amount);
@@ -146,10 +148,16 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // reveals
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }),
                 "PriceRevealed", { voter: accounts[1], epochId: toBN(epochId), price: toBN(500) });
-            await expectRevert(flashLoanMock.revealPrice(epochId, 380, 234),
-                "Insufficient vote power to submit vote");
+
+            const {0: wflrPowerLoan, } = await ftso.getVotePowerOf.call(flashLoanMock.address);
+            
+            // Loan should hold 0 voting power, but still be able to vote (voter whitelist takes care of this now).
+            assert.equal(wflrPowerLoan.toString(), "0");
+                
+            await flashLoanMock.revealPrice(epochId, 380, 234)
             // finalize price
             await increaseTimeTo((epochId + 1) * 120 + 60, 'web3'); // reveal period end
+            // The normal account should outwight loan anyway
             expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }),
                 "PriceFinalized", { epochId: toBN(epochId), price: toBN(500), finalizationType: toBN(1) });
         }
@@ -176,8 +184,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // take loan and vote
-            await expectRevert(votingFlashLoanMock.testRequestLoan(amount),
-                "Insufficient vote power to submit vote");
+
+            await votingFlashLoanMock.testRequestLoan(amount);
+
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }),
                 "PriceRevealed", { voter: accounts[1], epochId: toBN(epochId), price: toBN(500) });
             // finalize price

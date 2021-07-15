@@ -144,7 +144,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     ) external onlyGovernance {
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
-
+    
     /**
      * @notice Activates FTSO manager (keep() runs jobs)
      */
@@ -215,7 +215,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * @dev Deactivates _ftso
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
-        priceSubmitter.removeFtso(_ftso);
+        uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());
+        priceSubmitter.removeFtso(_ftso, ftsoIndex);
         ftsoRegistry.removeFtso(_ftso);
         _cleanFtso(_ftso);
     }
@@ -342,8 +343,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * @notice Sets governance parameters for FTSOs
      */
     function setGovernanceParameters(
-        uint256 _minVotePowerFlrThreshold,
-        uint256 _minVotePowerAssetThreshold,
         uint256 _maxVotePowerFlrThreshold,
         uint256 _maxVotePowerAssetThreshold,
         uint256 _lowAssetUSDThreshold,
@@ -353,8 +352,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external override onlyGovernance {
-        require(_minVotePowerFlrThreshold > 0, ERR_GOV_PARAMS_INVALID);
-        require(_minVotePowerAssetThreshold > 0, ERR_GOV_PARAMS_INVALID);
         require(_maxVotePowerFlrThreshold > 0, ERR_GOV_PARAMS_INVALID);
         require(_maxVotePowerAssetThreshold > 0, ERR_GOV_PARAMS_INVALID);
         require(_highAssetUSDThreshold >= _lowAssetUSDThreshold, ERR_GOV_PARAMS_INVALID);
@@ -362,8 +359,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         require(_lowFlrTurnoutBIPSThreshold <= 1e4, ERR_GOV_PARAMS_INVALID);
         require(_rewardExpiryOffsetSeconds > 600, ERR_REWARD_EXPIRY_OFFSET_INVALID);
         settings._setState(
-            _minVotePowerFlrThreshold,
-            _minVotePowerAssetThreshold,
             _maxVotePowerFlrThreshold,
             _maxVotePowerAssetThreshold,
             _lowAssetUSDThreshold,
@@ -455,8 +450,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
 
         // Configure 
         _ftso.configureEpochs(
-            settings.minVotePowerFlrThreshold,
-            settings.minVotePowerAssetThreshold,
             settings.maxVotePowerFlrThreshold,
             settings.maxVotePowerAssetThreshold,
             settings.lowAssetUSDThreshold,
@@ -732,8 +725,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         for (uint256 i = 0; i < numFtsos; i++) {
             if(settings.changed) {
                 _ftsos[i].configureEpochs(
-                    settings.minVotePowerFlrThreshold,
-                    settings.minVotePowerAssetThreshold,
                     settings.maxVotePowerFlrThreshold,
                     settings.maxVotePowerAssetThreshold,
                     settings.lowAssetUSDThreshold,

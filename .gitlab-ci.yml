@@ -1,4 +1,5 @@
 ### Stages
+## Temporary revert to run pipeline
 stages:
     - test
 

@@ -656,6 +656,25 @@ contract Delegatable is IVPContractEvents {
             return votePower.votePowerOfAtNow(_who);
         }
     }
+
+    /**
+     * Return vote powers for several addresses in a batch.
+     * Only works for past blocks.
+     * @param _owners The list of addresses to fetch vote power of.
+     * @param _blockNumber The block number at which to fetch.
+     * @return _votePowers A list of vote powers corresponding to _owners.
+     */    
+    function _batchVotePowerOfAt(
+        address[] memory _owners, 
+        uint256 _blockNumber
+    ) internal view notBeforeCleanupBlock(_blockNumber) returns(uint256[] memory _votePowers) {
+        require(_blockNumber < block.number, "Can only be used for past blocks");
+        _votePowers = new uint256[](_owners.length);
+        for (uint256 i = 0; i < _owners.length; i++) {
+            // read through cache, much faster if it has been set
+            _votePowers[i] = votePowerCache.valueOfAtReadonly(votePower, _owners[i], _blockNumber);
+        }
+    }
     
     /**
     * @notice Get the vote power of `_who` at block `_blockNumber`
