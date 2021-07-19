@@ -7,7 +7,7 @@ function padLeft(val: number | string, n=8) {
 function processGasReport() {
     let report = require("../gasReporterOutput.json")
     let methods: any[] = [];
-    for(let key in report.info.methods) {
+    for (const key of Object.keys(report.info.methods)) {
         methods.push(report.info.methods[key])
     }
     methods = methods.filter((x: any) => x.gasData.length > 0);

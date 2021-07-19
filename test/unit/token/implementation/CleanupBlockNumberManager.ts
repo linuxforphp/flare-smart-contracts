@@ -1,8 +1,8 @@
+import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { CleanupBlockNumberManagerInstance } from "../../../../typechain-truffle";
-import { assertNumberEqual, getTestFile, toBN, ZERO_ADDRESS } from "../../../utils/test-helpers";
+import { getTestFile } from "../../../utils/constants";
+import { assertNumberEqual, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-
-const { expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers');
 
 const VPToken = artifacts.require("VPTokenMock");
 const VPContract = artifacts.require("VPContract");
@@ -15,7 +15,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
 
     beforeEach(async () => {
         cbnManager = await CleanupBlockNumberManager.new(governance);
-        cbnManager.setTriggerContractAddress(trigger);
+        await cbnManager.setTriggerContractAddress(trigger);
     });
 
     it("Can set trigger", async () => {
@@ -145,7 +145,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         await vpToken2.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
         await cbnManager.registerToken(vpToken2.address, { from: governance });
         const blk1 = await web3.eth.getBlockNumber();
-        time.advanceBlock();
+        await time.advanceBlock();
         // Act
         await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
         // Assert
@@ -159,7 +159,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         await vpToken1.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
         await cbnManager.registerToken(vpToken1.address, { from: governance });
         const blk1 = await web3.eth.getBlockNumber();
-        time.advanceBlock();
+        await time.advanceBlock();
         // Act
         await cbnManager.setCleanUpBlockNumber(blk1, { from: trigger });
         // Assert
@@ -172,7 +172,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         await vpToken1.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
         await cbnManager.registerToken(vpToken1.address, { from: governance });
         const blk1 = await web3.eth.getBlockNumber();
-        time.advanceBlock();
+        await time.advanceBlock();
         // Act
         // Assert
         await expectRevert(cbnManager.setCleanUpBlockNumber(blk1, { from: accounts[1] }),
@@ -188,7 +188,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         await vpToken2.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
         await cbnManager.registerToken(vpToken2.address, { from: governance });
         const blk1 = await web3.eth.getBlockNumber();
-        time.advanceBlock();
+        await time.advanceBlock();
         // Act
         const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
         // Assert
@@ -205,10 +205,10 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         await vpToken2.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
         await cbnManager.registerToken(vpToken2.address, { from: governance });
         const blk1 = await web3.eth.getBlockNumber();
-        time.advanceBlock();
+        await time.advanceBlock();
         // Act
         await vpToken1.setCleanupBlockNumber(blk1 + 1);
-        await vpToken2.setCleanupBlockNumberManager(ZERO_ADDRESS, { from: governance });
+        await vpToken2.setCleanupBlockNumberManager(constants.ZERO_ADDRESS, { from: governance });
         const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
         // Assert
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken1.address, blockNumber: toBN(blk1), success: false });
@@ -223,8 +223,8 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         // Act
         const vpContract = await VPContract.at(await vpToken.readVotePowerContract());
         // detach vpContract from vpToken
-        await vpToken.setWriteVpContract(ZERO_ADDRESS);
-        await vpToken.setReadVpContract(ZERO_ADDRESS);
+        await vpToken.setWriteVpContract(constants.ZERO_ADDRESS);
+        await vpToken.setReadVpContract(constants.ZERO_ADDRESS);
         // register vpContract to cbnManager
         await vpContract.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
         await cbnManager.registerToken(vpContract.address, { from: governance });
@@ -232,7 +232,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         assert.equal(await cbnManager.registeredTokens(0), vpToken.address);
         assert.equal(await cbnManager.registeredTokens(1), vpContract.address);
         const blk1 = await web3.eth.getBlockNumber();
-        time.advanceBlock();
+        await time.advanceBlock();
         const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken.address, blockNumber: toBN(blk1), success: true });
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpContract.address, blockNumber: toBN(blk1), success: true });

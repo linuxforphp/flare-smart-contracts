@@ -7,7 +7,7 @@ import {
 import { IIStateConnectorInterface } from "../../../../typechain/IIStateConnector";
 import { compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
 
-const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
@@ -118,7 +118,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
         it("Should deactivate and disable claiming rewards", async () => {
             await validatorRewardManager.deactivate();
 
-            expectRevert(validatorRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
+            await expectRevert(validatorRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
         });
 
         it("Should revert calling deactivate if not from governance", async () => {

@@ -2,7 +2,7 @@ import { ExplicitDelegationMockInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
 // Unit tests for ExplicitDelegation through ExplicitDelegationMock contract
-const { expectRevert, constants } = require('@openzeppelin/test-helpers');
+import { expectRevert, constants } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const ExplicitDelegation = artifacts.require("ExplicitDelegationMock");

@@ -1,4 +1,4 @@
-const {constants, time} = require('@openzeppelin/test-helpers');
+import {constants, time} from '@openzeppelin/test-helpers';
 
 import { waitFinalize3 } from "../../test/utils/test-helpers";
 import { FlareKeeper } from "../../typechain";

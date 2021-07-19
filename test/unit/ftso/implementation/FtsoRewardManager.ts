@@ -15,7 +15,7 @@ import {
 import { compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
-const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 const fs = require('fs');
 
@@ -260,8 +260,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         it("Should deactivate and disable claiming rewards", async () => {
             await ftsoRewardManager.deactivate();
 
-            expectRevert(ftsoRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
-            expectRevert(ftsoRewardManager.claimRewardFromDataProviders(accounts[2], [0], [accounts[1]]), "reward manager deactivated");
+            await expectRevert(ftsoRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
+            await expectRevert(ftsoRewardManager.claimRewardFromDataProviders(accounts[2], [0], [accounts[1]]), "reward manager deactivated");
         });
 
         it("Should revert calling deactivate if not from governance", async () => {

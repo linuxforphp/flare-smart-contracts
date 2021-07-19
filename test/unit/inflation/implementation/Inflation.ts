@@ -5,7 +5,7 @@ import {
   InflationReceiverMockInstance,
   MockContractInstance, BokkyPooBahsDateTimeContractInstance } from "../../../../typechain-truffle";
 
-const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Inflation = artifacts.require("Inflation");
@@ -133,17 +133,71 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     });
 
     describe("annums lengths", async() => {
+      function isLeapYear(year: number) {
+        return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+      }
+      
+      async function timestampToDate(timestamp: BN): Promise<[year: number, month: number, day: number]> {
+        const { 0: year, 1: month, 2: day } = await dateTimeContract.timestampToDate(timestamp);
+        return [year.toNumber(), month.toNumber(), day.toNumber()];
+      }
+      
+      /**
+       * Return first timestamp after `timestamp` that has the given month and day
+       * and for which the year is of type `yearType`.
+       * @returns a timestamp for calculated date
+       */
+      async function firstDateLike(timestamp: BN, yearType: 'leap' | 'before_leap' | 'ordinary' | null, month: number, day: number): Promise<BN> {
+        let [year, cmonth, cday] = await timestampToDate(timestamp);
+        // advance year if month,day is before or equal to current date
+        if (cmonth > month || (cmonth === month && cday >= day)) ++year;
+        // adjust for leap year
+        if (yearType !== null) {
+          const yearsToLeapYearDict = { leap: 0, before_leap: 1, ordinary: 2 };
+          const yearsToLeapYear = yearsToLeapYearDict[yearType];
+          while (!isLeapYear(year + yearsToLeapYear)) ++year;
+        }
+        // convert back to timestamp
+        // console.log(`Test date: ${year}-${month}-${day}`);
+        return await dateTimeContract.timestampFromDate(year, month, day);
+      }
+      
+      it("Test firstDateLike calculation", async() => {
+        async function equalDate(timestamp: BN, [year, month, day]: [number, number, number]) {
+          const datets = await dateTimeContract.timestampFromDate(year, month, day);
+          assert.equal(timestamp.toNumber(), datets.toNumber());
+        }
+        {
+          const current = await dateTimeContract.timestampFromDate(2020, 1, 8);
+          await equalDate(await firstDateLike(current, null, 2, 1), [2020, 2, 1]);
+          await equalDate(await firstDateLike(current, 'leap', 2, 1), [2020, 2, 1]);
+          await equalDate(await firstDateLike(current, 'before_leap', 2, 1), [2023, 2, 1]);
+          await equalDate(await firstDateLike(current, 'ordinary', 2, 1), [2022, 2, 1]);
+        }
+        {
+          const current = await dateTimeContract.timestampFromDate(2022, 5, 1);
+          await equalDate(await firstDateLike(current, null, 2, 1), [2023, 2, 1]);
+          await equalDate(await firstDateLike(current, 'leap', 2, 1), [2024, 2, 1]);
+          await equalDate(await firstDateLike(current, 'before_leap', 2, 1), [2023, 2, 1]);
+          await equalDate(await firstDateLike(current, 'ordinary', 2, 1), [2026, 2, 1]);
+        }
+        {
+          const current = await dateTimeContract.timestampFromDate(2021, 2, 1);
+          await equalDate(await firstDateLike(current, null, 2, 1), [2022, 2, 1]);
+        }
+      });
+      
       it("Counting annum length in non leap year", async() => {
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 1/2/2035
-        const timestamp_1_2_2035 = await dateTimeContract.timestampFromDate(2035, 2, 1);
-        // If this assertion fails, too many tests were runn before inflation tests and
-        // the chain time has advanced too far. You need to adjust starting dates accordingly
-        assert.isAtLeast(timestamp_1_2_2035.toNumber(), nowTs.toNumber(), "Too many tests before this test, increase the starting time");
+        // a year yyyy-02-01 in the the future, that is not leap year
+        const timestampTest = await firstDateLike(nowTs, 'ordinary', 2, 1);
+        // Make sure the current blockchain time is before timestampTest
+        // this should always pass
+        assert.isAtLeast(timestampTest.toNumber(), nowTs.toNumber(), "Too many tests before this test, increase the starting time");
         // Act
-        await time.increaseTo(timestamp_1_2_2035);
+        await time.increaseTo(timestampTest);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -161,11 +215,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 30/6/2039
-        const timestamp_30_6_2039 = await dateTimeContract.timestampFromDate(2039, 6, 30);
-        assert.isAtLeast(timestamp_30_6_2039.toNumber(), nowTs.toNumber());
+        // a year yyyy-06-30 in the the future, that has 1 years to leap year
+        const timestampTest = await firstDateLike(nowTs, 'before_leap', 6, 30);
         // Act
-        await time.increaseTo(timestamp_30_6_2039);
+        await time.increaseTo(timestampTest);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -181,11 +234,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 28/2/2043
-        const timestamp_28_2_2043 = await dateTimeContract.timestampFromDate(2043, 2, 28);;
-        assert.isAtLeast(timestamp_28_2_2043.toNumber(), nowTs.toNumber());
+        // a year yyyy-02-28 in the the future, that has 1 year to leap year
+        const timestampTest = await firstDateLike(nowTs, 'before_leap', 2, 28);
         // Act
-        await time.increaseTo(timestamp_28_2_2043);
+        await time.increaseTo(timestampTest);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -201,11 +253,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 30/6/2044
-        const timestamp_30_6_2044 = await dateTimeContract.timestampFromDate(2044, 6, 30);
-        assert.isAtLeast(timestamp_30_6_2044.toNumber(), nowTs.toNumber());
+        // a year yyyy-06-30 in the the future, that is a leap year
+        const timestampTest = await firstDateLike(nowTs, 'leap', 6, 30);
         // Act
-        await time.increaseTo(timestamp_30_6_2044);
+        await time.increaseTo(timestampTest);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -220,11 +271,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assemble
         await time.advanceBlock();
         const nowTs = await time.latest() as BN;  
-        // Make sure the current blockchain time is before 29/2/2048
-        const timestamp_29_2_2048 = await dateTimeContract.timestampFromDate(2048, 2, 29);;
-        assert.isAtLeast(timestamp_29_2_2048.toNumber(), nowTs.toNumber());
+        // a year yyyy-02-29 in the the future, that is a leap year
+        const timestampTest = await firstDateLike(nowTs, 'leap', 2, 29);
         // Act
-        await time.increaseTo(timestamp_29_2_2048);
+        await time.increaseTo(timestampTest);
         await mockFlareKeeper.trigger();
         const { 
           1: daysInAnnum,
@@ -566,7 +616,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
             mockFlareKeeper.address,
             mockInflationPercentageProvider.address,
             mockInflationSharingPercentageProvider.address,
-            latest + 2 * 86400 // Set time sometime after now, but at least two days to trigger new inflation if not exiting preemptively
+            latest.toNumber() + 2 * 86400 // Set time sometime after now, but at least two days to trigger new inflation if not exiting preemptively
         );
 
         const tx = await inflation.setSupply(mockSupply.address);

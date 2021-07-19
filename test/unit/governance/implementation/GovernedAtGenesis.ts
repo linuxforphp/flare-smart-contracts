@@ -1,6 +1,6 @@
 import { GovernedAtGenesisInstance } from "../../../../typechain-truffle";
 
-const {constants, expectRevert, expectEvent} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, expectEvent} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const GovernedAtGenesis = artifacts.require("GovernedAtGenesis");

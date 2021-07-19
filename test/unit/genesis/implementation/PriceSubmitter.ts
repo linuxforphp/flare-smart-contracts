@@ -1,7 +1,7 @@
 import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WFlrContract, WFlrInstance } from "../../../../typechain-truffle";
-import { increaseTimeTo, lastOf, submitPriceHash, toBN, ZERO_ADDRESS } from "../../../utils/test-helpers";
+import { increaseTimeTo, lastOf, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Wflr = artifacts.require("WFlr") as WFlrContract;
@@ -39,7 +39,7 @@ async function setMockVotePowerOfAt(blockNumber: number, wflrVotePower: number, 
 
 async function setBatchMockVotePower(votePower: number[]) {
     // Both are address and block number are irrelevant. We just need them for proper method coding
-    const batchVotePowerOfAt = wflrInterface.contract.methods.batchVotePowerOfAt([ZERO_ADDRESS], 1).encodeABI();
+    const batchVotePowerOfAt = wflrInterface.contract.methods.batchVotePowerOfAt([constants.ZERO_ADDRESS], 1).encodeABI();
     const batchVotePowerOfAtReturn = web3.eth.abi.encodeParameter('uint256[]', votePower);
     await mockWflr.givenMethodReturn(batchVotePowerOfAt, batchVotePowerOfAtReturn);
 }
@@ -102,7 +102,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -140,35 +140,35 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             // Set 1 on index 0
             let tx = await voterWhitelister.requestWhitelistingVoter(accounts[10], 0);
             let bitmask = await priceSubmitter.voterWhitelistBitmap(accounts[10]);
-            await expectEvent(tx, "VoterWhitelisted", {voter: accounts[10], ftsoIndex: toBN(0)});
+            expectEvent(tx, "VoterWhitelisted", {voter: accounts[10], ftsoIndex: toBN(0)});
             
             // Should not reemit
             tx = await voterWhitelister.requestWhitelistingVoter(accounts[10], 0);
             bitmask = await priceSubmitter.voterWhitelistBitmap(accounts[10]);
-            await expectEvent.notEmitted(tx, "VoterWhitelisted");
+            expectEvent.notEmitted(tx, "VoterWhitelisted");
             assert.equal(bitmask.toNumber(), 1 * 2**0);
             
             // Set 1 on index 2
             tx = await voterWhitelister.requestWhitelistingVoter(accounts[10], 2);
             bitmask = await priceSubmitter.voterWhitelistBitmap(accounts[10]);
             assert.equal(bitmask.toNumber(), 1 * 2**0 + 1 * 2**2);
-            await expectEvent(tx, "VoterWhitelisted", {voter: accounts[10], ftsoIndex: toBN(2)});
+            expectEvent(tx, "VoterWhitelisted", {voter: accounts[10], ftsoIndex: toBN(2)});
 
             // Fill 10 voters
             await setBatchMockVotePower([...Array(11).keys()]);
             for(let i = 0; i < 9; ++i){
                 tx = await voterWhitelister.requestWhitelistingVoter(accounts[20 + i], 2);
 
-                await expectEvent(tx, "VoterWhitelisted", {voter: accounts[20 + i], ftsoIndex: toBN(2)});
-                await expectEvent.notEmitted(tx, "VoterRemovedFromWhitelist");
+                expectEvent(tx, "VoterWhitelisted", {voter: accounts[20 + i], ftsoIndex: toBN(2)});
+                expectEvent.notEmitted(tx, "VoterRemovedFromWhitelist");
 
             }
 
             // Should add and remove old
             tx = await voterWhitelister.requestWhitelistingVoter(accounts[11], 2);
 
-            await expectEvent(tx, "VoterWhitelisted", {voter: accounts[11], ftsoIndex: toBN(2)});
-            await expectEvent(tx, "VoterRemovedFromWhitelist", {voter: accounts[10], ftsoIndex: toBN(2)});
+            expectEvent(tx, "VoterWhitelisted", {voter: accounts[11], ftsoIndex: toBN(2)});
+            expectEvent(tx, "VoterRemovedFromWhitelist", {voter: accounts[10], ftsoIndex: toBN(2)});
 
 
             bitmask = await priceSubmitter.voterWhitelistBitmap(accounts[10]);
@@ -180,10 +180,10 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setBatchMockVotePower([...Array(10).keys()]);
 
             tx = await voterWhitelister.setMaxVotersForFtso(2, 8, {from : genesisGovernance});
-            await expectEvent(tx, "VoterRemovedFromWhitelist", {voter: accounts[20 + 0], ftsoIndex: toBN(2)});
+            expectEvent(tx, "VoterRemovedFromWhitelist", {voter: accounts[20 + 0], ftsoIndex: toBN(2)});
             // We do not know explicitly which will be the second one (too implementation defined as we are just mocking), 
             // just require another one to be kicked out
-            await expectEvent(tx, "VoterRemovedFromWhitelist", {ftsoIndex: toBN(2)});
+            expectEvent(tx, "VoterRemovedFromWhitelist", {ftsoIndex: toBN(2)});
 
             bitmask = await priceSubmitter.voterWhitelistBitmap(accounts[20 + 0]);
             assert.equal(bitmask.toNumber(), 0 * 2**0);
@@ -448,7 +448,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
             let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
-            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: [addresses[0], ZERO_ADDRESS, addresses[2]], hashes: hashes, success: [true, false, true]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: [addresses[0], constants.ZERO_ADDRESS, addresses[2]], hashes: hashes, success: [true, false, true]});
             
         });
 
@@ -476,7 +476,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = priceSubmitter.revealPrices(epochId, [1, 0, 2], prices, randoms, {from: accounts[1]});
-            expectRevert(tx2, ERR_TO_MANY_REVERTS);
+            await expectRevert(tx2, ERR_TO_MANY_REVERTS);
         });
 
         it("Should revert on too many errors reveal hashes", async () => {
@@ -497,7 +497,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = priceSubmitter.revealPrices(epochId, [1, 0, 2], [10, 10, 10], randoms, {from: accounts[1]});
-            expectRevert(tx2, ERR_TO_MANY_REVERTS);
+            await expectRevert(tx2, ERR_TO_MANY_REVERTS);
         });
 
         it("Should signal which ftso failed reveal", async () => {
@@ -524,7 +524,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = await priceSubmitter.revealPrices(epochId, [1, 0, 2], prices, randoms, {from: accounts[1]});
-            expectEvent(tx2, "PricesRevealed", {voter: accounts[1], epochId: toBN(epochId), ftsos: [addresses[0], ZERO_ADDRESS, addresses[2]], prices: pricesBN, randoms: randomsBN, success: [true, false, true]});
+            expectEvent(tx2, "PricesRevealed", { voter: accounts[1], epochId: toBN(epochId), ftsos: [addresses[0], constants.ZERO_ADDRESS, addresses[2]], prices: pricesBN, randoms: randomsBN, success: [true, false, true]});
             
             // Nothing should happen here
             let ftso0Event = await ftsos[0].getPastEvents("PriceRevealed");

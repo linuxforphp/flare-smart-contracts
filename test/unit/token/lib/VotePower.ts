@@ -2,7 +2,7 @@ import { VotePowerMockContract, VotePowerMockInstance } from "../../../../typech
 import { toBN } from "../../../utils/test-helpers";
 
 // Unit tests for VotePower through VotePowerMock contract
-const {expectRevert, constants} = require('@openzeppelin/test-helpers');
+import {expectRevert, constants} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VotePower = artifacts.require("VotePowerMock") as VotePowerMockContract;

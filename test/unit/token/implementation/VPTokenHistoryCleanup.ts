@@ -4,7 +4,7 @@ import { assertNumberEqual } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
-const { constants, expectRevert, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
@@ -53,7 +53,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
         it("cleaning empty history is a no-op", async () => {
             // Assemble
             const blk1 = await web3.eth.getBlockNumber();
-            time.advanceBlock();
+            await time.advanceBlock();
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
             await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
@@ -89,7 +89,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.mint(accounts[1], 100);
             await vpToken.delegate(accounts[2], 1000, { from: accounts[1] });
             const blk1 = await web3.eth.getBlockNumber();
-            time.advanceBlock();
+            await time.advanceBlock();
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
             await vpToken.setCleanupBlockNumber(blk1, { from: accounts[0] });

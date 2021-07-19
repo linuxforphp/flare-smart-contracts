@@ -1,7 +1,7 @@
 import { FlareKeeperInstance, 
   MockContractInstance } from "../../../typechain-truffle";
 
-const {time} = require('@openzeppelin/test-helpers');
+import {time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
 const genesisGovernance = require('../../utils/constants').genesisGovernance;
 import { advanceBlock } from '../../utils/test-helpers';

@@ -1,6 +1,6 @@
 import { FAssetTokenContract, FAssetTokenInstance } from "../../../../typechain-truffle";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-const { expectRevert } = require('@openzeppelin/test-helpers');
+import { expectRevert } from '@openzeppelin/test-helpers';
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 

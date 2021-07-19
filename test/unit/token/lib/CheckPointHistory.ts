@@ -1,7 +1,7 @@
 import { CheckPointHistoryMockContract, CheckPointHistoryMockInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
-const { expectRevert } = require('@openzeppelin/test-helpers');
+import { expectRevert } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock") as CheckPointHistoryMockContract;
 

@@ -4,7 +4,7 @@ import { toBN } from "../../utils/test-helpers";
 const getTestFile = require('../../utils/constants').getTestFile;
 const {sumGas, calcGasCost } = require('../../utils/eth'); 
 const genesisGovernance = require('../../utils/constants').genesisGovernance;
-const { expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 
 const BN = web3.utils.toBN;
 
@@ -79,7 +79,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       const addingEvent = await distribution.setClaimBalance(claimants, balances, {from: genesisGovernance});
       // Assert
-      await expectEvent(addingEvent, EVENT_ACCOUNTS_ADDED);
+      expectEvent(addingEvent, EVENT_ACCOUNTS_ADDED);
     });
 
     it("Should revert if accounts and balance length don't agree", async() => {
@@ -302,7 +302,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assert
       const entitlementStartTs = await distribution.entitlementStartTs();
       assert(entitlementStartTs.eq(now));
-      await expectEvent(startEvent, EVENT_ENTITLEMENT_STARTED);
+      expectEvent(startEvent, EVENT_ENTITLEMENT_STARTED);
     });
 
     it("Should not start entitlement if not in balance", async() => {
@@ -391,7 +391,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       const claimResult = await distribution.claim({from: claimants[0]});
       // Assert
-      await expectEvent(claimResult, EVENT_ACCOUNT_CLAIM);
+      expectEvent(claimResult, EVENT_ACCOUNT_CLAIM);
     });
 
     it("Should update variables after claimal", async() => {
@@ -478,7 +478,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       const optOutEvent = await distribution.optOutOfAirdrop({from: claimants[0]});
       // Assert
-      await expectEvent(optOutEvent, EVENT_ACCOUNT_OPT_OUT);
+      expectEvent(optOutEvent, EVENT_ACCOUNT_OPT_OUT);
     });
 
     it("Should not be able to opt-out if not registered to distribution", async() => {
@@ -581,7 +581,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       const withdrawnResult = await distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: genesisGovernance});
       // Assert
-      await expectEvent(withdrawnResult, EVENT_OPT_OPT_WITHDRAWN);
+      expectEvent(withdrawnResult, EVENT_OPT_OPT_WITHDRAWN);
     });
 
     it("Should be able to withdraw if some account opts out 2", async() => {

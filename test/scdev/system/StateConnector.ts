@@ -4,7 +4,7 @@ import { advanceBlock, waitFinalize3 } from '../../utils/test-helpers';
 
 const StateConnector = artifacts.require("StateConnector");
 
-const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
 
 declare type TransactionData = {

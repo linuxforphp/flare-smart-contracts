@@ -29,7 +29,7 @@ import { PriceInfo } from '../../utils/PriceInfo';
 import { moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils"
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
 import { increaseTimeTo, submitPriceHash } from '../../utils/test-helpers';
-const { expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
 var randomNumber = require("random-number-csprng");
@@ -235,7 +235,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     }
 
     // Verify that rewards epoch did not start yet
-    expectRevert.unspecified(ftsoManager.rewardEpochs(0))
+    await expectRevert.unspecified(ftsoManager.rewardEpochs(0))
 
     // Jump to reward epoch start
     await time.increaseTo(rewardEpochsStartTs.sub(BN(1)));
@@ -279,7 +279,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let submitters = [p1, p2, p3];
 
     for (let i = 0; i < submitters.length; i++) {
-      voterWhitelister.requestFullVoterWhitelisting(submitters[i]);
+      await voterWhitelister.requestFullVoterWhitelisting(submitters[i]);
       let priceInfo = await submitPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, priceSeries[i], submitters[i]);
       submitterPrices.push(priceInfo!);
     }

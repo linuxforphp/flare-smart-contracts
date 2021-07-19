@@ -2,7 +2,7 @@
 import { CheckPointsByAddressMockContract, CheckPointsByAddressMockInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
-const { constants, expectRevert } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 // const { artifacts } = require("hardhat");
 

@@ -20,7 +20,7 @@ import {
 import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN } from "../../../utils/test-helpers";
 
 
-const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -95,11 +95,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         ftsoRegistry = await FtsoRegistry.new(accounts[0]);
         
         mockPriceSubmitter = await MockPriceSubmitter.new();
-        mockPriceSubmitter.givenMethodReturnUint(
+        await mockPriceSubmitter.givenMethodReturnUint(
             web3.utils.sha3("addFtso(address)")!.slice(0,10),
             0
         )
-        mockPriceSubmitter.givenMethodReturnUint(
+        await mockPriceSubmitter.givenMethodReturnUint(
             web3.utils.sha3("removeFtso(address)")!.slice(0,10),
             0
         )
@@ -120,7 +120,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0]);
 
-        ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
+        await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
     });
 
@@ -202,7 +202,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should get current price epoch data", async () => {
-            let epochId = Math.floor((await time.latest() - startTs.toNumber()) / PRICE_EPOCH_DURATION_S);
+            let epochId = Math.floor(((await time.latest()).toNumber() - startTs.toNumber()) / PRICE_EPOCH_DURATION_S);
             let data = await ftsoManager.getCurrentPriceEpochData();
             expect(data[0].toNumber()).to.equals(epochId);
             let startTime = startTs.toNumber() + epochId * PRICE_EPOCH_DURATION_S;
@@ -318,7 +318,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         it("Should initialize reward epoch only after reward epoch start timestamp", async () => {
             mockPriceSubmitter = await MockPriceSubmitter.new();
-            mockPriceSubmitter.givenMethodReturnUint(
+            await mockPriceSubmitter.givenMethodReturnUint(
                 web3.utils.sha3("addFtso(address)")!.slice(0,10),
                 0
             )
@@ -337,7 +337,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 VOTE_POWER_BOUNDARY_FRACTION
             );
             
-            ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
+            await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
             await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
@@ -489,8 +489,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(mockFtso.address);
             let mockFtso2 = await MockFtso.new();
 
-            mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
-            mockFtsoSymbol("ATOK", mockFtso2, ftsoInterface);
+            await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
+            await mockFtsoSymbol("ATOK", mockFtso2, ftsoInterface);
 
             const currentPrice = ftsoInterface.contract.methods.getCurrentPrice().encodeABI();
             const currentPriceReturn = web3.eth.abi.encodeParameters(['uint256','uint256'], [500, 1]);
@@ -1288,7 +1288,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should finalize a reward epoch", async () => {
             // Assemble
             await ftsoManager.activate();
-            ftsoManager.keep();
+            await ftsoManager.keep();
             // Time travel 2 days
             await time.increaseTo(startTs.addn(172800));
             // Act
@@ -1369,7 +1369,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         it("Should select vote power block in the correct interval and be random", async () => {
             await settingWithOneFTSO_1(accounts, ftsoInterface, mockFtso, ftsoManager);
-            ftsoManager.keep();
+            await ftsoManager.keep();
             let b: number[] = [];
             let rewardEpochDataList: any[] = [];
             let currentSnapshotTime = startTs.addn(REWARD_EPOCH_DURATION_S)
@@ -1459,7 +1459,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 tx = await ftsoManager.keep();
             }
             // Assert
-            expectEvent(tx, "ClosingExpiredRewardEpochFailed");
+            expectEvent(tx!, "ClosingExpiredRewardEpochFailed");
         });
 
         it("Should call distribute rewards with 0 remaining price epochs", async () => {
@@ -1480,7 +1480,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 VOTE_POWER_BOUNDARY_FRACTION,
             );
 
-            ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
+            await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
             // stub ftso randomizer
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();

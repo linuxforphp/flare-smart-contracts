@@ -6,7 +6,7 @@ import { newContract } from "../../utils/test-helpers";
 import { TestExampleLogger } from "../../utils/TestExampleLogger";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
-const { expectRevert } = require('@openzeppelin/test-helpers');
+import { expectRevert } from '@openzeppelin/test-helpers';
 
 async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number): Promise<{ flrToken: WFlr; assetToken: VPTokenMock; ftso: MockFtso; }> {
 
@@ -421,4 +421,3 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
         checkTestCase(testCase2);
     });
 });
-

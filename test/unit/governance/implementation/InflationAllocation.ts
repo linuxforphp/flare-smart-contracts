@@ -1,6 +1,6 @@
 import { InflationAllocationInstance } from "../../../../typechain-truffle";
 
-const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const InflationAllocation = artifacts.require("InflationAllocation");
