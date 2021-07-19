@@ -10,7 +10,7 @@ import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-uti
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 
-const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const BN = web3.utils.toBN;
@@ -68,11 +68,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         startTs = await time.latest();
         
         mockPriceSubmitter = await MockPriceSubmitter.new();
-        mockPriceSubmitter.givenMethodReturnUint(
+        await mockPriceSubmitter.givenMethodReturnUint(
             web3.utils.sha3("addFtso(address)")!.slice(0,10),
             0
         )
-        mockPriceSubmitter.givenMethodReturnUint(
+        await mockPriceSubmitter.givenMethodReturnUint(
             web3.utils.sha3("removeFtso(address)")!.slice(0,10),
             0
         )
@@ -89,7 +89,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             startTs,
             VOTE_POWER_BOUNDARY_FRACTION
         );
-        ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
+        await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
         wFlr = await WFLR.new(accounts[0]);
         await setDefaultVPContract(wFlr, accounts[0]);

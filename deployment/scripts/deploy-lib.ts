@@ -59,7 +59,7 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 // import { serializedParameters } from "./DeploymentParameters";
 
 const BN = web3.utils.toBN;
-const { constants, time } = require('@openzeppelin/test-helpers');
+import { constants, time } from '@openzeppelin/test-helpers';
 
 export async function fullDeploy(parameters: any, quiet = false) {  
   // Define repository for created contracts

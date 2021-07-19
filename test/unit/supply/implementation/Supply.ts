@@ -1,6 +1,6 @@
 import { FtsoRewardManagerInstance, MockContractInstance, SupplyInstance } from "../../../../typechain-truffle";
 import { increaseTimeTo, toBN } from "../../../utils/test-helpers";
-const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 const Wallet = require('ethereumjs-wallet').default;
 
@@ -141,7 +141,7 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         await time.advanceBlock();
         // Get the timestamp for the just mined block
         let timestamp = await time.latest();
-        await increaseTimeTo(timestamp + 10, "web3");
+        await increaseTimeTo(timestamp.toNumber() + 10, "web3");
 
         expect(await supply.contract.methods.getCirculatingSupplyAtCached(currentBlockNumber).call()).to.equals(circulatingSupply.toString());
         expect(await supply.contract.methods.getCirculatingSupplyAtCached(0).call()).to.equals('0');

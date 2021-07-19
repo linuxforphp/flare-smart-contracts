@@ -3,7 +3,7 @@
 import { DelegatableMockContract, DelegatableMockInstance } from "../../../../../typechain-truffle";
 import { toBN } from "../../../../utils/test-helpers";
 
-const { expectRevert, time } = require('@openzeppelin/test-helpers');
+import { expectRevert, time } from '@openzeppelin/test-helpers';
 const {getTestFile} = require('../../../../utils/constants');
 
 const truffleAssert = require('truffle-assertions');
@@ -147,9 +147,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
   
   it("Should set cleanup block", async () => {
     // Assemble
-    time.advanceBlock();
+    await time.advanceBlock();
     const blk = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     await delegatable.setCleanupBlockNumber(blk);
     // Assert
@@ -159,9 +159,9 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
 
   it("Should check cleanup block validity", async () => {
     // Assemble
-    time.advanceBlock();
+    await time.advanceBlock();
     const blk = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     await delegatable.setCleanupBlockNumber(blk);
     // Assert

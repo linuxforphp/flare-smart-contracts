@@ -2,7 +2,7 @@ import { FtsoInstance, FtsoManagerInstance, MockContractInstance, MockFtsoContra
 import { createMockSupplyContract } from "./FTSO-test-utils";
 import { submitPriceHash, toBN } from "./test-helpers";
 
-const { constants } = require('@openzeppelin/test-helpers');
+import { constants } from '@openzeppelin/test-helpers';
 
 export interface RewardEpochData {
     votepowerBlock: BN | number,

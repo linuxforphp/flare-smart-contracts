@@ -1,8 +1,8 @@
+import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { FtsoRegistryInstance, MockContractInstance, MockFtsoInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WFlrInstance } from "../../../../typechain-truffle";
-import { assertNumberEqual, compareArrays, compareSets, getTestFile, toBN, ZERO_ADDRESS } from "../../../utils/test-helpers";
+import { getTestFile } from "../../../utils/constants";
+import { assertNumberEqual, compareArrays, compareSets, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-
-const { expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
 const WFlr = artifacts.require("WFlr");
@@ -79,7 +79,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
         }
     }
-
+    
     describe("Simple flr with 2 ftso tests", async () => {
         let fxrp: VPTokenMockInstance;
         let fbtc: VPTokenMockInstance;
@@ -100,7 +100,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             fbtc = await VPToken.new(governance, "Bitcoin", "BTC");
             await setDefaultVPContract(fbtc, governance);
             // create supply
-            supplyInterface = await Supply.new(governance, ZERO_ADDRESS, governance, 10_000, 0, []);
+            supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
             supplyMock = await MockContract.new();
             // create ftsos
             flrFtso = await createFtso("FLR", usd(1));
@@ -183,7 +183,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await initializeEpochForReveal();
             // Act
             const voters = accounts.slice(1, 5);
-            const assetVP = await whitelist.getAssetVotePowerWeights.call([ZERO_ADDRESS], [0], 10, voters, vpBlockNumber);
+            const assetVP = await whitelist.getAssetVotePowerWeights.call([constants.ZERO_ADDRESS], [0], 10, voters, vpBlockNumber);
             // console.log('assetVP', assetVP.map(fmtNum));
             const flareVP = await whitelist.getFlareVotePowerWeights.call(wflr.address, 10, voters, vpBlockNumber);
             // console.log('flareVP', flareVP.map(fmtNum));
@@ -578,7 +578,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
                 assets.push(asset);
             }
             // create supply
-            supplyInterface = await Supply.new(governance, ZERO_ADDRESS, governance, 10_000, 0, []);
+            supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
             supplyMock = await MockContract.new();
             // create ftsos
             flrFtso = await createFtso("FLR", usd(1));

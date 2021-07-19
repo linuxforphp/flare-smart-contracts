@@ -8,7 +8,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 const FtsoEpoch = artifacts.require("FtsoEpochMock") as FtsoEpochMockContract;
 const VpToken = artifacts.require("VPToken") as VPTokenContract;
 const MockVpToken = artifacts.require("MockContract") as MockContractContract;
-const {expectRevert} = require('@openzeppelin/test-helpers');
+import {expectRevert} from '@openzeppelin/test-helpers';
 
 
 contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, async accounts => {
@@ -28,9 +28,9 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         mockVpToken2 = await MockVpToken.new();
         mockVpToken3 = await MockVpToken.new();
 
-        ftsoEpoch.setAssetNorm(mockVpToken.address, 3);
-        ftsoEpoch.setAssetNorm(mockVpToken2.address, 3);
-        ftsoEpoch.setAssetNorm(mockVpToken3.address, 3);
+        await ftsoEpoch.setAssetNorm(mockVpToken.address, 3);
+        await ftsoEpoch.setAssetNorm(mockVpToken2.address, 3);
+        await ftsoEpoch.setAssetNorm(mockVpToken3.address, 3);
 
         await ftsoEpoch.setVotePowerBlock(1);
 
@@ -379,19 +379,19 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         const revealInProcess2 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess2).to.equals(false);
 
-        increaseTimeTo(5 + epochId * 120 + 59);
+        await increaseTimeTo(5 + epochId * 120 + 59);
         const revealInProcess3 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess3).to.equals(true);
 
-        increaseTimeTo(5 + epochId * 120 + 60);
+        await increaseTimeTo(5 + epochId * 120 + 60);
         const revealInProcess4 = await ftsoEpoch.epochRevealInProcess(epochId-1);
         expect(revealInProcess4).to.equals(false);
 
-        increaseTimeTo(5 + (epochId+1) * 120 - 1);
+        await increaseTimeTo(5 + (epochId+1) * 120 - 1);
         const revealInProcess5 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess5).to.equals(false);
 
-        increaseTimeTo(5 + (epochId+1) * 120);
+        await increaseTimeTo(5 + (epochId+1) * 120);
         const revealInProcess6 = await ftsoEpoch.epochRevealInProcess(epochId);
         expect(revealInProcess6).to.equals(true);
     });

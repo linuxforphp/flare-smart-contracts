@@ -12,7 +12,7 @@ import { fullDeploy } from "./deploy-lib";
 // import { serializedParameters } from "./DeploymentParameters";
 
 const BN = web3.utils.toBN;
-const { constants, time } = require('@openzeppelin/test-helpers');
+import { constants, time } from '@openzeppelin/test-helpers';
 
 async function main() {
   if (process.env.CHAIN_CONFIG) {

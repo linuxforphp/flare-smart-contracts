@@ -3,7 +3,7 @@ import { assertNumberEqual, compareArrays, compareNumberArrays, toBN } from "../
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
-const { constants, expectRevert, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
@@ -107,7 +107,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             await vpToken.delegate(accounts[3], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[4], 2000, { from: accounts[1] });
             const blk1 = await web3.eth.getBlockNumber();
-            time.advanceBlock();
+            await time.advanceBlock();
             const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3], accounts[4]], blk1);
             // Assert
             compareNumberArrays(result, [0, 140, 40, 20]);

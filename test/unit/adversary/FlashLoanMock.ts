@@ -2,7 +2,7 @@ import { soliditySha3Raw as soliditySha3 } from "web3-utils";
 import { FlashLenderMockInstance, FlashLoanMockInstance, MockFtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-const { constants, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const { getTestFile } = require('../../utils/constants');
 
 const FlashLenderMock = artifacts.require("FlashLenderMock");
@@ -22,7 +22,7 @@ const AMOUNT = toBN(1).mul(FLARE);
 async function startNewEpoch() {
     await time.advanceBlock();
     let timestamp = await time.latest();
-    const epochId = Math.floor(timestamp / 120) + 1;
+    const epochId = Math.floor(timestamp.toNumber() / 120) + 1;
     await increaseTimeTo(epochId * 120, 'web3');
     return epochId;
 }

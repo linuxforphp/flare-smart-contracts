@@ -2,7 +2,7 @@ import { CheckPointableMockContract, CheckPointableMockInstance } from "../../..
 import { toBN } from "../../../utils/test-helpers";
 
 // Unit tests for CheckPointable through CheckPointableMock contract
-const {expectRevert, constants, time} = require('@openzeppelin/test-helpers');
+import {expectRevert, constants, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const CheckPointable = artifacts.require("CheckPointableMock") as CheckPointableMockContract;
@@ -60,9 +60,9 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
   
   it("Should set cleanup block", async () => {
     // Assemble
-    time.advanceBlock();
+    await time.advanceBlock();
     const blk = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     await checkPointable.setCleanupBlockNumber(blk);
     // Assert
@@ -72,9 +72,9 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
 
   it("Should check cleanup block validity", async () => {
     // Assemble
-    time.advanceBlock();
+    await time.advanceBlock();
     const blk = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     await checkPointable.setCleanupBlockNumber(blk);
     // Assert

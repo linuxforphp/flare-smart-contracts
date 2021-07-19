@@ -3,7 +3,7 @@ import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance,
 import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, isAddressEligible, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
-const {constants, expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Wflr = artifacts.require("WFlr") as WFlrContract;
@@ -250,7 +250,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -329,7 +329,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -589,7 +589,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -624,7 +624,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -1057,7 +1057,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -1270,7 +1270,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -1490,7 +1490,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
 
-            await ftso.activateFtso(accounts[4], timestamp + 500, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(accounts[4], timestamp.toNumber() + 500, 120, 60, {from: accounts[10]});
             let currentEpoch = await ftso.getCurrentEpochId();
             expect(currentEpoch.toNumber()).to.equals(0);
 
@@ -1759,7 +1759,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10
             );
-            await ftso.activateFtso(accounts[4], await time.latest() + 500, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(accounts[4], (await time.latest()).toNumber() + 500, 120, 60, {from: accounts[10]});
 
             let currentEpochId1 = await ftso.getCurrentEpochId();
             expect(currentEpochId1.toString()).to.equals('0');
@@ -2232,7 +2232,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 
@@ -2583,7 +2583,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await time.advanceBlock();
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
-            epochId = Math.floor(timestamp / 120) + 1;
+            epochId = Math.floor(timestamp.toNumber() / 120) + 1;
             await increaseTimeTo(epochId * 120);
         });
 

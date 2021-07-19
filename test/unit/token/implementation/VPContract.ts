@@ -1,7 +1,7 @@
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
-const {constants, expectRevert, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
@@ -63,8 +63,8 @@ contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, as
     const vpContract = await VPContract.at(vpContractAddr);
     // Act
     // detach vpContract
-    vpToken.setWriteVpContract(constants.ZERO_ADDRESS, { from: accounts[0] });
-    vpToken.setReadVpContract(constants.ZERO_ADDRESS, { from: accounts[0] });
+    await vpToken.setWriteVpContract(constants.ZERO_ADDRESS, { from: accounts[0] });
+    await vpToken.setReadVpContract(constants.ZERO_ADDRESS, { from: accounts[0] });
     // Assert
     // there should be no revert
     await vpContract.setCleanupBlockNumber(1);

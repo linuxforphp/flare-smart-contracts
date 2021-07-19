@@ -1,9 +1,8 @@
 // Unit tests for Delegatable behavior library, vote power calculations
 
+import { expectRevert } from '@openzeppelin/test-helpers';
 import { DelegatableMockContract, DelegatableMockInstance } from "../../../../../typechain-truffle";
-import { toBN } from "../../../../utils/test-helpers";
 
-const {expectRevert} = require('@openzeppelin/test-helpers');
 const {log} = require('../../../../utils/log');
 const {sumGas} = require('../../../../utils/eth');
 const {getTestFile} = require('../../../../utils/constants');

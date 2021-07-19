@@ -13,7 +13,7 @@ import { TestExampleLogger } from "./TestExampleLogger";
 import { setDefaultVPContract_ethers } from "./token-test-helpers";
 
 const { exec } = require("child_process");
-const { constants } = require('@openzeppelin/test-helpers');
+import { constants } from '@openzeppelin/test-helpers';
 const MockFtsoManager = artifacts.require("MockContract") as MockContractContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 
@@ -806,7 +806,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         1, //uint256 _initialPrice
         1e10
     );
-    ftso.setFAsset(assetToken.address);
+    await ftso.setFAsset(assetToken.address);
 
     return ftso;
 }

@@ -2,7 +2,7 @@
  * @description Calc gas cost of a eth transaction.
  * @param {*} result Eth transaction result 
  */
-var calcGasCost = async (result) => {
+export async function calcGasCost(result: Truffle.TransactionResponse<any>) {
   // Get the transaction
   let tr = await web3.eth.getTransaction(result.tx);
   // Compute the gas cost of the depositResult
@@ -10,11 +10,6 @@ var calcGasCost = async (result) => {
   return txCost;
 };
 
-var sumGas = (tx, sum) => {
+export function sumGas(tx: Truffle.TransactionResponse<any>, sum: { gas: number }) {
   sum.gas += tx.receipt.gasUsed;
 }
-
-Object.assign(exports, {
-  calcGasCost,
-  sumGas
-});

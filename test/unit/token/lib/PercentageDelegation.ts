@@ -2,7 +2,7 @@ import { PercentageDelegationMockInstance } from "../../../../typechain-truffle"
 import { compareArrays, toBN } from "../../../utils/test-helpers";
 
 // Unit tests for PercentageDelegation through PercentageDelegationMock contract
-const { expectRevert, constants, time } = require('@openzeppelin/test-helpers');
+import { expectRevert, constants, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const PercentageDelegation = artifacts.require("PercentageDelegationMock");
@@ -123,7 +123,7 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assemble
     const blk0 = await web3.eth.getBlockNumber();
     // Act
-    time.advanceBlock();
+    await time.advanceBlock();
     await delegation.addReplaceDelegate(accounts[1], 5000);
     // Assert
     const { 0: delegates, 1: values } = await delegation.getDelegationsAt(blk0);

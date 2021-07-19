@@ -4,7 +4,11 @@
       "module": "commonjs",
       "strict": true,
       "esModuleInterop": true,
-      "outDir": "dist"
+      "outDir": "dist",
+      "typeRoots": [
+        "test/types",
+        "node_modules/@types"
+      ]
     },
     "include": [
       "./scripts", 

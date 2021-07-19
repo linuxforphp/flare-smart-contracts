@@ -1,10 +1,9 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { HistoryCleanerMockInstance, IICleanableInstance } from "../../typechain-truffle";
 import { CreatedVotePowerCache, Delegate, Revoke } from "../../typechain-truffle/VPContract";
 import { CreatedTotalSupplyCache, Transfer, VotePowerContractChanged } from "../../typechain-truffle/VPToken";
-import { ZERO_ADDRESS } from "./test-helpers";
 import { formatEvent, Web3EventDecoder } from "./Web3EventDecoder";
 
-const IICleanable = artifacts.require("IICleanable");
 const VPToken = artifacts.require("VPTokenMock");
 const VPContract = artifacts.require("VPContract");
 
@@ -117,27 +116,27 @@ export class SimpleHistoryCleaner {
         switch (e.name) {
             case 'Transfer': {
                 const vpToken = await this.getOrCreateInstance(VPToken, address);
-                if (e.args.from === ZERO_ADDRESS || e.args.to === ZERO_ADDRESS) {
+                if (e.args.from === constants.ZERO_ADDRESS || e.args.to === constants.ZERO_ADDRESS) {
                     // if from or to is zero, there was some minting/burning going on
                     result.push([address, 'Transfer:totalSupplyHistoryCleanup()',
                         this.encodeMethodCall(vpToken, token => token.totalSupplyHistoryCleanup(this.cleanupCount))]);
                 }
-                if (e.args.from !== ZERO_ADDRESS) {
+                if (e.args.from !== constants.ZERO_ADDRESS) {
                     result.push([address, `Transfer:balanceHistoryCleanup(from:${this.shorten(e.args.from)})`,
                         this.encodeMethodCall(vpToken, token => token.balanceHistoryCleanup(e.args.from, this.cleanupCount))]);
                 }
-                if (e.args.to !== ZERO_ADDRESS) {
+                if (e.args.to !== constants.ZERO_ADDRESS) {
                     result.push([address, `Transfer:balanceHistoryCleanup(to:${this.shorten(e.args.to)})`,
                         this.encodeMethodCall(vpToken, token => token.balanceHistoryCleanup(e.args.to, this.cleanupCount))]);
                 }
                 const writeVpContractAddr = await cacheGet(this.writeVpContracts, vpToken.address, _ => vpToken.getWriteVpContract());
-                if (writeVpContractAddr !== ZERO_ADDRESS) {
+                if (writeVpContractAddr !== constants.ZERO_ADDRESS) {
                     const vpContract = await this.getOrCreateInstance(VPContract, writeVpContractAddr);
-                    if (e.args.from !== ZERO_ADDRESS) {
+                    if (e.args.from !== constants.ZERO_ADDRESS) {
                         result.push([writeVpContractAddr, `Transfer:votePowerHistoryCleanup(from:${this.shorten(e.args.from)})`,
                             this.encodeMethodCall(vpContract, contract => contract.votePowerHistoryCleanup(e.args.from, this.cleanupCount))]);
                     }
-                    if (e.args.to !== ZERO_ADDRESS) {
+                    if (e.args.to !== constants.ZERO_ADDRESS) {
                         result.push([writeVpContractAddr, `Transfer:votePowerHistoryCleanup(to:${this.shorten(e.args.to)})`,
                             this.encodeMethodCall(vpContract, contract => contract.votePowerHistoryCleanup(e.args.to, this.cleanupCount))]);
                     }

@@ -4,7 +4,8 @@ import {
   InflationMockInstance, 
   MockContractInstance } from "../../../../typechain-truffle";
 
-const {expectRevert, expectEvent, time} = require('@openzeppelin/test-helpers');
+import {expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import { toBN } from "../../../utils/test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 const genesisGovernance = require('../../../utils/constants').genesisGovernance;
 
@@ -190,7 +191,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       // Act
       const tx = await flareKeeper.trigger();
       // Assert
-      await expectEvent(tx, MINTINGREQUESTED_EVENT, {amountWei: BN(100)});
+      expectEvent(tx, MINTINGREQUESTED_EVENT, {amountWei: BN(100)});
     });
 
     it("Should log error if inflation not set", async() => {
@@ -376,7 +377,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       const receipt = await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
       // Assert
       assert.equal(await flareKeeper.inflation(), mockInflation.address);
-      await expectEvent(receipt, INFLATIONSET_EVENT);
+      expectEvent(receipt, INFLATIONSET_EVENT);
     });
 
     it("Should not set inflation if not from governance", async() => {
@@ -579,7 +580,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
       // first request should succeed.
       // correct amount success
-      flareKeeper.setMaxMintingRequest(BN(1000), { from: genesisGovernance });
+      await flareKeeper.setMaxMintingRequest(BN(1000), { from: genesisGovernance });
 
       await expectRevert(flareKeeper.setMaxMintingRequest(BN(1000), 
         { from: genesisGovernance }),
@@ -660,7 +661,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       // Assert
       const invocationCount = await mockContractToKeep.invocationCountForMethod.call(keep);
       assert.equal(invocationCount.toNumber(), 2);
-      await expectEvent(receipt, CONTRACTHELDOFF_EVENT);
+      expectEvent(receipt, CONTRACTHELDOFF_EVENT);
     });
 
     it("Should execute endless loop contract again after being heldoff", async() => {
@@ -678,8 +679,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       await flareKeeper.trigger();  // Holdoff
       const receipt = await flareKeeper.trigger();
       // Assert
-      await expectEvent(receipt, CONTRACTKEEPERRORED_EVENT, {theContract: endlessLoop.address});
-      await expectEvent(receipt, CONTRACTKEPT_EVENT, {theContract: mockContractToKeep.address});
+      expectEvent(receipt, CONTRACTKEEPERRORED_EVENT, {theContract: endlessLoop.address});
+      expectEvent(receipt, CONTRACTKEPT_EVENT, {theContract: mockContractToKeep.address});
     });
 
     it("Should set holdoff", async() => {

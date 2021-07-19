@@ -8,7 +8,7 @@ const MockFtso = artifacts.require("MockFtso");
 const FtsoRegistryContract = artifacts.require("FtsoRegistry");
 const MockContract = artifacts.require("MockContract");
 
-const { constants, expectRevert } = require('@openzeppelin/test-helpers');
+import { constants, expectRevert } from '@openzeppelin/test-helpers';
 
 const ONLY_GOVERNANCE_MSG = "only governance";
 const ONLY_FTSO_MANAGER_MSG = "FTSO manager only";
@@ -31,7 +31,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS);
 
     
-    ftsoRegistryContract.setFtsoManagerAddress(MOCK_FTSO_ADDRESS, {from: GOVERNANCE_ADDRESS});
+    await ftsoRegistryContract.setFtsoManagerAddress(MOCK_FTSO_ADDRESS, {from: GOVERNANCE_ADDRESS});
 
     mockFtsoContract = await MockContract.new();
     mockSupplyContract = await createMockSupplyContract(GOVERNANCE_ADDRESS, 10000);
@@ -76,7 +76,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
     await ftsoRegistryContract.removeFtso(btcMock.address, {from: MOCK_FTSO_ADDRESS});
 
-    expectRevert(ftsoRegistryContract.getFtsoIndex("BTC"), ERR_TOKEN_NOT_SUPPORTED);
+    await expectRevert(ftsoRegistryContract.getFtsoIndex("BTC"), ERR_TOKEN_NOT_SUPPORTED);
     const ltcIndex2 = await ftsoRegistryContract.getFtsoIndex("LTC");
     assert.isTrue(ltcIndex.eq(ltcIndex2));
   });
@@ -158,7 +158,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     const BTC_history = await ftsoRegistryContract.getFtsoHistory(await ftsoRegistryContract.getFtsoIndex("BTC"));
     const XPR_historyPromise = ftsoRegistryContract.getFtsoHistory(1);
 
-    expectRevert(XPR_historyPromise, ERR_TOKEN_NOT_SUPPORTED);
+    await expectRevert(XPR_historyPromise, ERR_TOKEN_NOT_SUPPORTED);
 
     await ftsoRegistryContract.addFtso(XPRFtsoContractMock_1.address, {from: MOCK_FTSO_ADDRESS});
     const XPR_history = await ftsoRegistryContract.getFtsoHistory(1);
@@ -236,8 +236,8 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
     await ftsoRegistryContract.removeFtso(ADAFtsoContractMock_1.address, {from: MOCK_FTSO_ADDRESS});
 
-    expectRevert(ftsoRegistryContract.getFtsoIndex("ADA"), ERR_TOKEN_NOT_SUPPORTED);
-    expectRevert(ftsoRegistryContract.getFtso(2), ERR_TOKEN_NOT_SUPPORTED);
+    await expectRevert(ftsoRegistryContract.getFtsoIndex("ADA"), ERR_TOKEN_NOT_SUPPORTED);
+    await expectRevert(ftsoRegistryContract.getFtso(2), ERR_TOKEN_NOT_SUPPORTED);
 
     assert.isTrue((await ftsoRegistryContract.getFtsoIndex("BTC")).eqn(0));
 

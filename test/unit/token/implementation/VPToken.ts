@@ -3,7 +3,7 @@ import { assertNumberEqual, compareArrays, compareNumberArrays, toBN } from "../
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
-const {constants, expectRevert, time} = require('@openzeppelin/test-helpers');
+import {constants, expectRevert, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
@@ -522,7 +522,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assemble
     await vpToken.mint(accounts[1], 200);
     const blk1 = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     const value = await vpToken.votePowerFromTo(accounts[1], accounts[2]);
     const value1 = await vpToken.votePowerFromToAt(accounts[1], accounts[2], blk1);
@@ -653,9 +653,9 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   it("Should check cleanup block validity", async () => {
     // Assemble
-    time.advanceBlock();
+    await time.advanceBlock();
     const blk = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     await vpToken.setCleanupBlockNumber(blk);
     // Assert
@@ -973,8 +973,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
   it("Only governance or cleanup block number manager can set cleanup block", async () => {
     // Assemble
     await vpToken.setCleanupBlockNumberManager(accounts[10]);
-    time.advanceBlock();
-    time.advanceBlock();
+    await time.advanceBlock();
+    await time.advanceBlock();
     // Act
     // Assert
     await vpToken.setCleanupBlockNumber(1, { from: accounts[0] });  // governance
@@ -991,7 +991,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.mint(accounts[2], 200);
     await vpToken.delegate(accounts[3], 5000, { from: accounts[1] });
     const blk1 = await web3.eth.getBlockNumber();
-    time.advanceBlock();
+    await time.advanceBlock();
     // Act
     const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3]], blk1);
     // Assert

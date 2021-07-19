@@ -3,7 +3,7 @@ import { toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const calcGasCost = require('../../../utils/eth').calcGasCost;
-const { constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+import { constants, expectEvent, expectRevert } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const WFLR = artifacts.require("WFlr") as WFlrContract;
