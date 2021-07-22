@@ -1,126 +1,170 @@
 [
   {
     "name": "InflationAllocation",
-    "address": "0x7c2C195CD6D34B8F845992d380aADB2730bB9C6F"
+    "address": "0x8858eeB3DfffA017D4BCE9801D340D36Cf895CCf"
+  },
+  {
+    "name": "StateConnector",
+    "address": "0x1000000000000000000000000000000000000001"
   },
   {
     "name": "FlareKeeper",
     "address": "0x1000000000000000000000000000000000000002"
   },
   {
-    "name": "Inflation",
-    "address": "0xf4e77E5Da47AC3125140c470c71cBca77B5c638c"
-  },
-  {
-    "name": "Supply",
-    "address": "0x3619DbE27d7c1e7E91aA738697Ae7Bc5FC3eACA5"
-  },
-  {
-    "name": "FtsoRewardManager",
-    "address": "0x038B86d9d8FAFdd0a02ebd1A476432877b0107C8"
-  },
-  {
     "name": "PriceSubmitter",
     "address": "0x1000000000000000000000000000000000000003"
   },
   {
-    "name": "FtsoManager",
+    "name": "Inflation",
+    "address": "0x1A1FEe7EeD918BD762173e4dc5EfDB8a78C924A8"
+  },
+  {
+    "name": "Supply",
     "address": "0xD6C850aeBFDC46D7F4c207e445cC0d6B0919BDBe"
   },
   {
-    "name": "WFlr",
-    "address": "0x1d80315fac6aBd3EfeEbE97dEc44461ba7556160"
+    "name": "FtsoRewardManager",
+    "address": "0x8B5B7a6055E54a36fF574bbE40cf2eA68d5554b3"
   },
   {
-    "name": "FtsoWflr",
-    "address": "0x52d3b94181f8654db2530b0fEe1B19173f519C52"
+    "name": "ValidatorRewardManager",
+    "address": "0xEcc0a6dbC0bb4D51E4F84A315a9e5B0438cAD4f0"
   },
   {
-    "name": "Fxrp",
-    "address": "0xd15468525c35BDBC1eD8F2e09A00F8a173437f2f"
+    "name": "CleanupBlockNumberManager",
+    "address": "0x20Ce94F404343aD2752A2D01b43fa407db9E0D00"
   },
   {
-    "name": "DummyFxrpMinter",
+    "name": "FtsoRegistry",
     "address": "0x7e35Eaf7e8FBd7887ad538D4A38Df5BbD073814a"
   },
   {
-    "name": "FtsoFxrp",
-    "address": "0x53369fd4680FfE3DfF39Fc6DDa9CfbfD43daeA2E"
-  },
-  {
-    "name": "Fltc",
-    "address": "0x58F132FBB86E21545A4Bace3C19f1C05d86d7A22"
-  },
-  {
-    "name": "DummyFltcMinter",
-    "address": "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
-  },
-  {
-    "name": "FtsoFltc",
-    "address": "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
-  },
-  {
-    "name": "Fxdg",
-    "address": "0x6082731fdAba4761277Fb31299ebC782AD3bCf24"
-  },
-  {
-    "name": "DummyFxdgMinter",
-    "address": "0x8456161947DFc1fC159A0B26c025cD2b4bba0c3e"
-  },
-  {
-    "name": "FtsoFxdg",
-    "address": "0x92cfBAB5A86631e9F1A6126b42E01A74eadA61Df"
-  },
-  {
-    "name": "Fada",
-    "address": "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
-  },
-  {
-    "name": "DummyFadaMinter",
-    "address": "0x06bA8d8af0dF898D0712DffFb0f862cC51AF45c2"
-  },
-  {
-    "name": "FtsoFada",
-    "address": "0xE4C10Db67595aF2Cb4166c8C274e0140f7E43059"
-  },
-  {
-    "name": "Falgo",
-    "address": "0x85bdE212E66e2BAE510E44Ed59116c1eC712795b"
-  },
-  {
-    "name": "DummyFalgoMinter",
-    "address": "0xe1B3b8F6b298b52bCd15357ED29e65e66a4045fF"
-  },
-  {
-    "name": "FtsoFalgo",
-    "address": "0x79dC3dA279A2ADc72210BD00e10951AB9dC70ABc"
-  },
-  {
-    "name": "Fbch",
-    "address": "0xE78d9772cED3eD5C595d9E438a87602eD86bfE9b"
-  },
-  {
-    "name": "DummyFbchMinter",
-    "address": "0xA17827A991EB72793fa437e580B084ceB25Ab0f9"
-  },
-  {
-    "name": "FtsoFbch",
-    "address": "0x57965788BD1a93639CE738a58176e1A3d6F4d04f"
-  },
-  {
-    "name": "Fdgb",
-    "address": "0xdDD96662ea11dA6F289A5D00da41Ec5F3b67d2b4"
-  },
-  {
-    "name": "DummyFdgbMinter",
-    "address": "0xecE50C63d1Ae02Ba306c2b2E1579d0327220196e"
-  },
-  {
-    "name": "FtsoFdgb",
-    "address": "0xA40A2298B02a8597321580fdAD8518A6d6601b6C"
+    "name": "VoterWhitelister",
+    "address": "0x5bcb88A0d20426e451332eE6C4324b0e663c50E0"
   },
   {
     "name": "Distribution",
-    "address": "0x29296bF8A0cC6D5E1aC7c25613715315D264F6A4"
+    "address": "0x3521eF8AaB0323004A6dD8b03CE890F4Ea3A13f5"
+  },
+  {
+    "name": "FtsoManager",
+    "address": "0x53369fd4680FfE3DfF39Fc6DDa9CfbfD43daeA2E"
+  },
+  {
+    "name": "WFlr",
+    "address": "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
+  },
+  {
+    "name": "FtsoWflr",
+    "address": "0x78Aeff0658Fa67735fBF99Ce7CDB01Fe5D520259"
+  },
+  {
+    "name": "Fxrp",
+    "address": "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
+  },
+  {
+    "name": "DummyFxrpMinter",
+    "address": "0x85bdE212E66e2BAE510E44Ed59116c1eC712795b"
+  },
+  {
+    "name": "FtsoFxrp",
+    "address": "0x00aD4926D7613c8e00cB6CFa61831D5668265724"
+  },
+  {
+    "name": "Fltc",
+    "address": "0xF0B4ACda6D679ea22AC5C4fD1973D0d58eA10ec1"
+  },
+  {
+    "name": "DummyFltcMinter",
+    "address": "0xBbC60A8fAf66552554e460d55Ac0563Fb9e76c01"
+  },
+  {
+    "name": "FtsoFltc",
+    "address": "0x0D8448C0fBB84c30395838C8b3fD64722ea94532"
+  },
+  {
+    "name": "Fxlm",
+    "address": "0xA40A2298B02a8597321580fdAD8518A6d6601b6C"
+  },
+  {
+    "name": "DummyFxlmMinter",
+    "address": "0xF1479810f495a5E1dc5Fe7bC567Ad2b69D4A8052"
+  },
+  {
+    "name": "FtsoFxlm",
+    "address": "0xc85759553AEE2D4125aFa8a9421AAf5397b96E6b"
+  },
+  {
+    "name": "Fxdg",
+    "address": "0xFDAAc0fDAEBbe00B8A3EBB119367B6CF84E0F39c"
+  },
+  {
+    "name": "DummyFxdgMinter",
+    "address": "0x4931b72A3f074A6c85DC62bBA648D7f4FBd1D0Ff"
+  },
+  {
+    "name": "FtsoFxdg",
+    "address": "0xE96680e011FE0Bb5c9646f5463Ba3587962Cd952"
+  },
+  {
+    "name": "Fada",
+    "address": "0xd73Aa22528C52cf0508198C70cFB04E6345E93eC"
+  },
+  {
+    "name": "DummyFadaMinter",
+    "address": "0xD662fb7FDC7526C79AA4417d2A4415416e057ec4"
+  },
+  {
+    "name": "FtsoFada",
+    "address": "0x7B6C3e5486D9e6959441ab554A889099eed76290"
+  },
+  {
+    "name": "Falgo",
+    "address": "0xD83D2773a7873ae2b5f8Fb92097e20a8C64F691E"
+  },
+  {
+    "name": "DummyFalgoMinter",
+    "address": "0xc1cb554de746224c13c1f25478aD0f3fa9e64843"
+  },
+  {
+    "name": "FtsoFalgo",
+    "address": "0xfA9dbd706c674801F50169f4B5862cCe045408E6"
+  },
+  {
+    "name": "Fbch",
+    "address": "0xbFAD7C67855cc0272CC5ED00dAabeFDB31E7190a"
+  },
+  {
+    "name": "DummyFbchMinter",
+    "address": "0x3392c115Ff2CE1A782B4a965fF770da61e69228E"
+  },
+  {
+    "name": "FtsoFbch",
+    "address": "0xA13a6C2bD383EcBF8a7A6a6B3B7cfCff3C7C3407"
+  },
+  {
+    "name": "Fdgb",
+    "address": "0x689d0586F88cDEa1E1003F838DD943415E4EB1e5"
+  },
+  {
+    "name": "DummyFdgbMinter",
+    "address": "0xfC88832bac6AbdF216BC5A67be68E9DE94aD5ba2"
+  },
+  {
+    "name": "FtsoFdgb",
+    "address": "0x78Ee8Fb9fE5abD5e347Fc94c2fb85596d1f60e3c"
+  },
+  {
+    "name": "Fbtc",
+    "address": "0xA4765Ff72A9F3CfE73089bb2c3a41B838DF71574"
+  },
+  {
+    "name": "DummyFbtcMinter",
+    "address": "0x1a66D6103F8BBf9204E1618F095a80b3E4817C95"
+  },
+  {
+    "name": "FtsoFbtc",
+    "address": "0x8BFFF31B1757da579Bb5B118489568526F7fb6D4"
   }
 ]

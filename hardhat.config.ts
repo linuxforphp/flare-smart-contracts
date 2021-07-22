@@ -88,7 +88,7 @@ const config: HardhatUserConfig = {
     },
     costonPrivateBeta: {
       url: process.env.COSTON_PRIVATE_BETA_RPC || "http://127.0.0.1:9660/ext/bc/C/rpc",
-      gas: 10000000,
+      gas: 8000000,
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
