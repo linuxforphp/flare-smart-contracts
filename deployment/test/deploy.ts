@@ -215,7 +215,7 @@ contract(`deploy.ts system tests`, async accounts => {
 
     it("Should have a reward epoch if rewarding started and being kept by keeper", async() => {
        // Assemble
-       const startTs = BN(await time.latest());
+       const startTs = await time.latest();
        const rewardEpochStartTs = await ftsoManager.rewardEpochsStartTs();
        if (rewardEpochStartTs.lt(startTs)) {
         // Act
@@ -227,13 +227,13 @@ contract(`deploy.ts system tests`, async accounts => {
        }
     });
 
-    it("Should know about PriceSubmitter", async() => {
-      // Assemble
-      // Act
-      const priceSubmitter = await ftsoManager.priceSubmitter();
-      // Assert
-      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
-    });
+    // it("Should know about PriceSubmitter", async() => {
+    //   // Assemble
+    //   // Act
+    //   const priceSubmitter = await ftsoManager.priceSubmitter();
+    //   // Assert
+    //   assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    // });
   });
 
   describe(Contracts.INFLATION, async() => {
@@ -256,7 +256,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should have recognized inflation set if rewarding started", async() => {
         // Assemble
         const rewardEpochStartTs = await inflation.rewardEpochStartTs();
-        const startTs = BN(await time.latest());
+        const startTs = await time.latest();
         // Act
         await flareKeeper.trigger();
         // Assert
@@ -981,16 +981,16 @@ contract(`deploy.ts system tests`, async accounts => {
       assert(found);
     });
 
-    it("Should have goverannace parameters set", async() => {
+    it("Should have goveranance parameters set", async() => {
       // Assemble
       const settings = await ftsoManager.settings();
       // Act
-      const maxVotePowerFlrThreshold = settings[3];
-      const maxVotePowerAssetThreshold = settings[4];
-      const lowAssetUSDThreshold = settings[5];
-      const highAssetUSDThreshold = settings[6];
-      const highAssetTurnoutBIPSThreshold = settings[7];
-      const lowFlrTurnoutBIPSThreshold = settings[8];
+      const maxVotePowerFlrThreshold = settings[1];
+      const maxVotePowerAssetThreshold = settings[2];
+      const lowAssetUSDThreshold = settings[3];
+      const highAssetUSDThreshold = settings[4];
+      const highAssetTurnoutBIPSThreshold = settings[5];
+      const lowFlrTurnoutBIPSThreshold = settings[6];
       // Assert
       assert.equal(maxVotePowerFlrThreshold.toNumber(), parameters.maxVotePowerFlrThreshold);
       assert.equal(maxVotePowerAssetThreshold.toNumber(), parameters.maxVotePowerAssetThreshold);

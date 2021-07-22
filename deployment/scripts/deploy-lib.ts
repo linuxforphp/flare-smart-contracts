@@ -60,6 +60,7 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 
 const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
+import { waitFinalize3 } from "../../test/utils/test-helpers";
 
 export async function fullDeploy(parameters: any, quiet = false) {  
   // Define repository for created contracts
@@ -133,19 +134,63 @@ export async function fullDeploy(parameters: any, quiet = false) {
     flareKeeper = await FlareKeeper.new();
   }
   spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address, quiet);
-  let currentGovernanceAddress = null;
-  try {
-    await flareKeeper.initialiseFixedAddress();
-    currentGovernanceAddress = genesisGovernanceAccount.address;
-  } catch (e) {
-    // keeper might be already initialized if redeploy
-    // NOTE: unregister must claim governance of flareKeeper!
-    currentGovernanceAddress = governanceAccount.address
+  
+  await flareKeeper.initialiseFixedAddress();
+  let currentGovernanceAddress = await flareKeeper.governance()
+
+  // Unregister whatever is registered with verification
+  while (true) {
+    try {
+      let lastAddress = await flareKeeper.keepContracts(0);
+      console.error("Unregistring contracts");
+      try {
+        await waitFinalize3(currentGovernanceAddress, () => flareKeeper.registerToKeep([], { from: currentGovernanceAddress }));
+      } catch (ee) {
+        console.error("Error while unregistring. ", ee)
+      }
+    } catch (e) {
+      console.error("No more kept contracts")
+      break;
+    }
   }
+
   await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareKeeper.claimGovernance({ from: deployerAccount.address });
   // Set the block holdoff should a kept contract exceeded its max gas allocation
   await flareKeeper.setBlockHoldoff(parameters.flareKeeperGasExceededBlockHoldoff);
+
+  // PriceSubmitter contract
+  let priceSubmitter: PriceSubmitterInstance;
+  try {
+    priceSubmitter = await PriceSubmitter.at(parameters.priceSubmitterAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("PriceSubmitter not in genesis...creating new.")
+    }
+    priceSubmitter = await PriceSubmitter.new();    
+  }  
+  // This has to be done always
+  await priceSubmitter.initialiseFixedAddress();
+
+  // Checking if governance is OK, especially when redeploying.
+  let priceSubmitterGovernance = await priceSubmitter.governance();
+  if(currentGovernanceAddress != priceSubmitterGovernance) {
+    console.error("Current governance does not match price submitter governance");
+    console.error("Current governance:", currentGovernanceAddress);
+    console.error("Price submitter goveranance:", priceSubmitterGovernance);
+    await priceSubmitter.proposeGovernance(currentGovernanceAddress, {from: priceSubmitterGovernance});
+    await priceSubmitter.claimGovernance({from: currentGovernanceAddress})
+    let newPriceSubmitterGovernance = await priceSubmitter.governance();
+    if(currentGovernanceAddress == newPriceSubmitterGovernance) {
+      console.error("Governance of PriceSubmitter changed")
+    } else {
+      console.error("Governance for PriceSubmitter does not match. Bailing out ...")
+      process.exit(1)
+    }
+  }
+  spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
+
+
 
   // Inflation contract
   // Get the timestamp for the just mined block
@@ -209,19 +254,6 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);
-
-  // PriceSubmitter contract
-  let priceSubmitter: PriceSubmitterInstance;
-  try {
-    priceSubmitter = await PriceSubmitter.at(parameters.priceSubmitterAddress);
-  } catch (e) {
-    if (!quiet) {
-      console.error("PriceSubmitter not in genesis...creating new.")
-    }
-    priceSubmitter = await PriceSubmitter.new();
-    await priceSubmitter.initialiseFixedAddress();
-  }
-  spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
 
   // FtsoRegistryContract
   const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
