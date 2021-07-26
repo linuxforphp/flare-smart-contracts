@@ -25,9 +25,9 @@ export class VPTokenChecker {
             () => this.blockNumber == null ? this.vpToken.balanceOf(account) : this.vpToken.balanceOfAt(account, this.blockNumber));
     }
 
-    votePower() {
+    totalVotePower() {
         return this.cached(['votePower'],
-            () => this.blockNumber == null ? this.vpToken.votePower() : this.vpToken.votePowerAt(this.blockNumber));
+            () => this.blockNumber == null ? this.vpToken.totalVotePower() : this.vpToken.totalVotePowerAt(this.blockNumber));
     }
 
     votePowerOf(account: string) {
@@ -66,7 +66,7 @@ export class VPTokenChecker {
         return total;
     }
 
-    async totalVotePower() {
+    async totalVotePowerCalculated() {
         let total = toBN(0);
         for (const account of this.accounts) {
             total = total.add(await this.votePowerOf(account));
@@ -122,8 +122,8 @@ export class VPTokenChecker {
 
     async checkTotalVotePower() {
         console.log('   checkTotalVotePower');
-        const calculatedVP = await this.totalVotePower();
-        const vp = await this.votePower();
+        const calculatedVP = await this.totalVotePowerCalculated();
+        const vp = await this.totalVotePower();
         assert(calculatedVP.eq(calculatedVP), `Calculated VP does not match contract VP: ${calculatedVP} != ${vp}`);
     }
 
@@ -178,8 +178,8 @@ export class VPTokenChecker {
     async checkTotalCachedVotePower() {
         if (this.blockNumber == null) return;
         console.log('   checkTotalCachedVotePower');
-        const vp = await this.votePower();
-        const vpcached = await this.vpToken.votePowerAtCached.call(this.blockNumber);
+        const vp = await this.totalVotePower();
+        const vpcached = await this.vpToken.totalVotePowerAtCached.call(this.blockNumber);
         assert(vpcached.eq(vp), `Total vote power and vote power cached mismatch: ${vpcached} != ${vp}`);
     }
     

@@ -85,9 +85,9 @@ contract MockVPToken is IIVPToken {
     function batchVotePowerOfAt(address[] memory _owners, uint256 _blockNumber) 
         external view override returns(uint256[] memory) {}
 
-    function votePower() public view override returns(uint256) {}
+    function totalVotePower() public view override returns(uint256) {}
     
-    function votePowerAt(uint blockNumber) public view override returns(uint256) {
+    function totalVotePowerAt(uint blockNumber) public view override returns(uint256) {
         blockNumber;
         return totalWeight;
     }
@@ -107,8 +107,8 @@ contract MockVPToken is IIVPToken {
         return addressWeight[who];
     }
 
-    function votePowerAtCached(uint256 _blockNumber) public view override returns(uint256) {
-        return votePowerAt(_blockNumber);
+    function totalVotePowerAtCached(uint256 _blockNumber) public view override returns(uint256) {
+        return totalVotePowerAt(_blockNumber);
     }
 
     function votePowerOfAtCached(address _owner, uint256 _blockNumber) public view override returns(uint256) {

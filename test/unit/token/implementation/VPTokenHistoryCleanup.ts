@@ -94,9 +94,9 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
             await vpToken.setCleanupBlockNumber(blk1, { from: accounts[0] });
             // Act
-            await vpToken.votePowerAtCached(blk1);
+            await vpToken.totalVotePowerAtCached(blk1);
             await vpToken.revokeDelegationAt(accounts[2], blk1, { from: accounts[1] });
-            await vpToken.votePowerAtCached(blk2);
+            await vpToken.totalVotePowerAtCached(blk2);
             await vpToken.revokeDelegationAt(accounts[2], blk2, { from: accounts[1] });
             // Assert
             await expectRevert(vpToken.totalSupplyCacheCleanup(blk1, { from: accounts[5] }), 
@@ -123,7 +123,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.undelegateAll({ from: accounts[1] });
             await vpToken.undelegateAllExplicit([accounts[3]], { from: accounts[2] });
             await vpToken.mint(accounts[1], 100);
-            await vpToken.votePowerAtCached(blk1);
+            await vpToken.totalVotePowerAtCached(blk1);
             await vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] })
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
@@ -169,7 +169,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.undelegateAll({ from: accounts[1] });
             await vpToken.undelegateAllExplicit([accounts[3]], { from: accounts[2] });
             await vpToken.mint(accounts[1], 100);
-            await vpToken.votePowerAtCached(blk1);
+            await vpToken.totalVotePowerAtCached(blk1);
             await vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] })
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
@@ -227,7 +227,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await cleaner.track(vpToken.mint(accounts[1], 100));
             const blk1 = await web3.eth.getBlockNumber();
             await cleaner.track(vpToken.transfer(accounts[2], 10, { from: accounts[1] }));
-            await cleaner.track(vpToken.votePowerAtCached(blk1));
+            await cleaner.track(vpToken.totalVotePowerAtCached(blk1));
             // Assert
             // console.log(JSON.stringify(Array.from(cleaner.records), null, 4));
             assert.equal(cleaner.records.size, 8);
@@ -263,7 +263,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             //
             await cleaner.track(vpToken.undelegateAll({ from: accounts[1] }));
             await cleaner.track(vpToken.undelegateAllExplicit([accounts[3]], { from: accounts[2] }));
-            await cleaner.track(vpToken.votePowerAtCached(blk1));
+            await cleaner.track(vpToken.totalVotePowerAtCached(blk1));
             await cleaner.track(vpToken.votePowerOfAtCached(accounts[1], blk1));
             await cleaner.track(vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] }));
             const blk2 = await web3.eth.getBlockNumber();

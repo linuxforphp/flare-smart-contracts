@@ -186,7 +186,7 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     await waitFinalize3(accounts[0], () => vpToken.mint(accounts[1], 10));
     await waitFinalize3(accounts[0], () => vpToken.mint(accounts[2], 20));
     // Assert
-    assert.equal((await vpToken.votePower()).toNumber(), 30);
+    assert.equal((await vpToken.totalVotePower()).toNumber(), 30);
   });
 
   it("Should net total vote power", async () => {
@@ -196,7 +196,7 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     // Act
     await waitFinalize3(accounts[1], () => vpToken.burn(5, { from: accounts[1] }));
     // Assert
-    assert.equal((await vpToken.votePower()).toNumber(), 25);
+    assert.equal((await vpToken.totalVotePower()).toNumber(), 25);
   });
 
   it("Should record historic vote power", async () => {
@@ -213,7 +213,7 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     await waitFinalize3(accounts[0], () => vpToken.mint(accounts[2], 50));
 
     // Assert
-    assert.equal((await vpToken.votePowerAt(b[blockAfterFirstMinting])).toNumber(), 30);
+    assert.equal((await vpToken.totalVotePowerAt(b[blockAfterFirstMinting])).toNumber(), 30);
   });
 
   it("Should leave total vote power alone when delegating", async () => {
@@ -222,6 +222,6 @@ contract(`VPToken.sol; ${ getTestFile(__filename) }; Check point unit tests`, as
     // Act
     await waitFinalize3(accounts[1], () => vpToken.delegate(accounts[2], 5, { from: accounts[1] }));
     // Assert
-    assert.equal((await vpToken.votePower()).toNumber(), 20);
+    assert.equal((await vpToken.totalVotePower()).toNumber(), 20);
   });
 });
