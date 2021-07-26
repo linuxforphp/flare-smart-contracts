@@ -930,7 +930,7 @@ contract Ftso is IIFtso {
         if (address(_vp) == address(0)) {
             return 0;
         } else {
-            return _vp.votePowerAtCached(_vpBlock);
+            return _vp.totalVotePowerAtCached(_vpBlock);
         }
     }
 

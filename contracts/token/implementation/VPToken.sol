@@ -217,7 +217,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @notice Get the current total vote power.
      * @return The current total vote power (sum of all accounts' vote powers).
      */
-    function votePower() external view override returns(uint256) {
+    function totalVotePower() external view override returns(uint256) {
         return totalSupply();
     }
 
@@ -226,7 +226,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     * @param _blockNumber The block number at which to fetch.
     * @return The total vote power at the block  (sum of all accounts' vote powers).
     */
-    function votePowerAt(uint256 _blockNumber) external view override returns(uint256) {
+    function totalVotePowerAt(uint256 _blockNumber) external view override returns(uint256) {
         return totalSupplyAt(_blockNumber);
     }
 
@@ -237,7 +237,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     * @param _blockNumber The block number at which to fetch.
     * @return The total vote power at the block (sum of all accounts' vote powers).
     */
-    function votePowerAtCached(uint256 _blockNumber) public override returns(uint256) {
+    function totalVotePowerAtCached(uint256 _blockNumber) public override returns(uint256) {
         return _totalSupplyAtCached(_blockNumber);
     }
     

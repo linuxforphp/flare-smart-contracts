@@ -128,7 +128,7 @@ export class VPTokenHistory {
                 }
                 case "votePowerAtCached": {
                     const checkpoint = this.checkpoint(method.checkpointId);
-                    return this.vpToken.votePowerAtCached(checkpoint.blockNumber, { from: method.sender });
+                    return this.vpToken.totalVotePowerAtCached(checkpoint.blockNumber, { from: method.sender });
                 }
                 case "votePowerOfAtCached": {
                     const checkpoint = this.checkpoint(method.checkpointId);
@@ -207,7 +207,7 @@ export class VPTokenSimulator {
         return this.history.run({ context: this.context, name: "undelegateAllExplicit", sender, delegateAddresses });
     }
 
-    votePowerAtCached(sender: string, checkpointId: string) {
+    totalVotePowerAtCached(sender: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "votePowerAtCached", sender, checkpointId });
     }
     

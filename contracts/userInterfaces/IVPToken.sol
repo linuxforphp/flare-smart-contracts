@@ -87,14 +87,14 @@ interface IVPToken is IERC20 {
      * @notice Get the current total vote power.
      * @return The current total vote power (sum of all accounts' vote powers).
      */
-    function votePower() external view returns(uint256);
+    function totalVotePower() external view returns(uint256);
     
     /**
     * @notice Get the total vote power at block `_blockNumber`
     * @param _blockNumber The block number at which to fetch.
     * @return The total vote power at the block  (sum of all accounts' vote powers).
     */
-    function votePowerAt(uint _blockNumber) external view returns(uint256);
+    function totalVotePowerAt(uint _blockNumber) external view returns(uint256);
 
     /**
      * @notice Get the current vote power of `_owner`.

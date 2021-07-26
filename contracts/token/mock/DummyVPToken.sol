@@ -23,7 +23,7 @@ contract DummyVPToken is ERC20, IIVPToken {
     function undelegateAll() external override {}
     function undelegateAllExplicit(address[] memory _delegateAddresses) external override returns (uint256) {}
     function revokeDelegationAt(address _who, uint256 _blockNumber) external override {}
-    function votePowerAtCached(uint256 _blockNumber) external override returns(uint256) {}
+    function totalVotePowerAtCached(uint256 _blockNumber) external override returns(uint256) {}
     function votePowerOfAtCached(address _owner, uint256 _blockNumber) external override returns(uint256) {}
     
     function totalSupplyAt(uint256 _blockNumber) external view override returns(uint256) {}
@@ -65,8 +65,8 @@ contract DummyVPToken is ERC20, IIVPToken {
         return ERC20.decimals();
     }
 
-    function votePower() public view override returns(uint256) {}
-    function votePowerAt(uint256 _blockNumber) public view override returns(uint256) {}
+    function totalVotePower() public view override returns(uint256) {}
+    function totalVotePowerAt(uint256 _blockNumber) public view override returns(uint256) {}
 
     /// vote power for current block
     function votePowerOf(address _who) public view override returns (uint256) {

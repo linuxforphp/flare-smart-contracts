@@ -21,7 +21,7 @@ interface IIVPToken is IVPToken, IICleanable {
     * @param _blockNumber The block number at which to fetch.
     * @return The total vote power at the block (sum of all accounts' vote powers).
     */
-    function votePowerAtCached(uint256 _blockNumber) external returns(uint256);
+    function totalVotePowerAtCached(uint256 _blockNumber) external returns(uint256);
     
     /**
     * @notice Get the vote power of `_owner` at block `_blockNumber` using cache.

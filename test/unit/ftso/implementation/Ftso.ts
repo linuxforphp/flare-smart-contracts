@@ -31,7 +31,7 @@ let mockFtsos: MockContractInstance[];
 let mockVpTokens: MockContractInstance[];
 
 async function setMockVotePowerAt(blockNumber: number, wflrVotePower: number, fassetVotePower: number) {
-    const votePowerAtCached_wflr = wflrInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
+    const votePowerAtCached_wflr = wflrInterface.contract.methods.totalVotePowerAtCached(blockNumber).encodeABI();
     const votePowerAtCachedReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
     await mockWflr.givenMethodReturn(votePowerAtCached_wflr, votePowerAtCachedReturn_wflr);
 
@@ -39,7 +39,7 @@ async function setMockVotePowerAt(blockNumber: number, wflrVotePower: number, fa
     const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
     await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
 
-    const votePowerAtCached_vpToken = vpTokenInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
+    const votePowerAtCached_vpToken = vpTokenInterface.contract.methods.totalVotePowerAtCached(blockNumber).encodeABI();
     const votePowerAtCachedReturn_vpToken = web3.eth.abi.encodeParameter('uint256', fassetVotePower);
     await mockVpToken.givenMethodReturn(votePowerAtCached_vpToken, votePowerAtCachedReturn_vpToken);
 }
@@ -58,7 +58,7 @@ async function setMockVotePowerAtMultiple(blockNumber: number, wflrVotePower: nu
     assert(len == mockFtsos.length, "Fasset vote powers length does not match mock Ftso contracts length");
     assert(len == mockVpTokens.length, "Fasset vote powers length does not match mock VPToken contracts length");
     assert(len == currentPrices.length, "Fasset vote powers length does not match current prices length");
-    const votePowerAtCached_wflr = wflrInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
+    const votePowerAtCached_wflr = wflrInterface.contract.methods.totalVotePowerAtCached(blockNumber).encodeABI();
     const votePowerAtCachedReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
     await mockWflr.givenMethodReturn(votePowerAtCached_wflr, votePowerAtCachedReturn_wflr);
 
@@ -67,7 +67,7 @@ async function setMockVotePowerAtMultiple(blockNumber: number, wflrVotePower: nu
     await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
 
     for (let i = 0; i < len; i++) {
-        const votePowerAtCached_vpToken = vpTokenInterface.contract.methods.votePowerAtCached(blockNumber).encodeABI();
+        const votePowerAtCached_vpToken = vpTokenInterface.contract.methods.totalVotePowerAtCached(blockNumber).encodeABI();
         const votePowerAtCachedReturn_vpToken = web3.eth.abi.encodeParameter('uint256', fassetVotePowers[i]);
         await mockVpTokens[i].givenMethodReturn(votePowerAtCached_vpToken, votePowerAtCachedReturn_vpToken);
 

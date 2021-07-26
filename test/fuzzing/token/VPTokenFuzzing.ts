@@ -209,7 +209,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         const checkpoints = history.checkpointList();
         if (checkpoints.length === 0) return;
         const cp = randomChoice(checkpoints);
-        await simulator.votePowerAtCached(plainuser, cp.id);
+        await simulator.totalVotePowerAtCached(plainuser, cp.id);
     }
 
     async function testVotePowerOfAtCached() {
