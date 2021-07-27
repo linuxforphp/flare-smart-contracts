@@ -14,7 +14,7 @@ interface IWFlr {
     function withdraw(uint256 _amount) external;
     
     /**
-     * @notice Deposit Flare from msg.sender to recipient and and mint WFLR ERC20.
+     * @notice Deposit Flare from msg.sender and mint WFLR ERC20.
      * @param _recipient An address to receive minted WFLR.
      */
     function depositTo(address _recipient) external payable;
