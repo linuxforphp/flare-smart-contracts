@@ -50,8 +50,8 @@ contract WFlr is VPToken, IWFlr {
     }
 
     /**
-     * @notice Deposit Flare from msg.sender to recipient and and mint WFLR ERC20.
-     * @param recipient A payable address to receive Flare and minted WFLR.
+     * @notice Deposit Flare from msg.sender and mints WFLR ERC20 to recipient address.
+     * @param recipient An address to receive minted WFLR.
      */
     function depositTo(address recipient) external payable override {
         require(recipient != address(0), "Cannot deposit to zero address");
