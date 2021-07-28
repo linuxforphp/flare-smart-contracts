@@ -6,7 +6,7 @@ interface IFtso {
         // initial state
         NOT_FINALIZED,
         // median calculation used to decide price
-        MEDIAN,
+        WEIGHTED_MEDIAN,
         // low turnout - price decided from average of trusted addresses
         TRUSTED_ADDRESSES,
         // low turnout + no votes from trusted addresses - price copied from previous epoch

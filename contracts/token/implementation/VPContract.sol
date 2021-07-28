@@ -210,7 +210,8 @@ contract VPContract is IIVPContract, Delegatable {
         uint _blockNumber
     ) external override onlyOwnerToken {
         // ASSERT: if there was a delegation, _from and _to must be initialized
-        if (_votePowerInitializedAt(_from, _blockNumber) && _votePowerInitializedAt(_to, _blockNumber)) {
+        if (!isReplacement || 
+            (_votePowerInitializedAt(_from, _blockNumber) && _votePowerInitializedAt(_to, _blockNumber))) {
             _revokeDelegationAt(_from, _to, _balance, _blockNumber);
         }
     }
@@ -259,7 +260,7 @@ contract VPContract is IIVPContract, Delegatable {
     * @return Vote power of `_who` at `_blockNumber`.
     */
     function votePowerOfAtCached(address _who, uint256 _blockNumber) external override returns(uint256) {
-        if (_votePowerInitializedAt(_who, _blockNumber)) {
+        if (!isReplacement || _votePowerInitializedAt(_who, _blockNumber)) {
             // use standard method
             return _votePowerOfAtCached(_who, _blockNumber);
         } else {
@@ -302,7 +303,7 @@ contract VPContract is IIVPContract, Delegatable {
     * @return Vote power of `_who` at `_blockNumber`.
     */
     function votePowerOfAt(address _who, uint256 _blockNumber) public view override returns(uint256) {
-        if (_votePowerInitializedAt(_who, _blockNumber)) {
+        if (!isReplacement || _votePowerInitializedAt(_who, _blockNumber)) {
             return _votePowerOfAt(_who, _blockNumber);
         } else {
             return ownerToken.balanceOfAt(_who, _blockNumber);
