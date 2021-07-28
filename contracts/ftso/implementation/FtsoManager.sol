@@ -637,9 +637,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                     ))) % numFtsos;
             } else {
                 // at least one finalize with real FTSO
+                uint256 currentRandomSum = 0;
+                for(uint256 i = 0; i < numFtsos; i++) {
+                    currentRandomSum += _ftsos[i].getCurrentRandom(); // may overflow but it is still ok
+                }
                 //slither-disable-next-line weak-prng           // ftso random calculated safely from inputs
                 chosenFtsoId = uint256(keccak256(abi.encode(
-                        IIFtso(priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso).getCurrentRandom()
+                        currentRandomSum, block.timestamp
                     ))) % numFtsos;
             }
             address[] memory addresses;
