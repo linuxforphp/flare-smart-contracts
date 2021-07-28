@@ -6,6 +6,7 @@ import {
   MockContractInstance, BokkyPooBahsDateTimeContractInstance } from "../../../../typechain-truffle";
 
 import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import { toBN } from "../../../utils/test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Inflation = artifacts.require("Inflation");
@@ -14,6 +15,7 @@ const SharingPercentageProviderMock = artifacts.require("SharingPercentageProvid
 const InflationReceiverMock = artifacts.require("InflationReceiverMock");
 const FlareKeeperMock = artifacts.require("FlareKeeperMock");
 const FlareKeeper = artifacts.require("FlareKeeper");
+const SuicidalMock = artifacts.require("SuicidalMock");
 
 // This library has a lot of unit tests, so it seems, that we should be able to use it for 
 // timestamp conversion
@@ -684,6 +686,62 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Check self destruct bucket for good measure...
         const {5: selfDestructProceeds} = await inflation.getTotals();
         assert.equal(selfDestructProceeds.toNumber(), 1);
+      });
+
+      it("Should balance when receiving self-destruct amount between keep calls", async() => {
+        // Assemble
+        // Set up two sharing percentages
+        const sharingPercentages = [];
+        const rewardingServiceContract0 = await InflationReceiverMock.new();
+        sharingPercentages[0] = {inflationReceiver: rewardingServiceContract0.address, percentBips: 10000};
+        const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
+        await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+        // Prime topup request buckets
+        await mockFlareKeeper.trigger();
+        const {1: toMint} = await inflation.getTotals();
+        // Act
+        // Self destruct with some flare
+        const suicidalMock = await SuicidalMock.new(inflation.address);
+        // Give suicidal some FLR
+        await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: toBN(5)});
+        // Attacker dies
+        await suicidalMock.die();
+
+        await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint });
+        // ...and if it got here, then we balance.
+        // Assert
+        // Check self destruct bucket for good measure...
+        const {5: selfDestructProceeds} = await inflation.getTotals();
+        // Should record elf destruct value
+        assert.equal(selfDestructProceeds.toNumber(), 5);
+      });
+
+      it("Should balance when receiving self-destruct outside between keep calls", async() => {
+        // Assemble
+        // Set up two sharing percentages
+        const sharingPercentages = [];
+        const rewardingServiceContract0 = await InflationReceiverMock.new();
+        sharingPercentages[0] = {inflationReceiver: rewardingServiceContract0.address, percentBips: 10000};
+        const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
+        await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+        // Prime topup request buckets
+        await mockFlareKeeper.trigger();
+        const {1: toMint} = await inflation.getTotals();
+        // Act
+        // Self destruct with some flare
+        const suicidalMock = await SuicidalMock.new(inflation.address);
+        // Give suicidal some FLR
+        await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: toBN(5)});
+        // Attacker dies
+        await suicidalMock.die();
+
+        await mockFlareKeeper.callReceiveMinting(inflation.address, { value: toMint.addn(1)});
+        // ...and if it got here, then we balance.
+        // Assert
+        // Check self destruct bucket for good measure...
+        const {5: selfDestructProceeds} = await inflation.getTotals();
+        // Should record both self destruct and additional value
+        assert.equal(selfDestructProceeds.toNumber(), 5 + 1);
       });
       
       it("Should record timestamp of the block where keeping started in rewardEpochStartedTs when rewards started after 0", async() => {

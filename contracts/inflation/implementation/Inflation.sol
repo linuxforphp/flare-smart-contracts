@@ -156,9 +156,11 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
      */
     function receiveMinting() external payable onlyFlareKeeper mustBalance {
         uint256 amountPostedWei = inflationAnnums.receiveTopupRequest();
-        // Assume that if we got more than we posted, we must have been a self-destruct
+        // Assume that if we received (or already have) more than we posted, 
+        // it must be amounts sent from a contract self-destruct
         // recipient in this block.
-        uint256 selfDestructProceeds = msg.value.sub(amountPostedWei);
+        uint256 prevBalance = getExpectedBalance();
+        uint256 selfDestructProceeds = address(this).balance.sub(prevBalance);
         if (selfDestructProceeds > 0) {
             totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructProceeds);
         }
