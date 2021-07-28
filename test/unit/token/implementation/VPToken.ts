@@ -445,8 +445,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.revokeDelegationAt(accounts[2], blockAfterDelegate1, { from: accounts[1] });
     // Assert
     assert.equal((await vpToken.votePowerFromToAt(accounts[1], accounts[2], blockAfterDelegate1)).toNumber(), 0);
-    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
-    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
+    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     assert.equal((await vpToken.votePowerOfAt(accounts[2], blockAfterDelegate1)).toNumber(), 0);
     
     assert.equal((await vpToken.votePowerFromTo(accounts[1], accounts[2])).toNumber(), 120);
@@ -466,10 +466,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // revoke
     await vpToken.revokeDelegationAt(accounts[2], blockAfterDelegate1, { from: accounts[1] });
     // Assert
-    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
+    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     assert.equal((await vpToken.votePowerOfAt(accounts[2], blockAfterDelegate1)).toNumber(), 0);
     assert.equal((await vpToken.votePowerFromToAt(accounts[1], accounts[2], blockAfterDelegate1)).toNumber(), 0);
-    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     //
     assert.equal((await vpToken.votePowerFromTo(accounts[1], accounts[2])).toNumber(), 120);
     assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 180);

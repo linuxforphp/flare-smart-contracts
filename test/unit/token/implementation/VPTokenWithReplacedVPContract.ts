@@ -173,7 +173,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Act
             await vpToken.revokeDelegationAt(accounts[2], blk, { from: accounts[1] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 90);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 50);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], blk), 100);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], blk), 10);
         });
@@ -306,8 +306,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             await vpToken.revokeDelegationAt(accounts[2], initBlk3, { from: accounts[1] });
             await vpToken.revokeDelegationAt(accounts[3], initBlk3, { from: accounts[2] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], initBlk3), 80);
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], initBlk3), 100);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], initBlk3), 50);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], initBlk3), 50);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], initBlk3), 20);
         });
     });
@@ -459,7 +459,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             await vpToken.setReadVpContract(vpContractRepl.address, { from: accounts[0] });
             await vpToken.revokeDelegationAt(accounts[3], blk, { from: accounts[1] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 100);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 50);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], blk), 100);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], blk), 0);
         });
