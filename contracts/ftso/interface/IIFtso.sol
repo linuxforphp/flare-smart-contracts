@@ -26,7 +26,8 @@ interface IIFtso is IFtso {
      * @notice The hash of _price and _random must be equal to the submitted hash
      * @notice Emits PriceRevealed event
      */
-    function revealPriceSubmitter(address _voter, uint256 _epochId,  uint256 _price, uint256 _random) external;
+    function revealPriceSubmitter(address _voter, uint256 _epochId,  uint256 _price, 
+        uint256 _random, uint256 _wflrVP) external;
 
     /// function finalizePriceReveal
     /// called by reward manager only on correct timing.
@@ -79,6 +80,8 @@ interface IIFtso is IFtso {
     function setVotePowerBlock(uint256 _blockNumber) external;
 
     function initializeCurrentEpochStateForReveal(bool _fallbackMode) external;
+    
+    function flrVotePowerCached(address _owner) external returns (uint256);
   
     /**
      * @notice Returns the FTSO asset
@@ -92,40 +95,6 @@ interface IIFtso is IFtso {
      */
     function getFAssetFtsos() external view returns (IIFtso[] memory);
 
-    /**
-     * @notice Provides epoch summary
-     * @param _epochId                  Id of the epoch
-     * @return _epochSubmitStartTime    Start time of epoch price submission as seconds from unix epoch
-     * @return _epochSubmitEndTime      End time of epoch price submission as seconds from unix epoch
-     * @return _epochRevealEndTime      End time of epoch price reveal as seconds from unix epoch
-     * @return _epochFinalizedTimestamp Block.timestamp when the price was decided
-     * @return _price                   Finalized price for epoch
-     * @return _lowRewardPrice          The lowest submitted price eligible for reward
-     * @return _highRewardPrice         The highest submitted price eligible for reward
-     * @return _numberOfVotes           Number of votes in epoch
-     * @return _votePowerBlock          Block used for vote power inspection
-     * @return _finalizationType        Finalization type for epoch
-     * @return _trustedAddresses        Trusted addresses - set only if finalizationType equals 2 or 3
-     * @return _rewardedFtso            Whether epoch instance was a rewarded ftso
-     * @return _fallbackMode            Whether epoch instance was in fallback mode
-     * @dev half-closed intervals - end time not included
-     */
-    function getFullEpochReport(uint256 _epochId) external view returns (
-        uint256 _epochSubmitStartTime,
-        uint256 _epochSubmitEndTime,
-        uint256 _epochRevealEndTime,
-        uint256 _epochFinalizedTimestamp,
-        uint256 _price,
-        uint256 _lowRewardPrice,
-        uint256 _highRewardPrice,
-        uint256 _numberOfVotes,
-        uint256 _votePowerBlock,
-        PriceFinalizationType _finalizationType,
-        address[] memory _trustedAddresses,
-        bool _rewardedFtso,
-        bool _fallbackMode
-    );
-    
     /**
      * @notice Returns current configuration of epoch state
      * @return _maxVotePowerFlrThreshold        High threshold for FLR vote power per voter
@@ -144,26 +113,6 @@ interface IIFtso is IFtso {
         uint256 _highAssetTurnoutBIPSThreshold,
         uint256 _lowFlrTurnoutBIPSThreshold,
         address[] memory _trustedAddresses
-    );
-
-    /**
-     * @notice Provides summary of epoch votes
-     * @param _epochId              Id of the epoch
-     * @return _voters              Array of addresses an epoch price was submitted from
-     * @return _prices              Array of prices submitted in epoch
-     * @return _weights             Array of vote weights in epoch
-     * @return _weightsFlr          Array of FLR weights in epoch
-     * @return _weightsAsset        Array of asset weights in epoch
-     * @return _eligibleForReward   Array of boolean values that specify which votes are eligible for reward
-     * @notice Data for a single vote is determined by values in a specific position of the arrays
-     */
-    function getEpochVotes(uint256 _epochId) external view returns (
-        address[] memory _voters,
-        uint256[] memory _prices,
-        uint256[] memory _weights,
-        uint256[] memory _weightsFlr,
-        uint256[] memory _weightsAsset,
-        bool[] memory _eligibleForReward
     );
 
     /**

@@ -50,7 +50,7 @@ contract VoterWhitelisterMock is VoterWhitelister {
         uint256 _totalVotePowerFlr,
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) public returns (uint256[] memory _flrVP) {
+    ) public returns (uint256[] memory _wflrVP) {
         return _getFlareVotePowerWeights(_wflr, _totalVotePowerFlr, _addresses, _blockNumber);
     }
     

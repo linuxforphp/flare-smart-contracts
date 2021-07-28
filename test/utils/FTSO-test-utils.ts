@@ -239,6 +239,14 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
     }
 }
 
+export function arraySum(array: BigNumber[]): BigNumber {
+    let result = BigNumber.from(0);
+    for (const num of array) {
+        result = result.add(num);
+    }
+    return result;
+}
+
 ////////////////////////////////////////////////////////////
 //// PRETTY PRINTOUT FUNCTIONS
 ////////////////////////////////////////////////////////////
@@ -864,7 +872,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
         
     // Print epoch submission prices
     let resVoteInfo = await ftso.getEpochVotes(epoch);
-    testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
+    testExample.weightRatio = await getWeightRatio(ftso, epoch, resVoteInfo);
     prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
 
     // Print results                
@@ -878,6 +886,13 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     } as TestCase;
 
     return testCase;
+}
+
+export async function getWeightRatio(ftso: MockFtso, epoch: number, resVoteInfo: { _weightsFlr: BigNumber[]; _weightsAsset: BigNumber[]; }) {
+    const sumWeightsFlr = arraySum(resVoteInfo._weightsFlr);
+    const sumWeightsAsset = arraySum(resVoteInfo._weightsAsset);
+    const weightRatio = await ftso.getWeightRatio(epoch, sumWeightsFlr, sumWeightsAsset);
+    return weightRatio.toNumber();
 }
 
 export async function submitPrice(signers: readonly SignerWithAddress[], ftso: MockFtso, prices: number[]): Promise<{ epoch: number; }> {

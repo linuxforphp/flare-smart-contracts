@@ -1,4 +1,3 @@
-import exp from "constants";
 import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, MockFtsoInstance, SupplyContract, SupplyInstance, VPTokenContract, VPTokenInstance, WFlrContract, WFlrInstance } from "../../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, computeVoteRandom, increaseTimeTo, isAddressEligible, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
@@ -184,7 +183,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should revert at reveal price if not activated", async() => {
             await expectRevert(ftso.revealPrice(1, 500, 123, {from: accounts[1]}), "FTSO not active");
-            await expectRevert(ftso.revealPriceSubmitter(accounts[0], 1, 500, 123, {from: accounts[4]}), "FTSO not active");
+            await expectRevert(ftso.revealPriceSubmitter(accounts[0], 1, 500, 123, 100, {from: accounts[4]}), "FTSO not active");
         });
 
         it("Should configure epochs", async() => {
@@ -294,7 +293,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             let votesDataAsset = await ftso.getEpochVotes(epochId+1);
             expect(votesDataAsset[0]).to.eqls([accounts[1]]);
             expect(votesDataAsset[1]).to.eqls([toBN(500)]);
-            expect(votesDataAsset[2]).to.eqls([toBN(0)]);
+            expect(votesDataAsset[2]).to.eqls([toBN(1000000000000)]);
             expect(votesDataAsset[3]).to.eqls([toBN(0)]);
             expect(votesDataAsset[4]).to.eqls([toBN(20000000000)]);
             expect(votesDataAsset[5]).to.eqls([false]);
@@ -427,7 +426,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             await setMockVotePowerOfAt(10, 10, 0, accounts[1]);  // vote power of 0 is not allowed
-            expectEvent(await ftso.revealPriceSubmitter(accounts[1], epochId, 500, 123, {from: accounts[4]}), "PriceRevealed", {voter: accounts[1], epochId: toBN(epochId), price: toBN(500), random: toBN(123)});
+            expectEvent(await ftso.revealPriceSubmitter(accounts[1], epochId, 500, 123, 10, {from: accounts[4]}), "PriceRevealed", {voter: accounts[1], epochId: toBN(epochId), price: toBN(500), random: toBN(123)});
         });
 
         it("Should not reveal price (submitter) if not from submitter", async() => {
@@ -437,7 +436,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             await setMockVotePowerOfAt(10, 10, 0, accounts[1]);  // vote power of 0 is not allowed
-            await expectRevert(ftso.revealPriceSubmitter(accounts[1], epochId, 500, 123, {from: accounts[1]}), "Access denied");
+            await expectRevert(ftso.revealPriceSubmitter(accounts[1], epochId, 500, 123, 10, {from: accounts[1]}), "Access denied");
         });
 
         it("Should reveal prices from trusted addresses for epoch in fallback mode", async() => {
@@ -556,7 +555,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             let votesData = await ftso.getEpochVotes(epochId+1);
             expect(votesData[0]).to.eqls([accounts[1], accounts[2], accounts[3]]);
             expect(votesData[1]).to.eqls([toBN(500), toBN(250), toBN(400)]);
-            expect(votesData[2]).to.eqls([toBN(0), toBN(0), toBN(0)]);
+            expect(votesData[2]).to.eqls([toBN(285714285714), toBN(428571428570), toBN(285714285714)]);
             expect(votesData[3]).to.eqls([toBN(200000000000), toBN(150000000000), toBN(0)]);
             expect(votesData[4]).to.eqls([toBN(0), toBN(15000000000), toBN(20000000000)]);
             expect(votesData[5]).to.eqls([false, false, false]);
@@ -2119,7 +2118,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             
             compareArrays<string>(data[0], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays(data[1], prices);
-            compareNumberArrays(data[2], [0,0,0]); // always 0 before finalizePriceEpoch is called (set only if finalizationType = PriceFinalizationType.MEDIAN)
+            compareNumberArrays(data[2], [166666666666, 783333333333, 50000000000]);
             compareNumberArrays(data[3], weightsFlr);
             compareNumberArrays(data[4], [100000000, 0, 500000000]);
             compareArrays<boolean>(data[5], [false, false, false]);
@@ -2173,7 +2172,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             compareArrays<string>(data[0], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays(data[1], prices2);
-            compareNumberArrays(data[2], [0, 0, 0]);
+            compareNumberArrays(data[2], [166666666666, 611111111110, 222222222221]);
             compareNumberArrays(data[3], flrWeights);
             compareNumberArrays(data[4], assetWeights);
             compareArrays<boolean>(data[5], [false, false, false]);
@@ -2451,7 +2450,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             compareArrays<string>(data[0], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays(data[1], prices);
-            compareNumberArrays(data[2], [0, 0, 0]); // always 0 before _setWeightsParameters is called
+            compareNumberArrays(data[2], [166666666666, 833333333333, 0]);
             compareNumberArrays(data[3], weightsFlr);
             compareNumberArrays(data[4], [0, 0, 0]); // always 0 after first price finalization, as current price was 0
             compareArrays<boolean>(data[5], [false, false, false]);
@@ -2505,7 +2504,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             compareArrays<string>(data[0], [accounts[1], accounts[2], accounts[3]]);
             compareNumberArrays(data[1], prices2);
-            compareNumberArrays(data[2], [0, 0, 0]);
+            compareNumberArrays(data[2], [333333333333, 333333333333, 333333333333]);
             compareNumberArrays(data[3], flrWeights);
             compareNumberArrays(data[4], assetWeights);
             compareArrays<boolean>(data[5], [false, false, false]);

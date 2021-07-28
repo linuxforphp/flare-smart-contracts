@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
-import { checkTestCase, createMockSupplyContract, finalizePriceEpochWithResult, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
+import { checkTestCase, createMockSupplyContract, finalizePriceEpochWithResult, getWeightRatio, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { TestExampleLogger } from "../../utils/TestExampleLogger";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
@@ -193,7 +193,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
 
         // Print epoch submission prices
         let resVoteInfo = await ftso.getEpochVotes(epoch);
-        testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
+        testExample.weightRatio = await getWeightRatio(ftso, epoch, resVoteInfo);
         prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
@@ -263,7 +263,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
 
         // Print epoch submission prices
         let resVoteInfo = await ftso.getEpochVotes(epoch);
-        testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
+        testExample.weightRatio = await getWeightRatio(ftso, epoch, resVoteInfo);
         prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
@@ -292,7 +292,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
 
         // Print epoch submission prices
         let resVoteInfo2 = await ftso.getEpochVotes(epoch+1) as any;
-        testExample2.weightRatio = (await ftso.getWeightRatio(epoch+1)).toNumber();
+        testExample2.weightRatio = await getWeightRatio(ftso, epoch+1, resVoteInfo2);
         prettyPrintVoteInfo(epoch+1, resVoteInfo2, testExample2.weightRatio!, logger);
         
         // Print results 2
@@ -375,7 +375,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
 
         // Print epoch submission prices
         let resVoteInfo = await ftso.getEpochVotes(epoch);
-        testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
+        testExample.weightRatio = await getWeightRatio(ftso, epoch, resVoteInfo);
         prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
         
         // Print results                
@@ -404,7 +404,7 @@ describe("VPToken and FTSO contract - integration tests - wflr", () => {
 
         // Print epoch submission prices
         let resVoteInfo2 = await ftso.getEpochVotes(epoch+1) as any;
-        testExample2.weightRatio = (await ftso.getWeightRatio(epoch+1)).toNumber();
+        testExample2.weightRatio = await getWeightRatio(ftso, epoch+1, resVoteInfo2);
         prettyPrintVoteInfo(epoch+1, resVoteInfo2, testExample2.weightRatio!, logger);
         
         // Print results 2

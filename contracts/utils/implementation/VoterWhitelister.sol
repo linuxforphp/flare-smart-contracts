@@ -232,12 +232,13 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         (assets, assetMultipliers, totalVotePowerFlr, totalVotePowerAsset, assetWeightRatio, votePowerBlock)
             = ftso.getVoteWeightingParameters();
         // flr vote powers
-        uint256[] memory flrVP = _getFlareVotePowerWeights(ftso.wFlr(), totalVotePowerFlr, _addresses, votePowerBlock);
+        uint256[] memory wflrVP = 
+            _getFlareVotePowerWeights(ftso.wFlr(), totalVotePowerFlr, _addresses, votePowerBlock);
         // asset vote powers
         uint256[] memory combinedAssetVP = 
             _getAssetVotePowerWeights(assets, assetMultipliers, totalVotePowerAsset, _addresses, votePowerBlock);
         // combine asset and wflr
-        return _computeWeightedSum(flrVP, combinedAssetVP, assetWeightRatio);
+        return _computeWeightedSum(wflrVP, combinedAssetVP, assetWeightRatio);
     }
     
     /**
@@ -248,13 +249,13 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         uint256 _totalVotePowerFlr,
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) internal returns (uint256[] memory _flrVP) {
-        _flrVP = _getVotePowers(_wflr, _addresses, _blockNumber);
+    ) internal returns (uint256[] memory _wflrVP) {
+        _wflrVP = _getVotePowers(_wflr, _addresses, _blockNumber);
         if (_totalVotePowerFlr == 0) {
-            return _flrVP;  // if total is 0, all values must be 0, no division needed
+            return _wflrVP;  // if total is 0, all values must be 0, no division needed
         }
         for (uint256 i = 0; i < _addresses.length; i++) {
-            _flrVP[i] = _flrVP[i].mulDiv(TERA, _totalVotePowerFlr);
+            _wflrVP[i] = _wflrVP[i].mulDiv(TERA, _totalVotePowerFlr);
         }
     }
     
