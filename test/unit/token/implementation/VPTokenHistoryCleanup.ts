@@ -135,7 +135,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             assertNumberEqual(await vpContract.votePowerHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 3);
             assertNumberEqual(await vpContract.percentageDelegationHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 1);
             assertNumberEqual(await vpContract.explicitDelegationHistoryCleanup.call(accounts[2], accounts[3], 10, { from: accounts[5] }), 2);
-            assertNumberEqual(await vpContract.votePowerCacheCleanup.call(accounts[1], blk1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpContract.votePowerCacheCleanup.call(accounts[1], blk1, { from: accounts[5] }), 0);
             assertNumberEqual(await vpContract.revocationCleanup.call(accounts[1], accounts[3], blk1, { from: accounts[5] }), 1);
             // Act
             for (let i = 0; i < 3; i++) {
@@ -181,7 +181,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             assertNumberEqual(await vpContract.votePowerHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 3);
             assertNumberEqual(await vpContract.percentageDelegationHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 1);
             assertNumberEqual(await vpContract.explicitDelegationHistoryCleanup.call(accounts[2], accounts[3], 10, { from: accounts[5] }), 2);
-            assertNumberEqual(await vpContract.votePowerCacheCleanup.call(accounts[1], blk1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpContract.votePowerCacheCleanup.call(accounts[1], blk1, { from: accounts[5] }), 0);
             assertNumberEqual(await vpContract.revocationCleanup.call(accounts[1], accounts[3], blk1, { from: accounts[5] }), 1);
             // Act
             for (let i = 0; i < 2; i++) {

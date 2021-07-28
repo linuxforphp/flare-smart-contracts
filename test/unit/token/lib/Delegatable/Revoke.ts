@@ -99,7 +99,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     let edVotePowerNow = await delegatable.votePowerOf(ed);
     let bobVotePowerNow = await delegatable.votePowerOf(bob);
     assert.equal(edVotePowerPastBlock as any, 50);
-    assert.equal(bobVotePowerPastBlock as any, 100);
+    assert.equal(bobVotePowerPastBlock as any, 40);
     assert.equal(edVotePowerNow as any, 65);
     assert.equal(bobVotePowerNow as any, 135);
     let { _delegateAddresses: delegatesPast, _bips: bipsPast } = await delegatable.delegatesOfAt(bob, b[blockAfterBobDelegateToEd]) as any;
@@ -113,7 +113,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     let edUndelegatedVotePowerNow = await delegatable.undelegatedVotePowerOf(ed);
     let bobUndelegatedVotePowerNow = await delegatable.undelegatedVotePowerOf(bob);
     assert.equal(edUndelegatedVotePowerPastBlock.toNumber(), 50);
-    assert.equal(bobUndelegatedVotePowerPastBlock.toNumber(), 100);
+    assert.equal(bobUndelegatedVotePowerPastBlock.toNumber(), 40);
     assert.equal(edUndelegatedVotePowerNow.toNumber(), 50);
     assert.equal(bobUndelegatedVotePowerNow.toNumber(), 135);
   });
@@ -194,7 +194,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     let bobVotePowerNow = await delegatable.votePowerOf(bob);
     let lucyVotePowerNow = await delegatable.votePowerOf(lucy);
     assert.equal(edVotePowerPastBlock.toNumber(), 50);
-    assert.equal(bobVotePowerPastBlock.toNumber(), 100);
+    assert.equal(bobVotePowerPastBlock.toNumber(), 40);
     assert.equal(lucyVotePowerPastBlock.toNumber(), 200);
     assert.equal(edVotePowerNow.toNumber(), 65);
     assert.equal(bobVotePowerNow.toNumber(), 185);
@@ -204,7 +204,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     let edUndelegatedVotePowerNow = await delegatable.undelegatedVotePowerOf(ed);
     let bobUndelegatedVotePowerNow = await delegatable.undelegatedVotePowerOf(bob);
     assert.equal(edUndelegatedVotePowerPastBlock.toNumber(), 50);
-    assert.equal(bobUndelegatedVotePowerPastBlock.toNumber(), 100);
+    assert.equal(bobUndelegatedVotePowerPastBlock.toNumber(), 40);
     assert.equal(edUndelegatedVotePowerNow.toNumber(), 50);
     assert.equal(bobUndelegatedVotePowerNow.toNumber(), 185);
   });

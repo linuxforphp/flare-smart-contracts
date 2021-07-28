@@ -12,6 +12,7 @@ export class VPTokenState {
         public readonly balances = new SparseArray(),
         public readonly bipsDelegations = new SparseMatrix(),
         public readonly amountDelegations = new SparseMatrix(),
+        public readonly revocations = new SparseArray(),
     ) { }
 
     votePower(account: string) {
@@ -24,6 +25,10 @@ export class VPTokenState {
         return this.balances.get(account)
             .sub(this.delegatedVPFrom(account));
     }
+    
+    revokedVotePower(account: string) {
+        return this.revocations.get(account);
+    }
 
     private delegatedVPFrom(account: string) {
         let res = BN_ZERO;
@@ -34,6 +39,11 @@ export class VPTokenState {
         for (const amount of this.amountDelegations.rowMap(account).values()) {
             res = res.add(amount); // delegations from account
         }
+        // Revocations are only removed from delegatee not added back to teh delegator.
+        // However, in the simulated state, the value is removed from delegation matrix,
+        // which affects both delegatee and delegator. Therefore we add the revoked
+        // value back to the total delegated value of the delegator.
+        res = res.add(this.revocations.get(account));
         return res;
     }
 
@@ -62,8 +72,17 @@ export class VPTokenState {
     }
     
     revokeDelegation(from: string, to: string) {
-        this.bipsDelegations.set(from, to, BN_ZERO);
-        this.amountDelegations.set(from, to, BN_ZERO);
+        const bips = this.bipsDelegations.get(from, to)
+        if (!bips.isZero()) {
+            const revocation = bips.mul(this.balances.get(from)).div(MAX_BIPS);
+            this.revocations.set(from, this.revocations.get(from).add(revocation));
+            this.bipsDelegations.set(from, to, BN_ZERO);
+        }
+        const amount = this.amountDelegations.get(from, to);
+        if (!amount.isZero()) {
+            this.revocations.set(from, this.revocations.get(from).add(amount));
+            this.amountDelegations.set(from, to, BN_ZERO);
+        }
     }
 
     votePowerFromTo(from: string, to: string) {
@@ -78,6 +97,7 @@ export class VPTokenState {
     clearAllDelegations() {
         this.bipsDelegations.clear();
         this.amountDelegations.clear();
+        this.revocations.clear();
     }
     
     save(file: string, indent?: string | number) {
@@ -85,6 +105,7 @@ export class VPTokenState {
             balances: this.balances.toObject(),
             bipsDelegations: this.bipsDelegations.toObject(),
             amountDelegations: this.amountDelegations.toObject(),
+            revocations: this.revocations.toObject(),
         };
         saveJson(file, obj, indent);
     }
@@ -104,11 +125,12 @@ export class VPTokenState {
         return Array.from(this.bipsDelegations.rowMap(account).keys())
             .concat(Array.from(this.amountDelegations.rowMap(account).keys()));
     }
-
+    
     clone(): VPTokenState {
         return new VPTokenState(
             this.balances.clone(),
             this.bipsDelegations.clone(),
-            this.amountDelegations.clone());
+            this.amountDelegations.clone(),
+            this.revocations.clone());
     }
 }

@@ -553,7 +553,7 @@ contract Delegatable is IVPContractEvents {
         bool overflow;
         uint256 result;
         (overflow, result) = _ownerBalanceAt.trySub(delegated);
-        return result.add(votePowerCache.revokedTotalFromAt(_owner, _blockNumber));
+        return result;
     }
 
     /**
