@@ -13,12 +13,33 @@ variables:
     GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
     GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
     TEST_LINTER: "lint"
+    YARN_CACHE_DIR: "$CI_PROJECT_DIR/.yarn-cache"
 
+cache:
+    - key: always-keep
+      paths:
+        - $YARN_CACHE_DIR
+      policy: pull
+    - key:
+        files:
+            - yarn.lock
+      paths:
+        - $CI_PROJECT_DIR/node_modules
+      policy: pull
+    
 ### Templates
+.pipeline-settings: &pipeline-settings
+    rules:
+        - if: '$CI_COMMIT_REF_NAME == "master"'
+          when: on_success
+        - if: '$CI_COMMIT_REF_NAME != "master"'
+          when: manual
+
 .yarn-setup: &yarn-setup
     image: node:latest
+    <<: *pipeline-settings
     before_script:
-        - yarn install --frozen-lockfile
+        - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
         
 ### Jobs
 test-contract-unit-1:
@@ -117,10 +138,22 @@ test-contract-end-to-end:
 slither-check:
     stage: test
     image: node:latest
+    <<: *pipeline-settings
     before_script:
         - apt update
         - apt install -y python3-pip
         - pip3 install slither-analyzer
-        - yarn install --frozen-lockfile
+        - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
     script:
         - yarn slither
+    cache:  # only save cache here
+        - key: always-keep
+          paths:
+            - $YARN_CACHE_DIR
+          policy: pull-push
+        - key:
+            files:
+                - yarn.lock
+          paths:
+            - $CI_PROJECT_DIR/node_modules
+          policy: pull-push

@@ -22,6 +22,8 @@ crytic-export/
 
 ## Node packages etc
 node_modules/
+.yarn-cache/
+.pip-cache/
 
 ## code coverage files
 coverage.json
