@@ -49,6 +49,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     string internal constant ERR_FEE_PERCENTAGE_INVALID = "invalid fee percentage value";
     string internal constant ERR_FEE_PERCENTAGE_UPDATE_FAILED = "fee percentage can not be updated";
     string internal constant ERR_AFTER_DAILY_CYCLE = "after daily cycle";
+    string internal constant ERR_NO_CLAIMABLE_EPOCH = "no epoch with claimable rewards";
     
     uint256 constant internal MAX_BIPS = 1e4;
     uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
@@ -135,9 +136,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     function claimReward(
         address payable _recipient,
         uint256[] memory _rewardEpochs
-    ) external override onlyIfActive mustBalance nonReentrant returns (
-        uint256 _rewardAmount
-    ) {
+    ) external override onlyIfActive mustBalance nonReentrant 
+        returns (uint256 _rewardAmount)
+    {
         _handleSelfDestructProceeds();
 
         uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
@@ -171,9 +172,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address payable _recipient,
         uint256[] memory _rewardEpochs,
         address[] memory _dataProviders
-    ) external override onlyIfActive mustBalance nonReentrant returns (
-        uint256 _rewardAmount
-    ) {
+    ) external override onlyIfActive mustBalance nonReentrant 
+        returns (uint256 _rewardAmount)
+    {
         _handleSelfDestructProceeds();
 
         uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
@@ -366,10 +367,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
      */
     function getEpochReward(
         uint256 _rewardEpoch
-    ) external view override returns (
-        uint256 _totalReward,
-        uint256 _claimedReward
-    ) {
+    ) external view override 
+        returns (uint256 _totalReward, uint256 _claimedReward) 
+    {
         _totalReward = totalRewardEpochRewards[_rewardEpoch];
         _claimedReward = claimedRewardEpochRewards[_rewardEpoch];
     }
@@ -391,8 +391,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address[] memory _dataProviders,
         uint256[] memory _rewardAmounts,
         bool[] memory _claimed,
-        bool _claimable
-    ) {
+        bool _claimable) 
+    {
         RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
         _dataProviders = rewardState.dataProviders;
         _rewardAmounts = rewardState.amounts;
@@ -416,8 +416,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     ) external view override returns (
         uint256[] memory _rewardAmounts,
         bool[] memory _claimed,
-        bool _claimable
-    ) {
+        bool _claimable)
+    {
         RewardState memory rewardState = _getStateOfRewardsFromDataProviders(
             _beneficiary,
             _rewardEpoch,
@@ -430,6 +430,50 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     }
 
     /**
+     * @notice Returns the start and the end of the reward epoch range for which the reward is claimable
+     * @return _startEpochId        the oldest epoch id that allows reward claiming
+     * @return _endEpochId          the newest epoch id that allows reward claiming
+     */
+    function getEpochsWithClaimableRewards() external view override 
+        returns (uint256 _startEpochId, uint256 _endEpochId)
+    {
+        (_startEpochId, _endEpochId) = _getEpochsWithClaimableRewards();
+    }
+
+    /**
+     * @notice Returns the array of claimable epoch ids for which the reward has not yet been claimed
+     * @param _beneficiary          address of reward beneficiary
+     * @return _epochIds            array of epoch ids
+     * @dev Reverts when queried with `_beneficary` delegating by amount
+     */
+    function getEpochsWithUnclaimedRewards(address _beneficiary) external view override 
+        returns (uint256[] memory _epochIds) 
+    {
+        (uint256 startId, uint256 endId) = _getEpochsWithClaimableRewards();
+        uint256 count = endId - startId + 1;        
+        bool[] memory unclaimed = new bool[](count);
+        uint256 unclaimedCount = 0;
+        for (uint256 i = 0; i < count; i++) {
+            RewardState memory rewardState = _getStateOfRewards(_beneficiary, startId + i, true);
+            for (uint256 j = 0; j < rewardState.claimed.length; j++) {
+                if (!rewardState.claimed[j] && rewardState.amounts[j] > 0) {
+                    unclaimed[i] = true;
+                    unclaimedCount++;
+                    break;
+                }
+            }
+        }
+        _epochIds = new uint256[](unclaimedCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < count; i++) {
+            if (unclaimed[i]) {
+                _epochIds[index] = startId + i;
+                index++;
+            }
+        }
+    }
+
+    /**
      * @notice Returns the information on unclaimed reward of `_dataProvider` for `_rewardEpoch`
      * @param _rewardEpoch          reward epoch number
      * @param _dataProvider         address representing the data provider
@@ -439,10 +483,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     function getUnclaimedReward(
         uint256 _rewardEpoch,
         address _dataProvider
-    ) external view override returns (
-        uint256 _amount,
-        uint256 _weight
-    ) {
+    ) external view override 
+        returns (uint256 _amount, uint256 _weight)
+    {
         _amount = epochProviderUnclaimedRewardAmount[_rewardEpoch][_dataProvider];
         _weight = epochProviderUnclaimedRewardWeight[_rewardEpoch][_dataProvider];
     }
@@ -459,10 +502,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         uint256 _rewardEpoch,
         address _dataProvider,
         address _claimer
-    ) external view override returns(
-        bool _claimed,
-        uint256 _amount
-    ) {
+    ) external view override 
+        returns(bool _claimed, uint256 _amount) 
+    {
         RewardClaim storage rewardClaim = epochProviderClaimerReward[_rewardEpoch][_dataProvider][_claimer];
         _claimed = rewardClaim.claimed;
         _amount = rewardClaim.amount;
@@ -488,8 +530,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     ) external view override returns (
         uint256[] memory _feePercentageBIPS,
         uint256[] memory _validFromEpoch,
-        bool[] memory _fixed
-    ) {
+        bool[] memory _fixed) 
+    {
         FeePercentage[] storage fps = dataProviderFeePercentages[_dataProvider];
         if (fps.length > 0) {
             uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
@@ -528,8 +570,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     function getRewardPoolSupplyData() external view override returns (
         uint256 _foundationAllocatedFundsWei,
         uint256 _totalInflationAuthorizedWei,
-        uint256 _totalClaimedWei
-    ) {
+        uint256 _totalClaimedWei)
+    {
         return (0, totalInflationAuthorizedWei, totalClaimedWei);
     }
 
@@ -643,7 +685,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         address _beneficiary,
         uint256 _rewardEpoch,
         bool _zeroForClaimed
-    ) internal view returns (RewardState memory _rewardState)
+    ) internal view 
+        returns (RewardState memory _rewardState)
     {
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(_rewardEpoch);
         
@@ -725,7 +768,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         uint256 _rewardEpoch,
         address[] memory _dataProviders,
         bool _zeroForClaimed
-    ) internal view returns (RewardState memory _rewardState) {
+    ) internal view 
+        returns (RewardState memory _rewardState) 
+    {
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(_rewardEpoch);
 
         uint256 count = _dataProviders.length;
@@ -777,6 +822,21 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
             return false;
         }
         return true;
+    }
+
+    /**
+     * @notice Returns the start and the end of the reward epoch range for which the reward is claimable
+     * @return _startEpochId        the oldest epoch id that allows reward claiming
+     * @return _endEpochId          the newest epoch id that allows reward claiming
+     */
+    function _getEpochsWithClaimableRewards() internal view returns (
+        uint256 _startEpochId,
+        uint256 _endEpochId) 
+    {
+        _startEpochId = nextRewardEpochToExpire;
+        uint256 currentRewardEpochId = ftsoManager.getCurrentRewardEpoch();
+        require(currentRewardEpochId > 0, ERR_NO_CLAIMABLE_EPOCH);        
+        _endEpochId = currentRewardEpochId - 1;
     }
 
     /**
