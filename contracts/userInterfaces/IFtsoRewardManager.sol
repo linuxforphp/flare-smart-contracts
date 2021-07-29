@@ -154,6 +154,26 @@ interface IFtsoRewardManager {
     );
 
     /**
+     * @notice Returns the start and the end of the reward epoch range for which the reward is claimable
+     * @param _startEpochId         the oldest epoch id that allows reward claiming
+     * @param _endEpochId           the newest epoch id that allows reward claiming
+     */
+    function getEpochsWithClaimableRewards() external view returns  (
+        uint256 _startEpochId,
+        uint256 _endEpochId
+    );
+
+    /**
+     * @notice Returns the array of claimable epoch ids for which the reward has not yet been claimed
+     * @param _beneficiary          address of reward beneficiary
+     * @return _epochIds            array of epoch ids
+     * @dev Reverts when queried with `_beneficary` delegating by amount
+     */
+    function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (
+        uint256[] memory _epochIds
+    );
+
+    /**
      * @notice Returns the information on claimed reward of `_dataProvider` for `_rewardEpoch` by `_claimer`
      * @param _rewardEpoch          reward epoch number
      * @param _dataProvider         address representing the data provider
