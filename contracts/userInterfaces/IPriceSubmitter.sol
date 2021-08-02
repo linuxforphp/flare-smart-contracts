@@ -2,7 +2,8 @@
 pragma solidity 0.7.6;
 
 import "../ftso/interface/IIFtso.sol";
-import "../genesis/interface/IIFtsoRegistry.sol";
+import "./IVoterWhitelister.sol";
+import "./IFtsoManager.sol";
 
 interface IPriceSubmitter {
     /**
@@ -84,19 +85,10 @@ interface IPriceSubmitter {
      */    
     function voterWhitelistBitmap(address _voter) external view returns (uint256);
 
-    // Hardcoded FTSO indices for automatically deployed 
+    function getVoterWhitelister() external view returns (IVoterWhitelister);
 
-    /* solhint-disable func-name-mixedcase */
-    function FLR_FTSO_INDEX  () external pure returns (uint256);
-    function FXRP_FTSO_INDEX  () external pure returns (uint256);
-    function FLTC_FTSO_INDEX  () external pure returns (uint256);
-    function FXDG_FTSO_INDEX  () external pure returns (uint256);
-    function FADA_FTSO_INDEX  () external pure returns (uint256);
-    function FALGO_FTSO_INDEX () external pure returns (uint256);
-    function FBCH_FTSO_INDEX  () external pure returns (uint256);
-    function FDGB_FTSO_INDEX  () external pure returns (uint256);
-    function FXLM_FTSO_INDEX  () external pure returns (uint256);
-    function FBTC_FTSO_INDEX  () external pure returns (uint256);
-    /* solhint-enable func-name-mixedcase */
- 
+    function getFtsoRegistry() external view returns (IFtsoRegistry);
+
+    function getFtsoManager() external view returns (IFtsoManager);
+
 }

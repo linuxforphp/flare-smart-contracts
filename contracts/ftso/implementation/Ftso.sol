@@ -234,14 +234,14 @@ contract Ftso is IIFtso {
      * @param _revealPeriod         Duration of epoch reveal period in seconds
      */
     function activateFtso(
-        IPriceSubmitter _priceSubmitter,
+        address _priceSubmitter,
         uint256 _firstEpochStartTime,
         uint256 _submitPeriod,
         uint256 _revealPeriod
     ) external override onlyFtsoManager
     {
         require(!active, ERR_ALREADY_ACTIVATED);
-        priceSubmitter = _priceSubmitter;
+        priceSubmitter = IPriceSubmitter(_priceSubmitter);
         epochs.firstEpochStartTime = _firstEpochStartTime;
         epochs.submitPeriod = _submitPeriod;
         epochs.revealPeriod = _revealPeriod;

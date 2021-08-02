@@ -341,19 +341,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     await ftsoManager.addFtso(ftsoContract.address);
   }
 
-  // Precheck
-  // Hardcoded ftso indices have to coincide with added indices
-  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
-  for (let asset of ['FLR', ...assets]){
-    const assetContract = assetToContracts.get(asset)!; 
-    const encodedName = (asset == 'FLR') ? 'FLR' : 'F' + asset;
-
-    // Dynamically get hardcoded method name
-    const func_name = encodedName + '_FTSO_INDEX';
-    const hardcodedIndex = (priceSubmitter as any)[func_name]() as Promise<BN>;
-    
-    assert((await registry.getFtsoIndex(await assetContract.ftso.symbol())).eq(await hardcodedIndex), 'INVALID FTSO CONFIGURATION')
-  }
+  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());  
 
   // Set initial number of voters
   for (let asset of ['FLR', ...assets]){

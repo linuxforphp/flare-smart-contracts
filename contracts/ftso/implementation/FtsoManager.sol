@@ -81,7 +81,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     IIFtsoRewardManager internal rewardManager;
     IIPriceSubmitter internal immutable priceSubmitter;
 
-    IIFtsoRegistry public immutable override ftsoRegistry;
+    IIFtsoRegistry public immutable ftsoRegistry;
 
     CleanupBlockNumberManager public cleanupBlockNumberManager;
 
@@ -441,7 +441,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             }
         }
 
-        _ftso.activateFtso(priceSubmitter, firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec);
+        _ftso.activateFtso(
+            address(priceSubmitter), firstPriceEpochStartTs, priceEpochDurationSec, revealEpochDurationSec
+        );
 
         // Set the vote power block
         if(!justStarted) {
