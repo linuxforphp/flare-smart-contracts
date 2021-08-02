@@ -135,9 +135,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let ftsoFalgo: FtsoInstance;
   let ftsoFbch: FtsoInstance;
   let firstPriceEpochStartTs: BN;
-  let priceEpochDurationSec: BN;
-  let revealEpochDurationSec: BN;
-  let rewardEpochDurationSec: BN;
+  let priceEpochDurationSeconds: BN;
+  let revealEpochDurationSeconds: BN;
+  let rewardEpochDurationSeconds: BN;
   let rewardEpochsStartTs: BN;
   let SuicidalMock: SuicidalMockContract;
   let suicidalMock: SuicidalMockInstance;
@@ -178,11 +178,11 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    priceEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    revealEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
+    revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
-    rewardEpochDurationSec = await ftsoManager.rewardEpochDurationSec();
+    rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
     rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
 
     // Set up the suicidal mock contract so we can conjure FLR into the keeper by self-destruction
@@ -252,7 +252,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
 
     // Set up a fresh price epoch
-    await moveFromCurrentToNextEpochStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSec.toNumber(), 1);
+    await moveFromCurrentToNextEpochStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), 1);
     await flareKeeper.trigger();
 
     let flrPrices = [0.35, 0.40, 0.50];
@@ -287,7 +287,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
 
     // Time travel to reveal period
-    await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSec.toNumber(), testPriceEpoch);
+    await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), testPriceEpoch);
 
     // Reveal prices
     for (let i = 0; i < submitters.length; i++) {
@@ -297,8 +297,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Time travel to price epoch finalization -> using ~3.2M gas
     await moveToFinalizeStart(
       firstPriceEpochStartTs.toNumber(),
-      priceEpochDurationSec.toNumber(),
-      revealEpochDurationSec.toNumber(),
+      priceEpochDurationSeconds.toNumber(),
+      revealEpochDurationSeconds.toNumber(),
       testPriceEpoch);
 
     await flareKeeper.trigger({ gas: 10000000 });
@@ -321,7 +321,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Time travel to reward epoch finalization
     await moveToRewardFinalizeStart(
       rewardEpochsStartTs.toNumber(),
-      rewardEpochDurationSec.toNumber(),
+      rewardEpochDurationSeconds.toNumber(),
       0);
 
     await flareKeeper.trigger();
@@ -393,9 +393,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // use the same formula as in ftso reward manager to calculate claimable value
     const dailyPeriodEndTs = authorizedInflationTimestamp.add(almostFullDaySec);
-    const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (testPriceEpoch + 1) * priceEpochDurationSec.toNumber() - 1);
+    const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (testPriceEpoch + 1) * priceEpochDurationSeconds.toNumber() - 1);
     const shouldaClaimed = dailyAuthorizedInflation.div( 
-        (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSec).add(BN(1))
+        (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSeconds).add(BN(1))
     );
 
     // After all that, one little test...

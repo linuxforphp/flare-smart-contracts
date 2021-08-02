@@ -26,20 +26,20 @@ library FtsoEpoch {
         
         // configurable settings
         uint256 votePowerBlock;                 // current block at which the vote power is checked
-        uint256 maxVotePowerFlrThreshold;       // high threshold for FLR vote power per voter
-        uint256 maxVotePowerAssetThreshold;     // high threshold for asset vote power per voter
+        uint256 maxVotePowerFlrThresholdFraction;       // high threshold for FLR vote power per voter
+        uint256 maxVotePowerAssetThresholdFraction;     // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power (in scaled USD)
         uint256 highAssetUSDThreshold;          // threshold for high asset vote power (in scaled USD)
-        uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
-        uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
+        uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
+        uint256 lowFlrTurnoutThresholdBIPS;     // threshold for low flr turnout (in BIPS)
         address[] trustedAddresses;             // trusted addresses - use their prices if low turnout is not achieved
         mapping(address => bool) trustedAddressesMapping; // for checking addresses in fallback mode
     }
 
     struct Instance {                           // struct holding epoch votes and results
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
-        uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
-        uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
+        uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
+        uint256 lowFlrTurnoutThresholdBIPS;     // threshold for low flr turnout (in BIPS)
         uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
@@ -88,12 +88,12 @@ library FtsoEpoch {
          // all divisions guaranteed not to divide with 0 - checked in ftso manager setGovernanceParameters(...)
         _setAssets(_state, _instance, _assets, _assetVotePowers, _assetPrices);
         _instance.votePowerBlock = _state.votePowerBlock;
-        _instance.highAssetTurnoutBIPSThreshold = _state.highAssetTurnoutBIPSThreshold;
-        _instance.lowFlrTurnoutBIPSThreshold = _state.lowFlrTurnoutBIPSThreshold;
+        _instance.highAssetTurnoutThresholdBIPS = _state.highAssetTurnoutThresholdBIPS;
+        _instance.lowFlrTurnoutThresholdBIPS = _state.lowFlrTurnoutThresholdBIPS;
         _instance.circulatingSupplyFlr = _circulatingSupplyFlr;
         _instance.votePowerFlr = _votePowerFlr;
-        _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrThreshold;
-        _instance.maxVotePowerAsset = _instance.votePowerAsset / _state.maxVotePowerAssetThreshold;
+        _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrThresholdFraction;
+        _instance.maxVotePowerAsset = _instance.votePowerAsset / _state.maxVotePowerAssetThresholdFraction;
         _instance.initializedForReveal = true;
     }
 
@@ -332,10 +332,10 @@ library FtsoEpoch {
         }
         
         uint256 turnout = _weightAssetSum.mulDiv(BIPS100, TERA);
-        if (turnout >= _instance.highAssetTurnoutBIPSThreshold) {
+        if (turnout >= _instance.highAssetTurnoutThresholdBIPS) {
             return _instance.baseWeightRatio;
         } else {
-            return _instance.baseWeightRatio.mulDiv(turnout, _instance.highAssetTurnoutBIPSThreshold);
+            return _instance.baseWeightRatio.mulDiv(turnout, _instance.highAssetTurnoutThresholdBIPS);
         }
     }
 

@@ -167,9 +167,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let ftsoFalgo: FtsoInstance;
   let ftsoFbch: FtsoInstance;
   let firstPriceEpochStartTs: BN;
-  let priceEpochDurationSec: BN;
-  let revealEpochDurationSec: BN;
-  let rewardEpochDurationSec: BN;
+  let priceEpochDurationSeconds: BN;
+  let revealEpochDurationSeconds: BN;
+  let rewardEpochDurationSeconds: BN;
   let rewardEpochsStartTs: BN;
   let d1: string;
   let p1: string;
@@ -205,11 +205,11 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    priceEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    revealEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
+    revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
-    rewardEpochDurationSec = await ftsoManager.rewardEpochDurationSec();
+    rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
     rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
 
     console.log("Depositing and delegating FLR...");
@@ -243,7 +243,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       ftsoManager,
       flareKeeper,
       rewardEpochsStartTs.toNumber(), 
-      rewardEpochDurationSec.toNumber(), 
+      rewardEpochDurationSeconds.toNumber(), 
       (await ftsoManager.getCurrentRewardEpoch()).toNumber());
 
   });
@@ -348,7 +348,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       ftsoManager,
       flareKeeper,
       rewardEpochsStartTs.toNumber(), 
-      rewardEpochDurationSec.toNumber(), 
+      rewardEpochDurationSeconds.toNumber(), 
       rewardEpochId.toNumber());
 
     console.log("CURRENT PRICE FADA", await ftsoFada.getCurrentPrice())
@@ -422,7 +422,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       // voting until the given price epoch.
       const shouldaClaimed = dailyAuthorizedInflation
         .div(
-          numberOfSecondsInDay.div(priceEpochDurationSec).sub(BN(p1FlrPrice?.epochId!))
+          numberOfSecondsInDay.div(priceEpochDurationSeconds).sub(BN(p1FlrPrice?.epochId!))
         );
 
       console.log(`Should have claimed: ${shouldaClaimed.toString()}`);

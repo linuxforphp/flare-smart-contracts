@@ -15,8 +15,8 @@ contract FtsoEpochMock {
     struct Instance {                           // struct holding epoch votes and results
         
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
-        uint256 highAssetTurnoutBIPSThreshold;  // threshold for high asset turnout (in BIPS)
-        uint256 lowFlrTurnoutBIPSThreshold;     // threshold for low flr turnout (in BIPS)
+        uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
+        uint256 lowFlrTurnoutThresholdBIPS;     // threshold for low flr turnout (in BIPS)
         uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
@@ -81,20 +81,20 @@ contract FtsoEpochMock {
     }
 
     function configureEpochs(
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _highAssetTurnoutThresholdBIPS,
+        uint256 _lowFlrTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) public {
-        state.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;
-        state.maxVotePowerAssetThreshold = _maxVotePowerAssetThreshold;
+        state.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
+        state.maxVotePowerAssetThresholdFraction = _maxVotePowerAssetThresholdFraction;
         state.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         state.highAssetUSDThreshold = _highAssetUSDThreshold;
-        state.highAssetTurnoutBIPSThreshold = _highAssetTurnoutBIPSThreshold;
-        state.lowFlrTurnoutBIPSThreshold = _lowFlrTurnoutBIPSThreshold;
+        state.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
+        state.lowFlrTurnoutThresholdBIPS = _lowFlrTurnoutThresholdBIPS;
         state.trustedAddresses = _trustedAddresses;
     }
 
@@ -117,8 +117,8 @@ contract FtsoEpochMock {
         Instance memory result;
 
         result.votePowerBlock = epoch.votePowerBlock;
-        result.highAssetTurnoutBIPSThreshold = epoch.highAssetTurnoutBIPSThreshold;
-        result.lowFlrTurnoutBIPSThreshold = epoch.lowFlrTurnoutBIPSThreshold;
+        result.highAssetTurnoutThresholdBIPS = epoch.highAssetTurnoutThresholdBIPS;
+        result.lowFlrTurnoutThresholdBIPS = epoch.lowFlrTurnoutThresholdBIPS;
         result.circulatingSupplyFlr = epoch.circulatingSupplyFlr;
         result.votePowerFlr = epoch.votePowerFlr;
         result.votePowerAsset = epoch.votePowerAsset;

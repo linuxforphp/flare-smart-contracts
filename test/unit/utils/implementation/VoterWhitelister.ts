@@ -56,8 +56,8 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         await supplyMock.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
     }
 
-    async function createFtso(symbol: string, initialPrice: BN) {
-        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPrice, 1e10);
+    async function createFtso(symbol: string, initialPriceUSD5Dec: BN) {
+        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPriceUSD5Dec, 1e10);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });

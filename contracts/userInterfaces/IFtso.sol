@@ -37,7 +37,7 @@ interface IFtso {
     event LowTurnout(
         uint256 indexed epochId,
         uint256 flrTurnout,
-        uint256 lowFlrTurnoutBIPSThreshold,
+        uint256 lowFlrTurnoutThresholdBIPS,
         uint256 timestamp
     );
 

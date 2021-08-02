@@ -3,7 +3,7 @@ const providerAddress; // price provider address
 
 // below values should be obtained from deployment json file
 const wFlr; //token contract
-const priceEpochDurationSec;
+const priceEpochDurationSeconds;
 const ftsoRegistry = priceSubmitter.getFtsoRegistry();
 const voterWhitelister = priceSubmitter.getVoterWhitelister();
 const FtsoIndexList { // get ftso indices for the desired symbols

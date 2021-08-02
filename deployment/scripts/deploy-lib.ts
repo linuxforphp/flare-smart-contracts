@@ -28,7 +28,7 @@ export interface FAssetDefinition {
   symbol: string;
   decimals: number;
   maxMintRequestTwei: number;
-  initialPrice: number;
+  initialPriceUSD5Dec: number;
 }
 
 export interface AssetContracts {  
@@ -100,7 +100,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
-  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBips);
+  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBIPS);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address, quiet);
 
   // Initialize the state connector
@@ -145,14 +145,14 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareKeeper.claimGovernance({ from: deployerAccount.address });
   // Set the block holdoff should a kept contract exceeded its max gas allocation
-  await flareKeeper.setBlockHoldoff(parameters.flareKeeperGasExceededBlockHoldoff);
+  await flareKeeper.setBlockHoldoff(parameters.flareKeeperGasExceededHoldoffBlocks);
 
   // Inflation contract
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
 
   // Delayed reward epoch start time
-  const rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayInHours * 60 * 60)));
+  const rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayHours * 60 * 60)));
 
   const inflation = await Inflation.new(
     deployerAccount.address,
@@ -172,8 +172,8 @@ export async function fullDeploy(parameters: any, quiet = false) {
     deployerAccount.address,
     parameters.burnAddress,
     inflation.address,
-    BN(parameters.totalFlrSupply).mul(BN(10).pow(BN(18))),
-    BN(parameters.totalFoundationSupply).mul(BN(10).pow(BN(18))),
+    BN(parameters.totalFlareSupplyFLR).mul(BN(10).pow(BN(18))),
+    BN(parameters.totalFoundationSupplyFLR).mul(BN(10).pow(BN(18))),
     []
   );
   spewNewContractInfo(contracts, Supply.contractName, supply.address, quiet);
@@ -181,15 +181,15 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // FtsoRewardManager contract
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
-    parameters.rewardFeePercentageUpdateOffset,
-    parameters.defaultRewardFeePercentage,
+    parameters.rewardFeePercentageUpdateOffsetEpochs,
+    parameters.defaultRewardFeePercentageBIPS,
     inflation.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address, quiet);
 
   // ValidatorRewardManager contract
   const validatorRewardManager = await ValidatorRewardManager.new(
     deployerAccount.address,
-    parameters.validatorRewardExpiryOffset,
+    parameters.validatorRewardExpiryOffsetEpochs,
     stateConnector.address,
     inflation.address);
   spewNewContractInfo(contracts, ValidatorRewardManager.contractName, validatorRewardManager.address, quiet);
@@ -242,12 +242,12 @@ export async function fullDeploy(parameters: any, quiet = false) {
     ftsoRewardManager.address,
     priceSubmitter.address,
     ftsoRegistry.address,
-    parameters.priceEpochDurationSec,
+    parameters.priceEpochDurationSeconds,
     startTs,
-    parameters.revealEpochDurationSec,
-    parameters.rewardEpochDurationSec,
+    parameters.revealEpochDurationSeconds,
+    parameters.rewardEpochDurationSeconds,
     rewardEpochStartTs,
-    parameters.votePowerBoundaryFraction);
+    parameters.votePowerIntervalFraction);
   spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address, quiet);
 
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
@@ -281,7 +281,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPrice, parameters.priceDeviationThresholdBIPS);
+  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPriceUSD5Dec, parameters.priceDeviationThresholdBIPS);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -322,12 +322,12 @@ export async function fullDeploy(parameters: any, quiet = false) {
     console.error("Setting FTSO manager governance parameters...");
   }
   await ftsoManager.setGovernanceParameters(
-    parameters.maxVotePowerFlrThreshold,
-    parameters.maxVotePowerAssetThreshold,
-    parameters.lowAssetUSDThreshold,
-    parameters.highAssetUSDThreshold,
-    parameters.highAssetTurnoutBIPSThreshold,
-    parameters.lowFlrTurnoutBIPSThreshold,
+    parameters.maxVotePowerFlrThresholdFraction,
+    parameters.maxVotePowerAssetThresholdFraction,
+    parameters.lowAssetThresholdUSDDec5,
+    parameters.highAssetThresholdUSDDec5,
+    parameters.highAssetTurnoutThresholdBIPS,
+    parameters.lowFlrTurnoutThresholdBIPS,
     Math.floor(parameters.ftsoRewardExpiryOffsetDays * 60 * 60 * 24),
     parameters.trustedAddresses);
 
@@ -438,7 +438,7 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPrice, priceDeviationThresholdBIPS);
+  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${fAssetDefinition.symbol}`, ftso.address, quiet);
 
@@ -458,6 +458,6 @@ function rewrapFassetParams(data: any): FAssetDefinition {
     symbol: data.fAssetSymbol,
     decimals: data.fAssetDecimals,
     maxMintRequestTwei: data.dummyFAssetMinterMax,
-    initialPrice: data.initialPrice
+    initialPriceUSD5Dec: data.initialPriceUSD5Dec
   }
 }

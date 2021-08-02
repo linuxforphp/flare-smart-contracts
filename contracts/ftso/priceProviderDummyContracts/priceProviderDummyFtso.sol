@@ -96,7 +96,8 @@ contract DummyFtso is IIFtso {
         address _voter,
         uint256 _epochId,
         uint256 _price,
-        uint256 _random
+        uint256 _random,
+        uint256 /*_wflrVP*/     // just an optimization, to read flare vp only once
     ) external override onlyPriceSubmitter {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
         // Check if reveal is in progress
@@ -115,6 +116,9 @@ contract DummyFtso is IIFtso {
         emit PriceRevealed(_voter, _epochId, _price, _random, block.timestamp, 0, 0);
     }
 
+    function flrVotePowerCached(address _owner) external override returns (uint256 _wflrVP) {
+        // TODO
+    }
 
     /**
      * @notice Returns current FAsset price
@@ -293,24 +297,6 @@ contract DummyFtso is IIFtso {
         require(false, UNAVAILABLE);
     }
 
-    function getFullEpochReport(uint256) external pure override returns (
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        PriceFinalizationType,
-        address[] memory,
-        bool,
-        bool
-    ){
-        require(false, UNAVAILABLE);
-    }
-    
     function epochsConfiguration() external pure override returns (
         uint256,
         uint256,
@@ -319,17 +305,6 @@ contract DummyFtso is IIFtso {
         uint256,
         uint256,
         address[] memory
-    ){
-        require(false, UNAVAILABLE);
-    }
-
-    function getEpochVotes(uint256) external pure override returns (
-        address[] memory,
-        uint256[] memory,
-        uint256[] memory,
-        uint256[] memory,
-        uint256[] memory,
-        bool[] memory
     ){
         require(false, UNAVAILABLE);
     }

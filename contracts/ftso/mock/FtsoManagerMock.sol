@@ -22,7 +22,7 @@ contract FtsoManagerMock is MockContract {
         uint256 totalWeight,
         uint256 epochId,
         address ftso,
-        uint256 priceEpochDurationSec,
+        uint256 priceEpochDurationSeconds,
         uint256 currentRewardEpoch,
         uint256 priceEpochEndTime,
         uint256 votePowerBlock) public {
@@ -30,7 +30,7 @@ contract FtsoManagerMock is MockContract {
         // this project and the MockContract component.
         bytes memory payload = abi.encodeWithSignature(
             "distributeRewards(address[],uint256[],uint256,uint256,address,uint256,uint256,uint256,uint256)",
-            addresses, weights, totalWeight, epochId, ftso, priceEpochDurationSec, currentRewardEpoch,
+            addresses, weights, totalWeight, epochId, ftso, priceEpochDurationSeconds, currentRewardEpoch,
             priceEpochEndTime, votePowerBlock);
         //solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = _rewardManager.call(payload);

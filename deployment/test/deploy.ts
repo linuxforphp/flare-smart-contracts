@@ -200,7 +200,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const blockHoldoff = await flareKeeper.blockHoldoff();
       // Assert
-      assert.equal(blockHoldoff.toString(), parameters.flareKeeperGasExceededBlockHoldoff.toString());
+      assert.equal(blockHoldoff.toString(), parameters.flareKeeperGasExceededHoldoffBlocks.toString());
     })
   });
 
@@ -215,7 +215,7 @@ contract(`deploy.ts system tests`, async accounts => {
 
     it("Should have a reward epoch if rewarding started and being kept by keeper", async() => {
        // Assemble
-       const startTs = BN(await time.latest());
+       const startTs = await time.latest();
        const rewardEpochStartTs = await ftsoManager.rewardEpochsStartTs();
        if (rewardEpochStartTs.lt(startTs)) {
         // Act
@@ -256,7 +256,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should have recognized inflation set if rewarding started", async() => {
         // Assemble
         const rewardEpochStartTs = await inflation.rewardEpochStartTs();
-        const startTs = BN(await time.latest());
+        const startTs = await time.latest();
         // Act
         await flareKeeper.trigger();
         // Assert
@@ -985,19 +985,19 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       const settings = await ftsoManager.settings();
       // Act
-      const maxVotePowerFlrThreshold = settings[3];
-      const maxVotePowerAssetThreshold = settings[4];
-      const lowAssetUSDThreshold = settings[5];
-      const highAssetUSDThreshold = settings[6];
-      const highAssetTurnoutBIPSThreshold = settings[7];
-      const lowFlrTurnoutBIPSThreshold = settings[8];
+      const maxVotePowerFlrThresholdFraction = settings[1];
+      const maxVotePowerAssetThresholdFraction = settings[2];
+      const lowAssetThresholdUSDDec5 = settings[3];
+      const highAssetThresholdUSDDec5 = settings[4];
+      const highAssetTurnoutThresholdBIPS = settings[5];
+      const lowFlrTurnoutThresholdBIPS = settings[6];
       // Assert
-      assert.equal(maxVotePowerFlrThreshold.toNumber(), parameters.maxVotePowerFlrThreshold);
-      assert.equal(maxVotePowerAssetThreshold.toNumber(), parameters.maxVotePowerAssetThreshold);
-      assert.equal(lowAssetUSDThreshold.toNumber(), parameters.lowAssetUSDThreshold);
-      assert.equal(highAssetUSDThreshold.toNumber(), parameters.highAssetUSDThreshold);
-      assert.equal(highAssetTurnoutBIPSThreshold.toNumber(), parameters.highAssetTurnoutBIPSThreshold);
-      assert.equal(lowFlrTurnoutBIPSThreshold.toNumber(), parameters.lowFlrTurnoutBIPSThreshold);
+      assert.equal(maxVotePowerFlrThresholdFraction.toNumber(), parameters.maxVotePowerFlrThresholdFraction);
+      assert.equal(maxVotePowerAssetThresholdFraction.toNumber(), parameters.maxVotePowerAssetThresholdFraction);
+      assert.equal(lowAssetThresholdUSDDec5.toNumber(), parameters.lowAssetThresholdUSDDec5);
+      assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
+      assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
+      assert.equal(lowFlrTurnoutThresholdBIPS.toNumber(), parameters.lowFlrTurnoutThresholdBIPS);
     });
   });
 });

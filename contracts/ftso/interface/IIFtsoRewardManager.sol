@@ -20,7 +20,7 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
         uint256 totalWeight,
         uint256 epochId,
         address ftso,
-        uint256 priceEpochDurationSec,
+        uint256 priceEpochDurationSeconds,
         uint256 currentRewardEpoch,
         uint256 priceEpochEndTime,
         uint256 votePowerBlock

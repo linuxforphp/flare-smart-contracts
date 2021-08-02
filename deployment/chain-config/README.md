@@ -1,44 +1,132 @@
 # Parameters
 
+All numeric parameter names have units appended at the end. Most unit names are self explanatory, but some are a bit less obvious:
+
+- `BIPS`: 1/100th of a percent (i.e. `1/10000`) - always used for percentages
+- `USDDec5` scaled USD value: USD value multiplied by 10^5
+- `Fraction`: actual value is some total value (depends on context), divided by parameter's value
+- `Epochs`: always reward epochs
+
 ## Addresses 
 
-- `flareKeeperAddress` - Flare keeper contract address. It is deployed in the genesis block with the fixed address "0x1000000000000000000000000000000000000002".
-- `priceSubmitterAddress` - Price submiter contract address. It is deployed to the genesis block with the fixed address  "0x1000000000000000000000000000000000000003".
+- `stateConnectorAddress` - 
+    State connector contract address. State connector is deployed in the genesis block at fixed address "0x1000000000000000000000000000000000000001".
+
+- `flareKeeperAddress` - 
+    Flare keeper contract address. It is deployed in the genesis block with the fixed address "0x1000000000000000000000000000000000000002".
+
+- `priceSubmitterAddress` - 
+    Price submiter contract address. It is deployed to the genesis block with the fixed address  "0x1000000000000000000000000000000000000003".
+
+- `burnAddress` - 
+    Burn address. Used by Supply contract to track burned Flares. Always "0x0000000000000000000000000000000000000000".
 
 ## Private keys
-- `deployerPrivateKey` - deployer private key. Overriden if provided in `.env` file as `DEPLOYER_PRIVATE_KEY`
-- `genesisGovernancePrivateKey` - genesis governance private key. Overriden if set in `.env` file as `GENESIS_GOVERNANCE_PRIVATE_KEY`. // TODO HOW TO OBTAIN IT.
-- `governancePrivateKey` - governance private key. Overriden if provided in `.env` file as `GOVERNANCE_PRIVATE_KEY`. The key to which governance is transfered after deploy.
+- `deployerPrivateKey` - 
+    deployer private key. Overriden if provided in `.env` file as `DEPLOYER_PRIVATE_KEY`
+
+- `genesisGovernancePrivateKey` - 
+    genesis governance private key (the key used as governance during deploy). 
+    Overriden if set in `.env` file as `GENESIS_GOVERNANCE_PRIVATE_KEY`. 
+    // TODO HOW TO OBTAIN IT.
+
+- `governancePrivateKey` - 
+    governance private key (the key to which governance is transfered after deploy). 
+    Overriden if provided in `.env` file as `GOVERNANCE_PRIVATE_KEY`. The key to which governance is transfered after deploy.
+
+## Keeper settings
+
+- `flareKeeperGasExceededHoldoffBlocks` - 
+    The number of blocks a keeper called contract is skipped if it consumes more than its alloted amount of gas.
 
 ## Inflation settings
 
-- `ftsoInflationAuthorizationRequestFrequencySec` - 14400,   // TOOD
-- `ftsoRewardMintingFaucetFundWithdrawTimeLockSec` - 225,    // TODO
-- `ftsoRewardMintingFundRequestIntervalSec` - 20,            // TODO
-- `totalFlrSupply` - total supply of FLR. The value of this parameter is usually 100000000000.
-- `inflationPercentageBips` - 1000                          // TODO
+- `totalFlareSupplyFLR` - 
+    Initial total supply of FLR (in Flares, not Wei). The value of this parameter is usually 100000000000.
+
+- `inflationPercentageBIPS` - 
+    Yearly inflation in BIPS. Usual value is 1000 (10%).
 
 ## FTSO system settings 
 
-- `rewardEpochDurationSec` - reward epoch duration. Usuall it is 2-3 days, for test purposes we recommend 7 mins, hence 420s.
-- `revealEpochDurationSec` - reveal epoch duration. Default is 90s. Usually should be at most half of `priceEpochDurationSec`.
-- `priceEpochDurationSec` - price epoch duration. Default is 180s.
-- `rewardEpochsStartDelayInHours` - ofset of the start of reward epochs according to the time of deploy in hours. Could be decimal number in hours. Default is 0.17 which is about 10 mins.
-- `votePowerBoundaryFraction` - defines interval from which vote power block is randomly selected for a new reward epoch at reward epoch finalization. Say the value is 7 (which is default). Then the interval of block numbers from the start block of last reward epoch to the current block number is taken, divided in 7 equal subintervals and the vote power block for the next reward epoch is chosen from this interval. In case the `rewardEpochDurationSec` is 7 days, this would imply the choice of vote power block from the last day of the reward epoch that is being finalized.
-- `defaultVoterWhitelistSize` - defines inital size for voter whitelist for price submission. It can be later changed per ftso by the governance.
-- `maxVotePowerFlrThreshold` - high threshold for FLR vote power when revealing a price vote. Price revealed by user with vote power higher than the total vote power divided by maxVotePowerFlrThreshold is trimmed to this value. To make this limitation insignificant, a small number, e.g. 10, can be used.
-- `maxVotePowerAssetThreshold` - high threshold for asset vote power when revealing a price vote. Price revealed by user with vote power higher than the total vote power divided by maxVotePowerAssetThreshold is trimmed to this value. To make this limitation insignificant, a small number, e.g. 10, can be used.
-- `lowAssetUSDThreshold` - threshold for low asset vote power (in scaled USD). This parameter determines the base weight ratio between FLR and asset vote power. For test purposes we recommend 200000000.
-- `highAssetUSDThreshold` - threshold for high asset vote power (in scaled USD). This parameter determines the base weight ratio between FLR and asset vote power. For test purposes we recommend 3000000000.
-- `highAssetTurnoutBIPSThreshold` - threshold for high asset turnout (in BIPS). This parameter determines the weight ratio between FLR and asset vote power. For test purposes we recommend 100.
-- `lowFlrTurnoutBIPSThreshold` - threshold for low FLR turnout (in BIPS). If the turnout is smaller than this parameter, trusted addresses are used to determine the price. For test purposes we recommend 300.
-- `trustedAddresses`- a list of addresses. If `lowFlrTurnoutBIPSThreshold` is not reached, the prices revealed by the addresses from this list are used.
-- `rewardFeePercentageUpdateOffset` - reward fee percentage update timelock measured in reward epochs. The parameter determines in how many reward epochs the new fee percentage submitted by a data provider becomes effective. For test purposes we recommend 3.
-- `defaultRewardFeePercentage` - default value for fee percentage. If a data provider does not change the fee percentage, this is the default percentage used for fee deduction. When set to 0, this means there is no fee.
-- `rewardExpiryOffset` - in number of epochs. For test purposes we recommend 100. so if current reward epoch is 120, reward epochs 20 and below will expire. 
-- `rewardExpiryOffsetDays` - After how many days reward epoch funds expire and can not be claimed any more. if expiry value is 90 days and reward epoch length is 10 days. any reward epoch that was opened more then 90 days ago will expire. 
+- `rewardEpochDurationSeconds` - 
+    Reward epoch duration, in seconds. In production it is 2-7 days (172800-604800 seconds), but for test purposes it's much smaller e.g. 3-7 minutes.
 
-- `initialWflrPrice` - initial price of FLR currency on deploy. Usually 0.   
+- `revealEpochDurationSeconds` - 
+    Reveal epoch duration, in seconds. Usually, it should be at most half of `priceEpochDurationSeconds`.
+
+- `priceEpochDurationSeconds` - 
+    Price epoch duration, in seconds. Typical production value is 180 (3 minutes).
+
+- `rewardEpochsStartDelayHours` - 
+    Offset of the start of reward epochs from the time of deploy, in hours. May have decimals. Typical value is 0.17 which is about 10 mins.
+
+- `votePowerIntervalFraction` - 
+    Defines interval from which vote power block is randomly selected as a fraction of previous reward epoch. 
+    The new vote power block is randomly chosen during finalization block from the last
+    `(finalization_block_number - start_epoch_block_number) / votePowerIntervalFraction`
+    blocks. Larger value of `votePowerIntervalFraction` means shorter interval, which gives 'fresher' vote power block, but less chance for randomization.
+    For example, if `votePowerIntervalFraction=7` and reward epoch duration is 7 days, vote power block is chosen from the last day of the epoch being finalized.
+
+- `defaultVoterWhitelistSize` - 
+    Inital size for voter whitelist for price submission. It can later be changed for each FTSO by the governance.
+
+- `maxVotePowerFlrThresholdFraction` - 
+    Defines high threshold for FLR vote power when revealing a price vote. The actual max threshold is calculated as 
+    `total_FLR_vote_power / maxVotePowerFlrThresholdFraction`. 
+    Any provider's flare vote power is capped to this max threshold when revealing a price vote. 
+
+- `maxVotePowerAssetThresholdFraction` - Defines high threshold for asset vote power when revealing a price vote. 
+    The actual max threshold is calculated as `total_FLR_vote_power / maxVotePowerFlrThresholdFraction`.
+    Any provider's asset vote power is capped to this max threshold when revealing a price vote. 
+
+- `lowAssetThresholdUSDDec5` - 
+    Low threshold for asset USD value (in scaled USD: 1 USD = 10^5 USDDec5).
+    Determines the weight ratio between FLR and asset vote power.
+    Total asset vote power below *lowAssetThreshold* means that only FLR vote power is used.
+    For values between *lowAssetThreshold* and *highAssetThreshold*, the asset vote power ratio scales linearly from 5% to 50%.
+    For values above *highAssetThreshold* the asset vote power ratio is 50%.
+    For test purposes we recommend setting `lowAssetThresholdUSDDec5` to 200000000.
+
+- `highAssetThresholdUSDDec5` - 
+    High threshold for asset USD value (in scaled USD: 1 USD = 10^5 USDDec5). See above for explanation.
+    For test purposes we recommend setting `highAssetThresholdUSDDec5` to 3000000000.
+
+- `highAssetTurnoutThresholdBIPS` - 
+    Threshold for high asset turnout (in BIPS relative to total asset vote power). If the asset vote power turnout
+    is below highAssetTurnoutThreshold, the asset weight based on total asset USD value (as calculated above)
+    is multiplied by `actual_asset_turnout_BIPS / highAssetTurnoutThresholdBIPS`.
+    For test purposes we recommend 100.
+
+- `lowFlrTurnoutThresholdBIPS` - 
+    Threshold for low FLR turnout (in BIPS relative to total FLR supply).
+    If the turnout is smaller than this parameter, only votes from trusted addresses are used to determine the price.
+    For test purposes we recommend 300.
+
+- `trustedAddresses`- 
+    The list of addresses used for voting when FLR turnout is below *lowFlrTurnoutThreshold* or when price deviation is too big.
+
+- `rewardFeePercentageUpdateOffsetEpochs` - 
+    Reward fee percentage update timelock measured in reward epochs.
+    The parameter determines in how many reward epochs the new fee percentage submitted by a data provider becomes effective. 
+    For test purposes we recommend 3.
+
+- `defaultRewardFeePercentageBIPS` - 
+    Default value for fee percentage, in BIPS. 
+    If a data provider does not change the fee percentage, this is the default percentage used for fee deduction. 
+    When set to 0, this means there is no fee.
+    
+- `ftsoRewardExpiryOffsetDays` -
+    Reward expiry time in days. After this many days reward epoch funds expire and can not be claimed any more. 
+    If expiry value is 90 days and reward epoch length is 10 days, any reward epoch that was opened more then 90 days ago will expire. 
+
+- `validatorRewardExpiryOffsetEpochs` - 
+    The duration after which old reward epochs will expire, as a number of reward epochs.
+    For test purposes we recommend 100, so if current reward epoch is 120, reward epochs 20 and below will expire.
+
+- `initialWflrPriceUSD5Dec` -
+    The USD price of Flare at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
+    Usually 0, which means that the useful starting price is obtained after first voting.
 
 ## Currency settings
 
@@ -49,15 +137,24 @@ Each currency definition is under it symbol's key. For example we have
       "fAssetSymbol": "FXRP",
       "fAssetDecimals": 6,
       "dummyFAssetMinterMax": 7000000000,
-      "initialPrice": 0
+      "initialPriceUSD5Dec": 0
   },
 ```
 
-- `fAssetName` - FAsset name
-- `fAssetSymbol` - Fasset symbol
-- `fAssetDecimals` - number of decimals 
-- `dummyFAssetMinterMax` - maximal amount that can be minted (integer numbers including decimals. Eg. if `fAssetDecimals` equals 3, then for 3 currency units we write `1000`)
-- `initialPrice` - price in dollars. The convention is that prices are posted with 5 decimals, so 1$ = 100000 // TODO
+- `fAssetName` - 
+    Full Fasset name
+
+- `fAssetSymbol` - 
+    Fasset symbol
+
+- `fAssetDecimals` - 
+    Number of decimals 
+
+- `dummyFAssetMinterMax` - 
+    Maximal amount that can be minted (integer numbers including decimals. Eg. if `fAssetDecimals` equals 3, then for 3 currency units we write `1000`)
+    
+- `initialPriceUSD5Dec` - 
+    Initial price in dollars. The convention is that prices are posted with 5 decimals, so 1$ = 100000 // TODO
 
 # Comments on parameters
 

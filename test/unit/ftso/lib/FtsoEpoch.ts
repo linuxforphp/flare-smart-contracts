@@ -34,12 +34,12 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
 
         await ftsoEpoch.setVotePowerBlock(1);
 
-        // uint256 _maxVotePowerFlrThreshold,
-        // uint256 _maxVotePowerAssetThreshold,
+        // uint256 _maxVotePowerFlrThresholdFraction,
+        // uint256 _maxVotePowerAssetThresholdFraction,
         // uint256 _lowAssetUSDThreshold,
         // uint256 _highAssetUSDThreshold,
-        // uint256 _highAssetTurnoutBIPSThreshold,
-        // uint256 _lowFlrTurnoutBIPSThreshold,
+        // uint256 _highAssetTurnoutThresholdBIPS,
+        // uint256 _lowFlrTurnoutThresholdBIPS,
         // address[] memory _trustedAddresses
         await ftsoEpoch.configureEpochs(1, 2, 1000, 10000, 50, 1500, []);
     });
@@ -52,8 +52,8 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.votePowerAsset).to.equals('120');
         expect(epoch.maxVotePowerFlr).to.equals('40');
         expect(epoch.maxVotePowerAsset).to.equals('60');
-        expect(epoch.highAssetTurnoutBIPSThreshold).to.equals('50');
-        expect(epoch.lowFlrTurnoutBIPSThreshold).to.equals('1500');
+        expect(epoch.highAssetTurnoutThresholdBIPS).to.equals('50');
+        expect(epoch.lowFlrTurnoutThresholdBIPS).to.equals('1500');
     });
 
     it(`Should add vote to epoch`, async () => {
@@ -116,8 +116,8 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.votePowerAsset).to.equals('180');
         expect(epoch.maxVotePowerFlr).to.equals('40');
         expect(epoch.maxVotePowerAsset).to.equals('90');
-        expect(epoch.highAssetTurnoutBIPSThreshold).to.equals('50');
-        expect(epoch.lowFlrTurnoutBIPSThreshold).to.equals('1500');
+        expect(epoch.highAssetTurnoutThresholdBIPS).to.equals('50');
+        expect(epoch.lowFlrTurnoutThresholdBIPS).to.equals('1500');
 
         const epoch2 = await ftsoEpoch.getEpochInstance(2);
         expect(epoch2.circulatingSupplyFlr).to.equals('70');
@@ -125,8 +125,8 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch2.votePowerAsset).to.equals('100');
         expect(epoch2.maxVotePowerFlr).to.equals('30');
         expect(epoch2.maxVotePowerAsset).to.equals('100');
-        expect(epoch2.highAssetTurnoutBIPSThreshold).to.equals('40');
-        expect(epoch2.lowFlrTurnoutBIPSThreshold).to.equals('1400');
+        expect(epoch2.highAssetTurnoutThresholdBIPS).to.equals('40');
+        expect(epoch2.lowFlrTurnoutThresholdBIPS).to.equals('1400');
     });
 
     it(`Should change vote power block of a new epoch only`, async () => {
@@ -179,13 +179,13 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         weightRatio = await ftsoEpoch.getWeightRatio(2, 0, 0);
         expect(weightRatio.toNumber()).to.equals(0);
 
-        //turnout >= _state.highAssetTurnoutBIPSThreshold
+        //turnout >= _state.highAssetTurnoutThresholdBIPS
         await ftsoEpoch.initializeInstanceForReveal(3, 50, 40, [mockVpToken.address], [500000], [3]);
         await ftsoEpoch.addVote(3, accounts[0], 5, 600, 88, 123);
         weightRatio = await ftsoEpoch.getWeightRatio(3, 125000000000, 400000000000);
         expect(weightRatio.toNumber()).to.equals(750);
 
-        //turnout < _state.highAssetTurnoutBIPSThreshold
+        //turnout < _state.highAssetTurnoutThresholdBIPS
         await ftsoEpoch.initializeInstanceForReveal(4, 50, 40, [mockVpToken.address], [500000], [3]);
         await ftsoEpoch.addVote(4, accounts[0], 5, 6, 89, 123);
         weightRatio = await ftsoEpoch.getWeightRatio(4, 125000000000, 4000000000);
@@ -227,8 +227,8 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
     });
 
     it("Should compute weights correctly", async () => {
-        let highAssetTurnoutBIPSThreshold = 9000;
-        await ftsoEpoch.configureEpochs(1, 2, 1000, 10000, highAssetTurnoutBIPSThreshold, 1500, []);
+        let highAssetTurnoutThresholdBIPS = 9000;
+        await ftsoEpoch.configureEpochs(1, 2, 1000, 10000, highAssetTurnoutThresholdBIPS, 1500, []);
         await ftsoEpoch.initializeInstanceForReveal(1, 500, 400, [mockVpToken.address], [700000], [11]);
         await ftsoEpoch.addVote(1, accounts[0], 50, 400000, 85, 123);
         await ftsoEpoch.addVote(1, accounts[0], 70, 200000, 86, 321);
@@ -244,7 +244,7 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         let weightAssetSum = weightAsset1 + weightAsset2;//857.142.857.142
         const weights = await ftsoEpoch.computeWeights(1,[weightFlr1,weightFlr2], [weightAsset1,weightAsset2]);
         let turnout = Math.floor(weightAssetSum/100000000);
-        let weightRatio = Math.floor(baseWeightRatio*turnout/highAssetTurnoutBIPSThreshold);
+        let weightRatio = Math.floor(baseWeightRatio*turnout/highAssetTurnoutThresholdBIPS);
 
         let weightFlrShare = 10000-weightRatio;
         let weightAssetShare = weightRatio;
