@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../../genesis/interface/IIVoterWhitelister.sol";
+import "../../token/interface/IIVPToken.sol";
 import {Governed} from "../../governance/implementation/Governed.sol";
 import {IIPriceSubmitter} from "../../genesis/interface/IIPriceSubmitter.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";

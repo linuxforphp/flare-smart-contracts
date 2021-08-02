@@ -4,7 +4,12 @@ const providerAddress; // price provider address
 // below values should be obtained from deployment json file
 const wFlr; //token contract
 const priceEpochDurationSec;
-const FTSOAddressList {XRP_FTSO_Address, LTC_FTSO_Address, DOGE_FTSO_Address};
+const ftsoRegistry = priceSubmitter.getFtsoRegistry();
+const voterWhitelister = priceSubmitter.getVoterWhitelister();
+const FtsoIndexList { // get ftso indices for the desired symbols
+    ftsoRegistry.getFtsoIndex("FXRP"), ftsoRegistry.getFtsoIndex("FTLC"), ftsoRegistry.getFtsoIndex("FXDG")
+};
+// ftsoRegistry.getSupportedSymbolsAndFtsos() can be used to return all available symbols and corresponding ftsos
 
 // preliminary steps of wrapping flare and delegating vote power.
 // these steps will usually be done in a different scope
@@ -16,37 +21,40 @@ wFlr.delegate(providerAddress, percentToBips(100)){from: BobAddress};
 // price provider steps
 ///////////////////////
 main() {
+
+    // First try to whtelist on all available ftsos
+    voterWhitelister.requestFullVoterWhitelisting(providerAddress);
+    uint step = 0;
+
     while (true) {
  
         let providerVotePower;
-        let validFtsoAddressList[];
+        let validFtsoIndexList[];
         let ftsoPriceHashes[];
         let ftsoPrices[];
         let ftsoRandoms[];
-    
-        for (uint i = 0; i < FTSOAddressList.length; i++) { 
-            address ftso = FTSOAddressList[i];
+
+        let voterMap = priceSubmitter.voterWhitelistBitmap();
+
+        for (uint i = 0; i < FtsoIndexList.length; i++) { 
+
+            uint ftsoIndex = FtsoIndexList[i];
+            // Do not vote on ftsos we don't have an access to
+            if(voterMap & (1 << ftsoIndex) == 0){
+                continue;
+            }
+
+            address ftso = ftsoRegistry.getFtso(ftsoIndex);
+
             {
                 epochId;
                 epochSubmitEndTime;
                 epochRevealEndTime;
                 votePowerBlock;
-                lowFlrVotePowerThreshold;
                 isFallbackMode;
             } = ftso.getPriceEpochData();
-
-            // note price epochs have fixed time frames
-            // note vote power block for each price epoch is shared between all FTSOs
-            if (providerVotePower == 0) {
-                providerVotePower = wFlr.votePowerOfAt(providerAddress, votePowerBlock));
-            }
- 
-            if (isFallbackMode || providerVotePower < lowFlrVotePowerThreshold) {
-                // not enough VP to post to this FTSO. go to next
-                continue;
-            }
     
-            validFtsoAddressList.push(FTSOAddressList[i]);
+            validFtsoIndexList.push(FtsoIndexList[i]);
     
             // create a new random
             ftsoRandoms.push(rand());
@@ -66,21 +74,38 @@ main() {
         }
  
         // submit hashes in batch
-        if (validFtsoAddressList > 0) {
-            priceSubmitter.submitPriceHashes(validFtsoAddressList, ftsoPriceHashes);
+        if (validFtsoIndexList > 0) {
+            priceSubmitter.submitPriceHashes(validFtsoIndexList, ftsoPriceHashes);
         }
  
         // wait for this commit period to end
         waitUntil(epochSubmitEndTime);
  
         // send reveal batch
-        if (validFtsoAddressList > 0) {
+        if (validFtsoIndexList.length > 0) {
             priceSubmitter.revealPrices(
-                validFtsoAddressList,
+                epochId,
+                validFtsoIndexList,
                 ftsoPrices,
                 ftsoRandoms
             );
         }
+
+
+        // Rewhitelist demo
+        // This will usually be done in a different scope (when more flare is delegated, when whitelister emits an event...)
+        ++step;
+        // Try to rewhitelist every 100 epochs
+        if(step % 100 == 0){
+            for (uint i = 0; i < FtsoIndexList.length; i++) { 
+                uint ftsoIndex = FtsoIndexList[i];
+                // Rewhitelist only on unavailable
+                if(voterMap & (1 << ftsoIndex) == 0){
+                    voterWhitelister.requestWhitelistingVoter(providerAddress, ftsoIndex);
+                }
+            }
+        }
+
     }
 }
  

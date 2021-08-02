@@ -230,7 +230,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should know about PriceSubmitter", async() => {
       // Assemble
       // Act
-      const priceSubmitter = await ftsoManager.priceSubmitter();
+      const priceSubmitter = await ftsoManager.getPriceSubmitter();
       // Assert
       assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     });

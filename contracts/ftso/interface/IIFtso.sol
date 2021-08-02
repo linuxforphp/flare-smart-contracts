@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import "../../userInterfaces/IFtso.sol";
-import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../token/interface/IIVPToken.sol";
 
 
@@ -49,7 +48,7 @@ interface IIFtso is IFtso {
     // activateFtso will be called by ftso manager once ftso is added 
     // before this is done, FTSO can't run
     function activateFtso(
-        IPriceSubmitter _priceSubmitter,
+        address _priceSubmitter, // hardhat flatten does not allow cyclic imports, do this outside typesystem
         uint256 _firstEpochStartTs,
         uint256 _epochPeriod,
         uint256 _revealPeriod
