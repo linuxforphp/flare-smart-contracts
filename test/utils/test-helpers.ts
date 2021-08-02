@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-const { time } = require('@openzeppelin/test-helpers');
+import { time } from '@openzeppelin/test-helpers';
 import { BigNumber, Signer } from "ethers";
 import { ethers } from "hardhat";
 

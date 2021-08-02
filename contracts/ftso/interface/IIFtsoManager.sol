@@ -19,12 +19,12 @@ interface IIFtsoManager is IFtsoManager {
     function deactivate() external;
 
     function setGovernanceParameters(
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _highAssetTurnoutThresholdBIPS,
+        uint256 _lowFlrTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external;

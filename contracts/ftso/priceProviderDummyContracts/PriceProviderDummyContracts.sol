@@ -537,6 +537,7 @@ contract DummyPriceSubmitter is IPriceSubmitter {
         bool[] memory success = new bool[](len);
         uint256 numberOfReverts = 0;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
+        uint256 flrVP = uint256(-1);
 
         for (uint256 i = 0; i < len; i++) {
             uint256 ind = _ftsoIndices[i];
@@ -544,8 +545,14 @@ contract DummyPriceSubmitter is IPriceSubmitter {
                 require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
                 continue;
             }
-            ftsos[i] = ftsoRegistry.getFtso(ind);
-            try ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i]) {
+            IIFtso ftso = ftsoRegistry.getFtso(ind);
+            ftsos[i] = ftso;
+            // read flare VP only once
+            if (flrVP == uint256(-1)) {
+                flrVP = ftso.flrVotePowerCached(msg.sender);
+            }
+            // call reveal price on ftso
+            try ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP) {
                 success[i] = true;
             } catch {
                 require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
@@ -580,5 +587,3 @@ contract DummyPriceSubmitter is IPriceSubmitter {
     }
 
 }
-
-

@@ -32,12 +32,12 @@ contract MockFtso is SimpleMockFtso {
         if (_submitPeriod != 0 && _revealPeriod != 0) {
 
             // configureEpochs
-            epochs.maxVotePowerFlrThreshold = 1;
-            epochs.maxVotePowerAssetThreshold = 1;
+            epochs.maxVotePowerFlrThresholdFraction = 1;
+            epochs.maxVotePowerAssetThresholdFraction = 1;
             epochs.lowAssetUSDThreshold = 1000;
             epochs.highAssetUSDThreshold = 10000;
-            epochs.highAssetTurnoutBIPSThreshold = 50;
-            epochs.lowFlrTurnoutBIPSThreshold = 1500;
+            epochs.highAssetTurnoutThresholdBIPS = 50;
+            epochs.lowFlrTurnoutThresholdBIPS = 1500;
             epochs.trustedAddresses = new address[](0);
 
             // activateFtso

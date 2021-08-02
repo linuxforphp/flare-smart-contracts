@@ -263,7 +263,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         uint256 _totalWeight,
         uint256 _epochId,
         address _ftso,
-        uint256 _priceEpochDurationSec,
+        uint256 _priceEpochDurationSeconds,
         uint256 _currentRewardEpoch,
         uint256 _priceEpochEndTime, // end time included in epoch
         uint256 _votePowerBlock
@@ -273,7 +273,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
 
         uint256 totalPriceEpochReward = 
             _getDistributableFtsoInflationBalance()
-            .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSec));
+            .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSeconds));
 
         uint256[] memory rewards = new uint256[](_addresses.length);
         rewards[0] = totalPriceEpochReward;
@@ -661,7 +661,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
 
     function _getRemainingPriceEpochCount(
         uint256 _fromThisTs, 
-        uint256 _priceEpochDurationSec
+        uint256 _priceEpochDurationSeconds
     )
         internal view
         returns (uint256)
@@ -669,7 +669,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         // Get the end of the daily period
         uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_FULL_DAY_SEC);
         require(_fromThisTs <= dailyPeriodEndTs, ERR_AFTER_DAILY_CYCLE);
-        return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSec) + 1;
+        return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSeconds) + 1;
     }
     
     /**

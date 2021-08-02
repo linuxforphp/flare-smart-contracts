@@ -149,9 +149,9 @@ contract Ftso is IIFtso {
             flrTurnout = epoch.accumulatedVotePowerFlr * FtsoEpoch.BIPS100 / epoch.circulatingSupplyFlr;
         }
         
-        if (epoch.fallbackMode || flrTurnout <= epoch.lowFlrTurnoutBIPSThreshold) {
+        if (epoch.fallbackMode || flrTurnout <= epoch.lowFlrTurnoutThresholdBIPS) {
             if (!epoch.fallbackMode) {
-                emit LowTurnout(_epochId, flrTurnout, epoch.lowFlrTurnoutBIPSThreshold, block.timestamp);
+                emit LowTurnout(_epochId, flrTurnout, epoch.lowFlrTurnoutThresholdBIPS, block.timestamp);
             }
             _averageFinalizePriceEpoch(_epochId, epoch, false);
 
@@ -269,31 +269,31 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Sets configurable settings related to epochs
-     * @param _maxVotePowerFlrThreshold         high threshold for FLR vote power per voter
-     * @param _maxVotePowerAssetThreshold       high threshold for FLR vote power per voter
+     * @param _maxVotePowerFlrThresholdFraction         high threshold for FLR vote power per voter
+     * @param _maxVotePowerAssetThresholdFraction       high threshold for FLR vote power per voter
      * @param _lowAssetUSDThreshold             threshold for low asset vote power
      * @param _highAssetUSDThreshold            threshold for high asset vote power
-     * @param _highAssetTurnoutBIPSThreshold    threshold for high asset turnout
-     * @param _lowFlrTurnoutBIPSThreshold       threshold for low flr turnout
+     * @param _highAssetTurnoutThresholdBIPS    threshold for high asset turnout
+     * @param _lowFlrTurnoutThresholdBIPS       threshold for low flr turnout
      * @param _trustedAddresses                 trusted addresses - use their prices if low flr turnout is not achieved
      * @dev Should never revert if called from ftso manager
      */
     function configureEpochs(
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _highAssetTurnoutThresholdBIPS,
+        uint256 _lowFlrTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) external override onlyFtsoManager
     {
-        epochs.maxVotePowerFlrThreshold = _maxVotePowerFlrThreshold;
-        epochs.maxVotePowerAssetThreshold = _maxVotePowerAssetThreshold;
+        epochs.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
+        epochs.maxVotePowerAssetThresholdFraction = _maxVotePowerAssetThresholdFraction;
         epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
-        epochs.highAssetTurnoutBIPSThreshold = _highAssetTurnoutBIPSThreshold;
-        epochs.lowFlrTurnoutBIPSThreshold = _lowFlrTurnoutBIPSThreshold;
+        epochs.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
+        epochs.lowFlrTurnoutThresholdBIPS = _lowFlrTurnoutThresholdBIPS;
 
         // remove old addresses mapping
         uint256 len = epochs.trustedAddresses.length;
@@ -395,21 +395,21 @@ contract Ftso is IIFtso {
      * @notice Returns current configuration of epoch state
      */
     function epochsConfiguration() external view override returns (
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _highAssetTurnoutThresholdBIPS,
+        uint256 _lowFlrTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) {
         return (
-            epochs.maxVotePowerFlrThreshold,
-            epochs.maxVotePowerAssetThreshold,
+            epochs.maxVotePowerFlrThresholdFraction,
+            epochs.maxVotePowerAssetThresholdFraction,
             epochs.lowAssetUSDThreshold,
             epochs.highAssetUSDThreshold,
-            epochs.highAssetTurnoutBIPSThreshold,
-            epochs.lowFlrTurnoutBIPSThreshold,
+            epochs.highAssetTurnoutThresholdBIPS,
+            epochs.lowFlrTurnoutThresholdBIPS,
             epochs.trustedAddresses
         );
     }

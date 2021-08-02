@@ -35,7 +35,7 @@ interface IFtsoManager {
 
     function getPriceEpochConfiguration() external view returns (
         uint256 _firstPriceEpochStartTs,
-        uint256 _priceEpochDurationSec,
-        uint256 _revealEpochDurationSec
+        uint256 _priceEpochDurationSeconds,
+        uint256 _revealEpochDurationSeconds
     );
 }

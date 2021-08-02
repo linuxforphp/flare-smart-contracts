@@ -60,12 +60,12 @@ interface IIFtso is IFtso {
     function updateInitialPrice(uint256 _initialPriceUSD, uint256 _initialPriceTimestamp) external;
 
     function configureEpochs(
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _highAssetTurnoutThresholdBIPS,
+        uint256 _lowFlrTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) external;
 
@@ -96,21 +96,21 @@ interface IIFtso is IFtso {
 
     /**
      * @notice Returns current configuration of epoch state
-     * @return _maxVotePowerFlrThreshold        High threshold for FLR vote power per voter
-     * @return _maxVotePowerAssetThreshold      High threshold for FLR vote power per voter
+     * @return _maxVotePowerFlrThresholdFraction        High threshold for FLR vote power per voter
+     * @return _maxVotePowerAssetThresholdFraction      High threshold for FLR vote power per voter
      * @return _lowAssetUSDThreshold            Threshold for low asset vote power
      * @return _highAssetUSDThreshold           Threshold for high asset vote power
-     * @return _highAssetTurnoutBIPSThreshold   Threshold for high asset turnout
-     * @return _lowFlrTurnoutBIPSThreshold      Threshold for low flr turnout
+     * @return _highAssetTurnoutThresholdBIPS   Threshold for high asset turnout
+     * @return _lowFlrTurnoutThresholdBIPS      Threshold for low flr turnout
      * @return _trustedAddresses                Trusted addresses - use their prices if low flr turnout is not achieved
      */
     function epochsConfiguration() external view returns (
-        uint256 _maxVotePowerFlrThreshold,
-        uint256 _maxVotePowerAssetThreshold,
+        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutBIPSThreshold,
-        uint256 _lowFlrTurnoutBIPSThreshold,
+        uint256 _highAssetTurnoutThresholdBIPS,
+        uint256 _lowFlrTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     );
 

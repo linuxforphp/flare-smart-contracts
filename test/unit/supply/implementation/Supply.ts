@@ -10,8 +10,8 @@ const MockRewardPool = artifacts.require("MockContract");
 let mockRewardPools: MockContractInstance[] = [];
 
 const initialGenesisAmountWei = 10000;
-const totalFoundationSupply   =  7500;
-const circulatingSupply       =  initialGenesisAmountWei - totalFoundationSupply;
+const totalFoundationSupplyWei =  7500;
+const circulatingSupply       =  initialGenesisAmountWei - totalFoundationSupplyWei;
 
 const getRewardPoolSupplyData = web3.utils.sha3("getRewardPoolSupplyData()")!.slice(0,10);
 
@@ -53,15 +53,15 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     beforeEach(async() => {
         burnAddress = await getAddressWithZeroBalance();
-        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupply, []);
+        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
     });
 
     it("Should revert deploying supply - inflation zero", async() => {
-        await expectRevert(Supply.new(governanceAddress, burnAddress, constants.ZERO_ADDRESS, initialGenesisAmountWei, totalFoundationSupply, []), "inflation zero");
+        await expectRevert(Supply.new(governanceAddress, burnAddress, constants.ZERO_ADDRESS, initialGenesisAmountWei, totalFoundationSupplyWei, []), "inflation zero");
     });
 
     it("Should revert deploying supply - initial genesis amount zero", async() => {
-        await expectRevert(Supply.new(governanceAddress, burnAddress, inflationAddress, 0, totalFoundationSupply, []), "initial genesis amount zero");
+        await expectRevert(Supply.new(governanceAddress, burnAddress, inflationAddress, 0, totalFoundationSupplyWei, []), "initial genesis amount zero");
     });
 
     it("Should know about inflation", async() => {
@@ -182,13 +182,13 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     it("Should deploy supply with reward pools", async() => {
         await createRewardPools([500, 1000], [0, 0], [200, 50]);
-        supply = await Supply.new(governanceAddress, constants.ZERO_ADDRESS, inflationAddress, initialGenesisAmountWei, totalFoundationSupply, mockRewardPools.map(rp => rp.address));
+        supply = await Supply.new(governanceAddress, constants.ZERO_ADDRESS, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockRewardPools.map(rp => rp.address));
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 500 - 1000 + 200 + 50);
     });
 
     it("Should deploy supply with some burn address balance", async() => {
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
-        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupply, []);
+        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
     });
     
@@ -247,6 +247,6 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         await supply.decreaseFoundationSupply(500, {from: governanceAddress});
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 500);
 
-        await expectRevert.assertion(supply.decreaseFoundationSupply(totalFoundationSupply, {from: governanceAddress}));
+        await expectRevert.assertion(supply.decreaseFoundationSupply(totalFoundationSupplyWei, {from: governanceAddress}));
     });
 });

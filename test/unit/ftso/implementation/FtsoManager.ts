@@ -1088,7 +1088,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochDurationSec,
+            // uint256 priceEpochDurationSeconds,
             // uint256 currentRewardEpoch
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
@@ -1134,7 +1134,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochDurationSec,
+            // uint256 priceEpochDurationSeconds,
             // uint256 currentRewardEpoch
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
@@ -1516,7 +1516,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // uint256 totalWeight,
             // uint256 epochId,
             // address ftso,
-            // uint256 priceEpochDurationSec,
+            // uint256 priceEpochDurationSeconds,
             // uint256 currentRewardEpoch
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],

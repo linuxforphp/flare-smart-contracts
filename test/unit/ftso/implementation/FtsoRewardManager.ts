@@ -17,7 +17,6 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
-const fs = require('fs');
 import BN from "bn.js";
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -96,11 +95,11 @@ async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: str
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     let ftsoWflr = ftsoContractForSymbol(contracts, 'FLR')!.ftso;
     let firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    let priceEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    let revealEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    let priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
+    let revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
-    let rewardEpochDurationSec = await contracts.ftsoManager.rewardEpochDurationSec();
+    let rewardEpochDurationSeconds = await contracts.ftsoManager.rewardEpochDurationSeconds();
     let rewardEpochsStartTs = await contracts.ftsoManager.rewardEpochsStartTs();
 
     let wFLR = ftsoContractForSymbol(contracts, 'FLR')!.fAssetToken as WFlrInstance;
@@ -163,7 +162,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
     before(async function () {
         // TODO: create full deployment fixture (scdev config)
-        deploymentParameters = JSON.parse(fs.readFileSync('deployment/chain-config/scdev.json'));
+        deploymentParameters = require('../../../../deployment/chain-config/scdev.json');
         // inject private keys from .env, if they exist
 
         if (process.env.DEPLOYER_PRIVATE_KEY) {
