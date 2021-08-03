@@ -3,11 +3,6 @@ pragma solidity 0.7.6;
 
 interface IFtsoRewardManager {
 
-    event FundsReceived(
-        address indexed sender,
-        uint256 amount
-    );
-
     event RewardClaimed(
         address indexed dataProvider,
         address indexed whoClaimed,

@@ -3,9 +3,10 @@ import { FlareKeeperInstance,
 
 import {time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
-const genesisGovernance = require('../../utils/constants').genesisGovernance;
+const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 import { advanceBlock } from '../../utils/test-helpers';
 import { spewKeeperErrors } from "../../utils/FlareKeeperTestUtils";
+import { FLARE_KEEPER_ADDRESS } from "../../utils/constants";
 
 const BN = web3.utils.toBN;
 
@@ -33,7 +34,7 @@ const MockContract = artifacts.require("MockContract");
 
     before(async() => {
         // Defined in fba-avalanche/avalanchego/genesis/genesis_coston.go
-        flareKeeper = await FlareKeeper.at("0x1000000000000000000000000000000000000002");
+        flareKeeper = await FlareKeeper.at(FLARE_KEEPER_ADDRESS);
         mintAccountingMock = await MockContract.new();
         // Make sure keeper is initialized with a governance address...if may revert if already done.
         try {
@@ -41,7 +42,7 @@ const MockContract = artifacts.require("MockContract");
             await flareKeeper.setMintAccounting(mintAccountingMock.address);
         } catch (e) {
             const governanceAddress = await flareKeeper.governance();
-            if (genesisGovernance != governanceAddress) {
+            if (GOVERNANCE_GENESIS_ADDRESS != governanceAddress) {
                 throw e;
             }
             // keep going
@@ -73,7 +74,7 @@ const MockContract = artifacts.require("MockContract");
               0
             );
             const fromBlock = await flareKeeper.systemLastTriggeredAt();
-            await flareKeeper.registerToKeep([{keptContract: ftsoManager.address, gasLimit: 0}], {from: genesisGovernance});
+            await flareKeeper.registerToKeep([{keptContract: ftsoManager.address, gasLimit: 0}], {from: GOVERNANCE_GENESIS_ADDRESS});
             // Act
             await ftsoManager.activate({from: accounts[1]});
             // Wait for some blocks to mine...

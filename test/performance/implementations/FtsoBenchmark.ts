@@ -1,6 +1,6 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { FtsoRegistryInstance, SimpleMockFtsoInstance, MockContractInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WFlrInstance } from "../../../typechain-truffle";
-import { genesisGovernance, getTestFile } from "../../utils/constants";
+import { GOVERNANCE_GENESIS_ADDRESS, getTestFile } from "../../utils/constants";
 import { compareArrays, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
@@ -35,7 +35,7 @@ function fmtNum(x: BN) {
 }
 
 contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption tests`, async accounts => {
-    const governance = genesisGovernance;
+    const governance = GOVERNANCE_GENESIS_ADDRESS;
     const ftsoManager = accounts[33];
     
     const epochDurationSec = 120;

@@ -12,7 +12,7 @@ const MockFtso = artifacts.require("MockContract") as MockContractContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
 const PriceSubmitter = artifacts.require("PriceSubmitter") as PriceSubmitterContract;
 const VoterWhitelister = artifacts.require("VoterWhitelister") as VoterWhitelisterContract;
-const genesisGovernance = require('../../../utils/constants').genesisGovernance;
+const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
 const ERR_TO_MANY_REVERTS = "Too many reverts";
 const ERR_FAIL_PRECHECK = "Insufficient listed vote power"
@@ -59,10 +59,10 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             priceSubmitter = await PriceSubmitter.new();
             await priceSubmitter.initialiseFixedAddress();
             // Have an exisitng addres just to set up FtsoManager and can act like it in {from: _}
-            await priceSubmitter.setFtsoManager(FTSO_MANAGER_ADDRESS, {from: genesisGovernance});
+            await priceSubmitter.setFtsoManager(FTSO_MANAGER_ADDRESS, {from: GOVERNANCE_GENESIS_ADDRESS});
 
-            voterWhitelister = await VoterWhitelister.new(genesisGovernance, priceSubmitter.address, 10);  
-            await priceSubmitter.setVoterWhitelister(voterWhitelister.address, {from: genesisGovernance});
+            voterWhitelister = await VoterWhitelister.new(GOVERNANCE_GENESIS_ADDRESS, priceSubmitter.address, 10);  
+            await priceSubmitter.setVoterWhitelister(voterWhitelister.address, {from: GOVERNANCE_GENESIS_ADDRESS});
             
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
@@ -80,7 +80,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 ftsos[i] = ftso;
             }
 
-            await priceSubmitter.setFtsoRegistry(mockFtsoRegistry.address, {from: genesisGovernance});
+            await priceSubmitter.setFtsoRegistry(mockFtsoRegistry.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 
             const getSupportedSymbolsAndFtsos = web3.eth.abi.encodeFunctionCall({type: "function", name: "getSupportedIndices", inputs: []} as AbiItem, []);
             const supportedFtsos = web3.eth.abi.encodeParameter("uint256[]", [...Array(ftsos.length).keys()]);
@@ -179,7 +179,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
             await setBatchMockVotePower([...Array(10).keys()]);
 
-            tx = await voterWhitelister.setMaxVotersForFtso(2, 8, {from : genesisGovernance});
+            tx = await voterWhitelister.setMaxVotersForFtso(2, 8, {from : GOVERNANCE_GENESIS_ADDRESS});
             expectEvent(tx, "VoterRemovedFromWhitelist", {voter: accounts[20 + 0], ftsoIndex: toBN(2)});
             // We do not know explicitly which will be the second one (too implementation defined as we are just mocking), 
             // just require another one to be kicked out
@@ -205,8 +205,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await mockFtsoRegistry.givenCalldataReturn(getSupportedSymbolsAndFtsos, supportedFtsos);
 
             await setMockVotePowerOfAt(1, 10, accounts[1]); 
-            await voterWhitelister.setMaxVotersForFtso(0, 100, {from: genesisGovernance});
-            await voterWhitelister.setMaxVotersForFtso(2, 100, {from: genesisGovernance});
+            await voterWhitelister.setMaxVotersForFtso(0, 100, {from: GOVERNANCE_GENESIS_ADDRESS});
+            await voterWhitelister.setMaxVotersForFtso(2, 100, {from: GOVERNANCE_GENESIS_ADDRESS});
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             let tx = await priceSubmitter.submitPriceHashes([0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true]});
@@ -249,7 +249,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             // Everyone gets some WFLR
             await setBatchMockVotePower([10, 10, 10]);
 
-            await voterWhitelister.setMaxVotersForFtso(3, 3, {from: genesisGovernance});
+            await voterWhitelister.setMaxVotersForFtso(3, 3, {from: GOVERNANCE_GENESIS_ADDRESS});
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[11]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[12]);
@@ -282,8 +282,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             // This kicks out 10            
             await setBatchMockVotePower([0, 10]);
             // Lower max amount of voters
-            await voterWhitelister.setMaxVotersForFtso(0, 1, {from: genesisGovernance});
-            await voterWhitelister.setMaxVotersForFtso(1, 2, {from: genesisGovernance});
+            await voterWhitelister.setMaxVotersForFtso(0, 1, {from: GOVERNANCE_GENESIS_ADDRESS});
+            await voterWhitelister.setMaxVotersForFtso(1, 2, {from: GOVERNANCE_GENESIS_ADDRESS});
 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[11]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
@@ -443,7 +443,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
 
             // Kick 1 out
-            await voterWhitelister.setMaxVotersForFtso(0, 1, {from : genesisGovernance});
+            await voterWhitelister.setMaxVotersForFtso(0, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
             await setBatchMockVotePower([0, 10]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
@@ -468,9 +468,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             
             // Kick 1 out
-            await voterWhitelister.setMaxVotersForFtso(0, 1, {from : genesisGovernance});
-            await voterWhitelister.setMaxVotersForFtso(1, 1, {from : genesisGovernance});
-            await voterWhitelister.setMaxVotersForFtso(2, 1, {from : genesisGovernance});
+            await voterWhitelister.setMaxVotersForFtso(0, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
+            await voterWhitelister.setMaxVotersForFtso(1, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
+            await voterWhitelister.setMaxVotersForFtso(2, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
             await setBatchMockVotePower([0, 10]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
@@ -518,7 +518,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             
             // Kick 1 out
-            await voterWhitelister.setMaxVotersForFtso(0, 1, {from : genesisGovernance});
+            await voterWhitelister.setMaxVotersForFtso(0, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
             await setBatchMockVotePower([0, 10]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
