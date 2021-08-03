@@ -3,11 +3,6 @@ pragma solidity 0.7.6;
 
 interface IValidatorRewardManager {
 
-    event FundsReceived(
-        address indexed sender,
-        uint256 amount
-    );
-
     event RewardClaimed(
         address indexed validator,
         address indexed sentTo,

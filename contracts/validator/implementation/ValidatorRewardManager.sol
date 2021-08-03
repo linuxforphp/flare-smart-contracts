@@ -72,7 +72,7 @@ contract ValidatorRewardManager is
     uint256 private lastBalance;
 
     /// addresses
-    IIStateConnector public stateConnector;
+    StateConnector public stateConnector;
     Inflation public inflation;
 
     modifier mustBalance {
@@ -93,7 +93,7 @@ contract ValidatorRewardManager is
     constructor(
         address _governance,
         uint256 _rewardExpiryOffset,
-        IIStateConnector _stateConnector,
+        StateConnector _stateConnector,
         Inflation _inflation
     ) Governed(_governance)
     {
@@ -153,7 +153,7 @@ contract ValidatorRewardManager is
     /**
      * @notice sets state connector corresponding to the reward manager
      */
-    function setStateConnector(IIStateConnector _stateConnector) external override onlyGovernance {
+    function setStateConnector(StateConnector _stateConnector) external override onlyGovernance {
         require(address(_stateConnector) != address(0), ERR_STATE_CONNECTOR_ZERO);
         stateConnector = _stateConnector;
     }
@@ -170,7 +170,8 @@ contract ValidatorRewardManager is
         dailyAuthorizedInflation = _toAuthorizeWei;
         totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(_toAuthorizeWei);
         lastInflationAuthorizationReceivedTs = block.timestamp;
-        // TODO: event
+
+        emit DailyAuthorizedInflationSet(_toAuthorizeWei);
 
         uint256 currentRewardEpoch = stateConnector.getRewardPeriod();
         _initializeRewardEpochs(currentRewardEpoch);
@@ -182,7 +183,7 @@ contract ValidatorRewardManager is
         totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
         lastBalance = currentBalance;
 
-        emit FundsReceived(msg.sender, msg.value);
+        emit InflationReceived(msg.value);
     }
 
     /**

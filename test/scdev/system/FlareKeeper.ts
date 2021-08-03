@@ -1,11 +1,12 @@
 import { FlareKeeperInstance, MockContractInstance } from "../../../typechain-truffle";
+import { FLARE_KEEPER_ADDRESS } from "../../utils/constants";
 
 const FlareKeeper = artifacts.require("FlareKeeper");
 const MockContract = artifacts.require("MockContract");
 
 const BN = web3.utils.toBN;
 const getTestFile = require('../../utils/constants').getTestFile;
-const genesisGovernance = require('../../utils/constants').genesisGovernance;
+const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 import { advanceBlock } from '../../utils/test-helpers';
 
 /**
@@ -23,7 +24,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper system tests`
 
     before(async() => {
         // Defined in fba-avalanche/avalanchego/genesis/genesis_coston.go
-        flareKeeper = await FlareKeeper.at("0x1000000000000000000000000000000000000002");
+        flareKeeper = await FlareKeeper.at(FLARE_KEEPER_ADDRESS);
         inflationMock = await MockContract.new();
         // Make sure keeper is initialized with a governance address...if may revert if already done.
         try {
@@ -31,7 +32,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper system tests`
             await flareKeeper.setInflation(inflationMock.address);
         } catch (e) {
             const governanceAddress = await flareKeeper.governance();
-            if (genesisGovernance != governanceAddress) {
+            if (GOVERNANCE_GENESIS_ADDRESS != governanceAddress) {
                 throw e;
             }
             // keep going
@@ -47,7 +48,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper system tests`
           keep = web3.utils.sha3("keep()")!.slice(0,10); // first 4 bytes is function selector
           // Give our contract to keep a keep method so our poor validator's head does not explode...
           await contractToKeep.givenMethodReturnBool(keep, true);
-          await flareKeeper.registerToKeep([{keptContract: contractToKeep.address, gasLimit: 0}], {from: genesisGovernance});
+          await flareKeeper.registerToKeep([{keptContract: contractToKeep.address, gasLimit: 0}], {from: GOVERNANCE_GENESIS_ADDRESS});
         });
 
         it("Should keep a contract", async() => {
