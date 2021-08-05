@@ -1,6 +1,6 @@
 {
     "name": "@flarenetwork/ftso_price_provider_kick_off_package",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "Kick of package for FTSO price providers. Includes user facing interfaces and mock contracts to test price provider pipeline.",
     "main": "demo_package_main.js",
     "repository": {
@@ -19,6 +19,7 @@
       "test-1020-accounts.json",
 
       "scripts/flatten.sh",
+      "scripts/flatten-fix.ts",
 
       "deployment/scripts/deploy-dummy-price-submitter.ts",
   

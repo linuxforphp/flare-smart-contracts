@@ -582,7 +582,7 @@ contract DummyPriceSubmitter is IPriceSubmitter {
         return ftsoRegistry;
     }
 
-    function getFtsoManager() public view override returns (IFtsoManager){
+    function getFtsoManager() public pure override returns (IFtsoManager){
         revert("Not in dummy contract");
     }
 

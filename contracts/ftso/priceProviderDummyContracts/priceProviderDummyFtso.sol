@@ -132,7 +132,7 @@ contract DummyFtso is IIFtso {
     /**
      * @notice Returns current random number
      */
-    function getCurrentRandom() external view override returns (uint256){
+    function getCurrentRandom() external pure override returns (uint256){
         return 0;
     }
 
@@ -220,6 +220,7 @@ contract DummyFtso is IIFtso {
         uint256
     ) {
         require(false, UNAVAILABLE);
+        return (new address[](0), new uint256[](0), 0);
     }
 
     function averageFinalizePriceEpoch(uint256) external pure override {
@@ -287,6 +288,7 @@ contract DummyFtso is IIFtso {
      */
     function getFAsset() external pure override returns (IIVPToken){
         require(false, UNAVAILABLE);
+        return IIVPToken(address(0));
     }
 
     /**
@@ -295,6 +297,7 @@ contract DummyFtso is IIFtso {
      */
     function getFAssetFtsos() external pure override returns (IIFtso[] memory) {
         require(false, UNAVAILABLE);
+        return new IIFtso[](0);
     }
 
     function epochsConfiguration() external pure override returns (
@@ -307,24 +310,29 @@ contract DummyFtso is IIFtso {
         address[] memory
     ){
         require(false, UNAVAILABLE);
+        return (0, 0, 0, 0, 0, 0, new address[](0));
     }
 
     function getCurrentEpochId() external pure override returns (uint256){
         require(false, UNAVAILABLE);
+        return 0;
     }
 
 
     function getEpochId(uint256) external pure override returns (uint256){
         require(false, UNAVAILABLE);
+        return 0;
     }
 
     function getRandom(uint256) external pure override returns (uint256){
         require(false, UNAVAILABLE);
+        return 0;
     }
     
 
     function getEpochPrice(uint256) external pure override returns (uint256){
         require(false, UNAVAILABLE);
+        return 0;
     }
 
 
@@ -337,10 +345,12 @@ contract DummyFtso is IIFtso {
         uint256
     ){
         require(false, UNAVAILABLE);
+        return (new IIVPToken[](0), new uint256[](0), 0, 0, 0, 0);
     }
     
     function wFlr() external pure override returns (IIVPToken) {
         require(false, UNAVAILABLE);
+        return IIVPToken(address(0));
     }
 
 
