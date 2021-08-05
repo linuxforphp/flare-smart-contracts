@@ -43,7 +43,8 @@ let mockFtsoManager: FtsoManagerMockInstance;
 let wFlr: WFlrInstance;
 let mockInflation: InflationMockInstance;
 
-async function distributeRewards(
+
+export async function distributeRewards(
     accounts: Truffle.Accounts,
     startTs: BN,
     currentRewardEpoch: number = 0,
@@ -113,14 +114,14 @@ async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: str
 
 }
 
-async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
+export async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
     let currentFtsoManagerAddress = await ftsoRewardManager.ftsoManager();
     await ftsoRewardManager.setFTSOManager(deployer);
     await ftsoRewardManager.closeExpiredRewardEpoch(rewardEpoch, rewardEpoch + 1);
     await ftsoRewardManager.setFTSOManager(currentFtsoManagerAddress);
 }
 
-async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string, closeAsYouGo = false) {
+export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string, closeAsYouGo = false) {
     // What reward epoch are we on based on current block time, given our startTs?
     const currentRewardEpoch = (await time.latest()).sub(startTs).div(toBN(REWARD_EPOCH_DURATION_S)).toNumber();
     for (let rewardEpoch = currentRewardEpoch; rewardEpoch < newRewardEpoch; rewardEpoch++) {
@@ -152,6 +153,7 @@ async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN,
     const getCurrentRewardEpochReturn = web3.eth.abi.encodeParameter('uint256', newRewardEpoch);
     await mockFtsoManager.givenMethodReturn(getCurrentRewardEpoch, getCurrentRewardEpochReturn);
 }
+
 
 contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager unit tests`, async accounts => {
 

@@ -7,16 +7,18 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { Ftso, MockFtso, MockVPToken } from "../../typechain";
-import { FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
+import { FtsoManagerContract, FtsoManagerInstance, FtsoRewardManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
 import { computeVoteRandom, increaseTimeTo, isAddressEligible, newContract, submitPriceHash, toBN, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 import { setDefaultVPContract_ethers } from "./token-test-helpers";
 
 const { exec } = require("child_process");
-import { constants } from '@openzeppelin/test-helpers';
+import { constants, time } from '@openzeppelin/test-helpers';
 const MockFtsoManager = artifacts.require("MockContract") as MockContractContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 
+const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
+const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 
 ////////////////////////////////////////////////////////////
 //// INTERFACES
