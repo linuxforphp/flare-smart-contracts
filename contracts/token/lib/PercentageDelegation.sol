@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {CheckPointHistory} from "./CheckPointHistory.sol";
-import {DelegationHistory} from "./DelegationHistory.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../utils/implementation/SafePct.sol";
+import "./CheckPointHistory.sol";
+import "./DelegationHistory.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+
 
 /**
  * @title PercentageDelegation library
@@ -41,7 +42,9 @@ library PercentageDelegation {
         DelegationState storage _self, 
         address _delegate, 
         uint256 _bips
-    ) internal {
+    )
+        internal
+    {
         // Check for max delegation basis points
         assert(_bips <= MAX_BIPS);
 
@@ -61,7 +64,10 @@ library PercentageDelegation {
     function getDelegatedTotalAt(
         DelegationState storage _self,
         uint256 _blockNumber
-    ) internal view returns (uint256 _totalBips) {
+    )
+        internal view
+        returns (uint256 _totalBips)
+    {
         return _self.delegation.totalValueAt(_blockNumber);
     }
 
@@ -72,7 +78,10 @@ library PercentageDelegation {
      */
     function getDelegatedTotal(
         DelegationState storage _self
-    ) internal view returns (uint256 _totalBips) {
+    )
+        internal view
+        returns (uint256 _totalBips)
+    {
         return _self.delegation.totalValueAtNow();
     }
 
@@ -87,7 +96,10 @@ library PercentageDelegation {
         DelegationState storage _self, 
         address _delegate,
         uint256 _blockNumber
-    ) internal view returns (uint256 _bips) {
+    )
+        internal view 
+        returns (uint256 _bips)
+    {
         return _self.delegation.valueOfAt(_delegate, _blockNumber);
     }
 
@@ -100,7 +112,10 @@ library PercentageDelegation {
     function getDelegatedValue(
         DelegationState storage _self, 
         address _delegate
-    ) internal view returns (uint256 _bips) {
+    )
+        internal view
+        returns (uint256 _bips)
+    {
         return _self.delegation.valueOfAtNow(_delegate);
     }
 
@@ -114,10 +129,13 @@ library PercentageDelegation {
     function getDelegationsAt(
         DelegationState storage _self,
         uint256 _blockNumber
-    ) internal view returns (
-        address[] memory _delegates,
-        uint256[] memory _values
-    ) {
+    )
+        internal view 
+        returns (
+            address[] memory _delegates,
+            uint256[] memory _values
+        )
+    {
         return _self.delegation.delegationsAt(_blockNumber);
     }
     
@@ -129,10 +147,13 @@ library PercentageDelegation {
      */
     function getDelegations(
         DelegationState storage _self
-    ) internal view returns (
-        address[] memory _delegates,
-        uint256[] memory _values
-    ) {
+    )
+        internal view
+        returns (
+            address[] memory _delegates,
+            uint256[] memory _values
+        ) 
+    {
         return _self.delegation.delegationsAtNow();
     }
     
@@ -145,7 +166,10 @@ library PercentageDelegation {
     function getCountAt(
         DelegationState storage _self,
         uint256 _blockNumber
-    ) internal view returns (uint256 _count) {
+    )
+        internal view 
+        returns (uint256 _count)
+    {
         return _self.delegation.countAt(_blockNumber);
     }
 
@@ -156,7 +180,10 @@ library PercentageDelegation {
      **/
     function getCount(
         DelegationState storage _self
-    ) internal view returns (uint256 _count) {
+    )
+        internal view
+        returns (uint256 _count)
+    {
         return _self.delegation.countAt(block.number);
     }
     
@@ -170,7 +197,10 @@ library PercentageDelegation {
         DelegationState storage _self, 
         uint256 _balance,
         uint256 _blockNumber
-    ) internal view returns (uint256 _totalAmount) {
+    )
+        internal view 
+        returns (uint256 _totalAmount)
+    {
         return _self.delegation.scaledTotalValueAt(_balance, MAX_BIPS, _blockNumber);
     }
     
@@ -193,7 +223,10 @@ library PercentageDelegation {
         DelegationState storage _self, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal returns (uint256) {
+    )
+        internal
+        returns (uint256)
+    {
         return _self.delegation.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
     }
 }

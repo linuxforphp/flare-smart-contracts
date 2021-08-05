@@ -15,12 +15,15 @@ contract CheckPointHistoryMock {
     function valueAt(uint256 _blockNumber) public view returns (uint256 _value) {
         return state.valueAt(_blockNumber);
     }
+
     function valueAtNow() public view returns (uint256 _value) {
         return state.valueAtNow();
     }
+
     function writeValue(uint256 _value) public {
         state.writeValue(_value);
     }
+
     function cleanupOldCheckpoints(uint256 _count, uint256 _cleanupBlockNumber) public {
         state.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
     }

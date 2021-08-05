@@ -84,11 +84,7 @@ interface IPriceSubmitter {
      * bit in the result will be 1.
      */    
     function voterWhitelistBitmap(address _voter) external view returns (uint256);
-
     function getVoterWhitelister() external view returns (IVoterWhitelister);
-
     function getFtsoRegistry() external view returns (IFtsoRegistry);
-
     function getFtsoManager() external view returns (IFtsoManager);
-
 }

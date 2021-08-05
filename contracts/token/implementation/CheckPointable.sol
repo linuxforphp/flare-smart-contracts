@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import {CheckPointHistory} from "../lib/CheckPointHistory.sol";
-import {CheckPointsByAddress} from "../lib/CheckPointsByAddress.sol";
-import {CheckPointHistoryCache} from "../lib/CheckPointHistoryCache.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import "../lib/CheckPointHistory.sol";
+import "../lib/CheckPointsByAddress.sol";
+import "../lib/CheckPointHistoryCache.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
  
 /**
  * @title Check Pointable ERC20 Behavior
@@ -58,10 +58,11 @@ abstract contract CheckPointable {
      * @param _blockNumber The block number when the balance is queried.
      * @return _balance The balance at `_blockNumber`.
      **/
-    function balanceOfAt(
-        address _owner, 
-        uint256 _blockNumber
-    ) public virtual view notBeforeCleanupBlock(_blockNumber) returns (uint256 _balance) {
+    function balanceOfAt(address _owner, uint256 _blockNumber)
+        public virtual view 
+        notBeforeCleanupBlock(_blockNumber) 
+        returns (uint256 _balance)
+    {
         return balanceHistory.valueOfAt(_owner, _blockNumber);
     }
 
@@ -96,9 +97,11 @@ abstract contract CheckPointable {
      * @param _blockNumber The block number when the _totalSupply is queried
      * @return _totalSupply The total amount of tokens at `_blockNumber`
      **/
-    function totalSupplyAt(
-        uint256 _blockNumber
-    ) public virtual view notBeforeCleanupBlock(_blockNumber) returns(uint256 _totalSupply) {
+    function totalSupplyAt(uint256 _blockNumber)
+        public virtual view 
+        notBeforeCleanupBlock(_blockNumber)
+        returns(uint256 _totalSupply)
+    {
         return totalSupply.valueAt(_blockNumber);
     }
 
@@ -107,9 +110,10 @@ abstract contract CheckPointable {
      * @param _blockNumber The block number when the _totalSupply is queried
      * @return _totalSupply The total amount of tokens at `_blockNumber`
      **/
-    function _totalSupplyAtCached(
-        uint256 _blockNumber
-    ) internal notBeforeCleanupBlock(_blockNumber) returns(uint256 _totalSupply) {
+    function _totalSupplyAtCached(uint256 _blockNumber) internal 
+        notBeforeCleanupBlock(_blockNumber)
+        returns(uint256 _totalSupply)
+    {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
         (uint256 value, bool cacheCreated) = totalSupplyCache.valueAt(totalSupply, _blockNumber);

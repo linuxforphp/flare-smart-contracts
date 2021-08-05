@@ -23,9 +23,11 @@ interface IValidatorRewardManager {
     function claimReward(
         address payable _recipient,
         uint256[] memory _rewardEpochs
-    ) external returns (
-        uint256 _rewardAmount
-    );
+    )
+        external
+        returns (
+            uint256 _rewardAmount
+        );
 
     /**
      * @notice Returns information on epoch reward
@@ -33,12 +35,12 @@ interface IValidatorRewardManager {
      * @return _totalReward         number representing the total epoch reward
      * @return _claimedReward       number representing the amount of total epoch reward that has been claimed
      */
-    function getEpochReward(
-        uint256 _rewardEpoch
-    ) external view returns (
-        uint256 _totalReward,
-        uint256 _claimedReward
-    );
+    function getEpochReward(uint256 _rewardEpoch)
+        external view 
+        returns (
+            uint256 _totalReward,
+            uint256 _claimedReward
+        );
 
     /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
@@ -48,14 +50,13 @@ interface IValidatorRewardManager {
      * @return _claimed             boolean value indicating if reward is claimed
      * @return _claimable           boolean value indicating if reward is claimable
      */
-    function getStateOfRewards(
-        address _beneficiary,
-        uint256 _rewardEpoch
-    ) external view returns (
-        uint256 _amount,
-        bool _claimed,
-        bool _claimable
-    );
+    function getStateOfRewards(address _beneficiary, uint256 _rewardEpoch) 
+        external view
+        returns (
+            uint256 _amount,
+            bool _claimed,
+            bool _claimable
+        );
 
     /**
      * @notice Return reward epoch that will expire, when new reward epoch will start

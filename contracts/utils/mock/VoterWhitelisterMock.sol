@@ -8,7 +8,9 @@ contract VoterWhitelisterMock is VoterWhitelister {
         address _governance,
         IIPriceSubmitter _priceSubmitter, 
         uint256 _defaultMaxVotersForFtso
-    ) VoterWhitelister(_governance, _priceSubmitter, _defaultMaxVotersForFtso) {
+    )
+        VoterWhitelister(_governance, _priceSubmitter, _defaultMaxVotersForFtso)
+    {
     }
     
     function mockSetFtsoRegistry(IFtsoRegistry _ftsoRegistry) public {
@@ -23,25 +25,21 @@ contract VoterWhitelisterMock is VoterWhitelister {
         _removeFtso(_ftsoIndex);
     }
     
-    function minVotePowerIndex(
-        address[] memory _addresses,
-        uint256 _ftsoIndex
-    ) public returns (uint256) {
+    function minVotePowerIndex(address[] memory _addresses,uint256 _ftsoIndex)public
+        returns (uint256)
+    {
         return _minVotePowerIndex(_addresses, _ftsoIndex);
     }
     
-    function getVotePowers(
-        IIVPToken _token, 
-        address[] memory _addresses, 
-        uint256 _blockNumber
-    ) public returns (uint256[] memory) {
+    function getVotePowers(IIVPToken _token, address[] memory _addresses, uint256 _blockNumber) public
+        returns (uint256[] memory)
+    {
         return _getVotePowers(_token, _addresses, _blockNumber);
     }
     
-    function getVotePowerWeights(
-        IIFtso ftso,
-        address[] memory _addresses
-    ) public returns (uint256[] memory _votePowers) {
+    function getVotePowerWeights(IIFtso ftso, address[] memory _addresses) public
+        returns (uint256[] memory _votePowers) 
+    {
         return _getVotePowerWeights(ftso, _addresses);
     }
     
@@ -50,7 +48,10 @@ contract VoterWhitelisterMock is VoterWhitelister {
         uint256 _totalVotePowerFlr,
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) public returns (uint256[] memory _wflrVP) {
+    )
+        public
+        returns (uint256[] memory _wflrVP)
+    {
         return _getFlareVotePowerWeights(_wflr, _totalVotePowerFlr, _addresses, _blockNumber);
     }
     
@@ -60,12 +61,14 @@ contract VoterWhitelisterMock is VoterWhitelister {
         uint256 _totalVotePowerAsset,
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) public returns (uint256[] memory _combinedAssetVP) {
+    )
+        public
+        returns (uint256[] memory _combinedAssetVP)
+    {
         return _getAssetVotePowerWeights(_assets, _assetMultipliers, _totalVotePowerAsset, _addresses, _blockNumber);
     }
     
     function getWhitelist(uint256 _ftsoIndex) public view returns (address[] memory _whitelist) {
         return whitelist[_ftsoIndex];
     }
-    
 }

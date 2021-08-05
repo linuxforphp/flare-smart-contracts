@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {VotePower} from "../lib/VotePower.sol";
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../lib/VotePower.sol";
+
 
 /**
  * @title Vote power library
@@ -46,7 +48,10 @@ library VotePowerCache {
         VotePower.VotePowerState storage _votePower,
         address _who,
         uint256 _blockNumber
-    ) internal returns (uint256 _value, bool _createdCache) {
+    )
+        internal 
+        returns (uint256 _value, bool _createdCache)
+    {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
@@ -73,7 +78,10 @@ library VotePowerCache {
         VotePower.VotePowerState storage _votePower,
         address _who,
         uint256 _blockNumber
-    ) internal view returns (uint256 _value) {
+    )
+        internal view 
+        returns (uint256 _value)
+    {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
@@ -97,7 +105,10 @@ library VotePowerCache {
         CacheState storage _self,
         address _who,
         uint256 _blockNumber
-    ) internal returns (uint256 _deleted) {
+    )
+        internal
+        returns (uint256 _deleted)
+    {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         if (_self.valueCache[key] != 0) {
             delete _self.valueCache[key];
@@ -127,7 +138,9 @@ library VotePowerCache {
         address _to,
         uint256 _revokedValue,
         uint256 _blockNumber
-    ) internal {
+    )
+        internal
+    {
         if (_revokedValue == 0) return;
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
         if (_self.revocationCache[keyFrom].revocations[_to] != 0) {
@@ -156,7 +169,10 @@ library VotePowerCache {
         address _from,
         address _to,
         uint256 _blockNumber
-    ) internal returns (uint256 _deleted) {
+    )
+        internal
+        returns (uint256 _deleted)
+    {
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
         RevocationCacheRecord storage revocationRec = _self.revocationCache[keyFrom];
         uint256 value = revocationRec.revocations[_to];
@@ -180,7 +196,10 @@ library VotePowerCache {
         address _from,
         address _to,
         uint256 _blockNumber
-    ) internal view returns (bool revoked) {
+    )
+        internal view
+        returns (bool revoked)
+    {
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
         return _self.revocationCache[keyFrom].revocations[_to] != 0;
     }

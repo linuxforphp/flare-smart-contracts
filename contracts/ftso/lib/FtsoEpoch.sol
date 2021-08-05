@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
 import "./FtsoVote.sol";
 
+
 /**
  * @title A library used for FTSO epoch management
  */
@@ -83,7 +84,8 @@ library FtsoEpoch {
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
-    ) internal
+    ) 
+        internal
     {    
          // all divisions guaranteed not to divide with 0 - checked in ftso manager setGovernanceParameters(...)
         _setAssets(_state, _instance, _assets, _assetVotePowers, _assetPrices);
@@ -112,7 +114,8 @@ library FtsoEpoch {
         uint256 _votePowerAsset,
         uint256 _price,
         uint256 _random
-    ) internal
+    )
+        internal
     {
         uint256 index = _instance.votes.length;
         FtsoVote.Instance memory vote = FtsoVote._createInstance(
@@ -142,7 +145,8 @@ library FtsoEpoch {
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
-    ) internal
+    )
+        internal
     {
         _instance.assets = _assets;
         uint256 count = _assets.length;
@@ -246,7 +250,10 @@ library FtsoEpoch {
         FtsoEpoch.State storage _state,
         FtsoEpoch.Instance storage _instance,
         uint256[] memory _votePowers
-    ) internal view returns (uint256) {
+    )
+        internal view
+        returns (uint256)
+    {
         uint256 votePower = 0;
         for (uint256 i = 0; i < _instance.assets.length; i++) {
             if (address(_instance.assets[i]) == address(0)) {
@@ -270,7 +277,10 @@ library FtsoEpoch {
     function _getAssetVoteMultipliers(
         FtsoEpoch.State storage _state,
         FtsoEpoch.Instance storage _instance
-    ) internal view returns (uint256[] memory _assetMultipliers) {
+    )
+        internal view 
+        returns (uint256[] memory _assetMultipliers)
+    {
         uint256 numAssets = _instance.assets.length;
         _assetMultipliers = new uint256[](numAssets);
         for (uint256 i = 0; i < numAssets; i++) {
@@ -295,7 +305,9 @@ library FtsoEpoch {
     function _getAssetBaseWeightRatio(
         State storage _state,
         uint256 _assetVotePowerUSD
-    ) internal view returns (uint256)
+    )
+        internal view
+        returns (uint256)
     {
         // highAssetUSDThreshold >= lowAssetUSDThreshold - checked in ftso manager
         uint256 ratio;
@@ -323,7 +335,9 @@ library FtsoEpoch {
         Instance storage _instance,
         uint256 _weightFlrSum,
         uint256 _weightAssetSum
-    ) internal view returns (uint256)
+    )
+        internal view
+        returns (uint256)
     {
         if (_weightAssetSum == 0) {
             return 0;
@@ -351,7 +365,9 @@ library FtsoEpoch {
         FtsoEpoch.Instance storage _instance,
         uint256[] memory _weightsFlr,
         uint256[] memory _weightsAsset
-    ) internal view returns (uint256[] memory _weights)
+    )
+        internal view
+        returns (uint256[] memory _weights)
     {
         uint256 length = _instance.votes.length;
         _weights = new uint256[](length);
@@ -389,7 +405,9 @@ library FtsoEpoch {
         State storage _state,
         uint256 _epochId,
         uint256 _epochPrice
-    ) internal view returns (uint256)
+    )
+        internal view
+        returns (uint256)
     {
         if (_epochId == 0) {
             return 0;

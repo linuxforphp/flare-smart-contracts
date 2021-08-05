@@ -2,12 +2,13 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { Inflation } from "../implementation/Inflation.sol";
-import { InflationAnnum } from "./InflationAnnum.sol";
-import { RewardServices } from "./RewardServices.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
-import { SharingPercentage } from "../interface/IIInflationSharingPercentageProvider.sol";
+import "../implementation/Inflation.sol";
+import "./InflationAnnum.sol";
+import "./RewardServices.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+import "../interface/IIInflationSharingPercentageProvider.sol";
+
 
 /**
  * @title Inflation Annums library

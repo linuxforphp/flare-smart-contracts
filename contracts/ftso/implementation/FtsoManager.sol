@@ -3,9 +3,9 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "../interface/IIFtsoManager.sol";
-import "../interface/IIFtsoRewardManager.sol";
-import "../../genesis/interface/IFlareKeep.sol";
 import "../interface/IIFtso.sol";
+import "../../rewardPools/interface/IIFtsoRewardManager.sol";
+import "../../genesis/interface/IFlareKeep.sol";
 import "../../genesis/implementation/FlareKeeper.sol";
 import "../../genesis/interface/IIFtsoRegistry.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
@@ -14,6 +14,7 @@ import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
 import "../../utils/implementation/RevertErrorTracking.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
+
 
 /**
  * FtsoManager is in charge of:
@@ -76,11 +77,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     uint256 internal votePowerIntervalFraction;
     uint256 internal nextRewardEpochToExpire;
 
-
     mapping(IIFtso => bool) internal managedFtsos;
     IIFtsoRewardManager internal rewardManager;
     IIPriceSubmitter internal immutable priceSubmitter;
-
     IIFtsoRegistry public immutable ftsoRegistry;
 
     CleanupBlockNumberManager public cleanupBlockNumberManager;
@@ -107,7 +106,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 _rewardEpochDurationSeconds,
         uint256 _rewardEpochsStartTs,
         uint256 _votePowerBoundaryFraction
-    ) GovernedAndFlareKept(_governance, _flareKeeper){
+    ) 
+        GovernedAndFlareKept(_governance, _flareKeeper)
+    {
         require(block.timestamp >= _firstEpochStartTs, ERR_FIRST_EPOCH_START_TS_IN_FUTURE);
         require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_priceEpochDurationSeconds > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
@@ -141,7 +142,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      */
     function setCleanupBlockNumberManager(
         CleanupBlockNumberManager _cleanupBlockNumberManager
-    ) external onlyGovernance {
+    )
+        external
+        onlyGovernance
+    {
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
     
@@ -231,7 +235,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         IIFtso _ftsoToAdd,
         bool _copyCurrentPrice,
         bool _copyFAssetOrFAssetFtsos
-    ) external override onlyGovernance {
+    )
+        external override
+        onlyGovernance
+    {
         // should compare strings but it is not supported - comparing hashes instead
         require(keccak256(abi.encode(_ftsoToRemove.symbol())) == keccak256(abi.encode(_ftsoToAdd.symbol())), 
             ERR_FTSO_SYMBOLS_MUST_MATCH);
@@ -351,7 +358,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 _lowFlrTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
-    ) external override onlyGovernance {
+    )
+        external override onlyGovernance 
+    {
         require(_maxVotePowerFlrThresholdFraction > 0, ERR_GOV_PARAMS_INVALID);
         require(_maxVotePowerAssetThresholdFraction > 0, ERR_GOV_PARAMS_INVALID);
         require(_highAssetUSDThreshold >= _lowAssetUSDThreshold, ERR_GOV_PARAMS_INVALID);
@@ -384,13 +393,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     /**
      * @dev half-closed intervals - end time not included
      */
-    function getCurrentPriceEpochData() external view override returns (
-        uint256 priceEpochId,
-        uint256 priceEpochStartTimestamp,
-        uint256 priceEpochEndTimestamp,
-        uint256 priceEpochRevealEndTimestamp,
-        uint256 currentTimestamp
-    ) {
+    function getCurrentPriceEpochData() external view override 
+        returns (
+            uint256 priceEpochId,
+            uint256 priceEpochStartTimestamp,
+            uint256 priceEpochEndTimestamp,
+            uint256 priceEpochRevealEndTimestamp,
+            uint256 currentTimestamp
+        )
+    {
         uint256 epochId = _getCurrentPriceEpochId();
         return (
             epochId,
@@ -416,11 +427,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         return _getFtsos();
     }
 
-    function getPriceEpochConfiguration() external view override returns (
-        uint256 _firstPriceEpochStartTs,
-        uint256 _priceEpochDurationSeconds,
-        uint256 _revealEpochDurationSeconds
-    ) {
+    function getPriceEpochConfiguration() external view override 
+        returns (
+            uint256 _firstPriceEpochStartTs,
+            uint256 _priceEpochDurationSeconds,
+            uint256 _revealEpochDurationSeconds
+        )
+    {
         return (firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
     }
 
@@ -714,7 +727,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             });
 
             emit PriceEpochFinalized(address(0), currentRewardEpoch);
-        }      
+        }
         // Advance to next price epoch
         // Note: lastUnprocessedPriceEpoch <= ftso.getCurrentEpochId()
         lastUnprocessedPriceEpoch++;

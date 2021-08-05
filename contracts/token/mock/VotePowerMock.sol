@@ -35,7 +35,9 @@ contract VotePowerMock {
         address _from, 
         address _to,
         uint256 _amount
-    ) public {
+    )
+        public
+    {
         self.transmit(_from, _to, _amount);
     }
 

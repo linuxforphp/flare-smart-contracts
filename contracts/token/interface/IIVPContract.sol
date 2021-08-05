@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
-import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
-import {IICleanable} from "./IICleanable.sol";
+import "../../userInterfaces/IVPToken.sol";
+import "../../userInterfaces/IVPContractEvents.sol";
+import "./IICleanable.sol";
 
 interface IIVPContract is IICleanable, IVPContractEvents {
     /**
@@ -125,8 +125,9 @@ interface IIVPContract is IICleanable, IVPContractEvents {
     function batchVotePowerOfAt(
         address[] memory _owners, 
         uint256 _blockNumber
-    ) external view returns(uint256[] memory);
-    
+    )
+        external view returns(uint256[] memory);
+
     /**
     * @notice Get current delegated vote power `_from` delegator delegated `_to` delegatee.
     * @param _from Address of delegator
@@ -154,7 +155,7 @@ interface IIVPContract is IICleanable, IVPContractEvents {
         uint256 _balance,
         uint _blockNumber
     ) external view returns(uint256);
-    
+
     /**
      * @notice Compute the current undelegated vote power of `_owner`
      * @param _owner The address to get undelegated voting power.
@@ -165,7 +166,7 @@ interface IIVPContract is IICleanable, IVPContractEvents {
         address _owner,
         uint256 _balance
     ) external view returns(uint256);
-    
+
     /**
      * @notice Get the undelegated vote power of `_owner` at given block.
      * @param _owner The address to get undelegated voting power.
@@ -177,7 +178,7 @@ interface IIVPContract is IICleanable, IVPContractEvents {
         uint256 _balance,
         uint256 _blockNumber
     ) external view returns(uint256);
-    
+
     /**
      * @notice Get the delegation mode for '_who'. This mode determines whether vote power is
      *  allocated by percentage or by explicit value.
@@ -197,13 +198,15 @@ interface IIVPContract is IICleanable, IVPContractEvents {
     */
     function delegatesOf(
         address _owner
-    ) external view returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    );
-    
+    )
+        external view 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        );
+
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
     *  and `pcts` of an `_owner`. Returned in two separate positional arrays.
@@ -217,13 +220,15 @@ interface IIVPContract is IICleanable, IVPContractEvents {
     function delegatesOfAt(
         address _owner,
         uint256 _blockNumber
-    ) external view returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    );
- 
+    )
+        external view 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        );
+
     /**
      * The VPToken (or some other contract) that owns this VPContract.
      * All state changing methods may be called only from this address.

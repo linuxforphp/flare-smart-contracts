@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
-import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
-import {IIVPContract} from "./IIVPContract.sol";
-import {IIGovernanceVotePower} from "./IIGovernanceVotePower.sol";
-import {IICleanable} from "./IICleanable.sol";
+import "../../userInterfaces/IVPToken.sol";
+import "../../userInterfaces/IGovernanceVotePower.sol";
+import "./IIVPContract.sol";
+import "./IIGovernanceVotePower.sol";
+import "./IICleanable.sol";
 
 interface IIVPToken is IVPToken, IICleanable {
     /**

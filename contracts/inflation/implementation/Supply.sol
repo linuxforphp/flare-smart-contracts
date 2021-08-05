@@ -2,12 +2,12 @@
 pragma solidity 0.7.6;
 
 import "../interface/IISupply.sol";
-import "../interface/IIRewardPool.sol";
-import { CheckPointHistory } from "../../token/lib/CheckPointHistory.sol";
-import { CheckPointHistoryCache } from "../../token/lib/CheckPointHistoryCache.sol";
+import "../../rewardPools/interface/IIRewardPool.sol";
+import "../../token/lib/CheckPointHistory.sol";
+import "../../token/lib/CheckPointHistoryCache.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../inflation/implementation/Inflation.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * @title Supply contract
@@ -62,7 +62,9 @@ contract Supply is Governed, IISupply {
         uint256 _initialGenesisAmountWei,
         uint256 _totalFoundationSupplyWei,
         IIRewardPool[] memory _rewardPools
-    ) Governed(_governance) {
+    )
+        Governed(_governance)
+    {
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
         require(_initialGenesisAmountWei > 0, ERR_INITIAL_GENESIS_AMOUNT_ZERO);
         burnAddress = _burnAddress;
@@ -86,7 +88,10 @@ contract Supply is Governed, IISupply {
     */
     function updateAuthorizedInflationAndCirculatingSupply(
             uint256 _inflationAuthorizedWei
-        ) external override onlyInflation {
+    )
+        external override
+        onlyInflation 
+    {
         // Save old total inflation authorized value to compare with after update.
         uint256 oldTotalInflationAuthorizedWei = totalInflationAuthorizedWei;
         
@@ -109,7 +114,10 @@ contract Supply is Governed, IISupply {
     function addRewardPool(
         IIRewardPool _rewardPool,
         uint256 _decreaseFoundationSupplyByAmountWei
-    ) external onlyGovernance {
+    )
+        external
+        onlyGovernance
+    {
         _decreaseFoundationSupply(_decreaseFoundationSupplyByAmountWei);
         _addRewardPool(_rewardPool);
         _updateCirculatingSupply();
@@ -143,7 +151,10 @@ contract Supply is Governed, IISupply {
     */
     function getCirculatingSupplyAtCached(
         uint256 _blockNumber
-    ) external override returns(uint256 _circulatingSupplyWei) {
+    )
+        external override 
+        returns(uint256 _circulatingSupplyWei)
+    {
         // use cache only for the past (the value will never change)
         require(_blockNumber < block.number, "Can only be used for past blocks");
         (_circulatingSupplyWei,) = circulatingSupplyWeiCache.valueAt(circulatingSupplyWei, _blockNumber);
@@ -156,7 +167,10 @@ contract Supply is Governed, IISupply {
     */
     function getCirculatingSupplyAt(
         uint256 _blockNumber
-    ) external view override returns(uint256 _circulatingSupplyWei) {
+    )
+        external view override 
+        returns(uint256 _circulatingSupplyWei)
+    {
         return circulatingSupplyWei.valueAt(_blockNumber);
     }
 

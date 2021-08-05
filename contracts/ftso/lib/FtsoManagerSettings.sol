@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+
 /**
  * @title A library used for Ftso Manager settings management
  */
@@ -32,7 +33,9 @@ library FtsoManagerSettings {
         uint256 _lowFlrTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
-    ) internal {
+    ) 
+        internal
+    {
         if(_state.maxVotePowerFlrThresholdFraction != _maxVotePowerFlrThresholdFraction) {
             _state.changed = true;
             _state.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;

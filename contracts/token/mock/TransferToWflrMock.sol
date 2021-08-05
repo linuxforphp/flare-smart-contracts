@@ -9,7 +9,7 @@ import {IWFlr} from "../../userInterfaces/IWFlr.sol";
 contract TransferToWflrMock {
     receive() external payable {
     }
-    
+
     function transferToWflr(address payable wflr, uint256 amount) public {
         wflr.transfer(amount);
     }

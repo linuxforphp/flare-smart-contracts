@@ -97,9 +97,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      * @dev Reverts if unsupported index is passed
      * @return _activeFtso FTSO contract for provided index
      */
-    function getFtso(uint256 _assetIndex) external view override 
-        returns(IIFtso _activeFtso) 
-    {
+    function getFtso(uint256 _assetIndex) external view override returns(IIFtso _activeFtso) {
         return _getFtso(_assetIndex);
     }
 
@@ -107,9 +105,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      * @dev Reverts if unsupported symbol is passed
      * @return _activeFtso FTSO contract for provided symbol
      */
-    function getFtsoBySymbol(string memory _symbol) external view override 
-        returns(IIFtso _activeFtso) 
-    {
+    function getFtsoBySymbol(string memory _symbol) external view override returns(IIFtso _activeFtso) {
         return _getFtso(_getFtsoIndex(_symbol));
     }
 
@@ -136,9 +132,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      * @return _supportedIndices the array of all active FTSO indices in increasing order. 
      * Active FTSOs are ones that currently receive price feeds.
      */
-    function getSupportedIndices() external view override 
-        returns(uint256[] memory _supportedIndices) 
-    {
+    function getSupportedIndices() external view override returns(uint256[] memory _supportedIndices) {
         return _getSupportedIndices();
     }
 
@@ -149,7 +143,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      */
     function getSupportedIndicesAndFtsos() external view override
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos)
-    {   
+    {
 
         _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
@@ -167,7 +161,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      */
     function getSupportedSymbolsAndFtsos() external view override
         returns(string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
-    {   
+    {
 
         uint256[] memory _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
@@ -188,9 +182,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      * for FTSOs at valid indices but with possible "null" holes.
      * @return _ftsos the array of all supported FTSOs
      */
-    function getSupportedFtsos() external view override
-        returns(IIFtso[] memory _ftsos) 
-    {
+    function getSupportedFtsos() external view override returns(IIFtso[] memory _ftsos) {
         uint256[] memory supportedIndices = _getSupportedIndices();
         uint256 len = supportedIndices.length;
         _ftsos = new IIFtso[](len);
@@ -205,9 +197,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      * @return _ftsos the array of all FTSOs
      * @dev Return value might contain uninitialized FTSOS at zero address. 
      */
-    function getFtsos() external view
-        returns(IIFtso[] memory _ftsos) 
-    {
+    function getFtsos() external view returns(IIFtso[] memory _ftsos) {
         uint256 len = ftsoHistory.length;
         IIFtso[] memory ftsos = new IIFtso[](len);
         while(len > 0){
@@ -225,7 +215,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      */
     function getFtsoHistory(uint256 _assetIndex) external view 
         returns(IIFtso[MAX_HISTORY_LENGTH] memory _ftsoAddressHistory) 
-    {   
+    {
         require(_assetIndex < ftsoHistory.length && 
                 address(ftsoHistory[_assetIndex][0]) != address(0), ERR_TOKEN_NOT_SUPPORTED);
         return ftsoHistory[_assetIndex];
@@ -261,14 +251,11 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         revert(ERR_TOKEN_NOT_SUPPORTED); 
     }
 
-
     /**
      * @notice Get the active FTSO for given index
      * @dev Internal get ftso function so it can be used within other methods
      */
-    function _getFtso(uint256 _assetIndex) private view 
-        returns(IIFtso _activeFtso) 
-    {
+    function _getFtso(uint256 _assetIndex) private view returns(IIFtso _activeFtso) {
         require(_assetIndex < ftsoHistory.length, ERR_TOKEN_NOT_SUPPORTED);
 
         IIFtso ftso = ftsoHistory[_assetIndex][0];
@@ -299,5 +286,4 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         }
         return _supportedIndices;
     }
-
 }

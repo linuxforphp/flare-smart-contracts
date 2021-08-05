@@ -25,7 +25,10 @@ contract FtsoManagerMock is MockContract {
         uint256 priceEpochDurationSeconds,
         uint256 currentRewardEpoch,
         uint256 priceEpochEndTime,
-        uint256 votePowerBlock) public {
+        uint256 votePowerBlock
+    ) 
+        public
+    {
         // This low level call is being done because of mixed Solidity version requirements between
         // this project and the MockContract component.
         bytes memory payload = abi.encodeWithSignature(

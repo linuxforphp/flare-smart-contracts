@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {CheckPointable} from "./CheckPointable.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../utils/implementation/SafePct.sol";
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
-import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
-import {IIVPToken} from "../interface/IIVPToken.sol";
-import {IIVPContract} from "../interface/IIVPContract.sol";
-import {IIGovernanceVotePower} from "../interface/IIGovernanceVotePower.sol";
-import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
-import {Governed} from "../../governance/implementation/Governed.sol";
+import "./CheckPointable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+import "../../userInterfaces/IVPToken.sol";
+import "../../userInterfaces/IVPContractEvents.sol";
+import "../interface/IIVPToken.sol";
+import "../interface/IIVPContract.sol";
+import "../interface/IIGovernanceVotePower.sol";
+import "../../userInterfaces/IGovernanceVotePower.sol";
+import "../../governance/implementation/Governed.sol";
 
 /**
  * @title Vote Power Token
@@ -60,7 +60,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         string memory _name, 
         //slither-disable-next-line shadowing-local
         string memory _symbol
-    ) Governed(_governance) ERC20(_name, _symbol) {
+    )
+        Governed(_governance) ERC20(_name, _symbol) 
+    {
+        /* empty block */
     }
     
     /**
@@ -102,7 +105,11 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function balanceOfAt(
         address _owner, 
         uint256 _blockNumber
-    ) public view override(CheckPointable, IVPToken) returns (uint256) {
+    )
+        public view 
+        override(CheckPointable, IVPToken)
+        returns (uint256)
+    {
         return CheckPointable.balanceOfAt(_owner, _blockNumber);
     }
     
@@ -162,7 +169,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      */
     function undelegateAllExplicit(
         address[] memory _delegateAddresses
-    ) external override returns (uint256 _remainingDelegation) {
+    )
+        external override 
+        returns (uint256 _remainingDelegation)
+    {
         return _checkWriteVpContract().undelegateAllExplicit(msg.sender, _delegateAddresses);
     }
     
@@ -194,7 +204,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function votePowerFromTo(
         address _from, 
         address _to
-    ) external view override returns(uint256) {
+    )
+        external view override 
+        returns(uint256)
+    {
         return _checkReadVpContract().votePowerFromTo(_from, _to, balanceOf(_from));
     }
     
@@ -209,7 +222,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         address _from, 
         address _to, 
         uint256 _blockNumber
-    ) external view override returns(uint256) {
+    )
+        external view override 
+        returns(uint256)
+    {
         return _checkReadVpContract().votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
     
@@ -281,7 +297,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function batchVotePowerOfAt(
         address[] memory _owners, 
         uint256 _blockNumber
-    ) external view override returns(uint256[] memory) {
+    )
+        external view override 
+        returns(uint256[] memory)
+    {
         return _checkReadVpContract().batchVotePowerOfAt(_owners, _blockNumber);
     }
     
@@ -308,12 +327,15 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     */
     function delegatesOf(
         address _owner
-    ) external view override returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
+    )
+        external view override 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
         return _checkReadVpContract().delegatesOf(_owner);
     }
     
@@ -330,12 +352,15 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     function delegatesOfAt(
         address _owner,
         uint256 _blockNumber
-    ) external view override returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
+    )
+        external view override 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
         return _checkReadVpContract().delegatesOfAt(_owner, _blockNumber);
     }
 
@@ -345,7 +370,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         address _from, 
         address _to, 
         uint256 _amount
-    ) internal virtual override(ERC20) {
+    )
+        internal virtual 
+        override(ERC20)
+    {
         require(_from != _to, "Cannot transfer to self");
         
         uint256 fromBalance = balanceOf(_from);

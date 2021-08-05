@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {CheckPointHistory} from "./CheckPointHistory.sol";
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./CheckPointHistory.sol";
+
 
 library CheckPointHistoryCache {
     using SafeMath for uint256;
@@ -16,7 +18,9 @@ library CheckPointHistoryCache {
         CacheState storage _self,
         CheckPointHistory.CheckPointHistoryState storage _checkPointHistory,
         uint256 _blockNumber
-    ) internal returns (uint256 _value, bool _cacheCreated) {
+    )
+        internal returns (uint256 _value, bool _cacheCreated)
+    {
         // is it in cache?
         uint256 cachedValue = _self.cache[_blockNumber];
         if (cachedValue != 0) {
@@ -31,7 +35,9 @@ library CheckPointHistoryCache {
     function deleteAt(
         CacheState storage _self,
         uint256 _blockNumber
-    ) internal returns (uint256 _deleted) {
+    )
+        internal returns (uint256 _deleted)
+    {
         if (_self.cache[_blockNumber] != 0) {
             _self.cache[_blockNumber] = 0;
             return 1;

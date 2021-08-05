@@ -25,8 +25,13 @@ interface IIFtso is IFtso {
      * @notice The hash of _price and _random must be equal to the submitted hash
      * @notice Emits PriceRevealed event
      */
-    function revealPriceSubmitter(address _voter, uint256 _epochId,  uint256 _price, 
-        uint256 _random, uint256 _wflrVP) external;
+    function revealPriceSubmitter(
+        address _voter,
+        uint256 _epochId,
+        uint256 _price,
+        uint256 _random,
+        uint256 _wflrVP
+    ) external;
 
     /// function finalizePriceReveal
     /// called by reward manager only on correct timing.
@@ -35,11 +40,12 @@ interface IIFtso is IFtso {
     /// find weighted median
     /// find adjucant 50% of price submissions.
     /// Allocate reward for any price submission which is same as a "winning" submission
-    function finalizePriceEpoch(uint256 _epochId, bool _returnRewardData) external returns(
-        address[] memory _eligibleAddresses,
-        uint256[] memory _flrWeights,
-        uint256 _totalFlrWeight
-    );
+    function finalizePriceEpoch(uint256 _epochId, bool _returnRewardData) external
+        returns(
+            address[] memory _eligibleAddresses,
+            uint256[] memory _flrWeights,
+            uint256 _totalFlrWeight
+        );
 
     function averageFinalizePriceEpoch(uint256 _epochId) external;
 
@@ -104,15 +110,16 @@ interface IIFtso is IFtso {
      * @return _lowFlrTurnoutThresholdBIPS      Threshold for low flr turnout
      * @return _trustedAddresses                Trusted addresses - use their prices if low flr turnout is not achieved
      */
-    function epochsConfiguration() external view returns (
-        uint256 _maxVotePowerFlrThresholdFraction,
-        uint256 _maxVotePowerAssetThresholdFraction,
-        uint256 _lowAssetUSDThreshold,
-        uint256 _highAssetUSDThreshold,
-        uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
-        address[] memory _trustedAddresses
-    );
+    function epochsConfiguration() external view 
+        returns (
+            uint256 _maxVotePowerFlrThresholdFraction,
+            uint256 _maxVotePowerAssetThresholdFraction,
+            uint256 _lowAssetUSDThreshold,
+            uint256 _highAssetUSDThreshold,
+            uint256 _highAssetTurnoutThresholdBIPS,
+            uint256 _lowFlrTurnoutThresholdBIPS,
+            address[] memory _trustedAddresses
+        );
 
     /**
      * @notice Returns current epoch id
@@ -147,14 +154,15 @@ interface IIFtso is IFtso {
      * @return _assetWeightRatio        ratio of combined asset vp vs. FLR vp (in BIPS)
      * @return _votePowerBlock          vote powewr block for given epoch
      */
-    function getVoteWeightingParameters() external view returns (
-        IIVPToken[] memory _assets,
-        uint256[] memory _assetMultipliers,
-        uint256 _totalVotePowerFlr,
-        uint256 _totalVotePowerAsset,
-        uint256 _assetWeightRatio,
-        uint256 _votePowerBlock
-    );
-    
+    function getVoteWeightingParameters() external view 
+        returns (
+            IIVPToken[] memory _assets,
+            uint256[] memory _assetMultipliers,
+            uint256 _totalVotePowerFlr,
+            uint256 _totalVotePowerAsset,
+            uint256 _assetWeightRatio,
+            uint256 _votePowerBlock
+        );
+
     function wFlr() external view returns (IIVPToken);
 }

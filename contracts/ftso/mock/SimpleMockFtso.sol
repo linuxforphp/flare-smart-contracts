@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "../implementation/Ftso.sol";
 
+
 contract SimpleMockFtso is Ftso {
     using FtsoEpoch for FtsoEpoch.State;
     
@@ -13,8 +14,9 @@ contract SimpleMockFtso is Ftso {
         IISupply _supply,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS
-    ) Ftso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS) {
-    }
+    ) 
+        Ftso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS) 
+    {}
 
     /**
      * @notice Submits price hash for current epoch
@@ -37,11 +39,13 @@ contract SimpleMockFtso is Ftso {
         _revealPrice(msg.sender, _epochId, _price, _random, flrVotePowerCached(msg.sender));
     }
     
-    function readVotes(uint256 _epochId) external view returns (
-        uint256[] memory _price,
-        uint256[] memory _weight,
-        uint256[] memory _weightFlr
-    ) {
+    function readVotes(uint256 _epochId) external view 
+        returns (
+            uint256[] memory _price,
+            uint256[] memory _weight,
+            uint256[] memory _weightFlr
+        )
+    {
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         return _readVotes(epoch);
     }
@@ -50,12 +54,15 @@ contract SimpleMockFtso is Ftso {
         uint256 _epochId, 
         uint256 _weightFlrSum, 
         uint256 _weightAssetSum
-    ) external view returns (uint256) {
+    )
+        external view
+        returns (uint256) 
+    {
         return FtsoEpoch._getWeightRatio(epochs.instance[_epochId], _weightFlrSum, _weightAssetSum);
     }
     
     function getVotePowerOf(address _owner) public returns (uint256 _votePowerFlr, uint256 _votePowerAsset) {
-      return _getVotePowerOf(epochs.instance[lastRevealEpochId], _owner, flrVotePowerCached(_owner));
+        return _getVotePowerOf(epochs.instance[lastRevealEpochId], _owner, flrVotePowerCached(_owner));
     }
 
     // Simplified version of vote power weight calculation (no vote commit/reveal, but result should be equal)

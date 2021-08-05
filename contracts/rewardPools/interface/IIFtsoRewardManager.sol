@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../../userInterfaces/IFtsoRewardManager.sol";
-import "../interface/IIFtsoManager.sol";
+import "../../ftso/interface/IIFtsoManager.sol";
 import "../../token/implementation/WFlr.sol";
 
 interface IIFtsoRewardManager is IFtsoRewardManager {
@@ -13,6 +13,8 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
     function activate() external;
     function deactivate() external;
     function closeExpiredRewardEpoch(uint256 _rewardEpochId, uint256 _currentRewardEpoch) external;
+    function setFTSOManager(IIFtsoManager _ftsoManager) external;
+    function setWFLR(WFlr _wFlr) external;
 
     function distributeRewards(
         address[] memory addresses,
@@ -26,9 +28,6 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
         uint256 votePowerBlock
     ) external;
 
-    function setFTSOManager(IIFtsoManager _ftsoManager) external;
-    function setWFLR(WFlr _wFlr) external;
-
     /**
      * @notice Returns the information on unclaimed reward of `_dataProvider` for `_rewardEpoch`
      * @param _rewardEpoch          reward epoch number
@@ -39,9 +38,10 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
     function getUnclaimedReward(
         uint256 _rewardEpoch,
         address _dataProvider
-    ) external view returns (
-        uint256 _amount,
-        uint256 _weight
-    );
-
+    )
+        external view
+        returns (
+            uint256 _amount,
+            uint256 _weight
+        );
 }
