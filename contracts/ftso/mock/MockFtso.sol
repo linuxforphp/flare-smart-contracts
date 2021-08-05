@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "./SimpleMockFtso.sol";
 
+
 contract MockFtso is SimpleMockFtso {
     using FtsoEpoch for FtsoEpoch.State;
     
@@ -27,7 +28,9 @@ contract MockFtso is SimpleMockFtso {
         uint256 _revealPeriod,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS
-    ) SimpleMockFtso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS) {
+    )
+        SimpleMockFtso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS)
+    {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol
         if (_submitPeriod != 0 && _revealPeriod != 0) {
 
@@ -66,21 +69,24 @@ contract MockFtso is SimpleMockFtso {
      * @return _fallbackMode            Whether epoch instance was in fallback mode
      * @dev half-closed intervals - end time not included
      */
-    function getFullEpochReport(uint256 _epochId) public view returns (
-        uint256 _epochSubmitStartTime,
-        uint256 _epochSubmitEndTime,
-        uint256 _epochRevealEndTime,
-        uint256 _epochFinalizedTimestamp,
-        uint256 _price,
-        uint256 _lowRewardPrice,
-        uint256 _highRewardPrice,
-        uint256 _numberOfVotes,
-        uint256 _votePowerBlock,
-        PriceFinalizationType _finalizationType,
-        address[] memory _trustedAddresses,
-        bool _rewardedFtso,
-        bool _fallbackMode
-    ) {
+    function getFullEpochReport(uint256 _epochId) 
+        public view
+        returns (
+            uint256 _epochSubmitStartTime,
+            uint256 _epochSubmitEndTime,
+            uint256 _epochRevealEndTime,
+            uint256 _epochFinalizedTimestamp,
+            uint256 _price,
+            uint256 _lowRewardPrice,
+            uint256 _highRewardPrice,
+            uint256 _numberOfVotes,
+            uint256 _votePowerBlock,
+            PriceFinalizationType _finalizationType,
+            address[] memory _trustedAddresses,
+            bool _rewardedFtso,
+            bool _fallbackMode
+        )
+    {
         require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
         _epochSubmitStartTime = epochs._epochSubmitStartTime(_epochId);
         _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);        
@@ -108,14 +114,17 @@ contract MockFtso is SimpleMockFtso {
      * @return _eligibleForReward   Array of boolean values that specify which votes are eligible for reward
      * @notice Data for a single vote is determined by values in a specific position of the arrays
      */
-    function getEpochVotes(uint256 _epochId) public view returns (
-        address[] memory _voters,
-        uint256[] memory _prices,
-        uint256[] memory _weights,
-        uint256[] memory _weightsFlr,
-        uint256[] memory _weightsAsset,
-        bool[] memory _eligibleForReward
-    ) {
+    function getEpochVotes(uint256 _epochId)
+        public view
+        returns (
+            address[] memory _voters,
+            uint256[] memory _prices,
+            uint256[] memory _weights,
+            uint256[] memory _weightsFlr,
+            uint256[] memory _weightsAsset,
+            bool[] memory _eligibleForReward
+        )
+    {
         require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
 
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
@@ -156,7 +165,9 @@ contract MockFtso is SimpleMockFtso {
         FtsoMedian.Data memory _data, 
         uint256[] memory _index,
         bool rewardedFtso
-    ) internal virtual override {
+    )
+        internal virtual override
+    {
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
         EpochResult storage result = epochResults[_epochId];
         

@@ -3,10 +3,11 @@ pragma solidity 0.7.6;
 
 import "../../genesis/interface/IIVoterWhitelister.sol";
 import "../../token/interface/IIVPToken.sol";
-import {Governed} from "../../governance/implementation/Governed.sol";
-import {IIPriceSubmitter} from "../../genesis/interface/IIPriceSubmitter.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../utils/implementation/SafePct.sol";
+import "../../governance/implementation/Governed.sol";
+import "../../genesis/interface/IIPriceSubmitter.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+
 
 contract VoterWhitelister is IIVoterWhitelister, Governed {
     using SafeMath for uint256;
@@ -40,7 +41,9 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         address _governance, 
         IIPriceSubmitter _priceSubmitter, 
         uint256 _defaultMaxVotersForFtso
-    ) Governed(_governance) {
+    )
+        Governed(_governance)
+    {
         priceSubmitter = _priceSubmitter;
         defaultMaxVotersForFtso = _defaultMaxVotersForFtso;
     }
@@ -59,10 +62,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
      * Try adding `_voter` account to the whitelist if it has enough voting power.
      * May be called by any address.
      */
-    function requestWhitelistingVoter(
-        address _voter, 
-        uint256 _ftsoIndex
-    ) public override {
+    function requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) public override {
         uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
         require(maxVoters > 0, "max voters not set for ftso");
         
@@ -107,10 +107,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
      * Set the maximum number of voters in the whitelist for FTSO at index `_ftsoIndex`.
      * Calling this function might remove several voters with the least votepower from the whitelist.
      */
-    function setMaxVotersForFtso(
-        uint256 _ftsoIndex,
-        uint256 _newMaxVoters
-    ) external override onlyGovernance {
+    function setMaxVotersForFtso(uint256 _ftsoIndex, uint256 _newMaxVoters) external override onlyGovernance {
         maxVotersForFtso[_ftsoIndex] = _newMaxVoters;
         // need to remove any?
         address[] storage addressesForFtso = whitelist[_ftsoIndex];
@@ -203,10 +200,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
      * Find index of the element with minimum vote power weight.
      * In case of a tie, returns later index.
      */
-    function _minVotePowerIndex(
-        address[] memory _addresses,
-        uint256 _ftsoIndex
-    ) internal returns (uint256) {
+    function _minVotePowerIndex(address[] memory _addresses, uint256 _ftsoIndex) internal returns (uint256) {
         IIFtso ftso = ftsoRegistry.getFtso(_ftsoIndex);
         uint256[] memory votePowers = _getVotePowerWeights(ftso, _addresses);
         return _findMinimum(votePowers, votePowers.length);
@@ -219,10 +213,9 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
      * no sense for whitelist, since it has to be initialized before any voting occurs).
      * Apart from turnout, the results should be equal as for FTSO.
      */
-    function _getVotePowerWeights(
-        IIFtso ftso,
-        address[] memory _addresses
-    ) internal returns (uint256[] memory _votePowers) {
+    function _getVotePowerWeights(IIFtso ftso, address[] memory _addresses) internal 
+        returns (uint256[] memory _votePowers)
+    {
         // get parameters
         IIVPToken[] memory assets;
         uint256[] memory assetMultipliers;
@@ -250,7 +243,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         uint256 _totalVotePowerFlr,
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) internal returns (uint256[] memory _wflrVP) {
+    )
+        internal
+        returns (uint256[] memory _wflrVP)
+    {
         _wflrVP = _getVotePowers(_wflr, _addresses, _blockNumber);
         if (_totalVotePowerFlr == 0) {
             return _wflrVP;  // if total is 0, all values must be 0, no division needed
@@ -269,7 +265,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         uint256 _totalVotePowerAsset,
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) internal returns (uint256[] memory _combinedAssetVP) {
+    )
+        internal 
+        returns (uint256[] memory _combinedAssetVP)
+    {
         _combinedAssetVP = new uint256[](_addresses.length);
         for (uint256 i = 0; i < _addresses.length; i++) {
             _combinedAssetVP[i] = 0;
@@ -299,7 +298,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         IIVPToken _token, 
         address[] memory _addresses, 
         uint256 _blockNumber
-    ) internal returns (uint256[] memory) {
+    )
+        internal 
+        returns (uint256[] memory)
+    {
         // warm up cache for new voter (in this way everyone pays cache storing price for himself)
         _token.votePowerOfAtCached(_addresses[_addresses.length - 1], _blockNumber);
         // get all vote powers in a batch
@@ -325,7 +327,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         uint256[] memory _weightsFlr,
         uint256[] memory _weightsAsset,
         uint256 _assetWeightRatio
-    ) private pure returns (uint256[] memory _weights) {
+    )
+        private pure 
+        returns (uint256[] memory _weights)
+    {
         uint256 weightAssetSum = _arraySum(_weightsAsset);
         uint256 weightFlrSum = _arraySum(_weightsFlr);
         uint256 weightAssetShare = weightAssetSum > 0 ? _assetWeightRatio : 0;

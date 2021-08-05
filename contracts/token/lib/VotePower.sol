@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import {CheckPointHistory} from "./CheckPointHistory.sol";
-import {CheckPointsByAddress} from "./CheckPointsByAddress.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+
+import "./CheckPointHistory.sol";
+import "./CheckPointsByAddress.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title Vote power library
@@ -45,7 +47,9 @@ library VotePower {
         VotePowerState storage _self, 
         address _owner, 
         uint256 _amount
-    ) internal {
+    )
+        internal
+    {
         // Shortcut
         if (_amount == 0) {
             return;
@@ -70,7 +74,10 @@ library VotePower {
         address _delegator, 
         address _delegatee,
         uint256 _amount
-    ) internal addressesNotZero(_delegator, _delegatee) {
+    )
+        internal 
+        addressesNotZero(_delegator, _delegatee)
+    {
         // Shortcut
         if (_amount == 0) {
             return;
@@ -90,7 +97,9 @@ library VotePower {
         VotePowerState storage _self, 
         address _owner, 
         uint256 _amount
-    ) internal {
+    )
+        internal
+    {
         // Shortcut
         if (_amount == 0) {
             return;
@@ -114,7 +123,10 @@ library VotePower {
         address _delegator, 
         address _delegatee,
         uint256 _amount
-    ) internal addressesNotZero(_delegator, _delegatee) {
+    )
+        internal
+        addressesNotZero(_delegator, _delegatee)
+    {
         _self.votePowerByAddress.transmit(_delegator, _delegatee, _amount);
     }
 
@@ -130,7 +142,10 @@ library VotePower {
         address _delegator, 
         address _delegatee,
         uint256 _amount
-    ) internal addressesNotZero(_delegator, _delegatee) {
+    )
+        internal
+        addressesNotZero(_delegator, _delegatee)
+    {
         // Shortcut
         if (_amount == 0) {
             return;
@@ -150,7 +165,10 @@ library VotePower {
         address _owner, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal returns (uint256) {
+    )
+        internal
+        returns (uint256)
+    {
         return _self.votePowerByAddress.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
     }
 
@@ -165,7 +183,10 @@ library VotePower {
         VotePowerState storage _self, 
         address _who, 
         uint256 _blockNumber
-    ) internal view returns(uint256 _votePower) {
+    )
+        internal view 
+        returns(uint256 _votePower)
+    {
         return _self.votePowerByAddress.valueOfAt(_who, _blockNumber);
     }
 
@@ -178,7 +199,10 @@ library VotePower {
     function votePowerOfAtNow(
         VotePowerState storage _self, 
         address _who
-    ) internal view returns(uint256 _votePower) {
+    )
+        internal view
+        returns(uint256 _votePower)
+    {
         return votePowerOfAt(_self, _who, block.number);
     }
 }

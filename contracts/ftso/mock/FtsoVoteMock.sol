@@ -2,7 +2,8 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import {FtsoVote} from "../lib/FtsoVote.sol";
+import "../lib/FtsoVote.sol";
+
 
 /**
  * @title Ftso Vote mock contract
@@ -16,7 +17,10 @@ contract FtsoVoteMock {
         uint256 _totalVotePowerFlr,
         uint256 _totalVotePowerAsset,
         uint256 _price
-    ) public pure returns(FtsoVote.Instance memory) {
+    )
+        public pure 
+        returns(FtsoVote.Instance memory)
+    {
         return FtsoVote._createInstance(
             _voter,
             _votePowerFlr,

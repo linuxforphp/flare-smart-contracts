@@ -5,6 +5,7 @@ pragma abicoder v2;
 import "../lib/FtsoEpoch.sol";
 import "../../token/interface/IIVPToken.sol";
 
+
 /**
  * @title Ftso Vote mock contract
  * @notice A contract to expose the FtsoVote library for unit testing.
@@ -13,7 +14,6 @@ contract FtsoEpochMock {
     using FtsoEpoch for FtsoEpoch.State;
 
     struct Instance {                           // struct holding epoch votes and results
-        
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
         uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
         uint256 lowFlrTurnoutThresholdBIPS;     // threshold for low flr turnout (in BIPS)
@@ -38,9 +38,10 @@ contract FtsoEpochMock {
     FtsoEpoch.State private state;
 
     constructor(
-        uint256 _firstEpochStartTime,            // start time of the first epoch instance
-        uint256 _submitPeriod,                   // duration of price submission for an epoch instance
-        uint256 _revealPeriod) {                 // duration of price reveal for an epoch instance
+        uint256 _firstEpochStartTime,  // start time of the first epoch instance
+        uint256 _submitPeriod,         // duration of price submission for an epoch instance
+        uint256 _revealPeriod)         // duration of price reveal for an epoch instance
+    {
         state.firstEpochStartTime = _firstEpochStartTime;
         state.submitPeriod = _submitPeriod;
         state.revealPeriod = _revealPeriod;
@@ -57,7 +58,9 @@ contract FtsoEpochMock {
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
-    ) public {
+    ) 
+        public
+    {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         state._initializeInstanceForReveal(
             epoch,
@@ -75,7 +78,9 @@ contract FtsoEpochMock {
         uint256 _votePowerAsset,
         uint256 _price,
         uint256 _random
-    ) public {
+    )
+        public
+    {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         FtsoEpoch._addVote(epoch, _voter, _votePowerFlr, _votePowerAsset, _price, _random);
     }
@@ -88,7 +93,9 @@ contract FtsoEpochMock {
         uint256 _highAssetTurnoutThresholdBIPS,
         uint256 _lowFlrTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
-    ) public {
+    ) 
+        public
+    {
         state.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
         state.maxVotePowerAssetThresholdFraction = _maxVotePowerAssetThresholdFraction;
         state.lowAssetUSDThreshold = _lowAssetUSDThreshold;
@@ -107,7 +114,9 @@ contract FtsoEpochMock {
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
-    ) public {
+    ) 
+        public
+    {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         state._setAssets(epoch, _assets, _assetVotePowers, _assetPrices);
     }
@@ -153,7 +162,10 @@ contract FtsoEpochMock {
         uint256 _epochId, 
         uint256 _weightFlrSum, 
         uint256 _weightAssetSum
-    ) public view returns (uint256) {
+    ) 
+        public view 
+        returns (uint256)
+    {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         return FtsoEpoch._getWeightRatio(epoch, _weightFlrSum, _weightAssetSum);
     }
@@ -162,7 +174,10 @@ contract FtsoEpochMock {
         uint256 _epochId,
         uint256[] memory _weightsFlr,
         uint256[] memory _weightsAsset
-    ) public view returns (uint256[] memory) {
+    ) 
+        public view 
+        returns (uint256[] memory)
+    {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         return FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);
     }

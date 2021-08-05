@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+
 library FtsoMedian {
 
     struct Data {                   // used for storing the results of weighted median calculation
@@ -45,9 +46,12 @@ library FtsoMedian {
     function _compute(
         uint256[] memory _price,
         uint256[] memory _weight
-    ) internal view returns (
-        uint256[] memory _index,
-        Data memory _d)
+    ) 
+        internal view 
+        returns (
+            uint256[] memory _index,
+            Data memory _d
+        )
     {
         uint256 count = _price.length;
 

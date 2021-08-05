@@ -27,7 +27,7 @@ contract HistoryCleanerMock {
             _deletedCounts[i] = abi.decode(result, (uint256));
         }
     }
-    
+
     function appendUintToString(string memory prefix, uint256 value) private pure returns (string memory) {
         bytes memory reversed = new bytes(80);  // longest uint256 decimal string is ~77 < 80
         uint256 len = 0;

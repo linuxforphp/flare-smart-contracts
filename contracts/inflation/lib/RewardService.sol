@@ -2,11 +2,10 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { IIInflationReceiver } from "../interface/IIInflationReceiver.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
+import "../interface/IIInflationReceiver.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
 
-//import "hardhat/console.sol";
 
 enum TopupType{ FACTOROFDAILYAUTHORIZED, ALLAUTHORIZED }
 

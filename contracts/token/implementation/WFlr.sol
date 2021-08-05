@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {VPToken} from "./VPToken.sol";
-import {VPContract} from "./VPContract.sol";
-import {IWFlr} from "../../userInterfaces/IWFlr.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import "./VPToken.sol";
+import "./VPContract.sol";
+import "../../userInterfaces/IWFlr.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
 /**
@@ -22,7 +22,7 @@ contract WFlr is VPToken, IWFlr {
      */
     constructor(address _governance) VPToken(_governance, "Wrapped FLR", "WFLR") {
     }
-    
+
     receive() external payable {
         deposit();
     }

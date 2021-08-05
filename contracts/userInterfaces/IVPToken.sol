@@ -162,11 +162,14 @@ interface IVPToken is IERC20 {
     * @return _count The number of delegates.
     * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOf(address _who) external view returns (
-        address[] memory _delegateAddresses,
-        uint256[] memory _bips,
-        uint256 _count, 
-        uint256 _delegationMode);
+    function delegatesOf(address _who)
+        external view 
+        returns (
+            address[] memory _delegateAddresses,
+            uint256[] memory _bips,
+            uint256 _count, 
+            uint256 _delegationMode
+        );
         
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
@@ -178,11 +181,14 @@ interface IVPToken is IERC20 {
     * @return _count The number of delegates.
     * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOfAt(address _who, uint256 _blockNumber) external view returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips, 
-        uint256 _count, 
-        uint256 _delegationMode);
+    function delegatesOfAt(address _who, uint256 _blockNumber)
+        external view 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips, 
+            uint256 _count, 
+            uint256 _delegationMode
+        );
 
     /**
      * Returns VPContract used for readonly operations (view methods).

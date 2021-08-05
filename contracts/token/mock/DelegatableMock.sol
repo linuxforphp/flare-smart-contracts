@@ -94,7 +94,10 @@ contract DelegatableMock is Delegatable {
         address _from, 
         address _to, 
         uint256 _blockNumber
-    ) external view returns(uint256) {
+    )
+        external view
+        returns(uint256)
+    {
         return _votePowerFromToAt(_from, _to, balanceOfAt(_from, _blockNumber), _blockNumber);
     }
 
@@ -104,24 +107,30 @@ contract DelegatableMock is Delegatable {
 
     function delegatesOf(
         address _owner
-    ) external view returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
+    )
+        external view 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
         return delegatesOfAt(_owner, block.number);
     }
 
     function delegatesOfAt(
         address _owner,
         uint256 _blockNumber
-    ) public view returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
+    )
+        public view 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
         DelegationMode mode = _delegationModeOf(_owner);
         if (mode == DelegationMode.PERCENTAGE) {
             // Get the vote power delegation for the _owner

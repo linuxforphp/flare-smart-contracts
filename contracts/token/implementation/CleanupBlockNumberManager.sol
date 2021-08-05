@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {Governed} from "../../governance/implementation/Governed.sol";
+import "../../governance/implementation/Governed.sol";
 import "../../token/interface/IICleanable.sol";
 
 
@@ -10,7 +10,7 @@ import "../../token/interface/IICleanable.sol";
  * @notice Maintains the list of cleanable tokens for which history cleanup can be collectively cleaned u 
  */
 contract CleanupBlockNumberManager is Governed {
-    
+
     string internal constant ERR_CONTRACT_NOT_FOUND = "contract not found";
     string internal constant ERR_TRIGGER_CONTRACT_OR_GOVERNANCE_ONLY = "trigger or governance only";
 
@@ -28,9 +28,8 @@ contract CleanupBlockNumberManager is Governed {
         _;
     }
 
-    constructor(
-        address _governance        
-    ) Governed(_governance) {        
+    constructor(address _governance) Governed(_governance) {
+        /* empty block */
     }
 
     /**
@@ -92,6 +91,4 @@ contract CleanupBlockNumberManager is Governed {
             }
         }
     }
-
-
 }

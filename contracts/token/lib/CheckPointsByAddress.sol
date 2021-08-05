@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {CheckPointHistory} from "./CheckPointHistory.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import "./CheckPointHistory.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title Check Points By Address library
@@ -31,7 +32,9 @@ library CheckPointsByAddress {
         address _from, 
         address _to, 
         uint256 _amount
-    ) internal {
+    )
+        internal
+    {
         // Shortcut
         if (_amount == 0) return;
 
@@ -63,8 +66,11 @@ library CheckPointsByAddress {
     function valueOfAt(
         CheckPointsByAddressState storage _self, 
         address _owner, 
-        uint256 _blockNumber) internal view returns (uint256) {
-          
+        uint256 _blockNumber
+    )
+        internal view
+        returns (uint256)
+    {
         // Get history for _owner
         CheckPointHistory.CheckPointHistoryState storage history = _self.historyByAddress[_owner];
         // Return value at given block
@@ -92,7 +98,9 @@ library CheckPointsByAddress {
         CheckPointsByAddressState storage _self, 
         address _owner, 
         uint256 _value
-    ) internal {
+    )
+        internal
+    {
         // Get history for _owner
         CheckPointHistory.CheckPointHistoryState storage history = _self.historyByAddress[_owner];
         // Write the value
@@ -109,11 +117,13 @@ library CheckPointsByAddress {
         address _owner, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal returns (uint256) {
+    )
+        internal
+        returns (uint256)
+    {
         if (_owner != address(0)) {
             return _self.historyByAddress[_owner].cleanupOldCheckpoints(_count, _cleanupBlockNumber);
         }
         return 0;
     }
-    
 }

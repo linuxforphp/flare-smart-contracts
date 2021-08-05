@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {VPToken} from "../implementation/VPToken.sol";
-import {VPContract} from "../implementation/VPContract.sol";
-import {IIVPContract} from "../interface/IIVPContract.sol";
+import "../implementation/VPToken.sol";
+import "../implementation/VPContract.sol";
+import "../interface/IIVPContract.sol";
 
 /**
  * @title Vote Power Token mock contract
@@ -15,7 +15,9 @@ contract VPTokenMock is VPToken {
         address _governance,
         string memory _name, 
         string memory _symbol
-    ) VPToken(_governance, _name, _symbol) {
+    )
+        VPToken(_governance, _name, _symbol)
+    {
     }
 
     function mint(address _to, uint256 _amount) public virtual {
@@ -51,5 +53,4 @@ contract VPTokenMock is VPToken {
     function getWriteVpContract() public view returns (IIVPContract) {
         return _getWriteVpContract();
     }
-
 }

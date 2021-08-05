@@ -2,11 +2,12 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { BokkyPooBahsDateTimeLibrary } from "../../utils/implementation/DateTimeLibrary.sol";
-import { RewardServices } from "./RewardServices.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/SafeCast.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
+import "../../utils/implementation/DateTimeLibrary.sol";
+import "./RewardServices.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+
 
 /**
  * @title Inflation Annum library

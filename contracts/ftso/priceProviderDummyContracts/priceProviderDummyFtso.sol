@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-
 import "../interface/IIFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 
@@ -38,7 +37,7 @@ contract DummyFtso is IIFtso {
     uint256 internal firstEpochStartTime;
     uint256 internal submitPeriod;
     uint256 internal revealPeriod;
-    
+
     mapping(uint256 => uint256) internal random;
     mapping(uint256 => mapping (address => uint256)) internal revealedPrices;
 
@@ -49,14 +48,13 @@ contract DummyFtso is IIFtso {
         _;
     }
 
-
     constructor(
         string memory _symbol,
         IPriceSubmitter _priceSubmitter,
         uint256 _firstEpochStartTime,
         uint256 _submitPeriod,
-        uint256 _revealPeriod
-    ) {
+        uint256 _revealPeriod)
+    {
         symbol = _symbol;
         fAssetPriceTimestamp = block.timestamp;
         active = true;
@@ -77,7 +75,10 @@ contract DummyFtso is IIFtso {
     function submitPriceHashSubmitter(
         address _sender,
         bytes32 _hash
-    ) external override onlyPriceSubmitter returns (uint256 _epochId) {
+    ) 
+        external override onlyPriceSubmitter 
+        returns (uint256 _epochId) 
+    {
         _epochId = _getCurrentEpochId();
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
@@ -98,7 +99,9 @@ contract DummyFtso is IIFtso {
         uint256 _price,
         uint256 _random,
         uint256 /*_wflrVP*/     // just an optimization, to read flare vp only once
-    ) external override onlyPriceSubmitter {
+    )
+        external override onlyPriceSubmitter 
+    {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
         // Check if reveal is in progress
         uint256 revealStartTime = firstEpochStartTime + (_epochId + 1) * submitPeriod; 
@@ -145,13 +148,15 @@ contract DummyFtso is IIFtso {
      * @return _fallbackMode            Not calculated in mocks, always 0
      * @dev half-closed intervals - end time not included
      */
-    function getPriceEpochData() external view override returns (
-        uint256 _epochId,
-        uint256 _epochSubmitEndTime,
-        uint256 _epochRevealEndTime,
-        uint256 _votePowerBlock,
-        bool _fallbackMode
-    ) {
+    function getPriceEpochData() external view override 
+        returns (
+            uint256 _epochId,
+            uint256 _epochSubmitEndTime,
+            uint256 _epochRevealEndTime,
+            uint256 _votePowerBlock,
+            bool _fallbackMode
+        )
+    {
         _epochId = _getCurrentEpochId();
         _epochSubmitEndTime = firstEpochStartTime + (_epochId + 1) * submitPeriod;
         _epochRevealEndTime = _epochSubmitEndTime + revealPeriod;
@@ -166,11 +171,12 @@ contract DummyFtso is IIFtso {
      * @return _submitPeriod                Submit period in seconds
      * @return _revealPeriod                Reveal period in seconds
      */
-    function getPriceEpochConfiguration() external view override returns (
-        uint256 _firstEpochStartTime,
-        uint256 _submitPeriod,
-        uint256 _revealPeriod
-    ) 
+    function getPriceEpochConfiguration() external view override 
+        returns (
+            uint256 _firstEpochStartTime,
+            uint256 _submitPeriod,
+            uint256 _revealPeriod
+        )
     {
         return (
             firstEpochStartTime, 
@@ -214,11 +220,13 @@ contract DummyFtso is IIFtso {
     // Methods only used for IIFtso implementation
     // Will always fail
 
-    function finalizePriceEpoch(uint256, bool) external pure override returns(
-        address[] memory,
-        uint256[] memory,
-        uint256
-    ) {
+    function finalizePriceEpoch(uint256, bool) external pure override 
+        returns(
+            address[] memory,
+            uint256[] memory,
+            uint256
+        )
+    {
         require(false, UNAVAILABLE);
         return (new address[](0), new uint256[](0), 0);
     }
@@ -237,8 +245,9 @@ contract DummyFtso is IIFtso {
         address,
         uint256,
         uint256,
-        uint256
-    ) external pure override {
+        uint256) 
+        external pure override
+    {
         require(false, UNAVAILABLE);
     }
 
@@ -259,7 +268,9 @@ contract DummyFtso is IIFtso {
         uint256,
         uint256,
         address[] memory
-    ) external pure override {
+    )
+        external pure override
+    {
         require(false, UNAVAILABLE);
     }
 
@@ -300,62 +311,61 @@ contract DummyFtso is IIFtso {
         return new IIFtso[](0);
     }
 
-    function epochsConfiguration() external pure override returns (
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        address[] memory
-    ){
+    function epochsConfiguration() external pure override 
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            address[] memory
+        )
+    {
         require(false, UNAVAILABLE);
         return (0, 0, 0, 0, 0, 0, new address[](0));
     }
 
-    function getCurrentEpochId() external pure override returns (uint256){
+    function getCurrentEpochId() external pure override returns (uint256) {
         require(false, UNAVAILABLE);
         return 0;
     }
 
-
-    function getEpochId(uint256) external pure override returns (uint256){
+    function getEpochId(uint256) external pure override returns (uint256) {
         require(false, UNAVAILABLE);
         return 0;
     }
 
-    function getRandom(uint256) external pure override returns (uint256){
-        require(false, UNAVAILABLE);
-        return 0;
-    }
-    
-
-    function getEpochPrice(uint256) external pure override returns (uint256){
+    function getRandom(uint256) external pure override returns (uint256) {
         require(false, UNAVAILABLE);
         return 0;
     }
 
+    function getEpochPrice(uint256) external pure override returns (uint256) {
+        require(false, UNAVAILABLE);
+        return 0;
+    }
 
-    function getVoteWeightingParameters() external pure override returns (
-        IIVPToken[] memory,
-        uint256[] memory,
-        uint256,
-        uint256,
-        uint256,
-        uint256
-    ){
+    function getVoteWeightingParameters() external pure override 
+        returns (
+            IIVPToken[] memory,
+            uint256[] memory,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         require(false, UNAVAILABLE);
         return (new IIVPToken[](0), new uint256[](0), 0, 0, 0, 0);
     }
-    
+
     function wFlr() external pure override returns (IIVPToken) {
         require(false, UNAVAILABLE);
         return IIVPToken(address(0));
     }
 
-
     function revertNoAccess() internal pure {
         revert(ERR_NO_ACCESS);
     } 
-
 }

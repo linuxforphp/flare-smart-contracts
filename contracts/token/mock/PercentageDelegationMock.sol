@@ -27,11 +27,11 @@ contract PercentageDelegationMock {
             self.addReplaceDelegate(_delegates[i], _bipss[i]);
         }
     }
-    
+
     function getDelegatedTotalAt(uint256 _blockNumber) public view returns (uint256 _totalBips) {
         return self.getDelegatedTotalAt(_blockNumber);
     }
-    
+
     function getDelegatedTotal() public view returns (uint256 _totalBips) {
         return self.getDelegatedTotal();
     }
@@ -45,7 +45,9 @@ contract PercentageDelegationMock {
     }
     
     function getDelegationsAt(uint256 _blockNumber) 
-    public view returns (address[] memory _delegates, uint256[] memory _values) {
+        public view
+        returns (address[] memory _delegates, uint256[] memory _values)
+    {
         return self.getDelegationsAt(_blockNumber);
     }
     

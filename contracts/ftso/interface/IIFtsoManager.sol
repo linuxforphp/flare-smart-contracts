@@ -30,7 +30,9 @@ interface IIFtsoManager is IFtsoManager {
     ) external;
 
     function addFtso(IIFtso _ftso) external;
+
     function removeFtso(IIFtso _ftso) external;
+
     function replaceFtso(
         IIFtso _ftsoToRemove,
         IIFtso _ftsoToAdd,
@@ -39,8 +41,10 @@ interface IIFtsoManager is IFtsoManager {
     ) external;
 
     function setFtsoFAsset(IIFtso _ftso, IIVPToken _fAsset) external;
+
     function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external;
 
     function setFallbackMode(bool _fallbackMode) external;
+
     function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external;
 }

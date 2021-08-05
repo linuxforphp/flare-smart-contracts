@@ -27,5 +27,4 @@ interface IIHistoryCleanup  {
      * @notice Triggers cleaning up to a block number
      */
     function setCleanUpBlockNumber(uint256 _blockNumber) external;
-
 }

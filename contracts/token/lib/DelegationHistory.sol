@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {Math} from "@openzeppelin/contracts/math/Math.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../utils/implementation/SafePct.sol";
+import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+
 
 /**
  * @title DelegationHistory library
@@ -50,7 +51,10 @@ library DelegationHistory {
         CheckPointHistoryState storage _self, 
         address _delegate, 
         uint256 _blockNumber
-    ) internal view returns (uint256 _value) {
+    )
+        internal view 
+        returns (uint256 _value)
+    {
         (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
 
@@ -74,7 +78,10 @@ library DelegationHistory {
     function valueOfAtNow(
         CheckPointHistoryState storage _self, 
         address _delegate
-    ) internal view returns (uint256 _value) {
+    )
+        internal view
+        returns (uint256 _value)
+    {
         return valueOfAt(_self, _delegate, block.number);
     }
 
@@ -88,7 +95,9 @@ library DelegationHistory {
         CheckPointHistoryState storage _self, 
         address _delegate, 
         uint256 _value
-    ) internal {
+    )
+        internal
+    {
         uint256 historyCount = _self.checkpoints.length;
         if (historyCount == 0) {
             // checkpoints array empty, push new CheckPoint
@@ -127,10 +136,13 @@ library DelegationHistory {
     function delegationsAt(
         CheckPointHistoryState storage _self,
         uint256 _blockNumber
-    ) internal view returns (
-        address[] memory _delegates,
-        uint256[] memory _values
-    ) {
+    )
+        internal view
+        returns (
+            address[] memory _delegates,
+            uint256[] memory _values
+        )
+    {
         (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) {
             return (new address[](0), new uint256[](0));
@@ -156,10 +168,10 @@ library DelegationHistory {
      **/
     function delegationsAtNow(
         CheckPointHistoryState storage _self
-    ) internal view returns (
-        address[] memory _delegates,
-        uint256[] memory _values
-    ) {
+    )
+        internal view
+        returns (address[] memory _delegates, uint256[] memory _values)
+    {
         return delegationsAt(_self, block.number);
     }
     
@@ -172,7 +184,10 @@ library DelegationHistory {
     function countAt(
         CheckPointHistoryState storage _self,
         uint256 _blockNumber
-    ) internal view returns (uint256 _count) {
+    )
+        internal view
+        returns (uint256 _count)
+    {
         (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
         return _self.checkpoints[index].delegates.length;
@@ -187,7 +202,10 @@ library DelegationHistory {
     function totalValueAt(
         CheckPointHistoryState storage _self, 
         uint256 _blockNumber
-    ) internal view returns (uint256 _total) {
+    )
+        internal view
+        returns (uint256 _total)
+    {
         (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
         
@@ -206,7 +224,10 @@ library DelegationHistory {
      **/
     function totalValueAtNow(
         CheckPointHistoryState storage _self
-    ) internal view returns (uint256 _total) {
+    )
+        internal view
+        returns (uint256 _total)
+    {
         return totalValueAt(_self, block.number);
     }
 
@@ -223,7 +244,10 @@ library DelegationHistory {
         uint256 _mul,
         uint256 _div,
         uint256 _blockNumber
-    ) internal view returns (uint256 _total) {
+    )
+        internal view
+        returns (uint256 _total)
+    {
         (bool found, uint256 index) = _findGreatestBlockLessThan(_self.checkpoints, _self.startIndex, _blockNumber);
         if (!found) return 0;
         
@@ -256,7 +280,10 @@ library DelegationHistory {
         CheckPointHistoryState storage _self, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal returns (uint256) {
+    )
+        internal
+        returns (uint256)
+    {
         if (_cleanupBlockNumber == 0) return 0;   // optimization for when cleaning is not enabled
         uint256 length = _self.checkpoints.length;
         if (length == 0) return 0;
@@ -283,7 +310,9 @@ library DelegationHistory {
         CheckPoint storage _orig, 
         address _delegate, 
         uint256 _value
-    ) private {
+    )
+        private
+    {
         uint256 length = _orig.delegates.length;
         bool updated = false;
         for (uint256 i = 0; i < length; i++) {
@@ -348,7 +377,10 @@ library DelegationHistory {
         CheckPoint[] storage _checkpoints, 
         uint256 _startIndex,
         uint256 _blockNumber
-    ) private view returns (uint256 _index) {
+    )
+        private view
+        returns (uint256 _index)
+    {
         // Binary search of the value by given block number in the array
         uint256 min = _startIndex;
         uint256 max = _checkpoints.length.sub(1);
@@ -377,10 +409,13 @@ library DelegationHistory {
         CheckPoint[] storage _checkpoints, 
         uint256 _startIndex,
         uint256 _blockNumber
-    ) private view returns (
-        bool _found,
-        uint256 _index
-    ) {
+    )
+        private view
+        returns (
+            bool _found,
+            uint256 _index
+        )
+    {
         uint256 historyCount = _checkpoints.length;
         if (historyCount == 0) {
             _found = false;

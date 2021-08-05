@@ -2,14 +2,15 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { BokkyPooBahsDateTimeLibrary } from "../../utils/implementation/DateTimeLibrary.sol";
-import { Inflation } from "../implementation/Inflation.sol";
-import { IIInflationReceiver } from "../interface/IIInflationReceiver.sol";
-import { RewardService } from "./RewardService.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
-import { SharingPercentage } from "../interface/IIInflationSharingPercentageProvider.sol";
-import { TopupConfiguration } from "./RewardService.sol";
+import "../../utils/implementation/DateTimeLibrary.sol";
+import "../implementation/Inflation.sol";
+import "../interface/IIInflationReceiver.sol";
+import "./RewardService.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+import "../interface/IIInflationSharingPercentageProvider.sol";
+import "./RewardService.sol";
+
 
 /**
  * @title Reward Services library

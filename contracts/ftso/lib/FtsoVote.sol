@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "../../utils/implementation/SafePct.sol";
 
+
 /**
  * @title A library used for FTSO vote management
  * @dev Every vote corresponds to a specific FTSO epoch
@@ -38,7 +39,9 @@ library FtsoVote {
         uint256 _totalVotePowerFlr,
         uint256 _totalVotePowerAsset,
         uint256 _price
-    ) internal pure returns (Instance memory vote)
+    ) 
+        internal pure 
+        returns (Instance memory vote)
     {
         vote.voter = _voter;
         vote.weightFlr = _getWeight(_votePowerFlr, _totalVotePowerFlr);
@@ -60,5 +63,4 @@ library FtsoVote {
             return uint64(_votePower.mulDiv(TERA, _totalVotePower));
         }
     }
-
 }

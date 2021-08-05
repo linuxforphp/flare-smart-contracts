@@ -51,7 +51,8 @@ contract FlashLoanMock is IFlashLoanMock {
         FlashLenderMock _flashLender,
         WFlr _wflr,
         MockFtso _ftso
-    ) {
+    )
+    {
         flashLender = _flashLender;
         wflr = _wflr;
         ftso = _ftso;
@@ -96,6 +97,7 @@ contract FlashLoanMock is IFlashLoanMock {
     }
 }
 
+
 contract VotingFlashLoanMock is FlashLoanMock {
     uint256 private epochId;
     uint256 private price;
@@ -105,7 +107,9 @@ contract VotingFlashLoanMock is FlashLoanMock {
         FlashLenderMock _flashLender,
         WFlr _wflr,
         MockFtso _ftso
-    ) FlashLoanMock(_flashLender, _wflr, _ftso) {
+    )
+        FlashLoanMock(_flashLender, _wflr, _ftso)
+    {
     }
     
     function setVote(uint256 _epochId, uint256 _price, uint256 _random) public {

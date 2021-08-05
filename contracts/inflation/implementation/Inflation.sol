@@ -2,18 +2,18 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { FlareKeeper } from "../../genesis/implementation/FlareKeeper.sol";
-import { IFlareKeep } from "../../genesis/interface/IFlareKeep.sol";
-import { GovernedAndFlareKept } from "../../utils/implementation/GovernedAndFlareKept.sol";
-import { InflationAnnum } from "../lib/InflationAnnum.sol";
-import { InflationAnnums } from "../lib/InflationAnnums.sol";
-import { IIInflationPercentageProvider } from "../interface/IIInflationPercentageProvider.sol";
-import { IIInflationReceiver } from "../interface/IIInflationReceiver.sol";
-import { IIInflationSharingPercentageProvider } from "../interface/IIInflationSharingPercentageProvider.sol";
-import { TopupConfiguration, TopupType } from "../lib/RewardService.sol"; 
-import { IISupply } from "../../supply/interface/IISupply.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
+import  "../../genesis/implementation/FlareKeeper.sol";
+import "../../genesis/interface/IFlareKeep.sol";
+import "../../utils/implementation/GovernedAndFlareKept.sol";
+import "../lib/InflationAnnum.sol";
+import "../lib/InflationAnnums.sol";
+import "../interface/IIInflationPercentageProvider.sol";
+import "../interface/IIInflationReceiver.sol";
+import "../interface/IIInflationSharingPercentageProvider.sol";
+import "../lib/RewardService.sol"; 
+import "../interface/IISupply.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
 
 /**
  * @title Inflation

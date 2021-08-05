@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGenesis.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/SafeCast.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { Math } from "@openzeppelin/contracts/math/Math.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
-import { IDistribution } from "../../userInterfaces/IDistribution.sol";
+import "../../governance/implementation/GovernedAtGenesis.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/Math.sol";
+import "../../utils/implementation/SafePct.sol";
+import "../../userInterfaces/IDistribution.sol";
+
 
 /**
  * @title Distribution
@@ -151,7 +152,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @return _amountWei claimed wei
      */
     function claim() external override entitlementStarted mustBalance accountCanClaim(msg.sender) 
-    returns(uint256 _amountWei) {
+        returns(uint256 _amountWei) 
+    {
         // Get the account
         AirdropAccount storage airdropAccount = airdropAccounts[msg.sender];
         // Get the current claimable amount for the account
@@ -174,7 +176,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @param _targetAddress an address to withdraw funds to
      */
     function withdrawOptOutWei(address _targetAddress) external onlyGovernance entitlementStarted mustBalance 
-    returns(uint256 _amountWei) {
+        returns(uint256 _amountWei) 
+    {
         require(totalOptOutWei > 0, ERR_NO_BALANCE_CLAIMABLE);
         require(totalOptOutWei != withdrawnOptOutWei, ERR_NO_BALANCE_CLAIMABLE);
         // Update opt-out balance
@@ -191,7 +194,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @return _amountWei amount of wei available for this account at current time
      */
     function getClaimableAmount() external view override entitlementStarted 
-    returns(uint256 _amountWei) {
+        returns(uint256 _amountWei) 
+    {
         _amountWei = _getCurrentClaimableWei(msg.sender);
     }
 
@@ -201,7 +205,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @return _amountWei amount of wei available for provided account at current time
      */
     function getClaimableAmountOf(address account) external view override entitlementStarted 
-    returns(uint256 _amountWei) {
+        returns(uint256 _amountWei) 
+    {
         _amountWei = _getCurrentClaimableWei(account);
     }
 
@@ -210,7 +215,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @return timeTill (sec) Time till next claimable Wei in seconds
      */
     function secondsTillNextClaim() external view override entitlementStarted 
-    returns(uint256 timeTill) {
+        returns(uint256 timeTill) 
+    {
         timeTill = _timeTillNextClaim(msg.sender);
     }
 
@@ -220,7 +226,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @return percentBips maximal claimable bips at given time
      */
     function _getCurrentClaimablePercent() internal view entitlementStarted 
-    returns(uint256 percentBips){
+        returns(uint256 percentBips)
+    {
         uint256 diffDays = block.timestamp.sub(entitlementStartTs).div(1 days);
         percentBips = Math.min(diffDays.div(30).mul(MONTHLY_CLAIMABLE_BIPS),TOTAL_CLAIMABLE_BIPS);
     }
@@ -230,7 +237,8 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @dev Every 30 days from initial day 3% of the revard is released
      */
     function _getCurrentClaimableWei(address _owner) internal view entitlementStarted accountCanClaim(_owner) 
-    returns(uint256 claimableWei){
+        returns(uint256 claimableWei)
+    {
         // Attempt to get the account in question
         AirdropAccount memory airdropAccount = airdropAccounts[_owner];
         uint256 currentMaxClaimableBips = _getCurrentClaimablePercent();
@@ -245,8 +253,9 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @notice Calculate the time till nex entitelment Wei is released  
      */
     function _timeTillNextClaim(address _account) internal view entitlementStarted accountCanClaim(_account) 
-    returns(uint256 timeTill) {
-        // Get the account we wanna check
+        returns(uint256 timeTill) 
+    {
+        // Get the account we want to check
         require(block.timestamp.sub(entitlementStartTs).div(MONTH) < 29, ERR_FULLY_CLAIMED);
         timeTill = MONTH.sub(block.timestamp.sub(entitlementStartTs).mod(MONTH));
     }
@@ -256,7 +265,6 @@ contract Distribution is GovernedAtGenesis, IDistribution {
      * @param _balanceExpectedWei   The computed balance expected.
      */
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
-    return totalEntitlementWei.
-        sub(totalClaimedWei).sub(withdrawnOptOutWei);
+        return totalEntitlementWei.sub(totalClaimedWei).sub(withdrawnOptOutWei);
     }
 }
