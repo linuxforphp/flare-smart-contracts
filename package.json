@@ -54,6 +54,7 @@
     "flatten": "yarn hardhat flatten",
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node scripts/slither-parse.js ./slither.json",
+    "gas-report-check": "./scripts/gas-report-check.sh",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node scripts/process-gas-report.ts && cat .gas-report.txt",
