@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
-import {Delegatable} from "./Delegatable.sol";
-import {IICleanable} from "../interface/IIVPContract.sol";
-import {IIVPContract} from "../interface/IIVPContract.sol";
-import {IIVPToken} from "../interface/IIVPToken.sol";
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../governance/implementation/GovernedBase.sol";
+import "./Delegatable.sol";
+import "../interface/IIVPContract.sol";
+import "../interface/IIVPContract.sol";
+import "../interface/IIVPToken.sol";
+import "../../userInterfaces/IVPToken.sol";
 
 contract VPContract is IIVPContract, Delegatable {
     using SafeMath for uint256;
@@ -133,7 +133,10 @@ contract VPContract is IIVPContract, Delegatable {
         uint256 _fromBalance,
         uint256 _toBalance,
         uint256 _amount
-    ) external override onlyOwnerToken {
+    )
+        external override 
+        onlyOwnerToken 
+    {
         if (_from == address(0)) {
             // mint new vote power
             _initializeVotePower(_to, _toBalance);
@@ -163,7 +166,11 @@ contract VPContract is IIVPContract, Delegatable {
         address _to, 
         uint256 _balance, 
         uint256 _bips
-    ) external override onlyOwnerToken onlyPercent(_from) {
+    )
+        external override 
+        onlyOwnerToken 
+        onlyPercent(_from)
+    {
         _initializeVotePower(_from, _balance);
         if (!_votePowerInitialized(_to)) {
             _initializeVotePower(_to, ownerToken.balanceOf(_to));
@@ -184,7 +191,11 @@ contract VPContract is IIVPContract, Delegatable {
         address _to, 
         uint256 _balance, 
         uint _amount
-    ) external override onlyOwnerToken onlyExplicit(_from) {
+    )
+        external override 
+        onlyOwnerToken
+        onlyExplicit(_from)
+    {
         _initializeVotePower(_from, _balance);
         if (!_votePowerInitialized(_to)) {
             _initializeVotePower(_to, ownerToken.balanceOf(_to));
@@ -208,9 +219,13 @@ contract VPContract is IIVPContract, Delegatable {
         address _to, 
         uint256 _balance,
         uint _blockNumber
-    ) external override onlyOwnerToken {
+    )
+        external override 
+        onlyOwnerToken
+    {
         // ASSERT: if there was a delegation, _from and _to must be initialized
-        if (_votePowerInitializedAt(_from, _blockNumber) && _votePowerInitializedAt(_to, _blockNumber)) {
+        if (!isReplacement || 
+            (_votePowerInitializedAt(_from, _blockNumber) && _votePowerInitializedAt(_to, _blockNumber))) {
             _revokeDelegationAt(_from, _to, _balance, _blockNumber);
         }
     }
@@ -224,7 +239,11 @@ contract VPContract is IIVPContract, Delegatable {
     function undelegateAll(
         address _from,
         uint256 _balance
-    ) external override onlyOwnerToken onlyPercent(_from) {
+    )
+        external override 
+        onlyOwnerToken 
+        onlyPercent(_from)
+    {
         if (_hasAnyDelegations(_from)) {
             // ASSERT: since there were delegations, _from and its targets must be initialized
             _undelegateAllByPercentage(_from, _balance);
@@ -243,7 +262,12 @@ contract VPContract is IIVPContract, Delegatable {
     function undelegateAllExplicit(
         address _from, 
         address[] memory _delegateAddresses
-    ) external override onlyOwnerToken onlyExplicit(_from) returns (uint256) {
+    )
+        external override 
+        onlyOwnerToken 
+        onlyExplicit(_from) 
+        returns (uint256)
+    {
         if (_hasAnyDelegations(_from)) {
             // ASSERT: since there were delegations, _from and its targets must be initialized
             return _undelegateAllByAmount(_from, _delegateAddresses);
@@ -259,7 +283,7 @@ contract VPContract is IIVPContract, Delegatable {
     * @return Vote power of `_who` at `_blockNumber`.
     */
     function votePowerOfAtCached(address _who, uint256 _blockNumber) external override returns(uint256) {
-        if (_votePowerInitializedAt(_who, _blockNumber)) {
+        if (!isReplacement || _votePowerInitializedAt(_who, _blockNumber)) {
             // use standard method
             return _votePowerOfAtCached(_who, _blockNumber);
         } else {
@@ -302,7 +326,7 @@ contract VPContract is IIVPContract, Delegatable {
     * @return Vote power of `_who` at `_blockNumber`.
     */
     function votePowerOfAt(address _who, uint256 _blockNumber) public view override returns(uint256) {
-        if (_votePowerInitializedAt(_who, _blockNumber)) {
+        if (!isReplacement || _votePowerInitializedAt(_who, _blockNumber)) {
             return _votePowerOfAt(_who, _blockNumber);
         } else {
             return ownerToken.balanceOfAt(_who, _blockNumber);
@@ -318,7 +342,10 @@ contract VPContract is IIVPContract, Delegatable {
     function batchVotePowerOfAt(
         address[] memory _owners, 
         uint256 _blockNumber
-    ) external view override returns(uint256[] memory _votePowers) {
+    )
+        external view override 
+        returns(uint256[] memory _votePowers)
+    {
         _votePowers = _batchVotePowerOfAt(_owners, _blockNumber);
         // zero results might not have been initialized
         if (isReplacement) {
@@ -341,7 +368,10 @@ contract VPContract is IIVPContract, Delegatable {
         address _from, 
         address _to, 
         uint256 _balance
-    ) external view override returns (uint256) {
+    )
+        external view override 
+        returns (uint256)
+    {
         // ASSERT: if the result is nonzero, _from and _to are initialized
         return _votePowerFromTo(_from, _to, _balance);
     }
@@ -359,7 +389,10 @@ contract VPContract is IIVPContract, Delegatable {
         address _to, 
         uint256 _balance,
         uint _blockNumber
-    ) external view override returns (uint256) {
+    )
+        external view override
+        returns (uint256)
+    {
         // ASSERT: if the result is nonzero, _from and _to were initialized at _blockNumber
         return _votePowerFromToAt(_from, _to, _balance, _blockNumber);
     }
@@ -383,7 +416,10 @@ contract VPContract is IIVPContract, Delegatable {
     function undelegatedVotePowerOf(
         address _owner,
         uint256 _balance
-    ) external view override returns (uint256) {
+    )
+        external view override
+        returns (uint256)
+    {
         if (_votePowerInitialized(_owner)) {
             return _undelegatedVotePowerOf(_owner, _balance);
         } else {
@@ -402,7 +438,10 @@ contract VPContract is IIVPContract, Delegatable {
         address _owner, 
         uint256 _balance,
         uint256 _blockNumber
-    ) external view override returns (uint256) {
+    )
+        external view override
+        returns (uint256)
+    {
         if (_votePowerInitialized(_owner)) {
             return _undelegatedVotePowerOfAt(_owner, _balance, _blockNumber);
         } else {
@@ -421,14 +460,15 @@ contract VPContract is IIVPContract, Delegatable {
     * @return _count The number of delegates.
     * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOf(
-        address _owner
-    ) external view override returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
+    function delegatesOf(address _owner)
+        external view override 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
         // ASSERT: either _owner is initialized or there are no delegations
         return delegatesOfAt(_owner, block.number);
     }
@@ -447,12 +487,15 @@ contract VPContract is IIVPContract, Delegatable {
     function delegatesOfAt(
         address _owner,
         uint256 _blockNumber
-    ) public view override returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    ) {
+    )
+        public view override 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
         // ASSERT: either _owner was initialized or there were no delegations
         DelegationMode mode = _delegationModeOf(_owner);
         if (mode == DelegationMode.PERCENTAGE) {

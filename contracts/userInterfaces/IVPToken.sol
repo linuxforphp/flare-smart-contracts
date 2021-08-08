@@ -87,14 +87,14 @@ interface IVPToken is IERC20 {
      * @notice Get the current total vote power.
      * @return The current total vote power (sum of all accounts' vote powers).
      */
-    function votePower() external view returns(uint256);
+    function totalVotePower() external view returns(uint256);
     
     /**
     * @notice Get the total vote power at block `_blockNumber`
     * @param _blockNumber The block number at which to fetch.
     * @return The total vote power at the block  (sum of all accounts' vote powers).
     */
-    function votePowerAt(uint _blockNumber) external view returns(uint256);
+    function totalVotePowerAt(uint _blockNumber) external view returns(uint256);
 
     /**
      * @notice Get the current vote power of `_owner`.
@@ -162,11 +162,14 @@ interface IVPToken is IERC20 {
     * @return _count The number of delegates.
     * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOf(address _who) external view returns (
-        address[] memory _delegateAddresses,
-        uint256[] memory _bips,
-        uint256 _count, 
-        uint256 _delegationMode);
+    function delegatesOf(address _who)
+        external view 
+        returns (
+            address[] memory _delegateAddresses,
+            uint256[] memory _bips,
+            uint256 _count, 
+            uint256 _delegationMode
+        );
         
     /**
     * @notice Get the vote power delegation `delegationAddresses` 
@@ -178,11 +181,14 @@ interface IVPToken is IERC20 {
     * @return _count The number of delegates.
     * @return _delegationMode The mode of the delegation (NOTSET=0, PERCENTAGE=1, AMOUNT=2).
     */
-    function delegatesOfAt(address _who, uint256 _blockNumber) external view returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips, 
-        uint256 _count, 
-        uint256 _delegationMode);
+    function delegatesOfAt(address _who, uint256 _blockNumber)
+        external view 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips, 
+            uint256 _count, 
+            uint256 _delegationMode
+        );
 
     /**
      * Returns VPContract used for readonly operations (view methods).

@@ -24,14 +24,20 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
   it("Should accept FLR deposits.", async () => {
     // Assemble
     let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+    let wflrOpeningBalance = await wflr.balanceOf(accounts[1]);
+    let startTotal = await wflr.totalSupply();
     // Act
     let depositResult = await wflr.deposit({value: toBN(20), from:accounts[1]});
     // Assert
     let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+    let wflrClosingBalance = await wflr.balanceOf(accounts[1]);
     // Compute the gas cost of the depositResult
     let txCost = await calcGasCost(depositResult);
     // Compute opening vs closing balance difference less gas cost
+    let endTotal = await wflr.totalSupply();
     assert.equal(flrOpeningBalance.sub(flrClosingBalance).sub(txCost) as any, 20);
+    assert.equal(wflrOpeningBalance.addn(20).toString(), wflrClosingBalance.toString());
+    assert.equal(startTotal.addn(20).toString(), endTotal.toString());
   });
 
   it("Should issue WFLR when FLR deposited.", async () => {
@@ -53,27 +59,79 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
     await expectRevert(callPromise, "Cannot deposit to zero address");
   });
 
+  it("Should make sure supply of WFLR is always same as locked FLR", async () => {
+    // Assemble
+    const recipientAccount = accounts[123];
+    const senderAccount = accounts[124];
+    let flrOpeningBalanceRecipient = web3.utils.toBN(await web3.eth.getBalance(recipientAccount));
+    let flrOpeningBalanceSender = web3.utils.toBN(await web3.eth.getBalance(senderAccount));
+    
+    let wflrOpeningBalanceRecipient = await wflr.balanceOf(recipientAccount);
+    let wflrOpeningBalanceSender = await wflr.balanceOf(senderAccount);
+    let startTotal = await wflr.totalSupply();
+
+    const depositAmount = flrOpeningBalanceSender.divn(10);
+    assert(depositAmount.gtn(0), "Sender should have nonzero balance for the test to produce meaningfull results");
+    
+    // Act
+    let tx = await wflr.depositTo(recipientAccount, { value: depositAmount, from: senderAccount });
+    
+    let txCost = await calcGasCost(tx);
+
+    let flrBalanceAfterRecipient = web3.utils.toBN(await web3.eth.getBalance(recipientAccount));
+    let flrBalanceAfterSender = web3.utils.toBN(await web3.eth.getBalance(senderAccount));
+
+    let wflrBalanceAfterRecipient = await wflr.balanceOf(recipientAccount);
+    let wflrBalanceAfterSender = await wflr.balanceOf(senderAccount);
+
+    let endTotal = await wflr.totalSupply();
+    // Assert
+    // FLR Balance:
+    // sender: final == initial - txCost - depositedAmount
+    assert.equal(flrOpeningBalanceSender.toString(), flrBalanceAfterSender.add(txCost).add(depositAmount).toString())
+    // recipient: final == initial
+    assert.equal(flrOpeningBalanceRecipient.toString(), flrBalanceAfterRecipient.toString())
+    // WFLR:
+    // sender: final == initial
+    assert.equal(wflrBalanceAfterSender.toString(), wflrOpeningBalanceSender.toString());
+    // recipient: final == initial + depositedAmount
+    assert.equal(wflrBalanceAfterRecipient.toString(), wflrOpeningBalanceRecipient.add(depositAmount).toString());
+
+    // Total
+    assert.equal(startTotal.add(depositAmount).toString(), endTotal.toString());
+
+  });
+
   it("Should burn WFLR when FLR withdrawn.", async () => {
     // Assemble
     await wflr.deposit({value: toBN(50), from:accounts[1]});
+    let balanceBefore = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+    let startTotal = await wflr.totalSupply();
     // Act
-    await wflr.withdraw(10, {from:accounts[1]});
+    let tx = await wflr.withdraw(10, {from:accounts[1]});
     let balance = await wflr.balanceOf(accounts[1]);
     let totalBalance = await wflr.totalSupply();
+    let endTotal = await wflr.totalSupply();
     // Assert
     assert.equal(balance as any, 40);
     assert.equal(totalBalance as any, 40);
+    let balanceAfter = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+    assert.equal(balanceBefore.addn(10).sub(await calcGasCost(tx)).toString(), balanceAfter.toString());
+    assert.equal(startTotal.subn(10).toString(), endTotal.toString());
   });
   
   it("Should redeem FLR withdrawn.", async () => {
     // Assemble
     await wflr.deposit({value: toBN(50), from:accounts[1]});
     let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+    let balance = await wflr.balanceOf(accounts[1]);
     // Act
     let withdrawResult = await wflr.withdraw(10, {from:accounts[1]});
     let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
     let txCost = await calcGasCost(withdrawResult);
+    let balanceAfter = await wflr.balanceOf(accounts[1]);
     // Assert
+    assert.equal(balance.subn(10).toString(), balanceAfter.toString());
     assert.equal(flrOpeningBalance.sub(flrClosingBalance).sub(txCost) as any, -10);
   });
 
@@ -93,8 +151,8 @@ contract(`WFlr; ${getTestFile(__filename)}`, async accounts => {
     let txCost = await calcGasCost(depositResult);
     // Compute opening vs closing balance difference less gas cost for A1
     assert.equal(a1FlrOpeningBalance.sub(a1FlrClosingBalance).sub(txCost) as any, 20);
-    // FLR should be in A2
-    assert.equal(a2FlrClosingBalance.sub(a2FlrOpeningBalance) as any, 20);
+    // FLR in A2 should not change
+    assert.equal(a2FlrClosingBalance.sub(a2FlrOpeningBalance) as any, 0);
     // WFLR for A2 should have been minted
     assert.equal(a2WflrBalance as any, 20);
   });

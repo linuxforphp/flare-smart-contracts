@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {VotePower} from "../lib/VotePower.sol";
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../lib/VotePower.sol";
+
 
 /**
  * @title Vote power library
@@ -13,9 +15,6 @@ library VotePowerCache {
     using VotePower for VotePower.VotePowerState;
 
     struct RevocationCacheRecord {
-        // the total value this delegator has revoked from delegatees
-        uint256 revokedTotal;
-        
         // revoking delegation only affects cached value therefore we have to track
         // the revocation in order not to revoke twice
         // mapping delegatee => revokedValue
@@ -49,7 +48,10 @@ library VotePowerCache {
         VotePower.VotePowerState storage _votePower,
         address _who,
         uint256 _blockNumber
-    ) internal returns (uint256 _value, bool _createdCache) {
+    )
+        internal 
+        returns (uint256 _value, bool _createdCache)
+    {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
@@ -76,7 +78,10 @@ library VotePowerCache {
         VotePower.VotePowerState storage _votePower,
         address _who,
         uint256 _blockNumber
-    ) internal view returns (uint256 _value) {
+    )
+        internal view 
+        returns (uint256 _value)
+    {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         // is it in cache?
         uint256 cachedValue = _self.valueCache[key];
@@ -100,7 +105,10 @@ library VotePowerCache {
         CacheState storage _self,
         address _who,
         uint256 _blockNumber
-    ) internal returns (uint256 _deleted) {
+    )
+        internal
+        returns (uint256 _deleted)
+    {
         bytes32 key = keccak256(abi.encode(_who, _blockNumber));
         if (_self.valueCache[key] != 0) {
             delete _self.valueCache[key];
@@ -111,7 +119,10 @@ library VotePowerCache {
     
     /**
     * @notice Revoke vote power delegation from `from` to `to` at given block.
-    *   Updates cached values so they are the only vote power values respecting revocation.
+    *   Updates cached values for the block, so they are the only vote power values respecting revocation.
+    * @dev Only delegatees cached value is changed, delegator doesn't get the vote power back; so
+    *   the revoked vote power is forfeit for as long as this vote power block is in use. This is needed to
+    *   prevent double voting.
     * @param _self A VotePowerCache instance to manage.
     * @param _votePower A VotePower instance to read from if cache is empty.
     * @param _from The delegator.
@@ -127,19 +138,18 @@ library VotePowerCache {
         address _to,
         uint256 _revokedValue,
         uint256 _blockNumber
-    ) internal {
+    )
+        internal
+    {
         if (_revokedValue == 0) return;
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
         if (_self.revocationCache[keyFrom].revocations[_to] != 0) {
             revert("Already revoked");
         }
         // read values and prime cacheOf
-        (uint256 valueFrom,) = valueOfAt(_self, _votePower, _from, _blockNumber);
         (uint256 valueTo,) = valueOfAt(_self, _votePower, _to, _blockNumber);
         // write new values
         bytes32 keyTo = keccak256(abi.encode(_to, _blockNumber));
-        _self.revocationCache[keyFrom].revokedTotal = _self.revocationCache[keyFrom].revokedTotal.add(_revokedValue);
-        _writeCacheValue(_self, keyFrom, valueFrom.add(_revokedValue));
         _writeCacheValue(_self, keyTo, valueTo.sub(_revokedValue, "Revoked value too large"));
         // mark as revoked
         _self.revocationCache[keyFrom].revocations[_to] = _revokedValue;
@@ -159,34 +169,20 @@ library VotePowerCache {
         address _from,
         address _to,
         uint256 _blockNumber
-    ) internal returns (uint256 _deleted) {
+    )
+        internal
+        returns (uint256 _deleted)
+    {
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
         RevocationCacheRecord storage revocationRec = _self.revocationCache[keyFrom];
         uint256 value = revocationRec.revocations[_to];
         if (value != 0) {
             delete revocationRec.revocations[_to];
-            revocationRec.revokedTotal = revocationRec.revokedTotal.sub(value);
             return 1;
         }
         return 0;
     }
 
-    /**
-    * @notice Return the sum of vote power that `from` has revoked from delgatees.
-    * @param _self A VotePowerCache instance to manage.
-    * @param _from The delegator.
-    * @param _blockNumber Block number of the block to fetch result.
-    * precondition: _blockNumber < block.number
-    */
-    function revokedTotalFromAt(
-        CacheState storage _self,
-        address _from,
-        uint256 _blockNumber
-    ) internal view returns (uint256 total) {
-        bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
-        return _self.revocationCache[keyFrom].revokedTotal;
-    }
-    
     /**
     * @notice Returns true if `from` has revoked vote pover delgation of `to` in block `_blockNumber`.
     * @param _self A VotePowerCache instance to manage.
@@ -200,7 +196,10 @@ library VotePowerCache {
         address _from,
         address _to,
         uint256 _blockNumber
-    ) internal view returns (bool revoked) {
+    )
+        internal view
+        returns (bool revoked)
+    {
         bytes32 keyFrom = keccak256(abi.encode(_from, _blockNumber));
         return _self.revocationCache[keyFrom].revocations[_to] != 0;
     }

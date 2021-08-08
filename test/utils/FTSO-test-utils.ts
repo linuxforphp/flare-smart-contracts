@@ -7,16 +7,18 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { Ftso, MockFtso, MockVPToken } from "../../typechain";
-import { FtsoManagerContract, FtsoManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
+import { FtsoManagerContract, FtsoManagerInstance, FtsoRewardManagerInstance, MockContractContract, MockContractInstance } from "../../typechain-truffle";
 import { computeVoteRandom, increaseTimeTo, isAddressEligible, newContract, submitPriceHash, toBN, waitFinalize } from "./test-helpers";
 import { TestExampleLogger } from "./TestExampleLogger";
 import { setDefaultVPContract_ethers } from "./token-test-helpers";
 
 const { exec } = require("child_process");
-import { constants } from '@openzeppelin/test-helpers';
+import { constants, time } from '@openzeppelin/test-helpers';
 const MockFtsoManager = artifacts.require("MockContract") as MockContractContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 
+const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
+const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 
 ////////////////////////////////////////////////////////////
 //// INTERFACES
@@ -237,6 +239,14 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
             FLRhighWeightSum
         }
     }
+}
+
+export function arraySum(array: BigNumber[]): BigNumber {
+    let result = BigNumber.from(0);
+    for (const num of array) {
+        result = result.add(num);
+    }
+    return result;
 }
 
 ////////////////////////////////////////////////////////////
@@ -864,7 +874,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
         
     // Print epoch submission prices
     let resVoteInfo = await ftso.getEpochVotes(epoch);
-    testExample.weightRatio = (await ftso.getWeightRatio(epoch)).toNumber();
+    testExample.weightRatio = await getWeightRatio(ftso, epoch, resVoteInfo);
     prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
 
     // Print results                
@@ -878,6 +888,13 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     } as TestCase;
 
     return testCase;
+}
+
+export async function getWeightRatio(ftso: MockFtso, epoch: number, resVoteInfo: { _weightsFlr: BigNumber[]; _weightsAsset: BigNumber[]; }) {
+    const sumWeightsFlr = arraySum(resVoteInfo._weightsFlr);
+    const sumWeightsAsset = arraySum(resVoteInfo._weightsAsset);
+    const weightRatio = await ftso.getWeightRatio(epoch, sumWeightsFlr, sumWeightsAsset);
+    return weightRatio.toNumber();
 }
 
 export async function submitPrice(signers: readonly SignerWithAddress[], ftso: MockFtso, prices: number[]): Promise<{ epoch: number; }> {

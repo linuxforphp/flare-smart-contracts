@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import {FtsoMedian} from "../lib/FtsoMedian.sol";
 
+
 /**
  * @title Ftso Vote mock contract
  * @notice A contract to expose the FtsoVote library for unit testing.
@@ -24,13 +25,18 @@ contract FtsoMedianMock {
         uint256 _rightSum0,
         uint256[] memory _index,
         uint256[] memory _price, 
-        uint256[] memory _weight) public pure returns (
+        uint256[] memory _weight
+    ) 
+        public pure 
+        returns (
             uint256 _pos, 
             uint256 _leftSum, 
             uint256 _rightSum, 
             uint256[] memory,
             uint256[] memory, 
-            uint256[] memory) {
+            uint256[] memory
+        )
+    {
         (_pos, _leftSum, _rightSum) = 
             FtsoMedian._partition(_left0, _right0, _pivotId, _leftSum0, _rightSum0, _index, _price, _weight);
         return (_pos, _leftSum, _rightSum, _index, _price, _weight);
@@ -43,12 +49,17 @@ contract FtsoMedianMock {
         uint256 _sumInit,
         uint256[] memory _index,
         uint256[] memory _price,
-        uint256[] memory _weight) public pure returns (
+        uint256[] memory _weight
+    )
+        public pure 
+        returns (
             uint256 _pos, 
             uint256 _sum,
             uint256[] memory,
             uint256[] memory, 
-            uint256[] memory) {
+            uint256[] memory
+        )
+    {
         (_pos, _sum) = FtsoMedian._samePriceFix(_start, _end, _direction, _sumInit, _index, _price, _weight);
         return (_pos, _sum, _index, _price, _weight);
     }
@@ -57,17 +68,26 @@ contract FtsoMedianMock {
         uint256 _start,
         uint256 _end,
         uint256[] memory _index,
-        uint256[] memory _price) public pure returns (uint256) {
+        uint256[] memory _price
+    )
+        public pure 
+        returns (uint256)
+    {
         return FtsoMedian._closestPriceFix(_start, _end, _index, _price);
     }
 
     function compute(
         uint256[] memory _price,
-        uint256[] memory _weight) public view returns (
+        uint256[] memory _weight
+    )
+        public view 
+        returns (
             uint256[] memory _index, 
             FtsoMedian.Data memory _d,
             uint256[] memory,
-            uint256[] memory) {
+            uint256[] memory
+        )
+    {
         (_index, _d) = FtsoMedian._compute(_price, _weight);
         return (_index, _d, _price, _weight);
     }

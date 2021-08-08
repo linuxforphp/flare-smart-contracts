@@ -1,13 +1,9 @@
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { ethers } from "hardhat";
+import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import {
-    IIStateConnectorInstance,
     InflationMockInstance, MockContractInstance, SuicidalMockInstance, ValidatorRewardManagerInstance
 } from "../../../../typechain-truffle";
-import { IIStateConnectorInterface } from "../../../../typechain/IIStateConnector";
-import { compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
+import { toBN } from "../../../utils/test-helpers";
 
-import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");

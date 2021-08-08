@@ -2,13 +2,11 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { Governed } from "./Governed.sol";
-import { Inflation } from "../../inflation/implementation/Inflation.sol";
-import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiver.sol";
-import { IIInflationPercentageProvider } from "../../inflation/interface/IIInflationPercentageProvider.sol";
-import { 
-    IIInflationSharingPercentageProvider, 
-    SharingPercentage} from "../../inflation/interface/IIInflationSharingPercentageProvider.sol";
+import "./Governed.sol";
+import "../../inflation/implementation/Inflation.sol";
+import "../../inflation/interface/IIInflationReceiver.sol";
+import "../../inflation/interface/IIInflationPercentageProvider.sol";
+import "../../inflation/interface/IIInflationSharingPercentageProvider.sol";
 
 /**
  * @title Inflation allocation contract
@@ -93,7 +91,9 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
     function setSharingPercentages (
         IIInflationReceiver[] memory _inflationRecievers, 
         uint256[] memory _percentagePerReceiverBips
-        ) external onlyGovernance 
+    )
+        external
+        onlyGovernance 
     {
         require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
         require (_inflationRecievers.length <= MAX_INFLATION_RECEIVERS, ERR_TOO_MANY);

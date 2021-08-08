@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {CheckPointsByAddress} from "./CheckPointsByAddress.sol";
-import {CheckPointHistory} from "./CheckPointHistory.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../utils/implementation/SafePct.sol";
+import "./CheckPointsByAddress.sol";
+import "./CheckPointHistory.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
 
 
 /**
@@ -23,7 +23,7 @@ library ExplicitDelegation {
      */
     struct DelegationState {
         CheckPointHistory.CheckPointHistoryState delegatedTotal;
-        
+
         // `delegatedVotePower` is a map of delegators pointing to a map of delegates
         // containing a checkpoint history of delegated vote power balances.
         CheckPointsByAddress.CheckPointsByAddressState delegatedVotePower;
@@ -39,7 +39,9 @@ library ExplicitDelegation {
         DelegationState storage _self, 
         address _delegate, 
         uint256 _amount
-    ) internal {
+    )
+        internal
+    {
         uint256 prevAmount = _self.delegatedVotePower.valueOfAtNow(_delegate);
         uint256 newTotal = _self.delegatedTotal.valueAtNow().sub(prevAmount, "Total < 0").add(_amount);
         _self.delegatedVotePower.writeValue(_delegate, _amount);
@@ -57,7 +59,10 @@ library ExplicitDelegation {
         address _owner, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal returns (uint256 _deleted) {
+    )
+        internal
+        returns(uint256 _deleted)
+    {
         _deleted = _self.delegatedTotal.cleanupOldCheckpoints(_count, _cleanupBlockNumber);
         // safe: cleanupOldCheckpoints always returns the number of deleted elements which is small, so no owerflow
         _deleted += _self.delegatedVotePower.cleanupOldCheckpoints(_owner, _count, _cleanupBlockNumber);
@@ -71,7 +76,10 @@ library ExplicitDelegation {
      */
     function getDelegatedTotalAt(
         DelegationState storage _self, uint256 _blockNumber
-    ) internal view returns (uint256 _total) {
+    )
+        internal view 
+        returns (uint256 _total)
+    {
         return _self.delegatedTotal.valueAt(_blockNumber);
     }
     
@@ -82,7 +90,10 @@ library ExplicitDelegation {
      */
     function getDelegatedTotal(
         DelegationState storage _self
-    ) internal view returns (uint256 _total) {
+    )
+        internal view 
+        returns (uint256 _total)
+    {
         return _self.delegatedTotal.valueAtNow();
     }
     
@@ -97,7 +108,10 @@ library ExplicitDelegation {
         DelegationState storage _self, 
         address _delegate,
         uint256 _blockNumber
-    ) internal view returns (uint256 _value) {
+    )
+        internal view
+        returns (uint256 _value)
+    {
         return _self.delegatedVotePower.valueOfAt(_delegate, _blockNumber);
     }
 
@@ -110,8 +124,10 @@ library ExplicitDelegation {
     function getDelegatedValue(
         DelegationState storage _self, 
         address _delegate
-    ) internal view returns (uint256 _value) {
+    )
+        internal view 
+        returns (uint256 _value)
+    {
         return _self.delegatedVotePower.valueOfAtNow(_delegate);
     }
-
 }

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {PercentageDelegation} from "../lib/PercentageDelegation.sol";
-import {ExplicitDelegation} from "../lib/ExplicitDelegation.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {SafePct} from "../../utils/implementation/SafePct.sol";
-import {VotePower} from "../lib/VotePower.sol";
-import {VotePowerCache} from "../lib/VotePowerCache.sol";
-import {IVPContractEvents} from "../../userInterfaces/IVPContractEvents.sol";
+import "../lib/PercentageDelegation.sol";
+import "../lib/ExplicitDelegation.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
+import "../lib/VotePower.sol";
+import "../lib/VotePowerCache.sol";
+import "../../userInterfaces/IVPContractEvents.sol";
 
 /**
  * @title Delegateable ERC20 behavior
@@ -186,7 +186,9 @@ contract Delegatable is IVPContractEvents {
         address _to, 
         uint256 _senderCurrentBalance, 
         uint256 _amount
-    ) internal virtual {
+    )
+        internal virtual 
+    {
         require (_to != address(0), "Cannot delegate to zero");
         require (_to != _from, "Cannot delegate to self");
         require (_canDelegateByAmount(_from), "Cannot delegate by amount");
@@ -238,7 +240,9 @@ contract Delegatable is IVPContractEvents {
         address _to, 
         uint256 _senderCurrentBalance, 
         uint256 _bips
-    ) internal virtual {
+    )
+        internal virtual
+    {
         require (_to != address(0), "Cannot delegate to zero");
         require (_to != _from, "Cannot delegate to self");
         require (_canDelegateByPct(_from), "Cannot delegate by percentage");
@@ -306,10 +310,14 @@ contract Delegatable is IVPContractEvents {
     function _percentageDelegatesOfAt(
         address _owner,
         uint256 _blockNumber
-    ) internal view notBeforeCleanupBlock(_blockNumber) returns (
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips
-    ) {
+    )
+        internal view
+        notBeforeCleanupBlock(_blockNumber) 
+        returns (
+            address[] memory _delegateAddresses, 
+            uint256[] memory _bips
+        )
+    {
         PercentageDelegation.DelegationState storage delegation = percentageDelegations[_owner];
         address[] memory allDelegateAddresses;
         uint256[] memory allBips;
@@ -348,7 +356,9 @@ contract Delegatable is IVPContractEvents {
         address _owner, 
         uint256 _ownerCurrentBalance, 
         uint256 _amount
-    ) private view returns(bool) {
+    )
+        private view returns(bool)
+    {
         // Only proceed if we have a delegation by _amount
         if (delegationModes[_owner] == DelegationMode.AMOUNT) {
             // Return true if there is enough vote power _to cover the transfer
@@ -383,7 +393,10 @@ contract Delegatable is IVPContractEvents {
         address _to, 
         uint256 _senderBalanceAt, 
         uint256 _blockNumber
-    ) internal notBeforeCleanupBlock(_blockNumber) {
+    )
+        internal 
+        notBeforeCleanupBlock(_blockNumber)
+    {
         require(_blockNumber < block.number, "Revoke is only for the past, use undelegate for the present");
         
         // Get amount revoked
@@ -410,7 +423,9 @@ contract Delegatable is IVPContractEvents {
         uint256 _fromCurrentBalance, 
         uint256 _toCurrentBalance,
         uint256 _amount
-    ) internal {
+    )
+        internal
+    {
         // for PERCENTAGE delegation: reduce sender vote power allocations
         // revert with the same error as ERC20 in case transfer exceeds balance
         uint256 newFromBalance = _fromCurrentBalance.sub(_amount, "ERC20: transfer amount exceeds balance");
@@ -430,10 +445,7 @@ contract Delegatable is IVPContractEvents {
      * @param _senderCurrentBalance The current balance of message sender.
      * precondition: delegationModes[_who] == DelegationMode.PERCENTAGE
      */
-    function _undelegateAllByPercentage(
-        address _from,
-        uint256 _senderCurrentBalance
-    ) internal {
+    function _undelegateAllByPercentage(address _from, uint256 _senderCurrentBalance) internal {
         DelegationMode delegationMode = delegationModes[_from];
         if (delegationMode == DelegationMode.NOTSET) return;
         require(delegationMode == DelegationMode.PERCENTAGE,
@@ -469,7 +481,10 @@ contract Delegatable is IVPContractEvents {
     function _undelegateAllByAmount(
         address _from,
         address[] memory _delegateAddresses
-    ) internal returns (uint256 _remainingDelegation) {
+    ) 
+        internal 
+        returns (uint256 _remainingDelegation)
+    {
         DelegationMode delegationMode = delegationModes[_from];
         if (delegationMode == DelegationMode.NOTSET) return 0;
         require(delegationMode == DelegationMode.AMOUNT,
@@ -524,7 +539,11 @@ contract Delegatable is IVPContractEvents {
         address _owner, 
         uint256 _ownerBalanceAt,
         uint256 _blockNumber
-    ) internal view notBeforeCleanupBlock(_blockNumber) returns(uint256 _votePower) {
+    ) 
+        internal view
+        notBeforeCleanupBlock(_blockNumber)
+        returns(uint256 _votePower)
+    {
         // Get the vote power delegation for the _owner
         DelegationMode delegationMode = delegationModes[_owner];
         if (delegationMode == DelegationMode.NOTSET) {
@@ -547,13 +566,17 @@ contract Delegatable is IVPContractEvents {
         address _owner, 
         uint256 _ownerBalanceAt,
         uint256 _blockNumber
-    ) internal view notBeforeCleanupBlock(_blockNumber) returns(uint256 _votePower) {
+    ) 
+        internal view 
+        notBeforeCleanupBlock(_blockNumber) 
+        returns(uint256 _votePower)
+    {
         // Return the current balance less delegations or zero if negative
         uint256 delegated = _delegatedVotePowerOfAt(_owner, _ownerBalanceAt, _blockNumber);
         bool overflow;
         uint256 result;
         (overflow, result) = _ownerBalanceAt.trySub(delegated);
-        return result.add(votePowerCache.revokedTotalFromAt(_owner, _blockNumber));
+        return result;
     }
 
     /**
@@ -565,7 +588,10 @@ contract Delegatable is IVPContractEvents {
     function _undelegatedVotePowerOf(
         address _owner, 
         uint256 _ownerCurrentBalance
-    ) internal view returns(uint256 _votePower) {
+    ) 
+        internal view 
+        returns(uint256 _votePower)
+    {
         return _undelegatedVotePowerOfAt(_owner, _ownerCurrentBalance, block.number);
     }
     
@@ -579,7 +605,10 @@ contract Delegatable is IVPContractEvents {
         address _from, 
         address _to, 
         uint256 _currentFromBalance
-    ) internal view returns(uint256 _votePower) {
+    ) 
+        internal view 
+        returns(uint256 _votePower)
+    {
         // no need for revocation check at current block
         return _votePowerFromToAtNoRevokeCheck(_from, _to, _currentFromBalance, block.number);
     }
@@ -597,7 +626,11 @@ contract Delegatable is IVPContractEvents {
         address _to, 
         uint256 _fromBalanceAt, 
         uint256 _blockNumber
-    ) internal view notBeforeCleanupBlock(_blockNumber) returns(uint256 _votePower) {
+    ) 
+        internal view 
+        notBeforeCleanupBlock(_blockNumber) 
+        returns(uint256 _votePower) 
+    {
         // if revoked, return 0
         if (votePowerCache.revokedFromToAt(_from, _to, _blockNumber)) return 0;
         return _votePowerFromToAtNoRevokeCheck(_from, _to, _fromBalanceAt, _blockNumber);
@@ -617,7 +650,10 @@ contract Delegatable is IVPContractEvents {
         address _to, 
         uint256 _fromBalanceAt, 
         uint256 _blockNumber
-    ) private view returns(uint256 _votePower) {
+    )
+        private view 
+        returns(uint256 _votePower)
+    {
         // assumed: notBeforeCleanupBlock(_blockNumber)
         DelegationMode delegationMode = delegationModes[_from];
         if (delegationMode == DelegationMode.NOTSET) {
@@ -648,7 +684,11 @@ contract Delegatable is IVPContractEvents {
     function _votePowerOfAt(
         address _who, 
         uint256 _blockNumber
-    ) internal view notBeforeCleanupBlock(_blockNumber) returns(uint256) {
+    )
+        internal view 
+        notBeforeCleanupBlock(_blockNumber) 
+        returns(uint256)
+    {
         // read cached value for past blocks to respect revocations (and possibly get a cache speedup)
         if (_blockNumber < block.number) {
             return votePowerCache.valueOfAtReadonly(votePower, _who, _blockNumber);
@@ -667,7 +707,11 @@ contract Delegatable is IVPContractEvents {
     function _batchVotePowerOfAt(
         address[] memory _owners, 
         uint256 _blockNumber
-    ) internal view notBeforeCleanupBlock(_blockNumber) returns(uint256[] memory _votePowers) {
+    ) 
+        internal view 
+        notBeforeCleanupBlock(_blockNumber) 
+        returns(uint256[] memory _votePowers)
+    {
         require(_blockNumber < block.number, "Can only be used for past blocks");
         _votePowers = new uint256[](_owners.length);
         for (uint256 i = 0; i < _owners.length; i++) {
@@ -686,7 +730,11 @@ contract Delegatable is IVPContractEvents {
     function _votePowerOfAtCached(
         address _who, 
         uint256 _blockNumber
-    ) internal notBeforeCleanupBlock(_blockNumber) returns(uint256) {
+    )
+        internal 
+        notBeforeCleanupBlock(_blockNumber)
+        returns(uint256) 
+    {
         require(_blockNumber < block.number, "Can only be used for past blocks");
         (uint256 vp, bool createdCache) = votePowerCache.valueOfAt(votePower, _who, _blockNumber);
         if (createdCache) emit CreatedVotePowerCache(_who, _blockNumber);
@@ -753,7 +801,10 @@ contract Delegatable is IVPContractEvents {
         address _from, 
         address _to, 
         uint256 _blockNumber
-    ) external onlyCleaner returns (uint256) {
+    )
+        external onlyCleaner 
+        returns (uint256)
+    {
         require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
         return votePowerCache.deleteRevocationAt(_from, _to, _blockNumber);
     }
@@ -765,10 +816,10 @@ contract Delegatable is IVPContractEvents {
      * @param _count maximum number of checkpoints to delete
      * @return the number of checkpoints deleted
      */    
-    function percentageDelegationHistoryCleanup(
-        address _owner, 
-        uint256 _count
-    ) external onlyCleaner returns (uint256) {
+    function percentageDelegationHistoryCleanup(address _owner, uint256 _count)
+        external onlyCleaner 
+        returns (uint256)
+    {
         return percentageDelegations[_owner].cleanupOldCheckpoints(_count, cleanupBlockNumber);
     }
     
@@ -780,11 +831,11 @@ contract Delegatable is IVPContractEvents {
      * @param _count maximum number of checkpoints to delete
      * @return the number of checkpoints deleted
      */    
-    function explicitDelegationHistoryCleanup(
-        address _from, 
-        address _to, 
-        uint256 _count
-    ) external onlyCleaner returns (uint256) {
+    function explicitDelegationHistoryCleanup(address _from, address _to, uint256 _count)
+        external
+        onlyCleaner 
+        returns (uint256)
+    {
         return explicitDelegations[_from].cleanupOldCheckpoints(_to, _count, cleanupBlockNumber);
     }
 }

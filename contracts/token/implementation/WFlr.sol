@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {VPToken} from "./VPToken.sol";
-import {VPContract} from "./VPContract.sol";
-import {IWFlr} from "../../userInterfaces/IWFlr.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import "./VPToken.sol";
+import "./VPContract.sol";
+import "../../userInterfaces/IWFlr.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
 /**
@@ -22,7 +22,7 @@ contract WFlr is VPToken, IWFlr {
      */
     constructor(address _governance) VPToken(_governance, "Wrapped FLR", "WFLR") {
     }
-    
+
     receive() external payable {
         deposit();
     }
@@ -50,17 +50,15 @@ contract WFlr is VPToken, IWFlr {
     }
 
     /**
-     * @notice Deposit Flare from msg.sender to recipient and and mint WFLR ERC20.
-     * @param recipient A payable address to receive Flare and minted WFLR.
+     * @notice Deposit Flare from msg.sender and mints WFLR ERC20 to recipient address.
+     * @param recipient An address to receive minted WFLR.
      */
-    function depositTo(address payable recipient) external payable override {
+    function depositTo(address recipient) external payable override {
         require(recipient != address(0), "Cannot deposit to zero address");
         // Mint WFLR
         _mint(recipient, msg.value);
         // Emit deposit event
         emit Deposit(recipient, msg.value);
-        // Transfer Flare to recipient (last statement, to prevent reentrancy)
-        recipient.transfer(msg.value);
     }
 
     /**

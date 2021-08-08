@@ -3,7 +3,7 @@ import { toBN } from "../../utils/test-helpers";
 
 const getTestFile = require('../../utils/constants').getTestFile;
 const {sumGas, calcGasCost } = require('../../utils/eth'); 
-const genesisGovernance = require('../../utils/constants').genesisGovernance;
+const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 
 const BN = web3.utils.toBN;
@@ -47,7 +47,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     for(let i = 0; i < claimants.length; i++) {
       balances[i] = balance;
     }
-    await distribution.setClaimBalance(claimants, balances, {from: genesisGovernance});
+    await distribution.setClaimBalance(claimants, balances, {from: GOVERNANCE_GENESIS_ADDRESS});
   }
 
   async function bestowClaimableBalance(balance: BN) {
@@ -65,7 +65,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000), 
         BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
-      await distribution.setClaimBalance(claimants, balances, {from: genesisGovernance});
+      await distribution.setClaimBalance(claimants, balances, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       // Assert
       const totalEntitlementWei = await distribution.totalEntitlementWei();
@@ -77,7 +77,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000), 
         BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
       // Act
-      const addingEvent = await distribution.setClaimBalance(claimants, balances, {from: genesisGovernance});
+      const addingEvent = await distribution.setClaimBalance(claimants, balances, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       expectEvent(addingEvent, EVENT_ACCOUNTS_ADDED);
     });
@@ -87,7 +87,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000), 
         BN(1000), BN(1000), BN(1000), BN(1000)];
       // Act
-      const addingEvent = distribution.setClaimBalance(claimants, balances, {from: genesisGovernance});
+      const addingEvent = distribution.setClaimBalance(claimants, balances, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(addingEvent, ERR_ARRAY_MISMATCH);
     });
@@ -102,7 +102,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
         balances[i] = web3.utils.toWei(BN(420));
       }
       // Act
-      const addingEvent = distribution.setClaimBalance(addresses, balances, {from: genesisGovernance});
+      const addingEvent = distribution.setClaimBalance(addresses, balances, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(addingEvent, ERR_TOO_MANY);
     });
@@ -121,12 +121,12 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     beforeEach(async() => {
       for (let txNumber = 0; txNumber < 1; txNumber++) {
         // Add addresses to airdrop
-        await distribution.setClaimBalance(addresses,balances, {from: genesisGovernance});
+        await distribution.setClaimBalance(addresses,balances, {from: GOVERNANCE_GENESIS_ADDRESS});
         // Allocate the right amount of wei
         await bestowClaimableBalance(totalBalance);
         now = await time.latest();
         // Start the rewarding process
-        await distribution.setEntitlementStart(now, {from: genesisGovernance});
+        await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       }
     });
 
@@ -222,7 +222,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bulkLoad(BN(1000));
       await bestowClaimableBalance(BN(8500));
       nowTs = await time.latest() as BN;
-      await distribution.setEntitlementStart(nowTs, {from: genesisGovernance});
+      await distribution.setEntitlementStart(nowTs, {from: GOVERNANCE_GENESIS_ADDRESS});
     });
 
     it("Should be 30 days right after start", async() => {
@@ -287,7 +287,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bestowClaimableBalance(BN(8500));
       // Act
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       const entitlementStartTs = await distribution.entitlementStartTs();
       assert(entitlementStartTs.eq(now));
@@ -298,7 +298,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bestowClaimableBalance(BN(8500));
       // Act
       const now = await time.latest();
-      const startEvent = await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      const startEvent = await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       const entitlementStartTs = await distribution.entitlementStartTs();
       assert(entitlementStartTs.eq(now));
@@ -310,7 +310,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bestowClaimableBalance(BN(8000));
       // Act
       const now = await time.latest();
-      let start_promise = distribution.setEntitlementStart(now, {from: genesisGovernance});
+      let start_promise = distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(start_promise, ERR_OUT_OF_BALANCE);
     });
@@ -329,12 +329,12 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       const entitlementStartTs = await distribution.entitlementStartTs();
       assert(entitlementStartTs.eq(now));
       // Act
       const later = now.addn(60*60*24*5);
-      const restart_promise = distribution.setEntitlementStart(now, {from: genesisGovernance});
+      const restart_promise = distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(restart_promise, ERR_NOT_ZERO);
     });    
@@ -358,7 +358,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const optOutRevert = distribution.claim({from: accounts[150]});
       // Assert
@@ -369,7 +369,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Time travel to next month
       await time.increaseTo(now.addn(86400 * 31));
       // Act
@@ -385,7 +385,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Time travel to next month
       await time.increaseTo(now.addn(86400 * 31));
       // Act
@@ -398,7 +398,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       await time.increaseTo(now.addn(86400 * 31));
       const openingBalance = BN(await web3.eth.getBalance(claimants[0]));
       const claimResult = await distribution.claim({from: claimants[0]});
@@ -437,7 +437,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const claimResult = distribution.claim({from: claimants[0]});
       // Assert
@@ -448,7 +448,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
       await distribution.claim({from: claimants[0]});
@@ -461,7 +461,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await distribution.optOutOfAirdrop({from: claimants[0]});
       await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
@@ -474,7 +474,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const optOutEvent = await distribution.optOutOfAirdrop({from: claimants[0]});
       // Assert
@@ -485,7 +485,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const optOutRevert = distribution.optOutOfAirdrop({from: accounts[150]});
       // Assert
@@ -496,7 +496,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
       await distribution.claim({from: claimants[0]});
@@ -509,7 +509,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
       await distribution.optOutOfAirdrop({from: claimants[0]});
@@ -534,7 +534,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     it("Should not be able to withdraw before entitlement started", async() => {
       // Assemble
       // Act
-      const withdrawPrommise = distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: genesisGovernance});
+      const withdrawPrommise = distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(withdrawPrommise, ERR_NOT_STARTED);
     });
@@ -542,7 +542,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     it("Should not be able to withdraw from not governed account", async() => {
       // Assemble
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const withdrawPrommise = distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: claimants[0]});
       // Assert
@@ -552,9 +552,9 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     it("Should not be able to withdraw if there are no founds", async() => {
       // Assemble
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
-      const withdrawPrommise = distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: genesisGovernance});
+      const withdrawPrommise = distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(withdrawPrommise, ERR_NO_BALANCE_CLAIMABLE);
     });
@@ -562,11 +562,11 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     it("Should be able to withdraw if some account opts out", async() => {
       // Assemble
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       await distribution.optOutOfAirdrop({from: claimants[0]})
       const initBalance = BN(await web3.eth.getBalance(GOVERNANCE_ADDRESS));
       // Act
-      const withdrawnResult = await distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: genesisGovernance});
+      const withdrawnResult = await distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: GOVERNANCE_GENESIS_ADDRESS});
       const txCost = BN(await calcGasCost(withdrawnResult));
       const endBalance = BN(await web3.eth.getBalance(GOVERNANCE_ADDRESS));
       // Assert
@@ -576,10 +576,10 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     it("Should emit withdraw event", async() => {
       // Assemble
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       await distribution.optOutOfAirdrop({from: claimants[0]})
       // Act
-      const withdrawnResult = await distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: genesisGovernance});
+      const withdrawnResult = await distribution.withdrawOptOutWei(GOVERNANCE_ADDRESS, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       expectEvent(withdrawnResult, EVENT_OPT_OPT_WITHDRAWN);
     });
@@ -588,11 +588,11 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       const now = await time.latest();
       const withdrawTo = web3.eth.accounts.create();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       await distribution.optOutOfAirdrop({from: claimants[0]})
       const initBalance = BN(await web3.eth.getBalance(withdrawTo.address));
       // Act
-      const withdrawResult = await distribution.withdrawOptOutWei(withdrawTo.address, {from: genesisGovernance});
+      const withdrawResult = await distribution.withdrawOptOutWei(withdrawTo.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const txCost = BN(await calcGasCost(withdrawResult));
       const endBalance = BN(await web3.eth.getBalance(withdrawTo.address));
       // Assert
@@ -603,15 +603,15 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       const now = await time.latest();
       const withdrawTo = web3.eth.accounts.create();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       await distribution.optOutOfAirdrop({from: claimants[0]})
       const initBalance = BN(await web3.eth.getBalance(withdrawTo.address));
-      const withdrawnResult = await distribution.withdrawOptOutWei(withdrawTo.address, {from: genesisGovernance});
+      const withdrawnResult = await distribution.withdrawOptOutWei(withdrawTo.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const txCost = BN(await calcGasCost(withdrawnResult));
       const endBalance = BN(await web3.eth.getBalance(withdrawTo.address));
       assert.equal(endBalance.sub(initBalance).toNumber(), 850);
       // Act
-      const withdrawPrommise = distribution.withdrawOptOutWei(withdrawTo.address, {from: genesisGovernance});
+      const withdrawPrommise = distribution.withdrawOptOutWei(withdrawTo.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(withdrawPrommise, ERR_NO_BALANCE_CLAIMABLE);
     });
@@ -626,7 +626,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const entitlementPending = await distribution.getClaimableAmountOf(claimants[0]);
       // Assert
@@ -637,7 +637,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       const entitlementPending = await distribution.getClaimableAmount({from: claimants[0]});
       // Assert
@@ -648,7 +648,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Initial balances
       const openingBalance0 = BN(await web3.eth.getBalance(claimants[0]));
       const openingBalance1 = BN(await web3.eth.getBalance(claimants[1]));
@@ -695,7 +695,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       // It takes 29 months to claim all 
       await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150))); 
@@ -708,7 +708,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       const now = await time.latest();
-      await distribution.setEntitlementStart(now, {from: genesisGovernance});
+      await distribution.setEntitlementStart(now, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await distribution.optOutOfAirdrop({from: claimants[0]});
       const pendingPrommise = distribution.getClaimableAmountOf(claimants[0]);

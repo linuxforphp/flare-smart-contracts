@@ -200,7 +200,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const blockHoldoff = await flareKeeper.blockHoldoff();
       // Assert
-      assert.equal(blockHoldoff.toString(), parameters.flareKeeperGasExceededBlockHoldoff.toString());
+      assert.equal(blockHoldoff.toString(), parameters.flareKeeperGasExceededHoldoffBlocks.toString());
     })
   });
 
@@ -227,13 +227,13 @@ contract(`deploy.ts system tests`, async accounts => {
        }
     });
 
-    // it("Should know about PriceSubmitter", async() => {
-    //   // Assemble
-    //   // Act
-    //   const priceSubmitter = await ftsoManager.priceSubmitter();
-    //   // Assert
-    //   assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
-    // });
+    it("Should know about PriceSubmitter", async() => {
+      // Assemble
+      // Act
+      const priceSubmitter = await ftsoManager.getPriceSubmitter();
+      // Assert
+      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
   });
 
   describe(Contracts.INFLATION, async() => {
@@ -985,6 +985,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       const settings = await ftsoManager.settings();
       // Act
+<<<<<<< HEAD
       const maxVotePowerFlrThreshold = settings[1];
       const maxVotePowerAssetThreshold = settings[2];
       const lowAssetUSDThreshold = settings[3];
@@ -998,6 +999,21 @@ contract(`deploy.ts system tests`, async accounts => {
       assert.equal(highAssetUSDThreshold.toNumber(), parameters.highAssetUSDThreshold);
       assert.equal(highAssetTurnoutBIPSThreshold.toNumber(), parameters.highAssetTurnoutBIPSThreshold);
       assert.equal(lowFlrTurnoutBIPSThreshold.toNumber(), parameters.lowFlrTurnoutBIPSThreshold);
+=======
+      const maxVotePowerFlrThresholdFraction = settings[1];
+      const maxVotePowerAssetThresholdFraction = settings[2];
+      const lowAssetThresholdUSDDec5 = settings[3];
+      const highAssetThresholdUSDDec5 = settings[4];
+      const highAssetTurnoutThresholdBIPS = settings[5];
+      const lowFlrTurnoutThresholdBIPS = settings[6];
+      // Assert
+      assert.equal(maxVotePowerFlrThresholdFraction.toNumber(), parameters.maxVotePowerFlrThresholdFraction);
+      assert.equal(maxVotePowerAssetThresholdFraction.toNumber(), parameters.maxVotePowerAssetThresholdFraction);
+      assert.equal(lowAssetThresholdUSDDec5.toNumber(), parameters.lowAssetThresholdUSDDec5);
+      assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
+      assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
+      assert.equal(lowFlrTurnoutThresholdBIPS.toNumber(), parameters.lowFlrTurnoutThresholdBIPS);
+>>>>>>> master
     });
   });
 });

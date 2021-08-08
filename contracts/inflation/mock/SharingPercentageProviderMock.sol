@@ -2,10 +2,8 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { 
-    IIInflationSharingPercentageProvider, 
-    SharingPercentage
-} from "../interface/IIInflationSharingPercentageProvider.sol";
+import "../interface/IIInflationSharingPercentageProvider.sol";
+
 
 contract SharingPercentageProviderMock is IIInflationSharingPercentageProvider {
     SharingPercentage[] public sharingPercentages;

@@ -27,4 +27,4 @@ Each contract that needs a keeper trigger will implement the [Keep Interface]. P
 
 Each kept contract can be configured with gas limit to protect against endless loops or excessive gas utilization due to unexpected bugs. This is important since kept contracts are triggered every block, just before state transition. Unlimited kept contract execution could hang the chain.
 
-Finally, a deployment parameter `flareKeeperGasExceededBlockHoldoff` can be configured such that when any given kept contract exceeds its gas limit, execution will be deferred for the configured number of blocks.
+Finally, a deployment parameter `flareKeeperGasExceededHoldoffBlocks` can be configured such that when any given kept contract exceeds its gas limit, execution will be deferred for the configured number of blocks.

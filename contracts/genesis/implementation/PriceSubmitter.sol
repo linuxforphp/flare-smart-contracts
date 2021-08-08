@@ -23,18 +23,6 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
     uint256 internal constant MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS = 2;
     uint256 internal constant MAX_ALLOWED_NUMBER_OF_REVEAL_REVERTS = 2;
 
-    // Currency indices
-    // Most common used ftso indices, order is the same as in `specs/PriceProvider.md`
-    uint256 public constant override FLR_FTSO_INDEX  = 0;
-    uint256 public constant override FXRP_FTSO_INDEX  = 1;
-    uint256 public constant override FLTC_FTSO_INDEX  = 2;
-    uint256 public constant override FXLM_FTSO_INDEX  = 3;
-    uint256 public constant override FXDG_FTSO_INDEX  = 4;
-    uint256 public constant override FADA_FTSO_INDEX  = 5;
-    uint256 public constant override FALGO_FTSO_INDEX = 6;
-    uint256 public constant override FBCH_FTSO_INDEX  = 7;
-    uint256 public constant override FDGB_FTSO_INDEX  = 8;
-    uint256 public constant override FBTC_FTSO_INDEX  = 9;
 
     IIFtsoRegistry internal ftsoRegistry; 
     IIFtsoManager internal ftsoManager;
@@ -199,14 +187,22 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         uint256 numberOfReverts = 0;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
+        uint256 flrVP = uint256(-1);
+        
         for (uint256 i = 0; i < len; i++) {
             uint256 ind = _ftsoIndices[i];
             if (allowedBitmask & (1 << ind) == 0) {
                 require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
                 continue;
             }
-            ftsos[i] = ftsoRegistry.getFtso(ind);
-            try ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i]) {
+            IIFtso ftso = ftsoRegistry.getFtso(ind);
+            ftsos[i] = ftso;
+            // read flare VP only once
+            if (flrVP == uint256(-1)) {
+                flrVP = ftso.flrVotePowerCached(msg.sender);
+            }
+            // call reveal price on ftso
+            try ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP) {
                 success[i] = true;
             } catch {
                 require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
@@ -222,6 +218,18 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      */    
     function voterWhitelistBitmap(address _voter) external view override returns (uint256) {
         return whitelistedFtsoBitmap[_voter];
+    }
+
+    function getVoterWhitelister() external view override returns (IVoterWhitelister){
+        return voterWhitelister;
+    }
+
+    function getFtsoRegistry() external view override returns (IFtsoRegistry){
+        return ftsoRegistry;
+    }
+    
+    function getFtsoManager() external view override returns (IFtsoManager){
+        return ftsoManager;
     }
     
     function _hashSymbol(string memory _symbol) private pure returns(bytes32) {

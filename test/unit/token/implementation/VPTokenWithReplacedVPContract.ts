@@ -44,7 +44,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Assemble
             // Act
             // Assert
-            assertNumberEqual(await vpToken.votePower(), 200);
+            assertNumberEqual(await vpToken.totalVotePower(), 200);
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 0);
@@ -70,11 +70,11 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
         it("Cached vote power should work, too", async () => {
             // Assemble
             // Act
-            await vpToken.votePowerAtCached(initBlk2);
+            await vpToken.totalVotePowerAtCached(initBlk2);
             await vpToken.votePowerOfAtCached(accounts[1], initBlk2);
             await vpToken.votePowerOfAtCached(accounts[3], initBlk2);
             // Assert
-            assertNumberEqual(await vpToken.votePowerAtCached.call(initBlk2), 200);
+            assertNumberEqual(await vpToken.totalVotePowerAtCached.call(initBlk2), 200);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[1], initBlk2), 100);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[3], initBlk2), 0);
         });
@@ -173,7 +173,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Act
             await vpToken.revokeDelegationAt(accounts[2], blk, { from: accounts[1] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 90);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 50);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], blk), 100);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], blk), 10);
         });
@@ -208,7 +208,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Assemble
             // Act
             // Assert
-            assertNumberEqual(await vpToken.votePower(), 200);
+            assertNumberEqual(await vpToken.totalVotePower(), 200);
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 50);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 80);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 70);
@@ -236,11 +236,11 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
         it("Cached vote power should return old state, too", async () => {
             // Assemble
             // Act
-            await vpToken.votePowerAtCached(initBlk2);
+            await vpToken.totalVotePowerAtCached(initBlk2);
             await vpToken.votePowerOfAtCached(accounts[1], initBlk3);
             await vpToken.votePowerOfAtCached(accounts[3], initBlk3);
             // Assert
-            assertNumberEqual(await vpToken.votePowerAtCached.call(initBlk3), 200);
+            assertNumberEqual(await vpToken.totalVotePowerAtCached.call(initBlk3), 200);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[1], initBlk3), 50);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[2], initBlk3), 80);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[3], initBlk3), 70);
@@ -306,8 +306,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             await vpToken.revokeDelegationAt(accounts[2], initBlk3, { from: accounts[1] });
             await vpToken.revokeDelegationAt(accounts[3], initBlk3, { from: accounts[2] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], initBlk3), 80);
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], initBlk3), 100);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], initBlk3), 50);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], initBlk3), 50);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], initBlk3), 20);
         });
     });
@@ -342,7 +342,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Act
             await vpToken.setReadVpContract(vpContractRepl.address, { from: accounts[0] });
             // Assert
-            assertNumberEqual(await vpToken.votePower(), 200);
+            assertNumberEqual(await vpToken.totalVotePower(), 200);
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 0);
@@ -368,13 +368,13 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
 
         it("Cached vote power methods should have no effect on new cache until switch", async () => {
             // Assemble
-            await vpToken.votePowerAtCached(initBlk2);
+            await vpToken.totalVotePowerAtCached(initBlk2);
             await vpToken.votePowerOfAtCached(accounts[1], initBlk2);
             await vpToken.votePowerOfAtCached(accounts[3], initBlk2);
             // Act
             await vpToken.setReadVpContract(vpContractRepl.address, { from: accounts[0] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerAtCached.call(initBlk2), 200);
+            assertNumberEqual(await vpToken.totalVotePowerAtCached.call(initBlk2), 200);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[1], initBlk2), 100);
             assertNumberEqual(await vpToken.votePowerOfAtCached.call(accounts[3], initBlk2), 0);
         });
@@ -459,7 +459,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             await vpToken.setReadVpContract(vpContractRepl.address, { from: accounts[0] });
             await vpToken.revokeDelegationAt(accounts[3], blk, { from: accounts[1] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 100);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk), 50);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], blk), 100);
             assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], blk), 0);
         });

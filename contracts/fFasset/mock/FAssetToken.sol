@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {ICollateralizable} from "../interface/ICollateralizable.sol";
-import {Governed} from "../../governance/implementation/Governed.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {VPToken} from "../../token/implementation/VPToken.sol";
-import {VPContract} from "../../token/implementation/VPContract.sol";
+import "../interface/ICollateralizable.sol";
+import "../../governance/implementation/Governed.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../token/implementation/VPToken.sol";
+import "../../token/implementation/VPContract.sol";
+
 
 /**
  * @title FAsset Token
@@ -21,7 +22,9 @@ contract FAssetToken is VPToken {
         string memory _name, 
         string memory _symbol,
         uint8 decimals_
-    ) VPToken(_governance, _name, _symbol) {
+    ) 
+        VPToken(_governance, _name, _symbol)
+    {
         _setupDecimals(decimals_);
     }
 

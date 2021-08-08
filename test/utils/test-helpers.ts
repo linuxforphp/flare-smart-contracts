@@ -233,3 +233,14 @@ export function isAddressEligible(random: number | BN | BigNumber, address: stri
 export async function sleep(ms: number) {
     await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
 }
+
+export function resultTuple<T0, T1, T2, T3, T4>(obj: { 0: T0, 1: T1, 2: T2, 3: T3, 4: T4 }): [T0, T1, T2, T3, T4];
+export function resultTuple<T0, T1, T2, T3>(obj: { 0: T0, 1: T1, 2: T2, 3: T3 }): [T0, T1, T2, T3];
+export function resultTuple<T0, T1, T2>(obj: { 0: T0, 1: T1, 2: T2 }): [T0, T1, T2];
+export function resultTuple<T0, T1>(obj: { 0: T0, 1: T1 }): [T0, T1];
+export function resultTuple<T0>(obj: { 0: T0 }): [T0];
+export function resultTuple(obj: any): any[] {
+    const keys = Object.keys(obj).filter(k => /^\d+$/.test(k)).map(k => Number(k));
+    keys.sort((a, b) => a - b);
+    return keys.map(k => obj[k]);
+}

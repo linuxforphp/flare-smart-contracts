@@ -12,7 +12,7 @@
       "compiler-version": ["off", "0.7.6"],
       "const-name-snakecase": "error",
       "func-name-mixedcase": "error",
-      "ordering": "error",
+      "ordering": "warn",
       "imports-on-top": "error",
       "mark-callable-contracts": "on",
       "max-line-length": ["error", 119],

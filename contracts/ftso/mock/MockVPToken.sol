@@ -64,34 +64,66 @@ contract MockVPToken is IIVPToken {
     }
 
     // empty implementations, to satisfy the IIVPToken contract    
-    function cleanupBlockNumber() external view override returns (uint256) {}
-    function readVotePowerContract() external view override returns (IVPContractEvents) {}
-    function writeVotePowerContract() external view override returns (IVPContractEvents) {}
-    function governanceVotePower() external view override returns (IGovernanceVotePower) {}
-    function allowance(address owner, address spender) external override view returns (uint256) {}
-    function balanceOf(address account) external override view returns (uint256) {}
-    function totalSupply() external override view returns (uint256) {}
-    function totalSupplyAt(uint blockNumber) external view override returns(uint256) {}
-    function balanceOfAt(address owner, uint blockNumber) external view override returns (uint256) {}
-    function votePowerFromTo(address from, address to) external view override returns(uint256) {}
-    function votePowerFromToAt(address from, address to, uint blockNumber) external view override returns(uint256) {}
-    function delegationModeOf(address who) external view override returns (uint256 delegationMode) {}
-    function undelegatedVotePowerOf(address owner) external view override returns(uint256) {}
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view override returns (uint256) {}
-    function delegatesOfAt(address owner, uint256 blockNumber) external view override 
-        returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode) {}
-    function delegatesOf(address owner) external view override 
-        returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode) {}
-    function batchVotePowerOfAt(address[] memory _owners, uint256 _blockNumber) 
-        external view override returns(uint256[] memory) {}
+    function cleanupBlockNumber() external view override returns (uint256){
+    }
 
-    function votePower() public view override returns(uint256) {}
-    
-    function votePowerAt(uint blockNumber) public view override returns(uint256) {
+    function readVotePowerContract() external view override returns (IVPContractEvents){
+    }
+
+    function writeVotePowerContract() external view override returns (IVPContractEvents){
+    }
+
+    function governanceVotePower() external view override returns (IGovernanceVotePower){
+    }
+
+    function allowance(address owner, address spender) external override view returns (uint256){
+    }
+
+    function balanceOf(address account) external override view returns (uint256){
+    }
+
+    function totalSupply() external override view returns (uint256){
+    }
+
+    function totalSupplyAt(uint blockNumber) external view override returns(uint256){
+    }
+
+    function balanceOfAt(address owner, uint blockNumber) external view override returns (uint256){
+    }
+
+    function votePowerFromTo(address from, address to) external view override returns(uint256){
+    }
+
+    function votePowerFromToAt(address from, address to, uint blockNumber) external view override 
+        returns(uint256)
+    {}
+
+    function delegationModeOf(address who) external view override returns (uint256 delegationMode){
+    }
+    function undelegatedVotePowerOf(address owner) external view override returns(uint256){
+    }
+
+    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view override returns (uint256){
+    }
+
+    function delegatesOfAt(address owner, uint256 blockNumber) external view override 
+        returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode)
+    {}
+    function delegatesOf(address owner) external view override 
+        returns (address[] memory delegateAddresses, uint256[] memory bips, uint256 count, uint256 delegationMode)
+    {}
+    function batchVotePowerOfAt(address[] memory _owners, uint256 _blockNumber) 
+        external view override returns(uint256[] memory)
+    {}
+
+    function totalVotePower() public view override returns(uint256){
+    }
+
+    function totalVotePowerAt(uint blockNumber) public view override returns(uint256) {
         blockNumber;
         return totalWeight;
     }
-    
+
     /// vote power for current block
     function votePowerOf(address who) public view override returns (uint256) {
         return votePowerOfAt(who, block.number);
@@ -107,12 +139,11 @@ contract MockVPToken is IIVPToken {
         return addressWeight[who];
     }
 
-    function votePowerAtCached(uint256 _blockNumber) public view override returns(uint256) {
-        return votePowerAt(_blockNumber);
+    function totalVotePowerAtCached(uint256 _blockNumber) public view override returns(uint256) {
+        return totalVotePowerAt(_blockNumber);
     }
 
     function votePowerOfAtCached(address _owner, uint256 _blockNumber) public view override returns(uint256) {
         return votePowerOfAt(_owner, _blockNumber);
     }
-
 }

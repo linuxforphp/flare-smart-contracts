@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {Math} from "@openzeppelin/contracts/math/Math.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title Check Point History library
@@ -42,7 +43,10 @@ library CheckPointHistory {
         CheckPoint[] storage _checkpoints, 
         uint256 _startIndex,
         uint256 _blockNumber
-    ) private view returns (uint256 index) {
+    )
+        private view 
+        returns (uint256 index)
+    {
         // Binary search of the value by given block number in the array
         uint256 min = _startIndex;
         uint256 max = _checkpoints.length.sub(1);
@@ -66,7 +70,10 @@ library CheckPointHistory {
     function valueAt(
         CheckPointHistoryState storage _self, 
         uint256 _blockNumber
-    ) internal view returns (uint256 _value) {
+    )
+        internal view 
+        returns (uint256 _value)
+    {
         uint256 historyCount = _self.checkpoints.length;
 
         // No _checkpoints, return 0
@@ -109,7 +116,9 @@ library CheckPointHistory {
     function writeValue(
         CheckPointHistoryState storage _self, 
         uint256 _value
-    ) internal {
+    )
+        internal
+    {
         uint256 historyCount = _self.checkpoints.length;
         if (historyCount == 0) {
             // checkpoints array empty, push new CheckPoint
@@ -140,7 +149,10 @@ library CheckPointHistory {
         CheckPointHistoryState storage _self, 
         uint256 _count,
         uint256 _cleanupBlockNumber
-    ) internal returns (uint256) {
+    )
+        internal
+        returns (uint256)
+    {
         if (_cleanupBlockNumber == 0) return 0;   // optimization for when cleaning is not enabled
         uint256 length = _self.checkpoints.length;
         if (length == 0) return 0;

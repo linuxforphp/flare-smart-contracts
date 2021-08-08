@@ -7,7 +7,7 @@ import {
 import {expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 import { toBN } from "../../../utils/test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
-const genesisGovernance = require('../../../utils/constants').genesisGovernance;
+const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
 const FlareKeeper = artifacts.require("FlareKeeper");
 const MockContract = artifacts.require("MockContract");
@@ -56,7 +56,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       // Assemble
       const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
       // Act
-      const tx = await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      const tx = await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       const keptContract = await flareKeeper.keepContracts(0);
       assert.equal(keptContract, mockContractToKeep.address);
@@ -79,7 +79,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         {keptContract: mockContractToKeep.address, gasLimit: 0}
       ];
       // Act
-      const promise = flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      const promise = flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(promise, ERR_DUPLICATE_ADDRESS);
     });
@@ -93,7 +93,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         registrations.push(registration);
       }
       // Act
-      const registerPromise = flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      const registerPromise = flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       await expectRevert(registerPromise, TOO_MANY_CONTRACTS_MSG);
     });
@@ -103,9 +103,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       it("Should unregister a kept contract", async() => {
         // Assemble
         const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
-        await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+        await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
         // Act
-        const tx = await flareKeeper.unregisterAll({from: genesisGovernance});
+        const tx = await flareKeeper.unregisterAll({from: GOVERNANCE_GENESIS_ADDRESS});
         // Assert
         const promise = flareKeeper.keepContracts(0);
         await expectRevert.unspecified(promise);
@@ -128,10 +128,10 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
           const registration = {keptContract: (await MockContract.new()).address, gasLimit: 0};
           registrations.push(registration);
         }
-        await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+        await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
         const lastAddress = await flareKeeper.keepContracts(9);
         // Act
-        await flareKeeper.unregisterAll({from: genesisGovernance});
+        await flareKeeper.unregisterAll({from: GOVERNANCE_GENESIS_ADDRESS});
         // Assert
         const promise = flareKeeper.keepContracts(0);
         await expectRevert.unspecified(promise);
@@ -145,8 +145,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       await mockContractToKeep.givenMethodReturnBool(keep, true);
       // Register mock
       const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       // Assert
@@ -157,7 +157,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should advance last triggered block", async() => {
       // Assemble
       const oldLastTriggeredBlock = await flareKeeper.systemLastTriggeredAt();
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       // Assert
@@ -176,7 +176,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should return amount to mint when triggered with a pending mint request", async() => {
       // Assemble
-      await flareKeeper.setInflation(accounts[0], {from: genesisGovernance});
+      await flareKeeper.setInflation(accounts[0], {from: GOVERNANCE_GENESIS_ADDRESS});
       await flareKeeper.requestMinting(BN(100), { from: accounts[0] });
       // Act
       const toMint = await flareKeeper.trigger.call();
@@ -186,7 +186,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should emit event when triggered with a pending mint request", async() => {
       // Assemble
-      await flareKeeper.setInflation(accounts[0], {from: genesisGovernance});
+      await flareKeeper.setInflation(accounts[0], {from: GOVERNANCE_GENESIS_ADDRESS});
       await flareKeeper.requestMinting(BN(100), { from: accounts[0] });
       // Act
       const tx = await flareKeeper.trigger();
@@ -206,9 +206,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should advance keep error counter if kept contract reverts", async() => {
       // Assemble
       await mockContractToKeep.givenMethodRevertWithMessage(keep, "I am broken");
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
 
       // Act
       await flareKeeper.trigger();
@@ -228,9 +228,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should create new entry for new error type, correct contract address, not create new entry for repeating error type", async() => {
       // Assemble
       await mockContractToKeep.givenMethodRevertWithMessage(keep, "I am broken");
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
 
       // Act
       await flareKeeper.trigger();
@@ -251,9 +251,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should create new entry for new error type, correct string and correct error numbers", async() => {
       // Assemble
       await mockContractToKeep.givenMethodRevertWithMessage(keep, "I am broken");
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
 
       // Act
       let tx = await flareKeeper.trigger();
@@ -285,9 +285,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should show last kept error data", async() => {
       // Assemble
       await mockContractToKeep.givenMethodRevertWithMessage(keep, "I am broken");
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const registrations = [{keptContract: mockContractToKeep.address, gasLimit: 0}];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
 
       // Act
       let tx = await flareKeeper.trigger();
@@ -330,12 +330,12 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       const mockKeptContract2 = await MockContract.new();
       await mockKeptContract.givenMethodRevertWithMessage(keep, "I am broken");
       await mockKeptContract2.givenMethodRevertWithMessage(keep, "Me tooooo");
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       const registrations = [
         {keptContract: mockKeptContract.address, gasLimit: 0},
         {keptContract: mockKeptContract2.address, gasLimit: 0}
       ];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
 
       // Act
       let tx = await flareKeeper.trigger();
@@ -361,7 +361,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
   describe("governance", async() => {
     it("Should transfer governance", async() => {
       // Assemble
-      await flareKeeper.proposeGovernance(accounts[1], {from: genesisGovernance});
+      await flareKeeper.proposeGovernance(accounts[1], {from: GOVERNANCE_GENESIS_ADDRESS});
       await flareKeeper.claimGovernance({from: accounts[1]});
       // Act
       let newGovernance = await flareKeeper.governance();
@@ -374,7 +374,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should set inflation", async() => {
       // Assemble
       // Act
-      const receipt = await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      const receipt = await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       assert.equal(await flareKeeper.inflation(), mockInflation.address);
       expectEvent(receipt, INFLATIONSET_EVENT);
@@ -390,7 +390,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should request and transfer minted amount to inflation", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       await mockInflation.setDoNotReceiveNoMoreThan(1000);
       await mockInflation.requestMinting(BN(100));
@@ -413,7 +413,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should post received FLR to self-destruct bucket if minting not expected", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       // Request more that we are going to receive
       await mockInflation.requestMinting(110);
@@ -435,7 +435,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should receive scheduled minting and any received self-destructed balance", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       await mockInflation.setDoNotReceiveNoMoreThan(1000);
       await mockInflation.requestMinting(BN(100));
@@ -464,7 +464,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     // Working version
     it("Should self destruct when minting more than available", async () => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       await mockInflation.requestMinting(BN(100));
 
@@ -492,7 +492,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should log error if transfer of requested minting fails", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       await mockInflation.setDoNotReceiveNoMoreThan(BN(90));
       await mockInflation.requestMinting(BN(100));
@@ -513,7 +513,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should log error if transfer of requested minting fails when additional self-destruct received", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       await mockInflation.setDoNotReceiveNoMoreThan(90);
       await mockInflation.requestMinting(BN(100));
@@ -534,7 +534,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should not allow mint request before timelock expires", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       await mockInflation.requestMinting(BN(100));
       // Act
@@ -546,7 +546,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should allow mint request exactly after timelock expires", async() => {
       // This test currently waits 23h on a real network so run it with caution
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       // Advance block to ensure that keeper has current time
       await time.advanceBlock();
@@ -565,7 +565,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should have cap on excessive minting", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
       // Act
       const requestPromise = mockInflation.requestMinting(web3.utils.toWei(BN(100000000)));
@@ -575,15 +575,15 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should make sure setMaxMintRequest changes are time locked", async() => {
       // Assemble
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareKeeper(flareKeeper.address);
 
       // first request should succeed.
       // correct amount success
-      await flareKeeper.setMaxMintingRequest(BN(1000), { from: genesisGovernance });
+      await flareKeeper.setMaxMintingRequest(BN(1000), { from: GOVERNANCE_GENESIS_ADDRESS });
 
       await expectRevert(flareKeeper.setMaxMintingRequest(BN(1000), 
-        { from: genesisGovernance }),
+        { from: GOVERNANCE_GENESIS_ADDRESS }),
         "time gap too short");
     });
   });
@@ -593,7 +593,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       // Assemble
       const registrations = [{keptContract: endlessLoop.address, gasLimit: 1000000}];
       // Act
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       const gasLimit = await flareKeeper.gasLimits(endlessLoop.address);
       assert.equal(gasLimit.toString(), "1000000");
@@ -601,8 +601,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
 
     it("Should not exceed gas limit of runaway contract", async() => {
       const registrations = [{keptContract: endlessLoop.address, gasLimit: 1000000}];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       // Assert
@@ -620,8 +620,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         {keptContract: endlessLoop.address, gasLimit: 1000000},
         {keptContract: mockContractToKeep.address, gasLimit: 0}
       ];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       // Assert
@@ -635,8 +635,8 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
       const registrations = [
         {keptContract: endlessLoop.address, gasLimit: 1000000}
       ];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       // Assert
@@ -652,9 +652,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         {keptContract: endlessLoop.address, gasLimit: 1000000},
         {keptContract: mockContractToKeep.address, gasLimit: 0}
       ];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
-      await flareKeeper.setBlockHoldoff(10, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setBlockHoldoff(10, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       const receipt = await flareKeeper.trigger();
@@ -671,9 +671,9 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         {keptContract: endlessLoop.address, gasLimit: 1000000},
         {keptContract: mockContractToKeep.address, gasLimit: 0}
       ];
-      await flareKeeper.registerToKeep(registrations, {from: genesisGovernance});
-      await flareKeeper.setInflation(mockInflation.address, {from: genesisGovernance});
-      await flareKeeper.setBlockHoldoff(1, {from: genesisGovernance});
+      await flareKeeper.registerToKeep(registrations, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await flareKeeper.setBlockHoldoff(1, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Act
       await flareKeeper.trigger();
       await flareKeeper.trigger();  // Holdoff
@@ -686,7 +686,7 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
     it("Should set holdoff", async() => {
       // Assemble
       // Act
-      const receipt = await flareKeeper.setBlockHoldoff(5, {from: genesisGovernance});
+      const receipt = await flareKeeper.setBlockHoldoff(5, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       const holdoff = await flareKeeper.blockHoldoff();
       assert.equal(holdoff.toString(), "5");

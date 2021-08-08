@@ -6,6 +6,7 @@ pragma solidity 0.7.6;
  * @notice Provide a means to test behavior of contracts that are targets of a self-destructing contract.
  **/
 
+
 contract SuicidalMock {
     address payable public target;
     constructor(address payable _target) {

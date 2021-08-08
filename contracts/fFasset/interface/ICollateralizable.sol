@@ -33,12 +33,14 @@ interface ICollateralizable {
         uint256 mintAmountTwei,
         address mintDestination,
         bytes32 underlyingAddress
-    ) external returns (
-        uint256 mintRequestId,
-        address[] calldata agents, // agent list
-        uint256[] calldata assetAmounts, // amount to send to agent in underlying chain
-        bytes32[] calldata assetAddress  // underlying chain address
-    );
+    ) 
+        external
+        returns (
+            uint256 mintRequestId,
+            address[] calldata agents, // agent list
+            uint256[] calldata assetAmounts, // amount to send to agent in underlying chain
+            bytes32[] calldata assetAddress  // underlying chain address
+        );
 
     function proveMintPayment ( // AKA mint
         uint256 mintRequestId,
@@ -47,18 +49,22 @@ interface ICollateralizable {
         bytes32 destinationTag,
         uint256 assetAmount,
         bytes32[] calldata merkleProof
-    ) external returns (
-        uint256 mintedAmount
-    );
+    )   
+        external
+        returns (
+            uint256 mintedAmount
+        );
 
     function assetRedemptionRequest (
         uint256 amount,
         bytes32 assetAddress // address in underlying chain[]
-    ) external returns (
-        uint256 redemptionId,
-        address[] calldata agents, // agent list
-        uint256[] calldata assetAmounts // amount agent should  in underlying chain
-    );
+    ) 
+        external 
+        returns (
+            uint256 redemptionId,
+            address[] calldata agents, // agent list
+            uint256[] calldata assetAmounts // amount agent should  in underlying chain
+        );
 
     function proveRedemptionPayment ( // same as prove mint payment?
         uint256 redemptionRequestId,
@@ -67,7 +73,9 @@ interface ICollateralizable {
         bytes32 destinationTag,
         uint256 assetAmount,
         bytes32[] calldata merkleProof
-    ) external returns (
-        uint256 redeemedAmount
-    );
+    )
+        external
+        returns (
+            uint256 redeemedAmount
+        );
 }

@@ -3,11 +3,6 @@ pragma solidity 0.7.6;
 
 interface IFtsoRewardManager {
 
-    event FundsReceived(
-        address indexed sender,
-        uint256 amount
-    );
-
     event RewardClaimed(
         address indexed dataProvider,
         address indexed whoClaimed,
@@ -41,12 +36,8 @@ interface IFtsoRewardManager {
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Reverts if `msg.sender` is delegating by amount
      */
-    function claimReward(
-        address payable _recipient,
-        uint256[] memory _rewardEpochs
-    ) external returns (
-        uint256 _rewardAmount
-    );
+    function claimReward(address payable _recipient, uint256[] memory _rewardEpochs)
+        external returns (uint256 _rewardAmount);
 
     /**
      * @notice Allows the sender to claim the rewards from specified data providers.
@@ -61,30 +52,24 @@ interface IFtsoRewardManager {
         address payable _recipient,
         uint256[] memory _rewardEpochs,
         address[] memory _dataProviders
-    ) external returns (
-        uint256 _rewardAmount
-    );
+    )
+        external
+        returns (uint256 _rewardAmount);
 
     /**
      * @notice Allows data provider to set (or update last) fee percentage.
      * @param _feePercentageBIPS    number representing fee percentage in BIPS
      * @return _validFromEpoch      reward epoch number when the setting becomes effective.
      */
-    function setDataProviderFeePercentage(
-        uint256 _feePercentageBIPS
-    ) external returns (
-        uint256 _validFromEpoch
-    );
+    function setDataProviderFeePercentage(uint256 _feePercentageBIPS)
+        external returns (uint256 _validFromEpoch);
 
     /**
      * @notice Returns the current fee percentage of `_dataProvider`
      * @param _dataProvider         address representing data provider
      */
-    function getDataProviderCurrentFeePercentage(
-        address _dataProvider
-    ) external view returns (
-        uint256 _feePercentageBIPS
-    );
+    function getDataProviderCurrentFeePercentage(address _dataProvider)
+        external view returns (uint256 _feePercentageBIPS);
 
     /**
      * @notice Returns the scheduled fee percentage changes of `_dataProvider`
@@ -93,13 +78,12 @@ interface IFtsoRewardManager {
      * @return _validFromEpoch      positional array of block numbers the fee setings are effective from
      * @return _fixed               positional array of boolean values indicating if settings are subjected to change
      */
-    function getDataProviderScheduledFeePercentageChanges(
-        address _dataProvider
-    ) external view returns (
-        uint256[] memory _feePercentageBIPS,
-        uint256[] memory _validFromEpoch,
-        bool[] memory _fixed
-    );
+    function getDataProviderScheduledFeePercentageChanges(address _dataProvider) external view 
+        returns (
+            uint256[] memory _feePercentageBIPS,
+            uint256[] memory _validFromEpoch,
+            bool[] memory _fixed
+        );
 
     /**
      * @notice Returns information on epoch reward
@@ -107,12 +91,8 @@ interface IFtsoRewardManager {
      * @return _totalReward         number representing the total epoch reward
      * @return _claimedReward       number representing the amount of total epoch reward that has been claimed
      */
-    function getEpochReward(
-        uint256 _rewardEpoch
-    ) external view returns (
-        uint256 _totalReward,
-        uint256 _claimedReward
-    );
+    function getEpochReward(uint256 _rewardEpoch) external view
+        returns (uint256 _totalReward, uint256 _claimedReward);
 
     /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
@@ -127,12 +107,14 @@ interface IFtsoRewardManager {
     function getStateOfRewards(
         address _beneficiary,
         uint256 _rewardEpoch
-    ) external view returns (
-        address[] memory _dataProviders,
-        uint256[] memory _rewardAmounts,
-        bool[] memory _claimed,
-        bool _claimable
-    );
+    )
+        external view 
+        returns (
+            address[] memory _dataProviders,
+            uint256[] memory _rewardAmounts,
+            bool[] memory _claimed,
+            bool _claimable
+        );
 
     /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch` from `_dataProviders`
@@ -147,10 +129,33 @@ interface IFtsoRewardManager {
         address _beneficiary,
         uint256 _rewardEpoch,
         address[] memory _dataProviders
-    ) external view returns (
-        uint256[] memory _rewardAmounts,
-        bool[] memory _claimed,
-        bool _claimable
+    )
+        external view
+        returns (
+            uint256[] memory _rewardAmounts,
+            bool[] memory _claimed,
+            bool _claimable
+        );
+
+    /**
+     * @notice Returns the start and the end of the reward epoch range for which the reward is claimable
+     * @param _startEpochId         the oldest epoch id that allows reward claiming
+     * @param _endEpochId           the newest epoch id that allows reward claiming
+     */
+    function getEpochsWithClaimableRewards() external view 
+        returns (
+            uint256 _startEpochId,
+            uint256 _endEpochId
+        );
+
+    /**
+     * @notice Returns the array of claimable epoch ids for which the reward has not yet been claimed
+     * @param _beneficiary          address of reward beneficiary
+     * @return _epochIds            array of epoch ids
+     * @dev Reverts when queried with `_beneficary` delegating by amount
+     */
+    function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (
+        uint256[] memory _epochIds
     );
 
     /**
@@ -165,10 +170,12 @@ interface IFtsoRewardManager {
         uint256 _rewardEpoch,
         address _dataProvider,
         address _claimer
-    ) external view returns (
-        bool _claimed,
-        uint256 _amount
-    );
+    )
+        external view
+        returns (
+            bool _claimed,
+            uint256 _amount
+        );
 
     /**
      * @notice Return reward epoch that will expire, when new reward epoch will start

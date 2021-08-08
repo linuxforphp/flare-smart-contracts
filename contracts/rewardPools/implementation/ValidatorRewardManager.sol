@@ -2,14 +2,14 @@
 pragma solidity 0.7.6;
 
 import "../interface/IIValidatorRewardManager.sol";
+import "../interface/IIRewardPool.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/implementation/WFlr.sol";
 import "../../utils/implementation/SafePct.sol";
-import { Inflation } from "../../inflation/implementation/Inflation.sol";
-import "../../supply/interface/IIRewardPool.sol";
-import { IIInflationReceiver } from "../../inflation/interface/IIInflationReceiver.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../inflation/implementation/Inflation.sol";
+import "../../inflation/interface/IIInflationReceiver.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * ValidatorRewardManager is in charge of:
@@ -72,7 +72,7 @@ contract ValidatorRewardManager is
     uint256 private lastBalance;
 
     /// addresses
-    IIStateConnector public stateConnector;
+    StateConnector public stateConnector;
     Inflation public inflation;
 
     modifier mustBalance {
@@ -93,9 +93,10 @@ contract ValidatorRewardManager is
     constructor(
         address _governance,
         uint256 _rewardExpiryOffset,
-        IIStateConnector _stateConnector,
+        StateConnector _stateConnector,
         Inflation _inflation
-    ) Governed(_governance)
+    )
+        Governed(_governance)
     {
         require(address(_stateConnector) != address(0), ERR_STATE_CONNECTOR_ZERO);
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
@@ -114,9 +115,13 @@ contract ValidatorRewardManager is
     function claimReward(
         address payable _recipient,
         uint256[] memory _rewardEpochs
-    ) external override onlyIfActive mustBalance nonReentrant returns (
-        uint256 _rewardAmount
-    ) {
+    ) 
+        external override
+        onlyIfActive
+        mustBalance
+        nonReentrant 
+        returns (uint256 _rewardAmount)
+    {
         _handleSelfDestructProceeds();
 
         uint256 currentRewardEpoch = stateConnector.getRewardPeriod();
@@ -153,7 +158,7 @@ contract ValidatorRewardManager is
     /**
      * @notice sets state connector corresponding to the reward manager
      */
-    function setStateConnector(IIStateConnector _stateConnector) external override onlyGovernance {
+    function setStateConnector(StateConnector _stateConnector) external override onlyGovernance {
         require(address(_stateConnector) != address(0), ERR_STATE_CONNECTOR_ZERO);
         stateConnector = _stateConnector;
     }
@@ -170,7 +175,8 @@ contract ValidatorRewardManager is
         dailyAuthorizedInflation = _toAuthorizeWei;
         totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(_toAuthorizeWei);
         lastInflationAuthorizationReceivedTs = block.timestamp;
-        // TODO: event
+
+        emit DailyAuthorizedInflationSet(_toAuthorizeWei);
 
         uint256 currentRewardEpoch = stateConnector.getRewardPeriod();
         _initializeRewardEpochs(currentRewardEpoch);
@@ -182,7 +188,7 @@ contract ValidatorRewardManager is
         totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
         lastBalance = currentBalance;
 
-        emit FundsReceived(msg.sender, msg.value);
+        emit InflationReceived(msg.value);
     }
 
     /**
@@ -193,10 +199,13 @@ contract ValidatorRewardManager is
      */
     function getEpochReward(
         uint256 _rewardEpoch
-    ) external view override returns (
-        uint256 _totalReward,
-        uint256 _claimedReward
-    ) {
+    )
+        external view override
+        returns (
+            uint256 _totalReward,
+            uint256 _claimedReward
+        )
+    {
         require(_rewardEpoch < rewardEpochs.length, ERR_UNKNOWN_REWARD_EPOCH);
         _totalReward = rewardEpochs[_rewardEpoch].totalRewardWei;
         _claimedReward = _totalReward - rewardEpochs[_rewardEpoch].unclaimedRewardWei; // can not underflow
@@ -214,11 +223,14 @@ contract ValidatorRewardManager is
     function getStateOfRewards(
         address _beneficiary,
         uint256 _rewardEpoch
-    ) external view override returns (
-        uint256 _amount,
-        bool _claimed,
-        bool _claimable
-    ) {
+    )
+        external view override
+        returns (
+            uint256 _amount,
+            bool _claimed,
+            bool _claimable
+        )
+    {
         require(_rewardEpoch < rewardEpochs.length, ERR_UNKNOWN_REWARD_EPOCH);
         RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
         _amount = rewardState.amount;
@@ -244,11 +256,13 @@ contract ValidatorRewardManager is
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getRewardPoolSupplyData() external view override returns (
-        uint256 _foundationAllocatedFundsWei,
-        uint256 _totalInflationAuthorizedWei,
-        uint256 _totalClaimedWei
-    ) {
+    function getRewardPoolSupplyData() external view override 
+        returns (
+            uint256 _foundationAllocatedFundsWei,
+            uint256 _totalInflationAuthorizedWei,
+            uint256 _totalClaimedWei
+        )
+    {
         return (0, totalInflationAuthorizedWei, totalClaimedWei);
     }
 
@@ -317,7 +331,9 @@ contract ValidatorRewardManager is
         address payable _recipient,
         uint256 _rewardEpoch,
         RewardState memory _rewardState
-    ) internal returns (uint256)
+    )
+        internal
+        returns (uint256)
     {
         if (_rewardState.claimed) {
             return 0;
@@ -382,7 +398,9 @@ contract ValidatorRewardManager is
         address _beneficiary,
         uint256 _rewardEpoch,
         bool _zeroForClaimed
-    ) internal view returns (RewardState memory _rewardState)
+    )
+        internal view 
+        returns (RewardState memory _rewardState)
     {
         _rewardState.claimed = _isRewardClaimed(_rewardEpoch, _beneficiary);
         
@@ -422,7 +440,9 @@ contract ValidatorRewardManager is
     function _isRewardClaimed(
         uint256 _rewardEpoch,
         address _claimer
-    ) internal view returns (bool)
+    )
+        internal view
+        returns (bool)
     {
         return epochValidatorReward[_rewardEpoch][_claimer].claimed;
     }
@@ -435,7 +455,9 @@ contract ValidatorRewardManager is
     function _getClaimedReward(
         uint256 _rewardEpoch,
         address _claimer
-    ) internal view returns (uint256)
+    )
+        internal view
+        returns (uint256)
     {
         return epochValidatorReward[_rewardEpoch][_claimer].amount;
     }
@@ -448,7 +470,9 @@ contract ValidatorRewardManager is
     function _getRewardAmount(
         uint256 _rewardEpoch,
         uint64 _rewardWeight
-    ) internal view returns (uint256)
+    )
+        internal view
+        returns (uint256)
     {
         if (_rewardWeight == 0) {
             return 0;
@@ -473,7 +497,9 @@ contract ValidatorRewardManager is
     function _getRewardWeight(
         address _claimer,
         uint256 _rewardEpoch
-    ) internal view returns (uint64)
+    )
+        internal view
+        returns (uint64)
     {
         return stateConnector.getClaimPeriodsMined(_claimer, _rewardEpoch);
     }

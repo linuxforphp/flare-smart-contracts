@@ -317,7 +317,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.mint(accounts[1], 10);
     await vpToken.mint(accounts[2], 20);
     // Assert
-    assert.equal(await vpToken.votePower() as any, 30);
+    assert.equal(await vpToken.totalVotePower() as any, 30);
   });  
 
   it("Should net total vote power", async() => {
@@ -327,7 +327,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     await vpToken.burn(5, {from: accounts[1]});
     // Assert
-    assert.equal(await vpToken.votePower() as any, 25);
+    assert.equal(await vpToken.totalVotePower() as any, 25);
   });
 
   it("Should record historic vote power", async() => {
@@ -343,7 +343,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.mint(accounts[2], 50);
 
     // Assert
-    assert.equal(await vpToken.votePowerAt(b[blockAfterFirstMinting]) as any, 30);
+    assert.equal(await vpToken.totalVotePowerAt(b[blockAfterFirstMinting]) as any, 30);
   });
 
   it("Should leave total vote power alone when delegating", async() => {
@@ -352,7 +352,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     await vpToken.delegate(accounts[2], 5, {from: accounts[1]});
     // Assert
-    assert.equal(await vpToken.votePower() as any, 20);
+    assert.equal(await vpToken.totalVotePower() as any, 20);
   });  
 
   it("Should correctly calculate undelegated vote power", async () => {
@@ -445,8 +445,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.revokeDelegationAt(accounts[2], blockAfterDelegate1, { from: accounts[1] });
     // Assert
     assert.equal((await vpToken.votePowerFromToAt(accounts[1], accounts[2], blockAfterDelegate1)).toNumber(), 0);
-    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
-    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
+    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     assert.equal((await vpToken.votePowerOfAt(accounts[2], blockAfterDelegate1)).toNumber(), 0);
     
     assert.equal((await vpToken.votePowerFromTo(accounts[1], accounts[2])).toNumber(), 120);
@@ -466,10 +466,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // revoke
     await vpToken.revokeDelegationAt(accounts[2], blockAfterDelegate1, { from: accounts[1] });
     // Assert
-    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
+    assert.equal((await vpToken.votePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     assert.equal((await vpToken.votePowerOfAt(accounts[2], blockAfterDelegate1)).toNumber(), 0);
     assert.equal((await vpToken.votePowerFromToAt(accounts[1], accounts[2], blockAfterDelegate1)).toNumber(), 0);
-    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 200);
+    assert.equal((await vpToken.undelegatedVotePowerOfAt(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     //
     assert.equal((await vpToken.votePowerFromTo(accounts[1], accounts[2])).toNumber(), 120);
     assert.equal((await vpToken.undelegatedVotePowerOf(accounts[1])).toNumber(), 180);
@@ -599,15 +599,15 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     const value = 240;
     // read original value
-    const origVP = await vpToken.votePowerAt(block1);
+    const origVP = await vpToken.totalVotePowerAt(block1);
     assert.equal(origVP.toNumber(), value);
     // first time read cached value (read from original, store to cache)
-    const cachedVP = await vpToken.votePowerAtCached.call(block1);
+    const cachedVP = await vpToken.totalVotePowerAtCached.call(block1);
     assert.equal(cachedVP.toNumber(), value);
     // must run without .call to actually store the cached value
-    await vpToken.votePowerAtCached(block1);
+    await vpToken.totalVotePowerAtCached(block1);
     // second time read cached value (read from cache - should return the same)
-    const cachedVP2 = await vpToken.votePowerAtCached.call(block1);
+    const cachedVP2 = await vpToken.totalVotePowerAtCached.call(block1);
     assert.equal(cachedVP2.toNumber(), value);
   });
 
@@ -620,7 +620,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     await expectRevert(vpToken.votePowerAtNowCached.call(),
       "Can only be used for past blocks");
-    await expectRevert(vpToken.votePowerAtCached.call(block1 + 10),
+    await expectRevert(vpToken.totalVotePowerAtCached.call(block1 + 10),
       "Can only be used for past blocks");
   });
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
-import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
-import {IIVPContract} from "./IIVPContract.sol";
-import {IIGovernanceVotePower} from "./IIGovernanceVotePower.sol";
-import {IICleanable} from "./IICleanable.sol";
+import "../../userInterfaces/IVPToken.sol";
+import "../../userInterfaces/IGovernanceVotePower.sol";
+import "./IIVPContract.sol";
+import "./IIGovernanceVotePower.sol";
+import "./IICleanable.sol";
 
 interface IIVPToken is IVPToken, IICleanable {
     /**
@@ -21,7 +21,7 @@ interface IIVPToken is IVPToken, IICleanable {
     * @param _blockNumber The block number at which to fetch.
     * @return The total vote power at the block (sum of all accounts' vote powers).
     */
-    function votePowerAtCached(uint256 _blockNumber) external returns(uint256);
+    function totalVotePowerAtCached(uint256 _blockNumber) external returns(uint256);
     
     /**
     * @notice Get the vote power of `_owner` at block `_blockNumber` using cache.

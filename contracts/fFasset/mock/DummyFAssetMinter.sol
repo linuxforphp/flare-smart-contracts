@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {FAssetToken} from "./FAssetToken.sol";
-import {ICollateralizable} from "../interface/ICollateralizable.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import "./FAssetToken.sol";
+import "../interface/ICollateralizable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * @title Dummy FAsset Minter
@@ -19,8 +19,9 @@ contract DummyFAssetMinter is ICollateralizable {
 
     constructor(
         FAssetToken mintableToken_,
-        uint256 maxMintRequestTwei_) {
-
+        uint256 maxMintRequestTwei_
+    )
+    {
         mintableToken = mintableToken_;
         maxMintRequestTwei = maxMintRequestTwei_;
     }
@@ -50,8 +51,9 @@ contract DummyFAssetMinter is ICollateralizable {
         uint256 freshMintMinRatio, // if position pool collateral ratio < min, no new mints
         address flrAddress,
         FeeHandling handling
-        ) external override {
-
+    )
+        external override 
+    {
         revert("Not implemented");
     }
 
@@ -61,12 +63,15 @@ contract DummyFAssetMinter is ICollateralizable {
         uint256 mintAmountTwei,
         address mintDestination,
         bytes32 underlyingAddress
-    ) external override returns (
-        uint256 mintRequestId,
-        address[] memory agents, // agent list
-        uint256[] memory assetAmounts, // amount to send to agent in underlying chain
-        bytes32[] memory assetAddress  // underlying chain address
-    ){
+    ) 
+        external override 
+        returns (
+            uint256 mintRequestId,
+            address[] memory agents, // agent list
+            uint256[] memory assetAmounts, // amount to send to agent in underlying chain
+            bytes32[] memory assetAddress  // underlying chain address
+        )
+    {
         require(mintAmountTwei <= maxMintRequestTwei || maxMintRequestTwei == 0, "max exceeded");
 
         mintableToken.mint(mintDestination, mintAmountTwei);
@@ -81,20 +86,26 @@ contract DummyFAssetMinter is ICollateralizable {
         bytes32 destinationTag,
         uint256 assetAmount,
         bytes32[] calldata merkleProof
-    ) external override returns (
-        uint256 mintedAmount
-    ){
+    ) 
+        external override 
+        returns (
+            uint256 mintedAmount
+        )
+    {
         revert("Not implemented");
     }
 
     function assetRedemptionRequest (
         uint256 amount,
         bytes32 assetAddress // address in underlying chain[]
-    ) external override returns (
-        uint256 redemptionId,
-        address[] calldata agents, // agent list
-        uint256[] calldata assetAmounts // amount agent should  in underlying chain
-    ){
+    ) 
+        external override 
+        returns (
+            uint256 redemptionId,
+            address[] calldata agents, // agent list
+            uint256[] calldata assetAmounts // amount agent should  in underlying chain
+        )
+    {
         revert("Not implemented");
     }
 
@@ -105,9 +116,12 @@ contract DummyFAssetMinter is ICollateralizable {
         bytes32 destinationTag,
         uint256 assetAmount,
         bytes32[] calldata merkleProof
-    ) external override returns (
-        uint256 redeemedAmount
-    ){
+    ) 
+        external override
+        returns (
+            uint256 redeemedAmount
+        )
+    {
         revert("Not implemented");
     }
 

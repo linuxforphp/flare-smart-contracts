@@ -17,7 +17,7 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
-const fs = require('fs');
+import BN from "bn.js";
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
@@ -43,7 +43,8 @@ let mockFtsoManager: FtsoManagerMockInstance;
 let wFlr: WFlrInstance;
 let mockInflation: InflationMockInstance;
 
-async function distributeRewards(
+
+export async function distributeRewards(
     accounts: Truffle.Accounts,
     startTs: BN,
     currentRewardEpoch: number = 0,
@@ -95,11 +96,11 @@ async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: str
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     let ftsoWflr = ftsoContractForSymbol(contracts, 'FLR')!.ftso;
     let firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    let priceEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    let revealEpochDurationSec = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    let priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
+    let revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
-    let rewardEpochDurationSec = await contracts.ftsoManager.rewardEpochDurationSec();
+    let rewardEpochDurationSeconds = await contracts.ftsoManager.rewardEpochDurationSeconds();
     let rewardEpochsStartTs = await contracts.ftsoManager.rewardEpochsStartTs();
 
     let wFLR = ftsoContractForSymbol(contracts, 'FLR')!.fAssetToken as WFlrInstance;
@@ -113,14 +114,14 @@ async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: str
 
 }
 
-async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
+export async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
     let currentFtsoManagerAddress = await ftsoRewardManager.ftsoManager();
     await ftsoRewardManager.setFTSOManager(deployer);
     await ftsoRewardManager.closeExpiredRewardEpoch(rewardEpoch, rewardEpoch + 1);
     await ftsoRewardManager.setFTSOManager(currentFtsoManagerAddress);
 }
 
-async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string, closeAsYouGo = false) {
+export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string, closeAsYouGo = false) {
     // What reward epoch are we on based on current block time, given our startTs?
     const currentRewardEpoch = (await time.latest()).sub(startTs).div(toBN(REWARD_EPOCH_DURATION_S)).toNumber();
     for (let rewardEpoch = currentRewardEpoch; rewardEpoch < newRewardEpoch; rewardEpoch++) {
@@ -153,6 +154,7 @@ async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN,
     await mockFtsoManager.givenMethodReturn(getCurrentRewardEpoch, getCurrentRewardEpochReturn);
 }
 
+
 contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager unit tests`, async accounts => {
 
     let mockSuicidal: SuicidalMockInstance;
@@ -162,7 +164,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
     before(async function () {
         // TODO: create full deployment fixture (scdev config)
-        deploymentParameters = JSON.parse(fs.readFileSync('deployment/chain-config/scdev.json'));
+        deploymentParameters = require('../../../../deployment/chain-config/scdev.json');
         // inject private keys from .env, if they exist
 
         if (process.env.DEPLOYER_PRIVATE_KEY) {
@@ -926,6 +928,100 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             expect(data[2]).to.equals(false);
         });
 
+    });
+
+    it("Should get epochs with claimable / unclaimed rewards", async () => {
+        let data;
+        // deposit some wflrs
+        await wFlr.deposit({ from: accounts[1], value: "100" });
+        await wFlr.deposit({ from: accounts[3], value: "300" });
+        await wFlr.deposit({ from: accounts[4], value: "200" });
+
+        // delegate some wflrs
+        await wFlr.delegate(accounts[1], 5000, { from: accounts[3] });
+        await wFlr.delegate(accounts[1], 5000, { from: accounts[4] });
+        
+        await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]), "no epoch with claimable rewards");
+
+        // get some rewards
+        await distributeRewards(accounts, startTs);
+
+        await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]), "no epoch with claimable rewards");
+        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]), "no epoch with claimable rewards");
+
+        await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+        
+        data = await ftsoRewardManager.getEpochsWithClaimableRewards();
+        expect(data[0].toNumber()).to.equals(0);
+        expect(data[1].toNumber()).to.equals(0);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+        compareNumberArrays(data, [0]);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+        compareNumberArrays(data, [0]);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+        compareNumberArrays(data, [0]);
+
+        await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
+        
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+        compareNumberArrays(data, [0]);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+        compareNumberArrays(data, [0]);
+
+        await ftsoRewardManager.claimReward(accounts[4], [0], { from: accounts[4] });
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+        compareNumberArrays(data, [0]);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+        compareNumberArrays(data, []);
+
+        // expire reward epoch 0
+        await expireRewardEpoch(0, ftsoRewardManager, accounts[0]);
+        // advance, but not expire epoch 1            
+        await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
+        
+        data = await ftsoRewardManager.getEpochsWithClaimableRewards();
+        expect(data[0].toNumber()).to.equals(1);
+        expect(data[1].toNumber()).to.equals(1);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+        compareNumberArrays(data, []);
+
+        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+        compareNumberArrays(data, []);
     });
 
     describe("reward claiming", async () => {

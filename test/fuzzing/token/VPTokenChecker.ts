@@ -25,9 +25,9 @@ export class VPTokenChecker {
             () => this.blockNumber == null ? this.vpToken.balanceOf(account) : this.vpToken.balanceOfAt(account, this.blockNumber));
     }
 
-    votePower() {
+    totalVotePower() {
         return this.cached(['votePower'],
-            () => this.blockNumber == null ? this.vpToken.votePower() : this.vpToken.votePowerAt(this.blockNumber));
+            () => this.blockNumber == null ? this.vpToken.totalVotePower() : this.vpToken.totalVotePowerAt(this.blockNumber));
     }
 
     votePowerOf(account: string) {
@@ -66,10 +66,12 @@ export class VPTokenChecker {
         return total;
     }
 
-    async totalVotePower() {
+    async totalVotePowerCalculated() {
         let total = toBN(0);
         for (const account of this.accounts) {
-            total = total.add(await this.votePowerOf(account));
+            const vp = await this.votePowerOf(account);
+            const revoked = this.state.revokedVotePower(account);
+            total = total.add(vp).add(revoked);
         }
         return total;
     }
@@ -101,8 +103,8 @@ export class VPTokenChecker {
     async checkInvariants() {
         await this.checkTotalBalance();
         await this.checkTotalVotePower();
-        await this.checkTotalVotePowerIsUndelegatedPlusDelegationsTo();
-        await this.checkTotalVotePowerIsBalanceMinusFromPlusToDelegations();
+        await this.checkVotePowerIsUndelegatedPlusDelegationsTo();
+        await this.checkVotePowerIsBalanceMinusFromPlusToDelegations();
         await this.checkCachedVotePower();
         await this.checkTotalCachedVotePower();
     }
@@ -122,20 +124,20 @@ export class VPTokenChecker {
 
     async checkTotalVotePower() {
         console.log('   checkTotalVotePower');
-        const calculatedVP = await this.totalVotePower();
-        const vp = await this.votePower();
-        assert(calculatedVP.eq(calculatedVP), `Calculated VP does not match contract VP: ${calculatedVP} != ${vp}`);
+        const calculated = await this.totalVotePowerCalculated();
+        const vp = await this.totalVotePower();
+        assert(calculated.eq(vp), `Calculated VP does not match contract VP: ${calculated} != ${vp}`);
     }
 
     // totalVP = undelegatedVP + all delegations TO account
-    async checkTotalVotePowerIsUndelegatedPlusDelegationsTo() {
+    async checkVotePowerIsUndelegatedPlusDelegationsTo() {
         console.log('   checkTotalVotePowerIsUndelegatedPlusDelegationsTo');
         for (const account of this.accounts) {
-            await this.checkTotalVotePowerIsUndelegatedPlusDelegationsToFor(account);
+            await this.checkVotePowerIsUndelegatedPlusDelegationsToFor(account);
         }
     }
 
-    async checkTotalVotePowerIsUndelegatedPlusDelegationsToFor(account: string) {
+    async checkVotePowerIsUndelegatedPlusDelegationsToFor(account: string) {
         const undelegated = await this.undelegatedVotePowerOf(account);
         const delegationsTo = await this.totalDelegationsTo(account);
         const calculated = undelegated.add(delegationsTo);
@@ -143,19 +145,20 @@ export class VPTokenChecker {
         assert(calculated.eq(vp), `Sum of delegated and undelagated mismatch VP for account ${account}: ${calculated} != ${vp}`);
     }
 
-    // totalVP = balance + all delegations TO account - all delegations FROM account
-    async checkTotalVotePowerIsBalanceMinusFromPlusToDelegations() {
+    // account VP = balance + all delegations TO account - all delegations FROM account (including revoked)
+    async checkVotePowerIsBalanceMinusFromPlusToDelegations() {
         console.log('   checkTotalVotePowerIsBalanceMinusFromPlusToDelegations');
         for (const account of this.accounts) {
-            await this.checkTotalVotePowerIsBalanceMinusFromPlusToDelegationsFor(account);
+            await this.checkVotePowerIsBalanceMinusFromPlusToDelegationsFor(account);
         }
     }
 
-    async checkTotalVotePowerIsBalanceMinusFromPlusToDelegationsFor(account: string) {
+    async checkVotePowerIsBalanceMinusFromPlusToDelegationsFor(account: string) {
         const balance = await this.balanceOf(account);
         const delegationsTo = await this.totalDelegationsTo(account);
         const delegationsFrom = await this.totalDelegationsFrom(account);
-        const calculated = balance.add(delegationsTo).sub(delegationsFrom);
+        const revoked = this.state.revokedVotePower(account);
+        const calculated = balance.add(delegationsTo).sub(delegationsFrom).sub(revoked);
         const vp = await this.votePowerOf(account);
         assert(calculated.eq(vp), `Diff of balance and delegated mismatch VP for account ${account}: ${calculated} != ${vp}`);
     }
@@ -178,8 +181,8 @@ export class VPTokenChecker {
     async checkTotalCachedVotePower() {
         if (this.blockNumber == null) return;
         console.log('   checkTotalCachedVotePower');
-        const vp = await this.votePower();
-        const vpcached = await this.vpToken.votePowerAtCached.call(this.blockNumber);
+        const vp = await this.totalVotePower();
+        const vpcached = await this.vpToken.totalVotePowerAtCached.call(this.blockNumber);
         assert(vpcached.eq(vp), `Total vote power and vote power cached mismatch: ${vpcached} != ${vp}`);
     }
     

@@ -6,7 +6,7 @@ interface IFtso {
         // initial state
         NOT_FINALIZED,
         // median calculation used to decide price
-        MEDIAN,
+        WEIGHTED_MEDIAN,
         // low turnout - price decided from average of trusted addresses
         TRUSTED_ADDRESSES,
         // low turnout + no votes from trusted addresses - price copied from previous epoch
@@ -21,15 +21,18 @@ interface IFtso {
     event PriceHashSubmitted(
         address indexed submitter, uint256 indexed epochId, bytes32 hash, uint256 timestamp
     );
+
     event PriceRevealed(
         address indexed voter, uint256 indexed epochId, uint256 price, uint256 random, uint256 timestamp,
         uint256 votePowerFlr, uint256 votePowerAsset
     );
+
     event PriceFinalized(
         uint256 indexed epochId, uint256 price, bool rewardedFtso,
         uint256 lowRewardPrice, uint256 highRewardPrice, PriceFinalizationType finalizationType,
         uint256 timestamp
     );
+
     event PriceEpochInitializedOnFtso(
         uint256 indexed epochId, uint256 endTime, uint256 timestamp
     );
@@ -37,7 +40,7 @@ interface IFtso {
     event LowTurnout(
         uint256 indexed epochId,
         uint256 flrTurnout,
-        uint256 lowFlrTurnoutBIPSThreshold,
+        uint256 lowFlrTurnoutThresholdBIPS,
         uint256 timestamp
     );
 
@@ -99,5 +102,4 @@ interface IFtso {
      * @notice Returns current random number
      */
     function getCurrentRandom() external view returns (uint256);
-
 }

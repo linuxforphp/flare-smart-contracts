@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IVPToken} from "../../userInterfaces/IVPToken.sol";
-import {IGovernanceVotePower} from "../../userInterfaces/IGovernanceVotePower.sol";
+import "../../userInterfaces/IVPToken.sol";
+import "../../userInterfaces/IGovernanceVotePower.sol";
 
 interface IIGovernanceVotePower is IGovernanceVotePower {
     /**

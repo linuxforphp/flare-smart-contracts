@@ -24,8 +24,7 @@ library SafePct {
      *
      * - intermediate operations must revert on overflow
      */
-    function mulDiv(uint256 x, uint256 y, uint256 z) internal pure returns (uint256)
-    {
+    function mulDiv(uint256 x, uint256 y, uint256 z) internal pure returns (uint256) {
         require(z > 0, "Division by zero");
 
         if (x == 0) return 0;
