@@ -6,11 +6,11 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import { GovernedAtGenesis } from "../../governance/implementation/GovernedAtGenesis.sol";
-import { Inflation } from "../../inflation/implementation/Inflation.sol";
-import { IFlareKeep } from "../interface/IFlareKeep.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { SafePct } from "../../utils/implementation/SafePct.sol";
+import "../../governance/implementation/GovernedAtGenesis.sol";
+import "../../inflation/implementation/Inflation.sol";
+import "../interface/IFlareKeep.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../utils/implementation/SafePct.sol";
 
 
 /**
