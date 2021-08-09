@@ -51,15 +51,15 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         for ( ; i < len; i++) {
             // Deletion of symbols leaves an empty address "hole", so the address might be zero
             IIFtso current = ftsoHistory[i][0];
-            if(address(current) == address(0)){
+            if (address(current) == address(0)) {
                 continue;
             }
-            if(_encodedSymbol == keccak256(abi.encode(current.symbol()))){
+            if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
                     break;
             }
         }
         // ftso with the same symbol is not yet in history array, add it
-        if (i == len){
+        if (i == len) {
             ftsoHistory.push();
         }else{
             // Shift history
@@ -76,13 +76,13 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
     function removeFtso(IIFtso _ftso) external override onlyFtsoManager {
         bytes32 _encodedSymbol = keccak256(abi.encode(_ftso.symbol()));
         uint256 len = ftsoHistory.length;
-        for(uint256 i = 0; i < len; ++i){
+        for (uint256 i = 0; i < len; ++i) {
             IIFtso current = ftsoHistory[i][0];
-            if(address(current) == address(0)){
+            if (address(current) == address(0)) {
                 continue;
             }
             // Removal behaves the same as setting null value as current
-            if(_encodedSymbol == keccak256(abi.encode(current.symbol()))){
+            if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
                 _shiftHistory(i);
                 ftsoHistory[i][0] = IIFtso(address(0));
                 return;
@@ -148,7 +148,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
         }
@@ -167,7 +167,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
         _supportedSymbols = new string[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
             _supportedSymbols[len] = _ftsos[len].symbol();
@@ -186,7 +186,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         uint256[] memory supportedIndices = _getSupportedIndices();
         uint256 len = supportedIndices.length;
         _ftsos = new IIFtso[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             _ftsos[len] = ftsoHistory[supportedIndices[len]][0];
         }
@@ -200,7 +200,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
     function getFtsos() external view returns(IIFtso[] memory _ftsos) {
         uint256 len = ftsoHistory.length;
         IIFtso[] memory ftsos = new IIFtso[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             ftsos[len] = ftsoHistory[len][0];
         }
@@ -221,7 +221,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         return ftsoHistory[_assetIndex];
     }
 
-    function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex){
+    function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex) {
         return _getFtsoIndex(_symbol);
     }
 
@@ -235,15 +235,15 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         }
     }
 
-    function _getFtsoIndex(string memory _symbol) private view returns (uint256 _assetIndex){
+    function _getFtsoIndex(string memory _symbol) private view returns (uint256 _assetIndex) {
         bytes32 _encodedSymbol = keccak256(abi.encode(_symbol));
         uint256 len = ftsoHistory.length;
-        for(uint256 i = 0; i < len; ++i){
+        for (uint256 i = 0; i < len; ++i) {
             IIFtso current = ftsoHistory[i][0];
-            if(address(current) == address(0)){
+            if (address(current) == address(0)) {
                 continue;
             }
-            if(_encodedSymbol == keccak256(abi.encode(current.symbol()))){
+            if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
                 return i;
             }
         }
@@ -259,7 +259,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         require(_assetIndex < ftsoHistory.length, ERR_TOKEN_NOT_SUPPORTED);
 
         IIFtso ftso = ftsoHistory[_assetIndex][0];
-        if (address(ftso) == address(0)){
+        if (address(ftso) == address(0)) {
             // Invalid index, revert if address is zero address
             revert(ERR_TOKEN_NOT_SUPPORTED);
         }
@@ -273,14 +273,14 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         uint256[] memory supportedIndices = new uint256[](len);
         address zeroAddress = address(0);
         uint256 taken = 0;
-        for(uint256 i = 0; i < len; ++i){
-            if(address(ftsoHistory[i][0]) != zeroAddress){
+        for (uint256 i = 0; i < len; ++i) {
+            if (address(ftsoHistory[i][0]) != zeroAddress) {
                 supportedIndices[taken] = i;
                 ++taken;
             }
         }
         _supportedIndices = new uint256[](taken);
-        while(taken > 0){
+        while (taken > 0) {
             --taken;
             _supportedIndices[taken] = supportedIndices[taken];
         }

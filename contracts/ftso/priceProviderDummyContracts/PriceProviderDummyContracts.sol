@@ -61,15 +61,15 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         for ( ; i < len; i++) {
             // Deletion of symbols leaves an empty address "hole", so the address might be zero
             IFtso current = ftsoHistory[i][0];
-            if(address(current) == address(0)){
+            if (address(current) == address(0)) {
                 continue;
             }
-            if(_encodedSymbol == keccak256(abi.encode(current.symbol()))){
+            if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
                 break;
             }
         }
         // ftso with the same symbol is not yet in history array, add it
-        if (i == len){
+        if (i == len) {
             ftsoHistory.push();
         }else{
             // Shift history
@@ -86,13 +86,13 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
     function removeFtso(IIFtso _ftso) external onlyGovernance {
         bytes32 _encodedSymbol = keccak256(abi.encode(_ftso.symbol()));
         uint256 len = ftsoHistory.length;
-        for(uint256 i = 0; i < len; ++i){
+        for (uint256 i = 0; i < len; ++i) {
             IFtso current = ftsoHistory[i][0];
-            if(address(current) == address(0)){
+            if (address(current) == address(0)) {
                 continue;
             }
             // Removal behaves the same as setting null value as current
-            if(_encodedSymbol == keccak256(abi.encode(current.symbol()))){
+            if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
                 _shiftHistory(i);
                 ftsoHistory[i][0] = IIFtso(address(0));
                 return;
@@ -164,7 +164,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
         }
@@ -183,7 +183,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
         _supportedSymbols = new string[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
             _supportedSymbols[len] = _ftsos[len].symbol();
@@ -202,7 +202,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         uint256[] memory supportedIndices = _getSupportedIndices();
         uint256 len = supportedIndices.length;
         _ftsos = new IIFtso[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             _ftsos[len] = ftsoHistory[supportedIndices[len]][0];
         }
@@ -216,7 +216,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
     function getFtsos() external view returns(IIFtso[] memory _ftsos) {
         uint256 len = ftsoHistory.length;
         IIFtso[] memory ftsos = new IIFtso[](len);
-        while(len > 0){
+        while (len > 0) {
             --len;
             ftsos[len] = ftsoHistory[len][0];
         }
@@ -237,7 +237,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         return ftsoHistory[_assetIndex];
     }
 
-    function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex){
+    function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex) {
         return _getFtsoIndex(_symbol);
     }
 
@@ -254,12 +254,12 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
     function _getFtsoIndex(string memory _symbol) private view returns (uint256 _assetIndex) {
         bytes32 _encodedSymbol = keccak256(abi.encode(_symbol));
         uint256 len = ftsoHistory.length;
-        for(uint256 i = 0; i < len; ++i){
+        for (uint256 i = 0; i < len; ++i) {
             IIFtso current = ftsoHistory[i][0];
-            if(address(current) == address(0)){
+            if (address(current) == address(0)) {
                 continue;
             }
-            if(_encodedSymbol == keccak256(abi.encode(current.symbol()))){
+            if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
                 return i;
             }
         }
@@ -278,7 +278,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         require(_assetIndex < ftsoHistory.length, ERR_TOKEN_NOT_SUPPORTED);
 
         IIFtso ftso = ftsoHistory[_assetIndex][0];
-        if (address(ftso) == address(0)){
+        if (address(ftso) == address(0)) {
             // Invalid index, revert if address is zero address
             revert(ERR_TOKEN_NOT_SUPPORTED);
         }
@@ -292,14 +292,14 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         uint256[] memory supportedIndices = new uint256[](len);
         address zeroAddress = address(0);
         uint256 taken = 0;
-        for(uint256 i = 0; i < len; ++i){
-            if(address(ftsoHistory[i][0]) != zeroAddress){
+        for (uint256 i = 0; i < len; ++i) {
+            if (address(ftsoHistory[i][0]) != zeroAddress) {
                 supportedIndices[taken] = i;
                 ++taken;
             }
         }
         _supportedIndices = new uint256[](taken);
-        while(taken > 0){
+        while (taken > 0) {
             --taken;
             _supportedIndices[taken] = supportedIndices[taken];
         }
@@ -439,7 +439,7 @@ contract DummyPriceSubmitter is IPriceSubmitter {
         voterWhitelister.setFtsoRegistry(ftsoRegistry);
         // Initialize all dummy ftsos for pacakge
         string[10] memory symbols = ["WFLR", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"];
-        for(uint256 i = 0; i < symbols.length; ++i){
+        for (uint256 i = 0; i < symbols.length; ++i) {
             string memory symbol = symbols[i];
             DummyFtso ftso = new DummyFtso(symbol, this, block.timestamp - 120, 120, 30);
             ftsoRegistry.addFtso(ftso);
@@ -575,15 +575,15 @@ contract DummyPriceSubmitter is IPriceSubmitter {
         return keccak256(abi.encode(_symbol));
     }
 
-    function getVoterWhitelister() public view override returns (IVoterWhitelister){
+    function getVoterWhitelister() public view override returns (IVoterWhitelister) {
         return voterWhitelister;
     }
 
-    function getFtsoRegistry() public view override returns (IFtsoRegistry){
+    function getFtsoRegistry() public view override returns (IFtsoRegistry) {
         return ftsoRegistry;
     }
 
-    function getFtsoManager() public pure override returns (IFtsoManager){
+    function getFtsoManager() public pure override returns (IFtsoManager) {
         revert("Not in dummy contract");
     }
 }

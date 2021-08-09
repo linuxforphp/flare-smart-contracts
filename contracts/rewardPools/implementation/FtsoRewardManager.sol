@@ -364,7 +364,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         onlyFtsoManager
     {
         uint256 expiredRewards = 0;
-        while(nextRewardEpochToExpire < _currentRewardEpoch && nextRewardEpochToExpire <= _rewardEpoch) {
+        while (nextRewardEpochToExpire < _currentRewardEpoch && nextRewardEpochToExpire <= _rewardEpoch) {
             expiredRewards += 
                 totalRewardEpochRewards[nextRewardEpochToExpire] - 
                 claimedRewardEpochRewards[nextRewardEpochToExpire];

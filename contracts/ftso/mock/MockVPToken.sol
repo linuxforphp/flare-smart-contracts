@@ -20,7 +20,7 @@ contract MockVPToken is IIVPToken {
         addressCount = addresses.length;
         for (uint256 i = 0; i < addresses.length; i++) {
             addressWeight[addresses[i]] = weights.length > 0 ? weights[i] : addresses[i].balance;
-            if(weights.length > 0) {
+            if (weights.length > 0) {
                 totalWeight += weights[i];
             } else {
                 totalWeight += addresses[i].balance;
@@ -64,46 +64,46 @@ contract MockVPToken is IIVPToken {
     }
 
     // empty implementations, to satisfy the IIVPToken contract    
-    function cleanupBlockNumber() external view override returns (uint256){
+    function cleanupBlockNumber() external view override returns (uint256) {
     }
 
-    function readVotePowerContract() external view override returns (IVPContractEvents){
+    function readVotePowerContract() external view override returns (IVPContractEvents) {
     }
 
-    function writeVotePowerContract() external view override returns (IVPContractEvents){
+    function writeVotePowerContract() external view override returns (IVPContractEvents) {
     }
 
-    function governanceVotePower() external view override returns (IGovernanceVotePower){
+    function governanceVotePower() external view override returns (IGovernanceVotePower) {
     }
 
-    function allowance(address owner, address spender) external override view returns (uint256){
+    function allowance(address owner, address spender) external override view returns (uint256) {
     }
 
-    function balanceOf(address account) external override view returns (uint256){
+    function balanceOf(address account) external override view returns (uint256) {
     }
 
-    function totalSupply() external override view returns (uint256){
+    function totalSupply() external override view returns (uint256) {
     }
 
-    function totalSupplyAt(uint blockNumber) external view override returns(uint256){
+    function totalSupplyAt(uint blockNumber) external view override returns(uint256) {
     }
 
-    function balanceOfAt(address owner, uint blockNumber) external view override returns (uint256){
+    function balanceOfAt(address owner, uint blockNumber) external view override returns (uint256) {
     }
 
-    function votePowerFromTo(address from, address to) external view override returns(uint256){
+    function votePowerFromTo(address from, address to) external view override returns(uint256) {
     }
 
     function votePowerFromToAt(address from, address to, uint blockNumber) external view override 
         returns(uint256)
     {}
 
-    function delegationModeOf(address who) external view override returns (uint256 delegationMode){
+    function delegationModeOf(address who) external view override returns (uint256 delegationMode) {
     }
-    function undelegatedVotePowerOf(address owner) external view override returns(uint256){
+    function undelegatedVotePowerOf(address owner) external view override returns(uint256) {
     }
 
-    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view override returns (uint256){
+    function undelegatedVotePowerOfAt(address owner, uint256 blockNumber) external view override returns (uint256) {
     }
 
     function delegatesOfAt(address owner, uint256 blockNumber) external view override 
@@ -116,7 +116,7 @@ contract MockVPToken is IIVPToken {
         external view override returns(uint256[] memory)
     {}
 
-    function totalVotePower() public view override returns(uint256){
+    function totalVotePower() public view override returns(uint256) {
     }
 
     function totalVotePowerAt(uint blockNumber) public view override returns(uint256) {

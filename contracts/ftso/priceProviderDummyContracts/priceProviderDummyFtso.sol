@@ -42,7 +42,7 @@ contract DummyFtso is IIFtso {
     mapping(uint256 => mapping (address => uint256)) internal revealedPrices;
 
     modifier onlyPriceSubmitter {
-        if(msg.sender != address(priceSubmitter)){
+        if (msg.sender != address(priceSubmitter)) {
             revertNoAccess();
         }
         _;
@@ -128,14 +128,14 @@ contract DummyFtso is IIFtso {
      * @return _price               Price in USD multiplied by fAssetUSDDecimals
      * @return _timestamp           Time when price was updated for the last time
      */
-    function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp){
+    function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
         // TODO
     }
 
     /**
      * @notice Returns current random number
      */
-    function getCurrentRandom() external pure override returns (uint256){
+    function getCurrentRandom() external pure override returns (uint256) {
         return 0;
     }
 
@@ -297,7 +297,7 @@ contract DummyFtso is IIFtso {
      * @notice Returns the FTSO asset
      * @dev fAsset is null in case of multi-asset FTSO
      */
-    function getFAsset() external pure override returns (IIVPToken){
+    function getFAsset() external pure override returns (IIVPToken) {
         require(false, UNAVAILABLE);
         return IIVPToken(address(0));
     }
