@@ -56,21 +56,21 @@ contract Ftso is IIFtso {
     // Revert strings get inlined and take a lot of contract space
     // Calling them from auxiliary functions removes used space
     modifier whenActive {
-        if(!active){
+        if (!active) {
             revertNotActive();
         }
         _;
     }
 
     modifier onlyFtsoManager {
-        if(msg.sender != address(ftsoManager)){
+        if (msg.sender != address(ftsoManager)) {
             revertNoAccess();
         }
         _;
     }
 
     modifier onlyPriceSubmitter {
-        if(msg.sender != address(priceSubmitter)){
+        if (msg.sender != address(priceSubmitter)) {
             revertNoAccess();
         }
         _;
@@ -605,7 +605,7 @@ contract Ftso is IIFtso {
      * @param _hash Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
-    function _submitPriceHash(address _sender, bytes32 _hash) internal returns (uint256 _epochId){
+    function _submitPriceHash(address _sender, bytes32 _hash) internal returns (uint256 _epochId) {
         _epochId = getCurrentEpochId();
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);

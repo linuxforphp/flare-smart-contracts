@@ -7,7 +7,7 @@ contract EndlessLoopMock is IFlareKeep {
     uint256 public aNumber;
 
     function keep() external override returns (bool) {
-        while(true) {
+        while (true) {
             aNumber++;
         }
         return true;

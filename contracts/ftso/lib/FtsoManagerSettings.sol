@@ -36,40 +36,40 @@ library FtsoManagerSettings {
     ) 
         internal
     {
-        if(_state.maxVotePowerFlrThresholdFraction != _maxVotePowerFlrThresholdFraction) {
+        if (_state.maxVotePowerFlrThresholdFraction != _maxVotePowerFlrThresholdFraction) {
             _state.changed = true;
             _state.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
         }
-        if(_state.maxVotePowerAssetThresholdFraction != _maxVotePowerAssetThresholdFraction) {
+        if (_state.maxVotePowerAssetThresholdFraction != _maxVotePowerAssetThresholdFraction) {
             _state.changed = true;
             _state.maxVotePowerAssetThresholdFraction = _maxVotePowerAssetThresholdFraction;
         }
-        if(_state.lowAssetUSDThreshold != _lowAssetUSDThreshold) {
+        if (_state.lowAssetUSDThreshold != _lowAssetUSDThreshold) {
             _state.changed = true;
             _state.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         }
-        if(_state.highAssetUSDThreshold != _highAssetUSDThreshold) {
+        if (_state.highAssetUSDThreshold != _highAssetUSDThreshold) {
             _state.changed = true;
             _state.highAssetUSDThreshold = _highAssetUSDThreshold;
         }
-        if(_state.highAssetTurnoutThresholdBIPS != _highAssetTurnoutThresholdBIPS) {
+        if (_state.highAssetTurnoutThresholdBIPS != _highAssetTurnoutThresholdBIPS) {
             _state.changed = true;
             _state.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
         }
-        if(_state.lowFlrTurnoutThresholdBIPS != _lowFlrTurnoutThresholdBIPS) {
+        if (_state.lowFlrTurnoutThresholdBIPS != _lowFlrTurnoutThresholdBIPS) {
             _state.changed = true;
             _state.lowFlrTurnoutThresholdBIPS = _lowFlrTurnoutThresholdBIPS;
         }
-        if(_state.rewardExpiryOffsetSeconds != _rewardExpiryOffsetSeconds) {
+        if (_state.rewardExpiryOffsetSeconds != _rewardExpiryOffsetSeconds) {
             _state.changed = true;
             _state.rewardExpiryOffsetSeconds = _rewardExpiryOffsetSeconds;
         }
-        if(_state.trustedAddresses.length != _trustedAddresses.length) {            
+        if (_state.trustedAddresses.length != _trustedAddresses.length) {            
             _state.trustedAddresses = _trustedAddresses;
             _state.changed = true;        
         } else {
-            for(uint i = 0; i < _trustedAddresses.length; i++) {
-                if(_state.trustedAddresses[i] != _trustedAddresses[i]) {
+            for (uint i = 0; i < _trustedAddresses.length; i++) {
+                if (_state.trustedAddresses[i] != _trustedAddresses[i]) {
                     _state.changed = true;
                     _state.trustedAddresses[i] = _trustedAddresses[i];
                 }

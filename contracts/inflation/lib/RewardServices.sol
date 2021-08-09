@@ -88,7 +88,7 @@ library RewardServices {
         // Start with total bips in denominator
         uint256 divisorRemaining = BIPS100;
         // Loop over sharing percentages
-        for(uint256 i; i < _sharingPercentages.length; i++) {
+        for (uint256 i; i < _sharingPercentages.length; i++) {
             // Compute the amount to authorize for a given service
             uint256 toAuthorizeWei = amountToAuthorizeRemaingWei.mulDiv(
                 _sharingPercentages[i].percentBips, 
@@ -140,7 +140,7 @@ library RewardServices {
         internal
         returns (uint256 _topupRequestWei)
     {
-        for(uint256 i; i < _self.rewardServices.length; i++) {
+        for (uint256 i; i < _self.rewardServices.length; i++) {
             TopupConfiguration memory topupConfiguration = 
                 _inflation.getTopupConfiguration(_self.rewardServices[i].inflationReceiver);
             _topupRequestWei = _topupRequestWei.add(_self.rewardServices[i].computeTopupRequest(topupConfiguration));
@@ -166,7 +166,7 @@ library RewardServices {
     {
         // The number of these is expected to be low.
         _found = false;
-        for(uint256 i; i < _self.rewardServices.length; i++) {
+        for (uint256 i; i < _self.rewardServices.length; i++) {
             if (address(_self.rewardServices[i].inflationReceiver) == address(_inflationReceiver)) {
                 _index = i;
                 _found = true;
@@ -189,7 +189,7 @@ library RewardServices {
         returns(uint256 _amountPostedWei)
     {
         // Spin through all reward services
-        for(uint256 i; i < _self.rewardServices.length; i++) {
+        for (uint256 i; i < _self.rewardServices.length; i++) {
             // Get the pending topup for the service
             uint256 pendingTopupWei = _self.rewardServices[i].getPendingTopup();
             // Accumulate topup received

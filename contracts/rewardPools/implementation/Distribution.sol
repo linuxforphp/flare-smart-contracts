@@ -102,7 +102,7 @@ contract Distribution is GovernedAtGenesis, IDistribution {
     function setClaimBalance(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);
         require(toAddress.length == balance.length, ERR_ARRAY_MISMATCH);
-        for(uint16 i = 0; i < toAddress.length; i++) {
+        for (uint16 i = 0; i < toAddress.length; i++) {
             // Assume that when the initial 15% was allocated, that any remainder was truncated.
             // Therefore, compute the difference to obtain the remaining entitlement balance.
             uint256 claimedAtGenesis = balance[i].mulDiv(CLAIMED_AT_GENESIS_BIPS, TOTAL_BIPS);

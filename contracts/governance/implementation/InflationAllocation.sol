@@ -133,7 +133,7 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
         // Validate the schedule...percentages must be the same or decay, and cannot be greater than last given.
         uint256 len = _annualInflationScheduleBips.length;
         uint256 lastOne = lastAnnualInflationPercentageBips;
-        for(uint256 i = 0; i < len; i++) {
+        for (uint256 i = 0; i < len; i++) {
             require(
                 _annualInflationScheduleBips[i] <= lastOne && 
                 _annualInflationScheduleBips[i] > 0, 
@@ -143,12 +143,12 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
 
         // Clear the existing schedule
         uint256 lenExistingSchedule = annualInflationPercentagesBips.length;
-        for(uint256 i = 0; i < lenExistingSchedule; i++) {
+        for (uint256 i = 0; i < lenExistingSchedule; i++) {
             annualInflationPercentagesBips.pop();
         }
 
         // Push in the new schedule
-        for(uint256 i = 0; i < len; i++) {
+        for (uint256 i = 0; i < len; i++) {
             annualInflationPercentagesBips.push(_annualInflationScheduleBips[i]);
         }
         emit AnnualInflationPercentageScheduleSet(_annualInflationScheduleBips);
