@@ -61,7 +61,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
         // ftso with the same symbol is not yet in history array, add it
         if (i == len) {
             ftsoHistory.push();
-        }else{
+        } else {
             // Shift history
             _shiftHistory(i);
         }
