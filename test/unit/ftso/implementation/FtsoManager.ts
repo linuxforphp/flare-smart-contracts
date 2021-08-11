@@ -302,6 +302,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0,10); // first 4 bytes is function selector
             const invocationCount2 = await mockFtso.invocationCountForMethod.call(configureEpochs);
             assert.equal(invocationCount2.toNumber(), 1);
+
+            const addFtsoPriceSubmitter = web3.utils.sha3("addFtso(address,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+            const priceSubmitterInvocationCount = await mockPriceSubmitter.invocationCountForMethod.call(addFtsoPriceSubmitter);
+            // should add new ftso to PriceSubmitter
+            assert.equal(priceSubmitterInvocationCount.toNumber(), 1);
         });
 
         it("Should not add an FTSO twice", async () => {
@@ -470,6 +475,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const currentPriceReturn = web3.eth.abi.encodeParameters(['uint256','uint256'], [500, 1]);
             await mockFtso.givenMethodReturn(currentPrice, currentPriceReturn);
 
+            let addFtsoPriceSubmitter = web3.utils.sha3("addFtso(address,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+            let priceSubmitterInvocationCount = await mockPriceSubmitter.invocationCountForMethod.call(addFtsoPriceSubmitter);
+            // should add new ftso to PriceSubmitter
+            assert.equal(priceSubmitterInvocationCount.toNumber(), 1);
+
             // Act
             let tx = await ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, false);
 
@@ -481,6 +491,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const updateInitialPrice = web3.utils.sha3("updateInitialPrice(uint256,uint256)")!.slice(0,10); // first 4 bytes is function selector
             const invocationCount = await mockFtso.invocationCountForMethod.call(updateInitialPrice);
             assert.equal(invocationCount.toNumber(), 0);
+
+            addFtsoPriceSubmitter = web3.utils.sha3("addFtso(address,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+            priceSubmitterInvocationCount = await mockPriceSubmitter.invocationCountForMethod.call(addFtsoPriceSubmitter);
+            // should not add new ftso to PriceSubmitter
+            assert.equal(priceSubmitterInvocationCount.toNumber(), 1);
         });
 
         it("Should sucessfully replace an FTSO and update initial price", async () => {
@@ -1470,7 +1485,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 accounts[0],
                 accounts[0],
                 mockRewardManager.address,
-                accounts[7],
+                mockPriceSubmitter.address,
                 ftsoRegistry.address,
                 yearSeconds / 10,
                 startTs,
