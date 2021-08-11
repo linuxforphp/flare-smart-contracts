@@ -2,11 +2,12 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
+
 /**
  * @title Revert Error Tracking
  * @notice A contract to track and store revert errors
  **/
-contract RevertErrorTracking{
+contract RevertErrorTracking {
 
     struct RevertedError {
         uint192 lastErrorBlock;

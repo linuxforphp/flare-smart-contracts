@@ -592,7 +592,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                 // closing of expired failed, which is not critical
                 // just emit event for diagnostics
                 emit ClosingExpiredRewardEpochFailed(nextRewardEpochToExpire);
-                addRevertError(address(this),message);
+                addRevertError(address(this), message);
                 // Do not proceed with the loop.
                 break;
             }                    
@@ -614,7 +614,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             // closing of expired failed, which is not critical
             // just emit event for diagnostics
             emit CleanupBlockNumberManagerFailedForBlock(cleanupBlock);
-            addRevertError(address(this),message);
+            addRevertError(address(this), message);
         }        
     }
 
@@ -628,7 +628,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                 try _ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                 } catch Error(string memory message) {
                     emit FinalizingPriceEpochFailed(_ftsos[i], lastUnprocessedPriceEpoch);
-                    addRevertError(address(this),message);
+                    addRevertError(address(this), message);
                 }
             }
         }
@@ -691,7 +691,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                         try _ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                         } catch Error(string memory message) {
                             emit FinalizingPriceEpochFailed(_ftsos[id], lastUnprocessedPriceEpoch);
-                            addRevertError(address(this),message);
+                            addRevertError(address(this), message);
                         }
                     }
                 }
@@ -715,7 +715,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                     priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
                 } catch Error(string memory message) {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
-                    addRevertError(address(this),message);
+                    addRevertError(address(this), message);
                 }
             }
 
@@ -758,7 +758,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             try _ftsos[i].initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[_ftsos[i]]) {
             } catch Error(string memory message) {
                 emit InitializingCurrentEpochStateForRevealFailed(_ftsos[i], _getCurrentPriceEpochId());
-                addRevertError(address(this),message);
+                addRevertError(address(this), message);
             }
         }
         settings.changed = false;

@@ -1,6 +1,6 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { FtsoRegistryInstance, MockContractInstance, MockFtsoInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WFlrInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/constants";
+import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
 import { assertNumberEqual, compareArrays, compareSets, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
@@ -57,7 +57,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     }
 
     async function createFtso(symbol: string, initialPriceUSD5Dec: BN) {
-        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPriceUSD5Dec, 1e10);
+        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPriceUSD5Dec, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });

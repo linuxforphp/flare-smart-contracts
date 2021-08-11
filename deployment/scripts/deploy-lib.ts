@@ -60,6 +60,7 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 
 const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "../../test/utils/constants";
 
 export async function fullDeploy(parameters: any, quiet = false) {  
   // Define repository for created contracts
@@ -281,7 +282,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPriceUSD5Dec, parameters.priceDeviationThresholdBIPS);
+  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -438,7 +439,7 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS);
+  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${fAssetDefinition.symbol}`, ftso.address, quiet);
 

@@ -14,6 +14,7 @@ import { setDefaultVPContract_ethers } from "./token-test-helpers";
 
 const { exec } = require("child_process");
 import { constants, time } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "./constants";
 const MockFtsoManager = artifacts.require("MockContract") as MockContractContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 
@@ -814,7 +815,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
         1, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     );
     await ftso.setFAsset(assetToken.address);
 

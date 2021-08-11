@@ -21,6 +21,7 @@ import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN 
 
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -74,7 +75,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             0,
-            1e10
+            1e10,
+            defaultPriceEpochCyclicBufferSize
         );
 
         await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
@@ -583,7 +585,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should sucessfully replace an FTSO and change fasset ftso", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
-            let multiFtso = await Ftso.new('FLR', constants.ZERO_ADDRESS, ftsoManager.address, constants.ZERO_ADDRESS, 0, 1e10);
+            let multiFtso = await Ftso.new('FLR', constants.ZERO_ADDRESS, ftsoManager.address, constants.ZERO_ADDRESS, 0, 1e10, defaultPriceEpochCyclicBufferSize);
             await ftsoManager.addFtso(multiFtso.address);
             await ftsoManager.addFtso(mockFtso.address);
             await ftsoManager.setFtsoFAssetFtsos(multiFtso.address, [mockFtso.address]);
