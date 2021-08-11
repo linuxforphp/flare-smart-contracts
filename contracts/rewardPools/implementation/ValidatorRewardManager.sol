@@ -284,7 +284,7 @@ contract ValidatorRewardManager is
      */
     function _closeExpiredRewardEpochs(uint256 currentRewardEpoch) internal {
         uint256 expiredRewards = 0;
-        while(firstEpochToCheckExpiry < rewardEpochs.length && 
+        while (firstEpochToCheckExpiry < rewardEpochs.length && 
                 !_isRewardClaimable(firstEpochToCheckExpiry, currentRewardEpoch)) {
             expiredRewards += rewardEpochs[firstEpochToCheckExpiry].unclaimedRewardWei;
             emit RewardClaimsExpired(firstEpochToCheckExpiry);

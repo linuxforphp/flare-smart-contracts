@@ -36,7 +36,7 @@ contract SimpleMockFtso is Ftso {
      * @notice Emits PriceRevealed event
      */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
-        _revealPrice(msg.sender, _epochId, _price, _random, flrVotePowerCached(msg.sender));
+        _revealPrice(msg.sender, _epochId, _price, _random, flrVotePowerCached(msg.sender, _epochId));
     }
     
     function readVotes(uint256 _epochId) external view 
@@ -62,7 +62,11 @@ contract SimpleMockFtso is Ftso {
     }
     
     function getVotePowerOf(address _owner) public returns (uint256 _votePowerFlr, uint256 _votePowerAsset) {
-        return _getVotePowerOf(epochs.instance[lastRevealEpochId], _owner, flrVotePowerCached(_owner));
+        return _getVotePowerOf(
+            epochs.instance[lastRevealEpochId],
+            _owner,
+            flrVotePowerCached(_owner, lastRevealEpochId)
+        );
     }
 
     // Simplified version of vote power weight calculation (no vote commit/reveal, but result should be equal)
@@ -72,7 +76,7 @@ contract SimpleMockFtso is Ftso {
         uint256[] memory weightsAsset = new uint256[](_owners.length);
         for (uint256 i = 0; i < _owners.length; i++) {
             (uint256 votePowerFlr, uint256 votePowerAsset) = 
-                _getVotePowerOf(epoch, _owners[i], flrVotePowerCached(_owners[i]));
+                _getVotePowerOf(epoch, _owners[i], flrVotePowerCached(_owners[i], lastRevealEpochId));
             FtsoEpoch._addVote(epoch, _owners[i], votePowerFlr, votePowerAsset, 0, 0);
             FtsoVote.Instance memory vote = epoch.votes[epoch.votes.length - 1];
             weightsFlr[i] = vote.weightFlr;

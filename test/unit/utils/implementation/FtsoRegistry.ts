@@ -29,7 +29,6 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
   beforeEach(async() => {
     ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS);
-
     
     await ftsoRegistryContract.setFtsoManagerAddress(MOCK_FTSO_ADDRESS, {from: GOVERNANCE_ADDRESS});
 
@@ -38,7 +37,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
   });
 
-  it("Shoud get zero adress for unnsupported symbol ", async() => {
+  it("Should revert for unsupported index ", async() => {
     // Assemble
     const unnsupported_token_promise = ftsoRegistryContract.getFtso(1);
     // Act
@@ -47,7 +46,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     await expectRevert(unnsupported_token_promise, ERR_TOKEN_NOT_SUPPORTED);
   });
 
-  it("Shoud add new symbol to registry ", async() => {
+  it("Should add new symbol to registry ", async() => {
     // Assemble
     let BTC_FTSO_promisse = ftsoRegistryContract.getFtso(0);
     await expectRevert(BTC_FTSO_promisse, ERR_TOKEN_NOT_SUPPORTED);
@@ -169,7 +168,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
   });
 
-  it("Shoud get all supported tokens and their addresses ", async() => {
+  it("Should get all supported tokens and their addresses ", async() => {
     // Assemble
     let BTCFtsoContractMock = await mockFtso("BTC");
     let XPRFtsoContractMock = await mockFtso("XPR");
@@ -199,7 +198,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
   });
 
-  it("Should not allow non Ftso manager address to set address", async() => {
+  it("Should not allow non Ftso manager address to add ftso", async() => {
     // Assemble
 
     // Act

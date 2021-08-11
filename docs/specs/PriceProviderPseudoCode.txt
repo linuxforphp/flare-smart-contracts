@@ -22,7 +22,7 @@ wFlr.delegate(providerAddress, percentToBips(100)){from: BobAddress};
 ///////////////////////
 main() {
 
-    // First try to whtelist on all available ftsos
+    // First try to whitelist on all available ftsos
     voterWhitelister.requestFullVoterWhitelisting(providerAddress);
     uint step = 0;
 
@@ -60,7 +60,7 @@ main() {
             ftsoRandoms.push(rand());
     
             // read token symbol
-            let symbol = symbolftso.symbol();
+            let symbol = ftso.symbol();
     
             // read price from any chosen price source provider wishes to use
             ftsoPrices.push(priceSource.getPrice(symbol));
@@ -74,7 +74,7 @@ main() {
         }
  
         // submit hashes in batch
-        if (validFtsoIndexList > 0) {
+        if (validFtsoIndexList.length > 0) {
             priceSubmitter.submitPriceHashes(validFtsoIndexList, ftsoPriceHashes);
         }
  

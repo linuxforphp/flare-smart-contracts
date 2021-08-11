@@ -15,7 +15,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
 
     uint256 private constant FLR_FTSO_INDEX = 0;
     uint256 internal constant TERA = 10 ** 12;                    // 10^12
-    uint256 internal constant BIPS100 = 10 ** 4;                  // 10 * 100%
+    uint256 internal constant BIPS100 = 10 ** 4;                  // 100 * 100%
 
     uint256 public override defaultMaxVotersForFtso;
         

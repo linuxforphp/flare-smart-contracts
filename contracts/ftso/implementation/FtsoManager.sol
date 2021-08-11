@@ -198,7 +198,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
                 _cleanupOnRewardEpochFinalization();
             }
 
-            if(currentPriceEpochEnds <= block.timestamp) {
+            if (currentPriceEpochEnds <= block.timestamp) {
                 // sets governance parameters on ftsos
                 _initializeCurrentEpochFTSOStatesForReveal(_ftsos);
             }
@@ -247,13 +247,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
         uint256 len = availableFtsos.length;
         uint256 k = 0;
-        while(k < len){
-            if(availableFtsos[k] == _ftsoToRemove){
+        while (k < len) {
+            if (availableFtsos[k] == _ftsoToRemove) {
                 break;
             }
             ++k;
         }
-        if(k == len){
+        if (k == len) {
             revert(ERR_NOT_FOUND);
         }
 
@@ -379,7 +379,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         );
     }
     
-    function getPriceSubmitter() external view override returns (IPriceSubmitter){
+    function getPriceSubmitter() external view override returns (IPriceSubmitter) {
         return priceSubmitter;
     }
 
@@ -442,13 +442,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
 
         _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
 
-        if(_updatingExistingFtso){
+        if (_updatingExistingFtso) {
             // Check if it already exists
             IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
             uint256 len = availableFtsos.length;
-            while(len > 0){
+            while (len > 0) {
                 --len;
-                if(availableFtsos[len] == _ftso){
+                if (availableFtsos[len] == _ftso) {
                     revert(ERR_ALREADY_ADDED);
                 }
             }
@@ -459,7 +459,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         );
 
         // Set the vote power block
-        if(!justStarted) {
+        if (!justStarted) {
             _ftso.setVotePowerBlock(rewardEpochs[currentRewardEpoch].votepowerBlock);
         }
 
@@ -477,7 +477,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         managedFtsos[_ftso] = true;
         ftsoRegistry.addFtso(_ftso);
 
-        if(!_updatingExistingFtso){
+        if (!_updatingExistingFtso) {
             uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());      
             priceSubmitter.addFtso(_ftso, ftsoIndex);
         }
@@ -542,7 +542,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         // additional notice: if someone sets votePowerIntervalFraction to 0
         // this would cause division by 0 and effectively revert would halt the system
  
-        if(votepowerBlockBoundary == 0) {
+        if (votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
         }
  
@@ -580,7 +580,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         // This loop is clearly bounded by the value currentRewardEpoch, which is
         // always kept to the value of rewardEpochs.length - 1 in code and this value
         // does not change in the loop.  
-        while(
+        while (
             nextRewardEpochToExpire < currentRewardEpoch && 
             rewardEpochs[nextRewardEpochToExpire + 1].startTimestamp <= expiryThreshold) 
         {   // Note: Since nextRewardEpochToExpire + 1 starts at that time
@@ -602,7 +602,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      * @notice Performs any cleanup needed immediately after a reward epoch is finalized
      */
     function _cleanupOnRewardEpochFinalization() internal {
-        if(address(cleanupBlockNumberManager) == address(0)) {
+        if (address(cleanupBlockNumberManager) == address(0)) {
             emit CleanupBlockNumberManagerUnset();
             return;
         }
@@ -622,8 +622,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      */
     function _forceFinalizePriceEpochBeforeRewardEpochStarts(IIFtso[] memory _ftsos) internal {
         uint256 numFtsos = _ftsos.length;
-        if(numFtsos > 0) {
-            for(uint256 i = 0; i < numFtsos; i++) {
+        if (numFtsos > 0) {
+            for (uint256 i = 0; i < numFtsos; i++) {
                 try _ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
                 } catch Error(string memory message) {
                     emit FinalizingPriceEpochFailed(_ftsos[i], lastUnprocessedPriceEpoch);
@@ -641,7 +641,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 numFtsos = _ftsos.length;
 
         // Are there any FTSOs to process?
-        if(numFtsos > 0) {
+        if (numFtsos > 0) {
             // choose winning ftso
             uint256 chosenFtsoId;
             if (lastUnprocessedPriceEpoch == 0 || priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso == address(0)) {
@@ -653,7 +653,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             } else {
                 // at least one finalize with real FTSO
                 uint256 currentRandomSum = 0;
-                for(uint256 i = 0; i < numFtsos; i++) {
+                for (uint256 i = 0; i < numFtsos; i++) {
                     currentRandomSum += _ftsos[i].getCurrentRandom(); // may overflow but it is still ok
                 }
                 //slither-disable-next-line weak-prng           // ftso random calculated safely from inputs
@@ -671,7 +671,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             // recipients and declare it the winner. Start with the next ftso.
             bool wasDistributed = false;
             address rewardedFtsoAddress = address(0);
-            for(uint256 i = 0; i < numFtsos; i++) {
+            for (uint256 i = 0; i < numFtsos; i++) {
                 //slither-disable-next-line weak-prng           // not a random, just choosing next
                 uint256 id = (chosenFtsoId + i) % numFtsos;
                 try _ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
@@ -742,7 +742,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     function _initializeCurrentEpochFTSOStatesForReveal(IIFtso[] memory _ftsos) internal {
         uint256 numFtsos = _ftsos.length;
         for (uint256 i = 0; i < numFtsos; i++) {
-            if(settings.changed) {
+            if (settings.changed) {
                 _ftsos[i].configureEpochs(
                     settings.maxVotePowerFlrThresholdFraction,
                     settings.maxVotePowerAssetThresholdFraction,

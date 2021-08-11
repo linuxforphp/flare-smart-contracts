@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { GovernedBase } from "./GovernedBase.sol";
+import "./GovernedBase.sol";
+
 
 /**
  * @title Governed At Genesis

@@ -56,21 +56,21 @@ contract Ftso is IIFtso {
     // Revert strings get inlined and take a lot of contract space
     // Calling them from auxiliary functions removes used space
     modifier whenActive {
-        if(!active){
+        if (!active) {
             revertNotActive();
         }
         _;
     }
 
     modifier onlyFtsoManager {
-        if(msg.sender != address(ftsoManager)){
+        if (msg.sender != address(ftsoManager)) {
             revertNoAccess();
         }
         _;
     }
 
     modifier onlyPriceSubmitter {
-        if(msg.sender != address(priceSubmitter)){
+        if (msg.sender != address(priceSubmitter)) {
             revertNoAccess();
         }
         _;
@@ -579,8 +579,13 @@ contract Ftso is IIFtso {
         }
     }
 
-    function flrVotePowerCached(address _owner) public override returns (uint256) {
-        return _getVotePowerOfAt(wFlr, _owner, epochs.votePowerBlock);
+    /**
+     * @notice Returns flr vote power for the specified owner and the given epoch id
+     * @param _owner                Owner address
+     * @param _epochId              Id of the epoch
+     */
+    function flrVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
+        return _getVotePowerOfAt(wFlr, _owner, epochs.instance[_epochId].votePowerBlock);
     }
 
     /**
@@ -605,7 +610,7 @@ contract Ftso is IIFtso {
      * @param _hash Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
-    function _submitPriceHash(address _sender, bytes32 _hash) internal returns (uint256 _epochId){
+    function _submitPriceHash(address _sender, bytes32 _hash) internal returns (uint256 _epochId) {
         _epochId = getCurrentEpochId();
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
@@ -838,8 +843,8 @@ contract Ftso is IIFtso {
     /**
      * @notice Returns vote power of the given token at the specified block and for the specified owner
      * @param _vp                   Vote power token
-     * @param _vpBlock              Vote power block
      * @param _owner                Owner address
+     * @param _vpBlock              Vote power block
      * @dev Returns 0 if vote power token is null
      */
     function _getVotePowerOfAt(IIVPToken _vp, address _owner, uint256 _vpBlock) internal returns (uint256) {

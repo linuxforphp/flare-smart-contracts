@@ -99,20 +99,17 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
     /**
      * Called from whitelister when new voter has been whitelisted.
      */
-    function voterWhitelisted(
-        address _voter, 
-        uint256 _ftsoIndex
-    ) external override onlyWhitelister {
+    function voterWhitelisted(address _voter, uint256 _ftsoIndex) external override onlyWhitelister {
         whitelistedFtsoBitmap[_voter] |= 1 << _ftsoIndex;
     }
     
     /**
      * Called from whitelister when one or more voters have been removed.
      */
-    function votersRemovedFromWhitelist(
-        address[] memory _removedVoters, 
-        uint256 _ftsoIndex
-    ) external override onlyWhitelister {
+    function votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex) 
+        external override 
+        onlyWhitelister
+    {
         for (uint256 i = 0; i < _removedVoters.length; i++) {
             whitelistedFtsoBitmap[_removedVoters[i]]  &= ~(1 << _ftsoIndex);
         }
@@ -177,7 +174,9 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         uint256[] memory _ftsoIndices,
         uint256[] memory _prices,
         uint256[] memory _randoms
-    ) external override {
+    )   
+        external override
+    {
         uint256 len  = _ftsoIndices.length;
         require(len == _prices.length, ERR_ARRAY_LENGTHS);
         require(len == _randoms.length, ERR_ARRAY_LENGTHS);
@@ -199,7 +198,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
             ftsos[i] = ftso;
             // read flare VP only once
             if (flrVP == uint256(-1)) {
-                flrVP = ftso.flrVotePowerCached(msg.sender);
+                flrVP = ftso.flrVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
             try ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP) {
@@ -220,15 +219,15 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         return whitelistedFtsoBitmap[_voter];
     }
 
-    function getVoterWhitelister() external view override returns (IVoterWhitelister){
+    function getVoterWhitelister() external view override returns (IVoterWhitelister) {
         return voterWhitelister;
     }
 
-    function getFtsoRegistry() external view override returns (IFtsoRegistry){
+    function getFtsoRegistry() external view override returns (IFtsoRegistry) {
         return ftsoRegistry;
     }
     
-    function getFtsoManager() external view override returns (IFtsoManager){
+    function getFtsoManager() external view override returns (IFtsoManager) {
         return ftsoManager;
     }
     
