@@ -77,7 +77,7 @@ Price and random should be the same ones that were used to create the hash in th
 As soon as the reveal period ends, the weighted median algorithm will process all revealed prices, and publish the median as the current price of the asset.
 
 ## Price submitter contract
-A Price submitter contract will enable each provider to send the above Txs batched together. One Tx can be used to suנmitPrice to all FTSO contracts and later to revealPrice in all FTSO contracts. Each asset is assigned an unique asset index that is managed by the `ftsoRegistry`.  Contract interface is [here](../../contracts/userInterfaces/IPriceSubmitter.sol)
+A Price submitter contract will enable each provider to send the above Txs batched together. One Tx can be used to submitPrice to all FTSO contracts and later to revealPrice in all FTSO contracts. Each asset is assigned an unique asset index that is managed by the `ftsoRegistry`.  Contract interface is [here](../../contracts/userInterfaces/IPriceSubmitter.sol)
 
 ```
    function submitPriceHashes(

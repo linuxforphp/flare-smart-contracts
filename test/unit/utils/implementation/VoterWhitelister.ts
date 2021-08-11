@@ -53,7 +53,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     async function setFlrSupply(amount: number | BN, blockNumber: number) {
         const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
         const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', amount);
-        await supplyMock.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
+        await supplyMock.givenCalldataReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
     }
 
     async function createFtso(symbol: string, initialPriceUSD5Dec: BN) {

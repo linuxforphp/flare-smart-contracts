@@ -86,7 +86,7 @@ interface IIFtso is IFtso {
 
     function initializeCurrentEpochStateForReveal(bool _fallbackMode) external;
     
-    function flrVotePowerCached(address _owner) external returns (uint256);
+    function flrVotePowerCached(address _owner, uint256 _epochId) external returns (uint256);
   
     /**
      * @notice Returns the FTSO asset

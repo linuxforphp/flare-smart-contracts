@@ -579,8 +579,13 @@ contract Ftso is IIFtso {
         }
     }
 
-    function flrVotePowerCached(address _owner) public override returns (uint256) {
-        return _getVotePowerOfAt(wFlr, _owner, epochs.votePowerBlock);
+    /**
+     * @notice Returns flr vote power for the specified owner and the given epoch id
+     * @param _owner                Owner address
+     * @param _epochId              Id of the epoch
+     */
+    function flrVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
+        return _getVotePowerOfAt(wFlr, _owner, epochs.instance[_epochId].votePowerBlock);
     }
 
     /**
@@ -838,8 +843,8 @@ contract Ftso is IIFtso {
     /**
      * @notice Returns vote power of the given token at the specified block and for the specified owner
      * @param _vp                   Vote power token
-     * @param _vpBlock              Vote power block
      * @param _owner                Owner address
+     * @param _vpBlock              Vote power block
      * @dev Returns 0 if vote power token is null
      */
     function _getVotePowerOfAt(IIVPToken _vp, address _owner, uint256 _vpBlock) internal returns (uint256) {
