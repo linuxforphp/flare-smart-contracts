@@ -11,6 +11,7 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const BN = web3.utils.toBN;
@@ -50,7 +51,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             0,
-            1e10
+            1e10,
+            defaultPriceEpochCyclicBufferSize
         );
 
         mockInflation = await InflationMock.new();

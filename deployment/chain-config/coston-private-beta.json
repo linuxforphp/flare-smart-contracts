@@ -35,6 +35,7 @@
     "ftsoRewardExpiryOffsetDays": 30,
     "validatorRewardExpiryOffsetEpochs": 100,
     "initialWflrPriceUSD5Dec": 0,
+    "priceEpochCyclicBufferSize": 10,
     "XRP": {
         "fAssetName": "Flare Asset XRP",
         "fAssetSymbol": "FXRP",

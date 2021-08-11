@@ -5,6 +5,7 @@ import "../../token/interface/IIVPToken.sol";
 import "../../userInterfaces/IFtso.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./FtsoVote.sol";
 
 
@@ -14,6 +15,7 @@ import "./FtsoVote.sol";
 library FtsoEpoch {
     using SafeMath for uint256;
     using SafePct for uint256;
+    using SafeCast for uint256;
 
     struct State {                              // struct holding storage and settings related to epochs
         // storage        
@@ -26,7 +28,7 @@ library FtsoEpoch {
         uint256 revealPeriod;                   // duration of price reveal for an apoch instance
         
         // configurable settings
-        uint256 votePowerBlock;                 // current block at which the vote power is checked
+        uint240 votePowerBlock;                 // current block at which the vote power is checked
         uint256 maxVotePowerFlrThresholdFraction;       // high threshold for FLR vote power per voter
         uint256 maxVotePowerAssetThresholdFraction;     // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold;           // threshold for low asset vote power (in scaled USD)
@@ -38,25 +40,25 @@ library FtsoEpoch {
     }
 
     struct Instance {                           // struct holding epoch votes and results
-        uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
+        uint128 maxVotePowerFlr;                // max FLR vote power required for voting
+        uint128 maxVotePowerAsset;              // max asset vote power required for voting
+        uint240 votePowerBlock;                 // block used to obtain vote weights in epoch
+        bool initializedForReveal;              // whether epoch instance is initialized for reveal
+        bool fallbackMode;                      // current epoch in fallback mode
         uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
         uint256 lowFlrTurnoutThresholdBIPS;     // threshold for low flr turnout (in BIPS)
         uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
         uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
-        uint256 maxVotePowerFlr;                // max FLR vote power required for voting
-        uint256 maxVotePowerAsset;              // max asset vote power required for voting
         uint256 accumulatedVotePowerFlr;        // total FLR vote power accumulated from votes in epoch
         uint256 baseWeightRatio;                // base weight ratio between asset and FLR used to combine weights
         uint256 random;                         // random number associated with the epoch
         IIVPToken[] assets;                     // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
-        address[] trustedAddresses;             // trusted addresses - set only when used
-        FtsoVote.Instance[] votes;              // array of all votes in epoch
+        uint256 nextVoteIndex;
+        mapping(uint256 => FtsoVote.Instance) votes; // array of all votes in epoch
         uint256 price;                          // consented epoch asset price
         IFtso.PriceFinalizationType finalizationType; // finalization type
-        bool initializedForReveal;              // whether epoch instance is initialized for reveal
-        bool fallbackMode;                      // current epoch in fallback mode
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
@@ -86,21 +88,23 @@ library FtsoEpoch {
         uint256[] memory _assetPrices
     ) 
         internal
-    {    
-         // all divisions guaranteed not to divide with 0 - checked in ftso manager setGovernanceParameters(...)
+    {
+        // all divisions guaranteed not to divide with 0 - checked in ftso manager setGovernanceParameters(...)
         _setAssets(_state, _instance, _assets, _assetVotePowers, _assetPrices);
+
         _instance.votePowerBlock = _state.votePowerBlock;
         _instance.highAssetTurnoutThresholdBIPS = _state.highAssetTurnoutThresholdBIPS;
         _instance.lowFlrTurnoutThresholdBIPS = _state.lowFlrTurnoutThresholdBIPS;
         _instance.circulatingSupplyFlr = _circulatingSupplyFlr;
         _instance.votePowerFlr = _votePowerFlr;
-        _instance.maxVotePowerFlr = _votePowerFlr / _state.maxVotePowerFlrThresholdFraction;
-        _instance.maxVotePowerAsset = _instance.votePowerAsset / _state.maxVotePowerAssetThresholdFraction;
+        _instance.maxVotePowerFlr = (_votePowerFlr / _state.maxVotePowerFlrThresholdFraction).toUint128();
+        _instance.maxVotePowerAsset = 
+            (_instance.votePowerAsset / _state.maxVotePowerAssetThresholdFraction).toUint128();
         _instance.initializedForReveal = true;
     }
 
     /**
-     * @notice Adds a vote to the linked list representing an epoch instance
+     * @notice Adds a vote to the vote array of an epoch instance
      * @param _instance             Epoch instance
      * @param _votePowerFlr         Vote power for FLR
      * @param _votePowerAsset       Vote power for asset
@@ -117,7 +121,7 @@ library FtsoEpoch {
     )
         internal
     {
-        uint256 index = _instance.votes.length;
+        uint256 index = _instance.nextVoteIndex;
         FtsoVote.Instance memory vote = FtsoVote._createInstance(
             _voter,
             _votePowerFlr, 
@@ -125,8 +129,11 @@ library FtsoEpoch {
             _instance.votePowerFlr, 
             _instance.votePowerAsset,
             _price);
+
+        // cast legal current max voters are ~100 extreme max can be 2000
         vote.index = uint32(index);
-        _instance.votes.push(vote);
+        _instance.votes[index] = vote;
+        _instance.nextVoteIndex = index + 1;
         _instance.accumulatedVotePowerFlr = _instance.accumulatedVotePowerFlr.add(_votePowerFlr);
         _instance.random += _random;
     }
@@ -369,12 +376,12 @@ library FtsoEpoch {
         internal view
         returns (uint256[] memory _weights)
     {
-        uint256 length = _instance.votes.length;
+        uint256 length = _instance.nextVoteIndex;
         _weights = new uint256[](length);
 
         uint256 weightFlrSum = _arraySum(_weightsFlr);
         uint256 weightAssetSum = _arraySum(_weightsAsset);
-        
+
         // set weight distribution according to weight sums and weight ratio
         uint256 weightFlrShare = 0;
         uint256 weightAssetShare = _getWeightRatio(_instance, weightFlrSum, weightAssetSum);
@@ -404,7 +411,8 @@ library FtsoEpoch {
     function _getPriceDeviation(
         State storage _state,
         uint256 _epochId,
-        uint256 _epochPrice
+        uint256 _epochPrice,
+        uint256 _priceEpochCyclicBufferSize
     )
         internal view
         returns (uint256)
@@ -412,7 +420,8 @@ library FtsoEpoch {
         if (_epochId == 0) {
             return 0;
         }
-        uint256 previousEpochPrice = _state.instance[_epochId - 1].price;
+        uint256 previousEpochPrice = 
+            _state.instance[(_epochId - 1) % _priceEpochCyclicBufferSize].price;
         if (_epochPrice == previousEpochPrice) {
             return 0;
         }
@@ -429,7 +438,7 @@ library FtsoEpoch {
     }
 
     function _findVoteOf(Instance storage _epoch, address _voter) internal view returns (uint256) {
-        uint256 length = _epoch.votes.length;
+        uint256 length = _epoch.nextVoteIndex;
         for (uint256 i = 0; i < length; i++) {
             if (_epoch.votes[i].voter == _voter) {
                 return i + 1;

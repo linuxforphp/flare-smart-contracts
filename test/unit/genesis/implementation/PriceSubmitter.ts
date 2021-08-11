@@ -2,6 +2,7 @@ import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance,
 import { increaseTimeTo, lastOf, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Wflr = artifacts.require("WFlr") as WFlrContract;
@@ -65,7 +66,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                     accounts[10],
                     mockSupply.address,
                     1, // initial token price 0.00001$
-                    1e10
+                    1e10,
+                    defaultPriceEpochCyclicBufferSize
                 );
                 await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
                 await ftso.setVotePowerBlock(1, {from: accounts[10]});

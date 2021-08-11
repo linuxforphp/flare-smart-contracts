@@ -63,7 +63,8 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 mockSupply.address,
                 0, 0, 0,    // special mock settings, not needed here
                 1,
-                1e10
+                1e10,
+                35
             );
             await ftso.configureEpochs( 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
             await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });

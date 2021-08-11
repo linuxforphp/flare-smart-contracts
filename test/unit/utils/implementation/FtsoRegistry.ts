@@ -9,6 +9,7 @@ const FtsoRegistryContract = artifacts.require("FtsoRegistry");
 const MockContract = artifacts.require("MockContract");
 
 import { constants, expectRevert } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 
 const ONLY_GOVERNANCE_MSG = "only governance";
 const ONLY_FTSO_MANAGER_MSG = "FTSO manager only";
@@ -17,7 +18,7 @@ const ERR_TOKEN_NOT_SUPPORTED = "FTSO index not supported";
 let mockSupplyContract: MockContractInstance;
 
 async function mockFtso(symbol: string){
-  return await MockFtso.new(symbol, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, mockSupplyContract.address, 0, 0, 0, 0, 0);
+  return await MockFtso.new(symbol, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, mockSupplyContract.address, 0, 0, 0, 0, 0, defaultPriceEpochCyclicBufferSize);
 }
 
 

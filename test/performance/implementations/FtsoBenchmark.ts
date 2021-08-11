@@ -1,6 +1,6 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { FtsoRegistryInstance, SimpleMockFtsoInstance, MockContractInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WFlrInstance } from "../../../typechain-truffle";
-import { GOVERNANCE_GENESIS_ADDRESS, getTestFile } from "../../utils/constants";
+import { defaultPriceEpochCyclicBufferSize, GOVERNANCE_GENESIS_ADDRESS, getTestFile } from "../../utils/constants";
 import { compareArrays, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
@@ -62,7 +62,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     }
 
     async function createFtso(symbol: string, initialPrice: BN) {
-        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, initialPrice, 1e10);
+        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // add ftso to price submitter and whitelist
         const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);

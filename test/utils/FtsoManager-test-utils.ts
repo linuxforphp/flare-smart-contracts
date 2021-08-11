@@ -3,6 +3,7 @@ import { createMockSupplyContract } from "./FTSO-test-utils";
 import { submitPriceHash, toBN } from "./test-helpers";
 
 import { constants } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "./constants";
 
 export interface RewardEpochData {
     votepowerBlock: BN | number,
@@ -64,7 +65,8 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
 
@@ -73,7 +75,8 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
 
@@ -103,7 +106,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     ) as MockFtsoInstance;
     if (!flrContract) {
         await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
@@ -114,7 +118,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
 
@@ -123,7 +128,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso3.address, fasset3Token.address);
 
@@ -132,7 +138,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoFAsset(ftso4.address, fasset4Token.address);
 

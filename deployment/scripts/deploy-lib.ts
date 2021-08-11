@@ -323,7 +323,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // Create a non-FAsset FTSO
   // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPriceUSD5Dec, parameters.priceDeviationThresholdBIPS);
+  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -351,6 +351,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
       cleanupBlockNumberManager,
       rewrapFassetParams(parameters[asset]),
       parameters.priceDeviationThresholdBIPS,
+      parameters.priceEpochCyclicBufferSize,
       quiet
     );
     assetToContracts.set(asset, {
@@ -380,7 +381,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   for (let asset of ['FLR', ...assets]) {
     let ftsoContract = (assetToContracts.get(asset) as AssetContracts).ftso;
-    await ftsoManager.addFtso(ftsoContract.address);
+    await waitFinalize3(deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
   }
 
   let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
@@ -452,6 +453,7 @@ async function deployNewFAsset(
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
   fAssetDefinition: FAssetDefinition,
   priceDeviationThresholdBIPS: number,
+  priceEpochCyclicBufferSize: number,
   quiet = false):
   Promise<{
     fAssetToken: FAssetTokenInstance,
@@ -480,7 +482,7 @@ async function deployNewFAsset(
   await dummyFAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS);
+  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
   await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${fAssetDefinition.symbol}`, ftso.address, quiet);
 

@@ -30,7 +30,6 @@ contract FtsoEpochMock {
         uint256 voteCount;                       // number of votes in epoch
         IIVPToken[] assets;                       // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
-        address[] trustedAddresses;             // trusted addresses - set only when used
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         bool fallbackMode;                      // current epoch in fallback mode
     }
@@ -106,7 +105,8 @@ contract FtsoEpochMock {
     }
 
     function setVotePowerBlock(uint256 _votePowerBlock) public {
-        state.votePowerBlock = _votePowerBlock;
+        require (_votePowerBlock < 2 ** 240);
+        state.votePowerBlock = uint240(_votePowerBlock);
     }
     
     function setAssets(
@@ -138,11 +138,10 @@ contract FtsoEpochMock {
         result.price = epoch.price;
         result.finalizationType = epoch.finalizationType;
         result.random = epoch.random;
-        result.voteCount = epoch.votes.length;
+        result.voteCount = epoch.nextVoteIndex;
         result.initializedForReveal = epoch.initializedForReveal;
         result.assets = epoch.assets;
         result.assetWeightedPrices = epoch.assetWeightedPrices;
-        result.trustedAddresses = epoch.trustedAddresses;
         result.initializedForReveal = epoch.initializedForReveal;
         result.fallbackMode = epoch.fallbackMode;
 
