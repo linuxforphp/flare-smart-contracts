@@ -40,8 +40,8 @@ let tx = tester.push(1);
 await tester.length()
 
 
-contracts2_100 = await generateContracts(Tester2, 100)
-contracts2_100.map(x => x.address)
+let contracts2 = await generateContracts(Tester2, 5, 100000)
+contracts2.map(x => x.address)
 
 async function checkLengths(contracts) {
     for (let contract of contracts) {
@@ -68,54 +68,20 @@ async function gasUsage3() {
     console.log("}");
 }
 
-async function generateContracts3(n) {
-        let contracts = []
-        for (let i = 0; i < n; i++) {
-            console.log(i);
-            let res = await Tester3.new({ gasPrice: "5000000000000", gas: "2000000" });
-            contracts.push(res);
-            console.log(i + "Done")
-        }
-        return contracts;
-    }
-
-let contracts3 = await generateContracts3(10)
-contracts.map(x => x.address)
+let contracts3 = await generateContracts(Tester3, 5)
+contracts3.map(x => x.address)
 
 // Tester4.sol
 let Tester4 = artifacts.require("Tester4");
 let tester4 = await Tester4.new({ gasPrice: "5000000000000", gas: "2000000" });
 
-async function generateContracts4(n) {
-    let contracts = []
-    for (let i = 0; i < n; i++) {
-        console.log(i);
-        let res = await Tester4.new({ gasPrice: "5000000000000", gas: "2000000" });
-        contracts.push(res);
-        console.log(i + "Done")
-    }
-    return contracts;
-}
-
-let contracts4 = await generateContracts4(10)
-let addresses4 = contracts4.map(x => x.address)
+let contracts4 = await generateContracts(Tester4, 10)
+contracts4.map(x => x.address)
 
 // Tester5.sol
 let Tester5 = artifacts.require("Tester5");
 let tester5 = await Tester5.new(2000000, { gasPrice: "5000000000000", gas: "2000000" });
 
-async function generateContracts5(n, maxLen) {
-    let contracts = []
-    for (let i = 0; i < n; i++) {
-        console.log(i);
-        let res = await Tester5.new(maxLen, { gasPrice: "5000000000000", gas: "2000000" });
-        contracts.push(res);
-        console.log(i + "Done")
-    }
-    return contracts;
-}
-
-let contracts5 = await generateContracts5(10, 2000000)
-let contracts5_2 = await generateContracts5(10, 500000)
-let addresses5 = contract5.map(contract => contract.address)
+let contracts5 = await generateContracts(Tester5, 10, 2000000)
+contracts5.map(contract => contract.address)
 

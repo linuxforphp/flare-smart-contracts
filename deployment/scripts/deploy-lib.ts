@@ -135,7 +135,13 @@ export async function fullDeploy(parameters: any, quiet = false) {
   }
   spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address, quiet);
 
-  await flareKeeper.initialiseFixedAddress();
+
+  try {
+    await flareKeeper.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`flareKeeper.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
   let currentGovernanceAddress = await flareKeeper.governance()
 
   // Unregister whatever is registered with verification
@@ -173,7 +179,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   try {
     await priceSubmitter.initialiseFixedAddress();
   } catch (e) {
-
+    console.error(`priceSubmitter.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
   }
 
   // Checking if governance is OK, especially when redeploying.
