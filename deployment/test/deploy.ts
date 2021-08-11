@@ -985,21 +985,6 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       const settings = await ftsoManager.settings();
       // Act
-<<<<<<< HEAD
-      const maxVotePowerFlrThreshold = settings[1];
-      const maxVotePowerAssetThreshold = settings[2];
-      const lowAssetUSDThreshold = settings[3];
-      const highAssetUSDThreshold = settings[4];
-      const highAssetTurnoutBIPSThreshold = settings[5];
-      const lowFlrTurnoutBIPSThreshold = settings[6];
-      // Assert
-      assert.equal(maxVotePowerFlrThreshold.toNumber(), parameters.maxVotePowerFlrThreshold);
-      assert.equal(maxVotePowerAssetThreshold.toNumber(), parameters.maxVotePowerAssetThreshold);
-      assert.equal(lowAssetUSDThreshold.toNumber(), parameters.lowAssetUSDThreshold);
-      assert.equal(highAssetUSDThreshold.toNumber(), parameters.highAssetUSDThreshold);
-      assert.equal(highAssetTurnoutBIPSThreshold.toNumber(), parameters.highAssetTurnoutBIPSThreshold);
-      assert.equal(lowFlrTurnoutBIPSThreshold.toNumber(), parameters.lowFlrTurnoutBIPSThreshold);
-=======
       const maxVotePowerFlrThresholdFraction = settings[1];
       const maxVotePowerAssetThresholdFraction = settings[2];
       const lowAssetThresholdUSDDec5 = settings[3];
@@ -1013,7 +998,6 @@ contract(`deploy.ts system tests`, async accounts => {
       assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
       assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
       assert.equal(lowFlrTurnoutThresholdBIPS.toNumber(), parameters.lowFlrTurnoutThresholdBIPS);
->>>>>>> master
     });
   });
 });
