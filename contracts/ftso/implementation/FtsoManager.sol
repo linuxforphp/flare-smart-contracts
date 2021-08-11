@@ -437,12 +437,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         return (firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
     }
 
-    function _addFtso(IIFtso _ftso, bool _updatingExistingFtso) internal {
+    function _addFtso(IIFtso _ftso, bool _addNewFtso) internal {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
 
         _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
 
-        if (_updatingExistingFtso) {
+        if (_addNewFtso) {
             // Check if it already exists
             IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
             uint256 len = availableFtsos.length;
@@ -477,7 +477,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         managedFtsos[_ftso] = true;
         ftsoRegistry.addFtso(_ftso);
 
-        if (!_updatingExistingFtso) {
+        // When a new ftso is added we also add it to the price submitter
+        if (_addNewFtso) {
             uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());      
             priceSubmitter.addFtso(_ftso, ftsoIndex);
         }
