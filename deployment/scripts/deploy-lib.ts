@@ -31,7 +31,7 @@ export interface FAssetDefinition {
   initialPriceUSD5Dec: number;
 }
 
-export interface AssetContracts {  
+export interface AssetContracts {
   fAssetToken: FAssetTokenInstance | WFlrInstance;
   ftso: FtsoInstance;
   dummyFAssetMinter?: DummyFAssetMinterInstance;
@@ -62,7 +62,7 @@ const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
 import { waitFinalize3 } from "../../test/utils/test-helpers";
 
-export async function fullDeploy(parameters: any, quiet = false) {  
+export async function fullDeploy(parameters: any, quiet = false) {
   // Define repository for created contracts
   const contracts = new Contracts();
 
@@ -134,7 +134,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     flareKeeper = await FlareKeeper.new();
   }
   spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address, quiet);
-  
+
   await flareKeeper.initialiseFixedAddress();
   let currentGovernanceAddress = await flareKeeper.governance()
 
@@ -167,21 +167,25 @@ export async function fullDeploy(parameters: any, quiet = false) {
     if (!quiet) {
       console.error("PriceSubmitter not in genesis...creating new.")
     }
-    priceSubmitter = await PriceSubmitter.new();    
-  }  
+    priceSubmitter = await PriceSubmitter.new();
+  }
   // This has to be done always
-  await priceSubmitter.initialiseFixedAddress();
+  try {
+    await priceSubmitter.initialiseFixedAddress();
+  } catch (e) {
+
+  }
 
   // Checking if governance is OK, especially when redeploying.
   let priceSubmitterGovernance = await priceSubmitter.governance();
-  if(currentGovernanceAddress != priceSubmitterGovernance) {
+  if (currentGovernanceAddress != priceSubmitterGovernance) {
     console.error("Current governance does not match price submitter governance");
     console.error("Current governance:", currentGovernanceAddress);
     console.error("Price submitter goveranance:", priceSubmitterGovernance);
-    await priceSubmitter.proposeGovernance(currentGovernanceAddress, {from: priceSubmitterGovernance});
-    await priceSubmitter.claimGovernance({from: currentGovernanceAddress})
+    await priceSubmitter.proposeGovernance(currentGovernanceAddress, { from: priceSubmitterGovernance });
+    await priceSubmitter.claimGovernance({ from: currentGovernanceAddress })
     let newPriceSubmitterGovernance = await priceSubmitter.governance();
-    if(currentGovernanceAddress == newPriceSubmitterGovernance) {
+    if (currentGovernanceAddress == newPriceSubmitterGovernance) {
       console.error("Governance of PriceSubmitter changed")
     } else {
       console.error("Governance for PriceSubmitter does not match. Bailing out ...")
@@ -373,14 +377,14 @@ export async function fullDeploy(parameters: any, quiet = false) {
     await ftsoManager.addFtso(ftsoContract.address);
   }
 
-  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());  
+  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
 
   // Set initial number of voters
-  for (let asset of ['FLR', ...assets]){
+  for (let asset of ['FLR', ...assets]) {
 
-    const assetContract = assetToContracts.get(asset)!; 
+    const assetContract = assetToContracts.get(asset)!;
     const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
-    await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, {from: currentGovernanceAddress});
+    await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, { from: currentGovernanceAddress });
   }
 
   // Set FTSOs to multi FAsset WFLR contract
