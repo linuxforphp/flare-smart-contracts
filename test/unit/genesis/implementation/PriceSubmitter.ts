@@ -31,12 +31,6 @@ let epochId: number;
 let voterWhitelister: VoterWhitelisterInstance;
 
 // WARNING: This sets mock vote power fully, irrespective of address and blockNumber
-async function setMockVotePowerOfAt(blockNumber: number, wflrVotePower: number, address: string) {
-    const votePowerOfAtCached_wflr = wflrInterface.contract.methods.votePowerOfAtCached(address, blockNumber).encodeABI();
-    const votePowerOfAtCachedReturn_wflr = web3.eth.abi.encodeParameter('uint256', wflrVotePower);
-    await mockWflr.givenMethodReturn(votePowerOfAtCached_wflr, votePowerOfAtCachedReturn_wflr);
-}
-
 async function setBatchMockVotePower(votePower: number[]) {
     // Both are address and block number are irrelevant. We just need them for proper method coding
     const batchVotePowerOfAt = wflrInterface.contract.methods.batchVotePowerOfAt([constants.ZERO_ADDRESS], 1).encodeABI();
@@ -204,7 +198,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             const supportedFtsos = web3.eth.abi.encodeParameter("uint256[]", [...Array(ftsos.length).keys()].filter(x => x != 1));
             await mockFtsoRegistry.givenCalldataReturn(getSupportedSymbolsAndFtsos, supportedFtsos);
 
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.setMaxVotersForFtso(0, 100, {from: GOVERNANCE_GENESIS_ADDRESS});
             await voterWhitelister.setMaxVotersForFtso(2, 100, {from: GOVERNANCE_GENESIS_ADDRESS});
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
@@ -272,9 +265,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             const failPrecheck = await priceSubmitter.submitPriceHashes([0, 1], [hash1, hash2]);
             expectEvent(failPrecheck, "PriceHashesSubmitted", { ftsos: [constants.ZERO_ADDRESS, constants.ZERO_ADDRESS] });
 
-            await setMockVotePowerOfAt(1, 10, accounts[10]);  
-            await setMockVotePowerOfAt(1, 1000, accounts[11]);
-
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
 
             await priceSubmitter.submitPriceHashes([0, 1], [hash1, hash2], {from: accounts[10]});
@@ -301,7 +291,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash3 = submitPriceHash(300, 125, accounts[1]);
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes, success: [true, true, true]});
@@ -323,7 +312,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash1 = submitPriceHash(500, 123, accounts[1]);
             let hash2 = submitPriceHash(200, 124, accounts[1]);
 
-            await setMockVotePowerOfAt(1, 10, accounts[1]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
 
             await ftsos[0].deactivateFtso({ from: accounts[10] });
@@ -354,7 +342,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[1]});
@@ -392,7 +379,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[1].address, ftsos[0].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
@@ -427,8 +413,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let randoms = [123, 124, 125];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
-            
             let tx = priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
             await expectRevert(tx, ERR_TO_MANY_REVERTS)
         });
@@ -439,7 +423,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[1].address, ftsos[0].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
 
             // Kick 1 out
@@ -458,7 +441,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[1].address, ftsos[0].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
@@ -485,7 +467,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[1].address, ftsos[0].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
@@ -508,7 +489,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[1].address, ftsos[0].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
@@ -554,9 +534,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1])];
             let hashesAttacker = Array.from(hashes) // Copy sent hashes
 
-            await setMockVotePowerOfAt(1, 10, accounts[1]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
-            await setMockVotePowerOfAt(1, 10, accounts[2]); 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
             let tx = await priceSubmitter.submitPriceHashes([0, 1], hashes, {from: accounts[1]});

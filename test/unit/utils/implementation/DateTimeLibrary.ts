@@ -235,7 +235,7 @@ contract(`DateTimeLibrary.sol; ${getTestFile(__filename)}; DateTimeLibrary unit 
   });
 
   describe("Validate Dates", async() => { 
-    it("Shoud check if date 0 is 01.01.1970 ", async() => {
+    it("Should check if date 0 is 01.01.1970 ", async() => {
       // Assemble
       const day_zero = await dateTimeContract._daysFromDate(1970,1,1);
       // Act

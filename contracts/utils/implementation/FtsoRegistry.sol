@@ -55,7 +55,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
                 continue;
             }
             if (_encodedSymbol == keccak256(abi.encode(current.symbol()))) {
-                    break;
+                break;
             }
         }
         // ftso with the same symbol is not yet in history array, add it

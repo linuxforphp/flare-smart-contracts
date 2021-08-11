@@ -358,7 +358,7 @@ library FtsoEpoch {
      * @param _instance             Epoch instance
      * @param _weightsFlr           Array of FLR weights
      * @param _weightsAsset         Array of asset weights
-     * @return _weights              Array of combined weights
+     * @return _weights             Array of combined weights
      * @dev All weight parameters and variables are in BIPS
      */
     function _computeWeights(

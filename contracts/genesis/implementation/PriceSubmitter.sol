@@ -198,7 +198,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
             ftsos[i] = ftso;
             // read flare VP only once
             if (flrVP == uint256(-1)) {
-                flrVP = ftso.flrVotePowerCached(msg.sender);
+                flrVP = ftso.flrVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
             try ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP) {
