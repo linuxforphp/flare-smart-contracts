@@ -13,9 +13,10 @@ contract SimpleMockFtso is Ftso {
         IIFtsoManager _ftsoManager,
         IISupply _supply,
         uint256 _initialPrice,
-        uint256 _priceDeviationThresholdBIPS
+        uint256 _priceDeviationThresholdBIPS,
+        uint256 _cyclicBufferSize
     ) 
-        Ftso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS) 
+        Ftso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS, _cyclicBufferSize)
     {}
 
     /**
@@ -46,7 +47,8 @@ contract SimpleMockFtso is Ftso {
             uint256[] memory _weightFlr
         )
     {
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
+        _isEpochDataAvailable(_epochId);
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
         return _readVotes(epoch);
     }
 
@@ -58,27 +60,41 @@ contract SimpleMockFtso is Ftso {
         external view
         returns (uint256) 
     {
-        return FtsoEpoch._getWeightRatio(epochs.instance[_epochId], _weightFlrSum, _weightAssetSum);
+        _isEpochDataAvailable(_epochId);
+        return FtsoEpoch._getWeightRatio(
+            epochs.instance[_epochId % priceEpochCyclicBufferSize], _weightFlrSum, _weightAssetSum
+        );
     }
     
     function getVotePowerOf(address _owner) public returns (uint256 _votePowerFlr, uint256 _votePowerAsset) {
+        _isEpochDataAvailable(lastRevealEpochId);
+        FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId  % priceEpochCyclicBufferSize]; 
+
         return _getVotePowerOf(
-            epochs.instance[lastRevealEpochId],
+            epoch,
             _owner,
-            flrVotePowerCached(_owner, lastRevealEpochId)
+            flrVotePowerCached(_owner, lastRevealEpochId),
+            epoch.fallbackMode,
+            uint256(epoch.votePowerBlock)
         );
     }
 
     // Simplified version of vote power weight calculation (no vote commit/reveal, but result should be equal)
     function getVotePowerWeights(address[] memory _owners) public returns (uint256[] memory _weights) {
-        FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId];
+        _isEpochDataAvailable(lastRevealEpochId);
+        FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId % priceEpochCyclicBufferSize];
         uint256[] memory weightsFlr = new uint256[](_owners.length);
         uint256[] memory weightsAsset = new uint256[](_owners.length);
         for (uint256 i = 0; i < _owners.length; i++) {
-            (uint256 votePowerFlr, uint256 votePowerAsset) = 
-                _getVotePowerOf(epoch, _owners[i], flrVotePowerCached(_owners[i], lastRevealEpochId));
+            (uint256 votePowerFlr, uint256 votePowerAsset) = _getVotePowerOf(
+                epoch,
+                _owners[i],
+                flrVotePowerCached(_owners[i], lastRevealEpochId),
+                epoch.fallbackMode,
+                uint256(epoch.votePowerBlock)
+            );
             FtsoEpoch._addVote(epoch, _owners[i], votePowerFlr, votePowerAsset, 0, 0);
-            FtsoVote.Instance memory vote = epoch.votes[epoch.votes.length - 1];
+            FtsoVote.Instance memory vote = epoch.votes[epoch.nextVoteIndex - 1];
             weightsFlr[i] = vote.weightFlr;
             weightsAsset[i] = vote.weightAsset;
         }

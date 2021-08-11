@@ -7,6 +7,7 @@ import { TestExampleLogger } from "../../utils/TestExampleLogger";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
 import { expectRevert } from '@openzeppelin/test-helpers';
+import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
 
 async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number): Promise<{ flrToken: WFlr; assetToken: VPTokenMock; ftso: MockFtso; }> {
 
@@ -22,7 +23,8 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
         1, //uint256 _initialPrice
-        1e10
+        1e10,
+        defaultPriceEpochCyclicBufferSize
     );
     await ftso.connect(signer).setFAsset(assetToken.address);
 

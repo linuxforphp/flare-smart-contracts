@@ -13,6 +13,8 @@ contract MockFtso is SimpleMockFtso {
         uint256 lowRewardedPrice;               // the lowest submitted price eligible for reward
         uint256 highRewardedPrice;              // the highest submitted price eligible for reward
         uint256 finalizedTimestamp;             // block.timestamp of time when price is decided
+        address[] trustedAddresses;             // trusted addresses - set only when used
+        bool fallbackMode;                      // current epoch in fallback mode
         bool rewardedFtso;                      // whether current epoch instance was a rewarded ftso
     }
 
@@ -27,9 +29,18 @@ contract MockFtso is SimpleMockFtso {
         uint256 _submitPeriod,
         uint256 _revealPeriod,
         uint256 _initialPrice,
-        uint256 _priceDeviationThresholdBIPS
+        uint256 _priceDeviationThresholdBIPS,
+        uint256 _cyclicBufferSize
     )
-        SimpleMockFtso(_symbol, _wFlr, _ftsoManager, _supply, _initialPrice, _priceDeviationThresholdBIPS)
+        SimpleMockFtso(
+            _symbol,
+            _wFlr,
+            _ftsoManager,
+            _supply,
+            _initialPrice,
+            _priceDeviationThresholdBIPS,
+            _cyclicBufferSize
+        )
     {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol
         if (_submitPeriod != 0 && _revealPeriod != 0) {
@@ -87,16 +98,38 @@ contract MockFtso is SimpleMockFtso {
             bool _fallbackMode
         )
     {
-        require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
+        _isEpochDataAvailable(_epochId);
+        return _getFullEpochReport(_epochId);
+    }
+
+    function _getFullEpochReport(uint256 _epochId) 
+        private view
+        returns (
+            uint256 _epochSubmitStartTime,
+            uint256 _epochSubmitEndTime,
+            uint256 _epochRevealEndTime,
+            uint256 _epochFinalizedTimestamp,
+            uint256 _price,
+            uint256 _lowRewardPrice,
+            uint256 _highRewardPrice,
+            uint256 _numberOfVotes,
+            uint256 _votePowerBlock,
+            PriceFinalizationType _finalizationType,
+            address[] memory _trustedAddresses,
+            bool _rewardedFtso,
+            bool _fallbackMode
+        )
+    {
         _epochSubmitStartTime = epochs._epochSubmitStartTime(_epochId);
         _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);        
         _epochRevealEndTime = epochs._epochRevealEndTime(_epochId);
+        _epochId = _epochId % priceEpochCyclicBufferSize;
         _price = epochs.instance[_epochId].price;
-        _numberOfVotes = epochs.instance[_epochId].votes.length;
+        _numberOfVotes = epochs.instance[_epochId].nextVoteIndex;
         _votePowerBlock = epochs.instance[_epochId].votePowerBlock;
         _finalizationType = epochs.instance[_epochId].finalizationType;
-        _trustedAddresses = epochs.instance[_epochId].trustedAddresses;
-        _fallbackMode = epochs.instance[_epochId].fallbackMode;
+        _trustedAddresses = epochResults[_epochId].trustedAddresses;
+        _fallbackMode = epochs.instance[_epochId].fallbackMode || epochResults[_epochId].fallbackMode;
         _epochFinalizedTimestamp = epochResults[_epochId].finalizedTimestamp;
         _lowRewardPrice = epochResults[_epochId].lowRewardedPrice;
         _highRewardPrice = epochResults[_epochId].highRewardedPrice;
@@ -125,12 +158,12 @@ contract MockFtso is SimpleMockFtso {
             bool[] memory _eligibleForReward
         )
     {
-        require(_epochId <= getCurrentEpochId(), ERR_EPOCH_UNKNOWN);
+        _isEpochDataAvailable(_epochId);
 
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        EpochResult storage epochResult = epochResults[_epochId];
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        EpochResult storage epochResult = epochResults[_epochId % priceEpochCyclicBufferSize];
 
-        uint256 count = epoch.votes.length;
+        uint256 count = epoch.nextVoteIndex;
         _voters = new address[](count);
         _prices = new uint256[](count);
         _weights = new uint256[](count);
@@ -168,9 +201,9 @@ contract MockFtso is SimpleMockFtso {
     )
         internal virtual override
     {
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId];
-        EpochResult storage result = epochResults[_epochId];
-        
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        EpochResult storage result = epochResults[_epochId % priceEpochCyclicBufferSize];
+
         // update indexes
         for (uint256 i = 0; i < _index.length; i++) {
             epoch.votes[_index[i]].index = uint32(i);
@@ -190,7 +223,10 @@ contract MockFtso is SimpleMockFtso {
      * To be implemented in descendants
      */
     function _writeFallbackEpochPriceData(uint256 _epochId) internal virtual override {
-        EpochResult storage result = epochResults[_epochId];
+        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        EpochResult storage result = epochResults[_epochId % priceEpochCyclicBufferSize];
         result.finalizedTimestamp = block.timestamp;
+        result.trustedAddresses = epochs.trustedAddresses;
+        result.fallbackMode = epoch.fallbackMode;
     }
 }

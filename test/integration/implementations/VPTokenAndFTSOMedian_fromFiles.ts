@@ -2,6 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import path from "path";
 import { MockFtso, VPTokenMock, WFlr } from "../../../typechain";
+import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
 import { checkTestCase, createMockSupplyContract, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
@@ -62,7 +63,8 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
                 epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
                 1, //uint256 _initialPrice
-                1e10
+                1e10,
+                defaultPriceEpochCyclicBufferSize
             )
             await ftso.connect(signers[0]).setFAsset(assetToken.address);
 
