@@ -14,14 +14,11 @@ import "../interface/IIVoterWhitelister.sol";
 contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
-    string internal constant ERR_TOO_MANY_REVERTS = "Too many reverts";
+    string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
     string internal constant ERR_INVALID_INDEX = "Invalid index";
     string internal constant ERR_FTSO_MANAGER_ONLY = "FTSOManager only";
     string internal constant ERR_WHITELISTER_ONLY = "Voter whitelister only";
     string internal constant ERR_ALREADY_ADDED = "Already added";
-
-    uint256 internal constant MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS = 2;
-    uint256 internal constant MAX_ALLOWED_NUMBER_OF_REVEAL_REVERTS = 2;
 
 
     IIFtsoRegistry internal ftsoRegistry; 
@@ -31,8 +28,6 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
     mapping(address => uint256) private whitelistedFtsoBitmap; 
-
-    mapping(bytes32 => uint256) private currencyBitmask;
 
     modifier onlyFtsoManager {
         require(msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
@@ -89,11 +84,8 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      * Only ftso manager can call this method.
      * `_ftso` must already be in ftso registry and `_ftsoIndex` must match that in the registry.
      */
-    function removeFtso(IIFtso _ftso, uint256 _ftsoIndex) external override onlyFtsoManager {
+    function removeFtso(uint256 _ftsoIndex) external override onlyFtsoManager {
         voterWhitelister.removeFtso(_ftsoIndex);
-        // Set the bitmask to zero => Any submission will fail
-        bytes32 symbolHash = _hashSymbol(_ftso.symbol());
-        delete currencyBitmask[symbolHash];
     }
     
     /**
@@ -120,10 +112,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      * Only ftso manager can call this method.
      * `_ftso` must already be in ftso registry and `_ftsoIndex` must match that in the registry.
      */
-    function addFtso(IIFtso _ftso, uint256 _ftsoIndex) external override onlyFtsoManager {
-        bytes32 symbolHash = _hashSymbol(_ftso.symbol());
-        require(currencyBitmask[symbolHash] == 0, ERR_ALREADY_ADDED);
-        currencyBitmask[symbolHash] = _ftsoIndex;
+    function addFtso(uint256 _ftsoIndex) external override onlyFtsoManager {
         voterWhitelister.addFtso(_ftsoIndex);
     }
     
@@ -139,23 +128,16 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         bool[] memory success = new bool[](length);
         IIFtso[] memory ftsos = new IIFtso[](length);
         uint256 epochId;
-        uint256 numberOfReverts = 0;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
         for (uint256 i = 0; i < length; i++) {
             uint256 ind = _ftsoIndices[i];
             if (allowedBitmask & (1 << ind) == 0) {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-                continue;
+                revert(ERR_NOT_WHITELISTED);
             }
             ftsos[i] = ftsoRegistry.getFtso(ind);
-            try ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]) returns (uint256 _epochId) {
-                success[i] = true;
-                // they should all be the same (one price provider contract for all ftsos managed by one ftso manager)
-                epochId = _epochId;
-            } catch {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-            }
+            epochId = ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]);
+            success[i] = true;
         }
         emit PriceHashesSubmitted(msg.sender, epochId, ftsos, _hashes, success, block.timestamp);
     }
@@ -183,7 +165,6 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
 
         IIFtso[] memory ftsos = new IIFtso[](len);
         bool[] memory success = new bool[](len);
-        uint256 numberOfReverts = 0;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
         uint256 flrVP = uint256(-1);
@@ -191,8 +172,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         for (uint256 i = 0; i < len; i++) {
             uint256 ind = _ftsoIndices[i];
             if (allowedBitmask & (1 << ind) == 0) {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-                continue;
+                revert(ERR_NOT_WHITELISTED);
             }
             IIFtso ftso = ftsoRegistry.getFtso(ind);
             ftsos[i] = ftso;
@@ -201,11 +181,8 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
                 flrVP = ftso.flrVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
-            try ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP) {
-                success[i] = true;
-            } catch {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-            }
+            ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP);
+            success[i] = true;
         }
         emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, success, block.timestamp);
     }

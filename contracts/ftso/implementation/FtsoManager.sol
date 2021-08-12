@@ -220,7 +220,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
         uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());
-        priceSubmitter.removeFtso(_ftso, ftsoIndex);
+        priceSubmitter.removeFtso(ftsoIndex);
         ftsoRegistry.removeFtso(_ftso);
         _cleanFtso(_ftso);
     }
@@ -443,12 +443,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
 
         if (_addNewFtso) {
-            // Check if it already exists
-            IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
-            uint256 len = availableFtsos.length;
+            // Check if symbol already exists in registry
+            bytes32 symbol = keccak256(abi.encode(_ftso.symbol()));
+            (string[] memory _supportedSymbols,) = ftsoRegistry.getSupportedSymbolsAndFtsos();
+            uint256 len = _supportedSymbols.length;
             while (len > 0) {
                 --len;
-                if (availableFtsos[len] == _ftso) {
+                if (keccak256(abi.encode(_supportedSymbols[len])) == symbol) {
                     revert(ERR_ALREADY_ADDED);
                 }
             }
@@ -480,7 +481,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         // When a new ftso is added we also add it to the price submitter
         if (_addNewFtso) {
             uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());      
-            priceSubmitter.addFtso(_ftso, ftsoIndex);
+            priceSubmitter.addFtso(ftsoIndex);
         }
         
         emit FtsoAdded(_ftso, true);

@@ -33,14 +33,14 @@ interface IIPriceSubmitter is IPriceSubmitter{
      * Only ftso manager can call this method.
      * `_ftso` must already be in ftso registry and `_ftsoIndex` must match that in the registry.
      */
-    function addFtso(IIFtso _ftso, uint256 _ftsoIndex) external;
+    function addFtso(uint256 _ftsoIndex) external;
     
     /**
      * Remove ftso and disallow price submissions.
      * Only ftso manager can call this method.
      * `_ftso` must already be in ftso registry and `_ftsoIndex` must match that in the registry.
      */
-    function removeFtso(IIFtso _ftso, uint256 _ftsoIndex) external;
+    function removeFtso(uint256 _ftsoIndex) external;
 
     /**
      * Called from whitelister when new voter has been whitelisted.

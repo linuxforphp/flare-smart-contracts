@@ -36,9 +36,4 @@ contract PriceSubmitterUnregisterHack {
     function removeFtso(uint256 _ftsoIndex) external {
         ftsoIndex = _ftsoIndex;
     }
-
-    function unregisterFtso(IIFtso _ftso) external {
-        priceSubmitter.removeFtso(_ftso, 0);
-    }
-
 }
