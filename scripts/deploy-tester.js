@@ -36,8 +36,8 @@ contracts.map(contract => contract.address)
 // Tester2.sol
 let Tester2 = artifacts.require("Tester2");
 let tester2 = await Tester2.new(100000, { gasPrice: "500000000000", gas: "2000000" });
-let tx = tester.push(1);
-await tester.length()
+let tx = tester2.push(1);
+await tester2.length()
 
 
 let contracts2 = await generateContracts(Tester2, 5, 100000)
