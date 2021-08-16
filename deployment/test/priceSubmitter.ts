@@ -10,7 +10,7 @@ let ftsoManager: FtsoManagerInstance;
 contract(`PriceSubmitter gas usage tests`, async accounts => {
 
     let contracts: Contracts;
-    let account = accounts[5];
+    let account = accounts[5]; // should already be whitelisted
     let gasPrice = toBN(2250000000000);
     let price = 200000;
     let index = 1;
@@ -48,7 +48,7 @@ contract(`PriceSubmitter gas usage tests`, async accounts => {
             expect(balanceDiff.eq(gasUsed.mul(gasPrice))).to.be.true;
         });
         
-        it.only("Should reveal price", async() => {
+        it("Should reveal price", async() => {
             // submit price
             let hash = submitPriceHash(price, random, account);
 
