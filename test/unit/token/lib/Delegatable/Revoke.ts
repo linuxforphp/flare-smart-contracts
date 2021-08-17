@@ -37,8 +37,10 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     // Bob delegates vote power by percent to Lucy and Ed. Later, Bob gets some more
     // tokens. Then he realizes Ed may be a bad actor and reduces his VP delegation.
     // Bob also wants to revoke Ed's delegation for a past block. Ed's vote power at that
-    // past block should be reduced by amount delegated by Bob at that time and given 
-    // back to Bob at that block. Total vote power at that block should remain constant.
+    // past block should be reduced by amount delegated by Bob. To prevent double delegation,
+    // Bob does not receive the vote power back for already passed block but has no 
+    // impact on current (and future) Bob's vote power. 
+    // Total vote power at that historic block is reduced by the amount revoked.
     
     // Assemble
     b[blockAtStart] = await web3.eth.getBlockNumber();
@@ -89,7 +91,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     await delegatable.revokeDelegationAt(ed, b[blockAfterBobDelegateToEd], {from: bob});
     // blockAfterBobDelegateToEd
     //        T    V
-    // Bob    200  100
+    // Bob    200  40 // To prevent double delegation, revoked vote power is not returned
     // Lucy   100  200
     // Ed     50   50
 
@@ -170,19 +172,19 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
     // Lucy   100  200
     // Ed     50   110
 
-    await delegatable.delegateExplicit(ed, 15, { from: bob });                   // Ed -> 75 VP -> Bob
+    await delegatable.delegateExplicit(ed, 15, { from: bob });                   // Ed -> 45 VP -> Bob
     b[blockAfterBobSlashEd] = await web3.eth.getBlockNumber();
     // blockAfterBobSlashEd (the now block)
     //        T    V
     // Bob    300  185
-    // Lucy   100  250
+    // Lucy   100  200
     // Ed     50   65
 
     // Act
     await delegatable.revokeDelegationAt(ed, b[blockAfterBobDelegateToEd], { from: bob });
     // blockAfterBobDelegateToEd
     //        T    V
-    // Bob    200  100
+    // Bob    200  40
     // Lucy   100  200
     // Ed     50   50
 
