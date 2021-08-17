@@ -1,9 +1,9 @@
-import { DistributionInstance } from "../../../typechain-truffle";
-import { toBN } from "../../utils/test-helpers";
+import { DistributionInstance } from "../../../../typechain-truffle";
+import { toBN } from "../../../utils/test-helpers";
 
-const getTestFile = require('../../utils/constants').getTestFile;
-const {sumGas, calcGasCost } = require('../../utils/eth'); 
-const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
+const getTestFile = require('../../../utils/constants').getTestFile;
+const {sumGas, calcGasCost } = require('../../../utils/eth'); 
+const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 
 const BN = web3.utils.toBN;
