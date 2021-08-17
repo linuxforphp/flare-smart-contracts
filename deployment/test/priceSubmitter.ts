@@ -1,3 +1,4 @@
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { submitPriceHash, toBN } from "../../test/utils/test-helpers";
 import { FtsoManagerContract, FtsoManagerInstance, PriceSubmitterContract, PriceSubmitterInstance } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
@@ -85,7 +86,49 @@ contract(`PriceSubmitter gas usage tests`, async accounts => {
             console.log("Tx value: " + gasUsed.mul(gasPrice).toString());
 
             expect(balanceDiff.lt(gasUsed.mul(gasPrice))).to.be.true;
+        });
 
+        it("Should revert at reveal price", async() => {
+            // submit price
+            let hash = submitPriceHash(price, random, account);
+
+            await priceSubmitter.submitPriceHashes([index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
+
+            // wait
+            let epochId = (await ftsoManager.getCurrentPriceEpochData())[0];
+            let priceEpochData = await ftsoManager.getPriceEpochConfiguration();
+
+            console.log(priceEpochData[0].add((epochId.addn(1)).mul(priceEpochData[1])).add(priceEpochData[2].divn(10)).toString());
+            console.log(Math.floor(Date.now() / 1000));
+
+            while(priceEpochData[0].add((epochId.addn(1)).mul(priceEpochData[1])).add(priceEpochData[2].divn(10)).gt(toBN(Date.now()).divn(1000))) {
+                await new Promise(resolve => {
+                    setTimeout(resolve, 5000);
+                });
+                console.log("waiting");
+                console.log(toBN(Date.now()).divn(1000).toString());
+            }
+
+            // reveal price
+            let initialBalance = toBN(await web3.eth.getBalance(account));
+            console.log(initialBalance.toString());
+
+            let gasUsed = toBN(0);
+            try {
+                // will always revert
+                await priceSubmitter.revealPrices(epochId, [index], [price + 1], [random], { from: account, gasPrice: gasPrice, gas: gas });
+            } catch(e) {
+                gasUsed = toBN(e.receipt.gasUsed);
+            }
+            console.log(gasUsed.toString());
+
+            let finalBalance = toBN(await web3.eth.getBalance(account));
+            console.log(finalBalance.toString());
+            let balanceDiff = initialBalance.sub(finalBalance);
+            console.log("Balance diff: " + balanceDiff.toString());
+            console.log("Tx value: " + gasUsed.mul(gasPrice).toString());
+
+            expect(balanceDiff.eq(gasUsed.mul(gasPrice))).to.be.true;
         });
     });
 });
