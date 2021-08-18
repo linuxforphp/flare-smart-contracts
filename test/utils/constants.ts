@@ -15,3 +15,4 @@ export const FLARE_KEEPER_ADDRESS = "0x1000000000000000000000000000000000000002"
 export const PRICE_SUBMITTER_ADDRESS = "0x1000000000000000000000000000000000000003";
 
 export const defaultPriceEpochCyclicBufferSize = 39;
+export const ftsoRandomTestRuns = undefined;

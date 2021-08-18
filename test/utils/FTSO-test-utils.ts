@@ -128,11 +128,18 @@ export interface TestExample {
      * generated acording to *Averate and *SD parameters, which should be provided 
      */
     randomizedDataCount?: number;
+    /**
+     * determines how many times a randomized test is run, default is 1
+     */
+    randomizedRuns?: number;
     prices: number[];
     weightsFlr: number[];
     weightsAsset: number[];
     weightRatio?: number,
-    priceAverage?: number;
+    /**
+     * if priceAverage is specified as an array of n values, then n clusters of price values are generated
+     */
+    priceAverage?: number | number[];
     priceSD?: number;
     weightFlrAverage?: number;
     weightFlrSD?: number;
@@ -682,21 +689,43 @@ export function randomizeExampleGenerator(testExample: TestExample) {
     let len = testExample.randomizedDataCount
     if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
     testExample.prices = [];
-    testExample.weightsAsset = []
-    testExample.weightsFlr = []
+    testExample.weightsAsset = [];
+    testExample.weightsFlr = [];
+    let clusters;
+    let priceAverage;
+    if (isNumberArray(testExample.priceAverage!)) {
+        clusters = testExample.priceAverage.length;
+        priceAverage = testExample.priceAverage!;
+    } else {
+        clusters = 1;
+        priceAverage = [testExample.priceAverage!];
+    }
     for (let i = 0; i < len; i++) {
         testExample.weightsFlr.push(normal(testExample.weightFlrAverage!, testExample.weightFlrSD!));
         testExample.weightsAsset.push(normal(testExample.weightAssetAverage!, testExample.weightAssetSD!));
-        testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
+        testExample.prices.push(normal(priceAverage[i % clusters], testExample.priceSD!));
     }
+}
+
+function isNumberArray(value: number | number[]): value is number[] {
+    return (value as number[]).length !== undefined;
 }
 
 export function randomizePriceGenerator(testExample: TestExample) {
     let len = testExample.randomizedDataCount
     if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
     testExample.prices = [];
+    let clusters;
+    let priceAverage;
+    if (isNumberArray(testExample.priceAverage!)) {
+        clusters = testExample.priceAverage.length;
+        priceAverage = testExample.priceAverage!;
+    } else {
+        clusters = 1;
+        priceAverage = [testExample.priceAverage!];
+    }
     for (let i = 0; i < len; i++) {
-        testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
+        testExample.prices.push(normal(priceAverage[i % clusters], testExample.priceSD!));
     }
 }
 
@@ -766,7 +795,7 @@ export async function moveToFinalizeStart(epochStartTimestamp: number, epochPeri
  * @returns 
  */
 export function getEpochPeriod(len: number): number {
-    return len + 20;
+    return Math.ceil(1.1 * len) + 20;
 }
 
 /**
@@ -775,7 +804,7 @@ export function getEpochPeriod(len: number): number {
  * @returns 
  */
 export function getRevealPeriod(len: number): number {
-    return len + 10;
+    return Math.ceil(1.1 * len) + 10;
 }
 
 /**

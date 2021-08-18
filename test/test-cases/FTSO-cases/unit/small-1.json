@@ -1,7 +1,7 @@
 {
     "description": "Test with 1",
     "randomizedPivot": false,
-    "prices": [1],
+    "prices": [1e5],
     "weightsFlr": [1e5],
     "weightsAsset": [1e5]
 }
