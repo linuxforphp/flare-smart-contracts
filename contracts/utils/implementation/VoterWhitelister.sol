@@ -51,28 +51,42 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     }
     
     /**
-     * Try to add voter to all whitelists.
+     * Request to whitelist `_voter` account to all active ftsos.
+     * May be called by any address.
+     * It returns an array of supported ftso indices and success flag per index.
      */
-    function requestFullVoterWhitelisting(address _voter) external override {
+    function requestFullVoterWhitelisting(
+        address _voter
+    ) 
+        external override 
+        returns (
+            uint256[] memory _supportedIndices,
+            bool[] memory _success
+        )
+    {
         if (_isTrustedAddress(_voter)) {
             revert("trusted address");
         }
 
-        uint256[] memory indices = ftsoRegistry.getSupportedIndices();
-        for (uint256 i = 0; i < indices.length; i++) {
-            _requestWhitelistingVoter(_voter, indices[i]);
+        _supportedIndices = ftsoRegistry.getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _success = new bool[](len);
+        for (uint256 i = 0; i < len; i++) {
+            _success[i] = _requestWhitelistingVoter(_voter, _supportedIndices[i]);
         }
     }
     
     /**
-     * Try adding `_voter` account to the whitelist if it has enough voting power.
+     * Request to whitelist `_voter` account to ftso at `_ftsoIndex`. Will revert if vote power too low.
      * May be called by any address.
      */
     function requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) external override {
         if (_isTrustedAddress(_voter)) {
             revert("trusted address");
         }
-        _requestWhitelistingVoter(_voter, _ftsoIndex);
+        
+        bool success = _requestWhitelistingVoter(_voter, _ftsoIndex);
+        require(success, "vote power too low");
     }
 
     /**
@@ -167,12 +181,35 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     }
 
     /**
-     * Try adding `_voter` account to the whitelist if it has enough voting power.
-     * May be called by any address.
+     * Get whitelisted price providers for ftso with `_symbol`
      */
-    function _requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) internal {
+    function getFtsoWhitelistedPriceProvidersBySymbol(
+        string memory _symbol
+    ) 
+        external view override 
+        returns (
+            address[] memory
+    ) 
+    {
+        uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_symbol);
+        return getFtsoWhitelistedPriceProviders(ftsoIndex);
+    }
+
+    /**
+     * Get whitelisted price providers for ftso at `_ftsoIndex`
+     */
+    function getFtsoWhitelistedPriceProviders(uint256 _ftsoIndex) public view override returns (address[] memory) {
         uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
-        require(maxVoters > 0, "max voters not set for ftso");
+        require(maxVoters > 0, "FTSO index not supported");
+        return whitelist[_ftsoIndex];
+    }
+
+    /**
+     * Request to whitelist `_voter` account to ftso at `_ftsoIndex` - implementation.
+     */
+    function _requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) internal returns(bool) {
+        uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
+        require(maxVoters > 0, "FTSO index not supported");
         
         address[] storage addressesForFtso = whitelist[_ftsoIndex];
         uint256 length = addressesForFtso.length;
@@ -183,7 +220,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
             address addr = addressesForFtso[i];
             if (addr == _voter) {
                 // _voter is already whitelisted, return
-                return;
+                return true;
             }
             addresses[i] = addr;
         }
@@ -193,14 +230,14 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         if (length < maxVoters) {
             addressesForFtso.push(_voter);
             _voterWhitelisted(_voter, _ftsoIndex);
-            return;
+            return true;
         }
         
         // find a candidate to kick out
         uint256 minIndex = _minVotePowerIndex(addresses, _ftsoIndex);
         if (minIndex == length) {
             // the new _voter has the minimum vote power, do nothing
-            return;
+            return false;
         }
         
         // kick the minIndex out and replace it with _voter
@@ -209,6 +246,8 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         addressesForFtso[minIndex] = _voter;
         _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
         _voterWhitelisted(_voter, _ftsoIndex);
+
+        return true;
     }
     
     /**

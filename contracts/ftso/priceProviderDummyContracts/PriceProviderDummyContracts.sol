@@ -312,6 +312,10 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry {
     function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex) {
         return _getFtsoIndex(_symbol);
     }
+    
+    function getFtsoSymbol(uint256 _assetIndex) external view override returns (string memory _symbol) {
+        return _getFtso(_assetIndex).symbol();
+    }
 
     /**
      * @notice Shift the FTSOs history by one so the FTSO at index 0 can be overwritten
@@ -383,8 +387,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry {
 
 contract DummyVoterWhitelister is IVoterWhitelister {
 
-    // Unused in mock contract
-    uint256 public override defaultMaxVotersForFtso = 0;
+    uint256 public override defaultMaxVotersForFtso = 1;
     mapping (uint256 => uint256) public override maxVotersForFtso;
     
     // mapping: ftsoIndex => array of whitelisted voters for this ftso
@@ -404,29 +407,55 @@ contract DummyVoterWhitelister is IVoterWhitelister {
     }
     
     /**
-     * Try to add voter to all whitelists.
+     * Request to whitelist `_voter` account to all active ftsos.
+     * May be called by any address.
+     * It returns an array of supported ftso indices and success flag per index.
      */
-    function requestFullVoterWhitelisting(address _voter) external override {
-        uint256[] memory indices = ftsoRegistry.getSupportedIndices();
-        for (uint256 i = 0; i < indices.length; i++) {
-            requestWhitelistingVoter(_voter, indices[i]);
+    function requestFullVoterWhitelisting(
+        address _voter
+    ) 
+        external override 
+        returns (
+            uint256[] memory _supportedIndices,
+            bool[] memory _success
+        )
+    {
+        if (_isTrustedAddress(_voter)) {
+            revert("trusted address");
         }
+
+        _supportedIndices = ftsoRegistry.getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _success = new bool[](len);
+        for (uint256 i = 0; i < len; i++) {
+            _success[i] = _requestWhitelistingVoter(_voter, _supportedIndices[i]);
+        }
+    }
+
+    /**
+     * Request to whitelist `_voter` account to ftso at `_ftsoIndex`. Will revert if vote power too low.
+     * May be called by any address.
+     */
+    function requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) external override {
+        if (_isTrustedAddress(_voter)) {
+            revert("trusted address");
+        }
+
+        bool success = _requestWhitelistingVoter(_voter, _ftsoIndex);
+        require(success, "vote power too low");
     }
     
     /**
-     * Try adding `_voter` account to the whitelist if it has enough voting power.
-     * May be called by any address.
+     * Request to whitelist `_voter` account to ftso at `_ftsoIndex` - mock implementation.
      */
-    function requestWhitelistingVoter(
-        address _voter, 
-        uint256 _ftsoIndex
-    )
-        public override
-    {
+    function _requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) internal returns(bool) {
+        uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
+        require(maxVoters > 0, "FTSO index not supported");
+
         address addr = whitelist[_ftsoIndex];
         if (addr == _voter) {
             // _voter is already whitelisted, return
-            return;
+            return true;
         }
 
         whitelist[_ftsoIndex] = _voter;
@@ -435,6 +464,7 @@ contract DummyVoterWhitelister is IVoterWhitelister {
         removedVoters[0] = addr;
         _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
         _voterWhitelisted(_voter, _ftsoIndex);
+        return true;
     }
 
     /**
@@ -456,6 +486,37 @@ contract DummyVoterWhitelister is IVoterWhitelister {
     }
 
     /**
+     * Get whitelisted price providers for ftso with `_symbol`
+     */
+    function getFtsoWhitelistedPriceProvidersBySymbol(
+        string memory _symbol
+    ) 
+        external view override 
+        returns (
+            address[] memory
+    ) 
+    {
+        uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_symbol);
+        return getFtsoWhitelistedPriceProviders(ftsoIndex);
+    }
+
+    /**
+     * Get whitelisted price providers for ftso at `_ftsoIndex`
+     */
+    function getFtsoWhitelistedPriceProviders(uint256 _ftsoIndex) public view override returns (address[] memory) {
+        uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
+        require(maxVoters > 0, "FTSO index not supported");
+        address addr = whitelist[_ftsoIndex];
+        if (addr == address(0)) {
+            return new address[](0);
+        } else {
+            address[] memory result = new address[](1);
+            result[0] = addr;
+            return result;
+        }
+    }
+
+    /**
      * Changes ftsoRegistry address.
      */
     function setFtsoRegistry(IFtsoRegistry _ftsoRegistry) external onlyPriceSubmitter {
@@ -463,10 +524,16 @@ contract DummyVoterWhitelister is IVoterWhitelister {
     }
     
     function addFtso(uint256 _ftsoIndex) external onlyPriceSubmitter {
-        _addFtso(_ftsoIndex);
+        require(maxVotersForFtso[_ftsoIndex] == 0, "whitelist already exist");
+        maxVotersForFtso[_ftsoIndex] = defaultMaxVotersForFtso;
     }
-    
-    function _addFtso(uint256 _ftsoIndex) internal {
+
+    /**
+     * Checks if _voter is trusted address
+     */
+    function _isTrustedAddress(address /*_voter*/) internal pure returns(bool) {
+        // Unused in mock contract
+        return false;
     }
 }
 

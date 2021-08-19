@@ -55,8 +55,4 @@ contract VoterWhitelisterMock is VoterWhitelister {
     {
         return _getAssetVotePowerWeights(_assets, _assetMultipliers, _totalVotePowerAsset, _addresses, _blockNumber);
     }
-    
-    function getWhitelist(uint256 _ftsoIndex) public view returns (address[] memory _whitelist) {
-        return whitelist[_ftsoIndex];
-    }
 }
