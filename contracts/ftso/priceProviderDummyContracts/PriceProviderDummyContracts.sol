@@ -34,7 +34,7 @@ import "../../governance/implementation/Governed.sol";
 /**
  * @title A contract for FTSO registry
  */
-contract DummyFtsoRegistry is Governed, IFtsoRegistry{
+contract DummyFtsoRegistry is Governed, IFtsoRegistry {
 
     // constants
     uint256 internal constant MAX_HISTORY_LENGTH = 5;
@@ -152,6 +152,22 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
         return _getSupportedIndices();
     }
 
+
+    /**
+     * @return _supportedSymbols the array of all active FTSO symbols in increasing order. 
+     * Active FTSOs are ones that currently receive price feeds.
+     */
+    function getSupportedSymbols() external view override returns(string[] memory _supportedSymbols) {
+        uint256[] memory _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _supportedSymbols = new string[](len);
+        while (len > 0) {
+            --len;
+            IIFtso ftso = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = ftso.symbol();
+        }
+    }
+
     /**
      * @notice Get array of all supported indices and corresponding FTSOs
      * @return _supportedIndices the array of all supported indices
@@ -159,8 +175,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
      */
     function getSupportedIndicesAndFtsos() external view override
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos)
-    {   
-
+    {
         _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
@@ -177,9 +192,46 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
      */
     function getSupportedSymbolsAndFtsos() external view override
         returns(string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
-    {   
-
+    {
         uint256[] memory _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _ftsos = new IIFtso[](len);
+        _supportedSymbols = new string[](len);
+        while (len > 0) {
+            --len;
+            _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = _ftsos[len].symbol();
+        }
+    }
+
+    /**
+     * @notice Get array of all supported indices and corresponding symbols
+     * @return _supportedIndices the array of all supported indices
+     * @return _supportedSymbols the array of all supported symbols
+     */
+    function getSupportedIndicesAndSymbols() external view override
+        returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols) 
+    {
+        _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _supportedSymbols = new string[](len);
+        while (len > 0) {
+            --len;
+            IIFtso ftso = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = ftso.symbol();
+        }
+    }
+
+    /**
+     * @notice Get array of all supported indices, corresponding symbols and FTSOs
+     * @return _supportedIndices the array of all supported indices
+     * @return _supportedSymbols the array of all supported symbols
+     * @return _ftsos the array of all supported ftsos
+     */
+    function getSupportedIndicesSymbolsAndFtsos() external view override
+        returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
+    {
+        _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
         _supportedSymbols = new string[](len);
@@ -209,11 +261,31 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry{
     }
 
     /**
+     * @notice Get the active FTSOs for given indices
+     * @return _ftsos the array of FTSOs
+     */
+    function getFtsos(uint256[] memory _assetIndices) external view override returns(IFtsoGenesis[] memory _ftsos) {
+        uint256 ftsoLength = ftsoHistory.length;
+        uint256 len = _assetIndices.length;
+        _ftsos = new IFtsoGenesis[](len);
+        while (len > 0) {
+            --len;
+            uint256 assetIndex = _assetIndices[len];
+            require(assetIndex < ftsoLength, ERR_TOKEN_NOT_SUPPORTED);
+            _ftsos[len] = ftsoHistory[assetIndex][0];
+            if (address(_ftsos[len]) == address(0)) {
+                // Invalid index, revert if address is zero address
+                revert(ERR_TOKEN_NOT_SUPPORTED);
+            }
+        }
+    }
+
+    /**
      * @notice Get array of all FTSO contracts for all supported asset indices
      * @return _ftsos the array of all FTSOs
      * @dev Return value might contain uninitialized FTSOS at zero address. 
      */
-    function getFtsos() external view returns(IIFtso[] memory _ftsos) {
+    function getAllFtsos() external view returns(IIFtso[] memory _ftsos) {
         uint256 len = ftsoHistory.length;
         IIFtso[] memory ftsos = new IIFtso[](len);
         while (len > 0) {
@@ -406,23 +478,15 @@ contract DummyVoterWhitelister is IVoterWhitelister {
 contract DummyPriceSubmitter is IPriceSubmitter {
 
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
-    string internal constant ERR_TOO_MANY_REVERTS = "Too many reverts";
+    string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
     string internal constant ERR_INVALID_INDEX = "Invalid index";
     string internal constant ERR_WHITELISTER_ONLY = "Voter whitelister only";
-    string internal constant ERR_ALREADY_ADDED = "Already added";
-
-    uint256 internal constant MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS = 2;
-    uint256 internal constant MAX_ALLOWED_NUMBER_OF_REVEAL_REVERTS = 2;
-
 
     DummyFtsoRegistry internal ftsoRegistry; 
-    
     DummyVoterWhitelister internal voterWhitelister;
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
-    mapping(address => uint256) public whitelistedFtsoBitmap; 
-
-    mapping(bytes32 => uint256) private currencyBitmask;
+    mapping(address => uint256) private whitelistedFtsoBitmap;
 
     modifier onlyWhitelister {
         require(msg.sender == address(voterWhitelister), ERR_WHITELISTER_ONLY);
@@ -433,7 +497,6 @@ contract DummyPriceSubmitter is IPriceSubmitter {
      * Deploy all needed contracts for testing
      */
     constructor() {
-
         ftsoRegistry = new DummyFtsoRegistry(address(this));
         voterWhitelister = new DummyVoterWhitelister(this);
         voterWhitelister.setFtsoRegistry(ftsoRegistry);
@@ -444,15 +507,9 @@ contract DummyPriceSubmitter is IPriceSubmitter {
             DummyFtso ftso = new DummyFtso(symbol, this, block.timestamp - 120, 120, 30);
             ftsoRegistry.addFtso(ftso);
             uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(symbol);
-            
-            bytes32 symbolHash = _hashSymbol(ftso.symbol());
-            require(currencyBitmask[symbolHash] == 0, ERR_ALREADY_ADDED);
-            currencyBitmask[symbolHash] = ftsoIndex;
             voterWhitelister.addFtso(ftsoIndex);
-
         }
     }
-
     
     /**
      * Called from whitelister when new voter has been whitelisted.
@@ -489,28 +546,20 @@ contract DummyPriceSubmitter is IPriceSubmitter {
     function submitPriceHashes(uint256[] memory _ftsoIndices, bytes32[] memory _hashes) external override {
         // Submit the prices
         uint256 length = _ftsoIndices.length;
-        bool[] memory success = new bool[](length);
-        IIFtso[] memory ftsos = new IIFtso[](length);
+        require(length == _hashes.length, ERR_ARRAY_LENGTHS);
+
+        IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
         uint256 epochId;
-        uint256 numberOfReverts = 0;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
         for (uint256 i = 0; i < length; i++) {
             uint256 ind = _ftsoIndices[i];
             if (allowedBitmask & (1 << ind) == 0) {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-                continue;
+                revert(ERR_NOT_WHITELISTED);
             }
-            ftsos[i] = ftsoRegistry.getFtso(ind);
-            try ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]) returns (uint256 _epochId) {
-                success[i] = true;
-                // they should all be the same (one price provider contract for all ftsos managed by one ftso manager)
-                epochId = _epochId;
-            } catch {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-            }
+            epochId = ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]);
         }
-        emit PriceHashesSubmitted(msg.sender, epochId, ftsos, _hashes, success, block.timestamp);
+        emit PriceHashesSubmitted(msg.sender, epochId, ftsos, _hashes, block.timestamp);
     }
 
     /**
@@ -530,36 +579,28 @@ contract DummyPriceSubmitter is IPriceSubmitter {
     )
         external override
     {
-        uint256 len  = _ftsoIndices.length;
-        require(len == _prices.length, ERR_ARRAY_LENGTHS);
-        require(len == _randoms.length, ERR_ARRAY_LENGTHS);
+        uint256 length  = _ftsoIndices.length;
+        require(length == _prices.length, ERR_ARRAY_LENGTHS);
+        require(length == _randoms.length, ERR_ARRAY_LENGTHS);
 
-        IIFtso[] memory ftsos = new IIFtso[](len);
-        bool[] memory success = new bool[](len);
-        uint256 numberOfReverts = 0;
+        IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
-        uint256 flrVP = uint256(-1);
 
-        for (uint256 i = 0; i < len; i++) {
+        uint256 wflrVP = uint256(-1);
+
+        for (uint256 i = 0; i < length; i++) {
             uint256 ind = _ftsoIndices[i];
             if (allowedBitmask & (1 << ind) == 0) {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-                continue;
+                revert(ERR_NOT_WHITELISTED);
             }
-            IIFtso ftso = ftsoRegistry.getFtso(ind);
-            ftsos[i] = ftso;
             // read flare VP only once
-            if (flrVP == uint256(-1)) {
-                flrVP = ftso.flrVotePowerCached(msg.sender, _epochId);
+            if (wflrVP == uint256(-1)) {
+                wflrVP = ftsos[i].wflrVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
-            try ftso.revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], flrVP) {
-                success[i] = true;
-            } catch {
-                require(++numberOfReverts <= MAX_ALLOWED_NUMBER_OF_SUBMIT_REVERTS, ERR_TOO_MANY_REVERTS);
-            }
+            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], wflrVP);
         }
-        emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, success, block.timestamp);
+        emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, block.timestamp);
     }
     
     /**
@@ -570,20 +611,16 @@ contract DummyPriceSubmitter is IPriceSubmitter {
     function voterWhitelistBitmap(address _voter) external view override returns (uint256) {
         return whitelistedFtsoBitmap[_voter];
     }
-    
-    function _hashSymbol(string memory _symbol) private pure returns(bytes32) {
-        return keccak256(abi.encode(_symbol));
+
+    function getVoterWhitelister() public view override returns (address) {
+        return address(voterWhitelister);
     }
 
-    function getVoterWhitelister() public view override returns (IVoterWhitelister) {
-        return voterWhitelister;
-    }
-
-    function getFtsoRegistry() public view override returns (IFtsoRegistry) {
+    function getFtsoRegistry() public view override returns (IFtsoRegistryGenesis) {
         return ftsoRegistry;
     }
 
-    function getFtsoManager() public pure override returns (IFtsoManager) {
+    function getFtsoManager() public pure override returns (address) {
         revert("Not in dummy contract");
     }
 }

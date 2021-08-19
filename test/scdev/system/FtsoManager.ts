@@ -66,6 +66,7 @@ const MockContract = artifacts.require("MockContract");
               rewardManagerMock.address,
               accounts[7],
               accounts[8],
+              accounts[9],
               60,
               startTs,
               5,

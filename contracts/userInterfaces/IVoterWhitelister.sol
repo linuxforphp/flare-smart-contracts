@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./IFtsoRegistry.sol";
-
 interface IVoterWhitelister {
     /**
      * Raised when an account is removed from the voter whitelist.

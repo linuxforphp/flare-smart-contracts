@@ -168,9 +168,9 @@ slither-check:
             - $CI_PROJECT_DIR/node_modules
           policy: pull-push
 
-gas-check:
-    stage: test
-    <<: *yarn-setup
-    script:
-        - yarn c
-        - yarn gas-report-check
+#gas-check:
+#    stage: test
+#    <<: *yarn-setup
+#    script:
+#       - yarn c
+#        - yarn gas-report-check

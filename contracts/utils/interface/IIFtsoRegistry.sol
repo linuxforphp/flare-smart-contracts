@@ -11,7 +11,8 @@ interface IIFtsoRegistry is IFtsoRegistry {
 
     function setFtsoManagerAddress(IIFtsoManager _ftsoManager) external;
 
-    function addFtso(IIFtso _ftsoContract) external;
+    // returns ftso index
+    function addFtso(IIFtso _ftsoContract) external returns(uint256);
 
     function removeFtso(IIFtso _ftso) external;
 }

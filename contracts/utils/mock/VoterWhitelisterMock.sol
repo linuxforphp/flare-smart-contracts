@@ -13,19 +13,7 @@ contract VoterWhitelisterMock is VoterWhitelister {
     {
     }
     
-    function mockSetFtsoRegistry(IFtsoRegistry _ftsoRegistry) public {
-        ftsoRegistry = _ftsoRegistry;
-    }
-    
-    function mockAddFtso(uint256 _ftsoIndex) public {
-        _addFtso(_ftsoIndex);
-    }
-    
-    function mockRemoveFtso(uint256 _ftsoIndex) public {
-        _removeFtso(_ftsoIndex);
-    }
-    
-    function minVotePowerIndex(address[] memory _addresses,uint256 _ftsoIndex)public
+    function minVotePowerIndex(address[] memory _addresses,uint256 _ftsoIndex) public
         returns (uint256)
     {
         return _minVotePowerIndex(_addresses, _ftsoIndex);

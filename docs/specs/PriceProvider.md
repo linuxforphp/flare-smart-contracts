@@ -160,4 +160,4 @@ Due to the above, it is advised that price providers:
 ### Price provider pseudocode
 Price provider pseudocode is given in [PriceProviderPseudoCode].
 
-[PriceProviderPseudoCode]: ./PriceProviderPseudoCode.sol "PriceProviderPseudoCode"
+[PriceProviderPseudoCode]: ./PriceProviderPseudoCode.txt "PriceProviderPseudoCode"

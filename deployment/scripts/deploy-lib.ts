@@ -195,7 +195,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     inflation.address);
   spewNewContractInfo(contracts, ValidatorRewardManager.contractName, validatorRewardManager.address, quiet);
 
-  // ValidatorRewardManager contract
+  // CleanupBlockNumberManager contract
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.new(
     deployerAccount.address,
   );
@@ -243,6 +243,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     ftsoRewardManager.address,
     priceSubmitter.address,
     ftsoRegistry.address,
+    voterWhitelister.address,
     parameters.priceEpochDurationSeconds,
     startTs,
     parameters.revealEpochDurationSeconds,
@@ -254,10 +255,9 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
   await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
   await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
-
-  await priceSubmitter.setFtsoRegistry(ftsoRegistry.address, { from: currentGovernanceAddress });
-  await priceSubmitter.setFtsoManager(ftsoManager.address, { from: currentGovernanceAddress });
-  await priceSubmitter.setVoterWhitelister(voterWhitelister.address, { from: currentGovernanceAddress });
+  
+  await voterWhitelister.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: currentGovernanceAddress });
+  await priceSubmitter.setContractAddresses(ftsoRegistry.address, voterWhitelister.address, ftsoManager.address, { from: currentGovernanceAddress });
 
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);

@@ -119,7 +119,7 @@ contract DummyFtso is IIFtso {
         emit PriceRevealed(_voter, _epochId, _price, _random, block.timestamp, 0, 0);
     }
 
-    function flrVotePowerCached(address _owner, uint256 _epochId) external override returns (uint256 _wflrVP) {
+    function wflrVotePowerCached(address _owner, uint256 _epochId) external override returns (uint256 _wflrVP) {
         // TODO
     }
 

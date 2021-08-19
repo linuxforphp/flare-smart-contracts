@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../../userInterfaces/IFtsoRegistry.sol";
 import "../../userInterfaces/IVoterWhitelister.sol";
+
 
 interface IIVoterWhitelister is IVoterWhitelister {
     /**
@@ -18,20 +20,25 @@ interface IIVoterWhitelister is IVoterWhitelister {
     function setDefaultMaxVotersForFtso(uint256 _defaultMaxVotersForFtso) external;
 
     /**
-     * Changes ftsoRegistry address.
-     * Only price submitter can call this method.
+     * Sets ftsoRegistry and ftsoManager addresses.
+     * Only governance can call this method.
      */
-    function setFtsoRegistry(IFtsoRegistry _ftsoRegistry) external;
+    function setContractAddresses(IFtsoRegistry _ftsoRegistry, address _ftsoManager) external;
 
     /**
      * Create whitelist with default size for ftso.
-     * Only price submitter can call this method.
+     * Only ftso manager can call this method.
      */
     function addFtso(uint256 _ftsoIndex) external;
     
     /**
      * Clear whitelist for ftso at `_ftsoIndex`.
-     * Only price submitter can call this method.
+     * Only ftso manager can call this method.
      */
     function removeFtso(uint256 _ftsoIndex) external;
+
+    /**
+     * Remove `_trustedAddress` from whitelist for ftso at `_ftsoIndex`.
+     */
+    function removeTrustedAddressFromWhitelist(address _trustedAddress, uint256 _ftsoIndex) external;
 }

@@ -294,7 +294,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     assert.isTrue(s1.eqn(1));
     assert.isTrue(s2.eqn(2));
 
-    const [f1, f2, f3] = await ftsoRegistryContract.getFtsos();
+    const [f1, f2, f3] = await ftsoRegistryContract.getAllFtsos();
     assert.equal(f1, constants.ZERO_ADDRESS);
     assert.equal(f2, XPRFtsoContractMock_2.address);
     assert.equal(f3, ADAFtsoContractMock_1.address);
