@@ -586,6 +586,47 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; FlareKeeper unit tests`, 
         { from: GOVERNANCE_GENESIS_ADDRESS }),
         "time gap too short");
     });
+
+    it("Should make sure setMaxMintRequest changes are not too large", async() => {
+      // Assemble
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await mockInflation.setFlareKeeper(flareKeeper.address);
+
+      // the request should fail as we can only increase the maximum by 10%
+      await expectRevert(flareKeeper.setMaxMintingRequest(web3.utils.toWei(BN(60000000)),
+        { from: GOVERNANCE_GENESIS_ADDRESS }),
+        "max mint too high");
+    });
+
+    it("Should make sure setMaxMintRequest changes just below allowed maximum go through", async() => {
+      // Assemble
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await mockInflation.setFlareKeeper(flareKeeper.address);
+
+      await flareKeeper.setMaxMintingRequest(web3.utils.toWei(BN(55000000)), { from: GOVERNANCE_GENESIS_ADDRESS });
+    });
+
+    it("Should make sure setMaxMintRequest changes are not too large", async() => {
+      // Assemble
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await mockInflation.setFlareKeeper(flareKeeper.address);
+
+      // the request should fail as we can only increase the maximum by 10%
+      await expectRevert(flareKeeper.setMaxMintingRequest(web3.utils.toWei(BN(55000001)),
+        { from: GOVERNANCE_GENESIS_ADDRESS }),
+        "max mint too high");
+    });
+
+    it("Should make sure setMaxMintRequest cannot be set to zero", async() => {
+      // Assemble
+      await flareKeeper.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await mockInflation.setFlareKeeper(flareKeeper.address);
+
+      // the request should fail as we cannot set the maximum to 0
+      await expectRevert(flareKeeper.setMaxMintingRequest(BN(0),
+        { from: GOVERNANCE_GENESIS_ADDRESS }),
+        "max mint is zero");
+    });
   });
 
   describe("gas limit", async() => {
