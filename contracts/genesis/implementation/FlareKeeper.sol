@@ -54,13 +54,20 @@ contract FlareKeeper is GovernedAtGenesis {
     string internal constant INDEX_TOO_HIGH = "start index high";
     string internal constant UPDATE_GAP_TOO_SHORT = "time gap too short";
     string internal constant MAX_MINT_TOO_HIGH = "max mint too high";
+    string internal constant MAX_MINT_IS_ZERO = "max mint is zero";
     string internal constant ERR_DUPLICATE_ADDRESS = "dup address";
     string internal constant ERR_ADDRESS_ZERO = "address zero";
     string internal constant ERR_OUT_OF_GAS = "out of gas";
 
     uint256 internal constant MAX_KEEP_CONTRACTS = 10;
-    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether; // 50 million FLR
-    uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours; // 23 hours constant
+    // Initial max mint request - 50 million FLR
+    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
+    // How often can inflation request minting from the validator - 23 hours constant
+    uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours;
+    // How often can the maximal mint request amount be updated
+    uint256 internal constant MAX_MINTING_REQUEST_FREQUENCY_SEC = 24 hours;
+    // By how much can the maximum be increased (as a percentage of the previous maximum)
+    uint256 internal constant MAX_MINTING_REQUEST_INCREASE_PERCENT = 110;
 
     IFlareKeep[] public keepContracts;
     mapping (IFlareKeep => uint256) public gasLimits;
@@ -71,8 +78,6 @@ contract FlareKeeper is GovernedAtGenesis {
     uint256 public totalMintingReceivedWei;
     uint256 public totalMintingWithdrawnWei;
     uint256 public totalSelfDestructReceivedWei;
-    //slither-disable-next-line uninitialized-state                     // no problem, will be zero initialized anyway
-    uint256 public totalSelfDestructWithdrawnWei;
     uint256 public maxMintingRequestWei;
     uint256 public lastMintRequestTs;
     uint256 public lastUpdateMaxMintRequestTs;
@@ -189,8 +194,8 @@ contract FlareKeeper is GovernedAtGenesis {
      * @param _amountWei    The amount to mint.
      */
     function requestMinting(uint256 _amountWei) external onlyInflation(msg.sender) {
-        require (_amountWei <= maxMintingRequestWei, ERR_TOO_BIG);
-        require (lastMintRequestTs.add(MAX_MINTING_FREQUENCY_SEC) < block.timestamp, ERR_TOO_OFTEN);
+        require(_amountWei <= maxMintingRequestWei, ERR_TOO_BIG);
+        require(lastMintRequestTs.add(MAX_MINTING_FREQUENCY_SEC) < block.timestamp, ERR_TOO_OFTEN);
         if (_amountWei > 0) {
             lastMintRequestTs = block.timestamp;
             totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
@@ -214,9 +219,16 @@ contract FlareKeeper is GovernedAtGenesis {
      */
     function setMaxMintingRequest(uint256 _maxMintingRequestWei) external onlyGovernance {
         // make sure increase amount is reasonable
-        require(_maxMintingRequestWei <= (maxMintingRequestWei.mulDiv(11, 10)), MAX_MINT_TOO_HIGH);
+        require(
+            _maxMintingRequestWei <= (maxMintingRequestWei.mulDiv(MAX_MINTING_REQUEST_INCREASE_PERCENT,100)),
+            MAX_MINT_TOO_HIGH
+        );
+        require(_maxMintingRequestWei > 0, MAX_MINT_IS_ZERO);
         // make sure enough time since last update
-        require(block.timestamp > lastUpdateMaxMintRequestTs + (60 * 60 * 24), UPDATE_GAP_TOO_SHORT);
+        require(
+            block.timestamp > lastUpdateMaxMintRequestTs + MAX_MINTING_REQUEST_FREQUENCY_SEC,
+            UPDATE_GAP_TOO_SHORT
+        );
 
         maxMintingRequestWei = _maxMintingRequestWei;
         lastUpdateMaxMintRequestTs = block.timestamp;
@@ -261,7 +273,7 @@ contract FlareKeeper is GovernedAtGenesis {
             // Did we get what was last asked for?
             if (currentBalance == balanceExpected) {
                 // Yes, so assume it all came from the validator.
-                uint256 minted = currentBalance.sub(lastBalance);
+                uint256 minted = expectedMintRequest;
                 totalMintingReceivedWei = totalMintingReceivedWei.add(minted);
                 emit MintingReceived(minted);
                 //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
@@ -458,8 +470,7 @@ contract FlareKeeper is GovernedAtGenesis {
     function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
         _balanceExpectedWei = totalMintingReceivedWei.
             sub(totalMintingWithdrawnWei).
-            add(totalSelfDestructReceivedWei).
-            sub(totalSelfDestructWithdrawnWei);
+            add(totalSelfDestructReceivedWei);
     }
 
     /**
