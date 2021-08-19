@@ -82,7 +82,7 @@ const config: HardhatUserConfig = {
     },
     scdev: {
       url: "http://127.0.0.1:9660/ext/bc/C/rpc",
-      gas: 8000000,
+      gas: 80000000,
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
