@@ -13,6 +13,7 @@ interface IFtsoRegistry is IFtsoRegistryGenesis {
     function getSupportedSymbols() external view returns(string[] memory _supportedSymbols);
     function getSupportedFtsos() external view returns(IIFtso[] memory _ftsos);
     function getFtsoIndex(string memory _symbol) external view returns (uint256 _assetIndex);
+    function getFtsoSymbol(uint256 _ftsoIndex) external view returns (string memory _symbol);
     function getCurrentPrice(uint256 _ftsoIndex) external view returns(uint256 _price, uint256 _timestamp);
     function getCurrentPrice(string memory _symbol) external view returns(uint256 _price, uint256 _timestamp);
 

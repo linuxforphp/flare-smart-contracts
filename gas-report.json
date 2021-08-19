@@ -13,19 +13,19 @@
   },
   {
     "function": "submit price for single ftso",
-    "gasUsed": 77805
+    "gasUsed": 77695
   },
   {
     "function": "reveal price for single ftso",
-    "gasUsed": 189564
+    "gasUsed": 189454
   },
   {
     "function": "submit prices for 8 ftso",
-    "gasUsed": 365860
+    "gasUsed": 365714
   },
   {
     "function": "reveal prices for 8 ftso",
-    "gasUsed": 1145162
+    "gasUsed": 1145040
   },
   {
     "function": "finalize price epoch for 50 submissions",

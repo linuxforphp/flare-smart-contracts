@@ -296,6 +296,10 @@ contract FtsoRegistry is Governed, IIFtsoRegistry {
         return _getFtsoIndex(_symbol);
     }
 
+    function getFtsoSymbol(uint256 _assetIndex) external view override returns (string memory _symbol) {
+        return _getFtso(_assetIndex).symbol();
+    }
+
     /**
      * @notice Shift the FTSOs history by one so the FTSO at index 0 can be overwritten
      * @dev Internal helper function
