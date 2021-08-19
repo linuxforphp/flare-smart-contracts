@@ -18,6 +18,10 @@ Since only a subset of files is packed to npm package file some pre-checks have 
 Instructions 3, 4 and 5 check that necessary files are packed.
 
 1. Update version number in `npm-package-data/package.json`. Follow [semantic versioning.](https://semver.org/)
+2. Flatten mock contracts using default flatten script.
+This ussually fails as hardhat is uncooperative when flattening scripts with cyclic [imports](https://github.com/nomiclabs/truffle-flattener/issues/14). 
+This can be mitigated by breaking the cycle by hand, flattening the contract manually and adding contract from removed import. 
+As of now, the easiest way to do this is to remove the import `import "./IFtsoManager.sol";` from `IPriceSubmitter.sol` and copy the `IFtsoManager.sol` manually to flattened version of contract.
 2. Copy files from `npm-package-data/` to root project folder and REPLACE existing files.
 3. Run `npm pack` from root project folder. This creates `flarenetwork-ftso_price_provider_kick_off_package-XX.YY.ZZ.tgz` file in root project directory.
 4. Copy and extract `tgz` file to a fresh directory outside the main project. This creates `package` folder with the same contents as the published package will contain.
