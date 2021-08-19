@@ -92,7 +92,7 @@ Unit tests test a few simple scenarios:
 - Emmitance of events on succes
 - Failures when revealing a price outside the reveal range 
 
-The successfull submit and reveal test also showcases basic price provider pipeline. 
+The successful submit and reveal test also showcases basic price provider pipeline. 
 Price provider must first request whitelisting, then submit the price hash, wait until the price submission epoch passes and reveal the price inside the reveal period.
 
 ## Custom testing

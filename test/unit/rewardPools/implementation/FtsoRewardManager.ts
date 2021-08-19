@@ -210,6 +210,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             ftsoRewardManager.address,
             accounts[7],
             ftsoRegistry.address,
+            accounts[8],
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,

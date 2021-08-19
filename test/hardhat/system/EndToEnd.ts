@@ -90,7 +90,7 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[
     priceInfos.map(priceInfo => priceInfo.random),
     { from: by }
   )
-  expectEvent(tx, "PricesRevealed", { success: priceInfos.map(x => true) });
+  expectEvent(tx, "PricesRevealed");
 };
 
 
@@ -197,11 +197,11 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async () => {
     // Assemble
     // Define delegators
-    let d1 = accounts[1];
+    let d1 = accounts[5];
     // Define price providers
-    let p1 = accounts[2];
-    let p2 = accounts[3];
-    let p3 = accounts[4];
+    let p1 = accounts[6];
+    let p2 = accounts[7];
+    let p3 = accounts[8];
 
     // Mint some WFLR for each delegator and price provider
     const someFLR = web3.utils.toWei(BN(3000000000));

@@ -12,8 +12,6 @@ const DummyPriceSubmitter = artifacts.require("DummyPriceSubmitter");
 const DummyFtsoRegistry = artifacts.require("DummyFtsoRegistry");
 const DummyVoterWhitelister = artifacts.require("DummyVoterWhitelister");
 
-const ERR_TOO_MANY_REVERTS = "Too many reverts";
-
 contract(`DummyPriceSubmitter.sol; DummyPriceSubmitter unit tests`, async accounts => {
       
     let priceSubmitter: IPriceSubmitterInstance;
@@ -30,25 +28,8 @@ contract(`DummyPriceSubmitter.sol; DummyPriceSubmitter unit tests`, async accoun
     describe("Test usage", async() => {
         it("Should fail on submit without whitelisting", async() => {
             const hash1 = submitPriceHash(500, 123, accounts[10]);
-            let tx = priceSubmitter.submitPriceHashes([1, 2, 3], [hash1,], {from: accounts[10]});
-            await expectRevert(tx, ERR_TOO_MANY_REVERTS);
-        });
-
-        it("Should emit correct event on failure", async() => {
-            const hash1 = submitPriceHash(500, 123, accounts[10]);
-            let tx = await priceSubmitter.submitPriceHashes([1, 2], [hash1,], {from: accounts[10]});
-            await expectEvent(tx, "PriceHashesSubmitted", { ftsos: [constants.ZERO_ADDRESS, constants.ZERO_ADDRESS] });
-        });
-
-        it("Should emit correct event on submit and failure", async() => {
-            const hash1 = submitPriceHash(500, 123, accounts[10]);            
-
-            let ftso = await ftsoRegistry.getFtso(2);
-
-            await voterWhitelister.requestWhitelistingVoter(accounts[10], 2);
-            let tx = await priceSubmitter.submitPriceHashes([1, 2], [hash1, hash1], {from: accounts[10]});
-
-            await expectEvent(tx, "PriceHashesSubmitted", { ftsos: [constants.ZERO_ADDRESS, ftso], success: [false, true], epochId: "1"});
+            let tx = priceSubmitter.submitPriceHashes([1], [hash1], {from: accounts[10]});
+            await expectRevert(tx, "Not whitelisted");
         });
 
         it("Should submit and reveal", async() => {
@@ -63,8 +44,7 @@ contract(`DummyPriceSubmitter.sol; DummyPriceSubmitter unit tests`, async accoun
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
             let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], [hash0, hash1, hash2], {from: accounts[10]});
 
-            expectEvent(tx, "PriceHashesSubmitted", { ftsos: [ftso0, ftso1, ftso2], success: [true, true, true], 
-                                                      epochId: "1", hashes: [hash0, hash1, hash2]});
+            expectEvent(tx, "PriceHashesSubmitted", { ftsos: [ftso0, ftso1, ftso2], epochId: "1", hashes: [hash0, hash1, hash2]});
 
             
 
@@ -73,16 +53,15 @@ contract(`DummyPriceSubmitter.sol; DummyPriceSubmitter unit tests`, async accoun
             // Do reveal
             tx = await priceSubmitter.revealPrices(1, [0, 1, 2], [500, 500, 100], [123, 123, 30], {from: accounts[10]});
 
-            await expectEvent(tx, "PricesRevealed", { ftsos: [ftso0, ftso1, ftso2], success: [true, true, true], 
-                                                      epochId: "1", prices: [toBN(500), toBN(500), toBN(100)]});
+            await expectEvent(tx, "PricesRevealed", { ftsos: [ftso0, ftso1, ftso2], epochId: "1", prices: [toBN(500), toBN(500), toBN(100)]});
             
             // Should fail on double reveal
             let tx1 = priceSubmitter.revealPrices(1, [0, 1, 2], [500, 500, 100], [123, 123, 30], {from: accounts[10]});
 
-            await expectRevert(tx1, "Too many reverts");
+            await expectRevert(tx1, "Price already revealed or not valid");
         });
 
-        it("Should fail if submitted to soon", async() => {
+        it("Should fail if revealed to soon", async() => {
             const hash0 = submitPriceHash(500, 123, accounts[10]);            
             const hash1 = submitPriceHash(500, 123, accounts[10]);            
             const hash2 = submitPriceHash(100, 30, accounts[10]);            
@@ -96,8 +75,7 @@ contract(`DummyPriceSubmitter.sol; DummyPriceSubmitter unit tests`, async accoun
             await voterWhitelister.requestWhitelistingVoter(accounts[10], 0);
             let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], [hash0, hash1, hash2], {from: accounts[10]});
 
-            expectEvent(tx, "PriceHashesSubmitted", { ftsos: [ftso0, ftso1, ftso2], success: [true, true, true], 
-                                                      epochId: "1", hashes: [hash0, hash1, hash2]});
+            expectEvent(tx, "PriceHashesSubmitted", { ftsos: [ftso0, ftso1, ftso2], epochId: "1", hashes: [hash0, hash1, hash2]});
 
             
 
@@ -106,13 +84,12 @@ contract(`DummyPriceSubmitter.sol; DummyPriceSubmitter unit tests`, async accoun
             await increaseTimeTo(timestamp.addn(60).toNumber());
             // Do reveal
             let tx1 = priceSubmitter.revealPrices(1, [0, 1, 2], [500, 500, 100], [123, 123, 30], {from: accounts[10]});
-            await expectRevert(tx1, "Too many reverts");
+            await expectRevert(tx1, "Reveal period not active");
 
             await increaseTimeTo(timestamp.addn(120).toNumber());
             tx = await priceSubmitter.revealPrices(1, [0, 1, 2], [500, 500, 100], [123, 123, 30], {from: accounts[10]});
 
-            await expectEvent(tx, "PricesRevealed", { ftsos: [ftso0, ftso1, ftso2], success: [true, true, true], 
-                                                      epochId: "1", prices: [toBN(500), toBN(500), toBN(100)]});
+            await expectEvent(tx, "PricesRevealed", { ftsos: [ftso0, ftso1, ftso2], epochId: "1", prices: [toBN(500), toBN(500), toBN(100)]});
 
         });
 

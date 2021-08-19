@@ -37,7 +37,7 @@ contract SimpleMockFtso is Ftso {
      * @notice Emits PriceRevealed event
      */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
-        _revealPrice(msg.sender, _epochId, _price, _random, flrVotePowerCached(msg.sender, _epochId));
+        _revealPrice(msg.sender, _epochId, _price, _random, wflrVotePowerCached(msg.sender, _epochId));
     }
     
     function readVotes(uint256 _epochId) external view 
@@ -73,7 +73,7 @@ contract SimpleMockFtso is Ftso {
         return _getVotePowerOf(
             epoch,
             _owner,
-            flrVotePowerCached(_owner, lastRevealEpochId),
+            wflrVotePowerCached(_owner, lastRevealEpochId),
             epoch.fallbackMode,
             uint256(epoch.votePowerBlock)
         );
@@ -89,7 +89,7 @@ contract SimpleMockFtso is Ftso {
             (uint256 votePowerFlr, uint256 votePowerAsset) = _getVotePowerOf(
                 epoch,
                 _owners[i],
-                flrVotePowerCached(_owners[i], lastRevealEpochId),
+                wflrVotePowerCached(_owners[i], lastRevealEpochId),
                 epoch.fallbackMode,
                 uint256(epoch.votePowerBlock)
             );

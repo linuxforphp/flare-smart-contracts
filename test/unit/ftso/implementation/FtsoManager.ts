@@ -31,8 +31,7 @@ const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager")
 const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
 const MockContract = artifacts.require("MockContract");
-const MockRewardManager = artifacts.require("MockContract");
-const MockPriceSubmitter = artifacts.require("MockContract");
+const PriceSubmitter = artifacts.require("PriceSubmitter");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -59,6 +58,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let ftsoInterface: FtsoInstance;
     let ftsoRegistry: FtsoRegistryInstance;
     let mockPriceSubmitter: MockContractInstance;
+    let mockVoterWhitelister: MockContractInstance;
 
     async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance){        
         const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
@@ -86,7 +86,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         // Get the timestamp for the just mined block
         startTs = await time.latest();
 
-        mockRewardManager = await MockRewardManager.new();
+        mockRewardManager = await MockContract.new();
         ftsoRewardManagerInterface = await FtsoRewardManager.new(
             accounts[0],
             3,
@@ -96,7 +96,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         ftsoRegistry = await FtsoRegistry.new(accounts[0]);
         
-        mockPriceSubmitter = await MockPriceSubmitter.new();
+        mockPriceSubmitter = await MockContract.new();
         await mockPriceSubmitter.givenMethodReturnUint(
             web3.utils.sha3("addFtso(address)")!.slice(0,10),
             0
@@ -105,6 +105,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             web3.utils.sha3("removeFtso(address)")!.slice(0,10),
             0
         )
+        mockVoterWhitelister = await MockContract.new();
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
@@ -112,6 +113,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             mockRewardManager.address,
             mockPriceSubmitter.address,
             ftsoRegistry.address,
+            mockVoterWhitelister.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -134,6 +136,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockRewardManager.address,
                 accounts[7],
                 ftsoRegistry.address,
+                mockVoterWhitelister.address,
                 0,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -148,6 +151,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockRewardManager.address,
                 accounts[7],
                 ftsoRegistry.address,
+                mockVoterWhitelister.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 0,
@@ -162,6 +166,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockRewardManager.address,
                 accounts[7],
                 ftsoRegistry.address,
+                mockVoterWhitelister.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -176,6 +181,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockRewardManager.address,
                 accounts[7],
                 ftsoRegistry.address,
+                mockVoterWhitelister.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs.addn(500),
                 REVEAL_EPOCH_DURATION_S,
@@ -256,6 +262,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10*DAY,[]), "Gov. params invalid");
             await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10*DAY,[]), "Gov. params invalid");
             await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10*DAY,[]), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10,[]), "Reward expiry invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY,[accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Max trusted addresses length exceeded");
         });
 
         it("Should activate", async () => {
@@ -305,10 +313,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const invocationCount2 = await mockFtso.invocationCountForMethod.call(configureEpochs);
             assert.equal(invocationCount2.toNumber(), 1);
 
-            const addFtsoPriceSubmitter = web3.utils.sha3("addFtso(address,uint256)")!.slice(0, 10); // first 4 bytes is function selector
-            const priceSubmitterInvocationCount = await mockPriceSubmitter.invocationCountForMethod.call(addFtsoPriceSubmitter);
-            // should add new ftso to PriceSubmitter
-            assert.equal(priceSubmitterInvocationCount.toNumber(), 1);
+            const addFtsoVoterWhitelister = web3.utils.sha3("addFtso(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+            const voterWhitelisterInvocationCount = await mockVoterWhitelister.invocationCountForMethod.call(addFtsoVoterWhitelister);
+            // should add new ftso to VoterWhitelister
+            assert.equal(voterWhitelisterInvocationCount.toNumber(), 1);
         });
 
         it("Should not add an FTSO twice", async () => {
@@ -324,7 +332,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should initialize reward epoch only after reward epoch start timestamp", async () => {
-            mockPriceSubmitter = await MockPriceSubmitter.new();
+            mockPriceSubmitter = await MockContract.new();
             await mockPriceSubmitter.givenMethodReturnUint(
                 web3.utils.sha3("addFtso(address)")!.slice(0,10),
                 0
@@ -336,6 +344,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockRewardManager.address,
                 mockPriceSubmitter.address,
                 ftsoRegistry.address,
+                mockVoterWhitelister.address,
                 PRICE_EPOCH_DURATION_S,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
@@ -477,10 +486,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const currentPriceReturn = web3.eth.abi.encodeParameters(['uint256','uint256'], [500, 1]);
             await mockFtso.givenMethodReturn(currentPrice, currentPriceReturn);
 
-            let addFtsoPriceSubmitter = web3.utils.sha3("addFtso(address,uint256)")!.slice(0, 10); // first 4 bytes is function selector
-            let priceSubmitterInvocationCount = await mockPriceSubmitter.invocationCountForMethod.call(addFtsoPriceSubmitter);
-            // should add new ftso to PriceSubmitter
-            assert.equal(priceSubmitterInvocationCount.toNumber(), 1);
+            let addFtsoVoterWhitelister = web3.utils.sha3("addFtso(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+            let voterWhitelisterInvocationCount = await mockVoterWhitelister.invocationCountForMethod.call(addFtsoVoterWhitelister);
+            // should add new ftso to VoterWhitelister
+            assert.equal(voterWhitelisterInvocationCount.toNumber(), 1);
 
             // Act
             let tx = await ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, false);
@@ -494,10 +503,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const invocationCount = await mockFtso.invocationCountForMethod.call(updateInitialPrice);
             assert.equal(invocationCount.toNumber(), 0);
 
-            addFtsoPriceSubmitter = web3.utils.sha3("addFtso(address,uint256)")!.slice(0, 10); // first 4 bytes is function selector
-            priceSubmitterInvocationCount = await mockPriceSubmitter.invocationCountForMethod.call(addFtsoPriceSubmitter);
-            // should not add new ftso to PriceSubmitter
-            assert.equal(priceSubmitterInvocationCount.toNumber(), 1);
+            addFtsoVoterWhitelister = web3.utils.sha3("addFtso(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+            voterWhitelisterInvocationCount = await mockVoterWhitelister.invocationCountForMethod.call(addFtsoVoterWhitelister);
+            // should not add new ftso to VoterWhitelister
+            assert.equal(voterWhitelisterInvocationCount.toNumber(), 1);
         });
 
         it("Should sucessfully replace an FTSO and update initial price", async () => {
@@ -899,10 +908,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should governance set FTSO parameters after two price finalizations", async () => {
             let [ftso1, ftso2] = await settingWithFourFTSOs(accounts, ftsoManager, true);
 
+            let priceSubmitterInterface = await PriceSubmitter.new();
             // init reward epoch
             let defaultParamList = [1, 1, 1000, 10000, 50, 1500, 10*DAY];
             let defaultParamListBN = defaultParamList.map(x => toBN(x));
-            await (ftsoManager.setGovernanceParameters as any)(...defaultParamListBN, [accounts[6], accounts[7]]);   
+            let trustedAddresses = [accounts[6], accounts[7]];
+            await (ftsoManager.setGovernanceParameters as any)(...defaultParamListBN, trustedAddresses);   
 
             await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
@@ -912,6 +923,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             await time.increaseTo(startTs.addn(120));
             await ftsoManager.keep();
+            
+            // check price submitter trusted addresses
+            const setTrustedAddresses1 = priceSubmitterInterface.contract.methods.setTrustedAddresses(trustedAddresses).encodeABI();
+            const invocationCount1 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses1);
+            assert.equal(invocationCount1.toNumber(), 1);
 
             let epoch = await submitSomePrices(ftso1, 10, accounts);
             epoch = await submitSomePrices(ftso2, 10, accounts);
@@ -949,11 +965,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             let paramListBN = paramList.map(x => toBN(x));
             let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
-            let trustedAddresses = [accounts[8], accounts[9]];
+            trustedAddresses = [accounts[8], accounts[9]];
             await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
 
             await time.increaseTo(startTs.addn(120 * 4));
             tx = await ftsoManager.keep();
+
+            // check price submitter trusted addresses
+            const setTrustedAddresses2 = priceSubmitterInterface.contract.methods.setTrustedAddresses(trustedAddresses).encodeABI();
+            const invocationCount2 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses2);
+            assert.equal(invocationCount2.toNumber(), 1);
 
             await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
             await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
@@ -1489,6 +1510,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 mockRewardManager.address,
                 mockPriceSubmitter.address,
                 ftsoRegistry.address,
+                mockVoterWhitelister.address,
                 yearSeconds / 10,
                 startTs,
                 REVEAL_EPOCH_DURATION_S,

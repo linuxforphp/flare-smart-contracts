@@ -606,11 +606,11 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns flr vote power for the specified owner and the given epoch id
+     * @notice Returns wflr vote power for the specified owner and the given epoch id
      * @param _owner                Owner address
      * @param _epochId              Id of the epoch
      */
-    function flrVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
+    function wflrVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
         return _getVotePowerOfAt(
             wFlr, _owner, epochs.instance[_epochId % priceEpochCyclicBufferSize].votePowerBlock
         );
