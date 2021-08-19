@@ -2,8 +2,6 @@
 pragma solidity 0.7.6;
 
 import "../../userInterfaces/IPriceSubmitter.sol";
-
-
 interface IIPriceSubmitter is IPriceSubmitter {
 
     /**

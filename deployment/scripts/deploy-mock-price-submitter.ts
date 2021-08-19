@@ -1,18 +1,18 @@
 /**
- * This script will deploy all contracts for the DummyPriceSubmitter.
+ * This script will deploy all contracts for the MockPriceSubmitter.
  * It will output the address of deployed PriceSubmitter.
  */
 
 
  import {
-    DummyPriceSubmitterInstance
+    MockPriceSubmitterInstance
   } from "../../typechain-truffle";
 
 
  
  async function main() {
-  const PriceSubmitter = artifacts.require("DummyPriceSubmitter");
-  const priceSubmitter: DummyPriceSubmitterInstance = await PriceSubmitter.new() 
+  const PriceSubmitter = artifacts.require("MockPriceSubmitter");
+  const priceSubmitter: MockPriceSubmitterInstance = await PriceSubmitter.new() 
   console.log("PriceSubmitter address:", await priceSubmitter.address);
  }
  

@@ -9,7 +9,12 @@ import "../../userInterfaces/IPriceSubmitter.sol";
 /**
  * @title A contract implementing Flare Time Series Oracle
  */
-contract DummyFtso is IIFtso {
+contract MockNpmFtso is IIFtso {
+
+
+    // number of decimal places in FAsset USD price
+    // note that the actual USD price is the integer value divided by 10^FASSET_USD_DECIMALS
+    uint256 public constant FASSET_USD_DECIMALS = 5;
 
     // errors
     string internal constant ERR_NO_ACCESS = "Access denied";

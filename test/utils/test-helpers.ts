@@ -1,4 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+// This sometimes break tests
+// @ts-ignore
 import { time } from '@openzeppelin/test-helpers';
 import { BigNumber, Signer } from "ethers";
 import { ethers } from "hardhat";

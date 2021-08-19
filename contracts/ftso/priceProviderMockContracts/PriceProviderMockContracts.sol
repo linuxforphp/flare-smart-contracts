@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "./priceProviderDummyFtso.sol";
+import "./priceProviderMockFtso.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../userInterfaces/IFtsoRegistry.sol";
 import "../../userInterfaces/IVoterWhitelister.sol";
@@ -10,8 +10,8 @@ import "../../governance/implementation/Governed.sol";
 
 
 /*
- * This file and ./priceProviderDummyFtso.sol contains core contracts needed for Flare price providers.
- * All the dummy contracts implement the same user interfaces that will be available to price providers in 
+ * This file and ./priceProviderMockFtso.sol contains core contracts needed for Flare price providers.
+ * All the mock contracts implement the same user interfaces that will be available to price providers in 
  * real network. Governance and administrative methods are mocked, but user facing methods work in a similar 
  * fashion.
  * 
@@ -21,11 +21,11 @@ import "../../governance/implementation/Governed.sol";
  * FtsoRegistry provides information about ftsos and corresponding assets. 
  * It works in the same way as in the real network.
  *
- * VoterWhitelister work similarly as in real network with few changes:
+ * VoterWhitelister works similarly as in real network with few changes:
  *  - At most one voter can be whitelisted at time.
  *  - No vote power calculation is done during whitelisting, previously whitelisted user is always kicked out.
  * 
- * DummyFtso implements only a minimal subset of methods required for submission and reveal. 
+ * MockFtso implements only a minimal subset of methods required for submission and reveal. 
  * Notably, no median calculation, vote power calculation or rewarding is done.
 
 */
@@ -34,7 +34,7 @@ import "../../governance/implementation/Governed.sol";
 /**
  * @title A contract for FTSO registry
  */
-contract DummyFtsoRegistry is Governed, IFtsoRegistry {
+contract MockFtsoRegistry is Governed, IFtsoRegistry{
 
     // constants
     uint256 internal constant MAX_HISTORY_LENGTH = 5;
@@ -385,7 +385,7 @@ contract DummyFtsoRegistry is Governed, IFtsoRegistry {
 }
 
 
-contract DummyVoterWhitelister is IVoterWhitelister {
+contract MockVoterWhitelister is IVoterWhitelister {
 
     uint256 public override defaultMaxVotersForFtso = 1;
     mapping (uint256 => uint256) public override maxVotersForFtso;
@@ -393,7 +393,7 @@ contract DummyVoterWhitelister is IVoterWhitelister {
     // mapping: ftsoIndex => array of whitelisted voters for this ftso
     mapping (uint256 => address) internal whitelist;
     
-    DummyPriceSubmitter internal priceSubmitter;
+    MockPriceSubmitter internal priceSubmitter;
     
     IFtsoRegistry internal ftsoRegistry;
     
@@ -402,7 +402,7 @@ contract DummyVoterWhitelister is IVoterWhitelister {
         _;
     }
     
-    constructor(DummyPriceSubmitter _priceSubmitter) {
+    constructor(MockPriceSubmitter _priceSubmitter) {
         priceSubmitter = _priceSubmitter;
     }
     
@@ -542,15 +542,16 @@ contract DummyVoterWhitelister is IVoterWhitelister {
  * @title Price submitter
  * @notice A contract used to submit/reveal prices to multiple Flare Time Series Oracles in one transaction
  */
-contract DummyPriceSubmitter is IPriceSubmitter {
+contract MockPriceSubmitter is IPriceSubmitter {
 
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
     string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
     string internal constant ERR_INVALID_INDEX = "Invalid index";
     string internal constant ERR_WHITELISTER_ONLY = "Voter whitelister only";
 
-    DummyFtsoRegistry internal ftsoRegistry; 
-    DummyVoterWhitelister internal voterWhitelister;
+    MockFtsoRegistry internal ftsoRegistry; 
+    
+    MockVoterWhitelister internal voterWhitelister;
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
     mapping(address => uint256) private whitelistedFtsoBitmap;
@@ -564,14 +565,15 @@ contract DummyPriceSubmitter is IPriceSubmitter {
      * Deploy all needed contracts for testing
      */
     constructor() {
-        ftsoRegistry = new DummyFtsoRegistry(address(this));
-        voterWhitelister = new DummyVoterWhitelister(this);
+
+        ftsoRegistry = new MockFtsoRegistry(address(this));
+        voterWhitelister = new MockVoterWhitelister(this);
         voterWhitelister.setFtsoRegistry(ftsoRegistry);
-        // Initialize all dummy ftsos for pacakge
+        // Initialize all mock ftsos for pacakge
         string[10] memory symbols = ["WFLR", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"];
         for (uint256 i = 0; i < symbols.length; ++i) {
             string memory symbol = symbols[i];
-            DummyFtso ftso = new DummyFtso(symbol, this, block.timestamp - 120, 120, 30);
+            MockNpmFtso ftso = new MockNpmFtso(symbol, this, block.timestamp - 120, 120, 30);
             ftsoRegistry.addFtso(ftso);
             uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(symbol);
             voterWhitelister.addFtso(ftsoIndex);
