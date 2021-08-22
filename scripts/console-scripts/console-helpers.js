@@ -33,12 +33,12 @@ let tx4 = await dummyVPToken.transfer(accounts[2], web3.utils.toWei("1", "ether"
 (await dummyVPToken.balanceOf(accounts[2])).toString()
 
 ///////////////////////////////////////////////////////////////
-// Example 2: Code snippet to connect to flare keeper contract on scdev or costonPrivateBeta chains
+// Example 2: Code snippet to connect to flare daemon contract on scdev or costonPrivateBeta chains
 // and get the governance address 
 ///////////////////////////////////////////////////////////////
-let FlareKeeper = artifacts.require("FlareKeeper");
-let flareKeeper = await FlareKeeper.at("0x1000000000000000000000000000000000000002");
-await flareKeeper.governance()
+let FlareDaemon = artifacts.require("FlareDaemon");
+let flareDaemon = await FlareDaemon.at("0x1000000000000000000000000000000000000002");
+await flareDaemon.governance()
 
 
 ///////////////////////////////////////////////////////////////

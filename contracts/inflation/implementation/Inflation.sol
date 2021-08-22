@@ -2,9 +2,9 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import  "../../genesis/implementation/FlareKeeper.sol";
-import "../../genesis/interface/IFlareKeep.sol";
-import "../../utils/implementation/GovernedAndFlareKept.sol";
+import  "../../genesis/implementation/FlareDaemon.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
+import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../lib/InflationAnnum.sol";
 import "../lib/InflationAnnums.sol";
 import "../interface/IIInflationPercentageProvider.sol";
@@ -21,7 +21,7 @@ import "../../utils/implementation/SafePct.sol";
  *   FLR for Flare services that are rewardable by inflation.
  * @dev Please see docs/specs/Inflation.md to better understand this terminology.
  **/
-contract Inflation is GovernedAndFlareKept, IFlareKeep {
+contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
     using InflationAnnums for InflationAnnums.InflationAnnumsState;
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -83,12 +83,12 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
 
     constructor (
         address _governance, 
-        FlareKeeper _flareKeeper,
+        FlareDaemon _flareDaemon,
         IIInflationPercentageProvider _inflationPercentageProvider,
         IIInflationSharingPercentageProvider _inflationSharingPercentageProvider,
         uint256 _rewardEpochStartTs
     )
-        GovernedAndFlareKept(_governance, _flareKeeper)
+        GovernedAndFlareDaemonized(_governance, _flareDaemon)
         notZero(address(_inflationPercentageProvider))
         notZero(address(_inflationSharingPercentageProvider))
     {
@@ -148,13 +148,13 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
     }
 
     /**
-     * @notice Receive newly minted FLR from the FlareKeeper.
+     * @notice Receive newly minted FLR from the FlareDaemon.
      * @dev Assume that the amount received will be >= last topup requested across all services.
      *   If there is not enough balance sent to cover the topup request, expect library method will revert.
      *   Also assume that any balance received greater than the topup request calculated
      *   came from self-destructor sending a balance to this contract.
      */
-    function receiveMinting() external payable onlyFlareKeeper mustBalance {
+    function receiveMinting() external payable onlyFlareDaemon mustBalance {
         uint256 amountPostedWei = inflationAnnums.receiveTopupRequest();
         // Assume that if we received (or already have) more than we posted, 
         // it must be amounts sent from a contract self-destruct
@@ -272,14 +272,14 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
     }
 
     /**
-     * @notice Pulsed by the FlareKeeper to trigger timing-based events for the inflation process.
+     * @notice Pulsed by the FlareDaemon to trigger timing-based events for the inflation process.
      * @dev There are two events:
      *   1) an annual event to recognize inflation for a new annum
      *   2) a daily event to:
      *     a) authorize mintable inflation for rewarding
      *     b) request minting of enough FLR to topup reward services for claiming reserves
      */
-    function keep() external virtual override notZero(address(supply)) onlyFlareKeeper returns(bool) {
+    function daemonize() external virtual override notZero(address(supply)) onlyFlareDaemon returns(bool) {
         // If inflation rewarding not started yet, blow off processing until it does.
         if (block.timestamp < rewardEpochStartTs) {
             return true;
@@ -336,8 +336,8 @@ contract Inflation is GovernedAndFlareKept, IFlareKeep {
 
             emit TopupRequested(topupRequestWei);
 
-            // Send mint request to the keeper.
-            flareKeeper.requestMinting(topupRequestWei);
+            // Send mint request to the daemon.
+            flareDaemon.requestMinting(topupRequestWei);
         }
         return true;
     }

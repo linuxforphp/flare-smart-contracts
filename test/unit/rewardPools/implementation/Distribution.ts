@@ -52,7 +52,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
 
   async function bestowClaimableBalance(balance: BN) {
       // Give the distribution contract the FLR required to be in balance with entitlements
-      // Our subversive attacker will be suiciding some FLR into flareKeeper
+      // Our subversive attacker will be suiciding some FLR into flareDaemon
       const suicidalMock = await SuicidalMock.new(distribution.address);
       // Give suicidal some FLR
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: balance});

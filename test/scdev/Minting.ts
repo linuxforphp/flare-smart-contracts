@@ -1,4 +1,4 @@
-import { FlareKeeperInstance, InflationMockInstance } from "../../typechain-truffle";
+import { FlareDaemonInstance, InflationMockInstance } from "../../typechain-truffle";
 
 const getTestFile = require('../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
@@ -17,15 +17,15 @@ if (process.env.GOVERNANCE_PRIVATE_KEY) {
 }
 
 /**
- * Test minting interaction between FlareKeeper and validator.
+ * Test minting interaction between FlareDaemon and validator.
  */
-contract(`FlareKeeper.sol; ${getTestFile(__filename)}; Minting system test`, async accounts => {
+contract(`FlareDaemon.sol; ${getTestFile(__filename)}; Minting system test`, async accounts => {
   // Define accounts in play for the deployment process
   let deployerAccount: any;
   let governanceAccount: any;
   let genesisGovernanceAccount: any;
   let inflationMock: InflationMockInstance;
-  let flareKeeper: FlareKeeperInstance;
+  let flareDaemon: FlareDaemonInstance;
 
   function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -46,34 +46,34 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; Minting system test`, asy
 
     // Contract artifact definitions
     const InflationMock = artifacts.require("InflationMock");
-    const FlareKeeper = artifacts.require("FlareKeeper");
+    const FlareDaemon = artifacts.require("FlareDaemon");
 
     inflationMock = await InflationMock.new(deployerAccount.address);
 
-    // Initialize the keeper
+    // Initialize the daemon
     try {
-      flareKeeper = await FlareKeeper.at(parameters.flareKeeperAddress);
+      flareDaemon = await FlareDaemon.at(parameters.flareDaemonAddress);
     } catch (e) {
-      console.error("FlareKeeper not in genesis...creating new.")
-      flareKeeper = await FlareKeeper.new();
+      console.error("FlareDaemon not in genesis...creating new.")
+      flareDaemon = await FlareDaemon.new();
     }
     let currentGovernanceAddress = null;
     try {
-      await flareKeeper.initialiseFixedAddress();
+      await flareDaemon.initialiseFixedAddress();
       currentGovernanceAddress = genesisGovernanceAccount.address;
     } catch (e) {
-      // keeper might be already initialized if redeploy
-      // NOTE: unregister must claim governance of flareKeeper!
+      // daemon might be already initialized if redeploy
+      // NOTE: unregister must claim governance of flareDaemon!
       currentGovernanceAddress = governanceAccount.address
     }
-    await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
-    await flareKeeper.claimGovernance({ from: deployerAccount.address });
+    await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
+    await flareDaemon.claimGovernance({ from: deployerAccount.address });
 
-    // Set a reference to inflation mock on the keeper
-    await flareKeeper.setInflation(inflationMock.address);
+    // Set a reference to inflation mock on the daemon
+    await flareDaemon.setInflation(inflationMock.address);
 
-    // Set a reference to keeper on inflation mock
-    await inflationMock.setFlareKeeper(flareKeeper.address);
+    // Set a reference to daemon on inflation mock
+    await inflationMock.setFlareDaemon(flareDaemon.address);
 
     // Allow the inflation mock to receive bigly funds requested
     await inflationMock.setDoNotReceiveNoMoreThan(web3.utils.toWei(BN(100000000000)));
@@ -85,10 +85,10 @@ contract(`FlareKeeper.sol; ${getTestFile(__filename)}; Minting system test`, asy
       const openingBalance = BN(await web3.eth.getBalance(inflationMock.address));
       // Act
       await inflationMock.requestMinting(web3.utils.toWei(BN(50000000)));
-      let lastTrigger = await flareKeeper.systemLastTriggeredAt();
-      // Wait for the keeper to be triggered again
-      while(lastTrigger.eq(await flareKeeper.systemLastTriggeredAt())) {
-        // Tickle some state so blocks are finalized and keeper trigger method is called.
+      let lastTrigger = await flareDaemon.systemLastTriggeredAt();
+      // Wait for the daemon to be triggered again
+      while(lastTrigger.eq(await flareDaemon.systemLastTriggeredAt())) {
+        // Tickle some state so blocks are finalized and daemon trigger method is called.
         await inflationMock.tick();
         await sleep(1000);
       }

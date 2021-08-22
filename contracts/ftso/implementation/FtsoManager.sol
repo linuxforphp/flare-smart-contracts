@@ -5,13 +5,13 @@ pragma abicoder v2;
 import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtso.sol";
 import "../lib/FtsoManagerSettings.sol";
-import "../../genesis/implementation/FlareKeeper.sol";
-import "../../genesis/interface/IFlareKeep.sol";
+import "../../genesis/implementation/FlareDaemon.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../rewardPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
-import "../../utils/implementation/GovernedAndFlareKept.sol";
+import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../utils/implementation/RevertErrorTracking.sol";
 import "../../utils/interface/IIFtsoRegistry.sol";
 import "../../utils/interface/IIVoterWhitelister.sol";
@@ -27,7 +27,7 @@ import "../../utils/interface/IIVoterWhitelister.sol";
  *    - trigger finalize price reveal epoch
  *    - determines addresses and reward weights and triggers rewardDistribution
  */    
-contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertErrorTracking {
+contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemonize, RevertErrorTracking {
     using FtsoManagerSettings for FtsoManagerSettings.State;
 
     struct PriceEpochData {
@@ -101,7 +101,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     // _priceEpochDurationSeconds, _firstEpochStartTs and _revealEpochDurationSeconds must match
     constructor(
         address _governance,
-        FlareKeeper _flareKeeper,
+        FlareDaemon _flareDaemon,
         IIFtsoRewardManager _rewardManager,
         IIPriceSubmitter _priceSubmitter,
         IIFtsoRegistry _ftsoRegistry,
@@ -113,7 +113,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 _rewardEpochsStartTs,
         uint256 _votePowerBoundaryFraction
     ) 
-        GovernedAndFlareKept(_governance, _flareKeeper)
+        GovernedAndFlareDaemonized(_governance, _flareDaemon)
     {
         require(block.timestamp >= _firstEpochStartTs, ERR_FIRST_EPOCH_START_TS_IN_FUTURE);
         require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
@@ -157,31 +157,31 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     }
     
     /**
-     * @notice Activates FTSO manager (keep() runs jobs)
+     * @notice Activates FTSO manager (daemonize() runs jobs)
      */
     function activate() external override onlyGovernance {
         active = true;
     }
 
     /**
-     * @notice Deactivates FTSO manager (keep() stops running jobs)
+     * @notice Deactivates FTSO manager (daemonize() stops running jobs)
      */
     function deactivate() external override onlyGovernance {
         active = false;
     }
 
     /**
-     * @notice Runs task triggered by Keeper.
+     * @notice Runs task triggered by Daemon.
      * The tasks include the following by priority
      * - finalizePriceEpoch     
      * - Set governance parameters and initialize epochs
      * - finalizeRewardEpoch 
      */
-    function keep() external override onlyFlareKeeper returns (bool) {
-        // flare keeper trigger. once every block
+    function daemonize() external override onlyFlareDaemon returns (bool) {
+        // flare daemon trigger. once every block
         
         // TODO: remove this event after testing phase
-        emit KeepTrigger(block.number, block.timestamp);
+        emit DaemonizeTrigger(block.number, block.timestamp);
         if (!active) return false;
 
         IIFtso[] memory _ftsos = _getFtsos();

@@ -40,7 +40,7 @@ let rippleApi: RippleAPI;
  * already be loaded in the genesis block.
  */
 contract(`StateConnector.sol; ${getTestFile(__filename)}; StateConnector system tests`, async accounts => {
-    // Static address of the keeper on a local network
+    // Static address of the daemon on a local network
 
     before(async() => {
         // Defined in fba-avalanche/avalanchego/genesis/genesis_coston.go;

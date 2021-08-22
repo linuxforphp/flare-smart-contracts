@@ -5,10 +5,10 @@ import "@gnosis.pm/mock-contract/contracts/MockContract.sol";
 
 /**
  * @title Inflation mock contract
- * @notice A contract to call the flare keeper to request minting.
+ * @notice A contract to call the flare daemon to request minting.
  **/
 contract InflationMock is MockContract {
-    address private flareKeeper;
+    address private flareDaemon;
     address private inflationReceiver;
     uint256 public doNotReceiveMoreThan;
     uint256 public ticker;
@@ -21,8 +21,8 @@ contract InflationMock is MockContract {
         ticker += 1;
     }
 
-    function setFlareKeeper(address _flareKeeper) public {
-        flareKeeper = _flareKeeper;
+    function setFlareDaemon(address _flareDaemon) public {
+        flareDaemon = _flareDaemon;
     }
 
     function setInflationReceiver(address _inflationReceiver) public {
@@ -34,7 +34,7 @@ contract InflationMock is MockContract {
         // this project and the MockContract component.
         bytes memory payload = abi.encodeWithSignature("requestMinting(uint256)", amount);
         //solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = flareKeeper.call(payload);
+        (bool success, ) = flareDaemon.call(payload);
         require(success);
     }
 

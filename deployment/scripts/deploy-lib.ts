@@ -13,7 +13,7 @@ import {
   CleanupBlockNumberManagerInstance,
   DummyFAssetMinterInstance,
   FAssetTokenInstance,
-  FlareKeeperInstance,
+  FlareDaemonInstance,
   FtsoInstance,
   FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance,
   StateConnectorInstance,
@@ -43,7 +43,7 @@ export interface DeployedFlareContracts {
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
   ftsoRewardManager: FtsoRewardManagerInstance,
   ftsoManager: FtsoManagerInstance,
-  flareKeeper: FlareKeeperInstance,
+  flareDaemon: FlareDaemonInstance,
   priceSubmitter: PriceSubmitterInstance,
   validatorRewardManager: ValidatorRewardManagerInstance,
   supply: SupplyInstance,
@@ -85,7 +85,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // Contract definitions
   const InflationAllocation = artifacts.require("InflationAllocation");
   const StateConnector = artifacts.require("StateConnector");
-  const FlareKeeper = artifacts.require("FlareKeeper");
+  const FlareDaemon = artifacts.require("FlareDaemon");
   const Ftso = artifacts.require("Ftso");
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
@@ -123,30 +123,30 @@ export async function fullDeploy(parameters: any, quiet = false) {
     console.error(`stateConnector.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
   }
 
-  // Initialize the keeper
-  let flareKeeper: FlareKeeperInstance;
+  // Initialize the daemon
+  let flareDaemon: FlareDaemonInstance;
   try {
-    flareKeeper = await FlareKeeper.at(parameters.flareKeeperAddress);
+    flareDaemon = await FlareDaemon.at(parameters.flareDaemonAddress);
   } catch (e) {
     if (!quiet) {
-      console.error("FlareKeeper not in genesis...creating new.")
+      console.error("FlareDaemon not in genesis...creating new.")
     }
-    flareKeeper = await FlareKeeper.new();
+    flareDaemon = await FlareDaemon.new();
   }
-  spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address, quiet);
+  spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
   let currentGovernanceAddress = null;
   try {
-    await flareKeeper.initialiseFixedAddress();
+    await flareDaemon.initialiseFixedAddress();
     currentGovernanceAddress = genesisGovernanceAccount.address;
   } catch (e) {
-    // keeper might be already initialized if redeploy
-    // NOTE: unregister must claim governance of flareKeeper!
+    // daemon might be already initialized if redeploy
+    // NOTE: unregister must claim governance of flareDaemon!
     currentGovernanceAddress = governanceAccount.address
   }
-  await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
-  await flareKeeper.claimGovernance({ from: deployerAccount.address });
-  // Set the block holdoff should a kept contract exceeded its max gas allocation
-  await flareKeeper.setBlockHoldoff(parameters.flareKeeperGasExceededHoldoffBlocks);
+  await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
+  await flareDaemon.claimGovernance({ from: deployerAccount.address });
+  // Set the block holdoff should a daemonize contract exceeded its max gas allocation
+  await flareDaemon.setBlockHoldoff(parameters.flareDaemonGasExceededHoldoffBlocks);
 
   // Inflation contract
   // Get the timestamp for the just mined block
@@ -157,14 +157,14 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   const inflation = await Inflation.new(
     deployerAccount.address,
-    flareKeeper.address,
+    flareDaemon.address,
     inflationAllocation.address,
     inflationAllocation.address,
     startTs
   );
   spewNewContractInfo(contracts, Inflation.contractName, inflation.address, quiet);
-  // The keeper needs a reference to the inflation contract.
-  await flareKeeper.setInflation(inflation.address);
+  // The daemon needs a reference to the inflation contract.
+  await flareDaemon.setInflation(inflation.address);
   // InflationAllocation needs a reference to the inflation contract.
   await inflationAllocation.setInflation(inflation.address);
 
@@ -239,7 +239,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
-    flareKeeper.address,
+    flareDaemon.address,
     ftsoRewardManager.address,
     priceSubmitter.address,
     ftsoRegistry.address,
@@ -262,12 +262,12 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // Tell reward manager about ftso manager
   await ftsoRewardManager.setFTSOManager(ftsoManager.address);
 
-  // Register kept contracts to the keeper...order matters. Inflation first.
+  // Register daemonized contracts to the daemon...order matters. Inflation first.
   const registrations = [
-    { keptContract: inflation.address, gasLimit: 10000000 },
-    { keptContract: ftsoManager.address, gasLimit: 10000000 }
+    { daemonizedContract: inflation.address, gasLimit: 10000000 },
+    { daemonizedContract: ftsoManager.address, gasLimit: 10000000 }
   ];
-  await flareKeeper.registerToKeep(registrations);
+  await flareDaemon.registerToDaemonize(registrations);
 
   // Deploy wrapped FLR
   const wflr = await WFLR.new(deployerAccount.address);
@@ -373,7 +373,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await supply.proposeGovernance(governanceAccount.address);
   await inflation.proposeGovernance(governanceAccount.address);
   await inflationAllocation.proposeGovernance(governanceAccount.address);
-  await flareKeeper.proposeGovernance(governanceAccount.address);
+  await flareDaemon.proposeGovernance(governanceAccount.address);
   await ftsoRewardManager.proposeGovernance(governanceAccount.address);
   await validatorRewardManager.proposeGovernance(governanceAccount.address);
   await ftsoManager.proposeGovernance(governanceAccount.address);
@@ -390,7 +390,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     cleanupBlockNumberManager: cleanupBlockNumberManager,
     ftsoRewardManager: ftsoRewardManager,
     ftsoManager: ftsoManager,
-    flareKeeper: flareKeeper,
+    flareDaemon: flareDaemon,
     priceSubmitter: priceSubmitter,
     validatorRewardManager: validatorRewardManager,
     supply: supply,
