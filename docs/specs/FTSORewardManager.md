@@ -50,7 +50,7 @@ From a delegator’s perspective, two factors can be used to predict its APY whe
 
 ## Reward expiration
 
-When distributing rewards, the Flare keeper will accredit each address balance automatically, so users will only have to call the claim function every once in a while. Unclaimed rewards will have an expiration time. The expiration time will be set in the reward manager. Rewards not claimed during this time period will be returned to the rewarding pool for redistribution. Current expiration time is planned to be at least a year.
+When distributing rewards, the Flare daemon will accredit each address balance automatically, so users will only have to call the claim function every once in a while. Unclaimed rewards will have an expiration time. The expiration time will be set in the reward manager. Rewards not claimed during this time period will be returned to the rewarding pool for redistribution. Current expiration time is planned to be at least a year.
 
 [inflation]: ./Inflation.md "Inflation"
 [Ftso Reward Manager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "Ftso Reward Manager"

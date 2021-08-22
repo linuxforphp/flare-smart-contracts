@@ -3,8 +3,8 @@
  * Contract json file is to be fed in to stdin.
  */
 import { 
-  FlareKeeperContract, 
-  FlareKeeperInstance, 
+  FlareDaemonContract, 
+  FlareDaemonInstance, 
   FtsoContract, 
   FtsoInstance, 
   FtsoManagerContract, 
@@ -19,7 +19,7 @@ import {
 import { Contracts } from "../../deployment/scripts/Contracts";
 import { PriceInfo } from '../utils/PriceInfo';
 import { submitPriceHash, advanceBlock } from '../utils/test-helpers';
-import { spewKeeperErrors } from "../utils/FlareKeeperTestUtils";
+import { spewDaemonErrors } from "../utils/FlareDaemonTestUtils";
 const getTestFile = require('../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
 var randomNumber = require("random-number-csprng");
@@ -129,7 +129,7 @@ function spewClaimError(account: string, e: unknown) {
  * @param rewardEpochPeriod - epoch period in seconds, must match to the one set in the FTSO manager contract
  * @param rewardEpoch - current reward epoch number
  */
- async function waitTillRewardFinalizeStart(ftsoManager: FtsoManagerInstance, flareKeeper: FlareKeeperInstance, rewardEpochStartTimestamp: number, rewardEpochPeriod: number, rewardEpoch: number) {
+ async function waitTillRewardFinalizeStart(ftsoManager: FtsoManagerInstance, flareDaemon: FlareDaemonInstance, rewardEpochStartTimestamp: number, rewardEpochPeriod: number, rewardEpoch: number) {
   let finalizeTimestamp = (rewardEpoch + 1) * rewardEpochPeriod + rewardEpochStartTimestamp + 1;
   let blockInfo = await web3.eth.getBlock(await web3.eth.getBlockNumber());
   while (blockInfo.timestamp < finalizeTimestamp) {
@@ -138,7 +138,7 @@ function spewClaimError(account: string, e: unknown) {
     });
     await advanceBlock();
     blockInfo = await web3.eth.getBlock(await web3.eth.getBlockNumber());
-    console.log(`block.timestamp = ${blockInfo.timestamp}; finalizeTimestamp = ${finalizeTimestamp}; triggered at ${(await flareKeeper.systemLastTriggeredAt()).toNumber()}`);
+    console.log(`block.timestamp = ${blockInfo.timestamp}; finalizeTimestamp = ${finalizeTimestamp}; triggered at ${(await flareDaemon.systemLastTriggeredAt()).toNumber()}`);
   }
 }
 
@@ -147,8 +147,8 @@ function spewClaimError(account: string, e: unknown) {
  */
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
   let contracts: Contracts;
-  let FlareKeeper: FlareKeeperContract;
-  let flareKeeper: FlareKeeperInstance;
+  let FlareDaemon: FlareDaemonContract;
+  let flareDaemon: FlareDaemonInstance;
   let RewardManager: FtsoRewardManagerContract;
   let rewardManager: FtsoRewardManagerInstance;
   let FtsoManager: FtsoManagerContract;
@@ -183,8 +183,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Wire up needed contracts
     console.log("Setting up contract references...");
-    FlareKeeper = artifacts.require("FlareKeeper");
-    flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
+    FlareDaemon = artifacts.require("FlareDaemon");
+    flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     RewardManager = artifacts.require("FtsoRewardManager");
     rewardManager = await RewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     FtsoManager = artifacts.require("FtsoManager");
@@ -241,7 +241,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     await waitTillRewardFinalizeStart(
       ftsoManager,
-      flareKeeper,
+      flareDaemon,
       rewardEpochsStartTs.toNumber(), 
       rewardEpochDurationSeconds.toNumber(), 
       (await ftsoManager.getCurrentRewardEpoch()).toNumber());
@@ -294,7 +294,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     while(new Date().getTime() / 1000 < revealEndTs.toNumber()) {
       // Reveal prices
-      console.log(`Trying to reveal prices; system last triggered at ${(await flareKeeper.systemLastTriggeredAt()).toNumber()}; it is now ${new Date().getTime() / 1000}...`);
+      console.log(`Trying to reveal prices; system last triggered at ${(await flareDaemon.systemLastTriggeredAt()).toNumber()}; it is now ${new Date().getTime() / 1000}...`);
       try {
         await revealPrice(ftsoWflr, p1FlrPrice!, p1);
         await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p1SubmitterPrices!, p1);
@@ -346,7 +346,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     await waitTillRewardFinalizeStart(
       ftsoManager,
-      flareKeeper,
+      flareDaemon,
       rewardEpochsStartTs.toNumber(), 
       rewardEpochDurationSeconds.toNumber(), 
       rewardEpochId.toNumber());
@@ -428,11 +428,11 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       console.log(`Should have claimed: ${shouldaClaimed.toString()}`);
       console.log(`Actually claimed: ${computedRewardClaimed.toString()}`);
 
-      // Any keeper errors? Better spew them to the console.
-      // Some of these are inflation zero errors, from before inflation was added to the keeper
+      // Any daemon errors? Better spew them to the console.
+      // Some of these are inflation zero errors, from before inflation was added to the daemon
       // at deploy time. These are ok and should be ignored.
-      await spewKeeperErrors(flareKeeper);
-//      assert.equal((await spewKeeperErrors(flareKeeper)), 0);
+      await spewDaemonErrors(flareDaemon);
+//      assert.equal((await spewDaemonErrors(flareDaemon)), 0);
 
       // Account for allocation truncation during distribution calc
       const differenceBetweenActualAndExpected = shouldaClaimed.sub(computedRewardClaimed);
@@ -440,10 +440,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       // After all that, one little test...
       assert(shouldaClaimed.sub(computedRewardClaimed).eq(BN(0)), "Claimed amount and amount should have claimed are not equal.");
     } catch (e) {
-      // Any keeper errors? Better spew them to the console and fail if so.
-      await spewKeeperErrors(flareKeeper);
-//      assert.equal((await spewKeeperErrors(flareKeeper)), 0);
-      // This is still a test failure even if no keeper errors, as something else happened.
+      // Any daemon errors? Better spew them to the console and fail if so.
+      await spewDaemonErrors(flareDaemon);
+//      assert.equal((await spewDaemonErrors(flareDaemon)), 0);
+      // This is still a test failure even if no daemon errors, as something else happened.
       throw e;
     }
   });

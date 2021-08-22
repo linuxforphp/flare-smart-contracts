@@ -8,25 +8,25 @@ pragma abicoder v2;
 
 import "../../governance/implementation/GovernedAtGenesis.sol";
 import "../../inflation/implementation/Inflation.sol";
-import "../interface/IFlareKeep.sol";
+import "../interface/IFlareDaemonize.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
 
 
 /**
- * @title Flare Keeper contract
+ * @title Flare Daemon contract
  * @notice This contract exists to coordinate regular daemon-like polling of contracts
  *   that are registered to receive said polling. The trigger method is called by the 
  *   validator right at the end of block state transition.
  */
-contract FlareKeeper is GovernedAtGenesis {
+contract FlareDaemon is GovernedAtGenesis {
     using SafeMath for uint256;
     using SafePct for uint256;
 
     //====================================================================
     // Data Structures
     //====================================================================
-    struct KeptError {
+    struct DaemonizedError {
         uint192 lastErrorBlock;
         uint64 numErrors;
         address fromContract;
@@ -35,12 +35,12 @@ contract FlareKeeper is GovernedAtGenesis {
     }
 
     struct LastErrorData {
-        uint192 totalKeptErrors;
+        uint192 totalDaemonizedErrors;
         uint64 lastErrorTypeIndex;
     }
 
     struct Registration {
-        IFlareKeep keptContract;
+        IFlareDaemonize daemonizedContract;
         uint256 gasLimit;
     }
 
@@ -59,7 +59,7 @@ contract FlareKeeper is GovernedAtGenesis {
     string internal constant ERR_ADDRESS_ZERO = "address zero";
     string internal constant ERR_OUT_OF_GAS = "out of gas";
 
-    uint256 internal constant MAX_KEEP_CONTRACTS = 10;
+    uint256 internal constant MAX_DAEMONIZE_CONTRACTS = 10;
     // Initial max mint request - 50 million FLR
     uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
     // How often can inflation request minting from the validator - 23 hours constant
@@ -69,9 +69,9 @@ contract FlareKeeper is GovernedAtGenesis {
     // By how much can the maximum be increased (as a percentage of the previous maximum)
     uint256 internal constant MAX_MINTING_REQUEST_INCREASE_PERCENT = 110;
 
-    IFlareKeep[] public keepContracts;
-    mapping (IFlareKeep => uint256) public gasLimits;
-    mapping (IFlareKeep => uint256) public blockHoldoffsRemaining;
+    IFlareDaemonize[] public daemonizeContracts;
+    mapping (IFlareDaemonize => uint256) public gasLimits;
+    mapping (IFlareDaemonize => uint256) public blockHoldoffsRemaining;
     Inflation public inflation;
     uint256 public systemLastTriggeredAt;
     uint256 public totalMintingRequestedWei;
@@ -87,17 +87,17 @@ contract FlareKeeper is GovernedAtGenesis {
     uint256 private lastBalance;
     uint256 private expectedMintRequest;
     bool private initialized;
-    // track keep errors
-    mapping(bytes32 => KeptError) internal keptErrors;
-    bytes32 [] internal keepErrorHashes;
+    // track daemonize errors
+    mapping(bytes32 => DaemonizedError) internal daemonizedErrors;
+    bytes32 [] internal daemonizeErrorHashes;
 
-    event ContractKept(address theContract);
-    event ContractKeepErrored(address theContract, uint256 atBlock, string theMessage);
+    event ContractDaemonized(address theContract);
+    event ContractDaemonizeErrored(address theContract, uint256 atBlock, string theMessage);
     event ContractHeldOff(address theContract, uint256 blockHoldoffsRemaining);
     event MintingRequested (uint256 amountWei);
     event MintingReceived (uint256 amountWei);
     event MintingWithdrawn(uint256 amountWei);
-    event RegistrationUpdated (IFlareKeep theContract, bool add);
+    event RegistrationUpdated (IFlareDaemonize theContract, bool add);
     event SelfDestructReceived (uint256 amountWei);
     event InflationSet(Inflation theNewContract, Inflation theOldContract);
 
@@ -108,7 +108,7 @@ contract FlareKeeper is GovernedAtGenesis {
     modifier inflationSet {
         // Don't revert...just report.
         if (address(inflation) == address(0)) {
-            addKeepError(address(this), ERR_INFLATION_ZERO);
+            addDaemonizeError(address(this), ERR_INFLATION_ZERO);
         }
         _;
     }
@@ -121,7 +121,7 @@ contract FlareKeeper is GovernedAtGenesis {
         // We should be in balance - don't revert, just report...
         uint256 contractBalanceExpected = getExpectedBalance();
         if (contractBalanceExpected != address(this).balance) {
-            addKeepError(address(this), ERR_OUT_OF_BALANCE);
+            addDaemonizeError(address(this), ERR_OUT_OF_BALANCE);
         }
     }
 
@@ -151,18 +151,18 @@ contract FlareKeeper is GovernedAtGenesis {
     //====================================================================  
 
     /**
-     * @notice Register contracts to be polled by the keeper process.
-     * @param _registrations    An array of Registration structures of IFlareKeep contracts to keep
+     * @notice Register contracts to be polled by the daemon process.
+     * @param _registrations    An array of Registration structures of IFlareDaemonize contracts to daemonize
      *                          and gas limits for each contract.
      * @dev A gas limit of zero will set no limit for the contract but the validator has an overall
      *   limit for the trigger() method.
      * @dev If any registrations already exist, they will be unregistered.
-     * @dev Contracts will be kept in the order in which presented via the _registrations array.
+     * @dev Contracts will be daemonized in the order in which presented via the _registrations array.
      */
-    function registerToKeep(Registration[] calldata _registrations) external onlyGovernance {
+    function registerToDaemonize(Registration[] calldata _registrations) external onlyGovernance {
         // Make sure there are not too many contracts to register.
         uint256 registrationsLength = _registrations.length;
-        require(registrationsLength <= MAX_KEEP_CONTRACTS, ERR_TOO_MANY);
+        require(registrationsLength <= MAX_DAEMONIZE_CONTRACTS, ERR_TOO_MANY);
 
         // Unregister everything first
         _unregisterAll();
@@ -170,22 +170,23 @@ contract FlareKeeper is GovernedAtGenesis {
         // Loop over all contracts to register
         for (uint256 registrationIndex = 0; registrationIndex < registrationsLength; registrationIndex++) {
             // Address cannot be zero
-            require(address(_registrations[registrationIndex].keptContract) != address(0), ERR_ADDRESS_ZERO);
+            require(address(_registrations[registrationIndex].daemonizedContract) != address(0), ERR_ADDRESS_ZERO);
 
-            uint256 keepContractsLength = keepContracts.length;
+            uint256 daemonizeContractsLength = daemonizeContracts.length;
             // Make sure no dups...yes, inefficient. Registration should not be done often.
-            for (uint256 i = 0; i < keepContractsLength; i++) {
-                require(_registrations[registrationIndex].keptContract != keepContracts[i], 
+            for (uint256 i = 0; i < daemonizeContractsLength; i++) {
+                require(_registrations[registrationIndex].daemonizedContract != daemonizeContracts[i], 
                     ERR_DUPLICATE_ADDRESS); // already registered
             }
-            // Store off the registered contract to keep, in the order presented.
-            keepContracts.push(_registrations[registrationIndex].keptContract);
+            // Store off the registered contract to daemonize, in the order presented.
+            daemonizeContracts.push(_registrations[registrationIndex].daemonizedContract);
             // Record the gas limit for the contract.
-            gasLimits[_registrations[registrationIndex].keptContract] = _registrations[registrationIndex].gasLimit;
+            gasLimits[_registrations[registrationIndex].daemonizedContract] = 
+                _registrations[registrationIndex].gasLimit;
             // Clear any blocks being held off for the given contract, if any. Contracts may be re-presented
             // if only order is being modified, for example.
-            blockHoldoffsRemaining[_registrations[registrationIndex].keptContract] = 0;
-            emit RegistrationUpdated (_registrations[registrationIndex].keptContract, true);
+            blockHoldoffsRemaining[_registrations[registrationIndex].daemonizedContract] = 0;
+            emit RegistrationUpdated (_registrations[registrationIndex].daemonizedContract, true);
         }
     }
 
@@ -204,8 +205,8 @@ contract FlareKeeper is GovernedAtGenesis {
     }
 
     /**
-     * @notice Set number of blocks that must elapse before a kept contract exceeding gas limit can have
-     *   its keep() method called again.
+     * @notice Set number of blocks that must elapse before a daemonized contract exceeding gas limit can have
+     *   its daemonize() method called again.
      * @param _blockHoldoff    The number of blocks to holdoff.
      */
     function setBlockHoldoff(uint256 _blockHoldoff) external onlyGovernance {
@@ -249,7 +250,7 @@ contract FlareKeeper is GovernedAtGenesis {
     }
 
     /**
-     * @notice The meat of this contract. Poll all registered contracts, calling the keep() method of each,
+     * @notice The meat of this contract. Poll all registered contracts, calling the daemonize() method of each,
      *   in the order in which registered.
      * @return  _toMintWei     Return the amount to mint back to the validator. The asked for balance will show
      *                          up in the next block (it is actually added right before this block's state transition,
@@ -281,7 +282,7 @@ contract FlareKeeper is GovernedAtGenesis {
                     totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(minted);
                     emit MintingWithdrawn(minted);
                 } catch Error(string memory message) {
-                    addKeepError(address(this), message);
+                    addDaemonizeError(address(this), message);
                 }
             } else if (currentBalance < balanceExpected) {
                 // No, and if less, there are two possibilities: 1) the validator did not
@@ -303,42 +304,42 @@ contract FlareKeeper is GovernedAtGenesis {
                     totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(expectedMintRequest);
                     emit MintingWithdrawn(expectedMintRequest);
                 } catch Error(string memory message) {
-                    addKeepError(address(this), message);
+                    addDaemonizeError(address(this), message);
                 }
             }
         }
 
-        uint256 len = keepContracts.length;
+        uint256 len = daemonizeContracts.length;
 
         // Perform trigger operations here
         for (uint256 i = 0; i < len; i++) {
-            uint256 blockHoldoffRemainingForContract = blockHoldoffsRemaining[keepContracts[i]];
+            uint256 blockHoldoffRemainingForContract = blockHoldoffsRemaining[daemonizeContracts[i]];
             if (blockHoldoffRemainingForContract > 0) {
-                blockHoldoffsRemaining[keepContracts[i]] = blockHoldoffRemainingForContract - 1;
-                emit ContractHeldOff(address(keepContracts[i]), blockHoldoffRemainingForContract);
+                blockHoldoffsRemaining[daemonizeContracts[i]] = blockHoldoffRemainingForContract - 1;
+                emit ContractHeldOff(address(daemonizeContracts[i]), blockHoldoffRemainingForContract);
             } else {
                 // Figure out what gas to limit call by
                 uint256 startGas = gasleft();
-                uint256 gasLimit = gasLimits[keepContracts[i]];
+                uint256 gasLimit = gasLimits[daemonizeContracts[i]];
                 // Use ternary in needless variable because slither has problems with some in-line ternary expressions
                 uint256 useGas = gasLimit > 0 ? gasLimit : startGas; 
-                // Run keep for the contract, consume errors, and record
-                try keepContracts[i].keep{gas: useGas} ()
+                // Run daemonize for the contract, consume errors, and record
+                try daemonizeContracts[i].daemonize{gas: useGas} ()
                 {
-                    emit ContractKept(address(keepContracts[i]));
+                    emit ContractDaemonized(address(daemonizeContracts[i]));
                 // Catch all requires with messages
                 } catch Error(string memory message) {
-                    addKeepError(address(keepContracts[i]), message);
+                    addDaemonizeError(address(daemonizeContracts[i]), message);
                 // Catch everything else...out of gas, div by zero, asserts, etc.
                 } catch {
                     uint256 endGas = gasleft();
                     // Interpret out of gas errors
-                    if (startGas.sub(endGas) >= gasLimits[keepContracts[i]]) {
-                        blockHoldoffsRemaining[keepContracts[i]] = blockHoldoff;
-                        addKeepError(address(keepContracts[i]), ERR_OUT_OF_GAS);
+                    if (startGas.sub(endGas) >= gasLimits[daemonizeContracts[i]]) {
+                        blockHoldoffsRemaining[daemonizeContracts[i]] = blockHoldoff;
+                        addDaemonizeError(address(daemonizeContracts[i]), ERR_OUT_OF_GAS);
                     } else {
                         // Don't know error cause...just log it as unknown
-                        addKeepError(address(keepContracts[i]), "unknown");
+                        addDaemonizeError(address(daemonizeContracts[i]), "unknown");
                     }
                 }
             }
@@ -357,22 +358,22 @@ contract FlareKeeper is GovernedAtGenesis {
     }
 
     /**
-     * @notice Unregister all contracts from being polled by the keeper process.
+     * @notice Unregister all contracts from being polled by the daemon process.
      */
     function unregisterAll() external onlyGovernance {
         _unregisterAll();
     }
 
-    function showLastKeptError () external view 
+    function showLastDaemonizedError () external view 
         returns(
             uint256[] memory _lastErrorBlock,
             uint256[] memory _numErrors,
             string[] memory _errorString,
             address[] memory _erroringContract,
-            uint256 _totalKeptErrors
+            uint256 _totalDaemonizedErrors
         )
     {
-        return showKeptErrors(errorData.lastErrorTypeIndex, 1);
+        return showDaemonizedErrors(errorData.lastErrorTypeIndex, 1);
     }
 
     /**
@@ -390,20 +391,20 @@ contract FlareKeeper is GovernedAtGenesis {
         }
     }
 
-    function showKeptErrors (uint startIndex, uint numErrorTypesToShow) public view 
+    function showDaemonizedErrors (uint startIndex, uint numErrorTypesToShow) public view 
         returns(
             uint256[] memory _lastErrorBlock,
             uint256[] memory _numErrors,
             string[] memory _errorString,
             address[] memory _erroringContract,
-            uint256 _totalKeptErrors
+            uint256 _totalDaemonizedErrors
         )
     {
-        require(startIndex < keepErrorHashes.length, INDEX_TOO_HIGH);
+        require(startIndex < daemonizeErrorHashes.length, INDEX_TOO_HIGH);
         uint256 numReportElements = 
-            keepErrorHashes.length >= startIndex + numErrorTypesToShow ?
+            daemonizeErrorHashes.length >= startIndex + numErrorTypesToShow ?
             numErrorTypesToShow :
-            keepErrorHashes.length - startIndex;
+            daemonizeErrorHashes.length - startIndex;
 
         _lastErrorBlock = new uint256[] (numReportElements);
         _numErrors = new uint256[] (numReportElements);
@@ -417,50 +418,50 @@ contract FlareKeeper is GovernedAtGenesis {
         // what is the error string.
         // what is the erroring contract
         for (uint i = 0; i < numReportElements; i++) {
-            bytes32 hash = keepErrorHashes[startIndex + i];
+            bytes32 hash = daemonizeErrorHashes[startIndex + i];
 
-            _lastErrorBlock[i] = keptErrors[hash].lastErrorBlock;
-            _numErrors[i] = keptErrors[hash].numErrors;
-            _errorString[i] = keptErrors[hash].errorMessage;
-            _erroringContract[i] = keptErrors[hash].fromContract;
+            _lastErrorBlock[i] = daemonizedErrors[hash].lastErrorBlock;
+            _numErrors[i] = daemonizedErrors[hash].numErrors;
+            _errorString[i] = daemonizedErrors[hash].errorMessage;
+            _erroringContract[i] = daemonizedErrors[hash].fromContract;
         }
-        _totalKeptErrors = errorData.totalKeptErrors;
+        _totalDaemonizedErrors = errorData.totalDaemonizedErrors;
     }
 
-    function addKeepError(address keptContract, string memory message) internal {
-        bytes32 errorStringHash = keccak256(abi.encode(keptContract, message));
+    function addDaemonizeError(address daemonizedContract, string memory message) internal {
+        bytes32 errorStringHash = keccak256(abi.encode(daemonizedContract, message));
 
-        errorData.totalKeptErrors += 1;
-        keptErrors[errorStringHash].numErrors += 1;
-        keptErrors[errorStringHash].lastErrorBlock = uint192(block.number);
-        emit ContractKeepErrored(keptContract, block.number, message);
+        errorData.totalDaemonizedErrors += 1;
+        daemonizedErrors[errorStringHash].numErrors += 1;
+        daemonizedErrors[errorStringHash].lastErrorBlock = uint192(block.number);
+        emit ContractDaemonizeErrored(daemonizedContract, block.number, message);
 
-        if (keptErrors[errorStringHash].numErrors > 1) {
+        if (daemonizedErrors[errorStringHash].numErrors > 1) {
             // not first time this errors
-            errorData.lastErrorTypeIndex = keptErrors[errorStringHash].errorTypeIndex;
+            errorData.lastErrorTypeIndex = daemonizedErrors[errorStringHash].errorTypeIndex;
             return;
         }
 
         // first time we recieve this error string.
-        keepErrorHashes.push(errorStringHash);
-        keptErrors[errorStringHash].fromContract = keptContract;
-        keptErrors[errorStringHash].errorMessage = message;
-        keptErrors[errorStringHash].errorTypeIndex = uint64(keepErrorHashes.length - 1);
+        daemonizeErrorHashes.push(errorStringHash);
+        daemonizedErrors[errorStringHash].fromContract = daemonizedContract;
+        daemonizedErrors[errorStringHash].errorMessage = message;
+        daemonizedErrors[errorStringHash].errorTypeIndex = uint64(daemonizeErrorHashes.length - 1);
 
-        errorData.lastErrorTypeIndex = keptErrors[errorStringHash].errorTypeIndex;        
+        errorData.lastErrorTypeIndex = daemonizedErrors[errorStringHash].errorTypeIndex;        
     }
 
     /**
-     * @notice Unregister all contracts from being polled by the keeper process.
+     * @notice Unregister all contracts from being polled by the daemon process.
      */
     function _unregisterAll() private {
 
-        uint256 len = keepContracts.length;
+        uint256 len = daemonizeContracts.length;
 
         for (uint256 i = 0; i < len; i++) {
-            IFlareKeep keptContract = keepContracts[keepContracts.length - 1];
-            keepContracts.pop();
-            emit RegistrationUpdated (keptContract, false);
+            IFlareDaemonize daemonizedContract = daemonizeContracts[daemonizeContracts.length - 1];
+            daemonizeContracts.pop();
+            emit RegistrationUpdated (daemonizedContract, false);
         }
     }
 

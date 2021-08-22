@@ -22,4 +22,4 @@
     },
 ```
 11) Take the value of `deployedByteCode` that you copied in step 7 and paste it as the value for `"code"` of your desired allocated address, ensuring to append `0x` to the bytes value here.
-12) In particular, and at present, we need the FlareKeeper.sol contract in the genesis block at address `0x1000000000000000000000000000000000000002`.
+12) In particular, and at present, we need the FlareDaemon.sol contract in the genesis block at address `0x1000000000000000000000000000000000000002`.

@@ -12,8 +12,8 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `stateConnectorAddress` - 
     State connector contract address. State connector is deployed in the genesis block at fixed address "0x1000000000000000000000000000000000000001".
 
-- `flareKeeperAddress` - 
-    Flare keeper contract address. It is deployed in the genesis block with the fixed address "0x1000000000000000000000000000000000000002".
+- `flareDaemonAddress` - 
+    Flare daemon contract address. It is deployed in the genesis block with the fixed address "0x1000000000000000000000000000000000000002".
 
 - `priceSubmitterAddress` - 
     Price submiter contract address. It is deployed to the genesis block with the fixed address  "0x1000000000000000000000000000000000000003".
@@ -34,10 +34,10 @@ All numeric parameter names have units appended at the end. Most unit names are 
     governance private key (the key to which governance is transfered after deploy). 
     Overriden if provided in `.env` file as `GOVERNANCE_PRIVATE_KEY`. The key to which governance is transfered after deploy.
 
-## Keeper settings
+## Daemon settings
 
-- `flareKeeperGasExceededHoldoffBlocks` - 
-    The number of blocks a keeper called contract is skipped if it consumes more than its alloted amount of gas.
+- `flareDaemonGasExceededHoldoffBlocks` - 
+    The number of blocks a daemon called contract is skipped if it consumes more than its alloted amount of gas.
 
 ## Inflation settings
 

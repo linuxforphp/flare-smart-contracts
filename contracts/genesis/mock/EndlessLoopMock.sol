@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../genesis/interface/IFlareKeep.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
 
-contract EndlessLoopMock is IFlareKeep {
+contract EndlessLoopMock is IFlareDaemonize {
     uint256 public aNumber;
 
-    function keep() external override returns (bool) {
+    function daemonize() external override returns (bool) {
         while (true) {
             aNumber++;
         }

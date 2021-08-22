@@ -100,12 +100,12 @@ Because of this randomization, the submitters have an incentive to not submit th
 
 ### Finalizing a price epoch
 
-By the end of the reveal period, a weighted median algorithm will analyze the submitted prices and choose a median price. Due to the design constraints defined above, the median calculation will be rather “heavy” or costly in EVM terms. Thus a special trigger from the validators will be used to run this calculation. Here, Flare benefits from having control over the block chain and being able to add extra mechanisms to support the smart contracts. More on this mechanism will be defined in the Flare Keeper document. 
+By the end of the reveal period, a weighted median algorithm will analyze the submitted prices and choose a median price. Due to the design constraints defined above, the median calculation will be rather “heavy” or costly in EVM terms. Thus a special trigger from the validators will be used to run this calculation. Here, Flare benefits from having control over the block chain and being able to add extra mechanisms to support the smart contracts. More on this mechanism will be defined in the Flare Daemon document. 
 
 The weighted median code will iterate all submitted prices, find the weighted median, and set it as the current price. 
 ### Triggering Finalization
 
-As described above, a dedicated trigger executed by the [Flare Keeper] will activate the price finalization code. It is not user triggered, and thus it differs from classic smart contract design patterns. The trigger is initiated by the validator, enters into [Flare Keeper], and is dispatched to the [FTSO Manager] contract. [Ftso Manager] will calculate the weighted median and for one FTSO, sending a list of eligible address to the [FTSO Reward Manager], which handles the [rewarding] process.
+As described above, a dedicated trigger executed by the [Flare Daemon] will activate the price finalization code. It is not user triggered, and thus it differs from classic smart contract design patterns. The trigger is initiated by the validator, enters into [Flare Daemon], and is dispatched to the [FTSO Manager] contract. [Ftso Manager] will calculate the weighted median and for one FTSO, sending a list of eligible address to the [FTSO Reward Manager], which handles the [rewarding] process.
 
 ## Price submitter contract
 FTSO price submission might create a lot of on-chain traffic. To reduce traffic, a [price submitter contract] will enable a price provider to submit all prices in one batch. This contract will receive a list of destination address and submission data and send it over to the target contracts. 
@@ -130,7 +130,7 @@ In this particular case, the last point above means we will give rewards to 50% 
 [FTSO Reward Manager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "FTSO Reward Manager"
 [FTSO contract]: ../../contracts/ftso/implementation/Ftso.sol "FTSO"
 [FTSO Manager]: ../../contracts/ftso/implementation/FtsoManager.sol "FTSO Manager"
-[Flare Keeper]: ./flareKeeper.md "flare keeper"
+[Flare Daemon]: ./flareDaemon.md "flare daemon"
 [rewarding]: ./FTSORewardManager.md "rewarding"
 [price submitter contract]: ../../contracts/genesis/implementation/PriceSubmitter.sol "price submitter contract"
 [FTSOMedian]: ./FTSOMedian.md "Formal definition of median price and rewarded votes"

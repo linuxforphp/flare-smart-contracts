@@ -1,6 +1,6 @@
 import { 
     RevertErrorTrackingInstance,
-    FlareKeeperInstance, 
+    FlareDaemonInstance, 
     InflationMockInstance, 
     MockContractInstance } from "../../../../typechain-truffle";
 
@@ -15,7 +15,7 @@ import {
   contract(`RevertErrorTracking.sol; ${getTestFile(__filename)}; Revert Error Tracking unit tests`, async accounts => {
     // contains a fresh contract for each test
   let revertErrorTracking: RevertErrorTrackingInstance;
-  let flareKeeper: FlareKeeperInstance;
+  let flareDaemon: FlareDaemonInstance;
   let mockInflation: InflationMockInstance;
   let mockContractToRevert: MockContractInstance;
 
