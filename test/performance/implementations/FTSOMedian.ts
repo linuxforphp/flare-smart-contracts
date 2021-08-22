@@ -22,7 +22,7 @@ let testExamples = files.map(fname => {
 describe("FTSO contract - performance test cases from files", () => {
 
     testExamples.forEach(testExample => {
-        let runs = ftsoRandomTestRuns ?? testExample.randomizedRuns ?? 1;
+        let runs = process.env.FTSORND_RUNS ?? ftsoRandomTestRuns ?? testExample.randomizedRuns ?? 1;
         for (let run = 0; run < runs; run++) {
             let testName = `${testExample.fileName}: ${testExample.description}`;
             if (runs > 1) {

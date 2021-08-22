@@ -26,6 +26,7 @@
     "test_airdrop_scdev": "env CHAIN_CONFIG=scdev yarn test test/scdev/Airdrop.ts --network scdev",
     "test_endtoend_hardhat": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"yarn typechain-ethers-v5 && yarn typechain-truffle-v5 && wait-on http://127.0.0.1:8545 && env CHAIN_CONFIG=scdev yarn --silent hardhat run ./deployment/scripts/deploy-contracts.ts --network localhost > ./deployment/deploys/hardhat.json && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/EndToEnd.ts\"",
     "test_performance_hh": "env TEST_PATH=./test/performance yarn hardhat test --network hardhat",
+    "test_longrun_hh": "env FTSORND_RUNS=500 yarn hardhat test --network hardhat test/performance/implementations/FTSOMedian.ts",
     "compare_state_connector_file_to_flare_repo": "curl https://gitlab.com/flarenetwork/flare/-/raw/master/src/stateco/StateConnector.sol > /tmp/StateConnector.sol && diff contracts/genesis/implementation/StateConnector.sol /tmp/StateConnector.sol > /dev/null",
     "---------TEST---SCRIPTS-EXPERIMENTAL": "",
     "test_timeshift": "env VM_FLARE_TEST=shift yarn hardhat test --network scdev",
