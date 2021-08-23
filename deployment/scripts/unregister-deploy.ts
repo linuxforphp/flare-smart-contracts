@@ -7,7 +7,7 @@
  * json defining the created contracts.
  */
 
-import { FlareKeeperContract } from "../../typechain-truffle";
+import { FlareDaemonContract } from "../../typechain-truffle";
 
 const parameters = require(`../chain-config/${ process.env.CHAIN_CONFIG }.json`)
 
@@ -33,23 +33,23 @@ async function main(parameters: any) {
   web3.eth.defaultAccount = governanceAccount.address;
 
   // Contract definitions
-  const FlareKeeper = artifacts.require("FlareKeeper") as FlareKeeperContract;
+  const FlareDaemon = artifacts.require("FlareDaemon") as FlareDaemonContract;
 
-  // Initialize the keeper
-  const flareKeeper = await FlareKeeper.at(parameters.flareKeeperAddress);
-  await flareKeeper.claimGovernance({ from: governanceAccount.address });
+  // Initialize the daemon
+  const flareDaemon = await FlareDaemon.at(parameters.flareDaemonAddress);
+  await flareDaemon.claimGovernance({ from: governanceAccount.address });
 
   while(true) {
     await sleep(1000);
-    let gov = await flareKeeper.governance();
+    let gov = await flareDaemon.governance();
     if(gov == governanceAccount.address) break;
     console.log("Waiting for governance claim ...")
   }
 
   console.log("Unregistring all")
-  await flareKeeper.unregisterAll({ from: governanceAccount.address });
+  await flareDaemon.unregisterAll({ from: governanceAccount.address });
   await sleep(2000);
-  console.log("KEEPER GOV:", await flareKeeper.governance())
+  console.log("DAEMON GOV:", await flareDaemon.governance())
   console.error("Unregister complete.");
 }
 

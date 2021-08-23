@@ -81,8 +81,8 @@ const config: HardhatUserConfig = {
       accounts: accounts.map((x: any) => x.privateKey)
     },
     scdev: {
-      url: "http://127.0.0.1:9650/ext/bc/C/rpc",
-      gas: 8000000,
+      url: "http://127.0.0.1:9660/ext/bc/C/rpc",
+      gas: 80000000,
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
@@ -128,7 +128,7 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: { }
       },
-      "contracts/genesis/mock/FlareKeeperMock.sol": {
+      "contracts/genesis/mock/FlareDaemonMock.sol": {
         version: "0.6.12",
         settings: { }
       },

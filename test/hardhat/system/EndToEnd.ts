@@ -3,8 +3,8 @@
  * has already been done, and that contract json file has been feed into stdin.
  */
 import {
-  FlareKeeperContract,
-  FlareKeeperInstance,
+  FlareDaemonContract,
+  FlareDaemonInstance,
   FtsoContract,
   FtsoInstance,
   FtsoManagerContract,
@@ -90,7 +90,7 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[
     priceInfos.map(priceInfo => priceInfo.random),
     { from: by }
   )
-  expectEvent(tx, "PricesRevealed", { success: priceInfos.map(x => true) });
+  expectEvent(tx, "PricesRevealed");
 };
 
 
@@ -113,8 +113,8 @@ function spewClaimError(account: string, e: unknown) {
  */
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
   let contracts: Contracts;
-  let FlareKeeper: FlareKeeperContract;
-  let flareKeeper: FlareKeeperInstance;
+  let FlareDaemon: FlareDaemonContract;
+  let flareDaemon: FlareDaemonInstance;
   let FtsoRewardManager: FtsoRewardManagerContract;
   let ftsoRewardManager: FtsoRewardManagerInstance;
   let FtsoManager: FtsoManagerContract;
@@ -151,8 +151,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await contracts.deserialize(process.stdin);
 
     // Wire up needed contracts
-    FlareKeeper = artifacts.require("FlareKeeper");
-    flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
+    FlareDaemon = artifacts.require("FlareDaemon");
+    flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     FtsoRewardManager = artifacts.require("FtsoRewardManager");
     ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     FtsoManager = artifacts.require("FtsoManager");
@@ -185,9 +185,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
     rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
 
-    // Set up the suicidal mock contract so we can conjure FLR into the keeper by self-destruction
+    // Set up the suicidal mock contract so we can conjure FLR into the daemon by self-destruction
     SuicidalMock = artifacts.require("SuicidalMock");
-    suicidalMock = await SuicidalMock.new(flareKeeper.address);
+    suicidalMock = await SuicidalMock.new(flareDaemon.address);
 
     const FtsoRegistry = artifacts.require("FtsoRegistry");
     registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
@@ -197,11 +197,11 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async () => {
     // Assemble
     // Define delegators
-    let d1 = accounts[1];
+    let d1 = accounts[5];
     // Define price providers
-    let p1 = accounts[2];
-    let p2 = accounts[3];
-    let p3 = accounts[4];
+    let p1 = accounts[6];
+    let p2 = accounts[7];
+    let p3 = accounts[8];
 
     // Mint some WFLR for each delegator and price provider
     const someFLR = web3.utils.toWei(BN(3000000000));
@@ -215,8 +215,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await wFLR.delegate(p2, 5000, { from: d1 });
     await wFLR.delegate(p3, 2500, { from: d1 });
 
-    // Prime the keeper to establish vote power block.
-    await flareKeeper.trigger();
+    // Prime the daemon to establish vote power block.
+    await flareDaemon.trigger();
 
     // Supply contract - inflatable balance should be updated
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
@@ -224,9 +224,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     assert(inflatableBalanceWei.gt(initialGenesisAmountWei), "Authorized inflation not distributed...");
 
     // A minting request should be pending...
-    const mintingRequestWei = await flareKeeper.totalMintingRequestedWei();
+    const mintingRequestWei = await flareDaemon.totalMintingRequestedWei();
     if (mintingRequestWei.gt(BN(0))) {
-      // It is, so let's pretend to be the validator and self-destruct what was asked for into the keeper.
+      // It is, so let's pretend to be the validator and self-destruct what was asked for into the daemon.
       // Give suicidal some FLR
       await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: mintingRequestWei });
       await suicidalMock.die();
@@ -242,7 +242,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await time.advanceBlock();
     await time.increaseTo(rewardEpochsStartTs.add(BN(1))); // sometimes we get a glitch
 
-    await flareKeeper.trigger();
+    await flareDaemon.trigger();
     let firstRewardEpoch = await ftsoManager.rewardEpochs(0);
     let votePowerBlock = firstRewardEpoch[0];
 
@@ -253,7 +253,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Set up a fresh price epoch
     await moveFromCurrentToNextEpochStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), 1);
-    await flareKeeper.trigger();
+    await flareDaemon.trigger();
 
     let flrPrices = [0.35, 0.40, 0.50];
     let xrpPrices = [1.40, 1.50, 1.35];
@@ -301,7 +301,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       revealEpochDurationSeconds.toNumber(),
       testPriceEpoch);
 
-    await flareKeeper.trigger({ gas: 10000000 });
+    await flareDaemon.trigger({ gas: 10000000 });
 
     // There should be a balance to claim within reward manager at this point
     assert(BN(await web3.eth.getBalance(ftsoRewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
@@ -312,7 +312,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // let currentPriceEpoch = currentPriceEpochTmp.toNumber();
     let lastUnprocessed = (await ftsoManager.lastUnprocessedPriceEpoch()).toNumber()
     while (lastUnprocessed <= testPriceEpoch) {
-      await flareKeeper.trigger({ gas: 10000000 });
+      await flareDaemon.trigger({ gas: 10000000 });
       lastUnprocessed = (await ftsoManager.lastUnprocessedPriceEpoch()).toNumber()
     }
 
@@ -324,7 +324,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       rewardEpochDurationSeconds.toNumber(),
       0);
 
-    await flareKeeper.trigger();
+    await flareDaemon.trigger();
 
     // TODO: Check ftso prices if they are correct
 

@@ -27,7 +27,7 @@
    45541    45531    45543   196   submitPrice (MockFtso)
    42904    42904    42904     5   activate (RewardManager)
    68229    68229    68229     1   addFtso (RewardManager)
-   33290    23736    38598     7   keep (RewardManager)
+   33290    23736    38598     7   daemonize (RewardManager)
   203835   203835   203835     3   burn (VPTokenMock)
   174677   110565   342955     6   delegate (VPTokenMock)
   344363   344363   344363     2   delegateExplicit (VPTokenMock)

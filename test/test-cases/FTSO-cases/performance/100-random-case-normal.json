@@ -1,0 +1,14 @@
+{
+    "description": "Random 100 prices and weights",
+    "randomizedPivot": true,
+    "randomizedDataCount": 100,
+    "prices":       [],
+    "weightsFlr":   [],
+    "weightsAsset": [],
+    "priceAverage": 1000000,
+    "priceSD": 1000,
+    "weightFlrAverage": 10000,
+    "weightFlrSD": 5000,
+    "weightAssetAverage": 10000,
+    "weightAssetSD": 5000   
+}

@@ -3,15 +3,15 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 
+import "../interface/IIFtsoRegistry.sol";
 import "../../ftso/interface/IIFtso.sol";
-import "../../genesis/interface/IIFtsoRegistry.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/Governed.sol";
 
 /**
  * @title A contract for FTSO registry
  */
-contract FtsoRegistry is Governed, IIFtsoRegistry{
+contract FtsoRegistry is Governed, IIFtsoRegistry {
 
     // constants
     uint256 internal constant MAX_HISTORY_LENGTH = 5;
@@ -42,15 +42,15 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
      * @notice Update current active FTSO contracts mapping
      * @param _ftsoContract new target FTSO contract
      */
-    function addFtso(IIFtso _ftsoContract) external override onlyFtsoManager {
+    function addFtso(IIFtso _ftsoContract) external override onlyFtsoManager returns(uint256 _ftsoIndex) {
         uint256 len = ftsoHistory.length;
         string memory _symbol = _ftsoContract.symbol();
         bytes32 _encodedSymbol = keccak256(abi.encode(_symbol));
-        uint256 i = 0;
+        _ftsoIndex = 0;
         // Iterate over supported symbol array
-        for ( ; i < len; i++) {
+        for ( ; _ftsoIndex < len; _ftsoIndex++) {
             // Deletion of symbols leaves an empty address "hole", so the address might be zero
-            IIFtso current = ftsoHistory[i][0];
+            IIFtso current = ftsoHistory[_ftsoIndex][0];
             if (address(current) == address(0)) {
                 continue;
             }
@@ -59,13 +59,13 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
             }
         }
         // ftso with the same symbol is not yet in history array, add it
-        if (i == len) {
+        if (_ftsoIndex == len) {
             ftsoHistory.push();
         } else {
             // Shift history
-            _shiftHistory(i);
+            _shiftHistory(_ftsoIndex);
         }
-        ftsoHistory[i][0] = _ftsoContract;        
+        ftsoHistory[_ftsoIndex][0] = _ftsoContract;
     }
 
     /**
@@ -137,6 +137,21 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
     }
 
     /**
+     * @return _supportedSymbols the array of all active FTSO symbols in increasing order. 
+     * Active FTSOs are ones that currently receive price feeds.
+     */
+    function getSupportedSymbols() external view override returns(string[] memory _supportedSymbols) {
+        uint256[] memory _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _supportedSymbols = new string[](len);
+        while (len > 0) {
+            --len;
+            IIFtso ftso = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = ftso.symbol();
+        }
+    }
+
+    /**
      * @notice Get array of all supported indices and corresponding FTSOs
      * @return _supportedIndices the array of all supported indices
      * @return _ftsos the array of all supported ftsos
@@ -144,7 +159,6 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
     function getSupportedIndicesAndFtsos() external view override
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos)
     {
-
         _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
@@ -162,8 +176,45 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
     function getSupportedSymbolsAndFtsos() external view override
         returns(string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
     {
-
         uint256[] memory _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _ftsos = new IIFtso[](len);
+        _supportedSymbols = new string[](len);
+        while (len > 0) {
+            --len;
+            _ftsos[len] = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = _ftsos[len].symbol();
+        }
+    }
+
+    /**
+     * @notice Get array of all supported indices and corresponding symbols
+     * @return _supportedIndices the array of all supported indices
+     * @return _supportedSymbols the array of all supported symbols
+     */
+    function getSupportedIndicesAndSymbols() external view override
+        returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols) 
+    {
+        _supportedIndices = _getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _supportedSymbols = new string[](len);
+        while (len > 0) {
+            --len;
+            IIFtso ftso = ftsoHistory[_supportedIndices[len]][0];
+            _supportedSymbols[len] = ftso.symbol();
+        }
+    }
+
+    /**
+     * @notice Get array of all supported indices, corresponding symbols and FTSOs
+     * @return _supportedIndices the array of all supported indices
+     * @return _supportedSymbols the array of all supported symbols
+     * @return _ftsos the array of all supported ftsos
+     */
+    function getSupportedIndicesSymbolsAndFtsos() external view override
+        returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
+    {
+        _supportedIndices = _getSupportedIndices();
         uint256 len = _supportedIndices.length;
         _ftsos = new IIFtso[](len);
         _supportedSymbols = new string[](len);
@@ -193,11 +244,31 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
     }
 
     /**
+     * @notice Get the active FTSOs for given indices
+     * @return _ftsos the array of FTSOs
+     */
+    function getFtsos(uint256[] memory _assetIndices) external view override returns(IFtsoGenesis[] memory _ftsos) {
+        uint256 ftsoLength = ftsoHistory.length;
+        uint256 len = _assetIndices.length;
+        _ftsos = new IFtsoGenesis[](len);
+        while (len > 0) {
+            --len;
+            uint256 assetIndex = _assetIndices[len];
+            require(assetIndex < ftsoLength, ERR_TOKEN_NOT_SUPPORTED);
+            _ftsos[len] = ftsoHistory[assetIndex][0];
+            if (address(_ftsos[len]) == address(0)) {
+                // Invalid index, revert if address is zero address
+                revert(ERR_TOKEN_NOT_SUPPORTED);
+            }
+        }
+    }
+
+    /**
      * @notice Get array of all FTSO contracts for all supported asset indices
      * @return _ftsos the array of all FTSOs
      * @dev Return value might contain uninitialized FTSOS at zero address. 
      */
-    function getFtsos() external view returns(IIFtso[] memory _ftsos) {
+    function getAllFtsos() external view returns(IIFtso[] memory _ftsos) {
         uint256 len = ftsoHistory.length;
         IIFtso[] memory ftsos = new IIFtso[](len);
         while (len > 0) {
@@ -223,6 +294,10 @@ contract FtsoRegistry is Governed, IIFtsoRegistry{
 
     function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex) {
         return _getFtsoIndex(_symbol);
+    }
+
+    function getFtsoSymbol(uint256 _assetIndex) external view override returns (string memory _symbol) {
+        return _getFtso(_assetIndex).symbol();
     }
 
     /**

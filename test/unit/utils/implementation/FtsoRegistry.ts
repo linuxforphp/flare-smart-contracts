@@ -59,6 +59,18 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     assert.equal(BTC_FTSO_address, BTCFtsoContractMock.address);
   });
 
+  it("Should get correct symbol for index", async() => {
+    // Assemble
+    let BTCFtsoContractMock = await mockFtso("BTC");
+    await ftsoRegistryContract.addFtso(BTCFtsoContractMock.address, {from: MOCK_FTSO_ADDRESS});
+    let XRPFtsoContractMock = await mockFtso("XRP");
+    await ftsoRegistryContract.addFtso(XRPFtsoContractMock.address, {from: MOCK_FTSO_ADDRESS});
+    // Act
+    const BTC_SYMBOL = await ftsoRegistryContract.getFtsoSymbol(0);
+    // Assert
+    assert.equal(BTC_SYMBOL, await BTCFtsoContractMock.symbol());
+  });
+
   it("Should get correct index with hole", async() => {
     // Assemble
     const btcMock = await mockFtso("BTC");
@@ -294,7 +306,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     assert.isTrue(s1.eqn(1));
     assert.isTrue(s2.eqn(2));
 
-    const [f1, f2, f3] = await ftsoRegistryContract.getFtsos();
+    const [f1, f2, f3] = await ftsoRegistryContract.getAllFtsos();
     assert.equal(f1, constants.ZERO_ADDRESS);
     assert.equal(f2, XPRFtsoContractMock_2.address);
     assert.equal(f3, ADAFtsoContractMock_1.address);

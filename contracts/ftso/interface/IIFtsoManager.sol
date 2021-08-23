@@ -13,7 +13,7 @@ interface IIFtsoManager is IFtsoManager {
     event CleanupBlockNumberManagerFailedForBlock(uint256 blockNumber);
 
     // TODO: Remove this event for production
-    event KeepTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring keep() calls
+    event DaemonizeTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring daemonize() calls
 
     function activate() external;
     function deactivate() external;

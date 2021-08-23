@@ -24,7 +24,7 @@ export class Contracts {
   public static readonly FTSO_MANAGER = "FtsoManager";
   public static readonly STATE_CONNECTOR = "StateConnector";
   public static readonly VOTER_WHITELISTER = "VoterWhitelister";
-  public static readonly FLARE_KEEPER = "FlareKeeper";
+  public static readonly FLARE_DAEMON = "FlareDaemon";
   public static readonly WFLR = "WFlr";
   public static readonly FXRP = "Fxrp";
   public static readonly DUMMY_FXRP_MINTER = "DummyFxrpMinter";

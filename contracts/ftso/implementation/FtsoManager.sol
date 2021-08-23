@@ -4,16 +4,17 @@ pragma abicoder v2;
 
 import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtso.sol";
-import "../../rewardPools/interface/IIFtsoRewardManager.sol";
-import "../../genesis/interface/IFlareKeep.sol";
-import "../../genesis/implementation/FlareKeeper.sol";
-import "../../genesis/interface/IIFtsoRegistry.sol";
-import "../../genesis/interface/IIPriceSubmitter.sol";
-import "../../utils/implementation/GovernedAndFlareKept.sol";
-import "../../governance/implementation/Governed.sol";
 import "../lib/FtsoManagerSettings.sol";
-import "../../utils/implementation/RevertErrorTracking.sol";
+import "../../genesis/implementation/FlareDaemon.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
+import "../../genesis/interface/IIPriceSubmitter.sol";
+import "../../governance/implementation/Governed.sol";
+import "../../rewardPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
+import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
+import "../../utils/implementation/RevertErrorTracking.sol";
+import "../../utils/interface/IIFtsoRegistry.sol";
+import "../../utils/interface/IIVoterWhitelister.sol";
 
 
 /**
@@ -26,7 +27,7 @@ import "../../token/implementation/CleanupBlockNumberManager.sol";
  *    - trigger finalize price reveal epoch
  *    - determines addresses and reward weights and triggers rewardDistribution
  */    
-contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertErrorTracking {
+contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemonize, RevertErrorTracking {
     using FtsoManagerSettings for FtsoManagerSettings.State;
 
     struct PriceEpochData {
@@ -41,6 +42,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 startTimestamp;
     }
 
+    uint256 public constant MAX_TRUSTED_ADDRESSES_LENGTH = 5;
+
     string internal constant ERR_FIRST_EPOCH_START_TS_IN_FUTURE = "First epoch start timestamp in future";
     string internal constant ERR_REWARD_EPOCH_DURATION_ZERO = "Reward epoch 0";
     string internal constant ERR_PRICE_EPOCH_DURATION_ZERO = "Price epoch 0";
@@ -54,6 +57,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     string internal constant ERR_FTSO_EQUALS_FASSET_FTSO = "ftso equals fAsset ftso";
     string internal constant ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
     string internal constant ERR_REWARD_EXPIRY_OFFSET_INVALID = "Reward expiry invalid";
+    string internal constant ERR_MAX_TRUSTED_ADDRESSES_LENGTH_EXCEEDED = "Max trusted addresses length exceeded";
 
     bool public override active;
     RewardEpochData[] public rewardEpochs;
@@ -81,6 +85,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     IIFtsoRewardManager internal rewardManager;
     IIPriceSubmitter internal immutable priceSubmitter;
     IIFtsoRegistry public immutable ftsoRegistry;
+    IIVoterWhitelister public immutable voterWhitelister;
 
     CleanupBlockNumberManager public cleanupBlockNumberManager;
 
@@ -96,10 +101,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     // _priceEpochDurationSeconds, _firstEpochStartTs and _revealEpochDurationSeconds must match
     constructor(
         address _governance,
-        FlareKeeper _flareKeeper,
+        FlareDaemon _flareDaemon,
         IIFtsoRewardManager _rewardManager,
         IIPriceSubmitter _priceSubmitter,
         IIFtsoRegistry _ftsoRegistry,
+        IIVoterWhitelister _voterWhitelister,
         uint256 _priceEpochDurationSeconds,
         uint256 _firstEpochStartTs,
         uint256 _revealEpochDurationSeconds,
@@ -107,7 +113,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         uint256 _rewardEpochsStartTs,
         uint256 _votePowerBoundaryFraction
     ) 
-        GovernedAndFlareKept(_governance, _flareKeeper)
+        GovernedAndFlareDaemonized(_governance, _flareDaemon)
     {
         require(block.timestamp >= _firstEpochStartTs, ERR_FIRST_EPOCH_START_TS_IN_FUTURE);
         require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
@@ -133,6 +139,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         rewardManager = _rewardManager;
         priceSubmitter = _priceSubmitter;
         ftsoRegistry = _ftsoRegistry;
+        voterWhitelister = _voterWhitelister;
 
         justStarted = true;
     }
@@ -150,31 +157,31 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     }
     
     /**
-     * @notice Activates FTSO manager (keep() runs jobs)
+     * @notice Activates FTSO manager (daemonize() runs jobs)
      */
     function activate() external override onlyGovernance {
         active = true;
     }
 
     /**
-     * @notice Deactivates FTSO manager (keep() stops running jobs)
+     * @notice Deactivates FTSO manager (daemonize() stops running jobs)
      */
     function deactivate() external override onlyGovernance {
         active = false;
     }
 
     /**
-     * @notice Runs task triggered by Keeper.
+     * @notice Runs task triggered by Daemon.
      * The tasks include the following by priority
      * - finalizePriceEpoch     
      * - Set governance parameters and initialize epochs
      * - finalizeRewardEpoch 
      */
-    function keep() external override onlyFlareKeeper returns (bool) {
-        // flare keeper trigger. once every block
+    function daemonize() external override onlyFlareDaemon returns (bool) {
+        // flare daemon trigger. once every block
         
         // TODO: remove this event after testing phase
-        emit KeepTrigger(block.number, block.timestamp);
+        emit DaemonizeTrigger(block.number, block.timestamp);
         if (!active) return false;
 
         IIFtso[] memory _ftsos = _getFtsos();
@@ -199,7 +206,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
             }
 
             if (currentPriceEpochEnds <= block.timestamp) {
-                // sets governance parameters on ftsos
+                // sets governance parameters on ftsos and price submitter
                 _initializeCurrentEpochFTSOStatesForReveal(_ftsos);
             }
         }
@@ -220,7 +227,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
         uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());
-        priceSubmitter.removeFtso(ftsoIndex);
+        voterWhitelister.removeFtso(ftsoIndex);
         ftsoRegistry.removeFtso(_ftso);
         _cleanFtso(_ftso);
     }
@@ -256,7 +263,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         if (k == len) {
             revert(ERR_NOT_FOUND);
         }
-
 
         if (_copyCurrentPrice) {
             (uint256 currentPrice, uint256 timestamp) = _ftsoToRemove.getCurrentPrice();
@@ -367,6 +373,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         require(_highAssetTurnoutThresholdBIPS <= 1e4, ERR_GOV_PARAMS_INVALID);
         require(_lowFlrTurnoutThresholdBIPS <= 1e4, ERR_GOV_PARAMS_INVALID);
         require(_rewardExpiryOffsetSeconds > 600, ERR_REWARD_EXPIRY_OFFSET_INVALID);
+        require(_trustedAddresses.length <= MAX_TRUSTED_ADDRESSES_LENGTH, ERR_MAX_TRUSTED_ADDRESSES_LENGTH_EXCEEDED);
         settings._setState(
             _maxVotePowerFlrThresholdFraction,
             _maxVotePowerAssetThresholdFraction,
@@ -445,11 +452,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         if (_addNewFtso) {
             // Check if symbol already exists in registry
             bytes32 symbol = keccak256(abi.encode(_ftso.symbol()));
-            (string[] memory _supportedSymbols,) = ftsoRegistry.getSupportedSymbolsAndFtsos();
-            uint256 len = _supportedSymbols.length;
+            string[] memory supportedSymbols = ftsoRegistry.getSupportedSymbols();
+            uint256 len = supportedSymbols.length;
             while (len > 0) {
                 --len;
-                if (keccak256(abi.encode(_supportedSymbols[len])) == symbol) {
+                if (keccak256(abi.encode(supportedSymbols[len])) == symbol) {
                     revert(ERR_ALREADY_ADDED);
                 }
             }
@@ -476,12 +483,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         );
         
         managedFtsos[_ftso] = true;
-        ftsoRegistry.addFtso(_ftso);
+        uint256 ftsoIndex = ftsoRegistry.addFtso(_ftso);
 
-        // When a new ftso is added we also add it to the price submitter
+        // When a new ftso is added we also add it to the voter whitelister contract
         if (_addNewFtso) {
-            uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());      
-            priceSubmitter.addFtso(ftsoIndex);
+            voterWhitelister.addFtso(ftsoIndex);
         }
         
         emit FtsoAdded(_ftso, true);
@@ -612,7 +618,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
         
         try cleanupBlockNumberManager.setCleanUpBlockNumber(cleanupBlock) {
         } catch Error(string memory message) {
-            // closing of expired failed, which is not critical
+            // cleanup block number manager call failed, which is not critical
             // just emit event for diagnostics
             emit CleanupBlockNumberManagerFailedForBlock(cleanupBlock);
             addRevertError(address(this), message);
@@ -739,9 +745,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareKept, IFlareKeep, RevertE
     /**
      * @notice Initializes epoch states in FTSOs for reveal. 
      * Prior to initialization it sets governance parameters, if 
-     * governance has changed them.
+     * governance has changed them. It also sets price submitter trusted addresses.
      */
     function _initializeCurrentEpochFTSOStatesForReveal(IIFtso[] memory _ftsos) internal {
+        if (settings.changed) {
+            priceSubmitter.setTrustedAddresses(settings.trustedAddresses);
+        }
+
         uint256 numFtsos = _ftsos.length;
         for (uint256 i = 0; i < numFtsos; i++) {
             if (settings.changed) {

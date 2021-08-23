@@ -58,6 +58,7 @@ test-contract-unit-1:
     script:
         - yarn c
         - env TEST_PATH=./test/unit/ftso/lib yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/ftso/priceProviderDummyContracts yarn hardhat test --network hardhat
         - yarn hardhat test --network hardhat test/unit/ftso/implementation/Ftso.ts
 
 test-contract-unit-2:
@@ -73,7 +74,7 @@ test-contract-unit-3:
     <<: *yarn-setup
     script:
         - yarn c
-        - yarn hardhat test --network hardhat test/unit/ftso/implementation/FtsoRewardManager.ts
+        - env TEST_PATH=./test/unit/rewardPools yarn hardhat test --network hardhat
 
 test-contract-unit-4:
     stage: test
@@ -83,7 +84,6 @@ test-contract-unit-4:
         - env TEST_PATH=./test/unit/adversary yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/fFasset yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/inflation yarn hardhat test --network hardhat
-        - env TEST_PATH=./test/unit/supply yarn hardhat test --network hardhat
 
 test-contract-unit-5:
     stage: test
@@ -100,7 +100,6 @@ test-contract-unit-6:
         - yarn $TEST_LINTER
         - yarn $TEST_STATE_CONNECTOR_FILES
         - env TEST_PATH=./test/unit/utils yarn hardhat test --network hardhat
-        - env TEST_PATH=./test/unit/validator yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/genesis yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/governance yarn hardhat test --network hardhat
 
@@ -169,9 +168,9 @@ slither-check:
             - $CI_PROJECT_DIR/node_modules
           policy: pull-push
 
-gas-check:
-    stage: test
-    <<: *yarn-setup
-    script:
-        - yarn c
-        - yarn gas-report-check
+#gas-check:
+#    stage: test
+#    <<: *yarn-setup
+#    script:
+#       - yarn c
+#        - yarn gas-report-check

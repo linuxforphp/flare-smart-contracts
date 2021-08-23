@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../genesis/interface/IIVoterWhitelister.sol";
-import "../../token/interface/IIVPToken.sol";
-import "../../governance/implementation/Governed.sol";
+import "../interface/IIVoterWhitelister.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../../governance/implementation/Governed.sol";
+import "../../token/interface/IIVPToken.sol";
 import "../../utils/implementation/SafePct.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
 contract VoterWhitelister is IIVoterWhitelister, Governed {
@@ -31,9 +31,11 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     IIPriceSubmitter internal priceSubmitter;
     
     IFtsoRegistry internal ftsoRegistry;
-    
-    modifier onlyPriceSubmitter {
-        require(msg.sender == address(priceSubmitter), "only price submitter");
+
+    address internal ftsoManager;
+
+    modifier onlyFtsoManager {
+        require(msg.sender == ftsoManager, "only ftso manager");
         _;
     }
     
@@ -49,58 +51,42 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     }
     
     /**
-     * Try to add voter to all whitelists.
+     * Request to whitelist `_voter` account to all active ftsos.
+     * May be called by any address.
+     * It returns an array of supported ftso indices and success flag per index.
      */
-    function requestFullVoterWhitelisting(address _voter) external override {
-        uint256[] memory indices = ftsoRegistry.getSupportedIndices();
-        for (uint256 i = 0; i < indices.length; i++) {
-            requestWhitelistingVoter(_voter, indices[i]);
+    function requestFullVoterWhitelisting(
+        address _voter
+    ) 
+        external override 
+        returns (
+            uint256[] memory _supportedIndices,
+            bool[] memory _success
+        )
+    {
+        if (_isTrustedAddress(_voter)) {
+            revert("trusted address");
+        }
+
+        _supportedIndices = ftsoRegistry.getSupportedIndices();
+        uint256 len = _supportedIndices.length;
+        _success = new bool[](len);
+        for (uint256 i = 0; i < len; i++) {
+            _success[i] = _requestWhitelistingVoter(_voter, _supportedIndices[i]);
         }
     }
     
     /**
-     * Try adding `_voter` account to the whitelist if it has enough voting power.
+     * Request to whitelist `_voter` account to ftso at `_ftsoIndex`. Will revert if vote power too low.
      * May be called by any address.
      */
-    function requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) public override {
-        uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
-        require(maxVoters > 0, "max voters not set for ftso");
-        
-        address[] storage addressesForFtso = whitelist[_ftsoIndex];
-        uint256 length = addressesForFtso.length;
-        
-        // copy to memory and check if it contains _voter
-        address[] memory addresses = new address[](length + 1);
-        for (uint256 i = 0; i < length; i++) {
-            address addr = addressesForFtso[i];
-            if (addr == _voter) {
-                // _voter is already whitelisted, return
-                return;
-            }
-            addresses[i] = addr;
-        }
-        addresses[length] = _voter;
-        
-        // can we just add a new one?
-        if (length < maxVoters) {
-            addressesForFtso.push(_voter);
-            _voterWhitelisted(_voter, _ftsoIndex);
-            return;
+    function requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) external override {
+        if (_isTrustedAddress(_voter)) {
+            revert("trusted address");
         }
         
-        // find a candidate to kick out
-        uint256 minIndex = _minVotePowerIndex(addresses, _ftsoIndex);
-        if (minIndex == length) {
-            // the new _voter has the minimum vote power, do nothing
-            return;
-        }
-        
-        // kick the minIndex out and replace it with _voter
-        address[] memory removedVoters = new address[](1);
-        removedVoters[0] = addresses[minIndex];
-        addressesForFtso[minIndex] = _voter;
-        _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
-        _voterWhitelisted(_voter, _ftsoIndex);
+        bool success = _requestWhitelistingVoter(_voter, _ftsoIndex);
+        require(success, "vote power too low");
     }
 
     /**
@@ -132,24 +118,6 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         }
         _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
     }
-
-    /**
-     * Update a voter whitelisting and emit an event.
-     */    
-    function _voterWhitelisted(address _voter, uint256 _ftsoIndex) private {
-        emit VoterWhitelisted(_voter, _ftsoIndex);
-        priceSubmitter.voterWhitelisted(_voter, _ftsoIndex);
-    }
-    
-    /**
-     * Update when a  voter is removed from the whitelist. And emit an event.
-     */    
-    function _votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex) private {
-        for (uint256 i = 0; i < _removedVoters.length; i++) {
-            emit VoterRemovedFromWhitelist(_removedVoters[i], _ftsoIndex);
-        }
-        priceSubmitter.votersRemovedFromWhitelist(_removedVoters, _ftsoIndex);
-    }
     
     /**
      * Set the maximum number of voters in the whitelist for a new FTSO.
@@ -159,41 +127,127 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     }
 
     /**
-     * Changes ftsoRegistry address.
+     * Sets ftsoRegistry and ftsoManager addresses.
+     * Only governance can call this method.
      */
-    function setFtsoRegistry(IFtsoRegistry _ftsoRegistry) external override onlyPriceSubmitter {
+    function setContractAddresses(IFtsoRegistry _ftsoRegistry, address _ftsoManager) external override onlyGovernance {
         ftsoRegistry = _ftsoRegistry;
+        ftsoManager = _ftsoManager;
     }
     
     /**
      * Create whitelist with default size for ftso.
      */
-    function addFtso(uint256 _ftsoIndex) external override onlyPriceSubmitter {
-        _addFtso(_ftsoIndex);
-    }
-    
-    /**
-     * Clear whitelist for ftso at `_ftsoIndex`.
-     */
-    function removeFtso(uint256 _ftsoIndex) external override onlyPriceSubmitter {
-        _removeFtso(_ftsoIndex);
-    }
-    
-    /**
-     * Create whitelist with default size for ftso - implementation.
-     */
-    function _addFtso(uint256 _ftsoIndex) internal {
+    function addFtso(uint256 _ftsoIndex) external override onlyFtsoManager {
         require(maxVotersForFtso[_ftsoIndex] == 0, "whitelist already exist");
         maxVotersForFtso[_ftsoIndex] = defaultMaxVotersForFtso;
     }
     
     /**
-     * Clear whitelist for ftso at `_ftsoIndex` - implementation.
+     * Clear whitelist for ftso at `_ftsoIndex`.
      */
-    function _removeFtso(uint256 _ftsoIndex) internal {
+    function removeFtso(uint256 _ftsoIndex) external override onlyFtsoManager {
         _votersRemovedFromWhitelist(whitelist[_ftsoIndex], _ftsoIndex);
         delete whitelist[_ftsoIndex];
         delete maxVotersForFtso[_ftsoIndex];
+    }
+
+    /**
+     * Remove `_trustedAddress` from whitelist for ftso at `_ftsoIndex`.
+     */
+    function removeTrustedAddressFromWhitelist(address _trustedAddress, uint256 _ftsoIndex) external override {
+        if (!_isTrustedAddress(_trustedAddress)) {
+            revert("not trusted address");
+        }
+        address[] storage addressesForFtso = whitelist[_ftsoIndex];
+        uint256 length = addressesForFtso.length;
+
+        // find index of _trustedAddress
+        uint256 index = 0;
+        for ( ; index < length; index++) {
+            if (addressesForFtso[index] == _trustedAddress) {
+                break;
+            }
+        }
+
+        require(index < length, "trusted address not whitelisted");
+        
+        // kick the index out and replace it with the last one
+        address[] memory removedVoters = new address[](1);
+        removedVoters[0] = addressesForFtso[index];
+        addressesForFtso[index] = addressesForFtso[length - 1];
+        addressesForFtso.pop();
+        _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
+    }
+
+    /**
+     * Get whitelisted price providers for ftso with `_symbol`
+     */
+    function getFtsoWhitelistedPriceProvidersBySymbol(
+        string memory _symbol
+    ) 
+        external view override 
+        returns (
+            address[] memory
+    ) 
+    {
+        uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_symbol);
+        return getFtsoWhitelistedPriceProviders(ftsoIndex);
+    }
+
+    /**
+     * Get whitelisted price providers for ftso at `_ftsoIndex`
+     */
+    function getFtsoWhitelistedPriceProviders(uint256 _ftsoIndex) public view override returns (address[] memory) {
+        uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
+        require(maxVoters > 0, "FTSO index not supported");
+        return whitelist[_ftsoIndex];
+    }
+
+    /**
+     * Request to whitelist `_voter` account to ftso at `_ftsoIndex` - implementation.
+     */
+    function _requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) internal returns(bool) {
+        uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
+        require(maxVoters > 0, "FTSO index not supported");
+        
+        address[] storage addressesForFtso = whitelist[_ftsoIndex];
+        uint256 length = addressesForFtso.length;
+        
+        // copy to memory and check if it contains _voter
+        address[] memory addresses = new address[](length + 1);
+        for (uint256 i = 0; i < length; i++) {
+            address addr = addressesForFtso[i];
+            if (addr == _voter) {
+                // _voter is already whitelisted, return
+                return true;
+            }
+            addresses[i] = addr;
+        }
+        addresses[length] = _voter;
+        
+        // can we just add a new one?
+        if (length < maxVoters) {
+            addressesForFtso.push(_voter);
+            _voterWhitelisted(_voter, _ftsoIndex);
+            return true;
+        }
+        
+        // find a candidate to kick out
+        uint256 minIndex = _minVotePowerIndex(addresses, _ftsoIndex);
+        if (minIndex == length) {
+            // the new _voter has the minimum vote power, do nothing
+            return false;
+        }
+        
+        // kick the minIndex out and replace it with _voter
+        address[] memory removedVoters = new address[](1);
+        removedVoters[0] = addresses[minIndex];
+        addressesForFtso[minIndex] = _voter;
+        _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
+        _voterWhitelisted(_voter, _ftsoIndex);
+
+        return true;
     }
     
     /**
@@ -308,6 +362,37 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         return _token.batchVotePowerOfAt(_addresses, _blockNumber);
     }
     
+    /**
+     * Checks if _voter is trusted address
+     */
+    function _isTrustedAddress(address _voter) internal view returns(bool) {
+        address[] memory trustedAddresses = priceSubmitter.getTrustedAddresses();
+        for (uint256 i = 0; i < trustedAddresses.length; i++) {
+            if (trustedAddresses[i] == _voter) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Update a voter whitelisting and emit an event.
+     */    
+    function _voterWhitelisted(address _voter, uint256 _ftsoIndex) private {
+        emit VoterWhitelisted(_voter, _ftsoIndex);
+        priceSubmitter.voterWhitelisted(_voter, _ftsoIndex);
+    }
+    
+    /**
+     * Update when a  voter is removed from the whitelist. And emit an event.
+     */    
+    function _votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex) private {
+        for (uint256 i = 0; i < _removedVoters.length; i++) {
+            emit VoterRemovedFromWhitelist(_removedVoters[i], _ftsoIndex);
+        }
+        priceSubmitter.votersRemovedFromWhitelist(_removedVoters, _ftsoIndex);
+    }
+
     /**
      * Calculate sum of all values in an array.
      */
