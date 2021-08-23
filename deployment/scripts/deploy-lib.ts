@@ -133,25 +133,24 @@ export async function fullDeploy(parameters: any, quiet = false) {
     }
     flareDaemon = await FlareDaemon.new();
   }
-<<<<<<< HEAD
-  spewNewContractInfo(contracts, FlareKeeper.contractName, flareKeeper.address, quiet);
 
+  spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
 
   try {
-    await flareKeeper.initialiseFixedAddress();
+    await flareDaemon.initialiseFixedAddress();
   } catch (e) {
-    console.error(`flareKeeper.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
+    console.error(`flareDaemon.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
   }
 
-  let currentGovernanceAddress = await flareKeeper.governance()
+  let currentGovernanceAddress = await flareDaemon.governance()
 
   // Unregister whatever is registered with verification
   while (true) {
     try {
-      let lastAddress = await flareKeeper.keepContracts(0);
+      let lastAddress = await flareDaemon.daemonizeContracts(0);
       console.error("Unregistring contracts");
       try {
-        await waitFinalize3(currentGovernanceAddress, () => flareKeeper.registerToKeep([], { from: currentGovernanceAddress }));
+        await waitFinalize3(currentGovernanceAddress, () => flareDaemon.registerToDaemonize([], { from: currentGovernanceAddress }));
       } catch (ee) {
         console.error("Error while unregistring. ", ee)
       }
@@ -161,26 +160,10 @@ export async function fullDeploy(parameters: any, quiet = false) {
     }
   }
 
-  await flareKeeper.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
-  await flareKeeper.claimGovernance({ from: deployerAccount.address });
-  // Set the block holdoff should a kept contract exceeded its max gas allocation
-  await flareKeeper.setBlockHoldoff(parameters.flareKeeperGasExceededHoldoffBlocks);
-=======
-  spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
-  let currentGovernanceAddress = null;
-  try {
-    await flareDaemon.initialiseFixedAddress();
-    currentGovernanceAddress = genesisGovernanceAccount.address;
-  } catch (e) {
-    // daemon might be already initialized if redeploy
-    // NOTE: unregister must claim governance of flareDaemon!
-    currentGovernanceAddress = governanceAccount.address
-  }
   await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareDaemon.claimGovernance({ from: deployerAccount.address });
-  // Set the block holdoff should a daemonize contract exceeded its max gas allocation
+  // Set the block holdoff should a kept contract exceeded its max gas allocation
   await flareDaemon.setBlockHoldoff(parameters.flareDaemonGasExceededHoldoffBlocks);
->>>>>>> master
 
   // PriceSubmitter contract
   let priceSubmitter: PriceSubmitterInstance;

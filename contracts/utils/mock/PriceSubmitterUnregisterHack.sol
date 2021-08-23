@@ -10,9 +10,9 @@ import "../../genesis/implementation/PriceSubmitter.sol";
  * let priceSubmitter = await PriceSubmitter.at("0x1000000000000000000000000000000000000003")
  * const PriceSubmitterUnregisterHack = artifacts.require("PriceSubmitterUnregisterHack");
  * let unregisterHack = await PriceSubmitterUnregisterHack.new(priceSubmitter.address);
- * const FlareKeeper = artifacts.require("FlareKeeper");
- * let flareKeeper = await FlareKeeper.at("0x1000000000000000000000000000000000000002");
- * let currentGovernanceAddress = await flareKeeper.governance()
+ * const FlareDaemon = artifacts.require("FlareDaemon");
+ * let flareDaemon = await FlareDaemon.at("0x1000000000000000000000000000000000000002");
+ * let currentGovernanceAddress = await flareDaemon.governance()
  * await priceSubmitter.setFtsoManager(unregisterHack.address, {from: currentGovernanceAddress});
  * await priceSubmitter.setVoterWhitelister(unregisterHack.address, {from: currentGovernanceAddress});
  * // Use all addresses of newly deployed FTSO contarcts and call for each the following.
