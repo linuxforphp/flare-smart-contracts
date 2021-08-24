@@ -55,6 +55,30 @@ interface IFtso {
     function symbol() external view returns (string memory);
 
     /**
+     * @notice Returns current epoch id
+     */
+    function getCurrentEpochId() external view returns (uint256);
+
+    /**
+     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
+     * @param _timestamp            Timestamp as seconds from unix epoch
+     */
+    function getEpochId(uint256 _timestamp) external view returns (uint256);
+
+    /**
+     * @notice Returns random number of the specified epoch
+     * @param _epochId              Id of the epoch
+     */
+    function getRandom(uint256 _epochId) external view returns (uint256);
+    
+    /**
+     * @notice Returns FAsset price consented in specific epoch
+     * @param _epochId              Id of the epoch
+     * @return Price in USD multiplied by fAssetUSDDecimals
+     */
+    function getEpochPrice(uint256 _epochId) external view returns (uint256);
+
+    /**
      * @notice Returns current epoch data
      * @return _epochId                 Current epoch id
      * @return _epochSubmitEndTime      End time of the current epoch price submission as seconds from unix epoch

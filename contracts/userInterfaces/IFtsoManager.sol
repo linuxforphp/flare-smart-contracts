@@ -12,7 +12,7 @@ interface IFtsoManager {
     event RewardEpochFinalized(uint256 votepowerBlock, uint256 startBlock);
     event PriceEpochFinalized(address chosenFtso, uint256 rewardEpochId);
     event InitializingCurrentEpochStateForRevealFailed(IIFtso ftso, uint256 epochId);
-    event FinalizingPriceEpochFailed(IIFtso ftso, uint256 epochId);
+    event FinalizingPriceEpochFailed(IIFtso ftso, uint256 epochId, IFtso.PriceFinalizationType failingType);
     event DistributingRewardsFailed(address ftso, uint256 epochId);
 
     function active() external view returns (bool);
