@@ -1038,6 +1038,7 @@ contract Ftso is IIFtso {
      * @param _epochId              Epoch id
      */
     function _getEpochInstance(uint256 _epochId) internal view returns (FtsoEpoch.Instance storage _epoch) {
+        //slither-disable-next-line weak-prng // not used for random
         _epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
         require(_epochId == _epoch.epochId, ERR_EPOCH_DATA_NOT_AVAILABLE);
     }
