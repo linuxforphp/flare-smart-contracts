@@ -612,7 +612,11 @@ contract MockPriceSubmitter is IPriceSubmitter {
      * @param _hashes               List of hashed price and random number
      * @notice Emits PriceHashesSubmitted event
      */
-    function submitPriceHashes(uint256 _epochId, uint256[] memory _ftsoIndices, bytes32[] memory _hashes) external override {
+    function submitPriceHashes(
+        uint256 _epochId, 
+        uint256[] memory _ftsoIndices, 
+        bytes32[] memory _hashes
+    ) external override {
         // Submit the prices
         uint256 length = _ftsoIndices.length;
         require(length == _hashes.length, ERR_ARRAY_LENGTHS);

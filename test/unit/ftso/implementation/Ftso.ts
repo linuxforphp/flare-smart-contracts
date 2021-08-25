@@ -358,7 +358,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await expectRevert(ftso.submitPriceHash(epochId - 1, hash, {from: accounts[1]}), "Wrong epoch id");
         });
 
-        it("Should submit price multiple times", async() => {
+        it.skip("Should submit price multiple times", async() => {  // only one price can be submitted per epoch - irrelevant
             let hash1 = submitPriceHash(500, 123, accounts[1]);
             expectEvent(await ftso.submitPriceHash(epochId, hash1, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash1});
 
@@ -424,7 +424,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expectEvent(await ftso.revealPrice(epochId, 400, 125, {from: accounts[3]}), "PriceRevealed", {voter: accounts[3], epochId: toBN(epochId), price: toBN(400), random: toBN(125)});
         });
 
-        it("Should reveal price for last submitted hash only", async() => {
+        it.skip("Should reveal price for last submitted hash only", async() => {   // only one submit is allowed - irrelevant test
             let hash1 = submitPriceHash(500, 123, accounts[1]);
             expectEvent(await ftso.submitPriceHash(epochId, hash1, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash1});
             let hash2 = submitPriceHash(500, 124, accounts[1]);
