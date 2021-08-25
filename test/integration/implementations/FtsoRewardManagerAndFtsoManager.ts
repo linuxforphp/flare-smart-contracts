@@ -92,7 +92,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             startTs,
             REVEAL_EPOCH_DURATION_S,
             REWARD_EPOCH_DURATION_S,
-            startTs,
+            startTs.addn(REVEAL_EPOCH_DURATION_S),
             VOTE_POWER_BOUNDARY_FRACTION
         );
         await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
@@ -128,9 +128,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
             // activte ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize(); // initialize reward epoch
             // Time travel to price epoch initialization time
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
             // Trigger price epoch initialization
             await ftsoManager.daemonize();
 
@@ -178,9 +178,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize(); // initialize reward epoch
             // Time travel to price epoch initialization time
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
             // Trigger price epoch initialization
             await ftsoManager.daemonize();
             // Time travel to price epoch finalization time
@@ -190,7 +190,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Trigger another price epoch initialization
             await ftsoManager.daemonize();
             // Time travel to reward epoch finalization time
-            await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S));
+            await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S + REVEAL_EPOCH_DURATION_S));
             // Trigger price epoch finalization and reward epoch finalization
             await ftsoManager.daemonize();
             await ftsoManager.daemonize();

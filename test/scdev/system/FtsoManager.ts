@@ -71,7 +71,7 @@ const MockContract = artifacts.require("MockContract");
               startTs,
               5,
               600,
-              startTs,
+              startTs + 5,
               0
             );
             const fromBlock = await flareDaemon.systemLastTriggeredAt();

@@ -281,12 +281,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
 
-    // Initialize price epoch for reveal
-    await moveToFinalizeStart(
-      firstPriceEpochStartTs.toNumber(),
-      priceEpochDurationSeconds.toNumber(),
-      revealEpochDurationSeconds.toNumber(),
-      testPriceEpoch - 1);
     console.log(`Initializing price epoch for reveal`);
     await flareDaemon.trigger();
 

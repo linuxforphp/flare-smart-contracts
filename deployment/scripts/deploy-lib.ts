@@ -152,7 +152,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const startTs = await time.latest();
   
   // Delayed reward epoch start time
-  const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds);
+  const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds + parameters.revealEpochDurationSeconds);
   
   // Inflation contract
   const inflation = await Inflation.new(

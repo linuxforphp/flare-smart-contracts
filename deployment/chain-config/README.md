@@ -53,13 +53,13 @@ All numeric parameter names have units appended at the end. Most unit names are 
     Reward epoch duration, in seconds. In production it is 2-7 days (172800-604800 seconds), but for test purposes it's much smaller e.g. 3-7 minutes.
 
 - `revealEpochDurationSeconds` - 
-    Reveal epoch duration, in seconds. Usually, it should be at most half of `priceEpochDurationSeconds`.
+    Reveal epoch duration, in seconds. Usually, it should be at most half of `priceEpochDurationSeconds` (90 seconds).
 
 - `priceEpochDurationSeconds` - 
-    Price epoch duration, in seconds. Typical production value is 180 (3 minutes).
+    Price epoch duration, in seconds. Typical production value is 180 seconds (3 minutes).
 
 - `rewardEpochsStartDelayPriceEpochs` - 
-    Offset of the start of reward epochs from the time of deploy, in number of price epochs. Typical production value is 3 which is 9 mins.
+    Offset of the start of reward epochs from the time of deploy, in number of price epochs. Typical production value is 3, so first reward epoch starts after `rewardEpochsStartDelayPriceEpochs * priceEpochDurationSeconds + revealEpochDurationSeconds` (10.5 minutes).
 
 - `votePowerIntervalFraction` - 
     Defines interval from which vote power block is randomly selected as a fraction of previous reward epoch. 

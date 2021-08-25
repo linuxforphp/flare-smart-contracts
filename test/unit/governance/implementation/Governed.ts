@@ -123,7 +123,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         await expectRevert(promiseTransfer, ONLY_GOVERNANCE_MSG);
       });
 
-      it("Should clear proposed governance if sucessfully transferred", async() => {
+      it("Should clear proposed governance if successfully transferred", async() => {
         // Assemble
         await governed.proposeGovernance(accounts[2], {from: accounts[1]});
         // Act
