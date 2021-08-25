@@ -45,6 +45,7 @@ interface IPriceSubmitter {
      * @notice Emits PriceHashesSubmitted event
      */
     function submitPriceHashes(
+        uint256 _epochId,
         uint256[] memory _ftsoIndices,
         bytes32[] memory _hashes
     ) external;

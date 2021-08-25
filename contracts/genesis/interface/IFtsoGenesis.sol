@@ -7,12 +7,13 @@ interface IFtsoGenesis {
     
     /**
      * @notice Submits price hash for current epoch - only price submitter
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _sender               Sender address
      * @param _hash                 Hashed price and random number
-     * @return _epochId             Returns current epoch id
-     * @notice Emits PriceHashSubmitted event
+     * @notice Emits PriceHashSubmitted event. Reverts if _epochId does not match
+     * the current epoch or on multiple submits for the same _epochId.
      */
-    function submitPriceHashSubmitter(address _sender, bytes32 _hash) external returns (uint256 _epochId);
+    function submitPriceHashSubmitter(address _sender, uint256 _epochId, bytes32 _hash) external;
 
     /**
      * @notice Reveals submitted price during epoch reveal period - only price submitter

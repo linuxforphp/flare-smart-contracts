@@ -83,9 +83,9 @@ contract FlashLoanMock is IFlashLoanMock {
         wflr.withdraw(_amount);
     }
     
-    function submitPriceHash(uint256 _price, uint256 _random) public {
+    function submitPriceHash(uint256 _epochId, uint256 _price, uint256 _random) public {
         bytes32 _hash = keccak256(abi.encode(_price, _random, this));
-        ftso.submitPriceHash(_hash);
+        ftso.submitPriceHash(_epochId, _hash);
     }
 
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) public {
