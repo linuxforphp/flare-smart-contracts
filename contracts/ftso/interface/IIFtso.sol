@@ -95,30 +95,6 @@ interface IIFtso is IFtso, IFtsoGenesis {
         );
 
     /**
-     * @notice Returns current epoch id
-     */
-    function getCurrentEpochId() external view returns (uint256);
-
-    /**
-     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
-     * @param _timestamp            Timestamp as seconds from unix epoch
-     */
-    function getEpochId(uint256 _timestamp) external view returns (uint256);
-
-    /**
-     * @notice Returns random number of the specified epoch
-     * @param _epochId              Id of the epoch
-     */
-    function getRandom(uint256 _epochId) external view returns (uint256);
-    
-    /**
-     * @notice Returns FAsset price consented in specific epoch
-     * @param _epochId              Id of the epoch
-     * @return Price in USD multiplied by fAssetUSDDecimals
-     */
-    function getEpochPrice(uint256 _epochId) external view returns (uint256);
-
-    /**
      * @notice Returns parameters necessary for approximately replicating vote weighting.
      * @return _assets                  the list of fAssets that are accounted in vote
      * @return _assetMultipliers        weight of each asset in (multiasset) ftso, mutiplied by TERA

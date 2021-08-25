@@ -673,6 +673,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             for (uint256 i = 0; i < numFtsos; i++) {
                 //slither-disable-next-line weak-prng           // not a random, just choosing next
                 uint256 id = (chosenFtsoId + i) % numFtsos;
+
                 try _ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
                     address[] memory _addresses,
                     uint256[] memory _weights,
@@ -683,13 +684,31 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                         wasDistributed = true;
                         rewardedFtsoAddress = address(_ftsos[id]);
                     }
-                } catch {
+                } catch Error(string memory message) {
+                    emit FinalizingPriceEpochFailed(
+                        _ftsos[id], 
+                        lastUnprocessedPriceEpoch, 
+                        IFtso.PriceFinalizationType.WEIGHTED_MEDIAN
+                    );
+                    addRevertError(address(_ftsos[id]), message);
+
                     try _ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                    } catch {
+                    } catch Error(string memory message1) {
+                        emit FinalizingPriceEpochFailed(
+                            _ftsos[id], 
+                            lastUnprocessedPriceEpoch, 
+                            IFtso.PriceFinalizationType.TRUSTED_ADDRESSES
+                        );
+                        addRevertError(address(_ftsos[id]), message1);
+
                         try _ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                        } catch Error(string memory message) {
-                            emit FinalizingPriceEpochFailed(_ftsos[id], lastUnprocessedPriceEpoch);
-                            addRevertError(address(this), message);
+                        } catch Error(string memory message2) {
+                            emit FinalizingPriceEpochFailed(
+                                _ftsos[id], 
+                                lastUnprocessedPriceEpoch, 
+                                IFtso.PriceFinalizationType.PREVIOUS_PRICE_COPIED
+                            );
+                            addRevertError(address(_ftsos[id]), message2);
                         }
                     }
                 }
