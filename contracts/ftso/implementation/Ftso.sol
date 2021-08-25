@@ -389,6 +389,7 @@ contract Ftso is IIFtso {
         epoch.accumulatedVotePowerFlr = 0;
         epoch.random = 0; // for easier testing.
         epoch.nextVoteIndex = 0;
+        epoch.epochId = epochId;
 
         if (_fallbackMode) {
             epoch.fallbackMode = true;
@@ -492,8 +493,7 @@ contract Ftso is IIFtso {
      * @return Price in USD multiplied by fAssetUSDDecimals
      */
     function getEpochPrice(uint256 _epochId) external view override returns (uint256) {
-        _isEpochDataAvailable(_epochId);
-        return epochs.instance[_epochId % priceEpochCyclicBufferSize].price;
+        return _getEpochInstance(_epochId).price;
     }
 
     /**
@@ -503,8 +503,7 @@ contract Ftso is IIFtso {
      * @return Price in USD multiplied by fAssetUSDDecimals
      */
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view override returns (uint256) {
-        _isEpochDataAvailable(_epochId);
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(_epochId);
         // only used off-chain, so loop should be ok
         uint256 voteInd = FtsoEpoch._findVoteOf(epoch, _voter);
         if (voteInd == 0) return 0;  // no vote from _voter
@@ -531,8 +530,7 @@ contract Ftso is IIFtso {
      * @return Random number
      */
     function getRandom(uint256 _epochId) external view override returns (uint256) {
-        _isEpochDataAvailable(_epochId);
-        return epochs.instance[_epochId % priceEpochCyclicBufferSize].random;
+        return _getEpochInstance(_epochId).random;
     }
 
     /**
@@ -1031,20 +1029,17 @@ contract Ftso is IIFtso {
      */
     function _getEpochForFinalization(uint256 _epochId) internal view returns (FtsoEpoch.Instance storage _epoch) {
         require(block.timestamp >= epochs._epochRevealEndTime(_epochId), ERR_EPOCH_FINALIZATION_FAILURE);
-        _epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        _epoch = _getEpochInstance(_epochId);
         require(_epoch.finalizationType == PriceFinalizationType.NOT_FINALIZED, ERR_EPOCH_ALREADY_FINALIZED);
     }
 
     /**
-     * @notice Checks if epoch id exists in storage, reverts if it is already overwritten
+     * @notice Return epoch instance if epoch id exists in storage, reverts if it is already overwritten
      * @param _epochId              Epoch id
      */
-    function _isEpochDataAvailable(uint256 _epochId) internal view {
-        uint256 currentEpochId = getCurrentEpochId();
-
-        require(_epochId <= currentEpochId &&
-            (currentEpochId <= priceEpochCyclicBufferSize || _epochId > currentEpochId - priceEpochCyclicBufferSize),
-            ERR_EPOCH_DATA_NOT_AVAILABLE);
+    function _getEpochInstance(uint256 _epochId) internal view returns (FtsoEpoch.Instance storage _epoch) {
+        _epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        require(_epochId == _epoch.epochId, ERR_EPOCH_DATA_NOT_AVAILABLE);
     }
 
     /**

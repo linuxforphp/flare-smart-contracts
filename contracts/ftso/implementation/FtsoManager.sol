@@ -70,8 +70,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     uint256 immutable internal priceEpochDurationSeconds;
     uint256 immutable internal revealEpochDurationSeconds;
     uint256 public lastUnprocessedPriceEpoch;
-    uint256 internal lastUnprocessedPriceEpochEnds;
-    uint256 internal currentPriceEpochEnds;
+    uint256 internal lastUnprocessedPriceEpochRevealEnds;
 
     // reward Epoch data
     uint256 internal currentRewardEpoch;
@@ -91,6 +90,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
     // flags
     bool private justStarted;
+    bool private priceEpochInitialized;
 
     // fallback mode
     bool public fallbackMode; // all ftsos in fallback mode
@@ -120,6 +120,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         require(_priceEpochDurationSeconds > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
         require(_revealEpochDurationSeconds > 0, ERR_REVEAL_PRICE_EPOCH_DURATION_ZERO);
 
+        require(_revealEpochDurationSeconds < _priceEpochDurationSeconds, "error");
+        require(_firstEpochStartTs <= _rewardEpochsStartTs, "error");
+        require((_rewardEpochsStartTs - _firstEpochStartTs) % _priceEpochDurationSeconds == 0, "error");
+        require(_rewardEpochDurationSeconds % _priceEpochDurationSeconds == 0, "error");
+
         // reward epoch
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
         currentRewardEpoch = 0;
@@ -130,10 +135,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         firstPriceEpochStartTs = _firstEpochStartTs;
         priceEpochDurationSeconds = _priceEpochDurationSeconds;
         revealEpochDurationSeconds = _revealEpochDurationSeconds;
-        lastUnprocessedPriceEpoch = (block.timestamp - _firstEpochStartTs) / _priceEpochDurationSeconds;
-        lastUnprocessedPriceEpochEnds = 
-            _firstEpochStartTs + ((lastUnprocessedPriceEpoch + 1) * _priceEpochDurationSeconds);
-        currentPriceEpochEnds = lastUnprocessedPriceEpochEnds;
+        lastUnprocessedPriceEpochRevealEnds = 
+            (_rewardEpochsStartTs > _firstEpochStartTs ? _rewardEpochsStartTs : _firstEpochStartTs) +
+            _revealEpochDurationSeconds;
+        lastUnprocessedPriceEpoch = 
+            (lastUnprocessedPriceEpochRevealEnds - _firstEpochStartTs) % _priceEpochDurationSeconds;
 
         votePowerIntervalFraction = _votePowerBoundaryFraction;
         rewardManager = _rewardManager;
@@ -189,25 +195,27 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         if (justStarted) {
             _initializeRewardEpoch(_ftsos);
         } else {
-            if (lastUnprocessedPriceEpochEnds < rewardEpochsStartTs) {
-                // Force closing ftsos before start of the first reward epoch
-                _forceFinalizePriceEpochBeforeRewardEpochStarts(_ftsos);
-            } else if (lastUnprocessedPriceEpochEnds + revealEpochDurationSeconds <= block.timestamp) {
+            bool oneOfThreeExecuted = false;
+            if (priceEpochInitialized && lastUnprocessedPriceEpochRevealEnds <= block.timestamp) {
                 // finalizes price epoch, completely finalizes reward epoch
                 _finalizePriceEpoch(_ftsos);
+                priceEpochInitialized = false;
+                oneOfThreeExecuted = true;
             }
+
             // Note: Expired reward offset should be determined and set before finalizing reward epoch
-            // _manageExpiringRewardEpochs();            
             // Note: prices should be first finalized and then new reward epoch can start
-            if (currentRewardEpochEnds <= block.timestamp) {
+            if (!oneOfThreeExecuted && !priceEpochInitialized && currentRewardEpochEnds <= block.timestamp) {
                 _finalizeRewardEpoch(_ftsos);
                 _closeExpiredRewardEpochs();
                 _cleanupOnRewardEpochFinalization();
+                oneOfThreeExecuted = true;
             }
-
-            if (currentPriceEpochEnds <= block.timestamp) {
-                // sets governance parameters on ftsos and price submitter
+            
+            if (!oneOfThreeExecuted && lastUnprocessedPriceEpochRevealEnds <= block.timestamp) {
                 _initializeCurrentEpochFTSOStatesForReveal(_ftsos);
+                // sets governance parameters on ftsos and price submitter
+                priceEpochInitialized = true;
             }
         }
         return true;
@@ -602,7 +610,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 addRevertError(address(this), message);
                 // Do not proceed with the loop.
                 break;
-            }                    
+            }
         }
     }
 
@@ -625,23 +633,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         }        
     }
 
-    /**
-     * @notice Force finalizes price epochs that expired before reward epochs start
-     */
-    function _forceFinalizePriceEpochBeforeRewardEpochStarts(IIFtso[] memory _ftsos) internal {
-        uint256 numFtsos = _ftsos.length;
-        if (numFtsos > 0) {
-            for (uint256 i = 0; i < numFtsos; i++) {
-                try _ftsos[i].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                } catch Error(string memory message) {
-                    emit FinalizingPriceEpochFailed(_ftsos[i], lastUnprocessedPriceEpoch);
-                    addRevertError(address(this), message);
-                }
-            }
-        }
-        lastUnprocessedPriceEpoch++;
-        lastUnprocessedPriceEpochEnds += priceEpochDurationSeconds;
-    }
     /**
      * @notice Finalizes price epoch
      */
@@ -736,10 +727,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
             emit PriceEpochFinalized(address(0), currentRewardEpoch);
         }
-        // Advance to next price epoch
-        // Note: lastUnprocessedPriceEpoch <= ftso.getCurrentEpochId()
-        lastUnprocessedPriceEpoch++;
-        lastUnprocessedPriceEpochEnds += priceEpochDurationSeconds;
     }
     
     /**
@@ -774,7 +761,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         }
         settings.changed = false;
 
-        currentPriceEpochEnds = _getCurrentPriceEpochEndTime();
+        lastUnprocessedPriceEpoch = _getCurrentPriceEpochId();
+        lastUnprocessedPriceEpochRevealEnds = _getPriceEpochRevealEndTime(lastUnprocessedPriceEpoch);
     }
     
     /**
@@ -800,12 +788,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     }
 
     /**
-     * @notice Returns current price epoch end time.
+     * @notice Returns price epoch reveal end time.
+     * @param _priceEpochId The price epoch id.
      * @dev half-closed interval - end time not included
      */
-    function _getCurrentPriceEpochEndTime() internal view returns (uint256) {
-        uint256 currentPriceEpoch = _getCurrentPriceEpochId();
-        return firstPriceEpochStartTs + (currentPriceEpoch + 1) * priceEpochDurationSeconds;
+    function _getPriceEpochRevealEndTime(uint256 _priceEpochId) internal view returns (uint256) {
+        return firstPriceEpochStartTs + (_priceEpochId + 1) * priceEpochDurationSeconds + revealEpochDurationSeconds;
     }
 
     /**

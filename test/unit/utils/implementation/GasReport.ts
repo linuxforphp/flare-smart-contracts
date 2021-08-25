@@ -61,6 +61,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
 
   async function createFtso(symbol: string, initialPrice: BN) {
     const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyInterface.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+    ftso.setFAsset
     await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -212,12 +213,44 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       // create supply
       supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
       // create ftsos
+      flrFtso = await createFtso("FLR", usd(1));
       ftsos = [];
       for (let i = 0; i < assets.length; i++) {
         const [_, symbol, price] = assetData[i];
         const ftso = await createFtso(symbol, price);
+        await ftso.setFAsset(assets[i].address, { from: ftsoManager });
         ftsos.push(ftso);
       }
+      await flrFtso.setFAssetFtsos(ftsos.slice(0,5).map(f => f.address), { from: ftsoManager });
+    });
+
+    it("Should test gas to initialize for reveal for one ftso", async () => {
+      const voter = accounts[101];
+      const vp = eth(1.5);
+      // Assemble
+      await wflr.deposit({ from: voter, value: vp });
+      await initializeRewardEpoch();
+
+      // Act
+      let initializeForRevealTx = await ftsos[0].initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      console.log(`initialize for reveal for single ftso: ${initializeForRevealTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "initialize for reveal for single ftso", "gasUsed": initializeForRevealTx.receipt.gasUsed });
+    });
+
+    it("Should test gas to initialize for reveal for WFLR ftso with 4 fassets", async () => {
+      const voter = accounts[101];
+      const vp = eth(1.5);
+      // Assemble
+      await wflr.deposit({ from: voter, value: vp });
+      for (const asset of assets) {
+        await asset.mint(voter, vp, { from: governance });
+      }
+      await initializeRewardEpoch();
+
+      // Act
+      let initializeForRevealTx = await flrFtso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      console.log(`initialize for reveal for WFLR ftso with 4 fassets: ${initializeForRevealTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "initialize for reveal for WFLR ftso with 4 fassets", "gasUsed": initializeForRevealTx.receipt.gasUsed });
     });
 
     it("Should test gas to submit and reveal price for one ftso", async () => {
@@ -268,7 +301,30 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end
     });
 
-    it("Should test gas to submit and reveal prices for 8 ftsos", async () => {
+    it("Should test gas to initialize for reveal for WFLR ftso with 4 fassets + 8 ftsos", async () => {
+      const voter = accounts[101];
+      const vp = eth(1.5);
+      // Assemble
+      await wflr.deposit({ from: voter, value: vp });
+      for (const asset of assets) {
+        await asset.mint(voter, vp, { from: governance });
+      }
+      await initializeRewardEpoch();
+
+      // Act
+      const allFtsos = [flrFtso, ...ftsos];
+
+      let gasUsed = 0;
+      for (const ftso of allFtsos) {
+        let initializeForRevealTx = await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+        gasUsed += initializeForRevealTx.receipt.gasUsed;
+      }
+
+      console.log(`initialize for reveal for WFLR ftso with 4 fassets + 8 ftsos: ${gasUsed}`);
+      gasReport.push({ "function": "initialize for reveal for WFLR ftso with 4 fassets + 8 ftsos", "gasUsed": gasUsed });
+    });
+
+    it("Should test gas to submit and reveal prices for WFLR ftso with 4 fassets + 8 ftsos", async () => {
       const voters = accounts.slice(101, 102);
       const vp = eth(1.5);
       // Assemble
@@ -287,8 +343,8 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
         }
       }
       // Act
-      const allFtsos = [...ftsos];
-      const prices = [usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4), usd(0.5), usd(1.2), usd(19.7)];
+      const allFtsos = [flrFtso, ...ftsos];
+      const prices = [usd(2.58), usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4), usd(0.5), usd(1.2), usd(19.7)];
       const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
@@ -305,14 +361,15 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
         let submitTx = await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
-        console.log(`submit price 8 ftso: ${submitTx.receipt.gasUsed}`);
-        gasReport.push({ "function": "submit prices for 8 ftso", "gasUsed": submitTx.receipt.gasUsed });
+        console.log(`submit prices for WFLR ftso with 4 fassets + 8 ftsos: ${submitTx.receipt.gasUsed}`);
+        gasReport.push({ "function": "submit prices for WFLR ftso with 4 fassets + 8 ftsos", "gasUsed": submitTx.receipt.gasUsed });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
         let revealTx = await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
-        gasReport.push({ "function": "reveal prices for 8 ftso", "gasUsed": revealTx.receipt.gasUsed });
+        console.log(`reveal prices for WFLR ftso with 4 fassets + 8 ftsos: ${revealTx.receipt.gasUsed}`);
+        gasReport.push({ "function": "reveal prices for WFLR ftso with 4 fassets + 8 ftsos", "gasUsed": revealTx.receipt.gasUsed });
       }
       // finalize
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end

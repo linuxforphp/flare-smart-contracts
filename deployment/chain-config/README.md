@@ -58,8 +58,8 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `priceEpochDurationSeconds` - 
     Price epoch duration, in seconds. Typical production value is 180 (3 minutes).
 
-- `rewardEpochsStartDelayHours` - 
-    Offset of the start of reward epochs from the time of deploy, in hours. May have decimals. Typical value is 0.17 which is about 10 mins.
+- `rewardEpochsStartDelayPriceEpochs` - 
+    Offset of the start of reward epochs from the time of deploy, in number of price epochs. Typical production value is 3 which is 9 mins.
 
 - `votePowerIntervalFraction` - 
     Defines interval from which vote power block is randomly selected as a fraction of previous reward epoch. 

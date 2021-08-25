@@ -47,8 +47,7 @@ contract SimpleMockFtso is Ftso {
             uint256[] memory _weightFlr
         )
     {
-        _isEpochDataAvailable(_epochId);
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(_epochId);
         return _readVotes(epoch);
     }
 
@@ -60,15 +59,11 @@ contract SimpleMockFtso is Ftso {
         external view
         returns (uint256) 
     {
-        _isEpochDataAvailable(_epochId);
-        return FtsoEpoch._getWeightRatio(
-            epochs.instance[_epochId % priceEpochCyclicBufferSize], _weightFlrSum, _weightAssetSum
-        );
+        return FtsoEpoch._getWeightRatio(_getEpochInstance(_epochId), _weightFlrSum, _weightAssetSum);
     }
     
     function getVotePowerOf(address _owner) public returns (uint256 _votePowerFlr, uint256 _votePowerAsset) {
-        _isEpochDataAvailable(lastRevealEpochId);
-        FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId  % priceEpochCyclicBufferSize]; 
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(lastRevealEpochId);
 
         return _getVotePowerOf(
             epoch,
@@ -81,8 +76,7 @@ contract SimpleMockFtso is Ftso {
 
     // Simplified version of vote power weight calculation (no vote commit/reveal, but result should be equal)
     function getVotePowerWeights(address[] memory _owners) public returns (uint256[] memory _weights) {
-        _isEpochDataAvailable(lastRevealEpochId);
-        FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId % priceEpochCyclicBufferSize];
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(lastRevealEpochId);
         uint256[] memory weightsFlr = new uint256[](_owners.length);
         uint256[] memory weightsAsset = new uint256[](_owners.length);
         for (uint256 i = 0; i < _owners.length; i++) {
