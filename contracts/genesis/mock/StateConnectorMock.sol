@@ -5,9 +5,9 @@ import "../../genesis/implementation/StateConnector.sol";
 
 contract StateConnectorMock is StateConnector {
 
-    function addNewClaimPeriodsMined(address miner) external {
+    function addNewDataAvailabilityPeriodsMined(address miner) external {
         uint256 rewardSchedule = getRewardPeriod();
-        claimPeriodsMined[miner][rewardSchedule] = claimPeriodsMined[miner][rewardSchedule] + 1;
-        totalClaimPeriodsMined[rewardSchedule] = totalClaimPeriodsMined[rewardSchedule] + 1;
+        dataAvailabilityPeriodsMined[miner][rewardSchedule] = dataAvailabilityPeriodsMined[miner][rewardSchedule] + 1;
+        totalDataAvailabilityPeriodsMined[rewardSchedule] = totalDataAvailabilityPeriodsMined[rewardSchedule] + 1;
     }
 }
