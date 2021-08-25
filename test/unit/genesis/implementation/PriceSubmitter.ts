@@ -268,12 +268,13 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[11]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
 
-            await priceSubmitter.submitPriceHashes(epochId, [0, 1], [hash1, hash2], {from: accounts[10]});
+            await increaseTimeTo((epochId + 1) * 120); // submit was done successfuly, continue test on next price epoch
+            await priceSubmitter.submitPriceHashes(epochId + 1, [0, 1], [hash1, hash2], {from: accounts[10]});
 
             await setGetFtsosMock([0]);
-            await expectRevert(priceSubmitter.submitPriceHashes(epochId, [0], [hash1], { from: accounts[11] }), ERR_NOT_WHITELISTED);
+            await expectRevert(priceSubmitter.submitPriceHashes(epochId + 1, [0], [hash1], { from: accounts[11] }), ERR_NOT_WHITELISTED);
             await setGetFtsosMock([1]);
-            await priceSubmitter.submitPriceHashes(epochId, [1], [hash2], {from: accounts[11]});
+            await priceSubmitter.submitPriceHashes(epochId + 1, [1], [hash2], {from: accounts[11]});
         });
 
         it("Should submit prices", async() => {
