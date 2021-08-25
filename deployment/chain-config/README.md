@@ -41,11 +41,15 @@ All numeric parameter names have units appended at the end. Most unit names are 
 
 ## Inflation settings
 
+- `inflationPercentageBIPS` - 
+    Yearly inflation in BIPS. Usual value is 1000 (10%).
+
+## Supply settings
 - `totalFlareSupplyFLR` - 
     Initial total supply of FLR (in Flares, not Wei). The value of this parameter is usually 100000000000.
 
-- `inflationPercentageBIPS` - 
-    Yearly inflation in BIPS. Usual value is 1000 (10%).
+- `totalFoundationSupplyFLR` - 
+    non circulating supply that the foundation holds.
 
 ## FTSO system settings 
 
