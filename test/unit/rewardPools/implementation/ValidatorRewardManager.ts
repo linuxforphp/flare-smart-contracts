@@ -19,29 +19,29 @@ let startTs: BN;
 let mockInflation: InflationMockInstance;
 let mockStateConnector: MockContractInstance;
 
-async function mockTotalClaimPeriodsMined(rewardEpochs: number[], totalClaimPeriodsMined: number[])
+async function mockTotalDataAvailabilityPeriodsMined(rewardEpochs: number[], totalDataAvailabilityPeriodsMined: number[])
 {
     const len = rewardEpochs.length;
-    assert(len == totalClaimPeriodsMined.length, "Lengths must match");
+    assert(len == totalDataAvailabilityPeriodsMined.length, "Lengths must match");
 
     await mockInflation.receiveInflation( {value: "100000000"} );
 
     for (let i = 0; i < len; i++) {
-        const getTotalClaimPeriodsMined = web3.eth.abi.encodeFunctionCall({type: "function", name: "getTotalClaimPeriodsMined", inputs: [{type: "uint256", name: "rewardSchedule"}]} as AbiItem, [rewardEpochs[i].toString()]);
-        const getTotalClaimPeriodsMinedReturn = web3.eth.abi.encodeParameter( 'uint256', totalClaimPeriodsMined[i]);
-        await mockStateConnector.givenCalldataReturn(getTotalClaimPeriodsMined, getTotalClaimPeriodsMinedReturn);
+        const getTotalDataAvailabilityPeriodsMined = web3.eth.abi.encodeFunctionCall({type: "function", name: "getTotalDataAvailabilityPeriodsMined", inputs: [{type: "uint256", name: "rewardSchedule"}]} as AbiItem, [rewardEpochs[i].toString()]);
+        const getTotalDataAvailabilityPeriodsMinedReturn = web3.eth.abi.encodeParameter( 'uint256', totalDataAvailabilityPeriodsMined[i]);
+        await mockStateConnector.givenCalldataReturn(getTotalDataAvailabilityPeriodsMined, getTotalDataAvailabilityPeriodsMinedReturn);
     }
 }
 
-async function mockClaimPeriodsMined(rewardEpochs: number[], claimPeriodsMined: number[], validatorAddress: string)
+async function mockDataAvailabilityPeriodsMined(rewardEpochs: number[], dataAvailabilityPeriodsMined: number[], validatorAddress: string)
 {
     const len = rewardEpochs.length;
-    assert(len == claimPeriodsMined.length, "Lengths must match");
+    assert(len == dataAvailabilityPeriodsMined.length, "Lengths must match");
 
     for (let i = 0; i < len; i++) {
-        const getClaimPeriodsMined = web3.eth.abi.encodeFunctionCall({type: "function", name: "getClaimPeriodsMined", inputs: [{type: "address", name: "miner"}, {type: "uint256", name: "rewardSchedule"}]} as AbiItem, [validatorAddress, rewardEpochs[i].toString()]);
-        const getClaimPeriodsMinedReturn = web3.eth.abi.encodeParameter( 'uint256', claimPeriodsMined[i]);
-        await mockStateConnector.givenCalldataReturn(getClaimPeriodsMined, getClaimPeriodsMinedReturn);
+        const getDataAvailabilityPeriodsMined = web3.eth.abi.encodeFunctionCall({type: "function", name: "getDataAvailabilityPeriodsMined", inputs: [{type: "address", name: "miner"}, {type: "uint256", name: "rewardSchedule"}]} as AbiItem, [validatorAddress, rewardEpochs[i].toString()]);
+        const getDataAvailabilityPeriodsMinedReturn = web3.eth.abi.encodeParameter( 'uint256', dataAvailabilityPeriodsMined[i]);
+        await mockStateConnector.givenCalldataReturn(getDataAvailabilityPeriodsMined, getDataAvailabilityPeriodsMinedReturn);
     }
 }
 
@@ -161,7 +161,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
     describe("Reward epochs, finalization", async () => {
         it("Should finalize reward epoch and set total authorized inflation as reward unclaimed value", async () => {
 
-            await mockTotalClaimPeriodsMined([0], [55]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
             await travelToAndSetNewRewardEpoch(1, startTs);
 
             // Assert
@@ -174,7 +174,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should finalize reward epochs and distribute all authorized inflation to reward epochs", async () => {
 
-            await mockTotalClaimPeriodsMined([0, 1, 2], [55, 0, 20]);
+            await mockTotalDataAvailabilityPeriodsMined([0, 1, 2], [55, 0, 20]);
             await travelToAndSetNewRewardEpoch(3, startTs);
 
             // Assert
@@ -185,7 +185,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should finalize reward epochs and distribute all authorized inflation to reward epochs - inflation authorized not called from beginning", async () => {
 
-            await mockTotalClaimPeriodsMined([0, 1, 2, 3], [55, 5, 20, 34]);
+            await mockTotalDataAvailabilityPeriodsMined([0, 1, 2, 3], [55, 5, 20, 34]);
 
             // skip first 3 reward epochs - no inflation authorized calls
             await time.increaseTo(startTs.addn(22 * 86400));
@@ -207,10 +207,10 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             expect(data[1].toNumber()).to.equals(0);
             expect(data[2].toNumber()).to.equals(0);
 
-            await mockTotalClaimPeriodsMined([0], [55]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
             await travelToAndSetNewRewardEpoch(1, startTs);
 
-            await mockClaimPeriodsMined([0], [15], accounts[1]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
             await validatorRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
 
             data = await validatorRewardManager.getRewardPoolSupplyData();
@@ -223,8 +223,8 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             let data;
             
             await expectRevert(validatorRewardManager.getStateOfRewards(accounts[1], 0), "unknown reward epoch");
-            await mockTotalClaimPeriodsMined([0], [55]);
-            await mockClaimPeriodsMined([0], [11], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
+            await mockDataAvailabilityPeriodsMined([0], [11], accounts[1]);
 
             await travelToAndSetNewRewardEpoch(1, startTs);
             data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
@@ -322,8 +322,8 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should enable rewards to be claimed once reward epoch finalized", async () => { 
 
-            await mockTotalClaimPeriodsMined([0], [55]);
-            await mockClaimPeriodsMined([0], [15], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
             await travelToAndSetNewRewardEpoch(1, startTs);
 
             // Act
@@ -339,10 +339,10 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should enable rewards to be claimed once reward epoch finalized - with self-destruct proceeds", async () => { 
           
-            await mockTotalClaimPeriodsMined([0], [55]);
-            await mockClaimPeriodsMined([0], [15], accounts[1]);
-            await mockClaimPeriodsMined([0], [15], accounts[2]);
-            await mockClaimPeriodsMined([0], [25], accounts[3]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[2]);
+            await mockDataAvailabilityPeriodsMined([0], [25], accounts[3]);
             await travelToAndSetNewRewardEpoch(1, startTs);
 
             // Give suicidal some FLR
@@ -392,8 +392,8 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should enable rewards to be claimed once reward epoch finalized - should not claim twice", async () => { 
 
-            await mockTotalClaimPeriodsMined([0], [55]);
-            await mockClaimPeriodsMined([0], [15], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
             await travelToAndSetNewRewardEpoch(1, startTs);
 
             // Act
@@ -415,14 +415,14 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should claim from multiple reward epochs - get nothing for reward epochs not finalized", async () => {
 
-            await mockTotalClaimPeriodsMined([0], [55]);
-            await mockClaimPeriodsMined([0], [15], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
             await travelToAndSetNewRewardEpoch(1, startTs);
-            await mockTotalClaimPeriodsMined([1], [50]);
-            await mockClaimPeriodsMined([1], [12], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([1], [50]);
+            await mockDataAvailabilityPeriodsMined([1], [12], accounts[1]);
             await travelToAndSetNewRewardEpoch(2, startTs);
-            await mockTotalClaimPeriodsMined([2], [25]);
-            await mockClaimPeriodsMined([2], [17], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([2], [25]);
+            await mockDataAvailabilityPeriodsMined([2], [17], accounts[1]);
             await travelToAndSetNewRewardEpoch(3, startTs);
 
             // can claim Math.floor(7 * 1000000 * 15 / 55) + Math.floor(7 * 1000000 * 12 / 50) + Math.floor(7 * 1000000 * 17 / 25) = 1909090 + 1680000 + 4760000 = 8349090
@@ -437,8 +437,8 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
     describe("close expired reward epochs", async () => {
         it("Should update expired rewards", async () => {
 
-            await mockTotalClaimPeriodsMined([0], [55]);
-            await mockClaimPeriodsMined([0], [15], accounts[1]);
+            await mockTotalDataAvailabilityPeriodsMined([0], [55]);
+            await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
 
             await travelToAndSetNewRewardEpoch(1, startTs);
             await validatorRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
