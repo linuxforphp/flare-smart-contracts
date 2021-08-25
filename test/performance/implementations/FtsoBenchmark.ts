@@ -187,7 +187,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
                 for (let i = 0; i < allFtsos.length; i++) {
                     const ftso = allFtsos[i];
                     const hash = submitPriceHash(prices[i], randoms[i], voter);
-                    await ftso.submitPriceHash(hash, { from: voter });
+                    await ftso.submitPriceHash(epochId, hash, { from: voter });
                 }
             }
             // reveal prices
@@ -242,7 +242,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await startNewPriceEpoch();
             for (const voter of voters) {
                 const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-                await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+                await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
             }
             // reveal prices
             await initializeForReveal();

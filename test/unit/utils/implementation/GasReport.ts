@@ -1,8 +1,8 @@
-import fs from "fs";
 import { constants, time } from "@openzeppelin/test-helpers";
-import { GOVERNANCE_GENESIS_ADDRESS, getTestFile, defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
-import { FtsoManagerContract, FtsoManagerInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, FtsoRegistryInstance, FtsoInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WFlrInstance, FAssetTokenContract, FAssetTokenInstance } from "../../../../typechain-truffle";
-import { compareArrays, increaseTimeTo, submitPriceHash, toBN } from "../../../utils/test-helpers";
+import fs from "fs";
+import { FAssetTokenContract, FAssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WFlrInstance } from "../../../../typechain-truffle";
+import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
+import { increaseTimeTo, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -253,7 +253,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await startNewPriceEpoch();
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        let submitTx = await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+        let submitTx = await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
         console.log(`submit price for single ftso: ${submitTx.receipt.gasUsed}`);
         gasReport.push({ "function": "submit price for single ftso", "gasUsed": submitTx.receipt.gasUsed });
       }
@@ -304,7 +304,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await startNewPriceEpoch();
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        let submitTx = await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+        let submitTx = await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
         console.log(`submit price 8 ftso: ${submitTx.receipt.gasUsed}`);
         gasReport.push({ "function": "submit prices for 8 ftso", "gasUsed": submitTx.receipt.gasUsed });
       }
@@ -354,7 +354,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await startNewPriceEpoch();
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
       }
       // reveal prices
       await initializeForReveal();
@@ -406,7 +406,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await startNewPriceEpoch();
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
       }
       // reveal prices
       await initializeForReveal();
@@ -461,7 +461,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await startNewPriceEpoch();
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
       }
       // reveal prices
       await initializeForReveal();
