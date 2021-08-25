@@ -38,12 +38,12 @@ contract(`ValidatorRewardManager.sol and StateConnector.sol; ${ getTestFile(__fi
         it("Should enable rewards to be claimed once reward epoch finalized", async () => {
             // Assemble
             // set some claim periods mined
-            await stateConnectorMock.addNewClaimPeriodsMined(accounts[1]);
-            await stateConnectorMock.addNewClaimPeriodsMined(accounts[1]);
-            await stateConnectorMock.addNewClaimPeriodsMined(accounts[1]);
+            await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[1]);
+            await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[1]);
+            await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[1]);
 
-            await stateConnectorMock.addNewClaimPeriodsMined(accounts[2]);
-            await stateConnectorMock.addNewClaimPeriodsMined(accounts[2]);
+            await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[2]);
+            await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[2]);
 
             // give reward manager some flr to distribute
             await mockInflation.receiveInflation({ value: "1500" } );
