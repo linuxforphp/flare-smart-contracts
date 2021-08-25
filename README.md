@@ -2,16 +2,15 @@
 
 Contracts cover the following *Flare network* building blocks:
 - [Token](contracts/token/implementation) contracts.
-- [FTSO](contract/ftso/implementation/Ftso.sol) (Flare time series oracle).
-- [FTSO Manager](contract/ftso/implementation/FtsoManager.sol).
-- Reward manager.
-   - [FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol).
-   - FLR incentive pools.
+- [FTSO](contracts/ftso/implementation/Ftso.sol) (Flare time series oracle).
+- [FTSO Manager](contracts/ftso/implementation/FtsoManager.sol).
+- Token pools for reward and distribution.
+   - [FTSO Reward manager](contracts/rewardPools/implementation/FtsoRewardManager.sol).
+   - [Data availability reward manager] (contracts/rewardPools/ValidatorRewardManager.sol)
+   - [Distribution contract] (contracts/rewardPools/Distribution.sol)
 - [Flare Daemon](contracts/genesis/implementation/FlareDaemon.sol), a special system trigger contract.
 - [Flare Inflation](contracts/inflation/implementation/Inflation.sol) tracking and [allocation](contracts/governance/implementation/InflationAllocation.sol).
-- [Supply accounting system](contracts/supply/implementation/Supply.sol) of FLR tokens.
-- fAsset contracts for minting fAssets (to be implemented).
-- FLR distribution contracts (to be implemented).
+- [Supply accounting system](contracts/inflation/implementation/Supply.sol) of FLR tokens.
 
 ## Token contracts 
 
@@ -19,15 +18,14 @@ Are used for wrapped FLR ([WFLR](contracts/token/implementation/WFlr.sol)) and [
 
 ## FTSO system
 
-Enables users to supply USD prices for fAsset's price feeds. The FTSO determines the vote power of each address by calling vote power API on the token contract. Each fAsset's price feeds are handled by a separate FTSO contract. All FTSO contracts are managed by FTSO Manager contract. See further information for details [here](docs/specs/FTSOManagerAndRewardManagerCodeFlows.md).
+Enables price providers to supply USD prices for a list of assets. The FTSO determines the vote power (weight) of each address by calling vote power API on the token contract. Each asset price feed is handled by a separate FTSO contract. All FTSO contracts are managed by FTSO Manager contract. See further information for details [here](docs/specs/FTSOManagerAndRewardManagerCodeFlows.md).
 
 ## Reward contracts
 
 Enable claiming of FLR rewards.
 Users will be eligible to claim tokens through the following methods:
 - by supplying FTSO price feeds ([FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol)), 
-- being validators and providing external chain data (to be implemented),
-- by acting as agents in fAsset system (to be implemented).
+- Providing external chain data (data availability proofs)
 
 ## Inflation
 
@@ -39,7 +37,7 @@ The supply accounting system monitors circulating FLR Supply. During the first p
 
 ## fAsset
 
-These contract(s) will handle both the process of minting and the redemption of fAssets, checking collateral levels and liquidating (auctioning) defaulting agents with lower collateral levels.
+These contract(s) will handle both the process of minting and the redemption of fAssets, checking collateral levels and liquidating (auctioning) defaulting agents with lower collateral levels. Will be implemented in a separate repository.
 
 ## Distribution contracts
 
