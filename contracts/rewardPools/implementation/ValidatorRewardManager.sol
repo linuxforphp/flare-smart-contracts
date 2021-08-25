@@ -23,11 +23,11 @@ contract ValidatorRewardManager is
     using SafePct for uint256;
     using SafeMath for uint256;
 
-    struct RewardEpochData {                // used for storing reward epoch data
-        uint64 totalClaimPeriodsMined;      // total number of claim periods mined in reward epoch
-        uint256 totalRewardWei;             // total reward (wei) for this reward epoch
-        uint64 unclaimedClaimPeriodsMined;  // unclaimed number of claim periods mined in reward epoch
-        uint256 unclaimedRewardWei;         // unclaimed reward (wei) for this reward epoch
+    struct RewardEpochData {                            // used for storing reward epoch data
+        uint64 totalDataAvailabilityPeriodsMined;       // total number of data availability periods mined
+        uint256 totalRewardWei;                         // total reward (wei) for this reward epoch
+        uint64 unclaimedDataAvailabilityPeriodsMined;   // unclaimed number of data availability periods mined
+        uint256 unclaimedRewardWei;                     // unclaimed reward (wei) for this reward epoch
     }
 
     struct RewardClaim {            // used for storing reward claim info
@@ -299,8 +299,9 @@ contract ValidatorRewardManager is
      */
     function _initializeRewardEpochs(uint256 currentRewardEpoch) internal {
         for (uint256 rewardEpoch = rewardEpochs.length; rewardEpoch < currentRewardEpoch; rewardEpoch++) {
-            uint64 totalClaimPeriodsMined = stateConnector.getTotalClaimPeriodsMined(rewardEpoch);
-            if (totalClaimPeriodsMined == 0) {
+            uint64 totalDataAvailabilityPeriodsMined = 
+                stateConnector.getTotalDataAvailabilityPeriodsMined(rewardEpoch);
+            if (totalDataAvailabilityPeriodsMined == 0) {
                 rewardEpochs.push();
             } else {
                 uint256 totalEpochReward = _getDistributableInflationBalance().div(currentRewardEpoch - rewardEpoch);
@@ -308,9 +309,9 @@ contract ValidatorRewardManager is
                 rewardEpochs.push(
                     RewardEpochData(
                         {
-                            totalClaimPeriodsMined: totalClaimPeriodsMined,
+                            totalDataAvailabilityPeriodsMined: totalDataAvailabilityPeriodsMined,
                             totalRewardWei: totalEpochReward,
-                            unclaimedClaimPeriodsMined: totalClaimPeriodsMined,
+                            unclaimedDataAvailabilityPeriodsMined: totalDataAvailabilityPeriodsMined,
                             unclaimedRewardWei: totalEpochReward
                         }
                     )
@@ -339,9 +340,9 @@ contract ValidatorRewardManager is
             return 0;
         }
 
-        uint64 rewardWeight = _rewardState.weight;            
+        uint64 rewardWeight = _rewardState.weight;
         if (rewardWeight > 0) {
-            rewardEpochs[_rewardEpoch].unclaimedClaimPeriodsMined -= rewardWeight; // can not underflow
+            rewardEpochs[_rewardEpoch].unclaimedDataAvailabilityPeriodsMined -= rewardWeight; // can not underflow
         }
 
         uint256 rewardAmount = _rewardState.amount;
@@ -481,7 +482,7 @@ contract ValidatorRewardManager is
         if (unclaimedRewardAmount == 0) {
             return 0;
         }
-        uint64 unclaimedRewardWeight = rewardEpochs[_rewardEpoch].unclaimedClaimPeriodsMined;
+        uint64 unclaimedRewardWeight = rewardEpochs[_rewardEpoch].unclaimedDataAvailabilityPeriodsMined;
         if (_rewardWeight == unclaimedRewardWeight) {
             return unclaimedRewardAmount;
         }
@@ -501,7 +502,7 @@ contract ValidatorRewardManager is
         internal view
         returns (uint64)
     {
-        return stateConnector.getClaimPeriodsMined(_claimer, _rewardEpoch);
+        return stateConnector.getDataAvailabilityPeriodsMined(_claimer, _rewardEpoch);
     }
 
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
