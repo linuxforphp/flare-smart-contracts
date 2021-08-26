@@ -2,9 +2,10 @@
 pragma solidity 0.7.6;
 
 /**
- * @title Tester6 contract
+ * @title Gas consumer contract that emulates priority list.
+ * Function push(n) is used for heavy transaction load tests. 
  **/
-contract Tester6 {
+contract GasConsumer6 {
 
     uint256[] public array;
     uint256 public maxLen;
