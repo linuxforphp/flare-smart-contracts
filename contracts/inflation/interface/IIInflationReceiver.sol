@@ -9,7 +9,7 @@ interface IIInflationReceiver {
     function setDailyAuthorizedInflation(uint256 _toAuthorizeWei) external;
     
     /**
-     * Receive FLR from inflation.
+     * Receive native tokens from inflation.
      */
     function receiveInflation() external payable;
 }

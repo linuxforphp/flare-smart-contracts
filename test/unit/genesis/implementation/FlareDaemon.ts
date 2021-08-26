@@ -396,9 +396,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await mockInflation.requestMinting(BN(100));
       // Pretend we are teeing validator with amount to mint
       await flareDaemon.trigger();
-      // Our fakey validator will be suiciding the right amount of FLR into flareDaemon
+      // Our fakey validator will be suiciding the right amount of native token into flareDaemon
       const suicidalMock = await SuicidalMock.new(flareDaemon.address);
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 100});
       // Suicidal validator mints
       await suicidalMock.die();
@@ -411,15 +411,15 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       assert.equal(inflationBalance.toNumber(), 100);
     })
 
-    it("Should post received FLR to self-destruct bucket if minting not expected", async() => {
+    it("Should post received native token to self-destruct bucket if minting not expected", async() => {
       // Assemble
       await flareDaemon.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       // Request more that we are going to receive
       await mockInflation.requestMinting(110);
-      // Our subversive attacker will be suiciding some FLR into flareDaemon
+      // Our subversive attacker will be suiciding some native token into flareDaemon
       const suicidalMock = await SuicidalMock.new(flareDaemon.address);
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 100});
       // Attacker dies
       await suicidalMock.die();
@@ -441,9 +441,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await mockInflation.requestMinting(BN(100));
       // Pretend we are teeing validator with amount to mint
       await flareDaemon.trigger();
-      // Our fakey validator will be suiciding the right amount of FLR into flareDaemon
+      // Our fakey validator will be suiciding the right amount of native token into flareDaemon
       const suicidalMock = await SuicidalMock.new(flareDaemon.address);
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 110});
       // Suicidal validator mints and we pretend that another attacker attacks in same block
       await suicidalMock.die();
@@ -471,7 +471,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await flareDaemon.trigger();
       // Our fakey validator will be suiciding with less than expected to mint
       const suicidalMock = await SuicidalMock.new(flareDaemon.address);
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 90});
       // Suicidal validator mints and we pretend that another attacker attacks in same block
       await suicidalMock.die();
@@ -498,9 +498,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await mockInflation.requestMinting(BN(100));
       // Pretend we are teeing validator with amount to mint
       await flareDaemon.trigger();
-      // Our fakey validator will be suiciding the right amount of FLR into flareDaemon
+      // Our fakey validator will be suiciding the right amount of native token into flareDaemon
       const suicidalMock = await SuicidalMock.new(flareDaemon.address);
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 100});
       // Suicidal validator mints
       await suicidalMock.die();
@@ -519,9 +519,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await mockInflation.requestMinting(BN(100));
       // Pretend we are teeing validator with amount to mint
       await flareDaemon.trigger();
-      // Our fakey validator will be suiciding the right amount of FLR into flareDaemon
+      // Our fakey validator will be suiciding the right amount of native token into flareDaemon
       const suicidalMock = await SuicidalMock.new(flareDaemon.address);
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: 110});
       // Suicidal validator mints and we pretend that another attacker attacks in same block
       await suicidalMock.die();

@@ -11,7 +11,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Revoke vote power unit te
   // a fresh contract for each test
   let delegatable: DelegatableMockInstance;
 
-  // Mimic FAsset spec test case names
+  // Mimic asset spec test case names
   let bob = accounts[1];
   let lucy = accounts[2];
   let ed = accounts[3];

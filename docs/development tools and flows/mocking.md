@@ -102,8 +102,8 @@ Without writing a separate contract...
     function finalizePriceEpoch(uint256 epochId, bool returnRewardData) 
         external returns(
             address[] memory eligibleAddresses,
-            uint64[] memory flrWeights,
-            uint256 totalFlrWeight
+            uint64[] memory natWeights,
+            uint256 totalNatWeight
     );
 ```
 

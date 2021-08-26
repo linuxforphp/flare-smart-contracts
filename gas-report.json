@@ -1,38 +1,38 @@
 [
   {
-    "function": "transfer wflr from sender and receiver with 2 delegates each(by percentage)",
+    "function": "transfer wNat from sender and receiver with 2 delegates each(by percentage)",
     "gasUsed": 327714
   },
   {
-    "function": "transfer wflr from sender and receiver with 3 delegates each(by percentage)",
+    "function": "transfer wNat from sender and receiver with 3 delegates each(by percentage)",
     "gasUsed": 345210
   },
   {
-    "function": "wflr transfer where both sender and receiver have 3 delegates (by percentage)",
+    "function": "wNat transfer where both sender and receiver have 3 delegates (by percentage)",
     "gasUsed": 309588
   },
   {
     "function": "submit price for single ftso",
-    "gasUsed": 77695
+    "gasUsed": 77740
   },
   {
     "function": "reveal price for single ftso",
-    "gasUsed": 189454
+    "gasUsed": 189455
   },
   {
     "function": "submit prices for 8 ftso",
-    "gasUsed": 365762
+    "gasUsed": 366098
   },
   {
     "function": "reveal prices for 8 ftso",
-    "gasUsed": 1145064
+    "gasUsed": 1144603
   },
   {
     "function": "finalize price epoch for 50 submissions",
-    "gasUsed": 836801
+    "gasUsed": 836867
   },
   {
     "function": "finalize price epoch for 100 submissions",
-    "gasUsed": 2442263
+    "gasUsed": 2442789
   }
 ]

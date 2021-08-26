@@ -3,12 +3,12 @@
     "randomizedPivot": true,
     "randomizedDataCount": 200,
     "prices":       [],
-    "weightsFlr":   [],
+    "weightsNat":   [],
     "weightsAsset": [],
     "priceAverage": 250000,
     "priceSD": 500,
-    "weightFlrAverage": 10000,
-    "weightFlrSD": 5000,
+    "weightNatAverage": 10000,
+    "weightNatSD": 5000,
     "weightAssetAverage": 10000,
     "weightAssetSD": 5000   
 }

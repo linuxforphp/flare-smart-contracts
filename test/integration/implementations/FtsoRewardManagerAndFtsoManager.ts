@@ -4,7 +4,7 @@ import {
     FtsoRegistryInstance,
     FtsoRewardManagerInstance,
     InflationMockInstance, MockContractInstance,
-    WFlrInstance
+    WNatInstance
 } from "../../../typechain-truffle";
 import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
@@ -21,7 +21,7 @@ const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const FtsoManager = artifacts.require("FtsoManager");
 const Ftso = artifacts.require("Ftso");
 const MockContract = artifacts.require("MockContract");
-const WFLR = artifacts.require("WFlr");
+const WNAT = artifacts.require("WNat");
 const InflationMock = artifacts.require("InflationMock");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
@@ -36,7 +36,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let startTs: BN;
     let mockFtso: MockContractInstance;
     let ftsoInterface: FtsoInstance;
-    let wFlr: WFlrInstance;
+    let wNat: WNatInstance;
     let mockInflation: InflationMockInstance;
     let ftsoRegistry: FtsoRegistryInstance;
     let mockPriceSubmitter: MockContractInstance;
@@ -46,7 +46,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         mockFtso = await MockContract.new();
         ftsoRegistry = await FtsoRegistry.new(accounts[0]);
         ftsoInterface = await Ftso.new(
-            "FLR",
+            "NAT",
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
@@ -97,11 +97,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         );
         await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
-        wFlr = await WFLR.new(accounts[0]);
-        await setDefaultVPContract(wFlr, accounts[0]);
+        wNat = await WNAT.new(accounts[0]);
+        await setDefaultVPContract(wNat, accounts[0]);
 
         await ftsoRewardManager.setFTSOManager(ftsoManager.address);
-        await ftsoRewardManager.setWFLR(wFlr.address);
+        await ftsoRewardManager.setWNAT(wNat.address);
         await ftsoRewardManager.activate();
     });
 
@@ -119,7 +119,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
                 [[accounts[1], accounts[2]], [25, 75], 100]);
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
 
-            // give reward manager some flr to distribute
+            // give reward manager some nat to distribute
             await mockInflation.receiveInflation({ value: "1000000" } );
 
             await setDefaultGovernanceParameters(ftsoManager);
@@ -152,8 +152,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     describe("reward claiming", async () => {
 
         it("Should enable rewards to be claimed once reward epoch finalized", async () => {
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            // deposit some wNats
+            await wNat.deposit({ from: accounts[1], value: "100" });
             // Assemble
             // stub ftso randomizer
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
@@ -166,7 +166,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
             // Stub accounting system to make it balance with RM contract
 
-            // give reward manager some flr to distribute
+            // give reward manager some nat to distribute
             await mockInflation.receiveInflation({ value: "1000000" } );
 
             await setDefaultGovernanceParameters(ftsoManager);
@@ -187,13 +187,13 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
 
             // Assert
             // a1 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 finalizations = 694
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), Math.floor(1000000 / 720 * 0.25 * 2));
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), Math.floor(1000000 / 720 * 0.25 * 2));
         });
     });
 });

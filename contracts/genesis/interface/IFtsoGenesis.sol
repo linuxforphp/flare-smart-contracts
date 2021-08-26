@@ -28,14 +28,14 @@ interface IFtsoGenesis {
         uint256 _epochId,
         uint256 _price,
         uint256 _random,
-        uint256 _wflrVP
+        uint256 _wNatVP
     ) external;
 
     /**
-     * @notice Get (and cache) wflr vote power for specified voter and given epoch id
+     * @notice Get (and cache) wNat vote power for specified voter and given epoch id
      * @param _voter                Voter address
      * @param _epochId              Id of the epoch in which the price hash was submitted
-     * @return WFLR vote power
+     * @return wNat vote power
      */
-    function wflrVotePowerCached(address _voter, uint256 _epochId) external returns (uint256);
+    function wNatVotePowerCached(address _voter, uint256 _epochId) external returns (uint256);
 }

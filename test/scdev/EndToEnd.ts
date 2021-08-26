@@ -13,8 +13,8 @@ import {
   FtsoRewardManagerInstance,
   PriceSubmitterContract,
   PriceSubmitterInstance,
-  WFlrContract,
-  WFlrInstance} from "../../typechain-truffle";
+  WNatContract,
+  WNatInstance} from "../../typechain-truffle";
 
 import { Contracts } from "../../deployment/scripts/Contracts";
 import { PriceInfo } from '../utils/PriceInfo';
@@ -143,7 +143,7 @@ function spewClaimError(account: string, e: unknown) {
 }
 
 /**
- * Test to see if minting faucet will topup reward manager FLR balance at next topup interval.
+ * Test to see if minting faucet will topup reward manager NAT balance at next topup interval.
  */
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
   let contracts: Contracts;
@@ -155,13 +155,13 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let ftsoManager: FtsoManagerInstance;
   let PriceSubmitter: PriceSubmitterContract;
   let priceSubmiter: PriceSubmitterInstance;  
-  let WFLR: WFlrContract;
-  let wFLR: WFlrInstance;
+  let WNAT: WNatContract;
+  let wNAT: WNatInstance;
   let Ftso: FtsoContract;
   let ftsoFltc: FtsoInstance;
   let ftsoFxdg: FtsoInstance;
   let ftsoFxrp: FtsoInstance;
-  let ftsoWflr: FtsoInstance;
+  let ftsoWnat: FtsoInstance;
   let ftsoFdgb: FtsoInstance;
   let ftsoFada: FtsoInstance;
   let ftsoFalgo: FtsoInstance;
@@ -191,28 +191,28 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     PriceSubmitter = artifacts.require("PriceSubmitter");
     priceSubmiter = await PriceSubmitter.at(contracts.getContractAddress(Contracts.PRICE_SUBMITTER));    
-    WFLR = artifacts.require("WFlr");
-    wFLR = await WFLR.at(contracts.getContractAddress(Contracts.WFLR));
+    WNAT = artifacts.require("WNat");
+    wNAT = await WNAT.at(contracts.getContractAddress(Contracts.WNAT));
     Ftso = artifacts.require("Ftso");
     ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FLTC));
     ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXDG));
     ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXRP));
-    ftsoWflr = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WFLR));
+    ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
     ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FDGB));
     ftsoFada = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FADA));
     ftsoFalgo = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FALGO));
     ftsoFbch = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FBCH));
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
-    firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    firstPriceEpochStartTs = (await ftsoWnat.getPriceEpochConfiguration())[0];
+    priceEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[1];
+    revealEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
     rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
     rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
 
-    console.log("Depositing and delegating FLR...");
+    console.log("Depositing and delegating NAT...");
 
     // Define delegators
     d1 = accounts[1];
@@ -221,17 +221,17 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     p2 = accounts[3];
     p3 = accounts[4];
 
-    // Mint some WFLR for each delegator and price provider
-    const someFLR = web3.utils.toWei(BN(3000000000));
-    await wFLR.deposit({from: d1, value: someFLR});
-    await wFLR.deposit({from: p1, value: someFLR});
-    await wFLR.deposit({from: p2, value: someFLR});
-    await wFLR.deposit({from: p3, value: someFLR});    
+    // Mint some WNAT for each delegator and price provider
+    const someNAT = web3.utils.toWei(BN(3000000000));
+    await wNAT.deposit({from: d1, value: someNAT});
+    await wNAT.deposit({from: p1, value: someNAT});
+    await wNAT.deposit({from: p2, value: someNAT});
+    await wNAT.deposit({from: p3, value: someNAT});    
 
     // Delegator delegates vote power
-    await wFLR.delegate(p1, 2500, {from: d1});
-    await wFLR.delegate(p2, 5000, {from: d1});
-    await wFLR.delegate(p3, 2500, {from: d1});
+    await wNAT.delegate(p1, 2500, {from: d1});
+    await wNAT.delegate(p2, 5000, {from: d1});
+    await wNAT.delegate(p3, 2500, {from: d1});
 
     // Now we must wait through a reward epoch so the vote power block
     // of the next reward epoch gets set to a block that has these just
@@ -251,15 +251,15 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async() => {
     // Assemble
     // Providers submit prices
-    const p1FlrPrice = await submitPrice(ftsoWflr, 0.35, p1);
+    const p1NatPrice = await submitPrice(ftsoWnat, 0.35, p1);
 
     const p1SubmitterPrices = await submitPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, [1.00, 1100, 1.84], p1);
     const p2SubmitterPrices = await submitPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, [1.33, 1203, 1.90], p2);
     const p3SubmitterPrices = await submitPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, [1.35, 1210, 1.91], p3);    
 
     
-    const p2FlrPrice = await submitPrice(ftsoWflr, 0.40, p2);
-    const p3FlrPrice = await submitPrice(ftsoWflr, 0.50, p3);
+    const p2NatPrice = await submitPrice(ftsoWnat, 0.40, p2);
+    const p3NatPrice = await submitPrice(ftsoWnat, 0.50, p3);
     const p1XrpPrice = await submitPrice(ftsoFxrp, 1.40, p1);
     const p2XrpPrice = await submitPrice(ftsoFxrp, 1.50, p2);
     const p3XrpPrice = await submitPrice(ftsoFxrp, 1.35, p3);
@@ -286,24 +286,24 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // console.log("CURRENT PRICE FADA - START", await ftsoFada.getCurrentPrice())
     // console.log("CURRENT PRICE ALGO - START", await ftsoFalgo.getCurrentPrice())
 
-    const revealEndTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[2];
-    const revealStartTs = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[1];
-    const votePowerBlock = (await ftsoWflr.getFullEpochReport(p1FlrPrice?.epochId!))[8];
+    const revealEndTs = (await ftsoWnat.getFullEpochReport(p1NatPrice?.epochId!))[2];
+    const revealStartTs = (await ftsoWnat.getFullEpochReport(p1NatPrice?.epochId!))[1];
+    const votePowerBlock = (await ftsoWnat.getFullEpochReport(p1NatPrice?.epochId!))[8];
 
-    console.log(`Reveal will start at = ${revealStartTs}; Reveal will end at = ${revealEndTs}; it is now ${new Date().getTime() / 1000}; votePower block for epoch ${p1FlrPrice?.epochId!} is ${votePowerBlock.toString()}`);
+    console.log(`Reveal will start at = ${revealStartTs}; Reveal will end at = ${revealEndTs}; it is now ${new Date().getTime() / 1000}; votePower block for epoch ${p1NatPrice?.epochId!} is ${votePowerBlock.toString()}`);
 
     while(new Date().getTime() / 1000 < revealEndTs.toNumber()) {
       // Reveal prices
       console.log(`Trying to reveal prices; system last triggered at ${(await flareDaemon.systemLastTriggeredAt()).toNumber()}; it is now ${new Date().getTime() / 1000}...`);
       try {
-        await revealPrice(ftsoWflr, p1FlrPrice!, p1);
+        await revealPrice(ftsoWnat, p1NatPrice!, p1);
         await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p1SubmitterPrices!, p1);
         await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p2SubmitterPrices!, p2);
         await revealPricePriceSubmitter([ftsoFalgo, ftsoFbch, ftsoFada], priceSubmiter, p3SubmitterPrices!, p3);        
 
         
-        await revealPrice(ftsoWflr, p2FlrPrice!, p2);
-        await revealPrice(ftsoWflr, p3FlrPrice!, p3);
+        await revealPrice(ftsoWnat, p2NatPrice!, p2);
+        await revealPrice(ftsoWnat, p3NatPrice!, p3);
         await revealPrice(ftsoFxrp, p1XrpPrice!, p1);
         await revealPrice(ftsoFxrp, p2XrpPrice!, p2);
         await revealPrice(ftsoFxrp, p3XrpPrice!, p3);
@@ -363,7 +363,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const d1OpeningBalance = BN(await web3.eth.getBalance(d1));
     
     // Act
-    // By the time we get here, reward manager better have some FLR for claiming...
+    // By the time we get here, reward manager better have some NAT for claiming...
     const rewardManagerBalance = BN(await web3.eth.getBalance(rewardManager.address));
     console.log(`Reward manager balance = ${rewardManagerBalance.toString()}`);
     assert(rewardManagerBalance.gt(BN(0)), "Reward manager expected to have a balance by now to distribute rewards");
@@ -422,7 +422,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       // voting until the given price epoch.
       const shouldaClaimed = dailyAuthorizedInflation
         .div(
-          numberOfSecondsInDay.div(priceEpochDurationSeconds).sub(BN(p1FlrPrice?.epochId!))
+          numberOfSecondsInDay.div(priceEpochDurationSeconds).sub(BN(p1NatPrice?.epochId!))
         );
 
       console.log(`Should have claimed: ${shouldaClaimed.toString()}`);

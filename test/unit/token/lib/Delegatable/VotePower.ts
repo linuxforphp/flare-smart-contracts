@@ -15,7 +15,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
   // a fresh contract for each test
   let delegatable: DelegatableMockInstance;
 
-  // Mimic FAsset spec test case names
+  // Mimic asset spec test case names
   let bob = accounts[1];
   let lucy = accounts[2];
   let ed = accounts[3];
@@ -28,7 +28,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     delegatable = await Delegatable.new();
   });
 
-  // First FAsset token stage 1 unit test
+  // First asset token stage 1 unit test
   it("Should delegate by percentage undelegated vote power, with retrievable history", async () => {
     let blockAtStart = 0;
     let blockAfterGeneration = 1;
@@ -55,13 +55,13 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Vote power calculation un
     assert.equal(votePowerOfLucyAfterEdDelegation as any, 20);
   });
 
-  // Third FAsset token stage 1 unit test
+  // Third asset token stage 1 unit test
   it("Should only delegate 1 level deep", async () => {
     // Assemble
     await delegatable.mintVotePower(bob, 20);
     await delegatable.mintVotePower(lucy, 10);
     // let's gen no tokens for Ed to check an edge case
-    //await fAssetToken.generateTokens(ed, 0);
+    //await xAssetToken.generateTokens(ed, 0);
 
     // Act
     await delegatable.delegate(lucy, 5000, {from: bob});

@@ -16,14 +16,15 @@ contract FtsoEpochMock {
     struct Instance {                           // struct holding epoch votes and results
         uint256 votePowerBlock;                 // block used to obtain vote weights in epoch
         uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
-        uint256 lowFlrTurnoutThresholdBIPS;     // threshold for low flr turnout (in BIPS)
-        uint256 circulatingSupplyFlr;           // total FLR circulating supply at votePowerBlock
-        uint256 votePowerFlr;                   // total FLR vote power at votePowerBlock
+        uint256 lowNatTurnoutThresholdBIPS;     // threshold for low nat turnout (in BIPS)
+        uint256 circulatingSupplyNat;           // total native token circulating supply at votePowerBlock
+        uint256 votePowerNat;                   // total native token vote power at votePowerBlock
         uint256 votePowerAsset;                 // total asset vote power at votePowerBlock
-        uint256 maxVotePowerFlr;                // max FLR vote power required for voting
+        uint256 maxVotePowerNat;                // max native token vote power required for voting
         uint256 maxVotePowerAsset;              // max asset vote power required for voting
-        uint256 accumulatedVotePowerFlr;        // total FLR vote power accumulated from votes in epoch
-        uint256 baseWeightRatio;                // base weight ratio between asset and FLR used to combine weights
+        uint256 accumulatedVotePowerNat;        // total native token vote power accumulated from votes in epoch
+        // base weight ratio between asset and native token used to combine weights
+        uint256 baseWeightRatio;
         uint256 price;                          // consented epoch asset price
         IFtso.PriceFinalizationType finalizationType; // finalization type
         uint256 random;                         // random number associated with the epoch
@@ -46,14 +47,14 @@ contract FtsoEpochMock {
         state.revealPeriod = _revealPeriod;
     }
 
-    function setAssetNorm(IIVPToken _fasset, uint256 _decimals) public {
-        state.assetNorm[_fasset] = 10**_decimals;
+    function setAssetNorm(IIVPToken _asset, uint256 _decimals) public {
+        state.assetNorm[_asset] = 10**_decimals;
     }
 
     function initializeInstanceForReveal(
         uint256 _epochId,
-        uint256 _circulatingSupplyFlr,
-        uint256 _votePowerFlr,
+        uint256 _circulatingSupplyNat,
+        uint256 _votePowerNat,
         IIVPToken[] memory _assets,
         uint256[] memory _assetVotePowers,
         uint256[] memory _assetPrices
@@ -63,8 +64,8 @@ contract FtsoEpochMock {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         state._initializeInstanceForReveal(
             epoch,
-            _circulatingSupplyFlr,
-            _votePowerFlr, 
+            _circulatingSupplyNat,
+            _votePowerNat, 
             _assets,
             _assetVotePowers,
             _assetPrices);
@@ -73,7 +74,7 @@ contract FtsoEpochMock {
     function addVote(
         uint256 _epochId,
         address _voter,
-        uint256 _votePowerFlr,
+        uint256 _votePowerNat,
         uint256 _votePowerAsset,
         uint256 _price,
         uint256 _random
@@ -81,26 +82,26 @@ contract FtsoEpochMock {
         public
     {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        FtsoEpoch._addVote(epoch, _voter, _votePowerFlr, _votePowerAsset, _price, _random);
+        FtsoEpoch._addVote(epoch, _voter, _votePowerNat, _votePowerAsset, _price, _random);
     }
 
     function configureEpochs(
-        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
+        uint256 _lowNatTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) 
         public
     {
-        state.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
+        state.maxVotePowerNatThresholdFraction = _maxVotePowerNatThresholdFraction;
         state.maxVotePowerAssetThresholdFraction = _maxVotePowerAssetThresholdFraction;
         state.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         state.highAssetUSDThreshold = _highAssetUSDThreshold;
         state.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
-        state.lowFlrTurnoutThresholdBIPS = _lowFlrTurnoutThresholdBIPS;
+        state.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
         state.trustedAddresses = _trustedAddresses;
     }
 
@@ -127,13 +128,13 @@ contract FtsoEpochMock {
 
         result.votePowerBlock = epoch.votePowerBlock;
         result.highAssetTurnoutThresholdBIPS = epoch.highAssetTurnoutThresholdBIPS;
-        result.lowFlrTurnoutThresholdBIPS = epoch.lowFlrTurnoutThresholdBIPS;
-        result.circulatingSupplyFlr = epoch.circulatingSupplyFlr;
-        result.votePowerFlr = epoch.votePowerFlr;
+        result.lowNatTurnoutThresholdBIPS = epoch.lowNatTurnoutThresholdBIPS;
+        result.circulatingSupplyNat = epoch.circulatingSupplyNat;
+        result.votePowerNat = epoch.votePowerNat;
         result.votePowerAsset = epoch.votePowerAsset;
-        result.maxVotePowerFlr = epoch.maxVotePowerFlr;
+        result.maxVotePowerNat = epoch.maxVotePowerNat;
         result.maxVotePowerAsset = epoch.maxVotePowerAsset;
-        result.accumulatedVotePowerFlr = epoch.accumulatedVotePowerFlr;
+        result.accumulatedVotePowerNat = epoch.accumulatedVotePowerNat;
         result.baseWeightRatio = epoch.baseWeightRatio;
         result.price = epoch.price;
         result.finalizationType = epoch.finalizationType;
@@ -159,26 +160,26 @@ contract FtsoEpochMock {
 
     function getWeightRatio(
         uint256 _epochId, 
-        uint256 _weightFlrSum, 
+        uint256 _weightNatSum, 
         uint256 _weightAssetSum
     ) 
         public view 
         returns (uint256)
     {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        return FtsoEpoch._getWeightRatio(epoch, _weightFlrSum, _weightAssetSum);
+        return FtsoEpoch._getWeightRatio(epoch, _weightNatSum, _weightAssetSum);
     }
 
     function computeWeights(
         uint256 _epochId,
-        uint256[] memory _weightsFlr,
+        uint256[] memory _weightsNat,
         uint256[] memory _weightsAsset
     ) 
         public view 
         returns (uint256[] memory)
     {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        return FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);
+        return FtsoEpoch._computeWeights(epoch, _weightsNat, _weightsAsset);
     }
 
     function getEpochId(uint256 _timestamp) public view returns (uint256) {

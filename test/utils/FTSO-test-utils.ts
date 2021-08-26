@@ -32,7 +32,7 @@ export interface VoteListRaw {
     _voters: string[];
     _prices: BigNumber[];
     _weights: BigNumber[];
-    _weightsFlr: BigNumber[];
+    _weightsNat: BigNumber[];
     _weightsAsset: BigNumber[];
     _eligibleForReward: boolean[];
 }
@@ -43,9 +43,9 @@ export interface VoteListRaw {
 export interface VoteInfo {
     id: number;
     price: number;
-    weightFlr: number;
+    weightNat: number;
     weightAsset: number;
-    runningSumFlr?: number;
+    runningSumNat?: number;
     runningSumAsset?: number;
     runningPct?: number;
     weight?: number;
@@ -86,9 +86,9 @@ export interface WeightSumInfo {
     lowWeightSum: number;
     rewardedWeightSum: number;
     highWeightSum: number;
-    FLRlowWeightSum: number;
-    FLRrewardedWeightSum: number;
-    FLRhighWeightSum: number;
+    NATlowWeightSum: number;
+    NATrewardedWeightSum: number;
+    NAThighWeightSum: number;
 }
 
 /**
@@ -112,7 +112,7 @@ export interface EpochResult {
 }
 
 export interface RewardedVoteInfo {
-    weightFlr: number;
+    weightNat: number;
     address: string;
 }
 
@@ -124,7 +124,7 @@ export interface TestExample {
     description?: string;
     randomizedPivot?: boolean;
     /**
-     * if this is > 0, then weightsFlr and weightsAsset should be empty [], and this number of pricess/weights is 
+     * if this is > 0, then weightsNat and weightsAsset should be empty [], and this number of pricess/weights is 
      * generated acording to *Averate and *SD parameters, which should be provided 
      */
     randomizedDataCount?: number;
@@ -133,7 +133,7 @@ export interface TestExample {
      */
     randomizedRuns?: number;
     prices: number[];
-    weightsFlr: number[];
+    weightsNat: number[];
     weightsAsset: number[];
     weightRatio?: number,
     /**
@@ -141,8 +141,8 @@ export interface TestExample {
      */
     priceAverage?: number | number[];
     priceSD?: number;
-    weightFlrAverage?: number;
-    weightFlrSD?: number;
+    weightNatAverage?: number;
+    weightNatSD?: number;
     weightAssetAverage?: number;
     weightAssetSD?: number;
 }
@@ -169,7 +169,7 @@ export function toVoteList(voteList: VoteListRaw): VoteInfo[] {
         votes.push({
             id: i,
             price: voteList._prices[i].toNumber(),
-            weightFlr: voteList._weightsFlr[i].toNumber(),
+            weightNat: voteList._weightsNat[i].toNumber(),
             weightAsset: voteList._weightsAsset[i].toNumber(),
         });
     }
@@ -188,43 +188,43 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
     let lowWeightSum = 0;
     let rewardedWeightSum = 0;
     let highWeightSum = 0;
-    let FLRlowWeightSum = 0;
-    let FLRrewardedWeightSum = 0;
-    let FLRhighWeightSum = 0;
+    let NATlowWeightSum = 0;
+    let NATrewardedWeightSum = 0;
+    let NAThighWeightSum = 0;
     let truncatedFirstQuartileIndex = 0;
     let truncatedLastQuartileIndex = votesRaw._prices.length - 1;
 
     for (let i = 0; i < votesRaw._prices.length; i++) {
         if (votesRaw._prices[i].toNumber() < epochResultRaw._lowRewardPrice.toNumber()) {
             lowWeightSum += votesRaw._weights[i].toNumber();
-            FLRlowWeightSum += votesRaw._weightsFlr[i].toNumber();
+            NATlowWeightSum += votesRaw._weightsNat[i].toNumber();
             truncatedFirstQuartileIndex++;
         } else if (votesRaw._prices[i].toNumber() > epochResultRaw._highRewardPrice.toNumber()) {
             highWeightSum += votesRaw._weights[i].toNumber();
-            FLRhighWeightSum += votesRaw._weightsFlr[i].toNumber();
+            NAThighWeightSum += votesRaw._weightsNat[i].toNumber();
             truncatedLastQuartileIndex--;
         } else {
             rewardedWeightSum += votesRaw._weights[i].toNumber();
-            FLRrewardedWeightSum += votesRaw._weightsFlr[i].toNumber();
+            NATrewardedWeightSum += votesRaw._weightsNat[i].toNumber();
         }
         votes.push({
             id: i,
             price: votesRaw._prices[i].toNumber(),
-            weightFlr: votesRaw._weightsFlr[i].toNumber(),
+            weightNat: votesRaw._weightsNat[i].toNumber(),
             weightAsset: votesRaw._weightsAsset[i].toNumber(),
         });
     }
 
-    let totalFlrSum = 0;
+    let totalNatSum = 0;
     let totalAssetSum = 0;
     votes.forEach(vote => {
-        totalFlrSum += vote.weightFlr;
+        totalNatSum += vote.weightNat;
         totalAssetSum += vote.weightAsset;
-        vote.runningSumFlr = totalFlrSum;
+        vote.runningSumNat = totalNatSum;
         vote.runningSumAsset = totalAssetSum;
     })
     votes.forEach(vote => {
-        vote.runningPct = ((vote.runningSumFlr! || 0) + (vote.runningSumAsset! || 0)) / (totalFlrSum + totalAssetSum);
+        vote.runningPct = ((vote.runningSumNat! || 0) + (vote.runningSumAsset! || 0)) / (totalNatSum + totalAssetSum);
     })
 
     return {
@@ -242,9 +242,9 @@ export function toEpochResult(epochResultRaw: EpochResultRaw, votesRaw: VoteList
             lowWeightSum,
             rewardedWeightSum,
             highWeightSum,
-            FLRlowWeightSum,
-            FLRrewardedWeightSum,
-            FLRhighWeightSum
+            NATlowWeightSum,
+            NATrewardedWeightSum,
+            NAThighWeightSum
         }
     }
 }
@@ -271,31 +271,31 @@ export function prettyPrintVoteInfo(epoch: number, voteListRaw: VoteListRaw, wei
         logger = console;
     }
     let voteList = toVoteList(voteListRaw);
-    let totalSumFlr = 0;
-    voteList.forEach((a: VoteInfo) => { totalSumFlr += a.weightFlr });
+    let totalSumNat = 0;
+    voteList.forEach((a: VoteInfo) => { totalSumNat += a.weightNat });
     let totalSumAsset = 0;
     voteList.forEach((a: VoteInfo) => { totalSumAsset += a.weightAsset });
     
     logger.log(
-        `EPOCH ${ epoch }\nID\tPRICE\tWFLR\tWASSET\tWEIGHT\n` +
-        voteList.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset) }`).join("\n")
+        `EPOCH ${ epoch }\nID\tPRICE\tWNAT\tWASSET\tWEIGHT\n` +
+        voteList.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightNat }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumNat, totalSumAsset) }`).join("\n")
     );
 }
 
-function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumFlr: number, totalSumAsset: number): number {
+function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumNat: number, totalSumAsset: number): number {
     let TERA = 1e12;
     let BIPS100 = 1e4;
 
     // set weight distribution according to weight sums and weight ratio
-    let weightFlrShare = 0;
+    let weightNatShare = 0;
     let weightAssetShare = weightRatio;        
-    if (totalSumFlr > 0) {
-        weightFlrShare = BIPS100 - weightAssetShare;
+    if (totalSumNat > 0) {
+        weightNatShare = BIPS100 - weightAssetShare;
     }
 
-    let weightFlr = 0;
-    if (weightFlrShare > 0) {
-        weightFlr = Math.floor((weightFlrShare * TERA * vote.weightFlr) / (totalSumFlr * BIPS100));
+    let weightNat = 0;
+    if (weightNatShare > 0) {
+        weightNat = Math.floor((weightNatShare * TERA * vote.weightNat) / (totalSumNat * BIPS100));
     }
 
     let weightAsset = 0;
@@ -303,7 +303,7 @@ function calculateWeight(vote:VoteInfo, weightRatio: number, totalSumFlr: number
         weightAsset = Math.floor((weightAssetShare * TERA * vote.weightAsset) / (totalSumAsset * BIPS100));
     }
 
-    return weightFlr + weightAsset;
+    return weightNat + weightAsset;
 }
 
 /**
@@ -331,16 +331,16 @@ export function prettyPrintEpochResult(epoch: number, rawEpochResult: EpochResul
         logger = console;
     }
     let epochResult = toEpochResult(rawEpochResult, rawVotes);
-    let totalSumFlr = epochResult.votes.length > 0 ? epochResult.votes[epochResult.votes.length - 1].runningSumFlr! : 0;
+    let totalSumNat = epochResult.votes.length > 0 ? epochResult.votes[epochResult.votes.length - 1].runningSumNat! : 0;
     let totalSumAsset = epochResult.votes.length > 0 ? epochResult.votes[epochResult.votes.length - 1].runningSumAsset! : 0;
-    // let totalSum = totalSumFlr + totalSumAsset;
+    // let totalSum = totalSumNat + totalSumAsset;
     let totalSum = 0;
     epochResult.votes.forEach(vote => {
-        totalSum += calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset);
+        totalSum += calculateWeight(vote, weightRatio, totalSumNat, totalSumAsset);
     })
     logger.log(
-        `ID\tPRICE\tWFLR\tWASSET\tWEIGHT\n` +
-        epochResult.votes.map((vote, i) => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumFlr, totalSumAsset) }\t${ vote.runningSumFlr! + vote.runningSumAsset! }\t${ (vote.runningPct! * 100).toFixed(1) }\t${ marker(i, epochResult.medians) }`).join("\n") +
+        `ID\tPRICE\tWNAT\tWASSET\tWEIGHT\n` +
+        epochResult.votes.map((vote, i) => `${ vote.id }\t${ vote.price }\t${ vote.weightNat }\t${ vote.weightAsset }\t${ calculateWeight(vote, weightRatio, totalSumNat, totalSumAsset) }\t${ vote.runningSumNat! + vote.runningSumAsset! }\t${ (vote.runningPct! * 100).toFixed(1) }\t${ marker(i, epochResult.medians) }`).join("\n") +
         "\n" +
         `Epoch ${ epoch }\n` +
         `Lower price: ${ epochResult.prices.lowRewardedPrice }\n` +
@@ -350,10 +350,10 @@ export function prettyPrintEpochResult(epoch: number, rawEpochResult: EpochResul
         `Rewarded weight: ${ epochResult.weights.rewardedWeightSum } (${ (epochResult.weights.rewardedWeightSum / totalSum * 100).toFixed(1) }%)\n` +
         `Higher excluded weight: ${ epochResult.weights.highWeightSum } (${ (epochResult.weights.highWeightSum / totalSum * 100).toFixed(1) }%)\n` +
         `Total weight: ${ totalSum }\n` +
-        `Lower FLR excluded weight: ${ epochResult.weights.FLRlowWeightSum } (${ (epochResult.weights.FLRlowWeightSum / totalSumFlr * 100).toFixed(1) }%)\n` +
-        `Rewarded FLR weight: ${ epochResult.weights.FLRrewardedWeightSum } (${ (epochResult.weights.FLRrewardedWeightSum / totalSumFlr * 100).toFixed(1) }%)\n` +
-        `Higher FLR excluded weight: ${ epochResult.weights.FLRhighWeightSum } (${ (epochResult.weights.FLRhighWeightSum / totalSumFlr * 100).toFixed(1) }%)\n` +
-        `Total FLR weight: ${ totalSumFlr }\n`
+        `Lower NAT excluded weight: ${ epochResult.weights.NATlowWeightSum } (${ (epochResult.weights.NATlowWeightSum / totalSumNat * 100).toFixed(1) }%)\n` +
+        `Rewarded NAT weight: ${ epochResult.weights.NATrewardedWeightSum } (${ (epochResult.weights.NATrewardedWeightSum / totalSumNat * 100).toFixed(1) }%)\n` +
+        `Higher NAT excluded weight: ${ epochResult.weights.NAThighWeightSum } (${ (epochResult.weights.NAThighWeightSum / totalSumNat * 100).toFixed(1) }%)\n` +
+        `Total NAT weight: ${ totalSumNat }\n`
     )
 }
 
@@ -391,33 +391,33 @@ export function priceToRandom(price: number) {
  * @param data 
  * @returns 
  */
-export function resultsFromTestData(data: TestExample, addresses: string[], flrSumOverride: number = 0, assetSumOverride: number = 0, logger?: any): EpochResult {
+export function resultsFromTestData(data: TestExample, addresses: string[], natSumOverride: number = 0, assetSumOverride: number = 0, logger?: any): EpochResult {
     if (!logger) {
         logger = console;
     }
     let votes: VoteInfo[] = [];
     let len = data.prices.length;
-    if (len != data.weightsFlr.length) throw Error(`Wrong FLR weights length: ${ data.weightsFlr.length }. Should be ${ len }`);
+    if (len != data.weightsNat.length) throw Error(`Wrong NAT weights length: ${ data.weightsNat.length }. Should be ${ len }`);
     if (len != data.weightsAsset.length) throw Error(`Wrong Asset weights length: ${ data.weightsAsset.length }. Should be ${ len }`);
     if (len != addresses.length) throw Error(`Wrong addresses length: ${ addresses.length }. Should be ${ len }`);
-    let flrSum = 0;
+    let natSum = 0;
     let assetSum = 0;
     for (let i = 0; i < len; i++) {
-        flrSum += data.weightsFlr[i];
+        natSum += data.weightsNat[i];
         assetSum += data.weightsAsset[i];
     }
     let TERA = 1e12;
-    let flrWeightSum = 0;
+    let natWeightSum = 0;
     let assetWeightSum = 0;
     let price_random = [];
     for (let i = 0; i < len; i++) {
-        let flrWeight: number;
-        if (flrSumOverride > 0) {
-            flrWeight = Math.floor((data.weightsFlr[i] * TERA) / flrSumOverride);
+        let natWeight: number;
+        if (natSumOverride > 0) {
+            natWeight = Math.floor((data.weightsNat[i] * TERA) / natSumOverride);
         } else {
-            flrWeight = flrSum == 0 ? 0 : Math.floor((data.weightsFlr[i] * TERA) / flrSum);
+            natWeight = natSum == 0 ? 0 : Math.floor((data.weightsNat[i] * TERA) / natSum);
         }
-        flrWeightSum += flrWeight;
+        natWeightSum += natWeight;
         let assetWeight: number;
         if (assetSumOverride > 0) {
             assetWeight = Math.floor((data.weightsAsset[i] * TERA) / assetSumOverride);
@@ -429,10 +429,10 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
         votes.push({
             id: i,
             price: price,
-            weightFlr: flrWeight,
+            weightNat: natWeight,
             weightAsset: assetWeight,
             address: addresses[i],
-            runningSumFlr: flrWeightSum,
+            runningSumNat: natWeightSum,
             runningSumAsset: assetWeightSum
         })
         price_random.push([price, priceToRandom(price)]);
@@ -440,7 +440,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
     votes.sort((a: VoteInfo, b: VoteInfo) => a.price < b.price ? -1 : (a.price > b.price ? 1 : 0));
     let totalSum = 0;
     votes.forEach((v: VoteInfo) => {
-        let weight = calculateWeight(v, data.weightRatio!, flrWeightSum, assetWeightSum);
+        let weight = calculateWeight(v, data.weightRatio!, natWeightSum, assetWeightSum);
         v.weight = weight;
         totalSum += weight;
     })
@@ -454,10 +454,10 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
 
     let medianWeight = Math.floor(totalSum / 2) + totalSum % 2;
     logger.log(
-        `Sorted votes:\nID\tPRICE\tWFLR\tWASSET\n` +
-        votes.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightFlr }\t${ vote.weightAsset }`).join("\n")
+        `Sorted votes:\nID\tPRICE\tWNAT\tWASSET\n` +
+        votes.map(vote => `${ vote.id }\t${ vote.price }\t${ vote.weightNat }\t${ vote.weightAsset }`).join("\n")
     );
-    logger.log(`SUMS: ${ assetSum }, ${ flrSum }, ${ totalSum }, MV: ${ medianWeight.toString() }`);
+    logger.log(`SUMS: ${ assetSum }, ${ natSum }, ${ totalSum }, MV: ${ medianWeight.toString() }`);
     let medianIndex = 0;
     let medianSum = 0;
 
@@ -527,8 +527,8 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
     logger.log("Start filtering the reward addresses")
     for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
         let voteInfo = votes[i];
-        logger.log(`Considering ${ voteInfo.id }\t${ voteInfo.price }\t${ voteInfo.weightFlr }\t${ voteInfo.weightAsset }\t${ voteInfo.address! }`)
-        if (voteInfo.weightFlr > 0) {
+        logger.log(`Considering ${ voteInfo.id }\t${ voteInfo.price }\t${ voteInfo.weightNat }\t${ voteInfo.weightAsset }\t${ voteInfo.address! }`)
+        if (voteInfo.weightNat > 0) {
             if (voteInfo.price == truncatedFirstQuartilePrice || voteInfo.price == truncatedLastQuartilePrice) {
                 logger.log("\tEdge case");
                 if (!isAddressEligible(random, voteInfo.address!)) {
@@ -536,7 +536,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
                     continue;
                 }
             }
-            rewardedVotes.push({ weightFlr: voteInfo.weightFlr, address: voteInfo.address! } as RewardedVoteInfo);
+            rewardedVotes.push({ weightNat: voteInfo.weightNat, address: voteInfo.address! } as RewardedVoteInfo);
         }
     }
     logger.log("Done filtering the reward addresses");
@@ -570,13 +570,13 @@ export function resultsFromTestData(data: TestExample, addresses: string[], flrS
  * @returns 
  */
 export function updateWithRewardedVotesInfo(epochResult: EpochResult, data: any): EpochResult {
-    if (data._eligibleAddresses?.length != data._flrWeights?.length) {
-        throw Error(`FLR weights length (${ data._flrWeights?.length }) and addresses length (${ data._flrWeights?.length }) should match.`);
+    if (data._eligibleAddresses?.length != data._natWeights?.length) {
+        throw Error(`NAT weights length (${ data._natWeights?.length }) and addresses length (${ data._natWeights?.length }) should match.`);
     }
 
     let rewardedVotes: RewardedVoteInfo[] = [];
     for (let i = 0; i < data._eligibleAddresses.length; i++) {
-        rewardedVotes.push({ weightFlr: data._flrWeights[i], address: data._eligibleAddresses[i] } as RewardedVoteInfo);
+        rewardedVotes.push({ weightNat: data._natWeights[i], address: data._eligibleAddresses[i] } as RewardedVoteInfo);
     }
     rewardedVotes.sort((a: RewardedVoteInfo, b: RewardedVoteInfo) => a.address.localeCompare(b.address));
 
@@ -615,7 +615,7 @@ export function compareEpochResults(test: EpochResult, target: EpochResult) {
     expect(test.weights.highWeightSum, "High weight sums do not match").to.equal(target.weights.highWeightSum);
     expect(test.rewardedVotes!.length, "Rewarded votes lengths do not match").to.equal(target.rewardedVotes!.length);
     for (let i = 0; i < test.rewardedVotes!.length; i++) {
-        expect(test.rewardedVotes![i].weightFlr, `Rewarded votes FLR weights at position ${ i } do not match`).to.equal(target.rewardedVotes![i].weightFlr);
+        expect(test.rewardedVotes![i].weightNat, `Rewarded votes NAT weights at position ${ i } do not match`).to.equal(target.rewardedVotes![i].weightNat);
         expect(test.rewardedVotes![i].address, `Rewarded votes addresses at position ${ i } do not match:`).to.equal(target.rewardedVotes![i].address);
     }
 }
@@ -690,7 +690,7 @@ export function randomizeExampleGenerator(testExample: TestExample) {
     if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
     testExample.prices = [];
     testExample.weightsAsset = [];
-    testExample.weightsFlr = [];
+    testExample.weightsNat = [];
     let clusters;
     let priceAverage;
     if (isNumberArray(testExample.priceAverage!)) {
@@ -701,7 +701,7 @@ export function randomizeExampleGenerator(testExample: TestExample) {
         priceAverage = [testExample.priceAverage!];
     }
     for (let i = 0; i < len; i++) {
-        testExample.weightsFlr.push(normal(testExample.weightFlrAverage!, testExample.weightFlrSD!));
+        testExample.weightsNat.push(normal(testExample.weightNatAverage!, testExample.weightNatSD!));
         testExample.weightsAsset.push(normal(testExample.weightAssetAverage!, testExample.weightAssetSD!));
         testExample.prices.push(normal(priceAverage[i % clusters], testExample.priceSD!));
     }
@@ -829,8 +829,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
     if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
 
     // Contract deployment
-    let flrToken = await newContract<MockVPToken>("MockVPToken", signers[0],
-        signers.slice(0, len).map(signer => signer.address), testExample.weightsFlr
+    let natToken = await newContract<MockVPToken>("MockVPToken", signers[0],
+        signers.slice(0, len).map(signer => signer.address), testExample.weightsNat
     )
     let assetToken = await newContract<MockVPToken>("MockVPToken", signers[0],
         signers.slice(0, len).map(signer => signer.address), testExample.weightsAsset
@@ -839,7 +839,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
     let mockSupply = await createMockSupplyContract(signers[0].address, 1000);
 
     let ftso = await newContract<MockFtso>("MockFtso", signers[0],
-        assetToken._symbol(), flrToken.address, signers[0].address, mockSupply.address,  // address _wFlr, address _fAsset, address _supply
+        assetToken._symbol(), natToken.address, signers[0].address, mockSupply.address,  // address _wNat, address _xAsset, address _supply
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
@@ -847,7 +847,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         1e10,
         defaultPriceEpochCyclicBufferSize
     );
-    await ftso.setFAsset(assetToken.address);
+    await ftso.setAsset(assetToken.address);
 
     return ftso;
 }
@@ -921,10 +921,10 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     return testCase;
 }
 
-export async function getWeightRatio(ftso: MockFtso, epoch: number, resVoteInfo: { _weightsFlr: BigNumber[]; _weightsAsset: BigNumber[]; }) {
-    const sumWeightsFlr = arraySum(resVoteInfo._weightsFlr);
+export async function getWeightRatio(ftso: MockFtso, epoch: number, resVoteInfo: { _weightsNat: BigNumber[]; _weightsAsset: BigNumber[]; }) {
+    const sumWeightsNat = arraySum(resVoteInfo._weightsNat);
     const sumWeightsAsset = arraySum(resVoteInfo._weightsAsset);
-    const weightRatio = await ftso.getWeightRatio(epoch, sumWeightsFlr, sumWeightsAsset);
+    const weightRatio = await ftso.getWeightRatio(epoch, sumWeightsNat, sumWeightsAsset);
     return weightRatio.toNumber();
 }
 
@@ -969,9 +969,9 @@ export async function revealPrice(signers: readonly SignerWithAddress[], ftso: M
  * @param signer reward manager
  * @param ftso contract
  * @param epochId epoch id
- * @returns finalize price epoch result (_eligibleAddresses, _flrWeights, _flrWeightsSum)
+ * @returns finalize price epoch result (_eligibleAddresses, _natWeights, _natWeightsSum)
  */
-export async function finalizePriceEpochWithResult(signer: SignerWithAddress, ftso: Ftso, epochId: number): Promise<{ _eligibleAddresses: string[]; _flrWeights: BigNumber[]; _flrWeightsSum: BigNumber; }> {
+export async function finalizePriceEpochWithResult(signer: SignerWithAddress, ftso: Ftso, epochId: number): Promise<{ _eligibleAddresses: string[]; _natWeights: BigNumber[]; _natWeightsSum: BigNumber; }> {
     let epochFinalizeResponse = await ftso.connect(signer).callStatic.finalizePriceEpoch(epochId, true);
     await waitFinalize(signer, () => ftso.connect(signer).finalizePriceEpoch(epochId, true));
     return epochFinalizeResponse;
