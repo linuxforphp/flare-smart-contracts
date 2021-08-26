@@ -54,7 +54,7 @@ async function main() {
     const voterWhitelister: IVoterWhitelisterInstance = await MockVoterWhitelister.at(await priceSubmitter.getVoterWhitelister());
 
     // Get indices for specific symbols
-    const symbols = ["WFLR", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"];
+    const symbols = ["WNAT", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"];
     const ftsos = await Promise.all(
         symbols.map(async sym => await MockFtso.at(await ftsoRegistry.getFtsoBySymbol(sym)))
     ) as IFtsoInstance[];

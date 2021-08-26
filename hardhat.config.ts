@@ -19,9 +19,9 @@ const intercept = require('intercept-stdout');
 task(TASK_COMPILE)
   .setAction(async (args, hre, runSuper) => {
     intercept((text: any) => {
-      if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text)) && 
+      if ((/DelegatableMock.sol/.test(text) || /DummyAssetMinter.sol/.test(text)) && 
         /Warning: Function state mutability can be restricted to pure/.test(text)) return '';
-      if ((/DelegatableMock.sol/.test(text) || /DummyFAssetMinter.sol/.test(text) || /GovernedAtGenesis.sol/.test(text)) && 
+      if ((/DelegatableMock.sol/.test(text) || /DummyAssetMinter.sol/.test(text) || /GovernedAtGenesis.sol/.test(text)) && 
         /Warning: Unused function parameter/.test(text)) return '';
       if ((/Ownable.sol/.test(text) || /ERC20.sol/.test(text)) &&
         /Warning: Visibility for constructor is ignored/.test(text)) return '';
@@ -45,7 +45,7 @@ dotenv.config();
 let fs = require('fs');
 
 let accounts  = [
-  // First 20 accounts with 10^14 FLR each 
+  // First 20 accounts with 10^14 NAT each 
   // Addresses:
   //   0xc783df8a850f42e7f7e57013759c285caa701eb6
   //   0xead9c93b79ae7c1591b1fb5323bd777e86e150d4

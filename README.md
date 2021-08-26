@@ -14,7 +14,7 @@ Contracts cover the following *Flare network* building blocks:
 
 ## Token contracts 
 
-Are used for wrapped FLR ([WFLR](contracts/token/implementation/WFlr.sol)) and [fAssets](contracts/token/implementation/VPToken.sol) minted on *Flare network*. These tokens expose delegate API and query votePower API. Vote power is checkpointed, meaning votePower for previous blocks can be queried.
+Are used for wrapped native tokens ([WNAT](contracts/token/implementation/WNat.sol)) and [xAssets](contracts/token/implementation/VPToken.sol) minted on *Flare network*. These tokens expose delegate API and query votePower API. Vote power is checkpointed, meaning votePower for previous blocks can be queried.
 
 ## FTSO system
 
@@ -22,26 +22,26 @@ Enables price providers to supply USD prices for a list of assets. The FTSO dete
 
 ## Reward contracts
 
-Enable claiming of FLR rewards.
+Enable claiming of native token rewards.
 Users will be eligible to claim tokens through the following methods:
 - by supplying FTSO price feeds ([FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol)), 
 - Providing external chain data (data availability proofs)
 
 ## Inflation
 
-FLR Inflation will be distributed according to decisions made by governance. A large part of the inflation will flow to FTSO price providers who provide "good" price feeds. Inflation will be awarded per price epoch. Inflation will be minted on demand subject to preceeding approvals.
+Native token inflation will be distributed according to decisions made by governance. A large part of the inflation will flow to FTSO price providers who provide "good" price feeds. Inflation will be awarded per price epoch. Inflation will be minted on demand subject to preceeding approvals.
 
 ## Supply accounting
 
-The supply accounting system monitors circulating FLR Supply. During the first period after launch, much of the FLR will be locked in pools such as the incentive pool. FLR distribution is done in phases, and Flare tokens that have been earned are considered locked until they are distributed. The Supply keeps track of these amounts.
+The supply accounting system monitors circulating native token supply. During the first period after launch, much of the native tokens will be locked in pools such as the incentive pool. Native token distribution is done in phases, and native tokens that have been earned are considered locked until they are distributed. The Supply keeps track of these amounts.
 
-## fAsset
+## xAsset
 
-These contract(s) will handle both the process of minting and the redemption of fAssets, checking collateral levels and liquidating (auctioning) defaulting agents with lower collateral levels. Will be implemented in a separate repository.
+These contract(s) will handle both the process of minting and the redemption of assets, checking collateral levels and liquidating (auctioning) defaulting agents with lower collateral levels. Will be implemented in a separate repository.
 
 ## Distribution contracts
 
-The air dropped FLR will be distributed gradually through a dedicated contract(s).
+The air dropped native tokens will be distributed gradually through a dedicated contract(s).
 
 ## Getting started
 

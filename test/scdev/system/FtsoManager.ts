@@ -17,7 +17,7 @@ const MockContract = artifacts.require("MockContract");
 
 
 /**
- * This test assumes a local chain is running with Flare allocated in accounts
+ * This test assumes a local chain is running with Native allocated in accounts
  * listed in `./hardhat.config.ts`
  * It does not assume that contracts are deployed, other than the FlareDaemon, which should
  * already be loaded in the genesis block.

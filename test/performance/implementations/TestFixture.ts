@@ -8,13 +8,13 @@ let testExample: TestExample = {
     randomizedPivot: true,
     randomizedDataCount: 20,
     prices: [],
-    weightsFlr: [],
+    weightsNat: [],
     weightsAsset: [],
     weightRatio: 0,
     priceAverage: 10000,
     priceSD: 6000,
-    weightFlrAverage: 100000,
-    weightFlrSD: 50000,
+    weightNatAverage: 100000,
+    weightNatSD: 50000,
     weightAssetAverage: 100000,
     weightAssetSD: 50000   
 }

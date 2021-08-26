@@ -36,15 +36,15 @@ const ftsoManagerAddress = (() => {
   let ftsoData = []
   
   for (let i = 0; i < ftsos.length; i++) {
-    let fasset = await new web3.eth.Contract(ftsoAbi, ftsos[i])
+    let xasset = await new web3.eth.Contract(ftsoAbi, ftsos[i])
     ftsoData.push({
-      symbol: await fasset.methods.symbol().call(),
+      symbol: await xasset.methods.symbol().call(),
       address: ftsos[i],
-      contract: fasset,
+      contract: xasset,
     })
   }
 
-  let decimal = await ftsoData[0].contract.methods.FASSET_USD_DECIMALS.call().call()
+  let decimal = await ftsoData[0].contract.methods.ASSET_PRICE_USD_DECIMALS.call().call()
   let errorBody = {
     mkdwn: true,
     text: `Invalid inputs `,
@@ -359,7 +359,7 @@ const ftsoManagerAddress = (() => {
   }
 
   /**
-   * Returns price(USD) of FTSO Fasset at given epoch id for a particular voter
+   * Returns price(USD) of FTSO Xasset at given epoch id for a particular voter
    */
   async function _epoch_price_for_voter(responseUrl, req) {
     let raw = req.body.text

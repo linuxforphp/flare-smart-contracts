@@ -1,5 +1,5 @@
 import { soliditySha3Raw as soliditySha3 } from "web3-utils";
-import { FlashLenderMockInstance, FlashLoanMockInstance, MockFtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WFlrInstance } from "../../../typechain-truffle";
+import { FlashLenderMockInstance, FlashLoanMockInstance, MockFtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WNatInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
@@ -8,16 +8,16 @@ const { getTestFile } = require('../../utils/constants');
 const FlashLenderMock = artifacts.require("FlashLenderMock");
 const FlashLoanMock = artifacts.require("FlashLoanMock");
 const VotingFlashLoanMock = artifacts.require("VotingFlashLoanMock");
-const Wflr = artifacts.require("WFlr");
+const Wnat = artifacts.require("WNat");
 const Ftso = artifacts.require("MockFtso");
 const MockSupply = artifacts.require("MockContract");
 const Supply = artifacts.require("Supply");
 const MockFtso = artifacts.require("MockFtso");
 
-const FLARE = toBN(1e18);
+const NATIVE = toBN(1e18);
 
-const LENDER_AMOUNT = toBN(20).mul(FLARE);
-const AMOUNT = toBN(1).mul(FLARE);
+const LENDER_AMOUNT = toBN(20).mul(NATIVE);
+const AMOUNT = toBN(1).mul(NATIVE);
 
 async function startNewEpoch() {
     await time.advanceBlock();
@@ -31,7 +31,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
     let flashLenderMock: FlashLenderMockInstance;
     let flashLoanMock: FlashLoanMockInstance;
     let votingFlashLoanMock: VotingFlashLoanMockInstance;
-    let wflr: WFlrInstance;
+    let wnat: WNatInstance;
     let vpToken: VPTokenInstance;
     let mockSupply: MockContractInstance;
     let supplyInterface: SupplyInstance;
@@ -50,15 +50,15 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         })
     });
 
-    describe("vote with real flares", async () => {
+    describe("vote with real native tokens", async () => {
         beforeEach(async () => {
-            wflr = await Wflr.new(accounts[0]);
-            await setDefaultVPContract(wflr, accounts[0]);
+            wnat = await Wnat.new(accounts[0]);
+            await setDefaultVPContract(wnat, accounts[0]);
             supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
             mockSupply = await MockSupply.new();
             ftso = await MockFtso.new(
                 "ATOK",
-                wflr.address,
+                wnat.address,
                 accounts[10],
                 mockSupply.address,
                 0, 0, 0,    // special mock settings, not needed here
@@ -72,25 +72,25 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             flashLenderMock = await FlashLenderMock.new();
             await flashLenderMock.send(LENDER_AMOUNT);
             await time.advanceBlock();
-            // give dummy user wflrs to create vote threshold
+            // give dummy user wnats to create vote threshold
             const accountAmount = toBN(3).mul(AMOUNT);
             await flashLenderMock.donateTo(accounts[1], accountAmount);
-            await wflr.deposit({ from: accounts[1], value: accountAmount });  // mint wflr for contract
+            await wnat.deposit({ from: accounts[1], value: accountAmount });  // mint wnat for contract
 
             const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(0).encodeABI();
             const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', accountAmount);
             await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
         });
 
-        it("Should be able to vote with donated flares", async () => {
+        it("Should be able to vote with donated native tokens", async () => {
             const amount = toBN(5).mul(AMOUNT);
-            flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wflr.address, ftso.address);
+            flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wnat.address, ftso.address);
             await flashLenderMock.donateTo(flashLoanMock.address, amount);
-            await flashLoanMock.mintWflr(amount);
-            // wflrs are minted (and block is advanced), so we can take this a vote power block
+            await flashLoanMock.mintWnat(amount);
+            // wnats are minted (and block is advanced), so we can take this a vote power block
             const vpBlock = await web3.eth.getBlockNumber();
             // cashing will happen in a new block and won't affect block power
-            await flashLoanMock.cashWflr(amount);
+            await flashLoanMock.cashWnat(amount);
             // set vote power block
             await ftso.setVotePowerBlock(vpBlock, { from: accounts[10] });
             // start an epoch
@@ -112,9 +112,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "PriceFinalized", { epochId: toBN(epochId), price: toBN(380), finalizationType: toBN(1) });
         });
         
-        it("Should not be able to vote with flash loaned flares (vote power block equals loan block)", async () => {
+        it("Should not be able to vote with flash loaned native tokens (vote power block equals loan block)", async () => {
             const amount = toBN(2).mul(AMOUNT);
-            flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wflr.address, ftso.address);
+            flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wnat.address, ftso.address);
             // request flash loan
             await flashLoanMock.testRequestLoan(amount);
             const loanBlock = await web3.eth.getBlockNumber();  // flash loan block
@@ -124,9 +124,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             await tryVoting();
         });
 
-        it("Should not be able to vote with flash loaned flares (vote power block just after loan)", async () => {
+        it("Should not be able to vote with flash loaned native tokens (vote power block just after loan)", async () => {
             const amount = toBN(5).mul(AMOUNT);
-            flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wflr.address, ftso.address);
+            flashLoanMock = await FlashLoanMock.new(flashLenderMock.address, wnat.address, ftso.address);
             // request flash loan
             await flashLoanMock.testRequestLoan(amount);
             const loanBlock = await web3.eth.getBlockNumber();  // flash loan block
@@ -150,10 +150,10 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }),
                 "PriceRevealed", { voter: accounts[1], epochId: toBN(epochId), price: toBN(500) });
 
-            const {0: wflrPowerLoan, } = await ftso.getVotePowerOf.call(flashLoanMock.address);
+            const {0: wnatPowerLoan, } = await ftso.getVotePowerOf.call(flashLoanMock.address);
             
             // Loan should hold 0 voting power, but still be able to vote (voter whitelist takes care of this now).
-            assert.equal(wflrPowerLoan.toString(), "0");
+            assert.equal(wnatPowerLoan.toString(), "0");
                 
             await flashLoanMock.revealPrice(epochId, 380, 234)
             // finalize price
@@ -163,9 +163,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "PriceFinalized", { epochId: toBN(epochId), price: toBN(500), finalizationType: toBN(1) });
         }
         
-        it("Is able to vote with flash loaned flares (reveal during loan), if votePowerBlock is in future (only manager can actually achive that)", async () => {
+        it("Is able to vote with flash loaned native tokens (reveal during loan), if votePowerBlock is in future (only manager can actually achive that)", async () => {
             const amount = toBN(5).mul(AMOUNT);
-            votingFlashLoanMock = await VotingFlashLoanMock.new(flashLenderMock.address, wflr.address, ftso.address);
+            votingFlashLoanMock = await VotingFlashLoanMock.new(flashLenderMock.address, wnat.address, ftso.address);
             // start epoch
             epochId = await startNewEpoch();
             // votes

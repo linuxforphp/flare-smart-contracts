@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 
 import "../../userInterfaces/IFtsoRewardManager.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
-import "../../token/implementation/WFlr.sol";
+import "../../token/implementation/WNat.sol";
 
 interface IIFtsoRewardManager is IFtsoRewardManager {
 
@@ -14,7 +14,7 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
     function deactivate() external;
     function closeExpiredRewardEpoch(uint256 _rewardEpochId, uint256 _currentRewardEpoch) external;
     function setFTSOManager(IIFtsoManager _ftsoManager) external;
-    function setWFLR(WFlr _wFlr) external;
+    function setWNAT(WNat _wNat) external;
 
     function distributeRewards(
         address[] memory addresses,

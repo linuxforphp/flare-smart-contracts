@@ -25,7 +25,7 @@ export class Contracts {
   public static readonly STATE_CONNECTOR = "StateConnector";
   public static readonly VOTER_WHITELISTER = "VoterWhitelister";
   public static readonly FLARE_DAEMON = "FlareDaemon";
-  public static readonly WFLR = "WFlr";
+  public static readonly WNAT = "WNat";
   public static readonly FXRP = "Fxrp";
   public static readonly DUMMY_FXRP_MINTER = "DummyFxrpMinter";
   public static readonly FTSO_FXRP = "FtsoFxrp";
@@ -35,7 +35,7 @@ export class Contracts {
   public static readonly FXDG = "Fxdg";
   public static readonly DUMMY_FXDG_MINTER = "DummyFxdgMinter";
   public static readonly FTSO_FXDG = "FtsoFxdg";
-  public static readonly FTSO_WFLR = "FtsoWflr";
+  public static readonly FTSO_WNAT = "FtsoWnat";
   public static readonly FADA = "Fada";
   public static readonly DUMMY_FADA_MINTER = "DummyFadaMinter";
   public static readonly FTSO_FADA = "FtsoFada";

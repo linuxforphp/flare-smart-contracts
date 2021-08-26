@@ -26,7 +26,7 @@ See (https://www.frontiersin.org/articles/10.3389/fcomp.2021.598780/full)
  
 #### Default Visibility - Chuck
  
-#### UnExpected Ether (FLR) - Jan
+#### UnExpected Ether (native token) - Jan
  
 #### Arithmetic over / under flow - Bostjan
  

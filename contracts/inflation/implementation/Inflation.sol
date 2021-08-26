@@ -18,7 +18,7 @@ import "../../utils/implementation/SafePct.sol";
 /**
  * @title Inflation
  * @notice A contract to manage the process of recognizing, authorizing, minting, and funding
- *   FLR for Flare services that are rewardable by inflation.
+ *   native tokens for Flare services that are rewardable by inflation.
  * @dev Please see docs/specs/Inflation.md to better understand this terminology.
  **/
 contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
@@ -148,7 +148,7 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
     }
 
     /**
-     * @notice Receive newly minted FLR from the FlareDaemon.
+     * @notice Receive newly minted native tokens from the FlareDaemon.
      * @dev Assume that the amount received will be >= last topup requested across all services.
      *   If there is not enough balance sent to cover the topup request, expect library method will revert.
      *   Also assume that any balance received greater than the topup request calculated
@@ -218,13 +218,13 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
      * @param _topupType            The type to signal how the topup amounts are to be calculated.
      *                              FACTOROFDAILYAUTHORIZED = Use a factor of last daily authorized to set a
      *                              target balance for a reward service to maintain as a reserve for claiming.
-     *                              ALLAUTHORIZED = Mint enough FLR to topup reward service contract to hold
+     *                              ALLAUTHORIZED = Mint enough native tokens to topup reward service contract to hold
      *                              all authorized but unrequested rewards.
      * @param _topupFactorX100      If _topupType == FACTOROFDAILYAUTHORIZED, then this factor (times 100)
      *                              is multipled by last daily authorized inflation to obtain the
      *                              maximum balance that a reward service can hold at any given time. If it holds less,
      *                              then this max amount is used to compute the mint request topup required to 
-     *                              bring the reward service contract FLR balance up to that amount.
+     *                              bring the reward service contract native token balance up to that amount.
      * @dev Topup factor, if _topupType == FACTOROFDAILYAUTHORIZED, must be greater than 100.
      */
     function setTopupConfiguration(
@@ -277,7 +277,7 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
      *   1) an annual event to recognize inflation for a new annum
      *   2) a daily event to:
      *     a) authorize mintable inflation for rewarding
-     *     b) request minting of enough FLR to topup reward services for claiming reserves
+     *     b) request minting of enough native tokens to topup reward services for claiming reserves
      */
     function daemonize() external virtual override notZero(address(supply)) onlyFlareDaemon returns(bool) {
         // If inflation rewarding not started yet, blow off processing until it does.

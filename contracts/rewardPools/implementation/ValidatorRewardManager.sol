@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "../interface/IIValidatorRewardManager.sol";
 import "../interface/IIRewardPool.sol";
 import "../../governance/implementation/Governed.sol";
-import "../../token/implementation/WFlr.sol";
+import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../inflation/implementation/Inflation.sol";
 import "../../inflation/interface/IIInflationReceiver.sol";

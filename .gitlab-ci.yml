@@ -82,7 +82,7 @@ test-contract-unit-4:
     script:
         - yarn c        
         - env TEST_PATH=./test/unit/adversary yarn hardhat test --network hardhat
-        - env TEST_PATH=./test/unit/fFasset yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/Xasset yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/inflation yarn hardhat test --network hardhat
 
 test-contract-unit-5:

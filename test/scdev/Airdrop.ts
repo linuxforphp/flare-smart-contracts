@@ -40,25 +40,25 @@ function parseAndProcessData(dataFile:string):ProcessedLineItem[] {
     delimiter: ',',
     skip_lines_with_error: true
   })
-  let seenFLRAddressesDetail: {[name: string]: BN } = {};
-  let seenFLRAddresses:Set<string> = new Set();
+  let seenNATAddressesDetail: {[name: string]: BN } = {};
+  let seenNATAddresses:Set<string> = new Set();
   for(let XRPLine of parsed_file){
-    if(!seenFLRAddresses.has(XRPLine.FlareAddress)){
-      seenFLRAddresses.add(XRPLine.FlareAddress);
-      seenFLRAddressesDetail[XRPLine.FlareAddress] = BN(XRPLine.FlareBalance);
+    if(!seenNATAddresses.has(XRPLine.NativeAddress)){
+      seenNATAddresses.add(XRPLine.NativeAddress);
+      seenNATAddressesDetail[XRPLine.NativeAddress] = BN(XRPLine.NativeBalance);
     } 
     else {
-      seenFLRAddressesDetail[XRPLine.FlareAddress] =seenFLRAddressesDetail[XRPLine.FlareAddress].add(BN(XRPLine.FlareBalance));
+      seenNATAddressesDetail[XRPLine.NativeAddress] =seenNATAddressesDetail[XRPLine.NativeAddress].add(BN(XRPLine.NativeBalance));
     }    
   }
   let processedFile:ProcessedLineItem[] = []
-  for(let flrAdd of seenFLRAddresses){
-    let tempTotal = seenFLRAddressesDetail[flrAdd];
+  for(let natAdd of seenNATAddresses){
+    let tempTotal = seenNATAddressesDetail[natAdd];
     let tempAirdrop = tempTotal.muln(15).divn(100);
     processedFile.push(
         {
-          FlareAddress: flrAdd,
-          totalFlareBalance: tempTotal,
+          NativeAddress: natAdd,
+          totalNativeBalance: tempTotal,
           initialAirdropBalance: tempAirdrop,
           distributionMonthlyBalance: tempTotal.muln(3).divn(100),
           totalDistributionBalance: tempTotal.sub(tempAirdrop),
@@ -101,10 +101,10 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     bar1.start(parsedAirdrop.length, 0);
     let progress = 0;
-    for(let FlareItem of parsedAirdrop){
-      if (IsAddress(FlareItem.FlareAddress)){
-        let actualBalance = await GetBalance(FlareItem.FlareAddress);
-        assert.equal(actualBalance,FlareItem.initialAirdropBalance.toString())
+    for(let NativeItem of parsedAirdrop){
+      if (IsAddress(NativeItem.NativeAddress)){
+        let actualBalance = await GetBalance(NativeItem.NativeAddress);
+        assert.equal(actualBalance,NativeItem.initialAirdropBalance.toString())
       }
       progress += 1;
       bar1.update(progress);
@@ -114,7 +114,7 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
 
   it("Test all time distribution and airdrop accounting" ,async function(){
     console.log("Adding account to distribution contract");
-    let totalFlare = BN(0);
+    let totalNative = BN(0);
     const BATCH_SIZE = 1000;
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     let distributionTransactions = (parsedAirdrop.length/BATCH_SIZE + 1)
@@ -123,10 +123,10 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
       let currentAccounts = [];
       let currentBalances = [];
       for(let j = 0; j < Math.min(BATCH_SIZE,parsedAirdrop.length-BATCH_SIZE*i); j++){
-        if (IsAddress(parsedAirdrop[i*BATCH_SIZE+j].FlareAddress)){
-          currentAccounts.push(parsedAirdrop[i*BATCH_SIZE+j].FlareAddress)
-          currentBalances.push(parsedAirdrop[i*BATCH_SIZE+j].totalFlareBalance)
-          totalFlare = totalFlare.add(parsedAirdrop[i*BATCH_SIZE+j].totalFlareBalance.muln(85).divn(100));
+        if (IsAddress(parsedAirdrop[i*BATCH_SIZE+j].NativeAddress)){
+          currentAccounts.push(parsedAirdrop[i*BATCH_SIZE+j].NativeAddress)
+          currentBalances.push(parsedAirdrop[i*BATCH_SIZE+j].totalNativeBalance)
+          totalNative = totalNative.add(parsedAirdrop[i*BATCH_SIZE+j].totalNativeBalance.muln(85).divn(100));
         }
       }
       await distribution.setClaimBalance(currentAccounts,currentBalances, {from: genesisGovernanceAccount.address});
@@ -137,7 +137,7 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     console.log("Send required funds to Distribution contract");
     // Hacky way of doing this
     const suicidalMock = await SuicidalMock.new(distribution.address);
-    await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: totalFlare});
+    await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: totalNative});
     await suicidalMock.die();
 
     console.log("Balance accounting");
@@ -152,10 +152,10 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     const bar2 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     bar2.start(parsedAirdrop.length, 0);
     let progress = 0;
-    for(let FlareItem of parsedAirdrop){
-        if (IsAddress(FlareItem.FlareAddress)){
-          let actualBalance = await distribution.getClaimableAmountOf(FlareItem.FlareAddress);
-          assert.isTrue(actualBalance.eq(FlareItem.totalDistributionBalance));
+    for(let NativeItem of parsedAirdrop){
+        if (IsAddress(NativeItem.NativeAddress)){
+          let actualBalance = await distribution.getClaimableAmountOf(NativeItem.NativeAddress);
+          assert.isTrue(actualBalance.eq(NativeItem.totalDistributionBalance));
         }
       progress += 1;
       bar2.update(progress);
@@ -166,12 +166,12 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     const bar3 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     bar3.start(parsedAirdrop.length, 0);
     progress = 0;
-    for(let FlareItem of parsedAirdrop){
-        if (IsAddress(FlareItem.FlareAddress)){
-          let distributionBalance = await distribution.getClaimableAmountOf(FlareItem.FlareAddress);
-          let airdropBalance = await GetBalance(FlareItem.FlareAddress);
+    for(let NativeItem of parsedAirdrop){
+        if (IsAddress(NativeItem.NativeAddress)){
+          let distributionBalance = await distribution.getClaimableAmountOf(NativeItem.NativeAddress);
+          let airdropBalance = await GetBalance(NativeItem.NativeAddress);
           let actualBalance = distributionBalance.add(BN(airdropBalance));
-          assert.isTrue(actualBalance.eq(FlareItem.totalFlareBalance));
+          assert.isTrue(actualBalance.eq(NativeItem.totalNativeBalance));
         }
       progress += 1;
       bar3.update(progress);

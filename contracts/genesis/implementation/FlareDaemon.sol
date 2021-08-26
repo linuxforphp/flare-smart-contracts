@@ -60,7 +60,7 @@ contract FlareDaemon is GovernedAtGenesis {
     string internal constant ERR_OUT_OF_GAS = "out of gas";
 
     uint256 internal constant MAX_DAEMONIZE_CONTRACTS = 10;
-    // Initial max mint request - 50 million FLR
+    // Initial max mint request - 50 million native token
     uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
     // How often can inflation request minting from the validator - 23 hours constant
     uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours;
@@ -268,7 +268,7 @@ contract FlareDaemon is GovernedAtGenesis {
 
         uint256 currentBalance = address(this).balance;
 
-        // Did the validator or a self-destructor conjure some FLR?
+        // Did the validator or a self-destructor conjure some native token?
         if (currentBalance > lastBalance) {
             uint256 balanceExpected = lastBalance.add(expectedMintRequest);
             // Did we get what was last asked for?
