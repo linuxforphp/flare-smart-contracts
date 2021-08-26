@@ -1,38 +1,62 @@
 [
   {
-    "function": "transfer wNat from sender and receiver with 2 delegates each(by percentage)",
+    "function": "transfer wNat where both sender and receiver have 0 delegates (by percentage)",
+    "gasUsed": 273973
+  },
+  {
+    "function": "transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage)",
+    "gasUsed": 292092
+  },
+  {
+    "function": "transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage)",
+    "gasUsed": 292098
+  },
+  {
+    "function": "transfer wNat where both sender and receiver have 1 delegate (by percentage)",
+    "gasUsed": 310218
+  },
+  {
+    "function": "transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage)",
+    "gasUsed": 300840
+  },
+  {
+    "function": "transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage)",
+    "gasUsed": 300846
+  },
+  {
+    "function": "transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage)",
+    "gasUsed": 318966
+  },
+  {
+    "function": "transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage)",
+    "gasUsed": 318966
+  },
+  {
+    "function": "transfer wNat where both sender and receiver have 2 delegates (by percentage)",
     "gasUsed": 327714
   },
   {
-    "function": "transfer wNat from sender and receiver with 3 delegates each(by percentage)",
-    "gasUsed": 345210
-  },
-  {
-    "function": "wNat transfer where both sender and receiver have 3 delegates (by percentage)",
-    "gasUsed": 309588
-  },
-  {
     "function": "submit price for single ftso",
-    "gasUsed": 77740
+    "gasUsed": 78204
   },
   {
     "function": "reveal price for single ftso",
-    "gasUsed": 189455
+    "gasUsed": 189409
   },
   {
     "function": "submit prices for 8 ftso",
-    "gasUsed": 366098
+    "gasUsed": 368483
   },
   {
     "function": "reveal prices for 8 ftso",
-    "gasUsed": 1144603
+    "gasUsed": 1144699
   },
   {
     "function": "finalize price epoch for 50 submissions",
-    "gasUsed": 836867
+    "gasUsed": 837349
   },
   {
     "function": "finalize price epoch for 100 submissions",
-    "gasUsed": 2442789
+    "gasUsed": 2438441
   }
 ]

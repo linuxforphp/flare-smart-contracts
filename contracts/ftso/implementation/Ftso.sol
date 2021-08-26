@@ -33,7 +33,10 @@ contract Ftso is IIFtso {
     string internal constant ERR_VOTEPOWER_INSUFFICIENT = "Insufficient vote power to submit vote";
     string internal constant ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL = "Epoch not initialized for reveal";
     string internal constant ERR_EPOCH_DATA_NOT_AVAILABLE = "Epoch data not available";
-
+    string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
+    string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
+    
+    
     // storage
     uint256 public immutable priceDeviationThresholdBIPS; // threshold for price deviation between consecutive epochs
     uint256 public immutable priceEpochCyclicBufferSize;
@@ -100,20 +103,20 @@ contract Ftso is IIFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
-     * @return _epochId             Returns current epoch id
      * @notice Emits PriceHashSubmitted event
      */
     function submitPriceHashSubmitter(
         address _sender,
+        uint256 _epochId,
         bytes32 _hash
     ) 
         external override 
         whenActive 
-        onlyPriceSubmitter 
-        returns (uint256 _epochId)
+        onlyPriceSubmitter         
     {
-        return _submitPriceHash(_sender, _hash);
+        _submitPriceHash(_sender, _epochId, _hash);
     }
 
     /**
@@ -633,11 +636,14 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Submits price hash for current epoch
-     * @param _hash Hashed price and random number
+     * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
+     * @param _hash                 Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
-    function _submitPriceHash(address _sender, bytes32 _hash) internal returns (uint256 _epochId) {
-        _epochId = getCurrentEpochId();
+    function _submitPriceHash(address _sender, uint256 _epochId, bytes32 _hash) internal {
+        require(_epochId == getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
+        require(epochVoterHash[_epochId][_sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
     }

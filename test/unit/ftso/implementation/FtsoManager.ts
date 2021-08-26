@@ -929,37 +929,40 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const invocationCount1 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses1);
             assert.equal(invocationCount1.toNumber(), 1);
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            let epoch = 1;
+
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2));
             await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2 + 30));
             let tx = await ftsoManager.daemonize();
 
             // Assert
             expectEvent(tx, "PriceEpochFinalized");
-
-            epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            epoch = 2;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120 * 3));
             tx = await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 3 + 30));
             tx = await ftsoManager.daemonize();
 
             expectEvent(tx, "PriceEpochFinalized");
 
-            epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            epoch = 3
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
             let paramListBN = paramList.map(x => toBN(x));
@@ -976,8 +979,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const invocationCount2 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses2);
             assert.equal(invocationCount2.toNumber(), 1);
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 4 + 30));
             tx = await ftsoManager.daemonize();
@@ -1253,14 +1256,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(120));
             await ftsoManager.daemonize();
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            
+            let epoch = 1;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2));
             await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2 + 30));
             await ftsoManager.daemonize();
@@ -1272,12 +1277,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
 
             // reveal only for ftso2, not ftso1
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            epoch = 2;
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(3 * 120));
             await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(3 * 120 + 30));
 
@@ -1738,16 +1744,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.activate();
             await ftsoManager.daemonize();
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            let epoch = 0;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120));
             await ftsoManager.daemonize();
 
-            let report1 = await ftso1.getFullEpochReport(epoch.add(toBN(1)));
+            let report1 = await ftso1.getFullEpochReport(epoch + 1);
             expect(report1[12]).to.equals(true);
 
-            let report2 = await ftso2.getFullEpochReport(epoch.add(toBN(1)));
+            let report2 = await ftso2.getFullEpochReport(epoch + 1);
             expect(report2[12]).to.equals(true);
         });
 
@@ -1763,16 +1770,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.activate();
             await ftsoManager.daemonize();
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            let epoch = 0;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120));
             await ftsoManager.daemonize();
 
-            let report1 = await ftso1.getFullEpochReport(epoch.add(toBN(1)));
+            let report1 = await ftso1.getFullEpochReport(epoch + 1);
             expect(report1[12]).to.equals(true);
 
-            let report2 = await ftso2.getFullEpochReport(epoch.add(toBN(1)));
+            let report2 = await ftso2.getFullEpochReport(epoch + 1);
             expect(report2[12]).to.equals(false);
         });
     });

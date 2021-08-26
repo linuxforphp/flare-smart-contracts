@@ -159,11 +159,11 @@ export async function setDefaultGovernanceParameters(ftsoManager: FtsoManagerIns
     return paramListBN;
 }
 
-export async function submitSomePrices(ftso: MockFtsoInstance, n: number, accounts: Truffle.Accounts) {
+export async function submitSomePrices(epochId: number , ftso: MockFtsoInstance, n: number, accounts: Truffle.Accounts) {
     let epoch!: BN;;
     for(let i = 0; i < n; i++) {        
         let hash = submitPriceHash(i, i, accounts[i]);
-        let res = await ftso.submitPriceHash(hash, {from: accounts[i]});
+        let res = await ftso.submitPriceHash(epochId, hash, {from: accounts[i]});
         epoch = res.logs[0].args![1] as BN
     }
     return epoch;

@@ -40,11 +40,13 @@ interface IPriceSubmitter {
     
     /**
      * @notice Submits price hashes for current epoch
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _ftsoIndices          List of ftso indices
      * @param _hashes               List of hashed price and random number
      * @notice Emits PriceHashesSubmitted event
      */
     function submitPriceHashes(
+        uint256 _epochId,
         uint256[] memory _ftsoIndices,
         bytes32[] memory _hashes
     ) external;

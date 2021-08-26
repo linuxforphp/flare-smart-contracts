@@ -63,7 +63,7 @@ async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[
 
   console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
-  await priceSubmitter.submitPriceHashes(ftsoIndices, hashes, { from: by })
+  await priceSubmitter.submitPriceHashes(epochId, ftsoIndices, hashes, { from: by })
   for (let i = 0; i < ftsos.length; i++) {
     const priceInfo = new PriceInfo(epochId, preparedPrices[i], randoms[i]);
     priceInfo.moveToNextStatus();
