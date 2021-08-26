@@ -36,7 +36,7 @@ function fmtNum(x: BN) {
 }
 const gasReport: object[] = [];
 
-contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption tests`, async accounts => {
+contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, async accounts => {
   const governance = GOVERNANCE_GENESIS_ADDRESS;
   const ftsoManager = accounts[33];
   const inflation = accounts[34];
@@ -114,50 +114,115 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       wNat = await WNat.new(governance);
       await setDefaultVPContract(wNat, governance);
     });
-
-    it("Should test gas for wNat transfer when sender and receiver have 2 delegates", async () => {
+    
+    it("Should test gas for wNat transfer where both sender and receiver have 0 delegates", async () => {
       await wNat.deposit({ from: accounts[1], value: "100" });
       await wNat.deposit({ from: accounts[2], value: "100" });
 
-      await wNat.delegate(accounts[2], 50, { from: accounts[1] });
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where both sender and receiver have 0 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where both sender and receiver have 0 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where sender has 1 delegate", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
       await wNat.delegate(accounts[3], 50, { from: accounts[1] });
 
-      await wNat.delegate(accounts[1], 50, { from: accounts[2] });
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed });
+    });
+
+    it("Should test gas for wNat transfer where receiver has 1 delegate", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
       await wNat.delegate(accounts[3], 50, { from: accounts[2] });
 
       let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
-      console.log(`transfer wNat from sender and receiver with 2 delegates each(by percentage): ${transferTx.receipt.gasUsed}`);
-      gasReport.push({ "function": "transfer wNat from sender and receiver with 2 delegates each(by percentage)", "gasUsed": transferTx.receipt.gasUsed });
+      console.log(`transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage)", "gasUsed": transferTx.receipt.gasUsed });
     });
 
-    it("Should test gas for wNat transfer where both sender and receiver have 3 delegates", async () => {
+    it("Should test gas for wNat transfer where both sender and receiver have 1 delegate", async () => {
       await wNat.deposit({ from: accounts[1], value: "100" });
       await wNat.deposit({ from: accounts[2], value: "100" });
 
-      await wNat.delegate(accounts[2], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where both sender and receiver have 1 delegate (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where both sender and receiver have 1 delegate (by percentage)", "gasUsed": transferTx.receipt.gasUsed });
+    });
+
+    it("Should test gas for wNat transfer where sender has 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
       await wNat.delegate(accounts[3], 50, { from: accounts[1] });
       await wNat.delegate(accounts[4], 50, { from: accounts[1] });
 
-      await wNat.delegate(accounts[1], 50, { from: accounts[2] });
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where receiver has 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
       await wNat.delegate(accounts[3], 50, { from: accounts[2] });
       await wNat.delegate(accounts[4], 50, { from: accounts[2] });
 
       let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
-      console.log(`wNat transfer from sender and receiver with 3 delegates each(by percentage): ${transferTx.receipt.gasUsed}`);
-      gasReport.push({ "function": "transfer wNat from sender and receiver with 3 delegates each(by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+      console.log(`transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
     });
 
-    it("Should test gas for wNat transfer where both sender and receiver with 0 delegates", async () => {
+    it("Should test gas for wNat transfer where sender has 2 delegates and reveiver has 1 delegate", async () => {
       await wNat.deposit({ from: accounts[1], value: "100" });
       await wNat.deposit({ from: accounts[2], value: "100" });
 
-      await wNat.delegate(accounts[2], 50, { from: accounts[1] });
       await wNat.delegate(accounts[3], 50, { from: accounts[1] });
       await wNat.delegate(accounts[4], 50, { from: accounts[1] });
 
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+
       let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
-      console.log(`wNat transfer where both sender and receiver have 3 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
-      gasReport.push({ "function": "wNat transfer where both sender and receiver have 3 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+      console.log(`transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where sender has 1 delegate and receiver has 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where both sender and receiver have 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[1] });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where both sender and receiver have 2 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where both sender and receiver have 2 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
     });
   })
 
