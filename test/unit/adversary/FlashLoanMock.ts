@@ -96,9 +96,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // start an epoch
             epochId = await startNewEpoch();
             // vote
-            expectEvent(await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
+            expectEvent(await ftso.submitPriceHash(epochId, submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
-            await flashLoanMock.submitPriceHash(380, 234);
+            await flashLoanMock.submitPriceHash(epochId, 380, 234);
             // reveal epoch
             await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
@@ -140,9 +140,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         async function tryVoting() {
             epochId = await startNewEpoch();
             // vote
-            expectEvent(await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
+            expectEvent(await ftso.submitPriceHash(epochId, submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
-            await flashLoanMock.submitPriceHash(380, 234);
+            await flashLoanMock.submitPriceHash(epochId, 380, 234);
             // reveal epoch
             await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
@@ -169,9 +169,9 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             // start epoch
             epochId = await startNewEpoch();
             // votes
-            await votingFlashLoanMock.submitPriceHash(380, 234);
+            await votingFlashLoanMock.submitPriceHash(epochId, 380, 234);
             await votingFlashLoanMock.setVote(epochId, 380, 234);
-            expectEvent(await ftso.submitPriceHash(submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
+            expectEvent(await ftso.submitPriceHash(epochId, submitPriceHash(500, 123, accounts[1]), { from: accounts[1] }),
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             // reveal epoch
             // flash loan (and reveal) will happen in this block + x (x ~ 3), but we can set anything bigger as vote power block

@@ -1,6 +1,6 @@
 {
     "stateConnectorAddress": "0x1000000000000000000000000000000000000001",
-    "flareKeeperAddress": "0x1000000000000000000000000000000000000002",
+    "flareDaemonAddress": "0x1000000000000000000000000000000000000002",
     "priceSubmitterAddress": "0x1000000000000000000000000000000000000003",
     "deployerPrivateKey": "<use .env: DEPLOYER_PRIVATE_KEY>",
     "genesisGovernancePrivateKey": "<use .env: GENESIS_GOVERNANCE_PRIVATE_KEY>",
@@ -15,7 +15,7 @@
     "rewardEpochsStartDelayHours": 0.17,
     "votePowerIntervalFraction": 7,
     "defaultVoterWhitelistSize": 100,
-    "flareKeeperGasExceededHoldoffBlocks": 100,
+    "flareDaemonGasExceededHoldoffBlocks": 100,
     "maxVotePowerFlrThresholdFraction": 10,
     "maxVotePowerAssetThresholdFraction": 10,
     "lowAssetThresholdUSDDec5": 200000000,
@@ -36,6 +36,8 @@
     "validatorRewardExpiryOffsetEpochs": 100,
     "initialWflrPriceUSD5Dec": 0,
     "priceEpochCyclicBufferSize": 10,
+    "ftsoRewardManagerSharingPercentageBIPS": 8000,
+    "validatorRewardManagerSharingPercentageBIPS": 2000,
     "XRP": {
         "fAssetName": "Flare Asset XRP",
         "fAssetSymbol": "FXRP",

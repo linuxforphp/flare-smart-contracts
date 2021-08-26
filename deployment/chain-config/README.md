@@ -12,8 +12,8 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `stateConnectorAddress` - 
     State connector contract address. State connector is deployed in the genesis block at fixed address "0x1000000000000000000000000000000000000001".
 
-- `flareKeeperAddress` - 
-    Flare keeper contract address. It is deployed in the genesis block with the fixed address "0x1000000000000000000000000000000000000002".
+- `flareDaemonAddress` - 
+    Flare daemon contract address. It is deployed in the genesis block with the fixed address "0x1000000000000000000000000000000000000002".
 
 - `priceSubmitterAddress` - 
     Price submiter contract address. It is deployed to the genesis block with the fixed address  "0x1000000000000000000000000000000000000003".
@@ -34,18 +34,22 @@ All numeric parameter names have units appended at the end. Most unit names are 
     governance private key (the key to which governance is transfered after deploy). 
     Overriden if provided in `.env` file as `GOVERNANCE_PRIVATE_KEY`. The key to which governance is transfered after deploy.
 
-## Keeper settings
+## Daemon settings
 
-- `flareKeeperGasExceededHoldoffBlocks` - 
-    The number of blocks a keeper called contract is skipped if it consumes more than its alloted amount of gas.
+- `flareDaemonGasExceededHoldoffBlocks` - 
+    The number of blocks a daemon called contract is skipped if it consumes more than its alloted amount of gas.
 
 ## Inflation settings
 
+- `inflationPercentageBIPS` - 
+    Yearly inflation in BIPS. Usual value is 1000 (10%).
+
+## Supply settings
 - `totalFlareSupplyFLR` - 
     Initial total supply of FLR (in Flares, not Wei). The value of this parameter is usually 100000000000.
 
-- `inflationPercentageBIPS` - 
-    Yearly inflation in BIPS. Usual value is 1000 (10%).
+- `totalFoundationSupplyFLR` - 
+    non circulating supply that the foundation holds.
 
 ## FTSO system settings 
 
@@ -128,6 +132,14 @@ All numeric parameter names have units appended at the end. Most unit names are 
     The USD price of Flare at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
     Usually 0, which means that the useful starting price is obtained after first voting.
 
+## Reward sharing percentages
+
+- `ftsoRewardManagerSharingPercentageBIPS` - 
+    Share of inflation that is dedicated for FTSO system rewards. Initial setting is 80% (8000).
+
+- `validatorRewardManagerSharingPercentageBIPS`
+    Share of inflation that is dedicated for validator data provision rewards. Initial setting is 20% (2000)
+    
 ## Currency settings
 
 Each currency definition is under it symbol's key. For example we have

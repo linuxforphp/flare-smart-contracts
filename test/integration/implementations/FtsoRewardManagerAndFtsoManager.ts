@@ -23,7 +23,6 @@ const Ftso = artifacts.require("Ftso");
 const MockContract = artifacts.require("MockContract");
 const WFLR = artifacts.require("WFlr");
 const InflationMock = artifacts.require("InflationMock");
-const MockPriceSubmitter = artifacts.require("MockContract");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -41,6 +40,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockInflation: InflationMockInstance;
     let ftsoRegistry: FtsoRegistryInstance;
     let mockPriceSubmitter: MockContractInstance;
+    let mockVoterWhitelister: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
@@ -69,7 +69,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         // Get the timestamp for the just mined block
         startTs = await time.latest();
         
-        mockPriceSubmitter = await MockPriceSubmitter.new();
+        mockPriceSubmitter = await MockContract.new();
         await mockPriceSubmitter.givenMethodReturnUint(
             web3.utils.sha3("addFtso(address)")!.slice(0,10),
             0
@@ -78,12 +78,16 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             web3.utils.sha3("removeFtso(address)")!.slice(0,10),
             0
         )
+
+        mockVoterWhitelister = await MockContract.new();
+
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
             ftsoRewardManager.address,
             mockPriceSubmitter.address,
             ftsoRegistry.address,
+            mockVoterWhitelister.address,
             PRICE_EPOCH_DURATION_S,
             startTs,
             REVEAL_EPOCH_DURATION_S,
@@ -124,14 +128,14 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
             // activte ftso manager
             await ftsoManager.activate();
-            await ftsoManager.keep();
+            await ftsoManager.daemonize();
 
             // Time travel over the price epoch plus the reveal
             await time.increaseTo(startTs.addn(PRICE_EPOCH_DURATION_S + REVEAL_EPOCH_DURATION_S));
 
             // Act
-            // Simulate the keeper tickling ftso manager to finalize the price epoch
-            await ftsoManager.keep();
+            // Simulate the daemon tickling ftso manager to finalize the price epoch
+            await ftsoManager.daemonize();
 
             // Assert
             // a1 should be (1000000 / 720) * 0.25 = 347
@@ -170,15 +174,15 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
             await ftsoManager.activate();
-            await ftsoManager.keep();
+            await ftsoManager.daemonize();
             // Time travel to price epoch finalization time
             await time.increaseTo(startTs.addn(PRICE_EPOCH_DURATION_S + REVEAL_EPOCH_DURATION_S));
             // Trigger price epoch finalization
-            await ftsoManager.keep();
+            await ftsoManager.daemonize();
             // Time travel to reward epoch finalizaion time
             await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S));
             // Trigger reward epoch finalization and another finalization
-            await ftsoManager.keep();
+            await ftsoManager.daemonize();
 
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid

@@ -128,11 +128,18 @@ export interface TestExample {
      * generated acording to *Averate and *SD parameters, which should be provided 
      */
     randomizedDataCount?: number;
+    /**
+     * determines how many times a randomized test is run, default is 1
+     */
+    randomizedRuns?: number;
     prices: number[];
     weightsFlr: number[];
     weightsAsset: number[];
     weightRatio?: number,
-    priceAverage?: number;
+    /**
+     * if priceAverage is specified as an array of n values, then n clusters of price values are generated
+     */
+    priceAverage?: number | number[];
     priceSD?: number;
     weightFlrAverage?: number;
     weightFlrSD?: number;
@@ -682,21 +689,43 @@ export function randomizeExampleGenerator(testExample: TestExample) {
     let len = testExample.randomizedDataCount
     if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
     testExample.prices = [];
-    testExample.weightsAsset = []
-    testExample.weightsFlr = []
+    testExample.weightsAsset = [];
+    testExample.weightsFlr = [];
+    let clusters;
+    let priceAverage;
+    if (isNumberArray(testExample.priceAverage!)) {
+        clusters = testExample.priceAverage.length;
+        priceAverage = testExample.priceAverage!;
+    } else {
+        clusters = 1;
+        priceAverage = [testExample.priceAverage!];
+    }
     for (let i = 0; i < len; i++) {
         testExample.weightsFlr.push(normal(testExample.weightFlrAverage!, testExample.weightFlrSD!));
         testExample.weightsAsset.push(normal(testExample.weightAssetAverage!, testExample.weightAssetSD!));
-        testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
+        testExample.prices.push(normal(priceAverage[i % clusters], testExample.priceSD!));
     }
+}
+
+function isNumberArray(value: number | number[]): value is number[] {
+    return (value as number[]).length !== undefined;
 }
 
 export function randomizePriceGenerator(testExample: TestExample) {
     let len = testExample.randomizedDataCount
     if (!len) throw Error("Not a random text example. 'randomizedDataCount' is 0 or null.")
     testExample.prices = [];
+    let clusters;
+    let priceAverage;
+    if (isNumberArray(testExample.priceAverage!)) {
+        clusters = testExample.priceAverage.length;
+        priceAverage = testExample.priceAverage!;
+    } else {
+        clusters = 1;
+        priceAverage = [testExample.priceAverage!];
+    }
     for (let i = 0; i < len; i++) {
-        testExample.prices.push(normal(testExample.priceAverage!, testExample.priceSD!));
+        testExample.prices.push(normal(priceAverage[i % clusters], testExample.priceSD!));
     }
 }
 
@@ -766,7 +795,7 @@ export async function moveToFinalizeStart(epochStartTimestamp: number, epochPeri
  * @returns 
  */
 export function getEpochPeriod(len: number): number {
-    return len + 20;
+    return Math.ceil(1.1 * len) + 20;
 }
 
 /**
@@ -775,7 +804,7 @@ export function getEpochPeriod(len: number): number {
  * @returns 
  */
 export function getRevealPeriod(len: number): number {
-    return len + 10;
+    return Math.ceil(1.1 * len) + 10;
 }
 
 /**
@@ -852,36 +881,36 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
 
     // Submit price
     // CCB: I added an offset to prevent test from occasionally failing due to timing skew.
-    await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod, 1);
+    let epochId = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod, 1);
     logger.log(`EPOCH 1: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`SUBMIT PRICE ${ len }`);
-    const { epoch } = await submitPrice(signers, ftso, testExample.prices);
+    await submitPrice(epochId, signers, ftso, testExample.prices);
 
     await ftso.initializeCurrentEpochStateForReveal(false);
 
     // Reveal price
-    await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
+    await moveToRevealStart(epochStartTimestamp, epochPeriod, epochId);
     logger.log(`EPOCH 2: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`REVEAL PRICE ${ len }`)
-    await revealPrice(signers, ftso, testExample.prices, epoch);
+    await revealPrice(signers, ftso, testExample.prices, epochId);
 
     let random = await ftso.getCurrentRandom();
     logger.log(`AFTER REVEAL, test RANDOM = ${ random }`);
 
     // Finalize
-    await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
-    let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epoch);
+    await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epochId);
+    let epochFinalizeResponse = await finalizePriceEpochWithResult(signers[0], ftso, epochId);
     logger.log(`Rewarded addresses ${ epochFinalizeResponse._eligibleAddresses }`);
     logger.log(`epoch finalization, ${ len }`);
         
     // Print epoch submission prices
-    let resVoteInfo = await ftso.getEpochVotes(epoch);
-    testExample.weightRatio = await getWeightRatio(ftso, epoch, resVoteInfo);
-    prettyPrintVoteInfo(epoch, resVoteInfo, testExample.weightRatio!, logger);
+    let resVoteInfo = await ftso.getEpochVotes(epochId);
+    testExample.weightRatio = await getWeightRatio(ftso, epochId, resVoteInfo);
+    prettyPrintVoteInfo(epochId, resVoteInfo, testExample.weightRatio!, logger);
 
     // Print results                
-    let res = await ftso.getFullEpochReport(epoch);
-    prettyPrintEpochResult(epoch, res, resVoteInfo, testExample.weightRatio!, logger);
+    let res = await ftso.getFullEpochReport(epochId);
+    prettyPrintEpochResult(epochId, res, resVoteInfo, testExample.weightRatio!, logger);
     let voterRes = toEpochResult(res, resVoteInfo);
     let testCase = {
         example: testExample,
@@ -899,7 +928,7 @@ export async function getWeightRatio(ftso: MockFtso, epoch: number, resVoteInfo:
     return weightRatio.toNumber();
 }
 
-export async function submitPrice(signers: readonly SignerWithAddress[], ftso: MockFtso, prices: number[]): Promise<{ epoch: number; }> {
+export async function submitPrice(epochId: number, signers: readonly SignerWithAddress[], ftso: MockFtso, prices: number[]): Promise<{ epoch: number; }> {
     const len = prices.length;
     let promises = [];
     let epochs: number[] = [];
@@ -908,7 +937,7 @@ export async function submitPrice(signers: readonly SignerWithAddress[], ftso: M
         let random = priceToRandom(price);
         let hash = submitPriceHash(price, random, signers[i].address);
         promises.push(waitFinalize(signers[i], async () =>
-            ftso.connect(signers[i]).submitPriceHash(hash)
+            ftso.connect(signers[i]).submitPriceHash(epochId, hash)
         ));
     }
     (await Promise.all(promises)).forEach(res => {

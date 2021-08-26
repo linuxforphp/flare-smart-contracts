@@ -62,7 +62,7 @@ see more details below.
 
 #### Submit price hash
 ```
-   function submitPriceHash(bytes32 _hash) external;
+   function submitPriceHash(uint256 _epochId, bytes32 _hash) external;
 ```
 The _hash should be keccak256(price, random, senders_address)
 
@@ -70,7 +70,7 @@ The _hash should be keccak256(price, random, senders_address)
 ```
    function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external;
 ```
-Epoch ID should match the epoch in which the hash was submitted. For keeping track of epoch IDs, see the next section.
+Epoch ID should match the epoch in which the hash was submitted. For daemonize track of epoch IDs, see the next section.
 
 Price and random should be the same ones that were used to create the hash in the relevant price epoch period. If they don’t match, the transaction will be reverted and the committed price will not be included in the price determination algorithm.
 
@@ -81,6 +81,7 @@ A Price submitter contract will enable each provider to send the above Txs batch
 
 ```
    function submitPriceHashes(
+       uint256 _epochId,
        uint256[] memory _assetIndices,
        bytes32[] memory _hashes
    ) external;
@@ -160,4 +161,4 @@ Due to the above, it is advised that price providers:
 ### Price provider pseudocode
 Price provider pseudocode is given in [PriceProviderPseudoCode].
 
-[PriceProviderPseudoCode]: ./PriceProviderPseudoCode.sol "PriceProviderPseudoCode"
+[PriceProviderPseudoCode]: ./PriceProviderPseudoCode.txt "PriceProviderPseudoCode"

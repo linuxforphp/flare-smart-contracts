@@ -1,37 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../../genesis/interface/IFtsoGenesis.sol";
 import "../../userInterfaces/IFtso.sol";
 import "../../token/interface/IIVPToken.sol";
 
 
-interface IIFtso is IFtso {
-
-    /**
-     * @notice Submits price hash for current epoch - only price submitter
-     * @param _sender               Sender address
-     * @param _hash                 Hashed price and random number
-     * @return _epochId             Returns current epoch id
-     * @notice Emits PriceHashSubmitted event
-     */
-    function submitPriceHashSubmitter(address _sender, bytes32 _hash) external returns (uint256 _epochId);
-
-    /**
-     * @notice Reveals submitted price during epoch reveal period - only price submitter
-     * @param _voter                Voter address
-     * @param _epochId              Id of the epoch in which the price hash was submitted
-     * @param _price                Submitted price in USD
-     * @param _random               Submitted random number
-     * @notice The hash of _price and _random must be equal to the submitted hash
-     * @notice Emits PriceRevealed event
-     */
-    function revealPriceSubmitter(
-        address _voter,
-        uint256 _epochId,
-        uint256 _price,
-        uint256 _random,
-        uint256 _wflrVP
-    ) external;
+interface IIFtso is IFtso, IFtsoGenesis {
 
     /// function finalizePriceReveal
     /// called by reward manager only on correct timing.
@@ -85,8 +60,6 @@ interface IIFtso is IFtso {
     function setVotePowerBlock(uint256 _blockNumber) external;
 
     function initializeCurrentEpochStateForReveal(bool _fallbackMode) external;
-    
-    function flrVotePowerCached(address _owner, uint256 _epochId) external returns (uint256);
   
     /**
      * @notice Returns the FTSO asset
@@ -120,30 +93,6 @@ interface IIFtso is IFtso {
             uint256 _lowFlrTurnoutThresholdBIPS,
             address[] memory _trustedAddresses
         );
-
-    /**
-     * @notice Returns current epoch id
-     */
-    function getCurrentEpochId() external view returns (uint256);
-
-    /**
-     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
-     * @param _timestamp            Timestamp as seconds from unix epoch
-     */
-    function getEpochId(uint256 _timestamp) external view returns (uint256);
-
-    /**
-     * @notice Returns random number of the specified epoch
-     * @param _epochId              Id of the epoch
-     */
-    function getRandom(uint256 _epochId) external view returns (uint256);
-    
-    /**
-     * @notice Returns FAsset price consented in specific epoch
-     * @param _epochId              Id of the epoch
-     * @return Price in USD multiplied by fAssetUSDDecimals
-     */
-    function getEpochPrice(uint256 _epochId) external view returns (uint256);
 
     /**
      * @notice Returns parameters necessary for approximately replicating vote weighting.

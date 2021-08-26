@@ -66,7 +66,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // add ftso to price submitter and whitelist
         const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
-        await priceSubmitter.addFtso(ftso.address, ftsoIndex, { from: ftsoManager });
+        await whitelist.addFtso(ftsoIndex, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         const trustedVoters = accounts.slice(101, 101 + 10);
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
@@ -78,7 +78,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         // set votepower block
         vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
         await time.advanceBlock();
-        const ftsoAddrList = await ftsoRegistry.getFtsos();
+        const ftsoAddrList = await ftsoRegistry.getAllFtsos();
         const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
         for (const ftso of ftsoList) {
             await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
@@ -102,7 +102,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     }
     
     async function initializeForReveal() {
-        const ftsoAddrList = await ftsoRegistry.getFtsos();
+        const ftsoAddrList = await ftsoRegistry.getAllFtsos();
         const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
         for (const ftso of ftsoList) {
             await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
@@ -126,14 +126,13 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             // create price submitter
             priceSubmitter = await PriceSubmitter.new();
             await priceSubmitter.initialiseFixedAddress();
-            await priceSubmitter.setFtsoManager(ftsoManager, { from: governance });
             // create registry
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
-            await priceSubmitter.setFtsoRegistry(ftsoRegistry.address, { from: governance });
             // create whitelister
             whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 200);
-            await priceSubmitter.setVoterWhitelister(whitelist.address, { from: governance });
+            await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
+            await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
             // create assets
             wflr = await WFlr.new(governance);
             await setDefaultVPContract(wflr, governance);
@@ -188,7 +187,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
                 for (let i = 0; i < allFtsos.length; i++) {
                     const ftso = allFtsos[i];
                     const hash = submitPriceHash(prices[i], randoms[i], voter);
-                    await ftso.submitPriceHash(hash, { from: voter });
+                    await ftso.submitPriceHash(epochId, hash, { from: voter });
                 }
             }
             // reveal prices
@@ -243,7 +242,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await startNewPriceEpoch();
             for (const voter of voters) {
                 const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-                await priceSubmitter.submitPriceHashes(indices, hashes, { from: voter });
+                await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
             }
             // reveal prices
             await initializeForReveal();

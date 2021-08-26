@@ -64,9 +64,9 @@ library FtsoManagerSettings {
             _state.changed = true;
             _state.rewardExpiryOffsetSeconds = _rewardExpiryOffsetSeconds;
         }
-        if (_state.trustedAddresses.length != _trustedAddresses.length) {            
+        if (_state.trustedAddresses.length != _trustedAddresses.length) {
             _state.trustedAddresses = _trustedAddresses;
-            _state.changed = true;        
+            _state.changed = true;
         } else {
             for (uint i = 0; i < _trustedAddresses.length; i++) {
                 if (_state.trustedAddresses[i] != _trustedAddresses[i]) {

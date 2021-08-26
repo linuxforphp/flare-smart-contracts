@@ -1,12 +1,12 @@
 import {constants, time} from '@openzeppelin/test-helpers';
 
 import { waitFinalize3 } from "../../test/utils/test-helpers";
-import { FlareKeeper } from "../../typechain";
+import { FlareDaemon } from "../../typechain";
 import { DummyFAssetMinterContract, 
   FAssetTokenContract,
   FtsoContract,
   FtsoInstance,
-  FlareKeeperContract,
+  FlareDaemonContract,
   FtsoRewardManagerContract,
   FtsoRewardManagerInstance,
   WFlrContract, 
@@ -19,7 +19,7 @@ import { DummyFAssetMinterContract,
   FAssetTokenInstance,
   FtsoManagerContract,
   FtsoManagerInstance,
-  FlareKeeperInstance,
+  FlareDaemonInstance,
   ValidatorRewardManagerContract,
   ValidatorRewardManagerInstance} from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
@@ -32,19 +32,19 @@ import { Contracts } from "../scripts/Contracts";
 const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
 const BN = web3.utils.toBN;
 
-async function findKeptContract(contracts: Contracts, address: string): Promise<boolean> {
-  const FlareKeeper = artifacts.require("FlareKeeper");
-  const flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
-  let keeping = await flareKeeper.keepContracts(0);
+async function findDaemonizedContract(contracts: Contracts, address: string): Promise<boolean> {
+  const FlareDaemon = artifacts.require("FlareDaemon");
+  const flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
+  let daemonize = await flareDaemon.daemonizeContracts(0);
   let i = 1;
-  while (keeping != "") {
-    if (keeping == address) {
+  while (daemonize != "") {
+    if (daemonize == address) {
       return true;
     } else {
       try {
-        keeping = await flareKeeper.keepContracts(i++);
+        daemonize = await flareDaemon.daemonizeContracts(i++);
       } catch(e) {
-        keeping = "";
+        daemonize = "";
       }
     }
   }
@@ -159,38 +159,38 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.FLARE_KEEPER, async() => {
-    let FlareKeeper: FlareKeeperContract;
-    let flareKeeper: FlareKeeperInstance;
+  describe(Contracts.FLARE_DAEMON, async() => {
+    let FlareDaemon: FlareDaemonContract;
+    let flareDaemon: FlareDaemonInstance;
 
     beforeEach(async() => {
-      FlareKeeper = artifacts.require("FlareKeeper") as FlareKeeperContract;
-      flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
+      FlareDaemon = artifacts.require("FlareDaemon") as FlareDaemonContract;
+      flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     });
 
-    it("Should be keeping", async() => {
+    it("Should be daemonizing", async() => {
       // Assemble
       // Act
-      if (flareKeeper.address != parameters.flareKeeperAddress) {
-        await flareKeeper.trigger();
+      if (flareDaemon.address != parameters.flareDaemonAddress) {
+        await flareDaemon.trigger();
       }
-      const systemLastTriggeredAt = await flareKeeper.systemLastTriggeredAt();
+      const systemLastTriggeredAt = await flareDaemon.systemLastTriggeredAt();
       // Assert
       assert(systemLastTriggeredAt.toNumber() > 0);
     });
 
-    it("Should be keeping inflation contract", async() => {
+    it("Should be daemonizing inflation contract", async() => {
       // Assemble
       // Act
-      const found = await findKeptContract(contracts, contracts.getContractAddress(Contracts.INFLATION));
+      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.INFLATION));
       // Assert
       assert(found);
     });
 
-    it("Should be keeping ftso manager", async() => {
+    it("Should be daemonizing ftso manager", async() => {
       // Assemble
       // Act
-      const found = await findKeptContract(contracts, contracts.getContractAddress(Contracts.FTSO_MANAGER));
+      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.FTSO_MANAGER));
       // Assert
       assert(found);
     });
@@ -198,9 +198,9 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should have block holdoff set", async() => {
       // Assemble
       // Act
-      const blockHoldoff = await flareKeeper.blockHoldoff();
+      const blockHoldoff = await flareDaemon.blockHoldoff();
       // Assert
-      assert.equal(blockHoldoff.toString(), parameters.flareKeeperGasExceededHoldoffBlocks.toString());
+      assert.equal(blockHoldoff.toString(), parameters.flareDaemonGasExceededHoldoffBlocks.toString());
     })
   });
 
@@ -213,7 +213,7 @@ contract(`deploy.ts system tests`, async accounts => {
         ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    it("Should have a reward epoch if rewarding started and being kept by keeper", async() => {
+    it("Should have a reward epoch if rewarding started and being daemonized by daemon", async() => {
        // Assemble
        const startTs = await time.latest();
        const rewardEpochStartTs = await ftsoManager.rewardEpochsStartTs();
@@ -221,7 +221,7 @@ contract(`deploy.ts system tests`, async accounts => {
         // Act
         const startBlock = (await ftsoManager.rewardEpochs(0))[0];
         // Assert
-        // If the keeper is calling keep on the RewardManager, then there should be
+        // If the daemon is calling daemonize on the RewardManager, then there should be
         // an active reward epoch.
         assert(startBlock.toNumber() != 0);
        }
@@ -241,16 +241,16 @@ contract(`deploy.ts system tests`, async accounts => {
     let inflation: InflationInstance;
     let Supply: SupplyContract;
     let supply: SupplyInstance;
-    let FlareKeeper: FlareKeeperContract;
-    let flareKeeper: FlareKeeperInstance;
+    let FlareDaemon: FlareDaemonContract;
+    let flareDaemon: FlareDaemonInstance;
 
     beforeEach(async() => {
         Inflation = artifacts.require("Inflation");
         inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
         Supply = artifacts.require("Supply");
         supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
-        FlareKeeper = artifacts.require("FlareKeeper");
-        flareKeeper = await FlareKeeper.at(contracts.getContractAddress(Contracts.FLARE_KEEPER));
+        FlareDaemon = artifacts.require("FlareDaemon");
+        flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     });
 
     it("Should have recognized inflation set if rewarding started", async() => {
@@ -258,7 +258,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const rewardEpochStartTs = await inflation.rewardEpochStartTs();
         const startTs = await time.latest();
         // Act
-        await flareKeeper.trigger();
+        await flareDaemon.trigger();
         // Assert
         if (rewardEpochStartTs.lt(startTs)) {
           const { 0: recognizedInflationWei } = await inflation.getCurrentAnnum() as any;
@@ -274,12 +274,12 @@ contract(`deploy.ts system tests`, async accounts => {
       assert.equal(address, supply.address);
     });
 
-    it("Should know about flare keeper contract", async() => {
+    it("Should know about flare daemon contract", async() => {
       // Assemble
       // Act
-      const address = await inflation.flareKeeper();
+      const address = await inflation.flareDaemon();
       // Assert
-      assert.equal(address, flareKeeper.address);
+      assert.equal(address, flareDaemon.address);
     });
   });
 

@@ -40,7 +40,7 @@ let rippleApi: RippleAPI;
  * already be loaded in the genesis block.
  */
 contract(`StateConnector.sol; ${getTestFile(__filename)}; StateConnector system tests`, async accounts => {
-    // Static address of the keeper on a local network
+    // Static address of the daemon on a local network
 
     before(async() => {
         // Defined in fba-avalanche/avalanchego/genesis/genesis_coston.go;
@@ -92,30 +92,30 @@ contract(`StateConnector.sol; ${getTestFile(__filename)}; StateConnector system 
             timeDiffAverage = latestIndexData[5].toNumber();
         });
 
-        it("Should proveClaimPeriodFinality 5x", async() => {
+        it("Should proveDataAvailabilityPeriodFinality 5x", async() => {
             for (let i = 0; i < 5; i++) {
                 // Assemble
                 
                 const rewardSchedule1 = await stateConnector.getRewardPeriod();
-                const claimPeriodsMined1 = await stateConnector.getClaimPeriodsMined(accounts[0], rewardSchedule1);
-                const totalClaimPeriodsMined1 = await stateConnector.getTotalClaimPeriodsMined(rewardSchedule1);
+                const dataAvailabilityPeriodsMined1 = await stateConnector.getDataAvailabilityPeriodsMined(accounts[0], rewardSchedule1);
+                const totalDataAvailabilityPeriodsMined1 = await stateConnector.getTotalDataAvailabilityPeriodsMined(rewardSchedule1);
 
-                await proveClaimPeriod(accounts[0], genesisLedger, claimPeriodIndex, claimPeriodLength, numConfirmations);
+                await proveDataAvailabilityPeriodFinality(accounts[0], genesisLedger, claimPeriodIndex, claimPeriodLength, numConfirmations);
                 
                 // Assert
-                const claimPeriodIndexFinality = await stateConnector.getClaimPeriodIndexFinality(chainId, claimPeriodIndex);
+                const claimPeriodIndexFinality = await stateConnector.getDataAvailabilityPeriodIndexFinality(chainId, claimPeriodIndex);
                 const rewardSchedule2 = await stateConnector.getRewardPeriod();
-                const claimPeriodsMined2 = await stateConnector.getClaimPeriodsMined(accounts[0], rewardSchedule2);
-                const totalClaimPeriodsMined2 = await stateConnector.getTotalClaimPeriodsMined(rewardSchedule2);
+                const dataAvailabilityPeriodsMined2 = await stateConnector.getDataAvailabilityPeriodsMined(accounts[0], rewardSchedule2);
+                const totalDataAvailabilityPeriodsMined2 = await stateConnector.getTotalDataAvailabilityPeriodsMined(rewardSchedule2);
                 
                 expect(claimPeriodIndexFinality).to.be.true;
                 if (i > 1) { // no rewards for the first 2 runs
                     if (rewardSchedule2.eq(rewardSchedule1)) {
-                        expect(claimPeriodsMined2.toNumber()).to.equals(claimPeriodsMined1.toNumber() + 1);
-                        expect(totalClaimPeriodsMined2.toNumber()).to.equals(totalClaimPeriodsMined1.toNumber() + 1);
+                        expect(dataAvailabilityPeriodsMined2.toNumber()).to.equals(dataAvailabilityPeriodsMined1.toNumber() + 1);
+                        expect(totalDataAvailabilityPeriodsMined2.toNumber()).to.equals(totalDataAvailabilityPeriodsMined1.toNumber() + 1);
                     } else {
-                        expect(claimPeriodsMined2.toNumber()).to.equals(1);
-                        expect(totalClaimPeriodsMined2.toNumber()).to.equals(1);
+                        expect(dataAvailabilityPeriodsMined2.toNumber()).to.equals(1);
+                        expect(totalDataAvailabilityPeriodsMined2.toNumber()).to.equals(1);
                     }
                 }
 
@@ -548,7 +548,7 @@ contract(`StateConnector.sol; ${getTestFile(__filename)}; StateConnector system 
                     txData.destination, txData.destinationTag, txData.amount, txData.currencyHash), "invalid paymentHash");
 
 
-                await proveClaimPeriod(accounts[0], genesisLedger, claimPeriodIndex, claimPeriodLength, numConfirmations);
+                await proveDataAvailabilityPeriodFinality(accounts[0], genesisLedger, claimPeriodIndex, claimPeriodLength, numConfirmations);
                 txData = await getTransactionData(rippleApi, futureTxId);
 
                 await waitFinalize3(accounts[0], () => stateConnector.provePaymentFinality(chainId, txData.paymentHash, txData.ledger, txData.txId, {gas: 8000000}));
@@ -593,7 +593,7 @@ contract(`StateConnector.sol; ${getTestFile(__filename)}; StateConnector system 
                     txData.destination, txData.destinationTag, txData.amount, txData.currencyHash), "invalid paymentHash");
 
 
-                await proveClaimPeriod(accounts[0], genesisLedger, claimPeriodIndex, claimPeriodLength, numConfirmations);
+                await proveDataAvailabilityPeriodFinality(accounts[0], genesisLedger, claimPeriodIndex, claimPeriodLength, numConfirmations);
                 txData = await getTransactionData(rippleApi, futureTxId);
 
                 await waitFinalize3(accounts[0], () => stateConnector.disprovePaymentFinality(chainId, txData.paymentHash, txData.ledger - 1, txData.txId, {gas: 8000000}));
@@ -672,7 +672,7 @@ contract(`StateConnector.sol; ${getTestFile(__filename)}; StateConnector system 
     });
 });
 
-export async function proveClaimPeriod(account: string, genesisLedger: number, claimPeriodIndex: number, claimPeriodLength: number, numConfirmations: number) {
+export async function proveDataAvailabilityPeriodFinality(account: string, genesisLedger: number, claimPeriodIndex: number, claimPeriodLength: number, numConfirmations: number) {
     const currLedger = genesisLedger + (claimPeriodIndex+1)*claimPeriodLength;
     const ledger = await rippleApi.getLedger( {ledgerVersion: currLedger-1} );
     const ledgerTip = await rippleApi.getLedger( {ledgerVersion: currLedger-1 + claimPeriodLength * numConfirmations} );
@@ -686,7 +686,7 @@ export async function proveClaimPeriod(account: string, genesisLedger: number, c
     // commit
     while (true) {
         try {
-            await waitFinalize3(account, () => stateConnector.proveClaimPeriodFinality(chainId, currLedger, 
+            await waitFinalize3(account, () => stateConnector.proveDataAvailabilityPeriodFinality(chainId, currLedger, 
                 web3.utils.sha3(ledger.ledgerHash)!, 
                 web3.utils.soliditySha3(account, chainTipHash)!, {gas: 8000000}));
             break;
@@ -699,7 +699,7 @@ export async function proveClaimPeriod(account: string, genesisLedger: number, c
     // reveal
     while (true) {
         try {
-            await waitFinalize3(account, () => stateConnector.proveClaimPeriodFinality(chainId, currLedger, 
+            await waitFinalize3(account, () => stateConnector.proveDataAvailabilityPeriodFinality(chainId, currLedger, 
                 web3.utils.sha3(ledger.ledgerHash)!, 
                 chainTipHash, {gas: 8000000}));
                 break;
