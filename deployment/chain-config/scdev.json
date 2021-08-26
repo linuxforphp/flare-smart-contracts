@@ -36,6 +36,8 @@
     "validatorRewardExpiryOffsetEpochs": 100,
     "initialWflrPriceUSD5Dec": 0,
     "priceEpochCyclicBufferSize": 10,
+    "ftsoRewardManagerSharingPercentageBIPS": 8000,
+    "validatorRewardManagerSharingPercentageBIPS": 2000,
     "XRP": {
         "fAssetName": "Flare Asset XRP",
         "fAssetSymbol": "FXRP",

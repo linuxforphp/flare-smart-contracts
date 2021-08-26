@@ -98,12 +98,12 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const VoterWhitelister = artifacts.require("VoterWhitelister");
   const WFLR = artifacts.require("WFlr");
   const Distribution = artifacts.require("Distribution");
-
+console.error("START HERE")
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBIPS);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address, quiet);
-
+console.error("State connector")
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
   try {
@@ -257,7 +257,11 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
 
   // Inflation allocation needs to know about reward managers
-  await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
+  // await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
+  await inflationAllocation.setSharingPercentages(
+    [ftsoRewardManager.address, validatorRewardManager.address], 
+    [parameters.ftsoRewardManagerSharingPercentageBIPS, parameters.validatorRewardManagerSharingPercentageBIPS]   
+  );
   // Supply contract needs to know about reward managers
   await supply.addRewardPool(ftsoRewardManager.address, 0);
   await supply.addRewardPool(validatorRewardManager.address, 0);

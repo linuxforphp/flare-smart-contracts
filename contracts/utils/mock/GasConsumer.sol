@@ -5,7 +5,7 @@ pragma solidity 0.7.6;
  * @title Gas consumer contract that stores n numbers into a structure that is combination 
  * of maps and arrays. Function push(n) used to for testing heavy traffic transactions.
  **/
-contract Tester {
+contract GasConsumer {
 
     mapping(address => mapping(uint256 => uint256[])) public addressAndBlockToNumber;
 
