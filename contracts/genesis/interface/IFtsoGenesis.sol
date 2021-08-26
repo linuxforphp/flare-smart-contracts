@@ -10,8 +10,7 @@ interface IFtsoGenesis {
      * @param _sender               Sender address
      * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
-     * @notice Emits PriceHashSubmitted event. Reverts if _epochId does not match
-     * the current epoch or on multiple submits for the same _epochId.
+     * @notice Emits PriceHashSubmitted event. 
      */
     function submitPriceHashSubmitter(address _sender, uint256 _epochId, bytes32 _hash) external;
 
@@ -29,14 +28,14 @@ interface IFtsoGenesis {
         uint256 _epochId,
         uint256 _price,
         uint256 _random,
-        uint256 _wflrVP
+        uint256 _wNatVP
     ) external;
 
     /**
-     * @notice Get (and cache) wflr vote power for specified voter and given epoch id
+     * @notice Get (and cache) wNat vote power for specified voter and given epoch id
      * @param _voter                Voter address
      * @param _epochId              Id of the epoch in which the price hash was submitted
-     * @return WFLR vote power
+     * @return wNat vote power
      */
-    function wflrVotePowerCached(address _voter, uint256 _epochId) external returns (uint256);
+    function wNatVotePowerCached(address _voter, uint256 _epochId) external returns (uint256);
 }

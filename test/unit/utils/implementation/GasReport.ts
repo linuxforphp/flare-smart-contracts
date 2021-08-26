@@ -1,18 +1,18 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import fs from "fs";
-import { FAssetTokenContract, FAssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WFlrInstance } from "../../../../typechain-truffle";
+import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
-const WFlr = artifacts.require("WFlr");
+const WNat = artifacts.require("WNat");
 const Ftso = artifacts.require("Ftso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const Supply = artifacts.require("Supply");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
-const FAssetToken = artifacts.require("FAssetToken") as FAssetTokenContract;
+const AssetToken = artifacts.require("AssetToken") as AssetTokenContract;
 
 function toBNFixed(x: number, decimals: number) {
   const prec = Math.min(decimals, 6);
@@ -36,7 +36,7 @@ function fmtNum(x: BN) {
 }
 const gasReport: object[] = [];
 
-contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption tests`, async accounts => {
+contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, async accounts => {
   const governance = GOVERNANCE_GENESIS_ADDRESS;
   const ftsoManager = accounts[33];
   const inflation = accounts[34];
@@ -48,8 +48,8 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
   let priceSubmitter: PriceSubmitterInstance;
   let startTs: BN;
 
-  let wflr: WFlrInstance;
-  let flrFtso: FtsoInstance;
+  let wNat: WNatInstance;
+  let natFtso: FtsoInstance;
 
   let ftsoRegistry: FtsoRegistryInstance;
 
@@ -60,7 +60,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
   let ftsoRewardManager: FtsoRewardManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyInterface.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, wNat.address, ftsoManager, supplyInterface.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
     await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -72,7 +72,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
     return ftso;
   }
 
-  async function initializeRewardEpoch(vpBlock?: number, flrSupply: BN | number = eth(1000)) {
+  async function initializeRewardEpoch(vpBlock?: number, natSupply: BN | number = eth(1000)) {
     // set votepower block
     vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
     await time.advanceBlock();
@@ -81,7 +81,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
     for (const ftso of ftsoList) {
       await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
     }
-    // await setFlrSupply(flrSupply, vpBlockNumber);
+    // await setNatSupply(natSupply, vpBlockNumber);
     await startNewPriceEpoch();
   }
 
@@ -108,56 +108,121 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
     await advanceTimeTo((epochId + 1) * epochDurationSec); // reveal period start
   }
 
-  describe('Wflr transfer', function () {
+  describe('Wnat transfer', function () {
 
     beforeEach(async () => {
-      wflr = await WFlr.new(governance);
-      await setDefaultVPContract(wflr, governance);
+      wNat = await WNat.new(governance);
+      await setDefaultVPContract(wNat, governance);
+    });
+    
+    it("Should test gas for wNat transfer where both sender and receiver have 0 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where both sender and receiver have 0 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where both sender and receiver have 0 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
     });
 
-    it("Should test gas for wflr transfer when sender and receiver have 2 delegates", async () => {
-      await wflr.deposit({ from: accounts[1], value: "100" });
-      await wflr.deposit({ from: accounts[2], value: "100" });
+    it("Should test gas for wNat transfer where sender has 1 delegate", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
 
-      await wflr.delegate(accounts[2], 50, { from: accounts[1] });
-      await wflr.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
 
-      await wflr.delegate(accounts[1], 50, { from: accounts[2] });
-      await wflr.delegate(accounts[3], 50, { from: accounts[2] });
-
-      let transferTx = await wflr.transfer(accounts[2], 10, { from: accounts[1] });
-      console.log(`transfer wflr from sender and receiver with 2 delegates each(by percentage): ${transferTx.receipt.gasUsed}`);
-      gasReport.push({ "function": "transfer wflr from sender and receiver with 2 delegates each(by percentage)", "gasUsed": transferTx.receipt.gasUsed });
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed });
     });
 
-    it("Should test gas for wflr transfer where both sender and receiver have 3 delegates", async () => {
-      await wflr.deposit({ from: accounts[1], value: "100" });
-      await wflr.deposit({ from: accounts[2], value: "100" });
+    it("Should test gas for wNat transfer where receiver has 1 delegate", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
 
-      await wflr.delegate(accounts[2], 50, { from: accounts[1] });
-      await wflr.delegate(accounts[3], 50, { from: accounts[1] });
-      await wflr.delegate(accounts[4], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
 
-      await wflr.delegate(accounts[1], 50, { from: accounts[2] });
-      await wflr.delegate(accounts[3], 50, { from: accounts[2] });
-      await wflr.delegate(accounts[4], 50, { from: accounts[2] });
-
-      let transferTx = await wflr.transfer(accounts[2], 10, { from: accounts[1] });
-      console.log(`wflr transfer from sender and receiver with 3 delegates each(by percentage): ${transferTx.receipt.gasUsed}`);
-      gasReport.push({ "function": "transfer wflr from sender and receiver with 3 delegates each(by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage)", "gasUsed": transferTx.receipt.gasUsed });
     });
 
-    it("Should test gas for wflr transfer where both sender and receiver with 0 delegates", async () => {
-      await wflr.deposit({ from: accounts[1], value: "100" });
-      await wflr.deposit({ from: accounts[2], value: "100" });
+    it("Should test gas for wNat transfer where both sender and receiver have 1 delegate", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
 
-      await wflr.delegate(accounts[2], 50, { from: accounts[1] });
-      await wflr.delegate(accounts[3], 50, { from: accounts[1] });
-      await wflr.delegate(accounts[4], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
 
-      let transferTx = await wflr.transfer(accounts[2], 10, { from: accounts[1] });
-      console.log(`wflr transfer where both sender and receiver have 3 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
-      gasReport.push({ "function": "wflr transfer where both sender and receiver have 3 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where both sender and receiver have 1 delegate (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where both sender and receiver have 1 delegate (by percentage)", "gasUsed": transferTx.receipt.gasUsed });
+    });
+
+    it("Should test gas for wNat transfer where sender has 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[1] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where receiver has 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where sender has 2 delegates and reveiver has 1 delegate", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[1] });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where sender has 1 delegate and receiver has 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
+    });
+
+    it("Should test gas for wNat transfer where both sender and receiver have 2 delegates", async () => {
+      await wNat.deposit({ from: accounts[1], value: "100" });
+      await wNat.deposit({ from: accounts[2], value: "100" });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[1] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[1] });
+
+      await wNat.delegate(accounts[3], 50, { from: accounts[2] });
+      await wNat.delegate(accounts[4], 50, { from: accounts[2] });
+
+      let transferTx = await wNat.transfer(accounts[2], 10, { from: accounts[1] });
+      console.log(`transfer wNat where both sender and receiver have 2 delegates (by percentage): ${transferTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "transfer wNat where both sender and receiver have 2 delegates (by percentage)", "gasUsed": transferTx.receipt.gasUsed })
     });
   })
 
@@ -173,7 +238,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       ['Chainlink', 'LINK', usd(20)]
     ]
 
-    let assets: FAssetTokenInstance[];
+    let assets: AssetTokenInstance[];
     let ftsos: FtsoInstance[];
 
     beforeEach(async () => {
@@ -201,11 +266,11 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
       await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
       // create assets
-      wflr = await WFlr.new(governance);
-      await setDefaultVPContract(wflr, governance);
+      wNat = await WNat.new(governance);
+      await setDefaultVPContract(wNat, governance);
       assets = [];
       for (const [name, symbol, _] of assetData) {
-        const asset = await FAssetToken.new(governance, name, symbol, 6);
+        const asset = await AssetToken.new(governance, name, symbol, 6);
         await setDefaultVPContract(asset, governance);
         assets.push(asset);
       }
@@ -225,12 +290,12 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       const vp = eth(1.5);
       // Assemble
       for (const voter of voters) {
-        await wflr.deposit({ from: voter, value: vp });
+        await wNat.deposit({ from: voter, value: vp });
       }
       await initializeRewardEpoch();
       // warm cache
       for (const voter of voters) {
-        await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+        await wNat.votePowerOfAtCached(voter, vpBlockNumber);
         for (const asset of assets) {
           await asset.votePowerOfAtCached(voter, vpBlockNumber);
         }
@@ -273,7 +338,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       const vp = eth(1.5);
       // Assemble
       for (const voter of voters) {
-        await wflr.deposit({ from: voter, value: vp });
+        await wNat.deposit({ from: voter, value: vp });
         for (const asset of assets) {
           await asset.mint(voter, vp, { from: governance });
         }
@@ -281,7 +346,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await initializeRewardEpoch();
       // warm cache
       for (const voter of voters) {
-        await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+        await wNat.votePowerOfAtCached(voter, vpBlockNumber);
         for (const asset of assets) {
           await asset.votePowerOfAtCached(voter, vpBlockNumber);
         }
@@ -323,7 +388,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       const vp = eth(1.5);
       // Assemble
       for (const voter of voters) {
-        await wflr.deposit({ from: voter, value: vp });
+        await wNat.deposit({ from: voter, value: vp });
         for (const asset of assets) {
           await asset.mint(voter, vp, { from: governance });
         }
@@ -331,7 +396,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await initializeRewardEpoch();
       // warm cache
       for (const voter of voters) {
-        await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+        await wNat.votePowerOfAtCached(voter, vpBlockNumber);
         for (const asset of assets) {
           await asset.votePowerOfAtCached(voter, vpBlockNumber);
         }
@@ -375,7 +440,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       const vp = eth(1.5);
       // Assemble
       for (const voter of voters) {
-        await wflr.deposit({ from: voter, value: vp });
+        await wNat.deposit({ from: voter, value: vp });
         for (const asset of assets) {
           await asset.mint(voter, vp, { from: governance });
         }
@@ -383,7 +448,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await initializeRewardEpoch();
       // warm cache
       for (const voter of voters) {
-        await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+        await wNat.votePowerOfAtCached(voter, vpBlockNumber);
         for (const asset of assets) {
           await asset.votePowerOfAtCached(voter, vpBlockNumber);
         }
@@ -430,7 +495,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       let finalizeTxt = 0;
       // Assemble
       for (const voter of voters) {
-        await wflr.deposit({ from: voter, value: vp });
+        await wNat.deposit({ from: voter, value: vp });
         for (const asset of assets) {
           await asset.mint(voter, vp, { from: governance });
         }
@@ -438,7 +503,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; FTSO gas consumption test
       await initializeRewardEpoch();
       // warm cache
       for (const voter of voters) {
-        await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+        await wNat.votePowerOfAtCached(voter, vpBlockNumber);
         for (const asset of assets) {
           await asset.votePowerOfAtCached(voter, vpBlockNumber);
         }

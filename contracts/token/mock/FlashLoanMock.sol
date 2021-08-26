@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { WFlr } from "../implementation/WFlr.sol";
+import { WNat } from "../implementation/WNat.sol";
 import { MockFtso } from "../../ftso/mock/MockFtso.sol";
 
 interface IFlashLenderMock {
-    function requestFlareLoan(uint256 value) external;
-    function returnFlareLoan() external payable;
+    function requestNativeLoan(uint256 value) external;
+    function returnNativeLoan() external payable;
 }
 
 interface IFlashLoanMock {
-    function receiveFlareLoan(IFlashLenderMock lender) external payable;
+    function receiveNativeLoan(IFlashLenderMock lender) external payable;
 }
 
 contract FlashLenderMock is IFlashLenderMock {
@@ -23,17 +23,17 @@ contract FlashLenderMock is IFlashLenderMock {
         target.transfer(value);
     }
     
-    function requestFlareLoan(uint256 value) override external {
+    function requestNativeLoan(uint256 value) override external {
         require(address(this).balance >= value, "Not enough funds for loan");
         require(loans[msg.sender] == 0, "Can only loan once to a address");
         loans[msg.sender] = value;
         // call back and send money
-        IFlashLoanMock(msg.sender).receiveFlareLoan{ value: value }(this);
+        IFlashLoanMock(msg.sender).receiveNativeLoan{ value: value }(this);
         // loan should be returned
         require(loans[msg.sender] == 0, "Flash loan must be returned");
     }
     
-    function returnFlareLoan() override external payable {
+    function returnNativeLoan() override external payable {
         require(msg.value > 0);
         require(msg.value == loans[msg.sender]);
         delete loans[msg.sender];
@@ -42,19 +42,19 @@ contract FlashLenderMock is IFlashLenderMock {
 
 contract FlashLoanMock is IFlashLoanMock {
     FlashLenderMock private flashLender;
-    WFlr private wflr;
+    WNat private wNat;
     MockFtso private ftso;
     
     uint256 private requestedValue;
     
     constructor(
         FlashLenderMock _flashLender,
-        WFlr _wflr,
+        WNat _wNat,
         MockFtso _ftso
     )
     {
         flashLender = _flashLender;
-        wflr = _wflr;
+        wNat = _wNat;
         ftso = _ftso;
     }
     
@@ -63,24 +63,24 @@ contract FlashLoanMock is IFlashLoanMock {
     function testRequestLoan(uint256 _value) external {
         requestedValue = _value;
         require(address(this).balance == 0, "Starting balance not zero");
-        flashLender.requestFlareLoan(_value);
+        flashLender.requestNativeLoan(_value);
         require(address(this).balance == 0, "Ending balance not zero");
     }
 
-    function receiveFlareLoan(IFlashLenderMock _lender) override external payable {
+    function receiveNativeLoan(IFlashLenderMock _lender) override external payable {
         require(msg.value == requestedValue, "Loan value does not match requested value");
         require(address(this).balance == msg.value, "Balance does not match loan value");
-        doSomethingWithLoanedFlares(msg.value);
-        _lender.returnFlareLoan{ value: msg.value }();
+        doSomethingWithLoanedNatives(msg.value);
+        _lender.returnNativeLoan{ value: msg.value }();
     }
     
-    function mintWflr(uint256 _amount) public {
-        require(address(this).balance >= _amount, "Not enought flares to mint wflr");
-        wflr.deposit{ value: address(this).balance }();
+    function mintWnat(uint256 _amount) public {
+        require(address(this).balance >= _amount, "Not enought natives to mint wNat");
+        wNat.deposit{ value: address(this).balance }();
     }
 
-    function cashWflr(uint256 _amount) public {
-        wflr.withdraw(_amount);
+    function cashWnat(uint256 _amount) public {
+        wNat.withdraw(_amount);
     }
     
     function submitPriceHash(uint256 _epochId, uint256 _price, uint256 _random) public {
@@ -92,7 +92,7 @@ contract FlashLoanMock is IFlashLoanMock {
         ftso.revealPrice(_epochId, _price, _random);
     }
 
-    function doSomethingWithLoanedFlares(uint256) internal virtual {
+    function doSomethingWithLoanedNatives(uint256) internal virtual {
         // to be overriden
     }
 }
@@ -105,10 +105,10 @@ contract VotingFlashLoanMock is FlashLoanMock {
    
     constructor(
         FlashLenderMock _flashLender,
-        WFlr _wflr,
+        WNat _wNat,
         MockFtso _ftso
     )
-        FlashLoanMock(_flashLender, _wflr, _ftso)
+        FlashLoanMock(_flashLender, _wNat, _ftso)
     {
     }
     
@@ -118,10 +118,10 @@ contract VotingFlashLoanMock is FlashLoanMock {
         random = _random;
     }
 
-    function doSomethingWithLoanedFlares(uint256 _value) internal override {
+    function doSomethingWithLoanedNatives(uint256 _value) internal override {
         // to be overriden
-        mintWflr(_value);
+        mintWnat(_value);
         revealPrice(epochId, price, random);
-        cashWflr(_value);
+        cashWnat(_value);
     }
 }

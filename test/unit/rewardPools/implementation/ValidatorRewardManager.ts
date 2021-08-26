@@ -269,7 +269,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
     });
 
     describe("reward claiming", async () => {
-        it("Should accept FLR", async () => {
+        it("Should accept native token", async () => {
             // Assemble
             // Act
             // Inflation must call ftso reward manager during funding, and this proxy does it.
@@ -281,7 +281,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
         it("Should gracefully receive self-destruct proceeds", async() => {
           // Assemble
-          // Give suicidal some FLR
+          // Give suicidal some native token
           await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
           // Sneak it into ftso reward manager
           await mockSuicidal.die();
@@ -299,7 +299,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await mockInflation.receiveInflation({ value: "1" });
             assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "1");
             // Assemble
-            // Give suicidal some FLR
+            // Give suicidal some native token
             await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
@@ -312,7 +312,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
-        it("Should not accept FLR unless from inflation", async () => {
+        it("Should not accept native token unless from inflation", async () => {
           // Assemble
           // Act
           const receivePromise = validatorRewardManager.receiveInflation({ value: "1000000" });
@@ -329,12 +329,12 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be 7 days * 1000000 * 15 / 55 = 1909090
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 1909090);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 1909090);
         });
 
         it("Should enable rewards to be claimed once reward epoch finalized - with self-destruct proceeds", async () => { 
@@ -345,7 +345,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await mockDataAvailabilityPeriodsMined([0], [25], accounts[3]);
             await travelToAndSetNewRewardEpoch(1, startTs);
 
-            // Give suicidal some FLR
+            // Give suicidal some native token
             await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
@@ -353,18 +353,18 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be (7 * 1000000) * 15 / 55 = 1909090
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 1909090);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 1909090);
             let selfDestructProceeds = await validatorRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 1);
 
             // Create another suicidal
             const anotherMockSuicidal = await SuicidalMock.new(validatorRewardManager.address);
-            // Give suicidal some FLR
+            // Give suicidal some native token
             await web3.eth.sendTransaction({from: accounts[0], to: anotherMockSuicidal.address, value: 1});
             // Sneak it into ftso reward manager
             await anotherMockSuicidal.die();
@@ -372,20 +372,20 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Act
             // Claim reward to a4 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[4]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[4]));
             await validatorRewardManager.claimReward(accounts[4], [0], { from: accounts[2] });
             // a1 -> a3 claimed should be (7 * 1000000 - 1909090) * 15 / 40 = 1909091
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[4]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 1909091);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[4]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 1909091);
             
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await validatorRewardManager.claimReward(accounts[5], [0], { from: accounts[3] });
             // a2 -> a5 claimed should be (7 * 1000000) - 1909090 - 1909091 = 3181819
-            let flrClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance3.sub(flrOpeningBalance3).toNumber(), 3181819);
+            let natClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance3.sub(natOpeningBalance3).toNumber(), 3181819);
             selfDestructProceeds = await validatorRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 2);
         });
@@ -399,18 +399,18 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a4 -> a3 claimed should be (7 * 1000000) * 15 / 55 = 1909090
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 1909090);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 1909090);
 
             // if claiming again, get 0
-            let flrOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
-            let flrClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance1.sub(flrOpeningBalance1).toNumber(), 0);
+            let natClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance1.sub(natOpeningBalance1).toNumber(), 0);
         });
 
         it("Should claim from multiple reward epochs - get nothing for reward epochs not finalized", async () => {
@@ -426,11 +426,11 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await travelToAndSetNewRewardEpoch(3, startTs);
 
             // can claim Math.floor(7 * 1000000 * 15 / 55) + Math.floor(7 * 1000000 * 12 / 50) + Math.floor(7 * 1000000 * 17 / 25) = 1909090 + 1680000 + 4760000 = 8349090
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await validatorRewardManager.claimReward(accounts[3], [0, 1, 2, 3, 4], { from: accounts[1] });
 
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 8349090);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 8349090);
         });
     });
 

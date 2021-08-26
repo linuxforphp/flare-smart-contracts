@@ -17,8 +17,8 @@ import {
   SuicidalMockInstance,
   SupplyContract,
   SupplyInstance,
-  WFlrContract,
-  WFlrInstance,
+  WNatContract,
+  WNatInstance,
   FtsoRegistryInstance,
   VoterWhitelisterInstance,
   VoterWhitelisterContract,
@@ -109,7 +109,7 @@ function spewClaimError(account: string, e: unknown) {
 }
 
 /**
- * Test to see if minting faucet will topup reward manager FLR balance at next topup interval.
+ * Test to see if minting faucet will topup reward manager native token balance at next topup interval.
  */
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
   let contracts: Contracts;
@@ -121,15 +121,15 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   let ftsoManager: FtsoManagerInstance;
   let PriceSubmitter: PriceSubmitterContract;
   let priceSubmiter: PriceSubmitterInstance;
-  let WFlr: WFlrContract;
-  let wFLR: WFlrInstance;
+  let WNat: WNatContract;
+  let wNAT: WNatInstance;
   let Supply: SupplyContract;
   let supply: SupplyInstance;
   let Ftso: FtsoContract;
   let ftsoFltc: FtsoInstance;
   let ftsoFxdg: FtsoInstance;
   let ftsoFxrp: FtsoInstance;
-  let ftsoWflr: FtsoInstance;
+  let ftsoWnat: FtsoInstance;
   let ftsoFdgb: FtsoInstance;
   let ftsoFada: FtsoInstance;
   let ftsoFalgo: FtsoInstance;
@@ -162,30 +162,30 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     VoterWhitelister = artifacts.require("VoterWhitelister");
     voterWhitelister = await VoterWhitelister.at(contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
     
-    WFlr = artifacts.require("WFlr");
-    wFLR = await WFlr.at(contracts.getContractAddress(Contracts.WFLR));
+    WNat = artifacts.require("WNat");
+    wNAT = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
     Supply = artifacts.require("Supply");
     supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     Ftso = artifacts.require("Ftso");
     ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FLTC));
     ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXDG));
     ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXRP));
-    ftsoWflr = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WFLR));
+    ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
     ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FDGB));
     ftsoFada = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FADA));
     ftsoFalgo = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FALGO));
     ftsoFbch = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FBCH));
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
-    firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    firstPriceEpochStartTs = (await ftsoWnat.getPriceEpochConfiguration())[0];
+    priceEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[1];
+    revealEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
     rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
     rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
 
-    // Set up the suicidal mock contract so we can conjure FLR into the daemon by self-destruction
+    // Set up the suicidal mock contract so we can conjure NAT into the daemon by self-destruction
     SuicidalMock = artifacts.require("SuicidalMock");
     suicidalMock = await SuicidalMock.new(flareDaemon.address);
 
@@ -203,17 +203,16 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let p2 = accounts[7];
     let p3 = accounts[8];
 
-    // Mint some WFLR for each delegator and price provider
-    const someFLR = web3.utils.toWei(BN(3000000000));
-    await wFLR.deposit({ from: d1, value: someFLR });
-    await wFLR.deposit({ from: p1, value: someFLR });
-    await wFLR.deposit({ from: p2, value: someFLR });
-    await wFLR.deposit({ from: p3, value: someFLR });
+    // Mint some WNAT for each delegator and price provider
+    const someNAT = web3.utils.toWei(BN(3000000000));
+    await wNAT.deposit({ from: d1, value: someNAT });
+    await wNAT.deposit({ from: p1, value: someNAT });
+    await wNAT.deposit({ from: p2, value: someNAT });
+    await wNAT.deposit({ from: p3, value: someNAT });
 
     // Delegator delegates vote power
-    await wFLR.delegate(p1, 2500, { from: d1 });
-    await wFLR.delegate(p2, 5000, { from: d1 });
-    await wFLR.delegate(p3, 2500, { from: d1 });
+    await wNAT.delegate(p1, 2500, { from: d1 });
+    await wNAT.delegate(p2, 5000, { from: d1 });
 
     // Prime the daemon to establish vote power block.
     await flareDaemon.trigger();
@@ -227,7 +226,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const mintingRequestWei = await flareDaemon.totalMintingRequestedWei();
     if (mintingRequestWei.gt(BN(0))) {
       // It is, so let's pretend to be the validator and self-destruct what was asked for into the daemon.
-      // Give suicidal some FLR
+      // Give suicidal some native token
       await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: mintingRequestWei });
       await suicidalMock.die();
     } else {
@@ -246,16 +245,16 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let firstRewardEpoch = await ftsoManager.rewardEpochs(0);
     let votePowerBlock = firstRewardEpoch[0];
 
-    assert((await wFLR.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
-    assert((await wFLR.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")
-    assert((await wFLR.votePowerOfAt(p3, votePowerBlock)).gt(BN(0)), "Vote power of p3 must be > 0")
+    assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
+    assert((await wNAT.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")
+    assert((await wNAT.votePowerOfAt(p3, votePowerBlock)).gt(BN(0)), "Vote power of p3 must be > 0")
 
 
     // Set up a fresh price epoch
     await moveFromCurrentToNextEpochStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), 1);
     await flareDaemon.trigger();
 
-    let flrPrices = [0.35, 0.40, 0.50];
+    let natPrices = [0.35, 0.40, 0.50];
     let xrpPrices = [1.40, 1.50, 1.35];
     let ltcPrices = [320, 340, 350];
     let xdgPrices = [0.37, 0.45, 0.48];
@@ -263,7 +262,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let adaPrices = [1.84, 1.90, 1.91];
     let algoPrices = [1.00, 1.33, 1.35];
     let bchPrices = [1100, 1203, 1210];
-    let ftsos = [ftsoWflr, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFdgb, ftsoFada, ftsoFalgo, ftsoFbch];
+    let ftsos = [ftsoWnat, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFdgb, ftsoFada, ftsoFalgo, ftsoFbch];
     let ftsoIndices = [];
 
 
@@ -271,7 +270,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       ftsoIndices.push(await registry.getFtsoIndex( await ftso.symbol()));
     }
 
-    let pricesMatrix = [flrPrices, xrpPrices, ltcPrices, xdgPrices, dgbPrices, adaPrices, algoPrices, bchPrices];
+    let pricesMatrix = [natPrices, xrpPrices, ltcPrices, xdgPrices, dgbPrices, adaPrices, algoPrices, bchPrices];
     // transpose
     let priceSeries = pricesMatrix[0].map((_, colIndex) => pricesMatrix.map(row => row[colIndex]));
 

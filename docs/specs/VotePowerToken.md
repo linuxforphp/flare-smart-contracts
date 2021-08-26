@@ -2,7 +2,7 @@
 #### Vote power and delegation on flare
 ## Background
 
-The vote power token will be the base contract for [WFLR] (wrapped flare) and later for fAssets (wrapped assets) on flare.
+The vote power token will be the base contract for [WNAT] (wrapped native token) and later for xAssets (wrapped assets) on flare.
 
 This token contract is built to enable voting and delegation of vote power without locking the holder’s token. This works by adding the vote power and delegation functions to the token contract. Basically, balance represents vote power; with this code, a holder can delegate a percentage of his vote power to another address and still use their tokens freely. The transfer / mint / burn functions will immediately update the actual vote power being held by the delegator and the vote power of the address it delegates to.
 
@@ -19,7 +19,7 @@ This token will be named [VPToken] (vote power token).
 *   ERC20 APIs.
 *   BalanceOfAt(address, block), totalSupplyAt(block)  as in minime token.
 *   Delegation and vote power interaces are described in [IIVPToken] interface file.
-*   Mint and burn APIs will be handled in the inheriting contracts. [WFLR] and later fAsset.
+*   Mint and burn APIs will be handled in the inheriting contracts. [WNAT] and later xAsset.
 
 ## Delegation
 
@@ -29,7 +29,7 @@ With percentage delegation, any address can delegate a percentage of its holding
 
 With **explicit delegation**, an explicit amount of vote power is delegated. While useful, this does create more complications for the user since delegated vote power can’t be transferred. For example, if Alice has 20 tokens and explicitly delegates vote power of 20 to Bob, the delegated balance is actually locked. Alice can’t send out these tokens unless the 20 vote power is explicitly undelegated. Another complication here is that for each new token received, a new delegate operation has to be performed; vote power will not be automatically delegated upon token recieval. 
 
-The explicit delegation method is mostly built for contracts holding a large number of tokens for different users. Imagine a collateral contract holding many wFlr for many users. Each user depositing tokens might want to delegate to a different set of price providers. Explicit delegation will enable this contract to update the explicit delegation per user deposit and un delegate every time a user wishes to withdraw his funds.
+The explicit delegation method is mostly built for contracts holding a large number of tokens for different users. Imagine a collateral contract holding many wNat for many users. Each user depositing tokens might want to delegate to a different set of price providers. Explicit delegation will enable this contract to update the explicit delegation per user deposit and un delegate every time a user wishes to withdraw his funds.
 
 Only one of the delegation methods can be used per address. Furthermore, an address can never change its delegation method. For example, if a user called delegate-explicit once from his address, he will never be able to do a percentage delegation with the same address.
 
@@ -63,7 +63,7 @@ Due to the substantial length of time one past vote power block is used for pric
 
 ### Vote power delegation and rewarding delegators
 
-A large part of the FLR inflation will be distributed to participants in the FTSO price submission process. The reward will be shared between the price provider and the vote power delegators to the price provider (more on that in the FTSO and reward manager docs).  The VP token will expose APIs that will enable delegators to show how much vote power was delegated to a price provider in any past block. To allow this, the delegation percentage data will be checkpointed after every change. Using the combination of delegation percentage and historical balance, each user can accurately see and show how much vote power they delegated to any address in the past.
+A large part of the native token inflation will be distributed to participants in the FTSO price submission process. The reward will be shared between the price provider and the vote power delegators to the price provider (more on that in the FTSO and reward manager docs).  The VP token will expose APIs that will enable delegators to show how much vote power was delegated to a price provider in any past block. To allow this, the delegation percentage data will be checkpointed after every change. Using the combination of delegation percentage and historical balance, each user can accurately see and show how much vote power they delegated to any address in the past.
 
 This API will later be used by the reward manager, when the reward sharing is calculated.
 
@@ -93,6 +93,6 @@ Checkpoints create a lot of on-chain data. This data is required for a limited t
  - during normal operations (trasnfer, delegate) when new checkpoints are created, some expired checkpoints will be removed. note that this will create a gas refund and cause the transaction to be slightly cheaper gas wise.
  - An external clean up contract can be connected that will enable any user to "use" gas refunds as parts of his transaction. How the external clean up contract will be used is still not defined.
 
-[WFLR]: ../../contracts/token/implementation/WFlr.sol "WFlr"
+[WNAT]: ../../contracts/token/implementation/WNat.sol "WNat"
 [VPToken]: ../../contracts/token/implementation/VPToken.sol "VPToken"
 [IIVPToken]: ../../contracts/token/interface/IIVPToken.sol "IIVPToken"

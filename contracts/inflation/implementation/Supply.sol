@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * @title Supply contract
- * @notice This contract maintains and computes various FLR supply totals.
+ * @notice This contract maintains and computes various native token supply totals.
  **/
 
 contract Supply is Governed, IISupply {

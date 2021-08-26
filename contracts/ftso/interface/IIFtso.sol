@@ -18,8 +18,8 @@ interface IIFtso is IFtso, IFtsoGenesis {
     function finalizePriceEpoch(uint256 _epochId, bool _returnRewardData) external
         returns(
             address[] memory _eligibleAddresses,
-            uint256[] memory _flrWeights,
-            uint256 _totalFlrWeight
+            uint256[] memory _natWeights,
+            uint256 _totalNatWeight
         );
 
     function averageFinalizePriceEpoch(uint256 _epochId) external;
@@ -41,18 +41,18 @@ interface IIFtso is IFtso, IFtsoGenesis {
     function updateInitialPrice(uint256 _initialPriceUSD, uint256 _initialPriceTimestamp) external;
 
     function configureEpochs(
-        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
+        uint256 _lowNatTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) external;
 
-    function setFAsset(IIVPToken _fAsset) external;
+    function setAsset(IIVPToken _asset) external;
 
-    function setFAssetFtsos(IIFtso[] memory _fAssetFtsos) external;
+    function setAssetFtsos(IIFtso[] memory _assetFtsos) external;
 
     // current vote power block will update per reward epoch. 
     // the FTSO doesn't have notion of reward epochs.
@@ -63,55 +63,55 @@ interface IIFtso is IFtso, IFtsoGenesis {
   
     /**
      * @notice Returns the FTSO asset
-     * @dev fAsset is null in case of multi-asset FTSO
+     * @dev Asset is null in case of multi-asset FTSO
      */
-    function getFAsset() external view returns (IIVPToken);
+    function getAsset() external view returns (IIVPToken);
 
     /**
-     * @notice Returns the FAsset FTSOs
-     * @dev FAssetFtsos is not null only in case of multi-asset FTSO
+     * @notice Returns the Asset FTSOs
+     * @dev AssetFtsos is not null only in case of multi-asset FTSO
      */
-    function getFAssetFtsos() external view returns (IIFtso[] memory);
+    function getAssetFtsos() external view returns (IIFtso[] memory);
 
     /**
      * @notice Returns current configuration of epoch state
-     * @return _maxVotePowerFlrThresholdFraction        High threshold for FLR vote power per voter
-     * @return _maxVotePowerAssetThresholdFraction      High threshold for FLR vote power per voter
+     * @return _maxVotePowerNatThresholdFraction        High threshold for native token vote power per voter
+     * @return _maxVotePowerAssetThresholdFraction      High threshold for asset vote power per voter
      * @return _lowAssetUSDThreshold            Threshold for low asset vote power
      * @return _highAssetUSDThreshold           Threshold for high asset vote power
      * @return _highAssetTurnoutThresholdBIPS   Threshold for high asset turnout
-     * @return _lowFlrTurnoutThresholdBIPS      Threshold for low flr turnout
-     * @return _trustedAddresses                Trusted addresses - use their prices if low flr turnout is not achieved
+     * @return _lowNatTurnoutThresholdBIPS      Threshold for low nat turnout
+     * @return _trustedAddresses                Trusted addresses - use their prices if low nat turnout is not achieved
      */
     function epochsConfiguration() external view 
         returns (
-            uint256 _maxVotePowerFlrThresholdFraction,
+            uint256 _maxVotePowerNatThresholdFraction,
             uint256 _maxVotePowerAssetThresholdFraction,
             uint256 _lowAssetUSDThreshold,
             uint256 _highAssetUSDThreshold,
             uint256 _highAssetTurnoutThresholdBIPS,
-            uint256 _lowFlrTurnoutThresholdBIPS,
+            uint256 _lowNatTurnoutThresholdBIPS,
             address[] memory _trustedAddresses
         );
 
     /**
      * @notice Returns parameters necessary for approximately replicating vote weighting.
-     * @return _assets                  the list of fAssets that are accounted in vote
+     * @return _assets                  the list of Assets that are accounted in vote
      * @return _assetMultipliers        weight of each asset in (multiasset) ftso, mutiplied by TERA
-     * @return _totalVotePowerFlr       total FLR vote power at block
+     * @return _totalVotePowerNat       total native token vote power at block
      * @return _totalVotePowerAsset     total combined asset vote power at block
-     * @return _assetWeightRatio        ratio of combined asset vp vs. FLR vp (in BIPS)
+     * @return _assetWeightRatio        ratio of combined asset vp vs. native token vp (in BIPS)
      * @return _votePowerBlock          vote powewr block for given epoch
      */
     function getVoteWeightingParameters() external view 
         returns (
             IIVPToken[] memory _assets,
             uint256[] memory _assetMultipliers,
-            uint256 _totalVotePowerFlr,
+            uint256 _totalVotePowerNat,
             uint256 _totalVotePowerAsset,
             uint256 _assetWeightRatio,
             uint256 _votePowerBlock
         );
 
-    function wFlr() external view returns (IIVPToken);
+    function wNat() external view returns (IIVPToken);
 }

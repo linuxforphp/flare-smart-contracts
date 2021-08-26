@@ -19,7 +19,7 @@ All numeric parameter names have units appended at the end. Most unit names are 
     Price submiter contract address. It is deployed to the genesis block with the fixed address  "0x1000000000000000000000000000000000000003".
 
 - `burnAddress` - 
-    Burn address. Used by Supply contract to track burned Flares. Always "0x0000000000000000000000000000000000000000".
+    Burn address. Used by Supply contract to track burned Native token. Always "0x0000000000000000000000000000000000000000".
 
 ## Private keys
 - `deployerPrivateKey` - 
@@ -46,7 +46,7 @@ All numeric parameter names have units appended at the end. Most unit names are 
 
 ## Supply settings
 - `totalFlareSupplyFLR` - 
-    Initial total supply of FLR (in Flares, not Wei). The value of this parameter is usually 100000000000.
+    Initial total supply of FLR (in whole native units, not Wei). The value of this parameter is usually 100000000000.
 
 - `totalFoundationSupplyFLR` - 
     non circulating supply that the foundation holds.
@@ -75,19 +75,19 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `defaultVoterWhitelistSize` - 
     Inital size for voter whitelist for price submission. It can later be changed for each FTSO by the governance.
 
-- `maxVotePowerFlrThresholdFraction` - 
-    Defines high threshold for FLR vote power when revealing a price vote. The actual max threshold is calculated as 
-    `total_FLR_vote_power / maxVotePowerFlrThresholdFraction`. 
-    Any provider's flare vote power is capped to this max threshold when revealing a price vote. 
+- `maxVotePowerNatThresholdFraction` - 
+    Defines high threshold for native token vote power when revealing a price vote. The actual max threshold is calculated as 
+    `total_NAT_vote_power / maxVotePowerNatThresholdFraction`. 
+    Any provider's native token vote power is capped to this max threshold when revealing a price vote. 
 
 - `maxVotePowerAssetThresholdFraction` - Defines high threshold for asset vote power when revealing a price vote. 
-    The actual max threshold is calculated as `total_FLR_vote_power / maxVotePowerFlrThresholdFraction`.
+    The actual max threshold is calculated as `total_NAT_vote_power / maxVotePowerNatThresholdFraction`.
     Any provider's asset vote power is capped to this max threshold when revealing a price vote. 
 
 - `lowAssetThresholdUSDDec5` - 
     Low threshold for asset USD value (in scaled USD: 1 USD = 10^5 USDDec5).
-    Determines the weight ratio between FLR and asset vote power.
-    Total asset vote power below *lowAssetThreshold* means that only FLR vote power is used.
+    Determines the weight ratio between native token and asset vote power.
+    Total asset vote power below *lowAssetThreshold* means that only native token vote power is used.
     For values between *lowAssetThreshold* and *highAssetThreshold*, the asset vote power ratio scales linearly from 5% to 50%.
     For values above *highAssetThreshold* the asset vote power ratio is 50%.
     For test purposes we recommend setting `lowAssetThresholdUSDDec5` to 200000000.
@@ -102,13 +102,13 @@ All numeric parameter names have units appended at the end. Most unit names are 
     is multiplied by `actual_asset_turnout_BIPS / highAssetTurnoutThresholdBIPS`.
     For test purposes we recommend 100.
 
-- `lowFlrTurnoutThresholdBIPS` - 
-    Threshold for low FLR turnout (in BIPS relative to total FLR supply).
+- `lowNatTurnoutThresholdBIPS` - 
+    Threshold for low native token turnout (in BIPS relative to total native token supply).
     If the turnout is smaller than this parameter, only votes from trusted addresses are used to determine the price.
     For test purposes we recommend 300.
 
 - `trustedAddresses`- 
-    The list of addresses used for voting when FLR turnout is below *lowFlrTurnoutThreshold* or when price deviation is too big.
+    The list of addresses used for voting when native token turnout is below *lowNatTurnoutThreshold* or when price deviation is too big.
 
 - `rewardFeePercentageUpdateOffsetEpochs` - 
     Reward fee percentage update timelock measured in reward epochs.
@@ -128,8 +128,8 @@ All numeric parameter names have units appended at the end. Most unit names are 
     The duration after which old reward epochs will expire, as a number of reward epochs.
     For test purposes we recommend 100, so if current reward epoch is 120, reward epochs 20 and below will expire.
 
-- `initialWflrPriceUSD5Dec` -
-    The USD price of Flare at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
+- `initialWnatPriceUSD5Dec` -
+    The USD price of Native at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
     Usually 0, which means that the useful starting price is obtained after first voting.
 
 ## Reward sharing percentages
@@ -145,25 +145,25 @@ All numeric parameter names have units appended at the end. Most unit names are 
 Each currency definition is under it symbol's key. For example we have
 ```
   "XRP": {
-      "fAssetName": "Flare Asset XRP",
-      "fAssetSymbol": "FXRP",
-      "fAssetDecimals": 6,
-      "dummyFAssetMinterMax": 7000000000,
+      "assetName": "Flare Asset XRP",
+      "assetSymbol": "FXRP",
+      "assetDecimals": 6,
+      "dummyAssetMinterMax": 7000000000,
       "initialPriceUSD5Dec": 0
   },
 ```
 
-- `fAssetName` - 
-    Full Fasset name
+- `assetName` - 
+    Full asset name
 
-- `fAssetSymbol` - 
-    Fasset symbol
+- `assetSymbol` - 
+    Asset symbol
 
-- `fAssetDecimals` - 
+- `assetDecimals` - 
     Number of decimals 
 
-- `dummyFAssetMinterMax` - 
-    Maximal amount that can be minted (integer numbers including decimals. Eg. if `fAssetDecimals` equals 3, then for 3 currency units we write `1000`)
+- `dummyAssetMinterMax` - 
+    Maximal amount that can be minted (integer numbers including decimals. Eg. if `assetDecimals` equals 3, then for 3 currency units we write `1000`)
     
 - `initialPriceUSD5Dec` - 
     Initial price in dollars. The convention is that prices are posted with 5 decimals, so 1$ = 100000 // TODO

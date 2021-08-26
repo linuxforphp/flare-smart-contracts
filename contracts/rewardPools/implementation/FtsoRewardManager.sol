@@ -42,7 +42,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     string internal constant ERR_INFLATION_ONLY = "inflation only";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
     string internal constant ERR_FTSO_MANAGER_ZERO = "no ftso manager";
-    string internal constant ERR_WFLR_ZERO = "no wflr";
+    string internal constant ERR_WNAT_ZERO = "no wNat";
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_CLAIM_FAILED = "claim failed";
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
@@ -89,7 +89,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     IIFtsoManager public ftsoManager;
     Inflation public inflation;
 
-    WFlr public wFlr; 
+    WNat public wNat; 
 
     modifier mustBalance {
         _;
@@ -211,7 +211,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
      */
     function activate() external override onlyGovernance {
         require(address(ftsoManager) != address(0), ERR_FTSO_MANAGER_ZERO);
-        require(address(wFlr) != address(0), ERR_WFLR_ZERO);
+        require(address(wNat) != address(0), ERR_WNAT_ZERO);
         active = true;
     }
 
@@ -239,11 +239,11 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     }
 
     /**
-     * @notice Sets WFlr token.
+     * @notice Sets wrapped native token.
      */
-    function setWFLR(WFlr _wFlr) external override onlyGovernance {
-        require(address(_wFlr) != address(0), ERR_WFLR_ZERO);
-        wFlr = _wFlr;
+    function setWNAT(WNat _wNat) external override onlyGovernance {
+        require(address(_wNat) != address(0), ERR_WNAT_ZERO);
+        wNat = _wNat;
     }
 
     function setDailyAuthorizedInflation(uint256 _toAuthorizeWei) external override onlyInflation {
@@ -296,7 +296,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
             rewards[i] = rewards[0].mulDiv(_weights[i], _weights[0]);
             epochProviderUnclaimedRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
             epochProviderUnclaimedRewardWeight[_currentRewardEpoch][_addresses[i]] =
-                wFlr.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);            
+                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);            
             if (i == 0) {
                 break;
             }
@@ -743,7 +743,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         // setup for delegation rewards
         address[] memory delegates;
         uint256[] memory bips;
-        (delegates, bips, , ) = wFlr.delegatesOfAt(_beneficiary, votePowerBlock);
+        (delegates, bips, , ) = wNat.delegatesOfAt(_beneficiary, votePowerBlock);
         
         // reward state setup
         _rewardState.dataProviders = new address[]((dataProviderReward.claimed ? 1 : 0) + delegates.length);
@@ -761,7 +761,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
 
         // delegation rewards
         if (delegates.length > 0) {
-            uint256 delegatorBalance = wFlr.balanceOfAt(_beneficiary, votePowerBlock);
+            uint256 delegatorBalance = wNat.balanceOfAt(_beneficiary, votePowerBlock);
             for (uint256 i = 0; i < delegates.length; i++) {
                 uint256 p = (dataProviderReward.claimed ? 1 : 0) + i;
                 _rewardState.dataProviders[p] = delegates[i];
@@ -829,7 +829,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
                     votePowerBlock
                 );
             } else {
-                uint256 delegatedVotePower = wFlr.votePowerFromToAt(_beneficiary, _dataProviders[i], votePowerBlock);
+                uint256 delegatedVotePower = wNat.votePowerFromToAt(_beneficiary, _dataProviders[i], votePowerBlock);
                 _rewardState.weights[i] = _getRewardWeightForDelegator(
                     _dataProviders[i],
                     delegatedVotePower,
@@ -951,8 +951,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
         internal view
         returns (uint256)
     {
-        uint256 dataProviderVotePower = wFlr.undelegatedVotePowerOfAt(_dataProvider, _votePowerBlock);
-        uint256 votePower = wFlr.votePowerOfAt(_dataProvider, _votePowerBlock);
+        uint256 dataProviderVotePower = wNat.undelegatedVotePowerOfAt(_dataProvider, _votePowerBlock);
+        uint256 votePower = wNat.votePowerOfAt(_dataProvider, _votePowerBlock);
 
         if (dataProviderVotePower == votePower) {
             // shortcut, but also handles (unlikely) zero vote power case

@@ -17,9 +17,9 @@ contract Ftso is IIFtso {
 
     using FtsoEpoch for FtsoEpoch.State;
 
-    // number of decimal places in FAsset USD price
-    // note that the actual USD price is the integer value divided by 10^FASSET_USD_DECIMALS
-    uint256 public constant FASSET_USD_DECIMALS = 5;
+    // number of decimal places in Asset USD price
+    // note that the actual USD price is the integer value divided by 10^ASSET_PRICE_USD_DECIMALS
+    uint256 public constant ASSET_PRICE_USD_DECIMALS = 5;
 
     // errors
     string internal constant ERR_NOT_ACTIVE = "FTSO not active";
@@ -31,7 +31,6 @@ contract Ftso is IIFtso {
     string internal constant ERR_EPOCH_FINALIZATION_FAILURE = "Epoch not ready for finalization";
     string internal constant ERR_EPOCH_ALREADY_FINALIZED = "Epoch already finalized";
     string internal constant ERR_VOTEPOWER_INSUFFICIENT = "Insufficient vote power to submit vote";
-    string internal constant ERR_FASSET_INVALID = "Invalid asset";
     string internal constant ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL = "Epoch not initialized for reveal";
     string internal constant ERR_EPOCH_DATA_NOT_AVAILABLE = "Epoch data not available";
     string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
@@ -44,19 +43,19 @@ contract Ftso is IIFtso {
     bool public override active;                // activation status of FTSO
     string public override symbol;              // asset symbol that identifies FTSO
 
-    uint256 internal fAssetPriceUSD;            // current FAsset USD price
-    uint256 internal fAssetPriceTimestamp;      // time when price was updated    
+    uint256 internal assetPriceUSD;             // current asset USD price
+    uint256 internal assetPriceTimestamp;      // time when price was updated    
     FtsoEpoch.State internal epochs;            // epoch storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
     uint256 internal lastRevealEpochId;
 
     // external contracts
-    IIVPToken public immutable override wFlr;    // wrapped FLR
+    IIVPToken public immutable override wNat;    // wrapped native token
     IIFtsoManager public immutable ftsoManager;  // FTSO manager contract
     IISupply public immutable supply;            // Supply contract
     IPriceSubmitter public priceSubmitter;       // Price submitter contract
-    IIVPToken[] public fAssets;                  // array of assets
-    IIFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
+    IIVPToken[] public assets;                   // array of assets
+    IIFtso[] public assetFtsos;                  // FTSOs for assets (for a multi-asset FTSO)
 
     // Revert strings get inlined and take a lot of contract space
     // Calling them from auxiliary functions removes used space
@@ -83,7 +82,7 @@ contract Ftso is IIFtso {
 
     constructor(
         string memory _symbol,
-        IIVPToken _wFlr,
+        IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
         IISupply _supply,
         uint256 _initialPriceUSD,
@@ -92,11 +91,11 @@ contract Ftso is IIFtso {
     )
     {
         symbol = _symbol;
-        wFlr = _wFlr;
+        wNat = _wNat;
         ftsoManager = _ftsoManager;
         supply = _supply;
-        fAssetPriceUSD = _initialPriceUSD;
-        fAssetPriceTimestamp = block.timestamp;
+        assetPriceUSD = _initialPriceUSD;
+        assetPriceTimestamp = block.timestamp;
         priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
         priceEpochCyclicBufferSize = _cyclicBufferSize;
     }
@@ -134,13 +133,13 @@ contract Ftso is IIFtso {
         uint256 _epochId,
         uint256 _price,
         uint256 _random,
-        uint256 _wflrVP
+        uint256 _voterWNatVP
     ) 
         external override
         whenActive
         onlyPriceSubmitter
     {
-        _revealPrice(_voter, _epochId, _price, _random, _wflrVP);
+        _revealPrice(_voter, _epochId, _price, _random, _voterWNatVP);
     }
 
     /**
@@ -148,8 +147,8 @@ contract Ftso is IIFtso {
      * @param _epochId              Id of the epoch
      * @param _returnRewardData     Parameter that determines if the reward data is returned
      * @return _eligibleAddresses   List of addresses eligible for reward
-     * @return _flrWeights          List of FLR weights corresponding to the eligible addresses
-     * @return _flrWeightsSum       Sum of weights in _flrWeights
+     * @return _natWeights          List of native token weights corresponding to the eligible addresses
+     * @return _natWeightsSum       Sum of weights in _natWeights
      */
     function finalizePriceEpoch(
         uint256 _epochId,
@@ -159,35 +158,35 @@ contract Ftso is IIFtso {
         onlyFtsoManager 
         returns (
             address[] memory _eligibleAddresses,
-            uint256[] memory _flrWeights,
-            uint256 _flrWeightsSum
+            uint256[] memory _natWeights,
+            uint256 _natWeightsSum
         ) 
     {
         FtsoEpoch.Instance storage epoch = _getEpochForFinalization(_epochId);
         epoch.initializedForReveal = false; // set back to false for next usage
 
-        uint256 flrTurnout = 0;
-        if (epoch.circulatingSupplyFlr > 0) {
-            // no overflow - epoch.accumulatedVotePowerFlr is the sum of all WFLRs of voters for given vote power block
-            flrTurnout = epoch.accumulatedVotePowerFlr * FtsoEpoch.BIPS100 / epoch.circulatingSupplyFlr;
+        uint256 natTurnout = 0;
+        if (epoch.circulatingSupplyNat > 0) {
+            // no overflow - epoch.accumulatedVotePowerNat is the sum of all wNats of voters for given vote power block
+            natTurnout = epoch.accumulatedVotePowerNat * FtsoEpoch.BIPS100 / epoch.circulatingSupplyNat;
         }
 
-        if (epoch.fallbackMode || flrTurnout <= epoch.lowFlrTurnoutThresholdBIPS) {
+        if (epoch.fallbackMode || natTurnout <= epoch.lowNatTurnoutThresholdBIPS) {
             if (!epoch.fallbackMode) {
-                emit LowTurnout(_epochId, flrTurnout, epoch.lowFlrTurnoutThresholdBIPS, block.timestamp);
+                emit LowTurnout(_epochId, natTurnout, epoch.lowNatTurnoutThresholdBIPS, block.timestamp);
             }
             _averageFinalizePriceEpoch(_epochId, epoch, false);
 
             // return empty reward data
-            return (_eligibleAddresses, _flrWeights, _flrWeightsSum);
+            return (_eligibleAddresses, _natWeights, _natWeightsSum);
         }
 
         // finalizationType = PriceFinalizationType.WEIGHTED_MEDIAN
         // extract data from epoch votes to memory
         uint256[] memory price;
         uint256[] memory weight;
-        uint256[] memory weightFlr;
-        (price, weight, weightFlr) = _readVotes(epoch);
+        uint256[] memory weightNat;
+        (price, weight, weightNat) = _readVotes(epoch);
 
         // compute weighted median and truncated quartiles
         uint256[] memory index;
@@ -202,7 +201,7 @@ contract Ftso is IIFtso {
             // revert to average price calculation
             _averageFinalizePriceEpoch(_epochId, epoch, false);
             // return empty reward data
-            return (_eligibleAddresses, _flrWeights, _flrWeightsSum);
+            return (_eligibleAddresses, _natWeights, _natWeightsSum);
         }
 
         // store epoch results
@@ -210,13 +209,13 @@ contract Ftso is IIFtso {
         epoch.price = data.finalMedianPrice; 
         
         // update price
-        fAssetPriceUSD = data.finalMedianPrice;
-        fAssetPriceTimestamp = block.timestamp;
+        assetPriceUSD = data.finalMedianPrice;
+        assetPriceTimestamp = block.timestamp;
         
         // return reward data if requested
         bool rewardedFtso = false;
         if (_returnRewardData) {
-            (_eligibleAddresses, _flrWeights, _flrWeightsSum) = _readRewardData(epoch, data, index, weightFlr);
+            (_eligibleAddresses, _natWeights, _natWeightsSum) = _readRewardData(epoch, data, index, weightNat);
             if (_eligibleAddresses.length > 0) {
                 rewardedFtso = true;
             }
@@ -287,7 +286,7 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * Updates initial/current fasset price, but only if not active
+     * Updates initial/current Asset price, but only if not active
      */
     function updateInitialPrice(
         uint256 _initialPriceUSD,
@@ -297,39 +296,39 @@ contract Ftso is IIFtso {
         onlyFtsoManager
     {
         require(!active, ERR_ALREADY_ACTIVATED);
-        fAssetPriceUSD = _initialPriceUSD;
-        fAssetPriceTimestamp = _initialPriceTimestamp;
+        assetPriceUSD = _initialPriceUSD;
+        assetPriceTimestamp = _initialPriceTimestamp;
     }
 
     /**
      * @notice Sets configurable settings related to epochs
-     * @param _maxVotePowerFlrThresholdFraction         high threshold for FLR vote power per voter
-     * @param _maxVotePowerAssetThresholdFraction       high threshold for FLR vote power per voter
+     * @param _maxVotePowerNatThresholdFraction         high threshold for native token vote power per voter
+     * @param _maxVotePowerAssetThresholdFraction       high threshold for asset vote power per voter
      * @param _lowAssetUSDThreshold             threshold for low asset vote power
      * @param _highAssetUSDThreshold            threshold for high asset vote power
      * @param _highAssetTurnoutThresholdBIPS    threshold for high asset turnout
-     * @param _lowFlrTurnoutThresholdBIPS       threshold for low flr turnout
-     * @param _trustedAddresses                 trusted addresses - use their prices if low flr turnout is not achieved
+     * @param _lowNatTurnoutThresholdBIPS       threshold for low nat turnout
+     * @param _trustedAddresses                 trusted addresses - use their prices if low nat turnout is not achieved
      * @dev Should never revert if called from ftso manager
      */
     function configureEpochs(
-        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
+        uint256 _lowNatTurnoutThresholdBIPS,
         address[] memory _trustedAddresses
     ) 
         external override
         onlyFtsoManager
     {
-        epochs.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
+        epochs.maxVotePowerNatThresholdFraction = _maxVotePowerNatThresholdFraction;
         epochs.maxVotePowerAssetThresholdFraction = _maxVotePowerAssetThresholdFraction;
         epochs.lowAssetUSDThreshold = _lowAssetUSDThreshold;
         epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
         epochs.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
-        epochs.lowFlrTurnoutThresholdBIPS = _lowFlrTurnoutThresholdBIPS;
+        epochs.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
 
         // remove old addresses mapping
         uint256 len = epochs.trustedAddresses.length;
@@ -357,24 +356,24 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Sets asset for FTSO to operate as single-asset oracle
-     * @param _fAsset               Asset
+     * @param _asset               Asset
      */
-    function setFAsset(IIVPToken _fAsset) external override onlyFtsoManager {
-        fAssetFtsos = [ IIFtso(this) ];
-        fAssets = [ _fAsset ];
-        epochs.assetNorm[_fAsset] = 10**_fAsset.decimals();
+    function setAsset(IIVPToken _asset) external override onlyFtsoManager {
+        assetFtsos = [ IIFtso(this) ];
+        assets = [ _asset ];
+        epochs.assetNorm[_asset] = 10**_asset.decimals();
     }
 
     /**
      * @notice Sets an array of FTSOs for FTSO to operate as multi-asset oracle
-     * @param _fAssetFtsos          Array of FTSOs
+     * @param _assetFtsos          Array of FTSOs
      * @dev FTSOs implicitly determine the FTSO assets
      */
-    function setFAssetFtsos(IIFtso[] memory _fAssetFtsos) external override onlyFtsoManager {
-        assert(_fAssetFtsos.length > 0);
-        assert(_fAssetFtsos.length > 1 || _fAssetFtsos[0] != this);
-        fAssetFtsos = _fAssetFtsos;
-        fAssets = new IIVPToken[](_fAssetFtsos.length);
+    function setAssetFtsos(IIFtso[] memory _assetFtsos) external override onlyFtsoManager {
+        assert(_assetFtsos.length > 0);
+        assert(_assetFtsos.length > 1 || _assetFtsos[0] != this);
+        assetFtsos = _assetFtsos;
+        assets = new IIVPToken[](_assetFtsos.length);
         _refreshAssets();
     }
 
@@ -389,7 +388,7 @@ contract Ftso is IIFtso {
 
         // reset values for current epoch 
         epoch.finalizationType = IFtso.PriceFinalizationType.NOT_FINALIZED;
-        epoch.accumulatedVotePowerFlr = 0;
+        epoch.accumulatedVotePowerNat = 0;
         epoch.random = 0; // for easier testing.
         epoch.nextVoteIndex = 0;
 
@@ -398,15 +397,14 @@ contract Ftso is IIFtso {
             return;
         }
 
-        IIVPToken[] memory assets;
         uint256[] memory assetVotePowers;
         uint256[] memory assetPrices;
-        (assets, assetVotePowers, assetPrices) = _getAssetData();
+        (, assetVotePowers, assetPrices) = _getAssetData();
 
         epochs._initializeInstanceForReveal(
             epoch,
             supply.getCirculatingSupplyAtCached(epochs.votePowerBlock),
-            _getVotePowerAt(wFlr, epochs.votePowerBlock),
+            _getVotePowerAt(wNat, epochs.votePowerBlock),
             assets,
             assetVotePowers,
             assetPrices
@@ -442,57 +440,57 @@ contract Ftso is IIFtso {
      */
     function epochsConfiguration() external view override 
         returns (
-            uint256 _maxVotePowerFlrThresholdFraction,
+            uint256 _maxVotePowerNatThresholdFraction,
             uint256 _maxVotePowerAssetThresholdFraction,
             uint256 _lowAssetUSDThreshold,
             uint256 _highAssetUSDThreshold,
             uint256 _highAssetTurnoutThresholdBIPS,
-            uint256 _lowFlrTurnoutThresholdBIPS,
+            uint256 _lowNatTurnoutThresholdBIPS,
             address[] memory _trustedAddresses
         )
     {
         return (
-            epochs.maxVotePowerFlrThresholdFraction,
+            epochs.maxVotePowerNatThresholdFraction,
             epochs.maxVotePowerAssetThresholdFraction,
             epochs.lowAssetUSDThreshold,
             epochs.highAssetUSDThreshold,
             epochs.highAssetTurnoutThresholdBIPS,
-            epochs.lowFlrTurnoutThresholdBIPS,
+            epochs.lowNatTurnoutThresholdBIPS,
             epochs.trustedAddresses
         );
     }
 
     /**
      * @notice Returns the FTSO asset
-     * @dev fAsset is null in case of multi-asset FTSO
+     * @dev asset is null in case of multi-asset FTSO
      */
-    function getFAsset() external view override returns (IIVPToken) {
-        return fAssets.length == 1 && fAssetFtsos.length == 1 && fAssetFtsos[0] == this ?
-            fAssets[0] : IIVPToken(address(0));
+    function getAsset() external view override returns (IIVPToken) {
+        return assets.length == 1 && assetFtsos.length == 1 && assetFtsos[0] == this ?
+            assets[0] : IIVPToken(address(0));
     }
 
     /**
-     * @notice Returns the FAsset FTSOs
-     * @dev FAssetFtsos is not null only in case of multi-asset FTSO
+     * @notice Returns the asset FTSOs
+     * @dev AssetFtsos is not null only in case of multi-asset FTSO
      */
-    function getFAssetFtsos() external view override returns (IIFtso[] memory) {
-        return fAssets.length == 1 && fAssetFtsos.length == 1 && fAssetFtsos[0] == this ?
-            new IIFtso[](0) : fAssetFtsos;
+    function getAssetFtsos() external view override returns (IIFtso[] memory) {
+        return assets.length == 1 && assetFtsos.length == 1 && assetFtsos[0] == this ?
+            new IIFtso[](0) : assetFtsos;
     }
 
     /**
-     * @notice Returns current FAsset price
-     * @return _price               Price in USD multiplied by fAssetUSDDecimals
+     * @notice Returns current asset price
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _timestamp           Time when price was updated for the last time
      */
     function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
-        return (fAssetPriceUSD, fAssetPriceTimestamp);
+        return (assetPriceUSD, assetPriceTimestamp);
     }
 
     /**
-     * @notice Returns FAsset price consented in specific epoch
+     * @notice Returns asset price consented in specific epoch
      * @param _epochId              Id of the epoch
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPrice(uint256 _epochId) external view override returns (uint256) {
         _isEpochDataAvailable(_epochId);
@@ -500,10 +498,10 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns FAsset price submitted by voter in specific epoch
+     * @notice Returns asset price submitted by voter in specific epoch
      * @param _epochId              Id of the epoch
      * @param _voter                Address of the voter
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view override returns (uint256) {
         _isEpochDataAvailable(_epochId);
@@ -568,40 +566,40 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Returns parameters necessary for replicating vote weighting (used in VoterWhitelister).
-     * @return _assets                  the list of fAssets that are accounted in vote
+     * @return _assets                  the list of assets that are accounted in vote
      * @return _assetMultipliers        weight multiplier of each asset in (multiasset) ftso
-     * @return _totalVotePowerFlr       total FLR vote power at block
+     * @return _totalVotePowerNat       total native token vote power at block
      * @return _totalVotePowerAsset     total combined asset vote power at block
-     * @return _assetWeightRatio        ratio of combined asset vp vs. FLR vp (in BIPS)
+     * @return _assetWeightRatio        ratio of combined asset vp vs. native token vp (in BIPS)
      * @return _votePowerBlock          vote powewr block for given epoch
      */
     function getVoteWeightingParameters() external view override 
         returns (
             IIVPToken[] memory _assets,
             uint256[] memory _assetMultipliers,
-            uint256 _totalVotePowerFlr,
+            uint256 _totalVotePowerNat,
             uint256 _totalVotePowerAsset,
             uint256 _assetWeightRatio,
             uint256 _votePowerBlock
         )
     {
-        _assets = fAssets;
+        _assets = assets;
         if (lastRevealEpochId > 0) {
             //slither-disable-next-line weak-prng // not used for random
             FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId % priceEpochCyclicBufferSize];
             _assetMultipliers = epochs._getAssetVoteMultipliers(epoch);
-            _totalVotePowerFlr = epoch.votePowerFlr;
+            _totalVotePowerNat = epoch.votePowerNat;
             _totalVotePowerAsset = epoch.votePowerAsset;
             _assetWeightRatio = epoch.baseWeightRatio;
             _votePowerBlock = epoch.votePowerBlock;
         } else {
             // this case might happen on first block, just return some safe params
-            // (in this case, only FLR vote powers will be used)
+            // (in this case, only native token vote powers will be used)
             _assetMultipliers = new uint256[](_assets.length);
             for (uint256 i = 0; i < _assets.length; i++) {
                 _assetMultipliers[i] = 0;
             }
-            _totalVotePowerFlr = 1;
+            _totalVotePowerNat = 1;
             _totalVotePowerAsset = 1;
             _assetWeightRatio = 0;
             _votePowerBlock = epochs.votePowerBlock;
@@ -609,13 +607,13 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns wflr vote power for the specified owner and the given epoch id
+     * @notice Returns wNat vote power for the specified owner and the given epoch id
      * @param _owner                Owner address
      * @param _epochId              Id of the epoch
      */
-    function wflrVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
+    function wNatVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
         return _getVotePowerOfAt(
-            wFlr, _owner, epochs.instance[_epochId % priceEpochCyclicBufferSize].votePowerBlock
+            wNat, _owner, epochs.instance[_epochId % priceEpochCyclicBufferSize].votePowerBlock
         );
     }
 
@@ -664,7 +662,7 @@ contract Ftso is IIFtso {
         uint256 _epochId, 
         uint256 _price, 
         uint256 _random, 
-        uint256 _wflrVP
+        uint256 _voterWNatVP
     ) 
         internal
     {
@@ -683,10 +681,10 @@ contract Ftso is IIFtso {
             ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL);
 
         // register vote
-        (uint256 votePowerFlr, uint256 votePowerAsset) = _getVotePowerOf(
+        (uint256 votePowerNat, uint256 votePowerAsset) = _getVotePowerOf(
             epoch,
             _voter,
-            _wflrVP,
+            _voterWNatVP,
             fallbackMode,
             votePowerBlock
         );
@@ -694,7 +692,7 @@ contract Ftso is IIFtso {
         FtsoEpoch._addVote(
             epoch,
             _voter,
-            votePowerFlr,
+            votePowerNat,
             votePowerAsset,
             _price,
             uint256(keccak256(abi.encode(_random, _price)))
@@ -704,7 +702,7 @@ contract Ftso is IIFtso {
         delete epochVoterHash[_epochId][_voter];
 
         // inform about price reveal result
-        emit PriceRevealed(_voter, _epochId, _price, _random, block.timestamp, votePowerFlr, votePowerAsset);
+        emit PriceRevealed(_voter, _epochId, _price, _random, block.timestamp, votePowerNat, votePowerAsset);
     }
 
     /**
@@ -721,14 +719,14 @@ contract Ftso is IIFtso {
         )
     {
         _refreshAssets();
-        _assets = fAssets;
+        _assets = assets;
 
         // compute vote power for each epoch
         _votePowers = new uint256[](_assets.length);
         _prices = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
             _votePowers[i] = _getVotePowerAt(_assets[i], epochs.votePowerBlock);
-            (_prices[i], ) = fAssetFtsos[i].getCurrentPrice();
+            (_prices[i], ) = assetFtsos[i].getCurrentPrice();
         }
     }
     
@@ -737,15 +735,15 @@ contract Ftso is IIFtso {
      * @dev Assets are determined by other single-asset FTSOs on which the asset may change at any time
      */
     function _refreshAssets() internal {
-        if (fAssetFtsos.length == 1 && fAssetFtsos[0] == this) {
+        if (assetFtsos.length == 1 && assetFtsos[0] == this) {
             return;
         } else {
-            for (uint256 i = 0; i < fAssetFtsos.length; i++) {
-                IIVPToken asset = fAssetFtsos[i].getFAsset();
-                if (asset == fAssets[i]) {
+            for (uint256 i = 0; i < assetFtsos.length; i++) {
+                IIVPToken asset = assetFtsos[i].getAsset();
+                if (asset == assets[i]) {
                     continue;
                 }
-                fAssets[i] = asset;
+                assets[i] = asset;
                 if (address(asset) != address(0)) {
                     epochs.assetNorm[asset] = 10**asset.decimals();
                 }
@@ -779,8 +777,8 @@ contract Ftso is IIFtso {
                 PriceFinalizationType.TRUSTED_ADDRESSES_EXCEPTION : PriceFinalizationType.TRUSTED_ADDRESSES;
 
             // update price
-            fAssetPriceUSD = _epoch.price;
-            fAssetPriceTimestamp = block.timestamp;
+            assetPriceUSD = _epoch.price;
+            assetPriceTimestamp = block.timestamp;
             
             _writeFallbackEpochPriceData(_epochId);
 
@@ -845,20 +843,23 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns FLR and asset vote power for epoch - returns (0, 0) if in fallback mode
+     * @notice Returns native token and asset vote power for epoch - returns (0, 0) if in fallback mode
      * @param _epoch                Epoch instance
-     * @param _owner                Owner address
+     * @param _voter                Voter (price provider) address
+     * @param _voterWNatVP          Voter nat vote power as queried by price submitter
+
      * @dev Checks if vote power is sufficient and adjusts vote power if it is too large
      */
     function _getVotePowerOf(
         FtsoEpoch.Instance storage _epoch,
-        address _owner, uint256 _wflrVP,
+        address _voter,
+        uint256 _voterWNatVP,
         bool _fallbackMode,
         uint256 _votePowerBlock
     )
         internal 
         returns (
-            uint256 _votePowerFlr,
+            uint256 _votePowerNat,
             uint256 _votePowerAsset
         )
     {
@@ -866,15 +867,15 @@ contract Ftso is IIFtso {
             return (0, 0);
         }
 
-        _votePowerFlr = _wflrVP;
+        _votePowerNat = _voterWNatVP;
 
-        _votePowerAsset = _calculateFAssetVotePower(_epoch, _owner, _votePowerBlock);
+        _votePowerAsset = _calculateAssetVotePower(_epoch, _voter, _votePowerBlock);
 
-        uint256 maxVotePowerFlr = _epoch.maxVotePowerFlr;
+        uint256 maxVotePowerNat = _epoch.maxVotePowerNat;
         uint256 maxVotePowerAsset= _epoch.maxVotePowerAsset;
 
-        if (_votePowerFlr > maxVotePowerFlr) {
-            _votePowerFlr = maxVotePowerFlr;
+        if (_votePowerNat > maxVotePowerNat) {
+            _votePowerNat = maxVotePowerNat;
         }
 
         if (_votePowerAsset > maxVotePowerAsset) {
@@ -911,7 +912,7 @@ contract Ftso is IIFtso {
         }
     }
 
-    function _calculateFAssetVotePower(FtsoEpoch.Instance storage _epoch, address _owner, uint256 _votePowerBlock) 
+    function _calculateAssetVotePower(FtsoEpoch.Instance storage _epoch, address _owner, uint256 _votePowerBlock) 
         internal 
         returns (uint256 _votePowerAsset)
     {
@@ -930,24 +931,24 @@ contract Ftso is IIFtso {
         returns (
             uint256[] memory _price,
             uint256[] memory _weight,
-            uint256[] memory _weightFlr
+            uint256[] memory _weightNat
         )
     {
         uint256 length = _epoch.nextVoteIndex;
 
         _price = new uint256[](length);
-        _weightFlr = new uint256[](length);
+        _weightNat = new uint256[](length);
 
         uint256[] memory weightAsset = new uint256[](length);
 
         for (uint256 i = 0; i < length; i++) {
             FtsoVote.Instance storage v = _epoch.votes[i];
             _price[i] = v.price;
-            _weightFlr[i] = v.weightFlr;
+            _weightNat[i] = v.weightNat;
             weightAsset[i] = v.weightAsset;
         }
 
-        _weight = FtsoEpoch._computeWeights(_epoch, _weightFlr, weightAsset);
+        _weight = FtsoEpoch._computeWeights(_epoch, _weightNat, weightAsset);
     }
 
     /**
@@ -981,26 +982,26 @@ contract Ftso is IIFtso {
      * @param _epoch                The epoch instance to read data from
      * @param _data                 Median computation data
      * @param _index                Array of vote indices
-     * @param _weightFlr            Array of FLR weights
+     * @param _weightNat            Array of native token weights
      */
     function _readRewardData(
         FtsoEpoch.Instance storage _epoch,
         FtsoMedian.Data memory _data,
         uint256[] memory _index, 
-        uint256[] memory _weightFlr
+        uint256[] memory _weightNat
     ) 
         internal view
         returns (
             address[] memory _eligibleAddresses, 
-            uint256[] memory _flrWeights,
-            uint256 _flrWeightsSum
+            uint256[] memory _natWeights,
+            uint256 _natWeightsSum
         )
     {
         uint256 random = _epoch.random;
         uint256 voteRewardCount = 0;
         for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
             uint256 idx = _index[i];
-            if (_weightFlr[idx] > 0) {
+            if (_weightNat[idx] > 0) {
                 uint128 price = _epoch.votes[idx].price;
                 if ((price == _data.quartile1Price || price == _data.quartile3Price) &&
                     ! _isAddressEligible(random, _epoch.votes[idx].voter)) {
@@ -1011,11 +1012,11 @@ contract Ftso is IIFtso {
         }
 
         _eligibleAddresses = new address[](voteRewardCount);
-        _flrWeights = new uint256[](voteRewardCount);
+        _natWeights = new uint256[](voteRewardCount);
         uint256 cnt = 0;
         for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
             uint256 idx = _index[i];
-            uint256 weight = _weightFlr[idx];
+            uint256 weight = _weightNat[idx];
             if (weight > 0) {
                 uint128 price = _epoch.votes[idx].price;
                 if ((price == _data.quartile1Price || price == _data.quartile3Price) &&
@@ -1023,8 +1024,8 @@ contract Ftso is IIFtso {
                     continue;
                 }
                 _eligibleAddresses[cnt] = _epoch.votes[idx].voter;
-                _flrWeights[cnt] = weight;
-                _flrWeightsSum += weight;
+                _natWeights[cnt] = weight;
+                _natWeightsSum += weight;
                 cnt++;
             }
         }

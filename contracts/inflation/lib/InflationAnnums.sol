@@ -81,7 +81,8 @@ library InflationAnnums {
      * @notice Dispatch topup request calculations across reward services and sum up total mint request made
      *   to fund topup of reward services.
      * @param _inflation    The Inflation contract containing the topup confguration of each reward service.
-     * @return _topupRequestWei The amount of FLR requested to be minted across reward services for this cycle.
+     * @return _topupRequestWei The amount of native token requested to be minted across reward services for 
+     *   this cycle.
      * @dev Invariant: total inflation topup requested cannot exceed total inflation authorized
      */
     function computeTopupRequest(
@@ -102,11 +103,11 @@ library InflationAnnums {
     }
 
     /**
-     * @notice Receive minted FLR (and fund) to satisfy reward services topup requests.
-     * @return _amountPostedWei The FLR posted (funded) to reward service contracts.
+     * @notice Receive minted native tokens (and fund) to satisfy reward services topup requests.
+     * @return _amountPostedWei The native tokens posted (funded) to reward service contracts.
      * @dev Invariants:
-     *   1) FLR topup received cannot exceed FLR topup requested
-     *   2) FLR topup withdrawn for funding cannot exceed FLR topup received
+     *   1) Native tokens topup received cannot exceed native tokens topup requested
+     *   2) Native tokens topup withdrawn for funding cannot exceed native tokens topup received
      */
     function receiveTopupRequest(
         InflationAnnumsState storage _self
@@ -119,7 +120,7 @@ library InflationAnnums {
 
         // Receive minting of topup request. Post to received and withdrawn buckets for each reward service.
         _amountPostedWei = currentAnnum.rewardServices.receiveTopupRequest();
-        // Post the amount of FLR received into the Inflation contract
+        // Post the amount of native tokens received into the Inflation contract
         _self.totalInflationTopupReceivedWei = _self.totalInflationTopupReceivedWei.add(_amountPostedWei);
         // Received should never be more than requested
         assert(_self.totalInflationTopupReceivedWei <= _self.totalInflationTopupRequestedWei);

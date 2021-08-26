@@ -2,21 +2,21 @@ import {constants, time} from '@openzeppelin/test-helpers';
 
 import { waitFinalize3 } from "../../test/utils/test-helpers";
 import { FlareDaemon } from "../../typechain";
-import { DummyFAssetMinterContract, 
-  FAssetTokenContract,
+import { DummyAssetMinterContract, 
+  AssetTokenContract,
   FtsoContract,
   FtsoInstance,
   FlareDaemonContract,
   FtsoRewardManagerContract,
   FtsoRewardManagerInstance,
-  WFlrContract, 
+  WNatContract, 
   InflationContract,
   InflationInstance,
   InflationAllocationContract,
   InflationAllocationInstance,
   SupplyContract,
   SupplyInstance,
-  FAssetTokenInstance,
+  AssetTokenInstance,
   FtsoManagerContract,
   FtsoManagerInstance,
   FlareDaemonInstance,
@@ -51,19 +51,19 @@ async function findDaemonizedContract(contracts: Contracts, address: string): Pr
   return false;
 }
 
-async function findFAssetFtso(contracts: Contracts, address: string): Promise<boolean> {
+async function findAssetFtso(contracts: Contracts, address: string): Promise<boolean> {
   const Ftso = artifacts.require("Ftso");
-  const ftsoWflr = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WFLR));
-  let fAssetFtso = await ftsoWflr.fAssetFtsos(0);
+  const ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
+  let xAssetFtso = await ftsoWnat.xAssetFtsos(0);
   let i = 1;
-  while (fAssetFtso != "") {
-    if (fAssetFtso == address) {
+  while (xAssetFtso != "") {
+    if (xAssetFtso == address) {
       return true;
     } else {
       try {
-        fAssetFtso = await ftsoWflr.fAssetFtsos(i++);
+        xAssetFtso = await ftsoWnat.xAssetFtsos(i++);
       } catch(e) {
-        fAssetFtso = "";
+        xAssetFtso = "";
       }
     }
   }
@@ -301,16 +301,16 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.WFLR, async() => {
+  describe(Contracts.WNAT, async() => {
     it("Should accept deposits", async() => {
         // Assemble
-        const WFLR = artifacts.require("WFlr") as WFlrContract;
-        const wflr = await WFLR.at(contracts.getContractAddress(Contracts.WFLR));
-        const openingBalance = await wflr.balanceOf(accounts[1])
+        const WNAT = artifacts.require("WNat") as WNatContract;
+        const wnat = await WNAT.at(contracts.getContractAddress(Contracts.WNAT));
+        const openingBalance = await wnat.balanceOf(accounts[1])
         // Act
-        await waitFinalize3(accounts[1], () =>  wflr.deposit({from: accounts[1], value: BN(10)}));
+        await waitFinalize3(accounts[1], () =>  wnat.deposit({from: accounts[1], value: BN(10)}));
         // Assert
-        const balance = await wflr.balanceOf(accounts[1])
+        const balance = await wnat.balanceOf(accounts[1])
         assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
     });
   });
@@ -318,9 +318,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FXRP_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFxrpMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFxrpMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFxrpMinter = await DummyFxrpMinter.at(contracts.getContractAddress(Contracts.DUMMY_FXRP_MINTER));
-        const FXRP = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FXRP = artifacts.require("AssetToken") as AssetTokenContract;
         const fxrp = await FXRP.at(contracts.getContractAddress(Contracts.FXRP));
         const openingBalance = await fxrp.balanceOf(accounts[1])
         // Act
@@ -334,9 +334,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FLTC_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFltcMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFltcMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFltcMinter = await DummyFltcMinter.at(contracts.getContractAddress(Contracts.DUMMY_FLTC_MINTER));
-        const FLTC = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FLTC = artifacts.require("AssetToken") as AssetTokenContract;
         const fltc = await FLTC.at(contracts.getContractAddress(Contracts.FLTC));
         const openingBalance = await fltc.balanceOf(accounts[2])
         // Act
@@ -350,9 +350,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FXDG_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFxdgMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFxdgMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFxdgMinter = await DummyFxdgMinter.at(contracts.getContractAddress(Contracts.DUMMY_FXDG_MINTER));
-        const FXDG = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FXDG = artifacts.require("AssetToken") as AssetTokenContract;
         const fxdg = await FXDG.at(contracts.getContractAddress(Contracts.FXDG));
         const openingBbalance = await fxdg.balanceOf(accounts[3])
         // Act
@@ -366,9 +366,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FADA_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFadaMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFadaMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFadaMinter = await DummyFadaMinter.at(contracts.getContractAddress(Contracts.DUMMY_FADA_MINTER));
-        const FADA = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FADA = artifacts.require("AssetToken") as AssetTokenContract;
         const fada = await FADA.at(contracts.getContractAddress(Contracts.FADA));
         const openingBbalance = await fada.balanceOf(accounts[3])
         // Act
@@ -382,9 +382,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FALGO_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFalgoMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFalgoMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFalgoMinter = await DummyFalgoMinter.at(contracts.getContractAddress(Contracts.DUMMY_FALGO_MINTER));
-        const FALGO = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FALGO = artifacts.require("AssetToken") as AssetTokenContract;
         const falgo = await FALGO.at(contracts.getContractAddress(Contracts.FALGO));
         const openingBbalance = await falgo.balanceOf(accounts[3])
         // Act
@@ -398,9 +398,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FBCH_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFbchMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFbchMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFbchMinter = await DummyFbchMinter.at(contracts.getContractAddress(Contracts.DUMMY_FBCH_MINTER));
-        const FBCH = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FBCH = artifacts.require("AssetToken") as AssetTokenContract;
         const fbch = await FBCH.at(contracts.getContractAddress(Contracts.FBCH));
         const openingBbalance = await fbch.balanceOf(accounts[3])
         // Act
@@ -414,9 +414,9 @@ contract(`deploy.ts system tests`, async accounts => {
   describe(Contracts.DUMMY_FDGB_MINTER, async() => {
     it("Should mint", async() => {
         // Assemble
-        const DummyFdgbMinter = artifacts.require("DummyFAssetMinter") as DummyFAssetMinterContract;
+        const DummyFdgbMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
         const dummyFdgbMinter = await DummyFdgbMinter.at(contracts.getContractAddress(Contracts.DUMMY_FDGB_MINTER));
-        const FDGB = artifacts.require("FAssetToken") as FAssetTokenContract;
+        const FDGB = artifacts.require("AssetToken") as AssetTokenContract;
         const fdgb = await FDGB.at(contracts.getContractAddress(Contracts.FDGB));
         const openingBbalance = await fdgb.balanceOf(accounts[3])
         // Act
@@ -427,27 +427,27 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.FTSO_WFLR, async() => {
-    let FtsoWflr: FtsoContract;
-    let ftsoWflr: FtsoInstance;
+  describe(Contracts.FTSO_WNAT, async() => {
+    let FtsoWnat: FtsoContract;
+    let ftsoWnat: FtsoInstance;
 
     beforeEach(async() => {
-      FtsoWflr = artifacts.require("Ftso");
-      ftsoWflr = await FtsoWflr.at(contracts.getContractAddress(Contracts.FTSO_WFLR));
+      FtsoWnat = artifacts.require("Ftso");
+      ftsoWnat = await FtsoWnat.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
     });
 
-    it("Should be on oracle for WFLR", async() => {
+    it("Should be on oracle for WNAT", async() => {
         // Assemble
         // Act
-        const address = await ftsoWflr.wFlr();
+        const address = await ftsoWnat.wNat();
         // Assert
-        assert.equal(address, contracts.getContractAddress(Contracts.WFLR));
+        assert.equal(address, contracts.getContractAddress(Contracts.WNAT));
     });
 
     it("Should be managed", async() => {
       // Assemble
       // Act
-      const ftsoManager = await ftsoWflr.ftsoManager();
+      const ftsoManager = await ftsoWnat.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
@@ -455,31 +455,31 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should know about PriceSubmitter", async() => {
       // Assemble
       // Act
-      const priceSubmitter = await ftsoWflr.priceSubmitter();
+      const priceSubmitter = await ftsoWnat.priceSubmitter();
       // Assert
       assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     });
 
-    it("Should know about XRP FAsset FTSO", async() => {
+    it("Should know about XRP Asset FTSO", async() => {
       // Assemble
       // Act
-      const found = await findFAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_FXRP));
+      const found = await findAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_FXRP));
       // Assert
       assert(found);
     });    
 
-    it("Should know about LTC FAsset FTSO", async() => {
+    it("Should know about LTC Asset FTSO", async() => {
       // Assemble
       // Act
-      const found = await findFAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_FLTC));
+      const found = await findAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_FLTC));
       // Assert
       assert(found);
     });    
 
-    it("Should know about XDG FAsset FTSO", async() => {
+    it("Should know about XDG Asset FTSO", async() => {
       // Assemble
       // Act
-      const found = await findFAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_FXDG));
+      const found = await findAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_FXDG));
       // Assert
       assert(found);
     });    
@@ -497,7 +497,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FXRP", async() => {
         // Assemble
         // Act
-        const address = await ftsoFxrp.getFAsset();
+        const address = await ftsoFxrp.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FXRP));
     });
@@ -531,7 +531,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FLTC", async() => {
         // Assemble
         // Act
-        const address = await ftsoFltc.getFAsset();
+        const address = await ftsoFltc.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FLTC));
     });
@@ -565,7 +565,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FXDG", async() => {
         // Assemble
         // Act
-        const address = await ftsoFxdg.getFAsset();
+        const address = await ftsoFxdg.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FXDG));
     });
@@ -599,7 +599,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FADA", async() => {
         // Assemble
         // Act
-        const address = await ftsoFada.getFAsset();
+        const address = await ftsoFada.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FADA));
     });
@@ -633,7 +633,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FALGO", async() => {
         // Assemble
         // Act
-        const address = await ftsoFalgo.getFAsset();
+        const address = await ftsoFalgo.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FALGO));
     });
@@ -667,7 +667,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FBCH", async() => {
         // Assemble
         // Act
-        const address = await ftsoFbch.getFAsset();
+        const address = await ftsoFbch.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FBCH));
     });
@@ -701,7 +701,7 @@ contract(`deploy.ts system tests`, async accounts => {
     it("Should be on oracle for FDGB", async() => {
         // Assemble
         // Act
-        const address = await ftsoFdgb.getFAsset();
+        const address = await ftsoFdgb.getAsset();
         // Assert
         assert.equal(address, contracts.getContractAddress(Contracts.FDGB));
     });
@@ -725,20 +725,20 @@ contract(`deploy.ts system tests`, async accounts => {
 
 
   describe(Contracts.FXRP, async() => {
-    let FXRP: FAssetTokenContract;
-    let fxrp: FAssetTokenInstance;
+    let FXRP: AssetTokenContract;
+    let fxrp: AssetTokenInstance;
 
     beforeEach(async() => {
-      FXRP = artifacts.require("FAssetToken");
+      FXRP = artifacts.require("AssetToken");
       fxrp = await FXRP.at(contracts.getContractAddress(Contracts.FXRP));
     });
 
-    it("Should be a Flare asset representing XRP", async() => {
+    it("Should be an asset representing XRP", async() => {
         // Assemble
         // Act
         const symbol = await fxrp.symbol();
         // Assert
-        assert.equal(symbol, parameters.XRP.fAssetSymbol);
+        assert.equal(symbol, parameters.XRP.xAssetSymbol);
     });
 
     it("Should represent XRP decimals correctly", async() => {
@@ -746,25 +746,25 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await fxrp.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.XRP.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.XRP.xAssetDecimals);
     });
   });
 
   describe(Contracts.FLTC, async() => {
-    let FLTC: FAssetTokenContract;
-    let fltc: FAssetTokenInstance;
+    let FLTC: AssetTokenContract;
+    let fltc: AssetTokenInstance;
 
     beforeEach(async() => {
-      FLTC = artifacts.require("FAssetToken");
+      FLTC = artifacts.require("AssetToken");
       fltc = await FLTC.at(contracts.getContractAddress(Contracts.FLTC));
     });
 
-    it("Should be a Flare asset representing LTC", async() => {
+    it("Should be an asset representing LTC", async() => {
         // Assemble
         // Act
         const symbol = await fltc.symbol();
         // Assert
-        assert.equal(symbol, parameters.LTC.fAssetSymbol);
+        assert.equal(symbol, parameters.LTC.xAssetSymbol);
     });
 
     it("Should represent LTC decimals correctly", async() => {
@@ -772,25 +772,25 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await fltc.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.LTC.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.LTC.xAssetDecimals);
     });    
   });
 
   describe(Contracts.FXDG, async() => {
-    let FXDG: FAssetTokenContract;
-    let fxdg: FAssetTokenInstance;
+    let FXDG: AssetTokenContract;
+    let fxdg: AssetTokenInstance;
 
     beforeEach(async() => {
-      FXDG = artifacts.require("FAssetToken");
+      FXDG = artifacts.require("AssetToken");
       fxdg = await FXDG.at(contracts.getContractAddress(Contracts.FXDG));
     });
 
-    it("Should be a Flare asset representing XDG", async() => {
+    it("Should be an asset representing XDG", async() => {
         // Assemble
         // Act
         const symbol = await fxdg.symbol();
         // Assert
-        assert.equal(symbol, parameters.XDG.fAssetSymbol);
+        assert.equal(symbol, parameters.XDG.xAssetSymbol);
     });
 
     it("Should represent XDG decimals correctly", async() => {
@@ -798,25 +798,25 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await fxdg.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.XDG.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.XDG.xAssetDecimals);
     });        
   });
 
   describe(Contracts.FADA, async() => {
-    let FADA: FAssetTokenContract;
-    let fada: FAssetTokenInstance;
+    let FADA: AssetTokenContract;
+    let fada: AssetTokenInstance;
 
     beforeEach(async() => {
-      FADA = artifacts.require("FAssetToken");
+      FADA = artifacts.require("AssetToken");
       fada = await FADA.at(contracts.getContractAddress(Contracts.FADA));
     });
 
-    it("Should be a Flare asset representing ADA", async() => {
+    it("Should be an asset representing ADA", async() => {
         // Assemble
         // Act
         const symbol = await fada.symbol();
         // Assert
-        assert.equal(symbol, parameters.ADA.fAssetSymbol);
+        assert.equal(symbol, parameters.ADA.xAssetSymbol);
     });
 
     it("Should represent ADA decimals correctly", async() => {
@@ -824,25 +824,25 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await fada.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.ADA.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.ADA.xAssetDecimals);
     });        
   });
 
   describe(Contracts.FALGO, async() => {
-    let FALGO: FAssetTokenContract;
-    let falgo: FAssetTokenInstance;
+    let FALGO: AssetTokenContract;
+    let falgo: AssetTokenInstance;
 
     beforeEach(async() => {
-      FALGO = artifacts.require("FAssetToken");
+      FALGO = artifacts.require("AssetToken");
       falgo = await FALGO.at(contracts.getContractAddress(Contracts.FALGO));
     });
 
-    it("Should be a Flare asset representing ALGO", async() => {
+    it("Should be an asset representing ALGO", async() => {
         // Assemble
         // Act
         const symbol = await falgo.symbol();
         // Assert
-        assert.equal(symbol, parameters.ALGO.fAssetSymbol);
+        assert.equal(symbol, parameters.ALGO.xAssetSymbol);
     });
 
     it("Should represent ALGO decimals correctly", async() => {
@@ -850,25 +850,25 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await falgo.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.ALGO.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.ALGO.xAssetDecimals);
     });        
   });
 
   describe(Contracts.FBCH, async() => {
-    let FBCH: FAssetTokenContract;
-    let fbch: FAssetTokenInstance;
+    let FBCH: AssetTokenContract;
+    let fbch: AssetTokenInstance;
 
     beforeEach(async() => {
-      FBCH = artifacts.require("FAssetToken");
+      FBCH = artifacts.require("AssetToken");
       fbch = await FBCH.at(contracts.getContractAddress(Contracts.FBCH));
     });
 
-    it("Should be a Flare asset representing BCH", async() => {
+    it("Should be an asset representing BCH", async() => {
         // Assemble
         // Act
         const symbol = await fbch.symbol();
         // Assert
-        assert.equal(symbol, parameters.BCH.fAssetSymbol);
+        assert.equal(symbol, parameters.BCH.xAssetSymbol);
     });
 
     it("Should represent BCH decimals correctly", async() => {
@@ -876,25 +876,25 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await fbch.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.BCH.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.BCH.xAssetDecimals);
     });        
   });
 
   describe(Contracts.FDGB, async() => {
-    let FDGB: FAssetTokenContract;
-    let fdgb: FAssetTokenInstance;
+    let FDGB: AssetTokenContract;
+    let fdgb: AssetTokenInstance;
 
     beforeEach(async() => {
-      FDGB = artifacts.require("FAssetToken");
+      FDGB = artifacts.require("AssetToken");
       fdgb = await FDGB.at(contracts.getContractAddress(Contracts.FDGB));
     });
 
-    it("Should be a Flare asset representing DGB", async() => {
+    it("Should be an asset representing DGB", async() => {
         // Assemble
         // Act
         const symbol = await fdgb.symbol();
         // Assert
-        assert.equal(symbol, parameters.DGB.fAssetSymbol);
+        assert.equal(symbol, parameters.DGB.xAssetSymbol);
     });
 
     it("Should represent DGB decimals correctly", async() => {
@@ -902,7 +902,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const decimals = await fdgb.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.DGB.fAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.DGB.xAssetDecimals);
     });        
   });
 
@@ -973,10 +973,10 @@ contract(`deploy.ts system tests`, async accounts => {
     });
 
 
-    it("Should be managing a WFLR FTSO", async() => {
+    it("Should be managing a WNAT FTSO", async() => {
       // Assemble
       // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_WFLR));
+      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_WNAT));
       // Assert
       assert(found);
     });
@@ -985,19 +985,19 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       const settings = await ftsoManager.settings();
       // Act
-      const maxVotePowerFlrThresholdFraction = settings[1];
+      const maxVotePowerNatThresholdFraction = settings[1];
       const maxVotePowerAssetThresholdFraction = settings[2];
       const lowAssetThresholdUSDDec5 = settings[3];
       const highAssetThresholdUSDDec5 = settings[4];
       const highAssetTurnoutThresholdBIPS = settings[5];
-      const lowFlrTurnoutThresholdBIPS = settings[6];
+      const lowNatTurnoutThresholdBIPS = settings[6];
       // Assert
-      assert.equal(maxVotePowerFlrThresholdFraction.toNumber(), parameters.maxVotePowerFlrThresholdFraction);
+      assert.equal(maxVotePowerNatThresholdFraction.toNumber(), parameters.maxVotePowerNatThresholdFraction);
       assert.equal(maxVotePowerAssetThresholdFraction.toNumber(), parameters.maxVotePowerAssetThresholdFraction);
       assert.equal(lowAssetThresholdUSDDec5.toNumber(), parameters.lowAssetThresholdUSDDec5);
       assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
       assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
-      assert.equal(lowFlrTurnoutThresholdBIPS.toNumber(), parameters.lowFlrTurnoutThresholdBIPS);
+      assert.equal(lowNatTurnoutThresholdBIPS.toNumber(), parameters.lowNatTurnoutThresholdBIPS);
     });
   });
 });

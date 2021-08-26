@@ -1,12 +1,12 @@
-import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WFlrContract, WFlrInstance } from "../../../../typechain-truffle";
+import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract, WNatInstance } from "../../../../typechain-truffle";
 import { compareArrays, increaseTimeTo, lastOf, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
-const Wflr = artifacts.require("WFlr") as WFlrContract;
-const MockWflr = artifacts.require("MockContract") as MockContractContract;
+const Wnat = artifacts.require("WNat") as WNatContract;
+const MockWnat = artifacts.require("MockContract") as MockContractContract;
 const MockSupply = artifacts.require("MockContract") as MockContractContract;
 const MockRegistry = artifacts.require("MockContract") as MockContractContract;
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
@@ -19,8 +19,8 @@ const ERR_FTSO_MANAGER_ONLY = "FTSOManager only";
 const ERR_NOT_WHITELISTED = "Not whitelisted";
 
 // contains a fresh contract for each test 
-let wflrInterface: WFlrInstance;
-let mockWflr: MockContractInstance;
+let wnatInterface: WNatInstance;
+let mockWnat: MockContractInstance;
 let mockSupply: MockContractInstance;
 let mockFtsoRegistry: MockContractInstance;
 let ftsos: FtsoInstance[];
@@ -31,9 +31,9 @@ let voterWhitelister: VoterWhitelisterInstance;
 // WARNING: This sets mock vote power fully, irrespective of address and blockNumber
 async function setBatchMockVotePower(votePower: number[]) {
     // Both are address and block number are irrelevant. We just need them for proper method coding
-    const batchVotePowerOfAt = wflrInterface.contract.methods.batchVotePowerOfAt([constants.ZERO_ADDRESS], 1).encodeABI();
+    const batchVotePowerOfAt = wnatInterface.contract.methods.batchVotePowerOfAt([constants.ZERO_ADDRESS], 1).encodeABI();
     const batchVotePowerOfAtReturn = web3.eth.abi.encodeParameter('uint256[]', votePower);
-    await mockWflr.givenMethodReturn(batchVotePowerOfAt, batchVotePowerOfAtReturn);
+    await mockWnat.givenMethodReturn(batchVotePowerOfAt, batchVotePowerOfAtReturn);
 }
 
 async function setGetFtsosMock(ftsoIndices: number[]) {
@@ -53,9 +53,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
             ftsos = [];
-            wflrInterface = await Wflr.new(accounts[0]);
-            await setDefaultVPContract(wflrInterface, accounts[0]);
-            mockWflr = await MockWflr.new();
+            wnatInterface = await Wnat.new(accounts[0]);
+            await setDefaultVPContract(wnatInterface, accounts[0]);
+            mockWnat = await MockWnat.new();
             mockSupply = await MockSupply.new();
             mockFtsoRegistry = await MockRegistry.new();
             priceSubmitter = await PriceSubmitter.new();
@@ -70,7 +70,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
                     `ATOK${i}`,
-                    mockWflr.address,
+                    mockWnat.address,
                     accounts[10],
                     mockSupply.address,
                     1, // initial token price 0.00001$
@@ -229,7 +229,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             
             await voterWhitelister.addFtso(3, {from: FTSO_MANAGER_ADDRESS});
 
-            // Everyone gets some WFLR
+            // Everyone gets some WNAT
             await setBatchMockVotePower([10, 10, 10]);
 
             await voterWhitelister.setMaxVotersForFtso(3, 3, {from: GOVERNANCE_GENESIS_ADDRESS});

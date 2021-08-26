@@ -11,19 +11,19 @@ import { pascalCase } from "pascal-case";
 import { setDefaultVPContract } from "../../test/utils/token-test-helpers";
 import {
   CleanupBlockNumberManagerInstance,
-  DummyFAssetMinterInstance,
-  FAssetTokenInstance,
+  DummyAssetMinterInstance,
+  AssetTokenInstance,
   FlareDaemonInstance,
   FtsoInstance,
   FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance,
   StateConnectorInstance,
   SupplyInstance,
   ValidatorRewardManagerInstance,
-  WFlrInstance
+  WNatInstance
 } from "../../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
 
-export interface FAssetDefinition {
+export interface AssetDefinition {
   name: string;
   symbol: string;
   decimals: number;
@@ -31,11 +31,11 @@ export interface FAssetDefinition {
   initialPriceUSD5Dec: number;
 }
 
-export interface AssetContracts {
-  fAssetToken: FAssetTokenInstance | WFlrInstance;
+export interface AssetContracts {  
+  xAssetToken: AssetTokenInstance | WNatInstance;
   ftso: FtsoInstance;
-  dummyFAssetMinter?: DummyFAssetMinterInstance;
-  definition?: FAssetDefinition;
+  dummyAssetMinter?: DummyAssetMinterInstance;
+  definition?: AssetDefinition;
   assetSymbol: string;
 }
 
@@ -96,7 +96,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
   const VoterWhitelister = artifacts.require("VoterWhitelister");
-  const WFLR = artifacts.require("WFlr");
+  const WNAT = artifacts.require("WNat");
   const Distribution = artifacts.require("Distribution");
 console.error("START HERE")
   // InflationAllocation contract
@@ -227,8 +227,8 @@ console.error("State connector")
     deployerAccount.address,
     parameters.burnAddress,
     inflation.address,
-    BN(parameters.totalFlareSupplyFLR).mul(BN(10).pow(BN(18))),
-    BN(parameters.totalFoundationSupplyFLR).mul(BN(10).pow(BN(18))),
+    BN(parameters.totalNativeSupplyNAT).mul(BN(10).pow(BN(18))),
+    BN(parameters.totalFoundationSupplyNAT).mul(BN(10).pow(BN(18))),
     []
   );
   spewNewContractInfo(contracts, Supply.contractName, supply.address, quiet);
@@ -314,30 +314,30 @@ console.error("State connector")
   ];
   await flareDaemon.registerToDaemonize(registrations);
 
-  // Deploy wrapped FLR
-  const wflr = await WFLR.new(deployerAccount.address);
-  spewNewContractInfo(contracts, WFLR.contractName, wflr.address, quiet);
+  // Deploy wrapped native token
+  const wnat = await WNAT.new(deployerAccount.address);
+  spewNewContractInfo(contracts, WNAT.contractName, wnat.address, quiet);
 
-  await setDefaultVPContract(wflr, deployerAccount.address);
-  await cleanupBlockNumberManager.registerToken(wflr.address);
-  await wflr.setCleanupBlockNumberManager(cleanupBlockNumberManager.address)
+  await setDefaultVPContract(wnat, deployerAccount.address);
+  await cleanupBlockNumberManager.registerToken(wnat.address);
+  await wnat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address)
 
 
-  await ftsoRewardManager.setWFLR(wflr.address);
+  await ftsoRewardManager.setWNAT(wnat.address);
 
-  // Create a non-FAsset FTSO
-  // Register an FTSO for WFLR
-  const ftsoWflr = await Ftso.new("WFLR", wflr.address, ftsoManager.address, supply.address, parameters.initialWflrPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
-  spewNewContractInfo(contracts, `FTSO WFLR`, ftsoWflr.address, quiet);
+  // Create a non-asset FTSO
+  // Register an FTSO for WNAT
+  const ftsoWnat = await Ftso.new("WNAT", wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
+  spewNewContractInfo(contracts, `FTSO WNAT`, ftsoWnat.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
-  assetToContracts.set("FLR", {
-    fAssetToken: wflr,
-    ftso: ftsoWflr,
-    assetSymbol: 'FLR'
+  assetToContracts.set("NAT", {
+    xAssetToken: wnat,
+    ftso: ftsoWnat,
+    assetSymbol: 'NAT'
   })
 
-  // Deploy FAsset, minter, and initial FTSOs 
+  // Deploy asset, minter, and initial FTSOs 
   let assets = ['XRP', 'LTC', 'XLM', 'XDG', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
 
 
@@ -346,14 +346,14 @@ console.error("State connector")
       console.error(`Rigging ${asset}...`);
     }
 
-    let assetContracts = await deployNewFAsset(
+    let assetContracts = await deployNewAsset(
       contracts,
       deployerAccount.address,
       ftsoManager,
       supply.address,
-      wflr.address,
+      wnat.address,
       cleanupBlockNumberManager,
-      rewrapFassetParams(parameters[asset]),
+      rewrapXassetParams(parameters[asset]),
       parameters.priceDeviationThresholdBIPS,
       parameters.priceEpochCyclicBufferSize,
       quiet
@@ -369,12 +369,12 @@ console.error("State connector")
     console.error("Setting FTSO manager governance parameters...");
   }
   await ftsoManager.setGovernanceParameters(
-    parameters.maxVotePowerFlrThresholdFraction,
+    parameters.maxVotePowerNatThresholdFraction,
     parameters.maxVotePowerAssetThresholdFraction,
     parameters.lowAssetThresholdUSDDec5,
     parameters.highAssetThresholdUSDDec5,
     parameters.highAssetTurnoutThresholdBIPS,
-    parameters.lowFlrTurnoutThresholdBIPS,
+    parameters.lowNatTurnoutThresholdBIPS,
     Math.floor(parameters.ftsoRewardExpiryOffsetDays * 60 * 60 * 24),
     parameters.trustedAddresses);
 
@@ -383,7 +383,7 @@ console.error("State connector")
     console.error("Adding FTSOs to manager...");
   }
 
-  for (let asset of ['FLR', ...assets]) {
+  for (let asset of ['NAT', ...assets]) {
     let ftsoContract = (assetToContracts.get(asset) as AssetContracts).ftso;
     await waitFinalize3(deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
   }
@@ -391,18 +391,18 @@ console.error("State connector")
   let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
 
   // Set initial number of voters
-  for (let asset of ['FLR', ...assets]) {
+  for (let asset of ['NAT', ...assets]){
 
     const assetContract = assetToContracts.get(asset)!;
     const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
     await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, { from: currentGovernanceAddress });
   }
 
-  // Set FTSOs to multi FAsset WFLR contract
+  // Set FTSOs to multi Asset WNAT contract
   let multiAssets = ["XRP", "LTC", "XDG"]
   let multiAssetFtsos = multiAssets.map(asset => assetToContracts.get(asset)!.ftso!.address)
   // [ftsoFxrp.address, ftsoFltc.address, ftsoFxdg.address]
-  await ftsoManager.setFtsoFAssetFtsos(ftsoWflr.address, multiAssetFtsos);
+  await ftsoManager.setFtsoAssetFtsos(ftsoWnat.address, multiAssetFtsos);
 
   // Activate the managers
   if (!quiet) {
@@ -443,54 +443,54 @@ console.error("State connector")
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,
     ftsoRegistry: ftsoRegistry,
-    ftsoContracts: ["WFLR", ...assets].map(asset => assetToContracts.get(asset))
+    ftsoContracts: ["WNAT", ...assets].map(asset => assetToContracts.get(asset))
     // Add other contracts as needed and fix the interface above accordingly
   } as DeployedFlareContracts;
 }
 
-async function deployNewFAsset(
+async function deployNewAsset(
   contracts: Contracts,
   deployerAccountAddress: string,
   ftsoManager: FtsoManagerInstance,
   supplyAddress: string,
-  wflrAddress: string,
+  wnatAddress: string,
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
-  fAssetDefinition: FAssetDefinition,
+  xAssetDefinition: AssetDefinition,
   priceDeviationThresholdBIPS: number,
   priceEpochCyclicBufferSize: number,
   quiet = false):
   Promise<{
-    fAssetToken: FAssetTokenInstance,
-    dummyFAssetMinter: DummyFAssetMinterInstance,
+    xAssetToken: AssetTokenInstance,
+    dummyAssetMinter: DummyAssetMinterInstance,
     ftso: FtsoInstance
   }> {
 
-  const DummyFAssetMinter = artifacts.require("DummyFAssetMinter");
-  const FAssetToken = artifacts.require("FAssetToken");
+  const DummyAssetMinter = artifacts.require("DummyAssetMinter");
+  const AssetToken = artifacts.require("AssetToken");
   const Ftso = artifacts.require("Ftso");
 
-  // Deploy FAsset
-  const fAssetToken = await FAssetToken.new(deployerAccountAddress, fAssetDefinition.name, fAssetDefinition.symbol, fAssetDefinition.decimals);
-  await setDefaultVPContract(fAssetToken, deployerAccountAddress);
-  spewNewContractInfo(contracts, fAssetDefinition.symbol, fAssetToken.address, quiet);
+  // Deploy Asset
+  const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.symbol, xAssetDefinition.decimals);
+  await setDefaultVPContract(xAssetToken, deployerAccountAddress);
+  spewNewContractInfo(contracts, xAssetDefinition.symbol, xAssetToken.address, quiet);
 
-  await cleanupBlockNumberManager.registerToken(fAssetToken.address);
-  await fAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
+  await cleanupBlockNumberManager.registerToken(xAssetToken.address);
+  await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
 
-  // Deploy dummy FAsset minter
-  const dummyFAssetMinter = await DummyFAssetMinter.new(fAssetToken.address, fAssetDefinition.maxMintRequestTwei);
-  spewNewContractInfo(contracts, `Dummy ${fAssetDefinition.symbol} minter`, dummyFAssetMinter.address, quiet);
+  // Deploy dummy Asset minter
+  const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
+  spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.symbol} minter`, dummyAssetMinter.address, quiet);
 
-  // Establish governance over FAsset by minter
-  await fAssetToken.proposeGovernance(dummyFAssetMinter.address, { from: deployerAccountAddress });
-  await dummyFAssetMinter.claimGovernanceOverMintableToken();
+  // Establish governance over Asset by minter
+  await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
+  await dummyAssetMinter.claimGovernanceOverMintableToken();
 
-  // Register an FTSO for the new FAsset
-  const ftso = await Ftso.new(fAssetDefinition.symbol, wflrAddress, ftsoManager.address, supplyAddress, fAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
-  await ftsoManager.setFtsoFAsset(ftso.address, fAssetToken.address);
-  spewNewContractInfo(contracts, `FTSO ${fAssetDefinition.symbol}`, ftso.address, quiet);
+  // Register an FTSO for the new Asset
+  const ftso = await Ftso.new(xAssetDefinition.symbol, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
+  await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
+  spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, ftso.address, quiet);
 
-  return { fAssetToken, dummyFAssetMinter, ftso };
+  return { xAssetToken, dummyAssetMinter, ftso };
 }
 
 function spewNewContractInfo(contracts: Contracts, name: string, address: string, quiet = false) {
@@ -500,12 +500,12 @@ function spewNewContractInfo(contracts: Contracts, name: string, address: string
   contracts.add(new Contract(pascalCase(name), address));
 }
 
-function rewrapFassetParams(data: any): FAssetDefinition {
+function rewrapXassetParams(data: any): AssetDefinition {
   return {
-    name: data.fAssetName,
-    symbol: data.fAssetSymbol,
-    decimals: data.fAssetDecimals,
-    maxMintRequestTwei: data.dummyFAssetMinterMax,
+    name: data.xAssetName,
+    symbol: data.xAssetSymbol,
+    decimals: data.xAssetDecimals,
+    maxMintRequestTwei: data.dummyAssetMinterMax,
     initialPriceUSD5Dec: data.initialPriceUSD5Dec
   }
 }

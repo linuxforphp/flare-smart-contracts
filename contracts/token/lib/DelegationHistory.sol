@@ -15,7 +15,7 @@ library DelegationHistory {
     using SafeMath for uint256;
     using SafePct for uint256;
 
-    uint256 public constant MAX_DELEGATES_BY_PERCENT = 3;
+    uint256 public constant MAX_DELEGATES_BY_PERCENT = 2;
     string private constant MAX_DELEGATES_MSG = "Max delegates exceeded";
     
     /**

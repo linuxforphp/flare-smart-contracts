@@ -1,7 +1,7 @@
 {
   "name": "flare_smart_contracts",
   "version": "0.0.1",
-  "description": "Smart contracts implementing FTSO and FAsset on flare network.",
+  "description": "Smart contracts implementing FTSO on Flare Network.",
   "main": "",
   "repository": {
     "type": "git",

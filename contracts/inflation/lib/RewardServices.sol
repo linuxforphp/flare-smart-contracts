@@ -19,7 +19,8 @@ import "./RewardService.sol";
  * @dev There are two concepts that are helpful to understand. A sharing percentage associates an inflation receiver
  *   with a sharing percentage used to calculate percentage of authorized inflation a given reward contract
  *   is entitled to receive for distributing rewards. A reward service is associtated to a topup configuration, which
- *   dictates how much FLR will be minted and sent for claiming reserves, and it stores totals for a given inflation
+ *   dictates how much native token will be minted and sent for claiming reserves, and it stores totals for a given 
+ *   inflation
  *   receiver, for a given annum.
  **/
 library RewardServices {    
@@ -128,10 +129,10 @@ library RewardServices {
 
     /**
      * @notice Given topup configurations as maintained by an instantiated Inflation contract, compute
-     *   the topup minting requests needed to topup reward contracts with FLR reserves to satisfy claim
+     *   the topup minting requests needed to topup reward contracts with native token reserves to satisfy claim
      *   requests.
      * @param _inflation    The Inflation contract holding the topup configurations.
-     * @return _topupRequestWei The topup request to mint FLR across reward services for this cycle.
+     * @return _topupRequestWei The topup request to mint native tokens across reward services for this cycle.
      */
     function computeTopupRequest(
         RewardServicesState storage _self,
@@ -176,10 +177,10 @@ library RewardServices {
     }
 
     /**
-     * @notice Receive a topup request of minted FLR and disburse amongst requestors.
-     * @return _amountPostedWei The total amount of FLR funded.
+     * @notice Receive a topup request of minted native tokens and disburse amongst requestors.
+     * @return _amountPostedWei The total amount of native tokens funded.
      * @dev Assume value is siting in Inflation contract waiting to be posted and transmitted.
-     *   This function is atomic, so if for some reason not enough FLR got minted, this
+     *   This function is atomic, so if for some reason not enough native tokens got minted, this
      *   function will fail until all topup requests can be satisfied.
      */
     function receiveTopupRequest(

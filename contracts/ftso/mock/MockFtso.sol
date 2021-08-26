@@ -22,7 +22,7 @@ contract MockFtso is SimpleMockFtso {
     
     constructor(
         string memory _symbol,
-        IIVPToken _wFlr,
+        IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
         IISupply _supply,
         uint256 _startTimestamp,
@@ -34,7 +34,7 @@ contract MockFtso is SimpleMockFtso {
     )
         SimpleMockFtso(
             _symbol,
-            _wFlr,
+            _wNat,
             _ftsoManager,
             _supply,
             _initialPrice,
@@ -46,12 +46,12 @@ contract MockFtso is SimpleMockFtso {
         if (_submitPeriod != 0 && _revealPeriod != 0) {
 
             // configureEpochs
-            epochs.maxVotePowerFlrThresholdFraction = 1;
+            epochs.maxVotePowerNatThresholdFraction = 1;
             epochs.maxVotePowerAssetThresholdFraction = 1;
             epochs.lowAssetUSDThreshold = 1000;
             epochs.highAssetUSDThreshold = 10000;
             epochs.highAssetTurnoutThresholdBIPS = 50;
-            epochs.lowFlrTurnoutThresholdBIPS = 1500;
+            epochs.lowNatTurnoutThresholdBIPS = 1500;
             epochs.trustedAddresses = new address[](0);
 
             // activateFtso
@@ -142,7 +142,7 @@ contract MockFtso is SimpleMockFtso {
      * @return _voters              Array of addresses an epoch price was submitted from
      * @return _prices              Array of prices submitted in epoch
      * @return _weights             Array of vote weights in epoch
-     * @return _weightsFlr          Array of FLR weights in epoch
+     * @return _weightsNat          Array of native token weights in epoch
      * @return _weightsAsset        Array of asset weights in epoch
      * @return _eligibleForReward   Array of boolean values that specify which votes are eligible for reward
      * @notice Data for a single vote is determined by values in a specific position of the arrays
@@ -153,7 +153,7 @@ contract MockFtso is SimpleMockFtso {
             address[] memory _voters,
             uint256[] memory _prices,
             uint256[] memory _weights,
-            uint256[] memory _weightsFlr,
+            uint256[] memory _weightsNat,
             uint256[] memory _weightsAsset,
             bool[] memory _eligibleForReward
         )
@@ -167,7 +167,7 @@ contract MockFtso is SimpleMockFtso {
         _voters = new address[](count);
         _prices = new uint256[](count);
         _weights = new uint256[](count);
-        _weightsFlr = new uint256[](count);
+        _weightsNat = new uint256[](count);
         _weightsAsset = new uint256[](count);
         _eligibleForReward = new bool[](count);
 
@@ -179,12 +179,12 @@ contract MockFtso is SimpleMockFtso {
             uint256 index = vote.index; // make sure the result is sorted
             _voters[index] = vote.voter;
             _prices[index] = vote.price;
-            _weightsFlr[index] = vote.weightFlr;
+            _weightsNat[index] = vote.weightNat;
             _weightsAsset[index] = vote.weightAsset;
             _eligibleForReward[index] = rewardsAvailable && 
                 vote.index >= firstEligibleForReward && vote.index <= lastEligibleForReward;
         }
-        _weights = FtsoEpoch._computeWeights(epoch, _weightsFlr, _weightsAsset);
+        _weights = FtsoEpoch._computeWeights(epoch, _weightsNat, _weightsAsset);
     }
 
     /**

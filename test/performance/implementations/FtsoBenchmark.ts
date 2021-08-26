@@ -1,11 +1,11 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { FtsoRegistryInstance, SimpleMockFtsoInstance, MockContractInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WFlrInstance } from "../../../typechain-truffle";
+import { FtsoRegistryInstance, SimpleMockFtsoInstance, MockContractInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, GOVERNANCE_GENESIS_ADDRESS, getTestFile } from "../../utils/constants";
 import { compareArrays, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
-const WFlr = artifacts.require("WFlr");
+const WNat = artifacts.require("WNat");
 const VPToken = artifacts.require("VPTokenMock");
 const Ftso = artifacts.require("SimpleMockFtso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -44,8 +44,8 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     let whitelist: VoterWhitelisterMockInstance;
     let priceSubmitter: PriceSubmitterInstance;
 
-    let wflr: WFlrInstance;
-    let flrFtso: SimpleMockFtsoInstance;
+    let wnat: WNatInstance;
+    let natFtso: SimpleMockFtsoInstance;
 
     let ftsoRegistry: FtsoRegistryInstance;
 
@@ -55,14 +55,14 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     let vpBlockNumber: number;
     let epochId: number;
 
-    async function setFlrSupply(amount: number | BN, blockNumber: number) {
+    async function setNatSupply(amount: number | BN, blockNumber: number) {
         const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
         const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', amount);
         await supplyMock.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
     }
 
     async function createFtso(symbol: string, initialPrice: BN) {
-        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, wnat.address, ftsoManager, supplyMock.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // add ftso to price submitter and whitelist
         const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -74,7 +74,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         return ftso;
     }
 
-    async function initializeRewardEpoch(vpBlock?: number, flrSupply: BN | number = eth(1000)) {
+    async function initializeRewardEpoch(vpBlock?: number, natSupply: BN | number = eth(1000)) {
         // set votepower block
         vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
         await time.advanceBlock();
@@ -83,7 +83,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         for (const ftso of ftsoList) {
             await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
         }
-        await setFlrSupply(flrSupply, vpBlockNumber);
+        await setNatSupply(natSupply, vpBlockNumber);
         await startNewPriceEpoch();
     }
     
@@ -110,7 +110,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         await advanceTimeTo((epochId + 1) * epochDurationSec); // reveal period start
     }
     
-    describe("Voting for flr + 5 assets", async () => {
+    describe("Voting for nat + 5 assets", async () => {
         let assetData: Array<[name: string, symbol: string, price: BN]> = [
             ["Ripple", "XRP", usd(0.5)],
             ["Bitcoin", "BTC", usd(5)],
@@ -134,8 +134,8 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
             await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
             // create assets
-            wflr = await WFlr.new(governance);
-            await setDefaultVPContract(wflr, governance);
+            wnat = await WNat.new(governance);
+            await setDefaultVPContract(wnat, governance);
             assets = [];
             for (const [name, symbol, _] of assetData) {
                 const asset = await VPToken.new(governance, name, symbol);
@@ -146,18 +146,18 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
             supplyMock = await MockContract.new();
             // create ftsos
-            flrFtso = await createFtso("FLR", usd(1));
+            natFtso = await createFtso("NAT", usd(1));
             ftsos = [];
             for (let i = 0; i < assets.length; i++) {
                 const [_, symbol, price] = assetData[i];
                 const ftso = await createFtso(symbol, price);
-                // 3 of 5 asset ftsos have fasset
+                // 3 of 5 asset ftsos have xasset
                 if (i <= 2) {
-                    await ftso.setFAsset(assets[i].address, { from: ftsoManager });
+                    await ftso.setAsset(assets[i].address, { from: ftsoManager });
                 }
                 ftsos.push(ftso);
             }
-            await flrFtso.setFAssetFtsos(ftsos.map(f => f.address), { from: ftsoManager });
+            await natFtso.setAssetFtsos(ftsos.map(f => f.address), { from: ftsoManager });
         });
         
         it("submit hashes and reveal prices", async () => {
@@ -165,7 +165,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             const vp = eth(1.5);
             // Assemble
             for (const voter of voters) {
-                await wflr.deposit({ from: voter, value: vp });
+                await wnat.deposit({ from: voter, value: vp });
                 for (const asset of assets) {
                     await asset.mint(voter, vp);
                 }
@@ -173,13 +173,13 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await initializeRewardEpoch();
             // warm cache
             for (const voter of voters) {
-                await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+                await wnat.votePowerOfAtCached(voter, vpBlockNumber);
                 for (const asset of assets) {
                     await asset.votePowerOfAtCached(voter, vpBlockNumber);
                 }
             }
             // Act
-            const allFtsos = [flrFtso, ...ftsos];
+            const allFtsos = [natFtso, ...ftsos];
             const prices = [usd(2.1), usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4)];
             const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
             // submit hashes
@@ -211,7 +211,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             const vp = eth(1.5);
             // Assemble
             for (const voter of voters) {
-                await wflr.deposit({ from: voter, value: vp });
+                await wnat.deposit({ from: voter, value: vp });
                 for (const asset of assets) {
                     await asset.mint(voter, vp);
                 }
@@ -219,13 +219,13 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await initializeRewardEpoch();
             // warm cache
             for (const voter of voters) {
-                await wflr.votePowerOfAtCached(voter, vpBlockNumber);
+                await wnat.votePowerOfAtCached(voter, vpBlockNumber);
                 for (const asset of assets) {
                     await asset.votePowerOfAtCached(voter, vpBlockNumber);
                 }
             }
             // Act
-            const allFtsos = [flrFtso, ...ftsos];
+            const allFtsos = [natFtso, ...ftsos];
             const prices = [usd(2.1), usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4)];
             const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
             const indices: BN[] = [];

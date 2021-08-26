@@ -4,47 +4,47 @@
 
 
 ## TL;DR
-On chain FTSO prices will be updated every few minutes. Any user (address) can provide prices (data) by reading prices from any chosen source and submitting them to a dedicated API on the ftso contract. Any FLR holder can participate by delegating their vote power (1:1 based on flare balance) to another address (price provider) that submits prices. Good price feeds will be rewarded with part of the FLR inflation, in the form of FLR tokens on the Flare network. An address must have some minimum vote power in order to submit prices.
+On chain FTSO prices will be updated every few minutes. Any user (address) can provide prices (data) by reading prices from any chosen source and submitting them to a dedicated API on the ftso contract. Any native token holder can participate by delegating their vote power (1:1 based on native token balance) to another address (price provider) that submits prices. Good price feeds will be rewarded with part of the native token inflation, in the form of native tokens on the Flare network. An address must have some minimum vote power in order to submit prices.
 
 # FTSO overview
-The FTSO or ‘Flare Time Series Oracle’ is a service to gather price (and data) signals of off-chain assets for consumption by other smart contracts on the Flare blockchain. The system is designed to encourage FLR holders to submit accurate prices to the FTSO contracts. Prices will be submitted in price epochs of a few minutes. For every price epoch, a weighted median algorithm will aggregate all price submissions to find the median price, which will become the current FTSO price. Good price submissions will be rewarded with newly minted FLR tokens (FLR inflation).
+The FTSO or ‘Flare Time Series Oracle’ is a service to gather price (and data) signals of off-chain assets for consumption by other smart contracts on the Flare blockchain. The system is designed to encourage native token holders to submit accurate prices to the FTSO contracts. Prices will be submitted in price epochs of a few minutes. For every price epoch, a weighted median algorithm will aggregate all price submissions to find the median price, which will become the current FTSO price. Good price submissions will be rewarded with newly minted native token tokens (native token inflation).
 
 Price submissions are considered good if they are within the interquartile range (within 25% of either side) of the submissions around the weighted median price. The rewards will be distributed between good submissions according to the relative weight (balance / vote power) of each address. 
 
-An FTSO contract will be deployed for any new data signal supported by the Flare network, as determined by governance. The Flare Foundation currently plans to deploy contracts that will provide USD prices of FLR, XRP, LTC, XLM, DOGE, ADA, Algo, BCH, Digi, BTC and more to come.
+An FTSO contract will be deployed for any new data signal supported by the Flare network, as determined by governance. The Flare Foundation currently plans to deploy contracts that will provide USD prices of NAT (native token), XRP, LTC, XLM, DOGE, ADA, Algo, BCH, Digi, BTC and more to come.
 
 More detail about the FTSO can be found here: [https://blog.flare.xyz/ftso-a-breakdown/](https://blog.flare.xyz/ftso-a-breakdown/)
 
-## Introducing WFLR - a vote power token
-The WFLR token represents wrapped FLR. Any user can wrap their FLR by sending FLR to the WFLR contract via the deposit API. WFLR can then be converted back to FLR by calling a withdrawal transaction on the WFLR contract. FLR and WFLR will always have a 1:1 ratio.
+## Introducing WNAT - a vote power token
+The WNAT token represents wrapped NAT (native tokens). Any user can wrap their native tokens by sending native tokens to the WNAT contract via the deposit API. WNAT can then be converted back to native tokens by calling a withdrawal transaction on the WNAT contract. Native tokens (NAT) and WNAT will always have a 1:1 ratio.
 
-WFLR must be used in the price submission process. It is an ERC20 token that also supports vote power delegation from one address to another. Meaning, any WFLR holder can delegate their vote power to any other addresses. FLR depositors always maintain custody of their WFLR. **When delegating vote power, WFLR holders retain full custody over their WFLR.**
+WNAT must be used in the price submission process. It is an ERC20 token that also supports vote power delegation from one address to another. Meaning, any WNAT holder can delegate their vote power to any other addresses. Native token depositors always maintain custody of their WNAT. **When delegating vote power, WNAT holders retain full custody over their WNAT.**
 
-Note that although WFLR and FLR always have the same value, they differ in usage. Only FLR can be used to pay for flare network transactions (gas), while only WFLR can be used to represent and delegate vote power in price submissions.
+Note that although WNAT and native tokens (NAT) always have the same value, they differ in usage. Only native tokens can be used to pay for flare network transactions (gas), while only WNAT can be used to represent and delegate vote power in price submissions.
 
 ### Who can submit prices
 
-~~Any account (Flare address) submitting prices will require a minimum amount of WFLR voting power, and vote power must be some minimal percentage of the total WFLR supply. WFLR vote power reflects any given account’s balance, plus the vote power delegated by any other account. Use _getpriceepochdata()_ (below), to query minimal required vote power.~~
+~~Any account (Native token address) submitting prices will require a minimum amount of WNAT voting power, and vote power must be some minimal percentage of the total WNAT supply. WNAT vote power reflects any given account’s balance, plus the vote power delegated by any other account. Use _getpriceepochdata()_ (below), to query minimal required vote power.~~
 
-Minimal voting power is not enforced. This can enable a broader range of participation and discourage hoarding. The `VoterWhitelister` contract is in charge of allowing/disallowing price submissions. For each Ftso, a whitelist of up to `N` allowed voters is kept. The number of voters per asset can vary and is settable by Governance. When a price provider tries to whitelist himself, his power is calculated as sum of normalized fAsset and Wflr power for that Ftso whitelist. Normalization is done with respect to all power currently in the whitelist (the same way as median is calculated) and not the full vote power per asset. The prerequisite for a price provider is explicit whitelisting. Each user can require any address to be whitelisted by the VoterWhitelister contract. The request calculates the requesting user's power and conditionally adds that address to the whitelist. If the whitelist is not full, the price provider is added immediately. If the list is full, the user with minimal voter power is found and replaced with the requesting user only if the new user's power is strictly greater. When the number of voter slots is lowered, the voters get removed from whitelist one by one by removing the one with minimal power on each step. Events are fired to notify voters about the change of voter status on the whitelist.
+Minimal voting power is not enforced. This can enable a broader range of participation and discourage hoarding. The `VoterWhitelister` contract is in charge of allowing/disallowing price submissions. For each Ftso, a whitelist of up to `N` allowed voters is kept. The number of voters per asset can vary and is settable by Governance. When a price provider tries to whitelist himself, his power is calculated as sum of normalized xAsset and Wnat power for that Ftso whitelist. Normalization is done with respect to all power currently in the whitelist (the same way as median is calculated) and not the full vote power per asset. The prerequisite for a price provider is explicit whitelisting. Each user can require any address to be whitelisted by the VoterWhitelister contract. The request calculates the requesting user's power and conditionally adds that address to the whitelist. If the whitelist is not full, the price provider is added immediately. If the list is full, the user with minimal voter power is found and replaced with the requesting user only if the new user's power is strictly greater. When the number of voter slots is lowered, the voters get removed from whitelist one by one by removing the one with minimal power on each step. Events are fired to notify voters about the change of voter status on the whitelist.
 
 
 
-Price providers must have WFLR voting power and/or FAsset (flare XRP, flare LTC, etc.) voting power. However, only WFLR holders will receive FLR rewards for good price submissions.
+Price providers must have WNAT voting power and/or Asset (xasset - XRP, xasset - LTC, etc.) voting power. However, only WNAT holders will receive native token rewards for good price submissions.
 
 ### How does this work?
-A WFLR holder can delegate vote power by percentage to a limited number of addresses, currently 3. The actual delegated vote power will be updated upon each token transfer. 
+A WNAT holder can delegate vote power by percentage to a limited number of addresses, currently 3. The actual delegated vote power will be updated upon each token transfer. 
 
 #### Example:
-Alice has 10 FLR, she has no vote power delegated to her.
-Alice wraps her 10 FLR by calling WFLR.deposit(), thus she now has vote power of 10.
-Bob has 30 WFLR so he has vote power of 30.
+Alice has 10 native tokens, she has no vote power delegated to her.
+Alice wraps her 10 native tokens by calling WNAT.deposit(), thus she now has vote power of 10.
+Bob has 30 WNAT so he has vote power of 30.
 Bob decides to delegate 50% of his vote power to Alice. Now Alice has vote power of 25 and Bob has vote power of 15. 
-Bob receives 20 more WFLR tokens, so now Alice has vote power of 35 and Bob has vote power of 25.
+Bob receives 20 more WNAT tokens, so now Alice has vote power of 35 and Bob has vote power of 25.
 
-Notice how when a delegator receives additional WFLR, the contract automatically updates vote power for all relevant delegatees according to their delegation percentage. It is important to note that although Bob has delegated 50% of his vote power to Alice, he still retains his 30 WFLR.
+Notice how when a delegator receives additional WNAT, the contract automatically updates vote power for all relevant delegatees according to their delegation percentage. It is important to note that although Bob has delegated 50% of his vote power to Alice, he still retains his 30 WNAT.
 
-Note that for the Beta run of FTSOs, any address holding WFLR can submit prices. However, there will be minimum thresholds of vote power required to submit prices at mainnet launch.
+Note that for the Beta run of FTSOs, any address holding WNAT can submit prices. However, there will be minimum thresholds of vote power required to submit prices at mainnet launch.
 
 ## How to submit prices
 Price epochs follow the commit and reveal scheme. The commit period is the price epoch period (few minutes long) immediately followed by x minutes of the reveal period. More on this scheme can be found [here](https://en.wikipedia.org/wiki/Commitment_scheme). This scheme is designed to stop individuals from submitting prices based on others’ price proposals. Within the commit period, all submissions are secret. After the commit period passes, individuals will no longer be able to change their submissions. During the reveal period, individuals must mandatorily reveal their prices to be considered by the FTSO. At this point, changes can not be made, and prices become public record.  
@@ -115,7 +115,7 @@ The time frame for an epoch can be taken from:
 *   When in fallback mode, the FTSO takes price values from a trusted list of addresses (chain link style) and doesn't allocate any rewards.  
 
 ### Price submission vote power
-Each price epoch has a specific vote power block which is used as a snapshot to find vote power of each address. The above function - getPriceEpochData() - can be used to determine the vote power block of each price epoch. Each provider should check their own vote power at the block and make sure they have enough vote power to submit prices. The same vote power block will be used in a series of price epochs. More on this will be described in a separate blog post. WFLR vote power can be determined using API WFLR.votePowerOfAt(address, block). Later when the fAsset system goes live, the same API will be used for the fAsset tokens to query the vote power of an address. 
+Each price epoch has a specific vote power block which is used as a snapshot to find vote power of each address. The above function - getPriceEpochData() - can be used to determine the vote power block of each price epoch. Each provider should check their own vote power at the block and make sure they have enough vote power to submit prices. The same vote power block will be used in a series of price epochs. More on this will be described in a separate blog post. WNAT vote power can be determined using API WNAT.votePowerOfAt(address, block). Later when the xAsset system goes live, the same API will be used for the xAsset tokens to query the vote power of an address. 
 
 ## Events
 
@@ -131,10 +131,10 @@ A submitter can listen for this event to know which epoch ID the price was submi
 ```
    event PriceRevealed(
        address indexed voter, uint256 indexed epochId, uint256 price, uint256 random, uint256 timestamp,
-       uint256 votePowerFlr, uint256 votePowerAsset
+       uint256 votePowerNat, uint256 votePowerAsset
    );
 ```
-The event will be emitted only if the price reveal was accepted, meaning the submitting address holds enough vote power (in either WFLR or FAsset) and that the hash of the submitted data matches the committed hash for the given price epoch.
+The event will be emitted only if the price reveal was accepted, meaning the submitting address holds enough vote power (in either WNAT or Asset) and that the hash of the submitted data matches the committed hash for the given price epoch.
 
 
 #### Events price Epoch init + finalize

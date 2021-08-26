@@ -95,7 +95,7 @@ Price providers can request to be whitelisted for a specific asset index using `
 The `VoterWhitelister` contract is in charge of allowing/disallowing price submissions.
 For each FTSO, a whitelist of up to `N` allowed voters is kept.
 The number of voters per asset can vary and is settable by Governance.
-When a price provider tries to whitelist himself, his power is calculated as sum of normalized fAsset and Wflr power for that FTSO whitelist.
+When a price provider tries to whitelist himself, his power is calculated as sum of normalized xAsset and Wnat power for that FTSO whitelist.
 Normalization is done with respect to all power currently in the whitelist (_the same way as median is calculated_) and not the full vote power per asset.
 The prerequisite for a price provider is explicit whitelisting.
 Each user can require any address to be whitelisted by the `VoterWhitelister` contract.

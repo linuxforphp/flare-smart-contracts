@@ -163,7 +163,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
         bool isTrustedAddress = false;
 
-        uint256 wflrVP = uint256(-1);
+        uint256 wNatVP = uint256(-1);
 
         for (uint256 i = 0; i < length; i++) {
             uint256 ind = _ftsoIndices[i];
@@ -176,12 +176,12 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
                     }
                 }
             }
-            // read flare VP only once
-            if (wflrVP == uint256(-1)) {
-                wflrVP = ftsos[i].wflrVotePowerCached(msg.sender, _epochId);
+            // read native VP only once
+            if (wNatVP == uint256(-1)) {
+                wNatVP = ftsos[i].wNatVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
-            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], wflrVP);
+            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], wNatVP);
         }
         emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, block.timestamp);
     }

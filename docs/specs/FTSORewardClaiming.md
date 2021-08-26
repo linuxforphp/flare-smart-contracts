@@ -1,10 +1,10 @@
 # FTSO Reward Claiming
 
-During the FTSO price voting process, rewards are being distributed to price (data) providers based on their WFlr vote power. Depending on the vote power share and price provider fee percentage, a part of this reward belongs to users who delegated their WFlr vote power to the price providers. The rewards can be claimed via the contract [FtsoRewardManager](../../contracts/ftso/implementation/FtsoRewardManager.sol) that implements [IFtsoRewardManager](../../contracts/userInterfaces/IFtsoRewardManager.sol) as described in this document.
+During the FTSO price voting process, rewards are being distributed to price (data) providers based on their WNat vote power. Depending on the vote power share and price provider fee percentage, a part of this reward belongs to users who delegated their WNat vote power to the price providers. The rewards can be claimed via the contract [FtsoRewardManager](../../contracts/ftso/implementation/FtsoRewardManager.sol) that implements [IFtsoRewardManager](../../contracts/userInterfaces/IFtsoRewardManager.sol) as described in this document.
 
 ## Reward claim
 
-Reward claiming process depends on vote power delegation mode. The default delegation mode is delegation by percentage. Delegation by amount is intended for advanced users. The delegation mode of a user can be checked by calling `delegationModeOf` on the [WFlr](../../contracts/token/implementation/WFlr.sol) contract that implements [IVPToken](../../contracts/userInterfaces/IVPToken.sol) interface.
+Reward claiming process depends on vote power delegation mode. The default delegation mode is delegation by percentage. Delegation by amount is intended for advanced users. The delegation mode of a user can be checked by calling `delegationModeOf` on the [WNat](../../contracts/token/implementation/WNat.sol) contract that implements [IVPToken](../../contracts/userInterfaces/IVPToken.sol) interface.
 
 ### Delegation by percentage
 
@@ -118,13 +118,13 @@ The information for which epochs the rewards have been already claimed can be ob
 
 ### Overview
 
-Suppose a total reward amount `REWARD` is allocated to a price provider `P` for a reward epoch `E`. This reward is divided among `P` and users who delegated to `P` depending on the WFlr vote power share and `P`'s fee percentage.
+Suppose a total reward amount `REWARD` is allocated to a price provider `P` for a reward epoch `E`. This reward is divided among `P` and users who delegated to `P` depending on the WNat vote power share and `P`'s fee percentage.
 
-Let `PVP` be the total WFlr vote power associated with `P`. This is the sum of `P`'s own undelegated WFlr vote power and the WFlr vote powers that have been delegated to `P`. The state correspodns to a specific timestamp in `E` (this timestamp is called vote power block).
+Let `PVP` be the total WNat vote power associated with `P`. This is the sum of `P`'s own undelegated WNat vote power and the WNat vote powers that have been delegated to `P`. The state correspodns to a specific timestamp in `E` (this timestamp is called vote power block).
 
 Supose `SHARE` is the vote power share:
-- for `P` this is the ratio between `P`'s own undelegated WFlr vote power and `PVP`,
-- for delegator this is the ratio between the WFlr vote power that the delegator has delegated to `P` and `PVP`.
+- for `P` this is the ratio between `P`'s own undelegated WNat vote power and `PVP`,
+- for delegator this is the ratio between the WNat vote power that the delegator has delegated to `P` and `PVP`.
 
 Suppose `FP` denotes `P`'s fee percentage for `E`.
 
