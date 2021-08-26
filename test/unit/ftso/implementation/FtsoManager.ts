@@ -290,10 +290,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should get current reward epoch", async () => {
-            expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(0);
+            await expectRevert(ftsoManager.getCurrentRewardEpoch(), "Reward epoch not initialized yet");
+
             await ftsoManager.activate();
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize(); // initalize reward epoch
+            expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(0);
             
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S + REWARD_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
@@ -320,13 +322,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should revert setting invalid governance parameters", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 0, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10,[]), "Reward expiry invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY,[accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Max trusted addresses length exceeded");
+            await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 50, 500, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 0, 50, 500, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 0, []), "Reward expiry invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY, [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Max trusted addresses length exceeded");
         });
 
         it("Should activate", async () => {
