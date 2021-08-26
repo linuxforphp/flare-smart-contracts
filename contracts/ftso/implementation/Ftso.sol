@@ -104,6 +104,7 @@ contract Ftso is IIFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
@@ -637,12 +638,14 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Submits price hash for current epoch
-     * @param _hash Hashed price and random number
+     * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
+     * @param _hash                 Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
     function _submitPriceHash(address _sender, uint256 _epochId, bytes32 _hash) internal {
-        require(_epochId == getCurrentEpochId(), ERR_WRONG_EPOCH_ID);       
-        require(epochVoterHash[_epochId][_sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH); 
+        require(_epochId == getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
+        require(epochVoterHash[_epochId][_sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
     }

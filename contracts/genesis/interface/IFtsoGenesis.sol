@@ -7,8 +7,8 @@ interface IFtsoGenesis {
     
     /**
      * @notice Submits price hash for current epoch - only price submitter
-     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
      * @notice Emits PriceHashSubmitted event. Reverts if _epochId does not match
      * the current epoch or on multiple submits for the same _epochId.

@@ -22,6 +22,7 @@ contract MockNpmFtso is IIFtso {
     string internal constant ERR_PRICE_REVEAL_FAILURE = "Reveal period not active";
     string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
     string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
+    string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
 
     string internal constant UNAVAILABLE = "Unavailable for testing";
 
@@ -74,6 +75,7 @@ contract MockNpmFtso is IIFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
@@ -85,6 +87,7 @@ contract MockNpmFtso is IIFtso {
         external override onlyPriceSubmitter 
     {
         require(_epochId == _getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
+        require(epochVoterHash[_epochId][_sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
     }
