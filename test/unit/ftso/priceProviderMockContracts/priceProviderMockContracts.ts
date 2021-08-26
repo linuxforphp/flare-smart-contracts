@@ -49,6 +49,20 @@ contract(`MockPriceSubmitter.sol; MockPriceSubmitter unit tests`, async accounts
             await expectRevert(tx, "Not whitelisted");
         });
 
+        it("Should revert price submission on double submission", async() => {
+            const hash1 = submitPriceHash(500, 123, accounts[1]);
+            await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
+            await priceSubmitter.submitPriceHashes(1, [1], [hash1], {from: accounts[10]});
+            await expectRevert(priceSubmitter.submitPriceHashes(1, [1], [hash1], {from: accounts[10]}), "Duplicate submit in epoch");
+        });
+
+        it("Should revert price submission on wrong epoch id", async() => {
+            const hash1 = submitPriceHash(500, 123, accounts[1]);
+            await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
+            await expectRevert(priceSubmitter.submitPriceHashes(0, [1], [hash1], {from: accounts[10]}), "Wrong epoch id");
+            await expectRevert(priceSubmitter.submitPriceHashes(2, [1], [hash1], {from: accounts[10]}), "Wrong epoch id");
+        });
+
         it("Should submit and reveal", async() => {
             // Mock prices: 
             const prices = [500, 400, 100];

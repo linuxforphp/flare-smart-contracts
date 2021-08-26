@@ -62,7 +62,7 @@ see more details below.
 
 #### Submit price hash
 ```
-   function submitPriceHash(bytes32 _hash) external;
+   function submitPriceHash(uint256 _epochId, bytes32 _hash) external;
 ```
 The _hash should be keccak256(price, random, senders_address)
 
@@ -81,6 +81,7 @@ A Price submitter contract will enable each provider to send the above Txs batch
 
 ```
    function submitPriceHashes(
+       uint256 _epochId,
        uint256[] memory _assetIndices,
        bytes32[] memory _hashes
    ) external;
