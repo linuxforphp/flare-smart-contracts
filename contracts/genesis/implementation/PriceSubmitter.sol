@@ -109,13 +109,16 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      * @param _hashes               List of hashed price and random number
      * @notice Emits PriceHashesSubmitted event
      */
-    function submitPriceHashes(uint256[] memory _ftsoIndices, bytes32[] memory _hashes) external override {
+    function submitPriceHashes(
+        uint256 _epochId, 
+        uint256[] memory _ftsoIndices, 
+        bytes32[] memory _hashes
+    ) external override {
         // Submit the prices
         uint256 length = _ftsoIndices.length;
         require(length == _hashes.length, ERR_ARRAY_LENGTHS);
 
         IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
-        uint256 epochId;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
         bool isTrustedAddress = false;
 
@@ -130,9 +133,9 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
                     }
                 }
             }
-            epochId = ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]);
+            ftsos[i].submitPriceHashSubmitter(msg.sender, _epochId, _hashes[i]);
         }
-        emit PriceHashesSubmitted(msg.sender, epochId, ftsos, _hashes, block.timestamp);
+        emit PriceHashesSubmitted(msg.sender, _epochId, ftsos, _hashes, block.timestamp);
     }
 
     /**

@@ -21,11 +21,12 @@ contract SimpleMockFtso is Ftso {
 
     /**
      * @notice Submits price hash for current epoch
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
      * @notice Emits PriceHashSubmitted event
      */
-    function submitPriceHash(bytes32 _hash) external whenActive {
-        _submitPriceHash(msg.sender, _hash);
+    function submitPriceHash(uint256 _epochId, bytes32 _hash) external whenActive {
+        _submitPriceHash(msg.sender, _epochId, _hash);
     }
 
     /**

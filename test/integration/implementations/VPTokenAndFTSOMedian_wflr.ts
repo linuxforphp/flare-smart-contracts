@@ -179,8 +179,8 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let len = testExample.prices.length;
         
         logger.log(`SUBMIT PRICE 10`)
-        await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
-        const { epoch } = await submitPrice(signers, ftso, prices);
+        let epoch = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
+        await submitPrice(epoch, signers, ftso, prices);
 
         await ftso.initializeCurrentEpochStateForReveal(false);
 
@@ -246,8 +246,8 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let len = testExample.prices.length;
         
         logger.log(`SUBMIT PRICE 1 - 10`)
-        await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
-        const { epoch } = await submitPrice(signers, ftso, testExample.prices);
+        let epoch = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
+        await submitPrice(epoch, signers, ftso, testExample.prices);
 
         await ftso.initializeCurrentEpochStateForReveal(false);
 
@@ -256,7 +256,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         await revealPrice(signers, ftso, testExample.prices, epoch);
         
         logger.log(`SUBMIT PRICE 2 - 10`)
-        await submitPrice(signers, ftso, testExample2.prices);
+        await submitPrice(epoch + 1, signers, ftso, testExample2.prices);
         
         // Finalize
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);
@@ -343,8 +343,8 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let len = testExample.prices.length;
         
         logger.log(`SUBMIT PRICE 1 - 10`)
-        await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
-        const { epoch } = await submitPrice(signers, ftso, testExample.prices);
+        let epoch = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
+        await submitPrice(epoch, signers, ftso, testExample.prices);
         
         await ftso.initializeCurrentEpochStateForReveal(false);
 
@@ -368,7 +368,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let testExample2: TestExample = {prices: prices2, weightsNat: natWeights2, weightsAsset: [0,0,0,0,0,0,0,0,0,0]};
         
         logger.log(`SUBMIT PRICE 2 - 10`)
-        await submitPrice(signers, ftso, testExample2.prices);
+        await submitPrice(epoch + 1, signers, ftso, testExample2.prices);
         
         // Finalize
         await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epoch);

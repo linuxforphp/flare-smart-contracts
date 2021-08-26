@@ -45,8 +45,22 @@ contract(`MockPriceSubmitter.sol; MockPriceSubmitter unit tests`, async accounts
 
         it("Should fail on submit without whitelisting", async() => {
             const hash1 = submitPriceHash(500, 123, accounts[10]);
-            let tx = priceSubmitter.submitPriceHashes([1], [hash1], {from: accounts[10]});
+            let tx = priceSubmitter.submitPriceHashes(1, [1], [hash1], {from: accounts[10]});
             await expectRevert(tx, "Not whitelisted");
+        });
+
+        it("Should revert price submission on double submission", async() => {
+            const hash1 = submitPriceHash(500, 123, accounts[1]);
+            await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
+            await priceSubmitter.submitPriceHashes(1, [1], [hash1], {from: accounts[10]});
+            await expectRevert(priceSubmitter.submitPriceHashes(1, [1], [hash1], {from: accounts[10]}), "Duplicate submit in epoch");
+        });
+
+        it("Should revert price submission on wrong epoch id", async() => {
+            const hash1 = submitPriceHash(500, 123, accounts[1]);
+            await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
+            await expectRevert(priceSubmitter.submitPriceHashes(0, [1], [hash1], {from: accounts[10]}), "Wrong epoch id");
+            await expectRevert(priceSubmitter.submitPriceHashes(2, [1], [hash1], {from: accounts[10]}), "Wrong epoch id");
         });
 
         it("Should submit and reveal", async() => {
@@ -70,7 +84,7 @@ contract(`MockPriceSubmitter.sol; MockPriceSubmitter unit tests`, async accounts
 
 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
-            let tx = await priceSubmitter.submitPriceHashes([ftso0Ind, ftso1Ind, ftso2Ind], [hash0, hash1, hash2], {from: accounts[10]});
+            let tx = await priceSubmitter.submitPriceHashes(1, [ftso0Ind, ftso1Ind, ftso2Ind], [hash0, hash1, hash2], {from: accounts[10]});
 
             expectEvent(tx, "PriceHashesSubmitted", { ftsos: [ftso0, ftso1, ftso2], epochId: "1", hashes: [hash0, hash1, hash2]});
 
@@ -102,7 +116,7 @@ contract(`MockPriceSubmitter.sol; MockPriceSubmitter unit tests`, async accounts
             await voterWhitelister.requestWhitelistingVoter(accounts[10], 2);
             await voterWhitelister.requestWhitelistingVoter(accounts[10], 1);
             await voterWhitelister.requestWhitelistingVoter(accounts[10], 0);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], [hash0, hash1, hash2], {from: accounts[10]});
+            let tx = await priceSubmitter.submitPriceHashes(1, [0, 1, 2], [hash0, hash1, hash2], {from: accounts[10]});
 
             expectEvent(tx, "PriceHashesSubmitted", { ftsos: [ftso0, ftso1, ftso2], epochId: "1", hashes: [hash0, hash1, hash2]});
 
