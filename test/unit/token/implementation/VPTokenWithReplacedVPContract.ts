@@ -92,12 +92,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Act
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 1000, { from: accounts[1] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 40);
+            assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 50);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 140);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 10);
-            assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 10);
         });
 
         it("Batch vote power should work after delegate", async () => {
@@ -105,12 +103,11 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Act
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 4000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 2000, { from: accounts[1] });
             const blk1 = await web3.eth.getBlockNumber();
             await time.advanceBlock();
-            const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3], accounts[4]], blk1);
+            const result = await vpToken.batchVotePowerOfAt([accounts[1], accounts[2], accounts[3]], blk1);
             // Assert
-            compareNumberArrays(result, [0, 140, 40, 20]);
+            compareNumberArrays(result, [20, 140, 40]);
         });
 
         it("Should delegate explicit after replacement", async () => {
@@ -130,14 +127,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Assemble
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 1000, { from: accounts[1] });
             // Act
             await vpToken.undelegateAll({ from: accounts[1] });
             // Assert
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 0);
-            assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 0);
         });
 
         it("Should undelegateAllExplicit after replacement", async () => {
@@ -251,12 +246,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Act
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 1000, { from: accounts[1] });
             // Assert
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 50);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 80);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 70);
-            assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 0);
         });
 
         it("Explicit delegations after replacement have no effect on reading", async () => {
@@ -276,14 +269,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Assemble
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 1000, { from: accounts[1] });
             // Act
             await vpToken.undelegateAll({ from: accounts[1] });
             // Assert
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 50);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 80);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 70);
-            assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 0);
         });
 
         it("UndelegateAllExplicit after replacement has no effect on reading", async () => {
@@ -383,14 +374,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Assemble
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 1000, { from: accounts[1] });
             // Act
             await vpToken.setReadVpContract(vpContractRepl.address, { from: accounts[0] });
             // Assert
-            assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 40);
+            assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 50);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 140);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 10);
-            assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 10);
         });
 
         it("Should delegate explicit after replacement", async () => {
@@ -411,7 +400,6 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             // Assemble
             await vpToken.delegate(accounts[2], 4000, { from: accounts[1] });
             await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
-            await vpToken.delegate(accounts[4], 1000, { from: accounts[1] });
             await vpToken.undelegateAll({ from: accounts[1] });
             // Act
             await vpToken.setReadVpContract(vpContractRepl.address, { from: accounts[0] });
@@ -419,7 +407,6 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             assertNumberEqual(await vpToken.votePowerOf(accounts[1]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[2]), 100);
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 0);
-            assertNumberEqual(await vpToken.votePowerOf(accounts[4]), 0);
         });
 
         it("Should undelegateAllExplicit after replacement", async () => {

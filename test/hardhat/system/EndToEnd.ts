@@ -213,7 +213,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Delegator delegates vote power
     await wNAT.delegate(p1, 2500, { from: d1 });
     await wNAT.delegate(p2, 5000, { from: d1 });
-    await wNAT.delegate(p3, 2500, { from: d1 });
 
     // Prime the daemon to establish vote power block.
     await flareDaemon.trigger();
