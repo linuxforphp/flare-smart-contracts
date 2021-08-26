@@ -7,7 +7,7 @@ pragma solidity 0.7.6;
  * Function push(n) basically allocates quasi random memory array and tries to sort it with bubble 
  * sort algorithm. Function push(n) is used for heavy transaction load tests. 
  **/
-contract Tester3 {
+contract GasConsumer3 {
 
     uint256 public lastMedian;
 
