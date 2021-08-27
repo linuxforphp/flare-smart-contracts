@@ -54,14 +54,14 @@ async function findDaemonizedContract(contracts: Contracts, address: string): Pr
 async function findAssetFtso(contracts: Contracts, address: string): Promise<boolean> {
   const Ftso = artifacts.require("Ftso");
   const ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
-  let xAssetFtso = await ftsoWnat.xAssetFtsos(0);
+  let xAssetFtso = await ftsoWnat.assetFtsos(0);
   let i = 1;
   while (xAssetFtso != "") {
     if (xAssetFtso == address) {
       return true;
     } else {
       try {
-        xAssetFtso = await ftsoWnat.xAssetFtsos(i++);
+        xAssetFtso = await ftsoWnat.assetFtsos(i++);
       } catch(e) {
         xAssetFtso = "";
       }
