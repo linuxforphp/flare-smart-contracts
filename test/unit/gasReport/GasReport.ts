@@ -1,9 +1,9 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import fs from "fs";
-import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../../typechain-truffle";
-import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
-import { increaseTimeTo, submitPriceHash, toBN } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
+import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
+import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
 const WNat = artifacts.require("WNat");
