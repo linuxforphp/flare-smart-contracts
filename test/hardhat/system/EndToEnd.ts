@@ -241,18 +241,13 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await time.advanceBlock();
     await time.increaseTo(rewardEpochsStartTs.add(BN(1))); // sometimes we get a glitch
 
-    await flareDaemon.trigger();
+    await flareDaemon.trigger(); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.rewardEpochs(0);
     let votePowerBlock = firstRewardEpoch[0];
 
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
     assert((await wNAT.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")
     assert((await wNAT.votePowerOfAt(p3, votePowerBlock)).gt(BN(0)), "Vote power of p3 must be > 0")
-
-
-    // Set up a fresh price epoch
-    await moveFromCurrentToNextEpochStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), 1);
-    await flareDaemon.trigger();
 
     let natPrices = [0.35, 0.40, 0.50];
     let xrpPrices = [1.40, 1.50, 1.35];
@@ -285,6 +280,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
 
+    console.log(`Initializing price epoch for reveal`);
+    await flareDaemon.trigger();
+
     // Time travel to reveal period
     await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), testPriceEpoch);
 
@@ -299,30 +297,21 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       priceEpochDurationSeconds.toNumber(),
       revealEpochDurationSeconds.toNumber(),
       testPriceEpoch);
-
+    
+    console.log(`Finalizing price for epoch ${testPriceEpoch}`);
     await flareDaemon.trigger({ gas: 10000000 });
-
+    
     // There should be a balance to claim within reward manager at this point
     assert(BN(await web3.eth.getBalance(ftsoRewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
-
-    // Finalize all possible past price epochs including the last one we are testing 
+    
     // Rewards should now be claimable 
-    let { 0: currentPriceEpochTmp } = await ftsoManager.getCurrentPriceEpochData();
-    // let currentPriceEpoch = currentPriceEpochTmp.toNumber();
-    let lastUnprocessed = (await ftsoManager.lastUnprocessedPriceEpoch()).toNumber()
-    while (lastUnprocessed <= testPriceEpoch) {
-      await flareDaemon.trigger({ gas: 10000000 });
-      lastUnprocessed = (await ftsoManager.lastUnprocessedPriceEpoch()).toNumber()
-    }
-
-    assert(lastUnprocessed > testPriceEpoch, "Tested price epoch not yet finalized")
-
     // Time travel to reward epoch finalization
+    const rewardEpochId = await ftsoManager.getCurrentRewardEpoch();
     await moveToRewardFinalizeStart(
       rewardEpochsStartTs.toNumber(),
       rewardEpochDurationSeconds.toNumber(),
-      0);
-
+      rewardEpochId.toNumber());
+    console.log(`Finalizing reward epoch ${rewardEpochId.toNumber()}`);
     await flareDaemon.trigger();
 
     // TODO: Check ftso prices if they are correct
@@ -336,8 +325,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Act
     // Claim rewards
-    const rewardEpochId = (await ftsoManager.getCurrentRewardEpoch()).sub(BN(1));
-
     const rewardEpochs = [];
     rewardEpochs[0] = rewardEpochId;
     

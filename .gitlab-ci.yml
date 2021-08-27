@@ -81,7 +81,9 @@ test-contract-unit-4:
     stage: test
     <<: *yarn-setup
     script:
-        - yarn c        
+        - yarn c
+        - yarn $TEST_STATE_CONNECTOR_FILES
+        - env TEST_PATH=./test/unit/genesis yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/adversary yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/Xasset yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/inflation yarn hardhat test --network hardhat
@@ -99,9 +101,7 @@ test-contract-unit-6:
     script:
         - yarn c
         - yarn $TEST_LINTER
-        - yarn $TEST_STATE_CONNECTOR_FILES
         - env TEST_PATH=./test/unit/utils yarn hardhat test --network hardhat
-        - env TEST_PATH=./test/unit/genesis yarn hardhat test --network hardhat
 
 test-contract-integration:
     stage: test
@@ -168,9 +168,10 @@ slither-check:
             - $CI_PROJECT_DIR/node_modules
           policy: pull-push
 
-#gas-check:
-#    stage: test
-#    <<: *yarn-setup
-#    script:
-#       - yarn c
+gas-report:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - env TEST_PATH=./test/unit/gasReport yarn hardhat test --network hardhat
 #        - yarn gas-report-check

@@ -9,7 +9,6 @@ library FtsoManagerSettings {
     struct State {
         // struct holding settings related to FTSOs
         // configurable settings
-        uint256 votePowerBlock; // current block at which the vote power is checked
         uint256 maxVotePowerNatThresholdFraction; // high threshold for native token vote power per voter
         uint256 maxVotePowerAssetThresholdFraction; // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold; // threshold for low asset vote power (in scaled USD)

@@ -148,13 +148,13 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // Set the block holdoff should a daemonize contract exceeded its max gas allocation
   await flareDaemon.setBlockHoldoff(parameters.flareDaemonGasExceededHoldoffBlocks);
 
-  // Inflation contract
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
-
+  
   // Delayed reward epoch start time
-  const rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayHours * 60 * 60)));
-
+  const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds + parameters.revealEpochDurationSeconds);
+  
+  // Inflation contract
   const inflation = await Inflation.new(
     deployerAccount.address,
     flareDaemon.address,

@@ -118,7 +118,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             startTs,
             REVEAL_EPOCH_DURATION_S,
             REWARD_EPOCH_DURATION_S,
-            startTs,
+            startTs.addn(REVEAL_EPOCH_DURATION_S),
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
@@ -141,7 +141,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
                 REWARD_EPOCH_DURATION_S,
-                startTs,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
                 VOTE_POWER_BOUNDARY_FRACTION
             ), "Price epoch 0");
 
@@ -156,7 +156,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs,
                 0,
                 REWARD_EPOCH_DURATION_S,
-                startTs,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
                 VOTE_POWER_BOUNDARY_FRACTION
             ), "Reveal price epoch 0");
 
@@ -171,7 +171,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
                 0,
-                startTs,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
                 VOTE_POWER_BOUNDARY_FRACTION
             ), "Reward epoch 0");
 
@@ -186,9 +186,69 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs.addn(500),
                 REVEAL_EPOCH_DURATION_S,
                 REWARD_EPOCH_DURATION_S,
-                startTs,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
                 VOTE_POWER_BOUNDARY_FRACTION
             ), "First epoch start timestamp in future");
+
+            await expectRevert(FtsoManager.new(
+                accounts[0],
+                accounts[0],
+                mockRewardManager.address,
+                accounts[7],
+                ftsoRegistry.address,
+                mockVoterWhitelister.address,
+                PRICE_EPOCH_DURATION_S,
+                startTs,
+                PRICE_EPOCH_DURATION_S,
+                REWARD_EPOCH_DURATION_S,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
+                VOTE_POWER_BOUNDARY_FRACTION
+            ), "Reveal price epoch too long");
+
+            await expectRevert(FtsoManager.new(
+                accounts[0],
+                accounts[0],
+                mockRewardManager.address,
+                accounts[7],
+                ftsoRegistry.address,
+                mockVoterWhitelister.address,
+                PRICE_EPOCH_DURATION_S,
+                startTs,
+                REVEAL_EPOCH_DURATION_S,
+                REWARD_EPOCH_DURATION_S,
+                startTs.subn(1),
+                VOTE_POWER_BOUNDARY_FRACTION
+            ), "Reward epoch start too soon");
+
+            await expectRevert(FtsoManager.new(
+                accounts[0],
+                accounts[0],
+                mockRewardManager.address,
+                accounts[7],
+                ftsoRegistry.address,
+                mockVoterWhitelister.address,
+                PRICE_EPOCH_DURATION_S,
+                startTs,
+                REVEAL_EPOCH_DURATION_S,
+                REWARD_EPOCH_DURATION_S,
+                startTs.addn(REVEAL_EPOCH_DURATION_S + 1),
+                VOTE_POWER_BOUNDARY_FRACTION
+            ), "Reward epoch start condition invalid");
+
+            await expectRevert(FtsoManager.new(
+                accounts[0],
+                accounts[0],
+                mockRewardManager.address,
+                accounts[7],
+                ftsoRegistry.address,
+                mockVoterWhitelister.address,
+                PRICE_EPOCH_DURATION_S,
+                startTs,
+                REVEAL_EPOCH_DURATION_S,
+                REWARD_EPOCH_DURATION_S + 1,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
+                VOTE_POWER_BOUNDARY_FRACTION
+            ), "Reward epoch duration condition invalid");
         });
 
         it("Should return price submitter address", async () => {
@@ -230,10 +290,14 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should get current reward epoch", async () => {
-            expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(0);
+            await expectRevert(ftsoManager.getCurrentRewardEpoch(), "Reward epoch not initialized yet");
+
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
-            await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S));
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initalize reward epoch
+            expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(0);
+            
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S + REWARD_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(1);
@@ -241,6 +305,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
         it("Should get reward epoch vote power block", async () => {
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             let block = await web3.eth.getBlockNumber();
@@ -257,13 +322,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         });
 
         it("Should revert setting invalid governance parameters", async () => {
-            await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 0, 50, 500, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10*DAY,[]), "Gov. params invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10,[]), "Reward expiry invalid");
-            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY,[accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Max trusted addresses length exceeded");
+            await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 50, 500, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 0, 50, 500, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10*DAY, []), "Gov. params invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 0, []), "Reward expiry invalid");
+            await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY, [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Max trusted addresses length exceeded");
         });
 
         it("Should activate", async () => {
@@ -274,18 +339,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(ftsoManager.activate({ from: accounts[2] }), "only governance");
         });
 
-        it("Should deactivate", async () => {
-            await ftsoManager.deactivate();
-        });
-
-        it("Should not deactivate if not from governance", async () => {
-            await expectRevert(ftsoManager.deactivate({ from: accounts[2] }), "only governance");
-        });
-
         it("Should init price epoch start and not finalize anything", async () => {
             // Assemble
             await ftsoManager.activate();
             // Act
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             let tx = await ftsoManager.daemonize();
             // Assert
             let data = await ftsoManager.getPriceEpochConfiguration() as any;
@@ -296,7 +354,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     });
 
     describe("FTSO initialization", async () => {
-        it("Should sucessfully add an FTSO", async () => {
+        it("Should successfully add an FTSO", async () => {
             // Assemble
             // Act
             await setDefaultGovernanceParameters(ftsoManager);
@@ -349,7 +407,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
                 REWARD_EPOCH_DURATION_S,
-                startTs.addn(500),
+                startTs.addn(PRICE_EPOCH_DURATION_S * 5 + REVEAL_EPOCH_DURATION_S),
                 VOTE_POWER_BOUNDARY_FRACTION
             );
             
@@ -376,7 +434,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             for (var i = 1; i < 10; i++) {
                 // Time travel to trigger a first initialize reward epoch
                 // Cheat and do every 50 seconds to reduce test time
-                await time.increaseTo(startTs.addn(50 * i));
+                await time.increaseTo(startTs.addn(60 * i));
                 // Mine at least a block
                 await time.advanceBlock();
                 await ftsoManager.daemonize();
@@ -385,7 +443,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             }
 
             // Assert
-            await time.increaseTo(startTs.addn(500));
+            await time.increaseTo(startTs.addn(PRICE_EPOCH_DURATION_S * 5 + REVEAL_EPOCH_DURATION_S));
             await time.advanceBlock();
             await ftsoManager.daemonize();
             const invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
@@ -393,9 +451,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should sucessfully add an FTSO even if ftso manager is active", async () => {
+        it("Should successfully add an FTSO even if ftso manager is active", async () => {
             // Assemble
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
             await setDefaultGovernanceParameters(ftsoManager);
             
@@ -428,7 +487,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(addPromise, ERR_GOVERNANCE_ONLY);
         });
 
-        it("Should sucessfully remove an FTSO", async () => {
+        it("Should successfully remove an FTSO", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             let tx = await ftsoManager.addFtso(mockFtso.address);
@@ -471,7 +530,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(removePromise, ERR_GOVERNANCE_ONLY);
         });
 
-        it("Should sucessfully replace an FTSO and not update initial price", async () => {
+        it("Should successfully replace an FTSO and not update initial price", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(mockFtso.address);
@@ -509,7 +568,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(voterWhitelisterInvocationCount.toNumber(), 1);
         });
 
-        it("Should sucessfully replace an FTSO and update initial price", async () => {
+        it("Should successfully replace an FTSO and update initial price", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(mockFtso.address);
@@ -535,7 +594,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should sucessfully replace an FTSO and update asset", async () => {
+        it("Should successfully replace an FTSO and update asset", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(mockFtso.address);
@@ -563,7 +622,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should sucessfully replace an FTSO and update asset ftsos", async () => {
+        it("Should successfully replace an FTSO and update asset ftsos", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(mockFtso.address);
@@ -591,7 +650,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should sucessfully replace an FTSO and change asset ftso", async () => {
+        it("Should successfully replace an FTSO and change asset ftso", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             let multiFtso = await Ftso.new('NAT', constants.ZERO_ADDRESS, ftsoManager.address, constants.ZERO_ADDRESS, 0, 1e10, defaultPriceEpochCyclicBufferSize);
@@ -919,15 +978,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
 
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
-
-            await time.increaseTo(startTs.addn(120));
-            await ftsoManager.daemonize();
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
             
             // check price submitter trusted addresses
             const setTrustedAddresses1 = priceSubmitterInterface.contract.methods.setTrustedAddresses(trustedAddresses).encodeABI();
             const invocationCount1 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses1);
             assert.equal(invocationCount1.toNumber(), 1);
+            
+            await time.increaseTo(startTs.addn(120 + 30));
+            await ftsoManager.daemonize(); // finalize price epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             let epoch = 1;
 
@@ -941,8 +1002,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2 + 30));
-            let tx = await ftsoManager.daemonize();
-
+            let tx = await ftsoManager.daemonize(); // finalize price epoch
+            await ftsoManager.daemonize(); // initialize price epoch
+            
             // Assert
             expectEvent(tx, "PriceEpochFinalized");
             epoch = 2;
@@ -956,7 +1018,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 3 + 30));
-            tx = await ftsoManager.daemonize();
+            tx = await ftsoManager.daemonize(); // finalize price epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             expectEvent(tx, "PriceEpochFinalized");
 
@@ -973,19 +1036,21 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             await time.increaseTo(startTs.addn(120 * 4));
             tx = await ftsoManager.daemonize();
+            
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
+            
+            await time.increaseTo(startTs.addn(120 * 4 + 30));
+            tx = await ftsoManager.daemonize(); // finalize price epoch
+            expectEvent(tx, "PriceEpochFinalized");
+
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // check price submitter trusted addresses
             const setTrustedAddresses2 = priceSubmitterInterface.contract.methods.setTrustedAddresses(trustedAddresses).encodeABI();
             const invocationCount2 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses2);
             assert.equal(invocationCount2.toNumber(), 1);
 
-            await revealSomePrices(ftso1, 10, epoch, accounts);
-            await revealSomePrices(ftso2, 10, epoch, accounts);
-
-            await time.increaseTo(startTs.addn(120 * 4 + 30));
-            tx = await ftsoManager.daemonize();
-
-            expectEvent(tx, "PriceEpochFinalized");
 
             let ftso1Params = numberedKeyedObjectToList(await ftso1.epochsConfiguration());
             let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
@@ -1009,8 +1074,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             
@@ -1043,7 +1109,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should finalize a price epoch only", async () => {
             // Assemble
             await ftsoManager.activate();
-            await ftsoManager.daemonize();  // initialize
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
+            
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
             // Act
@@ -1056,11 +1125,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should finalize a price epoch at the configured interval", async () => {
             // Assemble
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
+
             // Time travel 120 seconds
-            await time.increaseTo(startTs.addn(120));
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(120 + 30)); 
+            await ftsoManager.daemonize(); // finalize price epoch
+            await ftsoManager.daemonize(); // initialize price epoch
+
             // Time travel another 120 seconds
-            await time.increaseTo(startTs.addn(120 * 2));
+            await time.increaseTo(startTs.addn(120 * 2 + 30));
             // Act
             let tx = await ftsoManager.daemonize();
             // Assert
@@ -1083,19 +1158,20 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
 
             // Act
-            await ftsoManager.daemonize();
+            let tx = await ftsoManager.daemonize();
 
             // Assert
-            let currentPriceEpoch = await ftsoManager.lastUnprocessedPriceEpoch();
-            assert.equal(currentPriceEpoch.toNumber(), 1);
+            expectEvent(tx, "PriceEpochFinalized");
         });
 
         it("Should finalize price epoch and distribute unclaimed rewards", async () => {
@@ -1113,9 +1189,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // intialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
@@ -1163,9 +1241,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
@@ -1224,9 +1304,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(mockFtsoNoAccounts.address, { from: accounts[0] });
             // add fakey rewardable ftso 1
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
@@ -1251,10 +1333,11 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
 
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
 
-            await time.increaseTo(startTs.addn(120));
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(120 + 30));
+            await ftsoManager.daemonize(); // initialize price epoch
 
             
             let epoch = 1;
@@ -1268,13 +1351,15 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2 + 30));
-            await ftsoManager.daemonize();
-
+            await ftsoManager.daemonize(); // finalize price epoch
+            
             let ftso1Events = await ftso1.getPastEvents("PriceFinalized")
             let ftso2Events = await ftso2.getPastEvents("PriceFinalized")
             assert.equal(lastOf(ftso1Events).args.finalizationType.toNumber(), 1);
             assert.equal(lastOf(ftso2Events).args.finalizationType.toNumber(), 1);
-
+            
+            // initialize price epoch is called in a separate block as finalize price epoch
+            await ftsoManager.daemonize();
 
             // reveal only for ftso2, not ftso1
             epoch = 2;
@@ -1312,11 +1397,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
-            // Time travel 120 seconds
+            // Time travel to reveal end
             await time.increaseTo(startTs.addn(120 + 30));
 
             // Act
@@ -1362,7 +1449,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
@@ -1410,7 +1499,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
             // activte ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel 120 seconds
             await time.increaseTo(startTs.addn(120 + 30));
@@ -1445,9 +1536,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should finalize a reward epoch", async () => {
             // Assemble
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
             // Time travel 2 days
-            await time.increaseTo(startTs.addn(172800));
+            await time.increaseTo(startTs.addn(172800 + REVEAL_EPOCH_DURATION_S));
             // Act
             let tx = await ftsoManager.daemonize();
             // // Assert
@@ -1578,17 +1670,21 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, {from: accounts[0]});
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             // Act
             for (var i = 1; i <= (172800 / 1200); i++) {
                 // Time travel to trigger a price epoch change
                 // Cheat and do every 20 mins to reduce test time
-                await time.increaseTo(startTs.addn(1200 * i));
+                await time.increaseTo(startTs.addn(1200 * i + REVEAL_EPOCH_DURATION_S));
                 // Mine at least a block
                 await time.advanceBlock();
-                await ftsoManager.daemonize();            
+                await ftsoManager.daemonize();
             }
+
+            // finalize reward epoch is called in a separate block as finalize price epoch
+            await ftsoManager.daemonize();
 
             // Assert
             // Get the invocation count for setting new vote power block on mocked FTSO
@@ -1605,21 +1701,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockRewardManager.givenMethodRevertWithMessage(closeExpiredRewardEpoch,"I am broken");
 
             await setDefaultGovernanceParameters(ftsoManager);
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             // act - go through 6 2-day rewardEpochs, so the first can be expired
             let tx = null;
             for(let i = 1; i <= 6; i++) {
-                await time.increaseTo(startTs.addn(i*2*DAY)); // i*two days
+                await time.increaseTo(startTs.addn(i*2*DAY + REVEAL_EPOCH_DURATION_S)); // i*two days
                 tx = await ftsoManager.daemonize();
             }
             // Assert
             expectEvent(tx!, "ClosingExpiredRewardEpochFailed");
         });
 
-        it("Should call distribute rewards with 0 remaining price epochs", async () => {
+        it("Should call distribute rewards correctly at the transition to the next reward epoch", async () => {
             let yearSeconds = 60 * 60 * 24 * 365; // 2021
             
             // longer reward and price epochs - time travel and calling daemonize()
@@ -1634,7 +1731,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 startTs,
                 REVEAL_EPOCH_DURATION_S,
                 yearSeconds,
-                startTs,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
                 VOTE_POWER_BOUNDARY_FRACTION,
             );
 
@@ -1644,7 +1741,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
             await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
             // stub ftso finalizer
-            const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(12, true).encodeABI();
+            const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
             const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
                 ['address[]', 'uint256[]', 'uint256'],
                 [[accounts[1], accounts[2]], [25, 75], 100]);
@@ -1653,21 +1750,28 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
             await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
-            // activte ftso manager
+            // activate ftso manager
             await ftsoManager.activate();
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
 
             // Time travel
-            for (let i = 1; i <= 13; i++) { // one year
-                await time.increaseTo(startTs.addn(i * yearSeconds / 10));
-                await ftsoManager.daemonize();
+            for (let i = 1; i < 10; i++) { // one year
+                await time.increaseTo(startTs.addn(i * yearSeconds / 10 + 30));
+                await ftsoManager.daemonize(); // finalize price epoch
+                await ftsoManager.daemonize(); // initialize price epoch
             }
-            await time.increaseTo(startTs.addn(yearSeconds + 3 * yearSeconds / 10 + 30));
-            await ftsoManager.daemonize();
 
+            await time.increaseTo(startTs.addn(10 * yearSeconds / 10 + 30));
+            await ftsoManager.daemonize(); // finalize price epoch
+            await ftsoManager.daemonize(); // finalize reward epoch
+            await ftsoManager.daemonize(); // initialize price epoch
+            
             // Act
             // Simulate the daemon tickling reward manager
-            await ftsoManager.daemonize();
+            await time.increaseTo(startTs.addn(11 * yearSeconds / 10 + 30));
+            await ftsoManager.daemonize(); // finalize price epoch
 
             // address[] memory addresses,
             // uint256[] memory weights,
@@ -1676,21 +1780,37 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // address ftso,
             // uint256 priceEpochDurationSeconds,
             // uint256 currentRewardEpoch
+            // uint256 _priceEpochEndTime, // end time included in epoch
+            // uint256 _votePowerBlock
             const distributeRewards = ftsoRewardManagerInterface.contract.methods.distributeRewards(
                 [accounts[1], accounts[2]],
                 [25, 75],
                 100,
-                12,
+                9,
+                mockFtso.address,
+                yearSeconds / 10,
+                0,
+                startTs.addn((yearSeconds / 10 * 10) - 1),
+                await ftsoManager.getRewardEpochVotePowerBlock(0)
+            ).encodeABI();
+
+            const distributeRewards2 = ftsoRewardManagerInterface.contract.methods.distributeRewards(
+                [accounts[1], accounts[2]],
+                [25, 75],
+                100,
+                10,
                 mockFtso.address,
                 yearSeconds / 10,
                 1,
-                startTs.addn((yearSeconds / 10 * 13) - 1),
+                startTs.addn((yearSeconds / 10 * 11) - 1),
                 await ftsoManager.getRewardEpochVotePowerBlock(1)
             ).encodeABI();
 
             // Assert
             const invocationCountWithData = await mockRewardManager.invocationCountForCalldata.call(distributeRewards);
             assert.equal(invocationCountWithData.toNumber(), 1);
+            const invocationCountWithData2 = await mockRewardManager.invocationCountForCalldata.call(distributeRewards2);
+            assert.equal(invocationCountWithData2.toNumber(), 1);
         });
     });
 
@@ -1742,6 +1862,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.setFallbackMode(true, { from: accounts[0] });
 
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             let epoch = 0;
@@ -1768,6 +1889,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] });
 
             await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
             let epoch = 0;
