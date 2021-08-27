@@ -9,8 +9,8 @@ import {
     FtsoRewardManagerContract,
     FtsoRewardManagerInstance,
     InflationMockInstance,
-    SuicidalMockInstance, WFlrContract,
-    WFlrInstance
+    SuicidalMockInstance, WNatContract,
+    WNatInstance
 } from "../../../../typechain-truffle";
 import { compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
@@ -23,7 +23,7 @@ const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
-const WFLR = artifacts.require("WFlr") as WFlrContract;
+const WNAT = artifacts.require("WNat") as WNatContract;
 const InflationMock = artifacts.require("InflationMock");
 const SuicidalMock = artifacts.require("SuicidalMock");
 
@@ -40,7 +40,7 @@ let ftsoRewardManager: FtsoRewardManagerInstance;
 let ftsoManagerInterface: FtsoManagerInstance;
 let startTs: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
-let wFlr: WFlrInstance;
+let wNat: WNatInstance;
 let mockInflation: InflationMockInstance;
 
 
@@ -48,12 +48,12 @@ export async function distributeRewards(
     accounts: Truffle.Accounts,
     startTs: BN,
     currentRewardEpoch: number = 0,
-    sendFlrs: boolean = true
+    sendNats: boolean = true
 ) {
     let votePowerBlock = await web3.eth.getBlockNumber();
     // Assemble
-    if (sendFlrs) {
-        // give reward manager some flr to distribute...proxied through mock inflation
+    if (sendNats) {
+        // give reward manager some nat to distribute...proxied through mock inflation
         await mockInflation.receiveInflation({ value: "1000000" });
     }
 
@@ -94,21 +94,21 @@ export async function distributeRewards(
 
 async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: string[]) {
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
-    let ftsoWflr = ftsoContractForSymbol(contracts, 'FLR')!.ftso;
-    let firstPriceEpochStartTs = (await ftsoWflr.getPriceEpochConfiguration())[0];
-    let priceEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[1];
-    let revealEpochDurationSeconds = (await ftsoWflr.getPriceEpochConfiguration())[2];
+    let ftsoWnat = ftsoContractForSymbol(contracts, 'NAT')!.ftso;
+    let firstPriceEpochStartTs = (await ftsoWnat.getPriceEpochConfiguration())[0];
+    let priceEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[1];
+    let revealEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
     let rewardEpochDurationSeconds = await contracts.ftsoManager.rewardEpochDurationSeconds();
     let rewardEpochsStartTs = await contracts.ftsoManager.rewardEpochsStartTs();
 
-    let wFLR = ftsoContractForSymbol(contracts, 'FLR')!.fAssetToken as WFlrInstance;
-    const someFLR = web3.utils.toWei("1", "ether");
-    // mint WFLR
+    let wNAT = ftsoContractForSymbol(contracts, 'NAT')!.xAssetToken as WNatInstance;
+    const someNAT = web3.utils.toWei("1", "ether");
+    // mint WNAT
     let noAccounts = 10;
     for (let i = 0; i < noAccounts; i++) {
-        await wFLR.deposit({ from: accounts[i], value: someFLR });
+        await wNAT.deposit({ from: accounts[i], value: someNAT });
     }
 
 
@@ -219,11 +219,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
-        wFlr = await WFLR.new(accounts[0]);
-        await setDefaultVPContract(wFlr, accounts[0]);
+        wNat = await WNAT.new(accounts[0]);
+        await setDefaultVPContract(wNat, accounts[0]);
 
         await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
-        await ftsoRewardManager.setWFLR(wFlr.address);
+        await ftsoRewardManager.setWNAT(wNat.address);
         mockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
 
         await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
@@ -243,7 +243,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expectRevert(ftsoRewardManager.activate(), "no ftso manager");
         });
 
-        it("Should revert calling activate if wflr is not set", async () => {
+        it("Should revert calling activate if wnat is not set", async () => {
             ftsoRewardManager = await FtsoRewardManager.new(
                 accounts[0],
                 3,
@@ -253,7 +253,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             await ftsoRewardManager.setFTSOManager(mockFtsoManager.address);
 
-            await expectRevert(ftsoRewardManager.activate(), "no wflr");
+            await expectRevert(ftsoRewardManager.activate(), "no wNat");
         });
 
         it("Should revert calling activate if not from governance", async () => {
@@ -285,18 +285,18 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expectRevert(ftsoRewardManager.setFTSOManager(constants.ZERO_ADDRESS), "no ftso manager");
         });
 
-        it("Should update WFLR", async () => {
-            expect(await ftsoRewardManager.wFlr()).to.equals(wFlr.address);
-            await ftsoRewardManager.setWFLR(accounts[8]);
-            expect(await ftsoRewardManager.wFlr()).to.equals(accounts[8]);
+        it("Should update WNAT", async () => {
+            expect(await ftsoRewardManager.wNat()).to.equals(wNat.address);
+            await ftsoRewardManager.setWNAT(accounts[8]);
+            expect(await ftsoRewardManager.wNat()).to.equals(accounts[8]);
         });
 
-        it("Should revert calling setWFLR if not from governance", async () => {
-            await expectRevert(ftsoRewardManager.setWFLR(accounts[2], { from: accounts[1] }), "only governance");
+        it("Should revert calling setWNAT if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.setWNAT(accounts[2], { from: accounts[1] }), "only governance");
         });
 
-        it("Should revert calling setWFLR if setting to address(0)", async () => {
-            await expectRevert(ftsoRewardManager.setWFLR(constants.ZERO_ADDRESS), "no wflr");
+        it("Should revert calling setWNAT if setting to address(0)", async () => {
+            await expectRevert(ftsoRewardManager.setWNAT(constants.ZERO_ADDRESS), "no wNat");
         });
 
         it("Should update inflation", async () => {
@@ -406,8 +406,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
     describe("getters and setters", async () => {
         it("Should get reward pool supply data", async () => {
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             let data = await ftsoRewardManager.getRewardPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
@@ -513,8 +513,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should get state of rewards", async () => {
             let data;
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].length).to.equals(0);
@@ -558,12 +558,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should get state of rewards - delegator only", async () => {
             let data;
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "200" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "200" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 5000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 5000, { from: accounts[4] });
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].length).to.equals(0);
@@ -645,12 +645,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should get state of rewards - delegator and provider - percentage", async () => {
             let data;
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[2], value: "200" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[2], value: "200" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 5000, { from: accounts[2] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 5000, { from: accounts[2] });
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].length).to.equals(0);
@@ -735,12 +735,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should revert at get state of rewards if delegated explicitly", async () => {
             let data;
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[2], value: "200" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[2], value: "200" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[2] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[2] });
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].length).to.equals(0);
@@ -753,12 +753,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should get state of rewards - delegator and provider - explicit", async () => {
             let data;
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[2], value: "200" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[2], value: "200" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[2] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[2] });
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].length).to.equals(0);
@@ -933,14 +933,14 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
     it("Should get epochs with claimable / unclaimed rewards", async () => {
         let data;
-        // deposit some wflrs
-        await wFlr.deposit({ from: accounts[1], value: "100" });
-        await wFlr.deposit({ from: accounts[3], value: "300" });
-        await wFlr.deposit({ from: accounts[4], value: "200" });
+        // deposit some wnats
+        await wNat.deposit({ from: accounts[1], value: "100" });
+        await wNat.deposit({ from: accounts[3], value: "300" });
+        await wNat.deposit({ from: accounts[4], value: "200" });
 
-        // delegate some wflrs
-        await wFlr.delegate(accounts[1], 5000, { from: accounts[3] });
-        await wFlr.delegate(accounts[1], 5000, { from: accounts[4] });
+        // delegate some wnats
+        await wNat.delegate(accounts[1], 5000, { from: accounts[3] });
+        await wNat.delegate(accounts[1], 5000, { from: accounts[4] });
         
         await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
         await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
@@ -1026,7 +1026,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
     });
 
     describe("reward claiming", async () => {
-        it("Should accept FLR", async () => {
+        it("Should accept NAT", async () => {
             // Assemble
             // Act
             // Inflation must call ftso reward manager during funding, and this proxy does it.
@@ -1043,7 +1043,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should gracefully receive self-destruct proceeds", async () => {
             // Assemble
-            // Give suicidal some FLR
+            // Give suicidal some NAT
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 1 });
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
@@ -1061,7 +1061,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await mockInflation.receiveInflation({ value: "1" });
             assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "1");
             // Assemble
-            // Give suicidal some FLR
+            // Give suicidal some NAT
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 1 });
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
@@ -1074,7 +1074,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
-        it("Should not accept FLR unless from inflation", async () => {
+        it("Should not accept NAT unless from inflation", async () => {
             // Assemble
             // Act
             const receivePromise = ftsoRewardManager.receiveInflation({ value: "1000000" });
@@ -1084,8 +1084,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should enable rewards to be claimed once reward epoch finalized - percentage", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1093,21 +1093,21 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 694);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
         });
 
         it("Should enable rewards to be claimed by delegator once reward epoch finalized - percentage", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1115,22 +1115,22 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs = 694
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 694);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1138,35 +1138,35 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
             // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - with self-destruct proceeds", async () => {
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
 
-            // Give suicidal some FLR
+            // Give suicidal some NAT
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 1 });
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
@@ -1174,18 +1174,18 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
             let selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 1);
 
             // Create another suicidal
             const anotherMockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
-            // Give suicidal some FLR
+            // Give suicidal some NAT
             await web3.eth.sendTransaction({ from: accounts[0], to: anotherMockSuicidal.address, value: 1 });
             // Sneak it into ftso reward manager
             await anotherMockSuicidal.die();
@@ -1193,23 +1193,23 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
             // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
             selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 2);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage - should not claim twice", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1217,43 +1217,43 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
 
             // if claiming again, get 0
-            let flrOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
-            let flrClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance1.sub(flrOpeningBalance1).toNumber(), 0);
+            let natClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance1.sub(natOpeningBalance1).toNumber(), 0);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
             // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
 
             // if claiming again, get 0
-            let flrOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            let flrClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance3.sub(flrOpeningBalance3).toNumber(), 0);
+            let natClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance3.sub(natOpeningBalance3).toNumber(), 0);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage - get 0 if not rewarded ftso", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             let votePowerBlock = await web3.eth.getBlockNumber();
             const getRewardEpochVotePowerBlock = ftsoManagerInterface.contract.methods.getRewardEpochVotePowerBlock(0).encodeABI();
@@ -1264,21 +1264,21 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.getStateOfRewards(accounts[4], 0, { from: accounts[4] });
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 0);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 0);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.getStateOfRewards(accounts[1], 0, { from: accounts[1] });
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 0);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 0);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider (fee 5%) once reward epoch finalized - percentage", async () => {
@@ -1288,12 +1288,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // travel 3 reward epochs
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs, 3);
             await travelToAndSetNewRewardEpoch(4, startTs, ftsoRewardManager, accounts[0]);
@@ -1301,26 +1301,26 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [3], { from: accounts[4] });
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
             // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
             // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 0.95 (fee) = 2309
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 2309);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2309);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
             // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 1.05 (fee) + 1 (dust) = 2553
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 2553);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 2553);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider (fee 5%) once reward epoch finalized 2 - percentage", async () => {
@@ -1330,12 +1330,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // travel 3 reward epochs
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "1000" });
-            await wFlr.deposit({ from: accounts[4], value: "1" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "1000" });
+            await wNat.deposit({ from: accounts[4], value: "1" });
 
-            // delegate some wflrs
-            await wFlr.delegate(accounts[1], 10000, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 10000, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs, 3);
             await travelToAndSetNewRewardEpoch(4, startTs, ftsoRewardManager, accounts[0]);
@@ -1343,32 +1343,32 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [3], { from: accounts[4] });
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
             // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
             // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1 / 1001) * 0.95 (fee) = 4
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 4);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 4);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
             // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1000/1001 + 1/1001 * 0.05) (fee) + 1 (dust) = 4858
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 4858);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 4858);
         });
 
         it("Should enable rewards to be claimed once reward epoch finalized - explicit", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1376,21 +1376,21 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 694);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
         });
 
         it("Should revert at claiming rewards (not using claimRewardFromDataProviders) once reward epoch finalized - explicit", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[2], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[2], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[2] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[2] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1400,11 +1400,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should enable rewards to be claimed by delegator once reward epoch finalized - explicit", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1412,26 +1412,26 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs = 694
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 694);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
         });
 
         it("Should enable rewards to be claimed by delegator once reward epoch finalized - with self-destruct proceeds", async () => {
             // Assemble
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
 
-            // Give suicidal some FLR
+            // Give suicidal some NAT
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 1 });
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
@@ -1439,24 +1439,24 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs = 694
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 694);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
             const selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 1);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - explicit", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1464,31 +1464,31 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
             // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - explicit - should not claim twice", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1496,44 +1496,44 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
             // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 347);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
 
             // if claiming again, get 0
-            let flrOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
-            let flrClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance1.sub(flrOpeningBalance1).toNumber(), 0);
+            let natClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance1.sub(natOpeningBalance1).toNumber(), 0);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
             // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 347);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
 
             // if claiming again, get 0
-            let flrOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
             // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
-            let flrClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance3.sub(flrOpeningBalance3).toNumber(), 0);
+            let natClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance3.sub(natOpeningBalance3).toNumber(), 0);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - explicit - get 0 if not rewarded ftso", async () => {
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[4] });
             let votePowerBlock = await web3.eth.getBlockNumber();
             const getRewardEpochVotePowerBlock = ftsoManagerInterface.contract.methods.getRewardEpochVotePowerBlock(0).encodeABI();
             const getRewardEpochVotePowerBlockReturn = web3.eth.abi.encodeParameter('uint256', votePowerBlock);
@@ -1543,21 +1543,21 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[4], 0, [accounts[1]], { from: accounts[4] });
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 0);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 0);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.getStateOfRewards(accounts[1], 0, { from: accounts[1] });
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 0);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 0);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider (fee 5%) once reward epoch finalized - explicit", async () => {
@@ -1567,38 +1567,38 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // travel 3 reward epochs
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
-            await wFlr.deposit({ from: accounts[4], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[4], value: "100" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 100, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 100, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs, 3);
             await travelToAndSetNewRewardEpoch(4, startTs, ftsoRewardManager, accounts[0]);
 
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid having to calc gas fees
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [3], [accounts[1]], { from: accounts[4] });
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
             // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
             // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 0.95 (fee) = 2309
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 2309);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2309);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
             // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 1.05 (fee) + 1 (dust) = 2553
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 2553);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 2553);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider (fee 5%) once reward epoch finalized 2 - explicit", async () => {
@@ -1608,12 +1608,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // travel 3 reward epochs
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
 
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "1000" });
-            await wFlr.deposit({ from: accounts[4], value: "1" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "1000" });
+            await wNat.deposit({ from: accounts[4], value: "1" });
 
-            // delegate some wflrs
-            await wFlr.delegateExplicit(accounts[1], 1, { from: accounts[4] });
+            // delegate some wnats
+            await wNat.delegateExplicit(accounts[1], 1, { from: accounts[4] });
 
             await distributeRewards(accounts, startTs, 3);
             await travelToAndSetNewRewardEpoch(4, startTs, ftsoRewardManager, accounts[0]);
@@ -1621,30 +1621,30 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [3], [accounts[1]], { from: accounts[4] });
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
             // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
             // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1 / 1001) * 0.95 (fee) = 4
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 4);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 4);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
-            let flrOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
             // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1000/1001 + 1/1001 * 0.05) (fee) + 1 (dust) = 4858
-            let flrClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(flrClosingBalance2.sub(flrOpeningBalance2).toNumber(), 4858);
+            let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 4858);
         });
 
         it("Should claim from multiple reward epochs - get nothing for reward epochs not finalized", async () => {
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1653,15 +1653,15 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await distributeRewards(accounts, startTs, 2, false);
 
             // can claim Math.floor(1000000 / 720) + Math.floor((1000000 - 1388) / 719) = 2776
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0, 1, 2, 3], { from: accounts[1] });
 
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 2776);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2776);
         });
 
         it("Should claim from multiple reward epochs - get nothing for reward epochs not finalized - explicit", async () => {
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
@@ -1670,18 +1670,18 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await distributeRewards(accounts, startTs, 2, false);
 
             // can claim Math.floor(1000000 / 720) + Math.floor((1000000 - 1388) / 719) = 2776
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0, 1, 2, 3], [accounts[1], accounts[2]], { from: accounts[1] });
 
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), 2776);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2776);
         });
     });
 
     describe("close expired reward epochs", async () => {
         it("Should update expired rewards", async () => {
-            // deposit some wflrs
-            await wFlr.deposit({ from: accounts[1], value: "100" });
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
 
             await distributeRewards(accounts, startTs);
 

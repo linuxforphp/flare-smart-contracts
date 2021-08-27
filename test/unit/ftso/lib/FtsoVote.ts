@@ -19,9 +19,9 @@ contract(`FtsoVote.sol; ${getTestFile(__filename)};  Ftso vote unit tests`, asyn
         expect(vote.price).to.equals('20');
     });
 
-    it(`Should set vote weight FLR correctly`, async () => {
+    it(`Should set vote weight native token correctly`, async () => {
         let vote = await ftsoVote.createInstance(accounts[0], 1, 2, 3, 4, 20);
-        expect(vote.weightFlr).to.equals('333333333333');
+        expect(vote.weightNat).to.equals('333333333333');
     });
 
     it(`Should set vote weight asset correctly`, async () => {

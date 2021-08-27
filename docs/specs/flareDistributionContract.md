@@ -1,9 +1,9 @@
 # Flare distribution contract
 
 ## Background
-- FLR tokens were airdropped on XRP holders.
+- Native token tokens were airdropped on XRP holders.
 - Each xrp holder had to submit a public key in secp256k1 format (Etheruem format) for signaling his request to participate in Flare airdrop.
-- Each registered XRP address will receive its FLR balance onto its registered public key.
+- Each registered XRP address will receive its native token balance onto its registered public key.
 - The planned airdrop steps:
    - 15% of the total airdrop value will be dropped on network launch.
    - During next months, per 1 month (30 days) 3% of the total airdrop value will be unlocked for claiming.

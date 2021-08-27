@@ -12,31 +12,33 @@ import "../../userInterfaces/IPriceSubmitter.sol";
 contract MockNpmFtso is IIFtso {
 
 
-    // number of decimal places in FAsset USD price
-    // note that the actual USD price is the integer value divided by 10^FASSET_USD_DECIMALS
-    uint256 public constant FASSET_USD_DECIMALS = 5;
+    // number of decimal places in Asset USD price
+    // note that the actual USD price is the integer value divided by 10^ASSET_PRICE_USD_DECIMALS
+    uint256 public constant ASSET_PRICE_USD_DECIMALS = 5;
 
     // errors
     string internal constant ERR_NO_ACCESS = "Access denied";
     string internal constant ERR_PRICE_TOO_HIGH = "Price too high";
     string internal constant ERR_PRICE_REVEAL_FAILURE = "Reveal period not active";
     string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
+    string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
+    string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
 
     string internal constant UNAVAILABLE = "Unavailable for testing";
 
     // storage
     bool public override active;                // activation status of FTSO
     string public override symbol;              // asset symbol that identifies FTSO
-    uint256 internal fAssetPriceUSD;            // current FAsset USD price
-    uint256 internal fAssetPriceTimestamp;      // time when price was updated    
+    uint256 internal assetPriceUSD;            // current Asset USD price
+    uint256 internal assetPriceTimestamp;      // time when price was updated    
 
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
     uint256 internal lastRevealEpochId;
 
     // external contracts
     IPriceSubmitter public priceSubmitter;       // Price submitter contract
-    IIVPToken[] public fAssets;                  // array of assets
-    IIFtso[] public fAssetFtsos;                 // FTSOs for assets (for a multi-asset FTSO)
+    IIVPToken[] public assets;                   // array of assets
+    IIFtso[] public assetFtsos;                  // FTSOs for assets (for a multi-asset FTSO)
 
     // Info normally stored in epoch
     uint256 internal firstEpochStartTime;
@@ -61,7 +63,7 @@ contract MockNpmFtso is IIFtso {
         uint256 _revealPeriod)
     {
         symbol = _symbol;
-        fAssetPriceTimestamp = block.timestamp;
+        assetPriceTimestamp = block.timestamp;
         active = true;
         priceSubmitter = _priceSubmitter;
         firstEpochStartTime = _firstEpochStartTime;
@@ -73,18 +75,19 @@ contract MockNpmFtso is IIFtso {
     /**
      * @notice Submits price hash for current epoch
      * @param _sender               Sender address
+     * @param _epochId              Target epoch id to which hashes are submitted
      * @param _hash                 Hashed price and random number
-     * @return _epochId             Returns current epoch id
      * @notice Emits PriceHashSubmitted event
      */
     function submitPriceHashSubmitter(
         address _sender,
+        uint256 _epochId,
         bytes32 _hash
     ) 
         external override onlyPriceSubmitter 
-        returns (uint256 _epochId) 
     {
-        _epochId = _getCurrentEpochId();
+        require(_epochId == _getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
+        require(epochVoterHash[_epochId][_sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
         epochVoterHash[_epochId][_sender] = _hash;
         emit PriceHashSubmitted(_sender, _epochId, _hash, block.timestamp);
     }
@@ -103,7 +106,7 @@ contract MockNpmFtso is IIFtso {
         uint256 _epochId,
         uint256 _price,
         uint256 _random,
-        uint256 /*_wflrVP*/     // just an optimization, to read flare vp only once
+        uint256 /*_wNatVP*/     // just an optimization, to read native token vp only once
     )
         external override onlyPriceSubmitter 
     {
@@ -124,13 +127,13 @@ contract MockNpmFtso is IIFtso {
         emit PriceRevealed(_voter, _epochId, _price, _random, block.timestamp, 0, 0);
     }
 
-    function wflrVotePowerCached(address _owner, uint256 _epochId) external override returns (uint256 _wflrVP) {
+    function wNatVotePowerCached(address _owner, uint256 _epochId) external override returns (uint256 _wNatVP) {
         // TODO
     }
 
     /**
-     * @notice Returns current FAsset price
-     * @return _price               Price in USD multiplied by fAssetUSDDecimals
+     * @notice Returns current Asset price
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _timestamp           Time when price was updated for the last time
      */
     function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
@@ -191,10 +194,10 @@ contract MockNpmFtso is IIFtso {
     }
 
     /**
-     * @notice Returns FAsset price submitted by voter in specific epoch
+     * @notice Returns Asset price submitted by voter in specific epoch
      * @param _epochId              Id of the epoch
      * @param _voter                Address of the voter
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view override returns (uint256) {
         return revealedPrices[_epochId][_voter];
@@ -279,11 +282,11 @@ contract MockNpmFtso is IIFtso {
         require(false, UNAVAILABLE);
     }
 
-    function setFAsset(IIVPToken) external pure override {
+    function setAsset(IIVPToken) external pure override {
         require(false, UNAVAILABLE);
     }
 
-    function setFAssetFtsos(IIFtso[] memory) external pure override {
+    function setAssetFtsos(IIFtso[] memory) external pure override {
         require(false, UNAVAILABLE);
     }
 
@@ -300,18 +303,18 @@ contract MockNpmFtso is IIFtso {
   
     /**
      * @notice Returns the FTSO asset
-     * @dev fAsset is null in case of multi-asset FTSO
+     * @dev asset is null in case of multi-asset FTSO
      */
-    function getFAsset() external pure override returns (IIVPToken) {
+    function getAsset() external pure override returns (IIVPToken) {
         require(false, UNAVAILABLE);
         return IIVPToken(address(0));
     }
 
     /**
-     * @notice Returns the FAsset FTSOs
-     * @dev FAssetFtsos is not null only in case of multi-asset FTSO
+     * @notice Returns the Asset FTSOs
+     * @dev AssetFtsos is not null only in case of multi-asset FTSO
      */
-    function getFAssetFtsos() external pure override returns (IIFtso[] memory) {
+    function getAssetFtsos() external pure override returns (IIFtso[] memory) {
         require(false, UNAVAILABLE);
         return new IIFtso[](0);
     }
@@ -365,7 +368,7 @@ contract MockNpmFtso is IIFtso {
         return (new IIVPToken[](0), new uint256[](0), 0, 0, 0, 0);
     }
 
-    function wFlr() external pure override returns (IIVPToken) {
+    function wNat() external pure override returns (IIVPToken) {
         require(false, UNAVAILABLE);
         return IIVPToken(address(0));
     }

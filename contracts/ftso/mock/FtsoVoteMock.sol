@@ -12,9 +12,9 @@ import "../lib/FtsoVote.sol";
 contract FtsoVoteMock {
     function createInstance(
         address _voter,
-        uint256 _votePowerFlr,
+        uint256 _votePowerNat,
         uint256 _votePowerAsset,
-        uint256 _totalVotePowerFlr,
+        uint256 _totalVotePowerNat,
         uint256 _totalVotePowerAsset,
         uint256 _price
     )
@@ -23,9 +23,9 @@ contract FtsoVoteMock {
     {
         return FtsoVote._createInstance(
             _voter,
-            _votePowerFlr,
+            _votePowerNat,
             _votePowerAsset,
-            _totalVotePowerFlr,
+            _totalVotePowerNat,
             _totalVotePowerAsset,
             _price);
     }

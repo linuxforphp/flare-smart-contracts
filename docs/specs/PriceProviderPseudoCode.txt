@@ -2,7 +2,7 @@ const BobAddress;
 const providerAddress; // price provider address
 
 // below values should be obtained from deployment json file
-const wFlr; //token contract
+const wNat; //token contract
 const priceEpochDurationSeconds;
 const ftsoRegistry = priceSubmitter.getFtsoRegistry();
 const voterWhitelister = priceSubmitter.getVoterWhitelister();
@@ -11,13 +11,13 @@ const FtsoIndexList { // get ftso indices for the desired symbols
 };
 // ftsoRegistry.getSupportedSymbolsAndFtsos() can be used to return all available symbols and corresponding ftsos
 
-// preliminary steps of wrapping flare and delegating vote power.
+// preliminary steps of wrapping native token and delegating vote power.
 // these steps will usually be done in a different scope
 /////////////////////////////////////////////////////////////////
-// Bob wrapps 100 FLR
-wFlr.deposit(){from: BobAddress, amount: 100};
+// Bob wrapps 100 native tokens
+wNat.deposit(){from: BobAddress, amount: 100};
 // Bob delegates 100% of his vote power to a price provider
-wFlr.delegate(providerAddress, percentToBips(100)){from: BobAddress};
+wNat.delegate(providerAddress, percentToBips(100)){from: BobAddress};
 // price provider steps
 ///////////////////////
 main() {
@@ -93,7 +93,7 @@ main() {
 
 
         // Rewhitelist demo
-        // This will usually be done in a different scope (when more flare is delegated, when whitelister emits an event...)
+        // This will usually be done in a different scope (when more native token is delegated, when whitelister emits an event...)
         ++step;
         // Try to rewhitelist every 100 epochs
         if(step % 100 == 0){

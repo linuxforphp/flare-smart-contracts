@@ -13,7 +13,6 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     using SafeMath for uint256;
     using SafePct for uint256;
 
-    uint256 private constant FLR_FTSO_INDEX = 0;
     uint256 internal constant TERA = 10 ** 12;                    // 10^12
     uint256 internal constant BIPS100 = 10 ** 4;                  // 100 * 100%
 
@@ -273,40 +272,40 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         // get parameters
         IIVPToken[] memory assets;
         uint256[] memory assetMultipliers;
-        uint256 totalVotePowerFlr;
+        uint256 totalVotePowerNat;
         uint256 totalVotePowerAsset;
         uint256 assetWeightRatio;
         uint256 votePowerBlock;
-        (assets, assetMultipliers, totalVotePowerFlr, totalVotePowerAsset, assetWeightRatio, votePowerBlock)
+        (assets, assetMultipliers, totalVotePowerNat, totalVotePowerAsset, assetWeightRatio, votePowerBlock)
             = ftso.getVoteWeightingParameters();
-        // flr vote powers
-        uint256[] memory wflrVP = 
-            _getFlareVotePowerWeights(ftso.wFlr(), totalVotePowerFlr, _addresses, votePowerBlock);
+        // nat vote powers
+        uint256[] memory wNatVP = 
+            _getNativeVotePowerWeights(ftso.wNat(), totalVotePowerNat, _addresses, votePowerBlock);
         // asset vote powers
         uint256[] memory combinedAssetVP = 
             _getAssetVotePowerWeights(assets, assetMultipliers, totalVotePowerAsset, _addresses, votePowerBlock);
-        // combine asset and wflr
-        return _computeWeightedSum(wflrVP, combinedAssetVP, assetWeightRatio);
+        // combine asset and wNat
+        return _computeWeightedSum(wNatVP, combinedAssetVP, assetWeightRatio);
     }
     
     /**
-     * Calculate flare vote power weights like FTSO.
+     * Calculate native vote power weights like FTSO.
      */
-    function _getFlareVotePowerWeights(
-        IIVPToken _wflr,
-        uint256 _totalVotePowerFlr,
+    function _getNativeVotePowerWeights(
+        IIVPToken _wNat,
+        uint256 _totalVotePowerNat,
         address[] memory _addresses, 
         uint256 _blockNumber
     )
         internal
-        returns (uint256[] memory _wflrVP)
+        returns (uint256[] memory _wNatVP)
     {
-        _wflrVP = _getVotePowers(_wflr, _addresses, _blockNumber);
-        if (_totalVotePowerFlr == 0) {
-            return _wflrVP;  // if total is 0, all values must be 0, no division needed
+        _wNatVP = _getVotePowers(_wNat, _addresses, _blockNumber);
+        if (_totalVotePowerNat == 0) {
+            return _wNatVP;  // if total is 0, all values must be 0, no division needed
         }
         for (uint256 i = 0; i < _addresses.length; i++) {
-            _wflrVP[i] = _wflrVP[i].mulDiv(TERA, _totalVotePowerFlr);
+            _wNatVP[i] = _wNatVP[i].mulDiv(TERA, _totalVotePowerNat);
         }
     }
     
@@ -406,10 +405,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     
     /**
      * Calculate weighted sum of two arrays (like in FTSO):
-     *  result[i] = (100% - _assetWeightRatio) * _weightsFlr[i] + _assetWeightRatio * _weightsAsset[i]
+     *  result[i] = (100% - _assetWeightRatio) * _weightsNat[i] + _assetWeightRatio * _weightsAsset[i]
      */
     function _computeWeightedSum(
-        uint256[] memory _weightsFlr,
+        uint256[] memory _weightsNat,
         uint256[] memory _weightsAsset,
         uint256 _assetWeightRatio
     )
@@ -417,20 +416,20 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         returns (uint256[] memory _weights)
     {
         uint256 weightAssetSum = _arraySum(_weightsAsset);
-        uint256 weightFlrSum = _arraySum(_weightsFlr);
+        uint256 weightNatSum = _arraySum(_weightsNat);
         uint256 weightAssetShare = weightAssetSum > 0 ? _assetWeightRatio : 0;
-        uint256 weightFlrShare = weightFlrSum > 0 ? BIPS100 - weightAssetShare : 0;
-        _weights = new uint256[](_weightsFlr.length);
-        for (uint256 i = 0; i < _weightsFlr.length; i++) {
-            uint256 weightFlr = 0;
-            if (weightFlrShare > 0) {
-                weightFlr = weightFlrShare.mulDiv(TERA * _weightsFlr[i], weightFlrSum * BIPS100);
+        uint256 weightNatShare = weightNatSum > 0 ? BIPS100 - weightAssetShare : 0;
+        _weights = new uint256[](_weightsNat.length);
+        for (uint256 i = 0; i < _weightsNat.length; i++) {
+            uint256 weightNat = 0;
+            if (weightNatShare > 0) {
+                weightNat = weightNatShare.mulDiv(TERA * _weightsNat[i], weightNatSum * BIPS100);
             }
             uint256 weightAsset = 0;
             if (weightAssetShare > 0) {
                 weightAsset = weightAssetShare.mulDiv(TERA * _weightsAsset[i], weightAssetSum * BIPS100);
             }
-            _weights[i] = weightFlr + weightAsset;
+            _weights[i] = weightNat + weightAsset;
         }
     }
 

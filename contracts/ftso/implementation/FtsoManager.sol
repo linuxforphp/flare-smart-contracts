@@ -55,11 +55,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     string internal constant ERR_REVEAL_PRICE_EPOCH_TOO_LONG = "Reveal price epoch too long";
     string internal constant ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized";
     string internal constant ERR_GOV_PARAMS_INVALID = "Gov. params invalid";
-    string internal constant ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
+    string internal constant ERR_ASSET_FTSO_NOT_MANAGED = "Asset FTSO not managed by ftso manager";
     string internal constant ERR_NOT_FOUND = "Not found";
     string internal constant ERR_ALREADY_ADDED = "Already added";
-    string internal constant ERR_FTSO_FASSET_FTSO_ZERO = "fAsset ftsos list empty";
-    string internal constant ERR_FTSO_EQUALS_FASSET_FTSO = "ftso equals fAsset ftso";
+    string internal constant ERR_FTSO_ASSET_FTSO_ZERO = "Asset ftsos list empty";
+    string internal constant ERR_FTSO_EQUALS_ASSET_FTSO = "ftso equals asset ftso";
     string internal constant ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
     string internal constant ERR_REWARD_EXPIRY_OFFSET_INVALID = "Reward expiry invalid";
     string internal constant ERR_MAX_TRUSTED_ADDRESSES_LENGTH_EXCEEDED = "Max trusted addresses length exceeded";
@@ -214,14 +214,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
      /**
      * @notice Adds FTSO to the list of rewarded FTSOs
-     * All ftsos in multi fasset ftso must be managed by this ftso manager
+     * All ftsos in multi asset ftso must be managed by this ftso manager
      */
     function addFtso(IIFtso _ftso) external override onlyGovernance {
         _addFtso(_ftso, true);
     }
 
     /**
-     * @notice Removes FTSO from the list of the rewarded FTSOs - revert if ftso is used in multi fasset ftso
+     * @notice Removes FTSO from the list of the rewarded FTSOs - revert if ftso is used in multi asset ftso
      * @dev Deactivates _ftso
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
@@ -233,14 +233,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     
     /**
      * @notice Replaces one ftso with another - symbols must match
-     * All ftsos in multi fasset ftso must be managed by this ftso manager
+     * All ftsos in multi asset ftso must be managed by this ftso manager
      * @dev Deactivates _ftsoToRemove
      */
     function replaceFtso(
         IIFtso _ftsoToRemove,
         IIFtso _ftsoToAdd,
         bool _copyCurrentPrice,
-        bool _copyFAssetOrFAssetFtsos
+        bool _copyAssetOrAssetFtsos
     )
         external override
         onlyGovernance
@@ -268,21 +268,21 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             _ftsoToAdd.updateInitialPrice(currentPrice, timestamp);
         }
 
-        if (_copyFAssetOrFAssetFtsos) {
-            IIVPToken fAsset = _ftsoToRemove.getFAsset();
-            if (address(fAsset) != address(0)) { // copy fAsset if exists
-                _ftsoToAdd.setFAsset(fAsset);
-            } else { // copy fAssetFtsos list if not empty
-                IIFtso[] memory fAssetFtsos = _ftsoToRemove.getFAssetFtsos();
-                if (fAssetFtsos.length > 0) {
-                    _ftsoToAdd.setFAssetFtsos(fAssetFtsos);
+        if (_copyAssetOrAssetFtsos) {
+            IIVPToken asset = _ftsoToRemove.getAsset();
+            if (address(asset) != address(0)) { // copy asset if exists
+                _ftsoToAdd.setAsset(asset);
+            } else { // copy assetFtsos list if not empty
+                IIFtso[] memory assetFtsos = _ftsoToRemove.getAssetFtsos();
+                if (assetFtsos.length > 0) {
+                    _ftsoToAdd.setAssetFtsos(assetFtsos);
                 }
             }
         }
         // Add without duplicate check
         _addFtso(_ftsoToAdd, false);
         
-        // replace old contract with the new one in multi fAsset ftsos
+        // replace old contract with the new one in multi asset ftsos
         IIFtso[] memory contracts = ftsoRegistry.getSupportedFtsos();
 
         uint256 ftsosLen = contracts.length;
@@ -291,18 +291,18 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             if (ftso == _ftsoToRemove) {
                 continue;
             }
-            IIFtso[] memory fAssetFtsos = ftso.getFAssetFtsos();
-            uint256 fAssetFtsosLen = fAssetFtsos.length;
-            if (fAssetFtsosLen > 0) {
+            IIFtso[] memory assetFtsos = ftso.getAssetFtsos();
+            uint256 assetFtsosLen = assetFtsos.length;
+            if (assetFtsosLen > 0) {
                 bool changed = false;
-                for (uint256 j = 0; j < fAssetFtsosLen; j++) {
-                    if (fAssetFtsos[j] == _ftsoToRemove) {
-                        fAssetFtsos[j] = _ftsoToAdd;
+                for (uint256 j = 0; j < assetFtsosLen; j++) {
+                    if (assetFtsos[j] == _ftsoToRemove) {
+                        assetFtsos[j] = _ftsoToAdd;
                         changed = true;
                     }
                 }
                 if (changed) {
-                    ftso.setFAssetFtsos(fAssetFtsos);
+                    ftso.setAssetFtsos(assetFtsos);
                 }
             }
         }
@@ -312,26 +312,26 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     }
     
     /**
-     * @notice Set FAsset for FTSO
+     * @notice Set asset for FTSO
      */
-    function setFtsoFAsset(IIFtso _ftso, IIVPToken _fAsset) external override onlyGovernance {
-        _ftso.setFAsset(_fAsset);
+    function setFtsoAsset(IIFtso _ftso, IIVPToken _asset) external override onlyGovernance {
+        _ftso.setAsset(_asset);
     }
 
     /**
-     * @notice Set FAsset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
+     * @notice Set asset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
      */
-    function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external override onlyGovernance {
-        uint256 len = _fAssetFtsos.length;
-        require (len > 0, ERR_FTSO_FASSET_FTSO_ZERO);
+    function setFtsoAssetFtsos(IIFtso _ftso, IIFtso[] memory _assetFtsos) external override onlyGovernance {
+        uint256 len = _assetFtsos.length;
+        require (len > 0, ERR_FTSO_ASSET_FTSO_ZERO);
         for (uint256 i = 0; i < len; i++) {
-            if (_ftso == _fAssetFtsos[i]) {
-                revert(ERR_FTSO_EQUALS_FASSET_FTSO);
+            if (_ftso == _assetFtsos[i]) {
+                revert(ERR_FTSO_EQUALS_ASSET_FTSO);
             }
         }
 
-        _checkFAssetFtsosAreManaged(_fAssetFtsos);
-        _ftso.setFAssetFtsos(_fAssetFtsos);
+        _checkAssetFtsosAreManaged(_assetFtsos);
+        _ftso.setAssetFtsos(_assetFtsos);
     }
 
     /**
@@ -355,31 +355,31 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
      * @notice Sets governance parameters for FTSOs
      */
     function setGovernanceParameters(
-        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
+        uint256 _lowNatTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     )
         external override onlyGovernance 
     {
-        require(_maxVotePowerFlrThresholdFraction > 0, ERR_GOV_PARAMS_INVALID);
+        require(_maxVotePowerNatThresholdFraction > 0, ERR_GOV_PARAMS_INVALID);
         require(_maxVotePowerAssetThresholdFraction > 0, ERR_GOV_PARAMS_INVALID);
         require(_highAssetUSDThreshold >= _lowAssetUSDThreshold, ERR_GOV_PARAMS_INVALID);
         require(_highAssetTurnoutThresholdBIPS <= 1e4, ERR_GOV_PARAMS_INVALID);
-        require(_lowFlrTurnoutThresholdBIPS <= 1e4, ERR_GOV_PARAMS_INVALID);
+        require(_lowNatTurnoutThresholdBIPS <= 1e4, ERR_GOV_PARAMS_INVALID);
         require(_rewardExpiryOffsetSeconds > 0, ERR_REWARD_EXPIRY_OFFSET_INVALID);
         require(_trustedAddresses.length <= MAX_TRUSTED_ADDRESSES_LENGTH, ERR_MAX_TRUSTED_ADDRESSES_LENGTH_EXCEEDED);
         settings._setState(
-            _maxVotePowerFlrThresholdFraction,
+            _maxVotePowerNatThresholdFraction,
             _maxVotePowerAssetThresholdFraction,
             _lowAssetUSDThreshold,
             _highAssetUSDThreshold,
             _highAssetTurnoutThresholdBIPS,
-            _lowFlrTurnoutThresholdBIPS,
+            _lowNatTurnoutThresholdBIPS,
             _rewardExpiryOffsetSeconds,
             _trustedAddresses
         );
@@ -448,7 +448,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     function _addFtso(IIFtso _ftso, bool _addNewFtso) internal {
         require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
 
-        _checkFAssetFtsosAreManaged(_ftso.getFAssetFtsos());
+        _checkAssetFtsosAreManaged(_ftso.getAssetFtsos());
 
         if (_addNewFtso) {
             // Check if symbol already exists in registry
@@ -474,12 +474,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
         // Configure 
         _ftso.configureEpochs(
-            settings.maxVotePowerFlrThresholdFraction,
+            settings.maxVotePowerNatThresholdFraction,
             settings.maxVotePowerAssetThresholdFraction,
             settings.lowAssetUSDThreshold,
             settings.highAssetUSDThreshold,
             settings.highAssetTurnoutThresholdBIPS,
-            settings.lowFlrTurnoutThresholdBIPS,
+            settings.lowNatTurnoutThresholdBIPS,
             settings.trustedAddresses
         );
         
@@ -499,7 +499,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         // Since this is as mapping, we can also just delete it, as false is default value for non-existing keys
         delete ftsoInFallbackMode[_ftso];
         delete managedFtsos[_ftso];
-        _checkMultiFassetFtsosAreManaged(_getFtsos());
+        _checkMultiAssetFtsosAreManaged(_getFtsos());
         emit FtsoAdded(_ftso, false);
     }
 
@@ -762,12 +762,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         for (uint256 i = 0; i < numFtsos; i++) {
             if (settings.changed) {
                 _ftsos[i].configureEpochs(
-                    settings.maxVotePowerFlrThresholdFraction,
+                    settings.maxVotePowerNatThresholdFraction,
                     settings.maxVotePowerAssetThresholdFraction,
                     settings.lowAssetUSDThreshold,
                     settings.highAssetUSDThreshold,
                     settings.highAssetTurnoutThresholdBIPS,
-                    settings.lowFlrTurnoutThresholdBIPS,
+                    settings.lowNatTurnoutThresholdBIPS,
                     settings.trustedAddresses
                 );
             }
@@ -789,24 +789,24 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     }
     
     /**
-     * @notice Check if fasset ftsos are managed by this ftso manager, revert otherwise
+     * @notice Check if asset ftsos are managed by this ftso manager, revert otherwise
      */
-    function _checkFAssetFtsosAreManaged(IIFtso[] memory _fAssetFtsos) internal view {
-        uint256 len = _fAssetFtsos.length;
+    function _checkAssetFtsosAreManaged(IIFtso[] memory _assetFtsos) internal view {
+        uint256 len = _assetFtsos.length;
         for (uint256 i = 0; i < len; i++) {
-            if (!managedFtsos[_fAssetFtsos[i]]) {
-                revert(ERR_FASSET_FTSO_NOT_MANAGED);
+            if (!managedFtsos[_assetFtsos[i]]) {
+                revert(ERR_ASSET_FTSO_NOT_MANAGED);
             }
         }
     }
 
     /**
-     * @notice Check if all multi fasset ftsos are managed by this ftso manager, revert otherwise
+     * @notice Check if all multi asset ftsos are managed by this ftso manager, revert otherwise
      */
-    function _checkMultiFassetFtsosAreManaged(IIFtso[] memory _ftsos) internal view {
+    function _checkMultiAssetFtsosAreManaged(IIFtso[] memory _ftsos) internal view {
         uint256 len = _ftsos.length;
         for (uint256 i = 0; i < len; i++) {
-            _checkFAssetFtsosAreManaged(_ftsos[i].getFAssetFtsos());
+            _checkAssetFtsosAreManaged(_ftsos[i].getAssetFtsos());
         }
     }
 

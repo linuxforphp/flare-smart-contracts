@@ -31,16 +31,16 @@ contract VoterWhitelisterMock is VoterWhitelister {
         return _getVotePowerWeights(ftso, _addresses);
     }
     
-    function getFlareVotePowerWeights(
-        IIVPToken _wflr,
-        uint256 _totalVotePowerFlr,
+    function getNativeVotePowerWeights(
+        IIVPToken _wNat,
+        uint256 _totalVotePowerNat,
         address[] memory _addresses, 
         uint256 _blockNumber
     )
         public
-        returns (uint256[] memory _wflrVP)
+        returns (uint256[] memory _wNatVP)
     {
-        return _getFlareVotePowerWeights(_wflr, _totalVotePowerFlr, _addresses, _blockNumber);
+        return _getNativeVotePowerWeights(_wNat, _totalVotePowerNat, _addresses, _blockNumber);
     }
     
     function getAssetVotePowerWeights(

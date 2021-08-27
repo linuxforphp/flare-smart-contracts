@@ -45,7 +45,7 @@ contract(`ValidatorRewardManager.sol and StateConnector.sol; ${ getTestFile(__fi
             await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[2]);
             await stateConnectorMock.addNewDataAvailabilityPeriodsMined(accounts[2]);
 
-            // give reward manager some flr to distribute
+            // give reward manager some nat to distribute
             await mockInflation.receiveInflation({ value: "1500" } );
 
             const rewardPeriodTimespan = await stateConnectorMock.rewardPeriodTimespan();
@@ -61,14 +61,14 @@ contract(`ValidatorRewardManager.sol and StateConnector.sol; ${ getTestFile(__fi
             // Act
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees
-            let flrOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
 
             // Assert
             // inflation authorized = 2000
             // a1 -> a3 claimed should be 2000 * 3 / 5  = 1200
-            let flrClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(flrClosingBalance.sub(flrOpeningBalance).toNumber(), Math.floor(2000 * 3 / 5));
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), Math.floor(2000 * 3 / 5));
         });
     });
 });

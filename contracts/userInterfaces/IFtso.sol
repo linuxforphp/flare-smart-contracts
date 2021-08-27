@@ -24,7 +24,7 @@ interface IFtso {
 
     event PriceRevealed(
         address indexed voter, uint256 indexed epochId, uint256 price, uint256 random, uint256 timestamp,
-        uint256 votePowerFlr, uint256 votePowerAsset
+        uint256 votePowerNat, uint256 votePowerAsset
     );
 
     event PriceFinalized(
@@ -39,8 +39,8 @@ interface IFtso {
 
     event LowTurnout(
         uint256 indexed epochId,
-        uint256 flrTurnout,
-        uint256 lowFlrTurnoutThresholdBIPS,
+        uint256 natTurnout,
+        uint256 lowNatTurnoutThresholdBIPS,
         uint256 timestamp
     );
 
@@ -72,9 +72,9 @@ interface IFtso {
     function getRandom(uint256 _epochId) external view returns (uint256);
     
     /**
-     * @notice Returns FAsset price consented in specific epoch
+     * @notice Returns asset price consented in specific epoch
      * @param _epochId              Id of the epoch
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPrice(uint256 _epochId) external view returns (uint256);
 
@@ -108,16 +108,16 @@ interface IFtso {
     );
     
     /**
-     * @notice Returns FAsset price submitted by voter in specific epoch
+     * @notice Returns asset price submitted by voter in specific epoch
      * @param _epochId              Id of the epoch
      * @param _voter                Address of the voter
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256);
 
     /**
-     * @notice Returns current FAsset price
-     * @return _price               Price in USD multiplied by fAssetUSDDecimals
+     * @notice Returns current asset price
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _timestamp           Time when price was updated for the last time
      */
     function getCurrentPrice() external view returns (uint256 _price, uint256 _timestamp);

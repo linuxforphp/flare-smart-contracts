@@ -14,7 +14,7 @@ contract MockVPToken is IIVPToken {
     uint256 public totalWeight;
     uint256 public addressCount;    
     
-    // In case weights.length = 0, FLR balance is returned for one of the addresses.
+    // In case weights.length = 0, native token balance is returned for one of the addresses.
     constructor(address[] memory addresses, uint256[] memory weights) {
         require(addresses.length == weights.length || weights.length == 0, "Error in parameters");
         addressCount = addresses.length;

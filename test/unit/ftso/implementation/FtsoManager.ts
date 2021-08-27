@@ -40,7 +40,7 @@ const VOTE_POWER_BOUNDARY_FRACTION = 7;
 
 const ERR_GOVERNANCE_ONLY = "only governance"
 const ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized"
-const ERR_FASSET_FTSO_NOT_MANAGED = "FAsset FTSO not managed by ftso manager";
+const ERR_XASSET_FTSO_NOT_MANAGED = "Asset FTSO not managed by ftso manager";
 const ERR_NOT_FOUND = "FTSO index not supported";
 const ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
 
@@ -70,7 +70,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     beforeEach(async () => {
         mockFtso = await MockFtso.new();
         ftsoInterface = await Ftso.new(
-            "FLR",
+            "NAT",
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
@@ -594,7 +594,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should successfully replace an FTSO and update fasset", async () => {
+        it("Should successfully replace an FTSO and update asset", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(mockFtso.address);
@@ -605,9 +605,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturn(symbol, symbolReturn);
             await mockFtso2.givenMethodReturn(symbol, symbolReturn);
 
-            const fasset = ftsoInterface.contract.methods.getFAsset().encodeABI();
-            const fassetReturn = web3.eth.abi.encodeParameter('address', accounts[5]);
-            await mockFtso.givenMethodReturn(fasset, fassetReturn);
+            const asset = ftsoInterface.contract.methods.getAsset().encodeABI();
+            const assetReturn = web3.eth.abi.encodeParameter('address', accounts[5]);
+            await mockFtso.givenMethodReturn(asset, assetReturn);
 
             // Act
             let tx = await ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, true);
@@ -617,12 +617,12 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expectEvent(tx, "FtsoAdded", {ftso: mockFtso2.address, add: true});
             assert.equal((await ftsoManager.getFtsos()).length, 1);
 
-            const setFAsset = ftsoInterface.contract.methods.setFAsset(accounts[5]).encodeABI();
-            const invocationCount = await mockFtso2.invocationCountForCalldata.call(setFAsset);
+            const setAsset = ftsoInterface.contract.methods.setAsset(accounts[5]).encodeABI();
+            const invocationCount = await mockFtso2.invocationCountForCalldata.call(setAsset);
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should successfully replace an FTSO and update fasset ftsos", async () => {
+        it("Should successfully replace an FTSO and update asset ftsos", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             await ftsoManager.addFtso(mockFtso.address);
@@ -633,9 +633,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturn(symbol, symbolReturn);
             await mockFtso2.givenMethodReturn(symbol, symbolReturn);
 
-            const fassetFtsos = ftsoInterface.contract.methods.getFAssetFtsos().encodeABI();
-            const fassetFtsosReturn = web3.eth.abi.encodeParameter('address[]', [accounts[5], accounts[6]]);
-            await mockFtso.givenMethodReturn(fassetFtsos, fassetFtsosReturn);
+            const assetFtsos = ftsoInterface.contract.methods.getAssetFtsos().encodeABI();
+            const assetFtsosReturn = web3.eth.abi.encodeParameter('address[]', [accounts[5], accounts[6]]);
+            await mockFtso.givenMethodReturn(assetFtsos, assetFtsosReturn);
 
             // Act
             let tx = await ftsoManager.replaceFtso(mockFtso.address, mockFtso2.address, false, true);
@@ -645,18 +645,18 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expectEvent(tx, "FtsoAdded", {ftso: mockFtso2.address, add: true});
             assert.equal((await ftsoManager.getFtsos()).length, 1);
 
-            const setFAssetFtsos = ftsoInterface.contract.methods.setFAssetFtsos([accounts[5], accounts[6]]).encodeABI();
-            const invocationCount = await mockFtso2.invocationCountForCalldata.call(setFAssetFtsos);
+            const setAssetFtsos = ftsoInterface.contract.methods.setAssetFtsos([accounts[5], accounts[6]]).encodeABI();
+            const invocationCount = await mockFtso2.invocationCountForCalldata.call(setAssetFtsos);
             assert.equal(invocationCount.toNumber(), 1);
         });
 
-        it("Should successfully replace an FTSO and change fasset ftso", async () => {
+        it("Should successfully replace an FTSO and change asset ftso", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
-            let multiFtso = await Ftso.new('FLR', constants.ZERO_ADDRESS, ftsoManager.address, constants.ZERO_ADDRESS, 0, 1e10, defaultPriceEpochCyclicBufferSize);
+            let multiFtso = await Ftso.new('NAT', constants.ZERO_ADDRESS, ftsoManager.address, constants.ZERO_ADDRESS, 0, 1e10, defaultPriceEpochCyclicBufferSize);
             await ftsoManager.addFtso(multiFtso.address);
             await ftsoManager.addFtso(mockFtso.address);
-            await ftsoManager.setFtsoFAssetFtsos(multiFtso.address, [mockFtso.address]);
+            await ftsoManager.setFtsoAssetFtsos(multiFtso.address, [mockFtso.address]);
             let mockFtso2 = await MockFtso.new();
 
             await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
@@ -670,7 +670,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expectEvent(tx, "FtsoAdded", {ftso: mockFtso2.address, add: true});
             assert.equal((await ftsoManager.getFtsos()).length, 2);
 
-            assert.equal((await multiFtso.getFAssetFtsos())[0], mockFtso2.address);
+            assert.equal((await multiFtso.getAssetFtsos())[0], mockFtso2.address);
         });
 
         it("Should revert at replacing an FTSO if not the same symbol", async () => {
@@ -733,43 +733,43 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(addPromise, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
         });
 
-        it("Should set FAsset to FTSO", async () => {
+        it("Should set Asset to FTSO", async () => {
             let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
             
             const MockVPToken = artifacts.require("MockVPToken") as MockVPTokenContract;
-            let fasset1Token = await MockVPToken.new(accounts.slice(0, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) as MockVPTokenInstance;
-            let fasset2Token = await MockVPToken.new(accounts.slice(0, 10), [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]) as MockVPTokenInstance;
+            let asset1Token = await MockVPToken.new(accounts.slice(0, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) as MockVPTokenInstance;
+            let asset2Token = await MockVPToken.new(accounts.slice(0, 10), [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]) as MockVPTokenInstance;
             
-            // set fasset to ftso
-            await ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address);
-            await ftsoManager.setFtsoFAsset(ftso2.address, fasset2Token.address);
+            // set asset to ftso
+            await ftsoManager.setFtsoAsset(ftso1.address, asset1Token.address);
+            await ftsoManager.setFtsoAsset(ftso2.address, asset2Token.address);
             
-            // ftso and fasset for ftso should match
-            assert.equal(await ftso1.fAssetFtsos(0), ftso1.address);
-            assert.equal(await ftso2.fAssetFtsos(0), ftso2.address);
-            assert.equal(await ftso1.fAssets(0), fasset1Token.address);
-            assert.equal(await ftso2.fAssets(0), fasset2Token.address);
+            // ftso and asset for ftso should match
+            assert.equal(await ftso1.assetFtsos(0), ftso1.address);
+            assert.equal(await ftso2.assetFtsos(0), ftso2.address);
+            assert.equal(await ftso1.assets(0), asset1Token.address);
+            assert.equal(await ftso2.assets(0), asset2Token.address);
 
-            // length of fAssetFtsos lists should match
-            await expectRevert.unspecified(ftso1.fAssetFtsos(1));
-            await expectRevert.unspecified(ftso2.fAssetFtsos(1));
-            await expectRevert.unspecified(ftso1.fAssets(1));
-            await expectRevert.unspecified(ftso2.fAssets(1));
+            // length of assetFtsos lists should match
+            await expectRevert.unspecified(ftso1.assetFtsos(1));
+            await expectRevert.unspecified(ftso2.assetFtsos(1));
+            await expectRevert.unspecified(ftso1.assets(1));
+            await expectRevert.unspecified(ftso2.assets(1));
         });
 
-        it("Should not set FAsset to FTSO if not from governance", async () => {
+        it("Should not set Asset to FTSO if not from governance", async () => {
             let [ftso1, ] = await settingWithTwoFTSOs(accounts, ftsoManager);
             
             const MockVPToken = artifacts.require("MockVPToken") as MockVPTokenContract;
-            let fasset1Token = await MockVPToken.new(accounts.slice(0, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) as MockVPTokenInstance;
+            let asset1Token = await MockVPToken.new(accounts.slice(0, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) as MockVPTokenInstance;
             
-            // set fasset to ftso
-            let setPromise = ftsoManager.setFtsoFAsset(ftso1.address, fasset1Token.address, {from: accounts[1]});
+            // set asset to ftso
+            let setPromise = ftsoManager.setFtsoAsset(ftso1.address, asset1Token.address, {from: accounts[1]});
 
             await expectRevert(setPromise, ERR_GOVERNANCE_ONLY);
         });
 
-        it("Should set FAsset FTSOs to FTSO", async () => {
+        it("Should set Asset FTSOs to FTSO", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -778,22 +778,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
+            // set asset ftsos to ftso
+            await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
             
             // multiasset ftsos for ftso 1 should match
-            assert.equal(await ftso1.fAssetFtsos(0), ftso2.address);
-            assert.equal(await ftso1.fAssetFtsos(1), ftso3.address);
-            assert.equal(await ftso1.fAssetFtsos(2), ftso4.address);
+            assert.equal(await ftso1.assetFtsos(0), ftso2.address);
+            assert.equal(await ftso1.assetFtsos(1), ftso3.address);
+            assert.equal(await ftso1.assetFtsos(2), ftso4.address);
 
-            // length of fAssetFtsos lists should match
-            await expectRevert.unspecified(ftso1.fAssetFtsos(3))
-            await expectRevert.unspecified(ftso2.fAssetFtsos(1))
-            await expectRevert.unspecified(ftso3.fAssetFtsos(1))
-            await expectRevert.unspecified(ftso4.fAssetFtsos(1))
+            // length of assetFtsos lists should match
+            await expectRevert.unspecified(ftso1.assetFtsos(3))
+            await expectRevert.unspecified(ftso2.assetFtsos(1))
+            await expectRevert.unspecified(ftso3.assetFtsos(1))
+            await expectRevert.unspecified(ftso4.assetFtsos(1))
         });
 
-        it("Should update FAsset FTSOs on FTSO", async () => {
+        it("Should update Asset FTSOs on FTSO", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -803,22 +803,22 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
+            // set asset ftsos to ftso
+            await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
             
             // multiasset ftsos for ftso 1 should match
-            assert.equal(await ftso1.fAssetFtsos(0), ftso2.address);
-            assert.equal(await ftso1.fAssetFtsos(1), ftso3.address);
-            assert.equal(await ftso1.fAssetFtsos(2), ftso4.address);
+            assert.equal(await ftso1.assetFtsos(0), ftso2.address);
+            assert.equal(await ftso1.assetFtsos(1), ftso3.address);
+            assert.equal(await ftso1.assetFtsos(2), ftso4.address);
 
-            // length of fAssetFtsos lists should match
-            await expectRevert.unspecified(ftso1.fAssetFtsos(3))
-            await expectRevert.unspecified(ftso2.fAssetFtsos(1))
-            await expectRevert.unspecified(ftso3.fAssetFtsos(1))
-            await expectRevert.unspecified(ftso4.fAssetFtsos(1))
+            // length of assetFtsos lists should match
+            await expectRevert.unspecified(ftso1.assetFtsos(3))
+            await expectRevert.unspecified(ftso2.assetFtsos(1))
+            await expectRevert.unspecified(ftso3.assetFtsos(1))
+            await expectRevert.unspecified(ftso4.assetFtsos(1))
         });
 
-        it("Should not set FAsset FTSOs to FTSO if not from governance", async () => {
+        it("Should not set Asset FTSOs to FTSO if not from governance", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -827,13 +827,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            let setPromise = ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address), {from: accounts[1]});
+            // set asset ftsos to ftso
+            let setPromise = ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address), {from: accounts[1]});
 
             await expectRevert(setPromise, ERR_GOVERNANCE_ONLY);
         });
 
-        it("Should not set empty list of FAsset FTSOs to FTSO", async () => {
+        it("Should not set empty list of Asset FTSOs to FTSO", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -842,13 +842,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            let setPromise = ftsoManager.setFtsoFAssetFtsos(ftso1.address, []);
+            // set asset ftsos to ftso
+            let setPromise = ftsoManager.setFtsoAssetFtsos(ftso1.address, []);
 
-            await expectRevert(setPromise, "fAsset ftsos list empty");
+            await expectRevert(setPromise, "Asset ftsos list empty");
         });
 
-        it("Should not set FTSO (itself) in FAsset FTSOs to FTSO", async () => {
+        it("Should not set FTSO (itself) in Asset FTSOs to FTSO", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -857,13 +857,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            let setPromise = ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2, ftso3, ftso1, ftso4].map(ftso => ftso.address));
+            // set asset ftsos to ftso
+            let setPromise = ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2, ftso3, ftso1, ftso4].map(ftso => ftso.address));
 
-            await expectRevert(setPromise, "ftso equals fAsset ftso");
+            await expectRevert(setPromise, "ftso equals asset ftso");
         });
 
-        it("Should add multi FAsset FTSO if all ftsos are added", async () => {
+        it("Should add multi Asset FTSO if all ftsos are added", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -872,23 +872,23 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
+            // set asset ftsos to ftso
+            await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
             await ftsoManager.addFtso(ftso1.address);
             
             // multiasset ftsos for ftso 1 should match
-            assert.equal(await ftso1.fAssetFtsos(0), ftso2.address);
-            assert.equal(await ftso1.fAssetFtsos(1), ftso3.address);
-            assert.equal(await ftso1.fAssetFtsos(2), ftso4.address);
+            assert.equal(await ftso1.assetFtsos(0), ftso2.address);
+            assert.equal(await ftso1.assetFtsos(1), ftso3.address);
+            assert.equal(await ftso1.assetFtsos(2), ftso4.address);
 
-            // length of fAssetFtsos lists should match
-            await expectRevert.unspecified(ftso1.fAssetFtsos(3))
-            await expectRevert.unspecified(ftso2.fAssetFtsos(1))
-            await expectRevert.unspecified(ftso3.fAssetFtsos(1))
-            await expectRevert.unspecified(ftso4.fAssetFtsos(1))
+            // length of assetFtsos lists should match
+            await expectRevert.unspecified(ftso1.assetFtsos(3))
+            await expectRevert.unspecified(ftso2.assetFtsos(1))
+            await expectRevert.unspecified(ftso3.assetFtsos(1))
+            await expectRevert.unspecified(ftso4.assetFtsos(1))
         });
 
-        it("Should not add multi FAsset FTSO if not all ftsos are added", async () => {
+        it("Should not add multi Asset FTSO if not all ftsos are added", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -897,13 +897,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
 
-            // set fasset ftsos to ftso
-            await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
+            // set asset ftsos to ftso
+            await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
             await ftsoManager.removeFtso(ftso4.address);
-            await expectRevert(ftsoManager.addFtso(ftso1.address), ERR_FASSET_FTSO_NOT_MANAGED);
+            await expectRevert(ftsoManager.addFtso(ftso1.address), ERR_XASSET_FTSO_NOT_MANAGED);
         });
 
-        it("Should not remove FTSO if used in multi FAsset ftso", async () => {
+        it("Should not remove FTSO if used in multi Asset ftso", async () => {
             // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
             let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
             await setDefaultGovernanceParameters(ftsoManager);
@@ -912,10 +912,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso3.address);
             await ftsoManager.addFtso(ftso4.address);
             
-            // set fasset ftsos to ftso
-            await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
+            // set asset ftsos to ftso
+            await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
             await ftsoManager.addFtso(ftso1.address);
-            await expectRevert(ftsoManager.removeFtso(ftso2.address), ERR_FASSET_FTSO_NOT_MANAGED);
+            await expectRevert(ftsoManager.removeFtso(ftso2.address), ERR_XASSET_FTSO_NOT_MANAGED);
         });
 
         it("Should governance set FTSO parameters to FTSO manager and then the FTSO manager set the FTSOs on init", async () => {
@@ -936,7 +936,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso3.address, { from: accounts[0] });
             await ftsoManager.addFtso(ftso4.address, { from: accounts[0] });
-            await ftsoManager.setFtsoFAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
+            await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2,ftso3,ftso4].map(ftso => ftso.address));
 
             await ftsoManager.activate();
             // await ftsoManager.daemonize();
@@ -990,14 +990,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.daemonize(); // finalize price epoch
             await ftsoManager.daemonize(); // initialize price epoch
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            let epoch = 1;
+
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2));
             await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2 + 30));
             let tx = await ftsoManager.daemonize(); // finalize price epoch
@@ -1005,15 +1007,15 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             
             // Assert
             expectEvent(tx, "PriceEpochFinalized");
-
-            epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            epoch = 2;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120 * 3));
             tx = await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 3 + 30));
             tx = await ftsoManager.daemonize(); // finalize price epoch
@@ -1021,8 +1023,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             expectEvent(tx, "PriceEpochFinalized");
 
-            epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            epoch = 3
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10*DAY];
             let paramListBN = paramList.map(x => toBN(x));
@@ -1034,8 +1037,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(120 * 4));
             tx = await ftsoManager.daemonize();
             
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
             
             await time.increaseTo(startTs.addn(120 * 4 + 30));
             tx = await ftsoManager.daemonize(); // finalize price epoch
@@ -1293,7 +1296,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 ['address[]', 'uint256[]', 'uint256'],
                 [[accounts[1], accounts[2]], [25, 75], 100]);
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
-            // give reward manager some flr to distribute
+            // give reward manager some nats to distribute
             // await web3.eth.sendTransaction({ from: accounts[0], to: mockRewardManager.address, value: 1000000 });
 
             await setDefaultGovernanceParameters(ftsoManager);
@@ -1336,14 +1339,16 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(120 + 30));
             await ftsoManager.daemonize(); // initialize price epoch
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            
+            let epoch = 1;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2));
             await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso1, 10, epoch.toNumber(), accounts);
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso1, 10, epoch, accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(120 * 2 + 30));
             await ftsoManager.daemonize(); // finalize price epoch
@@ -1357,12 +1362,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.daemonize();
 
             // reveal only for ftso2, not ftso1
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            epoch = 2;
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(3 * 120));
             await ftsoManager.daemonize();
 
-            await revealSomePrices(ftso2, 10, epoch.toNumber(), accounts);
+            await revealSomePrices(ftso2, 10, epoch, accounts);
 
             await time.increaseTo(startTs.addn(3 * 120 + 30));
 
@@ -1859,16 +1865,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            let epoch = 0;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120));
             await ftsoManager.daemonize();
 
-            let report1 = await ftso1.getFullEpochReport(epoch.add(toBN(1)));
+            let report1 = await ftso1.getFullEpochReport(epoch + 1);
             expect(report1[12]).to.equals(true);
 
-            let report2 = await ftso2.getFullEpochReport(epoch.add(toBN(1)));
+            let report2 = await ftso2.getFullEpochReport(epoch + 1);
             expect(report2[12]).to.equals(true);
         });
 
@@ -1885,16 +1892,17 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
-            let epoch = await submitSomePrices(ftso1, 10, accounts);
-            epoch = await submitSomePrices(ftso2, 10, accounts);
+            let epoch = 0;
+            await submitSomePrices(epoch, ftso1, 10, accounts);
+            await submitSomePrices(epoch, ftso2, 10, accounts);
 
             await time.increaseTo(startTs.addn(120));
             await ftsoManager.daemonize();
 
-            let report1 = await ftso1.getFullEpochReport(epoch.add(toBN(1)));
+            let report1 = await ftso1.getFullEpochReport(epoch + 1);
             expect(report1[12]).to.equals(true);
 
-            let report2 = await ftso2.getFullEpochReport(epoch.add(toBN(1)));
+            let report2 = await ftso2.getFullEpochReport(epoch + 1);
             expect(report2[12]).to.equals(false);
         });
     });

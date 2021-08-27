@@ -9,12 +9,13 @@ library FtsoManagerSettings {
     struct State {
         // struct holding settings related to FTSOs
         // configurable settings
-        uint256 maxVotePowerFlrThresholdFraction; // high threshold for FLR vote power per voter
+        uint256 maxVotePowerNatThresholdFraction; // high threshold for native token vote power per voter
         uint256 maxVotePowerAssetThresholdFraction; // high threshold for asset vote power per voter
         uint256 lowAssetUSDThreshold; // threshold for low asset vote power (in scaled USD)
         uint256 highAssetUSDThreshold; // threshold for high asset vote power (in scaled USD)
         uint256 highAssetTurnoutThresholdBIPS; // threshold for high asset turnout (in BIPS)
-        uint256 lowFlrTurnoutThresholdBIPS; // actual vote power in (W)FLRs / total FLR circulating supply (in BIPS)
+        // actual vote power in (W)NATs / total native token circulating supply (in BIPS)
+        uint256 lowNatTurnoutThresholdBIPS;
         uint256 rewardExpiryOffsetSeconds; // Reward epoch closed earlier than 
                                            //block.timestamp - rewardExpiryOffsetSeconds expire
         address[] trustedAddresses; //trusted addresses will be used as a fallback mechanism for setting the price
@@ -24,20 +25,20 @@ library FtsoManagerSettings {
 
     function _setState (
         State storage _state,
-        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
+        uint256 _lowNatTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) 
         internal
     {
-        if (_state.maxVotePowerFlrThresholdFraction != _maxVotePowerFlrThresholdFraction) {
+        if (_state.maxVotePowerNatThresholdFraction != _maxVotePowerNatThresholdFraction) {
             _state.changed = true;
-            _state.maxVotePowerFlrThresholdFraction = _maxVotePowerFlrThresholdFraction;
+            _state.maxVotePowerNatThresholdFraction = _maxVotePowerNatThresholdFraction;
         }
         if (_state.maxVotePowerAssetThresholdFraction != _maxVotePowerAssetThresholdFraction) {
             _state.changed = true;
@@ -55,9 +56,9 @@ library FtsoManagerSettings {
             _state.changed = true;
             _state.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
         }
-        if (_state.lowFlrTurnoutThresholdBIPS != _lowFlrTurnoutThresholdBIPS) {
+        if (_state.lowNatTurnoutThresholdBIPS != _lowNatTurnoutThresholdBIPS) {
             _state.changed = true;
-            _state.lowFlrTurnoutThresholdBIPS = _lowFlrTurnoutThresholdBIPS;
+            _state.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
         }
         if (_state.rewardExpiryOffsetSeconds != _rewardExpiryOffsetSeconds) {
             _state.changed = true;

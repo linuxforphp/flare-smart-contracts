@@ -83,8 +83,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     const a = accounts[1], b = accounts[2], c = accounts[3];
     await delegation.addReplaceMultipleDelegates([a, b], [5000, 2000]);
     // Act
-    // add c, delete b, update a
-    await delegation.addReplaceMultipleDelegates([c, b, a], [500, 0, 3000]);
+    //  delete b, add c, update a
+    await delegation.addReplaceMultipleDelegates([b, c, a], [0, 500, 3000]);
     // Assert
     const { 0: delegates, 1: values } = await delegation.getDelegations();
     compareArrays(delegates, [a, c]);
@@ -96,8 +96,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     const a = accounts[1], b = accounts[2], c = accounts[3], d = accounts[4];
     await delegation.addReplaceMultipleDelegates([a, b], [5000, 2000]);
     // Act
-    // delete b, add c, add d, update a, delete d
-    await delegation.addReplaceMultipleDelegates([b, c, d, a, d], [0, 500, 100, 3000, 0]);
+    // delete b, add d, update a, delete d, add c
+    await delegation.addReplaceMultipleDelegates([b, d, a, d, c], [0, 100, 3000, 0, 500]);
     // delete a, add d, update c
     await delegation.addReplaceMultipleDelegates([a, d, c], [0, 1500, 800]);
     // Assert
@@ -173,8 +173,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     await delegation.addReplaceDelegate(accounts[2], 3000);
     const blk1 = await web3.eth.getBlockNumber();
     // Act
-    await delegation.addReplaceDelegate(accounts[3], 1000);
     await delegation.addReplaceDelegate(accounts[2], 0);
+    await delegation.addReplaceDelegate(accounts[3], 1000);
     // Assert
     const total = await delegation.getDelegatedTotal();
     assert.equal(total.toNumber(), 6000);

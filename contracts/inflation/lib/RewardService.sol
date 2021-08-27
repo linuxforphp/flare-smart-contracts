@@ -14,13 +14,13 @@ enum TopupType{ FACTOROFDAILYAUTHORIZED, ALLAUTHORIZED }
 * @param topupType             The type to signal how the topup amounts are to be calculated.
 *                              FACTOROFDAILYAUTHORIZED = Use a factor of last daily authorized to set a
 *                              target balance for a reward service to maintain as a reserve for claiming.
-*                              ALLAUTHORIZED = Mint enough FLR to topup reward service contract to hold
+*                              ALLAUTHORIZED = Mint enough native tokens to topup reward service contract to hold
 *                              all authorized but unrequested rewards.
 * @param topupFactorX100       If _topupType == FACTOROFDAILYAUTHORIZED, then this factor (times 100)
 *                              is multipled by last daily authorized inflation to obtain the
 *                              maximum balance that a reward service can hold at any given time. If it holds less,
 *                              then this max amount is used to compute the mint request topup required to 
-*                              bring the reward service contract FLR balance up to that amount.
+*                              bring the reward service contract native token balance up to that amount.
 */
 struct TopupConfiguration {
     TopupType topupType;                            // Topup algo type
@@ -32,7 +32,7 @@ struct TopupConfiguration {
  * @title Reward Service library
  * @notice A library representing a reward service. A reward service consists of a reward contract and
  *   associated inflation-related totals. When a topup configuration is applied, a reward service can
- *   also make minting requests to topup FLR within a reward contract.
+ *   also make minting requests to topup native tokens within a reward contract.
  * @dev A reward service exists within the context of a given inflation annum.
  **/
 library RewardService {    
@@ -64,7 +64,7 @@ library RewardService {
     }
 
     /**
-     * @notice Maintain topup FLR received total for service. 
+     * @notice Maintain topup native tokens received total for service. 
      * @param _amountWei Amount to add.
      */
     function addTopupReceived(RewardServiceState storage _self, uint256 _amountWei) internal {
@@ -72,7 +72,7 @@ library RewardService {
     }
 
     /**
-     * @notice Maintain topup FLR withdrawn (funded) total for service. 
+     * @notice Maintain topup native tokens withdrawn (funded) total for service. 
      * @param _amountWei Amount to add.
      */
     function addTopupWithdrawn(RewardServiceState storage _self, uint256 _amountWei) internal {

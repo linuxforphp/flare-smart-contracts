@@ -14,7 +14,7 @@ library FtsoVote {
 
     struct Instance {                           // struct holding vote data
         uint128 price;                          // submitted price in USD
-        uint64 weightFlr;                       // FLR weight
+        uint64 weightNat;                       // native token weight
         uint64 weightAsset;                     // asset weight
         address voter;                          // the sender of this vote
         uint32 index;
@@ -25,18 +25,18 @@ library FtsoVote {
     /**
      * @notice Creates a vote instance and stores data associated with the vote
      * @param _voter                Sender of the vote
-     * @param _votePowerFlr         FLR Vote power 
+     * @param _votePowerNat         Native token vote power 
      * @param _votePowerAsset       Asset vote power
-     * @param _totalVotePowerFlr    Total FLR vote power in epoch
+     * @param _totalVotePowerNat    Total native token vote power in epoch
      * @param _totalVotePowerAsset  Total asset vote power in epoch
      * @param _price                Price in USD submitted in a vote
      * @return vote                 The combined vote
      */
     function _createInstance(
         address _voter,
-        uint256 _votePowerFlr,
+        uint256 _votePowerNat,
         uint256 _votePowerAsset,
-        uint256 _totalVotePowerFlr,
+        uint256 _totalVotePowerNat,
         uint256 _totalVotePowerAsset,
         uint256 _price
     ) 
@@ -44,13 +44,13 @@ library FtsoVote {
         returns (Instance memory vote)
     {
         vote.voter = _voter;
-        vote.weightFlr = _getWeight(_votePowerFlr, _totalVotePowerFlr);
+        vote.weightNat = _getWeight(_votePowerNat, _totalVotePowerNat);
         vote.weightAsset = _getWeight(_votePowerAsset, _totalVotePowerAsset);
         vote.price = uint128(_price);
     }
 
     /**
-     * @notice Returns the vote weight (FLR or asset) computed based on vote power
+     * @notice Returns the vote weight (NAT or asset) computed based on vote power
      * @param _votePower            Vote power
      * @param _totalVotePower       Total vote power in epoch
      * @return Vote weight

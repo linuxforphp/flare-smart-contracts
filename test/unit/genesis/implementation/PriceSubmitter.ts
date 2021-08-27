@@ -1,12 +1,12 @@
-import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WFlrContract, WFlrInstance } from "../../../../typechain-truffle";
+import { FtsoContract, FtsoInstance, MockContractContract, MockContractInstance, PriceSubmitterContract, PriceSubmitterInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract, WNatInstance } from "../../../../typechain-truffle";
 import { compareArrays, increaseTimeTo, lastOf, submitPriceHash, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
-const Wflr = artifacts.require("WFlr") as WFlrContract;
-const MockWflr = artifacts.require("MockContract") as MockContractContract;
+const Wnat = artifacts.require("WNat") as WNatContract;
+const MockWnat = artifacts.require("MockContract") as MockContractContract;
 const MockSupply = artifacts.require("MockContract") as MockContractContract;
 const MockRegistry = artifacts.require("MockContract") as MockContractContract;
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
@@ -19,8 +19,8 @@ const ERR_FTSO_MANAGER_ONLY = "FTSOManager only";
 const ERR_NOT_WHITELISTED = "Not whitelisted";
 
 // contains a fresh contract for each test 
-let wflrInterface: WFlrInstance;
-let mockWflr: MockContractInstance;
+let wnatInterface: WNatInstance;
+let mockWnat: MockContractInstance;
 let mockSupply: MockContractInstance;
 let mockFtsoRegistry: MockContractInstance;
 let ftsos: FtsoInstance[];
@@ -31,9 +31,9 @@ let voterWhitelister: VoterWhitelisterInstance;
 // WARNING: This sets mock vote power fully, irrespective of address and blockNumber
 async function setBatchMockVotePower(votePower: number[]) {
     // Both are address and block number are irrelevant. We just need them for proper method coding
-    const batchVotePowerOfAt = wflrInterface.contract.methods.batchVotePowerOfAt([constants.ZERO_ADDRESS], 1).encodeABI();
+    const batchVotePowerOfAt = wnatInterface.contract.methods.batchVotePowerOfAt([constants.ZERO_ADDRESS], 1).encodeABI();
     const batchVotePowerOfAtReturn = web3.eth.abi.encodeParameter('uint256[]', votePower);
-    await mockWflr.givenMethodReturn(batchVotePowerOfAt, batchVotePowerOfAtReturn);
+    await mockWnat.givenMethodReturn(batchVotePowerOfAt, batchVotePowerOfAtReturn);
 }
 
 async function setGetFtsosMock(ftsoIndices: number[]) {
@@ -53,9 +53,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
             ftsos = [];
-            wflrInterface = await Wflr.new(accounts[0]);
-            await setDefaultVPContract(wflrInterface, accounts[0]);
-            mockWflr = await MockWflr.new();
+            wnatInterface = await Wnat.new(accounts[0]);
+            await setDefaultVPContract(wnatInterface, accounts[0]);
+            mockWnat = await MockWnat.new();
             mockSupply = await MockSupply.new();
             mockFtsoRegistry = await MockRegistry.new();
             priceSubmitter = await PriceSubmitter.new();
@@ -70,7 +70,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
                     `ATOK${i}`,
-                    mockWflr.address,
+                    mockWnat.address,
                     accounts[10],
                     mockSupply.address,
                     1, // initial token price 0.00001$
@@ -187,7 +187,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.setMaxVotersForFtso(2, 100, {from: GOVERNANCE_GENESIS_ADDRESS});
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             await setGetFtsosMock([0, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             let ftso0Event = lastOf(await ftsos[0].getPastEvents("PriceHashSubmitted"));
 
@@ -229,7 +229,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             
             await voterWhitelister.addFtso(3, {from: FTSO_MANAGER_ADDRESS});
 
-            // Everyone gets some WFLR
+            // Everyone gets some WNAT
             await setBatchMockVotePower([10, 10, 10]);
 
             await voterWhitelister.setMaxVotersForFtso(3, 3, {from: GOVERNANCE_GENESIS_ADDRESS});
@@ -238,9 +238,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[12]);
             
             // Check that they work
-            await priceSubmitter.submitPriceHashes([3], [hash1], {from: accounts[10]});
-            await priceSubmitter.submitPriceHashes([3], [hash2], {from: accounts[11]});
-            await priceSubmitter.submitPriceHashes([3], [hash3], {from: accounts[12]});
+            await priceSubmitter.submitPriceHashes(epochId, [3], [hash1], {from: accounts[10]});
+            await priceSubmitter.submitPriceHashes(epochId, [3], [hash2], {from: accounts[11]});
+            await priceSubmitter.submitPriceHashes(epochId, [3], [hash3], {from: accounts[12]});
         });
 
         it("Should submit with precheck", async() => {
@@ -251,13 +251,13 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             const supportedFtsos = web3.eth.abi.encodeParameter("address[]", ftsos.map(ftso => ftso.address));
             await mockFtsoRegistry.givenCalldataReturn(getSupportedFtsos, supportedFtsos);
 
-            const failPrecheck = priceSubmitter.submitPriceHashes([0, 1], [hash1, hash2]);
+            const failPrecheck = priceSubmitter.submitPriceHashes(epochId, [0, 1], [hash1, hash2]);
             await expectRevert(failPrecheck, ERR_NOT_WHITELISTED);
 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
 
             await setGetFtsosMock([0, 1]);
-            await priceSubmitter.submitPriceHashes([0, 1], [hash1, hash2], {from: accounts[10]});
+            await priceSubmitter.submitPriceHashes(epochId, [0, 1], [hash1, hash2], {from: accounts[10]});
             
             // This kicks out 10            
             await setBatchMockVotePower([0, 10]);
@@ -268,12 +268,13 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[11]);
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);
 
-            await priceSubmitter.submitPriceHashes([0, 1], [hash1, hash2], {from: accounts[10]});
+            await increaseTimeTo((epochId + 1) * 120); // submit was done successfuly, continue test on next price epoch
+            await priceSubmitter.submitPriceHashes(epochId + 1, [0, 1], [hash1, hash2], {from: accounts[10]});
 
             await setGetFtsosMock([0]);
-            await expectRevert(priceSubmitter.submitPriceHashes([0], [hash1], { from: accounts[11] }), ERR_NOT_WHITELISTED);
+            await expectRevert(priceSubmitter.submitPriceHashes(epochId + 1, [0], [hash1], { from: accounts[11] }), ERR_NOT_WHITELISTED);
             await setGetFtsosMock([1]);
-            await priceSubmitter.submitPriceHashes([1], [hash2], {from: accounts[11]});
+            await priceSubmitter.submitPriceHashes(epochId + 1, [1], [hash2], {from: accounts[11]});
         });
 
         it("Should submit prices", async() => {
@@ -284,7 +285,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [hash1, hash2, hash3];
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             await setGetFtsosMock([0, 1, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             let ftso0Event = lastOf(await ftsos[0].getPastEvents("PriceHashSubmitted"));
             let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceHashSubmitted"));
@@ -310,7 +311,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
         });
 
@@ -326,7 +327,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
         });
 
@@ -343,7 +344,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
-            let tx = priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             await expectRevert(tx, ERR_NOT_WHITELISTED);
         });
 
@@ -362,7 +363,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
         });
 
@@ -383,7 +384,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
-            let tx = priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             await expectRevert(tx, ERR_NOT_WHITELISTED);
         });
 
@@ -398,7 +399,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
             let hashes = [hash1, hash2];
 
-            let tx = priceSubmitter.submitPriceHashes([0, 1], hashes, { from: accounts[1] });
+            let tx = priceSubmitter.submitPriceHashes(epochId, [0, 1], hashes, { from: accounts[1] });
             await expectRevert(tx, ERR_NOT_WHITELISTED);
             let ftso0Events = await ftsos[0].getPastEvents("PriceHashSubmitted");
             let ftso1Events = await ftsos[1].getPastEvents("PriceHashSubmitted");
@@ -417,7 +418,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             await setGetFtsosMock([0, 1, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -456,7 +457,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[6]), submitPriceHash(prices[1], randoms[1], accounts[6]), submitPriceHash(prices[2], randoms[2], accounts[6])];
             
             await setGetFtsosMock([0, 1 ,2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -481,7 +482,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[6]), submitPriceHash(prices[1], randoms[1], accounts[6]), submitPriceHash(prices[2], randoms[2], accounts[6])];
             
             await setGetFtsosMock([0, 1, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1, 2], hashes, {from: accounts[6]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -503,7 +504,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             await setGetFtsosMock([1, 0, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -543,7 +544,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
             await setGetFtsosMock([1, 0, 2]);
-            let tx = priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
+            let tx = priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             await expectRevert(tx, ERR_NOT_WHITELISTED);
         });
 
@@ -556,7 +557,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             await setGetFtsosMock([1, 0, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -583,7 +584,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             await setGetFtsosMock([1, 0, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -605,7 +606,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
             
             await setGetFtsosMock([1, 0, 2]);
-            let tx = await priceSubmitter.submitPriceHashes([1, 0, 2], hashes, {from: accounts[1]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
             await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
@@ -646,8 +647,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await voterWhitelister.requestFullVoterWhitelisting(accounts[2]);
 
             await setGetFtsosMock([0, 1]);
-            let tx = await priceSubmitter.submitPriceHashes([0, 1], hashes, {from: accounts[1]});
-            let txAttacker = await priceSubmitter.submitPriceHashes([0, 1], hashesAttacker, {from: accounts[2]});
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1], hashes, {from: accounts[1]});
+            let txAttacker = await priceSubmitter.submitPriceHashes(epochId, [0, 1], hashesAttacker, {from: accounts[2]});
 
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             expectEvent(txAttacker, "PriceHashesSubmitted", {submitter: accounts[2], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});

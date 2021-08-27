@@ -34,7 +34,7 @@ let stateConnector: StateConnectorInstance;
 let rippleApi: RippleAPI;
 
 /**
- * This test assumes a local chain is running with Flare allocated in accounts
+ * This test assumes a local chain is running with Native allocated in accounts
  * listed in `./hardhat.config.ts`
  * It does not assume that contracts are deployed, other than the StateConnector, which should
  * already be loaded in the genesis block.

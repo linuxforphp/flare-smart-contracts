@@ -18,12 +18,12 @@ interface IIFtsoManager is IFtsoManager {
     function activate() external;
 
     function setGovernanceParameters(
-        uint256 _maxVotePowerFlrThresholdFraction,
+        uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
-        uint256 _lowFlrTurnoutThresholdBIPS,
+        uint256 _lowNatTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external;
@@ -36,12 +36,12 @@ interface IIFtsoManager is IFtsoManager {
         IIFtso _ftsoToRemove,
         IIFtso _ftsoToAdd,
         bool copyCurrentPrice,
-        bool copyFAssetOrFAssetFtsos
+        bool copyAssetOrAssetFtsos
     ) external;
 
-    function setFtsoFAsset(IIFtso _ftso, IIVPToken _fAsset) external;
+    function setFtsoAsset(IIFtso _ftso, IIVPToken _asset) external;
 
-    function setFtsoFAssetFtsos(IIFtso _ftso, IIFtso[] memory _fAssetFtsos) external;
+    function setFtsoAssetFtsos(IIFtso _ftso, IIFtso[] memory _assetFtsos) external;
 
     function setFallbackMode(bool _fallbackMode) external;
 

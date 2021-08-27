@@ -1,11 +1,11 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { FtsoRegistryInstance, MockContractInstance, MockFtsoInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WFlrInstance } from "../../../../typechain-truffle";
+import { FtsoRegistryInstance, MockContractInstance, MockFtsoInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
 import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
-const WFlr = artifacts.require("WFlr");
+const WNat = artifacts.require("WNat");
 const VPToken = artifacts.require("VPTokenMock");
 const Ftso = artifacts.require("MockFtso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -43,8 +43,8 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     let whitelist: VoterWhitelisterMockInstance;
     let priceSubmitter: MockContractInstance;
 
-    let wflr: WFlrInstance;
-    let flrFtso: MockFtsoInstance;
+    let wNat: WNatInstance;
+    let natFtso: MockFtsoInstance;
 
     let ftsoRegistry: FtsoRegistryInstance;
 
@@ -53,14 +53,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
     let vpBlockNumber: number;
 
-    async function setFlrSupply(amount: number | BN, blockNumber: number) {
+    async function setNatSupply(amount: number | BN, blockNumber: number) {
         const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
         const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', amount);
         await supplyMock.givenCalldataReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
     }
 
     async function createFtso(symbol: string, initialPriceUSD5Dec: BN) {
-        const ftso = await Ftso.new(symbol, wflr.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPriceUSD5Dec, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, wNat.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPriceUSD5Dec, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });
@@ -68,7 +68,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         return ftso;
     }
 
-    async function initializeEpochForReveal(vpBlock?: number, flrSupply: number = 10_000) {
+    async function initializeEpochForReveal(vpBlock?: number, natSupply: number = 10_000) {
         // set votepower block
         vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
         const ftsoAddrList = await ftsoRegistry.getAllFtsos();
@@ -76,14 +76,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         for (const ftso of ftsoList) {
             await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
         }
-        await setFlrSupply(flrSupply, vpBlockNumber);
+        await setNatSupply(natSupply, vpBlockNumber);
         // initial reveal
         for (const ftso of ftsoList) {
             await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
         }
     }
     
-    describe("Simple flr with 2 ftso tests", async () => {
+    describe("Simple nat with 2 ftso tests", async () => {
         let fxrp: VPTokenMockInstance;
         let fbtc: VPTokenMockInstance;
 
@@ -96,8 +96,8 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
             // create assets
-            wflr = await WFlr.new(governance);
-            await setDefaultVPContract(wflr, governance);
+            wNat = await WNat.new(governance);
+            await setDefaultVPContract(wNat, governance);
             fxrp = await VPToken.new(governance, "Ripple", "XRP");
             await setDefaultVPContract(fxrp, governance);
             fbtc = await VPToken.new(governance, "Bitcoin", "BTC");
@@ -106,12 +106,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
             supplyMock = await MockContract.new();
             // create ftsos
-            flrFtso = await createFtso("FLR", usd(1));
+            natFtso = await createFtso("NAT", usd(1));
             xrpFtso = await createFtso("XRP", usd(0.5));
             btcFtso = await createFtso("BTC", usd(5));
-            await xrpFtso.setFAsset(fxrp.address, { from: ftsoManager });
-            await btcFtso.setFAsset(fbtc.address, { from: ftsoManager });
-            await flrFtso.setFAssetFtsos([xrpFtso.address, btcFtso.address], { from: ftsoManager });
+            await xrpFtso.setAsset(fxrp.address, { from: ftsoManager });
+            await btcFtso.setAsset(fbtc.address, { from: ftsoManager });
+            await natFtso.setAssetFtsos([xrpFtso.address, btcFtso.address], { from: ftsoManager });
             // create whitelist
             whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 5);
             await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
@@ -123,7 +123,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         it("get correct parameters", async () => {
             // Assemble
             for (let i = 1; i < 10; i++) {
-                await wflr.deposit({ from: accounts[i], value: eth(100 * i) });
+                await wNat.deposit({ from: accounts[i], value: eth(100 * i) });
                 await fxrp.mint(accounts[i], eth(100 * i));
                 await fbtc.mint(accounts[i], eth(100 * i));
             }
@@ -131,11 +131,11 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             // Assert
             const result = await xrpFtso.getVoteWeightingParameters();
             const assetMultipliers = result[1].map(fmtNum);
-            const totalVotePowerFlr = fmtNum(result[2]);
+            const totalVotePowerNat = fmtNum(result[2]);
             const totalVotePowerAsset = fmtNum(result[3]);
             const assetWeightRatio = fmtNum(result[4]);
             compareArrays(assetMultipliers, ['5.000e+16']);
-            assert.equal(totalVotePowerFlr, '4.500e+21');
+            assert.equal(totalVotePowerNat, '4.500e+21');
             assert.equal(totalVotePowerAsset, '2.250e+8');
             assert.equal(assetWeightRatio, '5000');
         });
@@ -143,38 +143,38 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         async function calculateCorrectVotePowers(ftso: MockFtsoInstance) {
             // Assemble
             for (let i = 1; i < 10; i++) {
-                await wflr.deposit({ from: accounts[i], value: eth(100 * Math.random()) });
+                await wNat.deposit({ from: accounts[i], value: eth(100 * Math.random()) });
                 await fxrp.mint(accounts[i], eth(100 * Math.random()));
                 await fbtc.mint(accounts[i], eth(100 * Math.random()));
             }
             await initializeEpochForReveal();
             // Assert
-            const { 0: assets, 1: assetMultipliers, 2: totalVotePowerFlr, 3: totalVotePowerAsset, 4: assetWeightRatio, 5: votePowerBlock } =
+            const { 0: assets, 1: assetMultipliers, 2: totalVotePowerNat, 3: totalVotePowerAsset, 4: assetWeightRatio, 5: votePowerBlock } =
                 await ftso.getVoteWeightingParameters();
             const voters = accounts.slice(1, 5);
             const assetVP = await whitelist.getAssetVotePowerWeights.call(assets, assetMultipliers, totalVotePowerAsset, voters, votePowerBlock);
             // console.log('assetVP', assetVP.map(fmtNum));
-            const flareVP = await whitelist.getFlareVotePowerWeights.call(wflr.address, totalVotePowerFlr, voters, votePowerBlock);
-            // console.log('flareVP', flareVP.map(fmtNum));
+            const nativeVP = await whitelist.getNativeVotePowerWeights.call(wNat.address, totalVotePowerNat, voters, votePowerBlock);
+            // console.log('nativeVP', nativeVP.map(fmtNum));
             const combined = await whitelist.getVotePowerWeights.call(ftso.address, voters);
             // console.log('Combined', combined.map(fmtNum));
             // from ftso
-            const ftsoVPFlr: BN[] = [];
+            const ftsoVPNat: BN[] = [];
             const ftsoVPAsset: BN[] = [];
             for (const voter of voters) {
                 const vp = await ftso.getVotePowerOf.call(voter);
-                ftsoVPFlr.push(vp[0]);
+                ftsoVPNat.push(vp[0]);
                 ftsoVPAsset.push(vp[1]);
             }
             // console.log('ftsoVPAsset', ftsoVPAsset.map(fmtNum));
-            // console.log('ftsoVPFlr', ftsoVPFlr.map(fmtNum));
+            // console.log('ftsoVPNat', ftsoVPNat.map(fmtNum));
             const ftsoVPCombined = await ftso.getVotePowerWeights.call(voters);
             // console.log('ftsoVPCombined', ftsoVPCombined.map(fmtNum));
             compareArrays(ftsoVPCombined.map(fmtNum), combined.map(fmtNum));
         }
 
-        it("calculates correct vote powers (FLR)", async () => {
-            await calculateCorrectVotePowers(flrFtso);
+        it("calculates correct vote powers (NAT)", async () => {
+            await calculateCorrectVotePowers(natFtso);
         });
 
         it("calculates correct vote powers (XRP)", async () => {
@@ -188,12 +188,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             const voters = accounts.slice(1, 5);
             const assetVP = await whitelist.getAssetVotePowerWeights.call([constants.ZERO_ADDRESS], [0], 10, voters, vpBlockNumber);
             // console.log('assetVP', assetVP.map(fmtNum));
-            const flareVP = await whitelist.getFlareVotePowerWeights.call(wflr.address, 10, voters, vpBlockNumber);
-            // console.log('flareVP', flareVP.map(fmtNum));
+            const nativeVP = await whitelist.getNativeVotePowerWeights.call(wNat.address, 10, voters, vpBlockNumber);
+            // console.log('nativeVP', nativeVP.map(fmtNum));
             const combined = await whitelist.getVotePowerWeights.call(xrpFtso.address, voters);
             // Assert
             compareArrays(assetVP.map(x => x.toNumber()), [0, 0, 0, 0]);
-            compareArrays(flareVP.map(x => x.toNumber()), [0, 0, 0, 0]);
+            compareArrays(nativeVP.map(x => x.toNumber()), [0, 0, 0, 0]);
             compareArrays(combined.map(x => x.toNumber()), [0, 0, 0, 0]);
         });
 
@@ -201,7 +201,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             const voters = accounts.slice(1, 11);
             const votePowers = [2, 8, 4, 5, 9, 1, 10, 3, 6, 7];
             for (let i = 0; i < 10; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 await fxrp.mint(voters[i], eth(votePowers[i]));
                 await fbtc.mint(voters[i], eth(votePowers[i]));
             }
@@ -209,9 +209,9 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             return voters;
         }
 
-        it("add accounts to the whitelist (flr, simple)", async () => {
+        it("add accounts to the whitelist (nat, simple)", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
             // Act
             for (const voter of voters) {
@@ -249,7 +249,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("adding accounts twice changes nothing", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
             // Act
             for (const voter of voters) {
@@ -275,11 +275,11 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("add works even if assets have no votepower", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = accounts.slice(1, 11);
             const votePowers = [2, 8, 4, 5, 9, 1, 10, 3, 6, 7];
             for (let i = 0; i < 10; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
             }
             await initializeEpochForReveal();
             // Act
@@ -304,7 +304,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             const voters = accounts.slice(1, 11);
             const votePowers = [2, 8, 4, 5, 9, 1, 10, 3, 6, 7];
             for (let i = 0; i < 10; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
             }
             await initializeEpochForReveal();
             // Act
@@ -323,9 +323,9 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             compareArrays(wlind, [6, 1, 8, 9, 4]);
         });
 
-        it("add works even if assets have no flare votepower", async () => {
+        it("add works even if assets have no native votepower", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = accounts.slice(1, 11);
             const votePowers = [2, 8, 4, 5, 9, 1, 10, 3, 6, 7];
             for (let i = 0; i < 10; i++) {
@@ -350,11 +350,11 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         it("whitelist all ftsos works", async () => {
             // Assemble
             const voters = accounts.slice(1, 7);
-            const votePowersFlr = [2, 2, 2, 2, 2, 2];
+            const votePowersNat = [2, 2, 2, 2, 2, 2];
             const votePowersXrp = [2, 8, 4, 5, 9, 1];
             const votePowersBtc = [2, 8, 4, 5, 9, 10];
             for (let i = 0; i < 6; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowersFlr[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowersNat[i]) });
                 await fxrp.mint(voters[i], eth(votePowersXrp[i]));
                 await fbtc.mint(voters[i], eth(votePowersBtc[i]));
             }
@@ -390,7 +390,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("should revert adding trusted address to whitelist", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
 
             let priceSubmitterInterface = await PriceSubmitter.new();
@@ -409,7 +409,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("should remove trusted address from whitelist", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
             await whitelist.requestWhitelistingVoter(voters[0], ftsoIndex);
 
@@ -438,7 +438,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("change whitelist size", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
             // Act
             await whitelist.setMaxVotersForFtso(ftsoIndex, 5, { from: governance });
@@ -459,7 +459,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("decrease whitelist size", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
             // Act
             await whitelist.setMaxVotersForFtso(ftsoIndex, 10, { from: governance });
@@ -492,7 +492,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("remove whitelist", async () => {
             // Assemble
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
             // Act
             await whitelist.setMaxVotersForFtso(ftsoIndex, 10, { from: governance });
@@ -550,13 +550,13 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         });
 
         it("should only throw out if strictly greater", async () => {
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
 
             const votePowers = [10, 10, 10, 10, 12, 12, 13];
             const voters = accounts.slice(1, votePowers.length + 1);
             for (let i = 0; i < voters.length; i++) {
                 // Give each one some voting power
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 await fxrp.mint(voters[i], eth(votePowers[i]));
             }
             await initializeEpochForReveal();
@@ -595,13 +595,13 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         });
 
         it("should only list once per address", async () => {
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
 
             const votePowers = [10, 10, 10, 10, 12, 12, 13];
             const voters = accounts.slice(1, votePowers.length + 1);
             for (let i = 0; i < voters.length; i++) {
                 // Give each one some voting power
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 await fxrp.mint(voters[i], eth(votePowers[i]));
             }
             await initializeEpochForReveal();
@@ -636,13 +636,13 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             compareArrays(wlind, [6, 5, 4]);
         });
 
-        it("should work with zero total power flr", async () => {
-            const ftsoIndex = 0;    // flr
+        it("should work with zero total power nat", async () => {
+            const ftsoIndex = 0;    // nat
             const votePowers = [10, 10, 10, 10, 12, 12, 13];
             const voters = accounts.slice(1, votePowers.length + 1);
             for (let i = 0; i < voters.length; i++) {
-                // Give each one some voting power, but nothing to fasset
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                // Give each one some voting power, but nothing to xasset
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
             }
             await initializeEpochForReveal();
             // Act
@@ -652,12 +652,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await expectRevert(whitelist.requestWhitelistingVoter(accounts[11], ftsoIndex), WHITELISTING_ERROR);
         });
 
-        it("should work with zero total power fasset", async () => {
-            const ftsoIndex = 0;    // flr
+        it("should work with zero total power xasset", async () => {
+            const ftsoIndex = 0;    // nat
             const votePowers = [10, 10, 10, 10, 12, 12, 13];
             const voters = accounts.slice(1, votePowers.length + 1);
             for (let i = 0; i < voters.length; i++) {
-                // Give each one some voting power, but no flare
+                // Give each one some voting power, but no native
                 await fxrp.mint(voters[i], eth(votePowers[i]));
             }
             await initializeEpochForReveal();
@@ -668,12 +668,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         });
 
         it("should emit on kicking out", async () => {
-            const ftsoIndex = 0;    // flr
+            const ftsoIndex = 0;    // nat
             const votePowers = [15, 8, 14, 10, 12, 11, 13];
             const voters = accounts.slice(1, votePowers.length + 1);
             for (let i = 0; i < voters.length; i++) {
                 // Give each one some voting
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 await fxrp.mint(voters[i], eth(votePowers[i]));
             }
             await initializeEpochForReveal();
@@ -702,7 +702,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         });
     });
 
-    describe.skip("Benchmarking flr with 5 ftso tests", async () => {
+    describe.skip("Benchmarking nat with 5 ftso tests", async () => {
         let assetData: Array<[name: string, symbol: string, price: BN]> = [
             ["Ripple", "XRP", usd(0.5)],
             ["Bitcoin", "BTC", usd(5)],
@@ -720,8 +720,8 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
             // create assets
-            wflr = await WFlr.new(governance);
-            await setDefaultVPContract(wflr, governance);
+            wNat = await WNat.new(governance);
+            await setDefaultVPContract(wNat, governance);
             assets = [];
             for (const [name, symbol, _] of assetData) {
                 const asset = await VPToken.new(governance, name, symbol);
@@ -732,15 +732,15 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
             supplyMock = await MockContract.new();
             // create ftsos
-            flrFtso = await createFtso("FLR", usd(1));
+            natFtso = await createFtso("NAT", usd(1));
             ftsos = [];
             for (let i = 0; i < assets.length; i++) {
                 const [_, symbol, price] = assetData[i];
                 const ftso = await createFtso(symbol, price);
-                await ftso.setFAsset(assets[i].address, { from: ftsoManager });
+                await ftso.setAsset(assets[i].address, { from: ftsoManager });
                 ftsos.push(ftso);
             }
-            await flrFtso.setFAssetFtsos(ftsos.map(f => f.address), { from: ftsoManager });
+            await natFtso.setAssetFtsos(ftsos.map(f => f.address), { from: ftsoManager });
             // create whitelist
             whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 10);
             await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
@@ -750,7 +750,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             // Assemble
             const voters = accounts.slice(100, 100 + votePowers.length);
             for (let i = 0; i < votePowers.length; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 for (const asset of assets) {
                     await asset.mint(voters[i], eth(votePowers[i]));
                 }
@@ -795,7 +795,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             compareArrays(wlind, simList);
         }
 
-        it("add accounts to the whitelist (FLR)", async () => {
+        it("add accounts to the whitelist (NAT)", async () => {
             const votePowers = Array.from({ length: 200 }, (_, i) => Math.random() * 100);
             await addAccountsToWhitelist(0, 100, votePowers);
         });
@@ -810,12 +810,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             const votePowers = Array.from({ length: batchSize }, (_, i) => Math.random() * 100);
             const voters = accounts.slice(100, 100 + votePowers.length);
             for (let i = 0; i < votePowers.length; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 for (const asset of assets) {
                     await asset.mint(voters[i], eth(votePowers[i]));
                 }
             }
-            const allAssets = [wflr, ...assets];
+            const allAssets = [wNat, ...assets];
             await initializeEpochForReveal();
             // Act
             if (cached) {
@@ -843,7 +843,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             // Assemble
             const voters = accounts.slice(100, 100 + votePowers.length);
             for (let i = 0; i < votePowers.length; i++) {
-                await wflr.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
                 for (const asset of assets) {
                     await asset.mint(voters[i], eth(votePowers[i]));
                 }
@@ -879,7 +879,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             compareSets(wlind, simList);
         }
 
-        it("decrease whitelist size (flr)", async () => {
+        it("decrease whitelist size (nat)", async () => {
             const votePowers = Array.from({ length: 100 }, (_, i) => Math.random() * 100);
             await decreaseWhitelistLength(0, 100, 50, votePowers);
         });

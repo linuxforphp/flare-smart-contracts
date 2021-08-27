@@ -109,13 +109,16 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      * @param _hashes               List of hashed price and random number
      * @notice Emits PriceHashesSubmitted event
      */
-    function submitPriceHashes(uint256[] memory _ftsoIndices, bytes32[] memory _hashes) external override {
+    function submitPriceHashes(
+        uint256 _epochId, 
+        uint256[] memory _ftsoIndices, 
+        bytes32[] memory _hashes
+    ) external override {
         // Submit the prices
         uint256 length = _ftsoIndices.length;
         require(length == _hashes.length, ERR_ARRAY_LENGTHS);
 
         IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
-        uint256 epochId;
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
         bool isTrustedAddress = false;
 
@@ -130,9 +133,9 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
                     }
                 }
             }
-            epochId = ftsos[i].submitPriceHashSubmitter(msg.sender, _hashes[i]);
+            ftsos[i].submitPriceHashSubmitter(msg.sender, _epochId, _hashes[i]);
         }
-        emit PriceHashesSubmitted(msg.sender, epochId, ftsos, _hashes, block.timestamp);
+        emit PriceHashesSubmitted(msg.sender, _epochId, ftsos, _hashes, block.timestamp);
     }
 
     /**
@@ -160,7 +163,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
         bool isTrustedAddress = false;
 
-        uint256 wflrVP = uint256(-1);
+        uint256 wNatVP = uint256(-1);
 
         for (uint256 i = 0; i < length; i++) {
             uint256 ind = _ftsoIndices[i];
@@ -173,12 +176,12 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
                     }
                 }
             }
-            // read flare VP only once
-            if (wflrVP == uint256(-1)) {
-                wflrVP = ftsos[i].wflrVotePowerCached(msg.sender, _epochId);
+            // read native VP only once
+            if (wNatVP == uint256(-1)) {
+                wNatVP = ftsos[i].wNatVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
-            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], wflrVP);
+            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], wNatVP);
         }
         emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, block.timestamp);
     }

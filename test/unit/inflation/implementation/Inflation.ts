@@ -662,7 +662,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Running sum should be correct
         const {3: inflationWithdrawn} = await inflation.getTotals();
         assert.equal(inflationWithdrawn.toNumber() , expectedTopupService0 + expectedTopupService1);
-        // Check that target reward service contracts got the FLR they are due
+        // Check that target reward service contracts got the native token they are due
         assert.equal((await web3.eth.getBalance(rewardingServiceContract0.address)), expectedTopupService0.toString());
         assert.equal((await web3.eth.getBalance(rewardingServiceContract1.address)), expectedTopupService1.toString());
       });
@@ -700,9 +700,9 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await mockFlareDaemon.trigger();
         const {1: toMint} = await inflation.getTotals();
         // Act
-        // Self destruct with some flare
+        // Self destruct with some native
         const suicidalMock = await SuicidalMock.new(inflation.address);
-        // Give suicidal some FLR
+        // Give suicidal some native token
         await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: toBN(5)});
         // Attacker dies
         await suicidalMock.die();
@@ -728,9 +728,9 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await mockFlareDaemon.trigger();
         const {1: toMint} = await inflation.getTotals();
         // Act
-        // Self destruct with some flare
+        // Self destruct with some native
         const suicidalMock = await SuicidalMock.new(inflation.address);
-        // Give suicidal some FLR
+        // Give suicidal some native token
         await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: toBN(5)});
         // Attacker dies
         await suicidalMock.die();

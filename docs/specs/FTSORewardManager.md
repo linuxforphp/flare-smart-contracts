@@ -4,14 +4,14 @@
 
 ## Background
 
-The FLR token will launch with planned annual inflation of 10%. A large part of that inflation will be awarded to FLR holders providing “Good” price feeds to the FTSO (Flare Time Series Oracle). FLR holders can participate by either providing prices themselves or by delegating vote power to other price providers. Per price epoch, all good price provider addresses from a single FTSO are awarded a portion of that inflation. The reward system will enable any holder that delegated his vote power to a “good” price provider to claim part of the rewards this provider earned. Each delegator's share of the rewards will be proportional to the vote power they delegated to a winning price provider.
+The native token token will launch with planned annual inflation of 10%. A large part of that inflation will be awarded to native token holders providing “Good” price feeds to the FTSO (Flare Time Series Oracle). Native token holders can participate by either providing prices themselves or by delegating vote power to other price providers. Per price epoch, all good price provider addresses from a single FTSO are awarded a portion of that inflation. The reward system will enable any holder that delegated his vote power to a “good” price provider to claim part of the rewards this provider earned. Each delegator's share of the rewards will be proportional to the vote power they delegated to a winning price provider.
 
 ## Handling Inflation 
 
-Inflation will be handled in two separate flows: one involves rewarding inflation amounts, and the other minting FLR when those rewards are claimed. 
+Inflation will be handled in two separate flows: one involves rewarding inflation amounts, and the other minting native token when those rewards are claimed. 
 
 *   The FTSO Reward manager will allocate portions of the inflation to “good” price providers per price epoch. Each price epoch, the allocated portions will be divided between winning addresses and added to each address account in the reward contract. This process can be seen as time driven - or price epoch driven.
-*   Another system will handle minting new tokens. This process is claim driven; i.e., many FLR can be awarded to different addresses, but if no claim is done, minting will not occur. Once claims are done, new minting will occur with time locks in place to address possible risks of holding large FLR balances to facilitated the claim process.
+*   Another system will handle minting new tokens. This process is claim driven; i.e., many native token can be awarded to different addresses, but if no claim is done, minting will not occur. Once claims are done, new minting will occur with time locks in place to address possible risks of holding large native token balances to facilitated the claim process.
 
 The above flow is detailed in the [inflation] documentation.
 
@@ -26,7 +26,7 @@ The FTSO rewarding process is implemented in the [Ftso Reward Manager] contract.
 
 ### Distributing rewards per price epoch
 
-At the end of the price reveal period, the FTSO manager will loop all FTSOs and trigger the finalization process. One of those FTSOs will be asked to return a list of winning addresses and the FLR vote power of those addresses. These addresses will be rewarded proportional to the FLR weight (vote power) they had for this epoch.
+At the end of the price reveal period, the FTSO manager will loop all FTSOs and trigger the finalization process. One of those FTSOs will be asked to return a list of winning addresses and the native token vote power of those addresses. These addresses will be rewarded proportional to the native token weight (vote power) they had for this epoch.
 
 ## Reward sharing
 

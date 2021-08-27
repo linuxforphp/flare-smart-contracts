@@ -16,7 +16,7 @@ interface ICollateralizable {
     ///     - claim relevant reward from reward contract.
     ///     - iterate list of current delegators to this FTSO
     ///     - per the list, check weight agent delegated to this FTSO
-    ///     - add FLR reward to this Agent position. 
+    ///     - add native token reward to this Agent position. 
     function addRewardToAgentPosition(uint256 epochID) external returns (bool succeess);
     
     function deposit(
@@ -24,7 +24,7 @@ interface ICollateralizable {
         uint256 freshMint, // amount to add to fresh minting pool
         uint256 agentPosition, // amount to add to position pool 
         uint256 freshMintMinRatio, // if position pool collateral ratio < min, no new mints
-        address flrAddress,
+        address natAddress,
         FeeHandling handling
         ) external;
 
