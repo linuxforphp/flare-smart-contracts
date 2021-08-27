@@ -98,7 +98,8 @@ contract MockFtso is SimpleMockFtso {
             bool _fallbackMode
         )
     {
-        _isEpochDataAvailable(_epochId);
+        // used as a check only to avoid "Stack too deep" compiler error
+        _getEpochInstance(_epochId);
         return _getFullEpochReport(_epochId);
     }
 
@@ -158,9 +159,7 @@ contract MockFtso is SimpleMockFtso {
             bool[] memory _eligibleForReward
         )
     {
-        _isEpochDataAvailable(_epochId);
-
-        FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(_epochId);
         EpochResult storage epochResult = epochResults[_epochId % priceEpochCyclicBufferSize];
 
         uint256 count = epoch.nextVoteIndex;

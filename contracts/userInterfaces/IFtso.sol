@@ -72,9 +72,9 @@ interface IFtso {
     function getRandom(uint256 _epochId) external view returns (uint256);
     
     /**
-     * @notice Returns FAsset price consented in specific epoch
+     * @notice Returns asset price consented in specific epoch
      * @param _epochId              Id of the epoch
-     * @return Price in USD multiplied by fAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPrice(uint256 _epochId) external view returns (uint256);
 

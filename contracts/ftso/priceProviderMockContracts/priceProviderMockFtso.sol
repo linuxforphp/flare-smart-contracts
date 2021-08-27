@@ -133,7 +133,7 @@ contract MockNpmFtso is IIFtso {
 
     /**
      * @notice Returns current Asset price
-     * @return _price               Price in USD multiplied by xAssetUSDDecimals
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _timestamp           Time when price was updated for the last time
      */
     function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
@@ -197,7 +197,7 @@ contract MockNpmFtso is IIFtso {
      * @notice Returns Asset price submitted by voter in specific epoch
      * @param _epochId              Id of the epoch
      * @param _voter                Address of the voter
-     * @return Price in USD multiplied by xAssetUSDDecimals
+     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      */
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view override returns (uint256) {
         return revealedPrices[_epochId][_voter];

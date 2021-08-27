@@ -1,9 +1,9 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import fs from "fs";
-import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../../typechain-truffle";
-import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
-import { increaseTimeTo, submitPriceHash, toBN } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
+import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
+import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
 const WNat = artifacts.require("WNat");
@@ -277,12 +277,44 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // create supply
       supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
       // create ftsos
+      natFtso = await createFtso("NAT", usd(1));
       ftsos = [];
       for (let i = 0; i < assets.length; i++) {
         const [_, symbol, price] = assetData[i];
         const ftso = await createFtso(symbol, price);
+        await ftso.setAsset(assets[i].address, { from: ftsoManager });
         ftsos.push(ftso);
       }
+      await natFtso.setAssetFtsos(ftsos.slice(0,5).map(f => f.address), { from: ftsoManager });
+    });
+
+    it("Should test gas to initialize for reveal for one ftso", async () => {
+      const voter = accounts[101];
+      const vp = eth(1.5);
+      // Assemble
+      await wNat.deposit({ from: voter, value: vp });
+      await initializeRewardEpoch();
+
+      // Act
+      let initializeForRevealTx = await ftsos[0].initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      console.log(`initialize for reveal for single ftso: ${initializeForRevealTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "initialize for reveal for single ftso", "gasUsed": initializeForRevealTx.receipt.gasUsed });
+    });
+
+    it("Should test gas to initialize for reveal for wNat ftso with 4 assets", async () => {
+      const voter = accounts[101];
+      const vp = eth(1.5);
+      // Assemble
+      await wNat.deposit({ from: voter, value: vp });
+      for (const asset of assets) {
+        await asset.mint(voter, vp, { from: governance });
+      }
+      await initializeRewardEpoch();
+
+      // Act
+      let initializeForRevealTx = await natFtso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      console.log(`initialize for reveal for wNat ftso with 4 assets: ${initializeForRevealTx.receipt.gasUsed}`);
+      gasReport.push({ "function": "initialize for reveal for wNat ftso with 4 assets", "gasUsed": initializeForRevealTx.receipt.gasUsed });
     });
 
     it("Should test gas to submit and reveal price for one ftso", async () => {
@@ -333,7 +365,30 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end
     });
 
-    it("Should test gas to submit and reveal prices for 8 ftsos", async () => {
+    it("Should test gas to initialize for reveal for wNat ftso with 4 assets + 8 ftsos", async () => {
+      const voter = accounts[101];
+      const vp = eth(1.5);
+      // Assemble
+      await wNat.deposit({ from: voter, value: vp });
+      for (const asset of assets) {
+        await asset.mint(voter, vp, { from: governance });
+      }
+      await initializeRewardEpoch();
+
+      // Act
+      const allFtsos = [natFtso, ...ftsos];
+
+      let gasUsed = 0;
+      for (const ftso of allFtsos) {
+        let initializeForRevealTx = await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+        gasUsed += initializeForRevealTx.receipt.gasUsed;
+      }
+
+      console.log(`initialize for reveal for wNat ftso with 4 assets + 8 ftsos: ${gasUsed}`);
+      gasReport.push({ "function": "initialize for reveal for wNat ftso with 4 assets + 8 ftsos", "gasUsed": gasUsed });
+    });
+
+    it("Should test gas to submit and reveal prices for wNat ftso with 4 assets + 8 ftsos", async () => {
       const voters = accounts.slice(101, 102);
       const vp = eth(1.5);
       // Assemble
@@ -352,8 +407,8 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
         }
       }
       // Act
-      const allFtsos = [...ftsos];
-      const prices = [usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4), usd(0.5), usd(1.2), usd(19.7)];
+      const allFtsos = [natFtso, ...ftsos];
+      const prices = [usd(2.58), usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4), usd(0.5), usd(1.2), usd(19.7)];
       const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
@@ -370,14 +425,15 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       for (const voter of voters) {
         const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
         let submitTx = await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
-        console.log(`submit price 8 ftso: ${submitTx.receipt.gasUsed}`);
-        gasReport.push({ "function": "submit prices for 8 ftso", "gasUsed": submitTx.receipt.gasUsed });
+        console.log(`submit prices for wNat ftso with 4 assets + 8 ftsos: ${submitTx.receipt.gasUsed}`);
+        gasReport.push({ "function": "submit prices for wNat ftso with 4 assets + 8 ftsos", "gasUsed": submitTx.receipt.gasUsed });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
         let revealTx = await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
-        gasReport.push({ "function": "reveal prices for 8 ftso", "gasUsed": revealTx.receipt.gasUsed });
+        console.log(`reveal prices for wNat ftso with 4 assets + 8 ftsos: ${revealTx.receipt.gasUsed}`);
+        gasReport.push({ "function": "reveal prices for wNat ftso with 4 assets + 8 ftsos", "gasUsed": revealTx.receipt.gasUsed });
       }
       // finalize
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end

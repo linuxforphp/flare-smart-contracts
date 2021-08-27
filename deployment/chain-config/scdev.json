@@ -12,7 +12,7 @@
     "rewardEpochDurationSeconds": 180,
     "revealEpochDurationSeconds": 45,
     "priceEpochDurationSeconds": 90,
-    "rewardEpochsStartDelayHours": 0.17,
+    "rewardEpochsStartDelayPriceEpochs": 6,
     "votePowerIntervalFraction": 7,
     "defaultVoterWhitelistSize": 100,
     "flareDaemonGasExceededHoldoffBlocks": 100,
