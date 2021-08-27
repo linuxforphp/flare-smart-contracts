@@ -215,7 +215,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             startTs,
             REVEAL_EPOCH_DURATION_S,
             REWARD_EPOCH_DURATION_S,
-            startTs,
+            startTs.addn(REVEAL_EPOCH_DURATION_S),
             VOTE_POWER_BOUNDARY_FRACTION
         );
 

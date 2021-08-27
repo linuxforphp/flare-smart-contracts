@@ -16,7 +16,6 @@ interface IIFtsoManager is IFtsoManager {
     event DaemonizeTrigger(uint256 blockNumber, uint256 timestamp);  // for monitoring daemonize() calls
 
     function activate() external;
-    function deactivate() external;
 
     function setGovernanceParameters(
         uint256 _maxVotePowerNatThresholdFraction,

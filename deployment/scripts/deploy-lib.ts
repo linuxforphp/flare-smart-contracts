@@ -200,15 +200,13 @@ console.error("State connector")
   }
   spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
 
-
-
-  // Inflation contract
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
-
+  
   // Delayed reward epoch start time
-  const rewardEpochStartTs = startTs.add(BN(Math.floor(parameters.rewardEpochsStartDelayHours * 60 * 60)));
-
+  const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds + parameters.revealEpochDurationSeconds);
+  
+  // Inflation contract
   const inflation = await Inflation.new(
     deployerAccount.address,
     flareDaemon.address,

@@ -273,9 +273,7 @@ library FtsoMedian {
      */
     function _swap(uint256 _i, uint256 _j, uint256[] memory _index) internal pure {
         if (_i == _j) return;
-        uint256 tmp = _index[_i];
-        _index[_i] = _index[_j];
-        _index[_j] = tmp;
+        (_index[_i], _index[_j]) = (_index[_j], _index[_i]);
     }
 
     /**

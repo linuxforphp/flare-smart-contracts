@@ -45,6 +45,7 @@ library FtsoEpoch {
         uint240 votePowerBlock;                 // block used to obtain vote weights in epoch
         bool initializedForReveal;              // whether epoch instance is initialized for reveal
         bool fallbackMode;                      // current epoch in fallback mode
+        uint256 epochId;                        // current epoch id
         uint256 highAssetTurnoutThresholdBIPS;  // threshold for high asset turnout (in BIPS)
         uint256 lowNatTurnoutThresholdBIPS;     // threshold for low nat turnout (in BIPS)
         uint256 circulatingSupplyNat;           // total native token circulating supply at votePowerBlock
