@@ -20,8 +20,8 @@ import { DummyAssetMinterContract,
   FtsoManagerContract,
   FtsoManagerInstance,
   FlareDaemonInstance,
-  ValidatorRewardManagerContract,
-  ValidatorRewardManagerInstance} from "../../typechain-truffle";
+  DataAvailabilityRewardManagerContract,
+  DataAvailabilityRewardManagerInstance} from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
 
 // import { serializedParameters } from "../../../scripts/DeploymentParameters";
@@ -126,16 +126,16 @@ contract(`deploy.ts system tests`, async accounts => {
     let inflationAllocation: InflationAllocationInstance;
     let FtsoRewardManager: FtsoRewardManagerContract;
     let ftsoRewardManager: FtsoRewardManagerInstance;
-    let ValidatorRewardManager: ValidatorRewardManagerContract;
-    let validatorRewardManager: ValidatorRewardManagerInstance;
+    let DataAvailabilityRewardManager: DataAvailabilityRewardManagerContract;
+    let dataAvailabilityRewardManager: DataAvailabilityRewardManagerInstance;
 
     beforeEach(async() => {
       InflationAllocation = artifacts.require("InflationAllocation");
       inflationAllocation = await InflationAllocation.at(contracts.getContractAddress(Contracts.INFLATION_ALLOCATION));
       FtsoRewardManager = artifacts.require("FtsoRewardManager");
       ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
-      ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
-      validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+      DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
+      dataAvailabilityRewardManager = await DataAvailabilityRewardManager.at(contracts.getContractAddress(Contracts.DATA_AVAILABILITY_REWARD_MANAGER));
     });
 
     it("Should have reward managers set", async() => {
@@ -146,7 +146,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assert
       assert.equal(ftsoRewardManager.address, sharingPctData[0].inflationReceiver);
       assert.equal(BN(8000), sharingPctData[0].percentBips);
-      assert.equal(validatorRewardManager.address, sharingPctData[1].inflationReceiver);
+      assert.equal(dataAvailabilityRewardManager.address, sharingPctData[1].inflationReceiver);
       assert.equal(BN(2000), sharingPctData[1].percentBips);
     });
 

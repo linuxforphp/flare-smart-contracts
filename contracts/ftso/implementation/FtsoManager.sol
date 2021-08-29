@@ -9,7 +9,7 @@ import "../../genesis/implementation/FlareDaemon.sol";
 import "../../genesis/interface/IFlareDaemonize.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
-import "../../rewardPools/interface/IIFtsoRewardManager.sol";
+import "../../tokenPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../utils/implementation/RevertErrorTracking.sol";

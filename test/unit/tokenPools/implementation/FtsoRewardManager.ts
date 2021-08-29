@@ -405,11 +405,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
     });
 
     describe("getters and setters", async () => {
-        it("Should get reward pool supply data", async () => {
+        it("Should get token pool supply data", async () => {
             // deposit some wnats
             await wNat.deposit({ from: accounts[1], value: "100" });
 
-            let data = await ftsoRewardManager.getRewardPoolSupplyData();
+            let data = await ftsoRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(1000000);
             expect(data[2].toNumber()).to.equals(0);
@@ -419,7 +419,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
 
-            data = await ftsoRewardManager.getRewardPoolSupplyData();
+            data = await ftsoRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(3000000);
             expect(data[2].toNumber()).to.equals(694);

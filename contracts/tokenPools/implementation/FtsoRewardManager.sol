@@ -5,7 +5,7 @@ import "../interface/IIFtsoRewardManager.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../inflation/implementation/Inflation.sol";
-import "../interface/IIRewardPool.sol";
+import "../interface/IITokenPool.sol";
 import "../../inflation/interface/IIInflationReceiver.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  */    
 
 //solhint-disable-next-line max-states-count
-contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIRewardPool, Governed, ReentrancyGuard {
+contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenPool, Governed, ReentrancyGuard {
     using SafePct for uint256;
     using SafeMath for uint256;
 
@@ -589,12 +589,12 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IIReward
     }
 
     /**
-     * @notice Return reward pool supply data
+     * @notice Return token pool supply data
      * @return _foundationAllocatedFundsWei     Foundation allocated funds (wei)
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getRewardPoolSupplyData() external view override 
+    function getTokenPoolSupplyData() external view override 
         returns (
             uint256 _foundationAllocatedFundsWei,
             uint256 _totalInflationAuthorizedWei,

@@ -33,7 +33,7 @@
     "rewardFeePercentageUpdateOffsetEpochs": 3,
     "defaultRewardFeePercentageBIPS": 0,
     "ftsoRewardExpiryOffsetDays": 30,
-    "validatorRewardExpiryOffsetEpochs": 100,
+    "dataAvailabilityRewardExpiryOffsetEpochs": 100,
     "initialWnatPriceUSD5Dec": 0,
     "XRP": {
         "assetName": "Flare asset XRP",

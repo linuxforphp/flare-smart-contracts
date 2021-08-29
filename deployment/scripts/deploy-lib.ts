@@ -18,7 +18,7 @@ import {
   FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance,
   StateConnectorInstance,
   SupplyInstance,
-  ValidatorRewardManagerInstance,
+  DataAvailabilityRewardManagerInstance,
   WNatInstance
 } from "../../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
@@ -45,7 +45,7 @@ export interface DeployedFlareContracts {
   ftsoManager: FtsoManagerInstance,
   flareDaemon: FlareDaemonInstance,
   priceSubmitter: PriceSubmitterInstance,
-  validatorRewardManager: ValidatorRewardManagerInstance,
+  dataAvailabilityRewardManager: DataAvailabilityRewardManagerInstance,
   supply: SupplyInstance,
   inflationAllocation: InflationAllocationInstance,
   stateConnector: StateConnectorInstance,
@@ -91,7 +91,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const Inflation = artifacts.require("Inflation");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
-  const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+  const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
   const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
@@ -187,13 +187,13 @@ export async function fullDeploy(parameters: any, quiet = false) {
     inflation.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address, quiet);
 
-  // ValidatorRewardManager contract
-  const validatorRewardManager = await ValidatorRewardManager.new(
+  // DataAvailabilityRewardManager contract
+  const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.new(
     deployerAccount.address,
-    parameters.validatorRewardExpiryOffsetEpochs,
+    parameters.dataAvailabilityRewardExpiryOffsetEpochs,
     stateConnector.address,
     inflation.address);
-  spewNewContractInfo(contracts, ValidatorRewardManager.contractName, validatorRewardManager.address, quiet);
+  spewNewContractInfo(contracts, DataAvailabilityRewardManager.contractName, dataAvailabilityRewardManager.address, quiet);
 
   // CleanupBlockNumberManager contract
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.new(
@@ -203,10 +203,10 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
 
   // Inflation allocation needs to know about reward managers
-  await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
+  await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, dataAvailabilityRewardManager.address], [8000, 2000]);
   // Supply contract needs to know about reward managers
-  await supply.addRewardPool(ftsoRewardManager.address, 0);
-  await supply.addRewardPool(validatorRewardManager.address, 0);
+  await supply.addTokenPool(ftsoRewardManager.address, 0);
+  await supply.addTokenPool(dataAvailabilityRewardManager.address, 0);
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);
@@ -364,7 +364,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   }
   await ftsoManager.activate();
   await ftsoRewardManager.activate();
-  await validatorRewardManager.activate();
+  await dataAvailabilityRewardManager.activate();
 
   // Turn over governance
   if (!quiet) {
@@ -375,7 +375,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await inflationAllocation.proposeGovernance(governanceAccount.address);
   await flareDaemon.proposeGovernance(governanceAccount.address);
   await ftsoRewardManager.proposeGovernance(governanceAccount.address);
-  await validatorRewardManager.proposeGovernance(governanceAccount.address);
+  await dataAvailabilityRewardManager.proposeGovernance(governanceAccount.address);
   await ftsoManager.proposeGovernance(governanceAccount.address);
   await priceSubmitter.proposeGovernance(governanceAccount.address, { from: currentGovernanceAddress });
   await voterWhitelister.proposeGovernance(governanceAccount.address, { from: currentGovernanceAddress });
@@ -392,7 +392,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     ftsoManager: ftsoManager,
     flareDaemon: flareDaemon,
     priceSubmitter: priceSubmitter,
-    validatorRewardManager: validatorRewardManager,
+    dataAvailabilityRewardManager: dataAvailabilityRewardManager,
     supply: supply,
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,
