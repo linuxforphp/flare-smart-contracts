@@ -74,7 +74,7 @@ test-contract-unit-3:
     <<: *yarn-setup
     script:
         - yarn c
-        - env TEST_PATH=./test/unit/rewardPools yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/tokenPools yarn hardhat test --network hardhat
         - env TEST_PATH=./test/unit/governance yarn hardhat test --network hardhat
 
 test-contract-unit-4:

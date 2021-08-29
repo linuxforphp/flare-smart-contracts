@@ -5,34 +5,34 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 const Wallet = require('ethereumjs-wallet').default;
 
 const Supply = artifacts.require("Supply");
-const MockRewardPool = artifacts.require("MockContract");
+const MockTokenPool = artifacts.require("MockContract");
 
-let mockRewardPools: MockContractInstance[] = [];
+let mockTokenPools: MockContractInstance[] = [];
 
 const initialGenesisAmountWei = 10000;
 const totalFoundationSupplyWei =  7500;
 const circulatingSupply       =  initialGenesisAmountWei - totalFoundationSupplyWei;
 
-const getRewardPoolSupplyData = web3.utils.sha3("getRewardPoolSupplyData()")!.slice(0,10);
+const getTokenPoolSupplyData = web3.utils.sha3("getTokenPoolSupplyData()")!.slice(0,10);
 
-async function createRewardPools(totalSupply: number[], totalInflationAuthorized: number[], totalClaimed: number[]) {
+async function createTokenPools(totalSupply: number[], totalInflationAuthorized: number[], totalClaimed: number[]) {
     assert(totalSupply.length == totalInflationAuthorized.length, "Array lengths mismatch");
     assert(totalSupply.length == totalClaimed.length, "Array lengths mismatch");
-    mockRewardPools = [];
+    mockTokenPools = [];
     for (let i = 0; i < totalSupply.length; i++) {
-        mockRewardPools.push(await createRewardPool(totalSupply[i], totalInflationAuthorized[i], totalClaimed[i]));
+        mockTokenPools.push(await createTokenPool(totalSupply[i], totalInflationAuthorized[i], totalClaimed[i]));
     }
 }
 
-async function createRewardPool(totalSupply: number, totalInflationAuthorized: number, totalClaimed: number): Promise<MockContractInstance> {
-    let rewardPool = await MockRewardPool.new();
-    await updateRewardPoolReturnData(rewardPool, totalSupply, totalInflationAuthorized, totalClaimed);
-    return rewardPool;
+async function createTokenPool(totalSupply: number, totalInflationAuthorized: number, totalClaimed: number): Promise<MockContractInstance> {
+    let tokenPool = await MockTokenPool.new();
+    await updateTokenPoolReturnData(tokenPool, totalSupply, totalInflationAuthorized, totalClaimed);
+    return tokenPool;
 }
 
-async function updateRewardPoolReturnData(rewardPool: MockContractInstance, totalSupply: number, totalInflationAuthorized: number, totalClaimed: number) {
-    let getRewardPoolSupplyDataReturn = web3.eth.abi.encodeParameters(['uint256', 'uint256', 'uint256'], [totalSupply, totalInflationAuthorized, totalClaimed]);
-    await rewardPool.givenMethodReturn(getRewardPoolSupplyData, getRewardPoolSupplyDataReturn);
+async function updateTokenPoolReturnData(tokenPool: MockContractInstance, totalSupply: number, totalInflationAuthorized: number, totalClaimed: number) {
+    let getTokenPoolSupplyDataReturn = web3.eth.abi.encodeParameters(['uint256', 'uint256', 'uint256'], [totalSupply, totalInflationAuthorized, totalClaimed]);
+    await tokenPool.givenMethodReturn(getTokenPoolSupplyData, getTokenPoolSupplyDataReturn);
 }
 
 async function getAddressWithZeroBalance() {
@@ -84,19 +84,19 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     });
 
     it("Should update circulating supply", async() => {
-        await createRewardPools([0, 0, 1000, 500], [100, 5000, 0, 0], [50, 1000, 200, 100]);
-        await supply.addRewardPool(mockRewardPools[0].address, 0, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[1].address, 0, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[2].address, 10, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[3].address, 5, {from: governanceAddress});
+        await createTokenPools([0, 0, 1000, 500], [100, 5000, 0, 0], [50, 1000, 200, 100]);
+        await supply.addTokenPool(mockTokenPools[0].address, 0, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[1].address, 0, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[2].address, 10, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[3].address, 5, {from: governanceAddress});
         expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
         expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei + 100 + 5000);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 50 + 1000 - 1000 - 500 + 200 + 100 + 10 + 5);
     
-        await updateRewardPoolReturnData(mockRewardPools[0], 0, 200, 150);
-        await updateRewardPoolReturnData(mockRewardPools[1], 0, 5000, 1500);
-        await updateRewardPoolReturnData(mockRewardPools[2], 1000, 0, 300);
-        await updateRewardPoolReturnData(mockRewardPools[3], 1000, 0, 300);
+        await updateTokenPoolReturnData(mockTokenPools[0], 0, 200, 150);
+        await updateTokenPoolReturnData(mockTokenPools[1], 0, 5000, 1500);
+        await updateTokenPoolReturnData(mockTokenPools[2], 1000, 0, 300);
+        await updateTokenPoolReturnData(mockTokenPools[3], 1000, 0, 300);
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
         
         let tx = await supply.updateAuthorizedInflationAndCirculatingSupply(100, { from: inflationAddress });
@@ -108,19 +108,19 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     });
 
     it("Should update circulating supply and emit event for inflation authorized error", async() => {
-        await createRewardPools([0, 0, 1000, 500], [100, 5000, 0, 0], [50, 1000, 200, 100]);
-        await supply.addRewardPool(mockRewardPools[0].address, 0, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[1].address, 0, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[2].address, 10, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[3].address, 5, {from: governanceAddress});
+        await createTokenPools([0, 0, 1000, 500], [100, 5000, 0, 0], [50, 1000, 200, 100]);
+        await supply.addTokenPool(mockTokenPools[0].address, 0, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[1].address, 0, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[2].address, 10, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[3].address, 5, {from: governanceAddress});
         expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
         expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei + 100 + 5000);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 50 + 1000 - 1000 - 500 + 200 + 100 + 10 + 5);
     
-        await updateRewardPoolReturnData(mockRewardPools[0], 0, 200, 150);
-        await updateRewardPoolReturnData(mockRewardPools[1], 0, 5000, 1500);
-        await updateRewardPoolReturnData(mockRewardPools[2], 1000, 0, 300);
-        await updateRewardPoolReturnData(mockRewardPools[3], 1000, 0, 300);
+        await updateTokenPoolReturnData(mockTokenPools[0], 0, 200, 150);
+        await updateTokenPoolReturnData(mockTokenPools[1], 0, 5000, 1500);
+        await updateTokenPoolReturnData(mockTokenPools[2], 1000, 0, 300);
+        await updateTokenPoolReturnData(mockTokenPools[3], 1000, 0, 300);
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
         
         let tx = await supply.updateAuthorizedInflationAndCirculatingSupply(400, { from: inflationAddress });
@@ -156,33 +156,33 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei);
     });
 
-    it("Should add reward pools", async() => {
-        await createRewardPools([100, 500], [100, 0], [50, 200]);
-        await supply.addRewardPool(mockRewardPools[0].address, 0, {from: governanceAddress});
-        await supply.addRewardPool(mockRewardPools[1].address, 100, {from: governanceAddress});
+    it("Should add token pools", async() => {
+        await createTokenPools([100, 500], [100, 0], [50, 200]);
+        await supply.addTokenPool(mockTokenPools[0].address, 0, {from: governanceAddress});
+        await supply.addTokenPool(mockTokenPools[1].address, 100, {from: governanceAddress});
         expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
         expect((await supply.getInflatableBalance()).toNumber()).to.equals(initialGenesisAmountWei + 100);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100 - 500 + 50 + 200 + 100);
-        expect((await supply.rewardPools(0))[0]).to.equals(mockRewardPools[0].address);
-        expect((await supply.rewardPools(1))[0]).to.equals(mockRewardPools[1].address);
-        await expectRevert.unspecified(supply.rewardPools(2));
+        expect((await supply.tokenPools(0))[0]).to.equals(mockTokenPools[0].address);
+        expect((await supply.tokenPools(1))[0]).to.equals(mockTokenPools[1].address);
+        await expectRevert.unspecified(supply.tokenPools(2));
     });
 
-    it("Should revert adding reward pool twice", async() => {
-        let rewardPool = await createRewardPool(1000, 0, 0);
-        await supply.addRewardPool(rewardPool.address, 100, {from: governanceAddress});
-        await expectRevert(supply.addRewardPool(rewardPool.address, 200, {from: governanceAddress}), "reward pool already added");
-        expect((await supply.rewardPools(0))[0]).to.equals(rewardPool.address);
-        await expectRevert.unspecified(supply.rewardPools(1));
+    it("Should revert adding token pool twice", async() => {
+        let tokenPool = await createTokenPool(1000, 0, 0);
+        await supply.addTokenPool(tokenPool.address, 100, {from: governanceAddress});
+        await expectRevert(supply.addTokenPool(tokenPool.address, 200, {from: governanceAddress}), "token pool already added");
+        expect((await supply.tokenPools(0))[0]).to.equals(tokenPool.address);
+        await expectRevert.unspecified(supply.tokenPools(1));
     });
 
-    it("Should revert adding reward pool if not from governance", async() => {
-        await expectRevert(supply.addRewardPool(accounts[1], 100, {from: accounts[0]}), "only governance");
+    it("Should revert adding token pool if not from governance", async() => {
+        await expectRevert(supply.addTokenPool(accounts[1], 100, {from: accounts[0]}), "only governance");
     });
 
-    it("Should deploy supply with reward pools", async() => {
-        await createRewardPools([500, 1000], [0, 0], [200, 50]);
-        supply = await Supply.new(governanceAddress, constants.ZERO_ADDRESS, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockRewardPools.map(rp => rp.address));
+    it("Should deploy supply with token pools", async() => {
+        await createTokenPools([500, 1000], [0, 0], [200, 50]);
+        supply = await Supply.new(governanceAddress, constants.ZERO_ADDRESS, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 500 - 1000 + 200 + 50);
     });
 

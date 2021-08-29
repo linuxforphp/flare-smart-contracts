@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../interface/IISupply.sol";
-import "../../rewardPools/interface/IIRewardPool.sol";
+import "../../tokenPools/interface/IITokenPool.sol";
 import "../../token/lib/CheckPointHistory.sol";
 import "../../token/lib/CheckPointHistoryCache.sol";
 import "../../governance/implementation/Governed.sol";
@@ -20,7 +20,7 @@ contract Supply is Governed, IISupply {
     using SafeMath for uint256;
 
     struct SupplyData {
-        IIRewardPool rewardPool;
+        IITokenPool tokenPool;
         uint256 foundationAllocatedFundsWei;
         uint256 totalInflationAuthorizedWei;
         uint256 totalClaimedWei;
@@ -28,7 +28,7 @@ contract Supply is Governed, IISupply {
 
     string internal constant ERR_INFLATION_ONLY = "inflation only";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
-    string internal constant ERR_REWARD_POOL_ALREADY_ADDED = "reward pool already added";
+    string internal constant ERR_TOKEN_POOL_ALREADY_ADDED = "token pool already added";
     string internal constant ERR_INITIAL_GENESIS_AMOUNT_ZERO = "initial genesis amount zero";
 
     CheckPointHistory.CheckPointHistoryState private circulatingSupplyWei;
@@ -39,7 +39,7 @@ contract Supply is Governed, IISupply {
     uint256 public totalFoundationSupplyWei;
     uint256 public distributedFoundationSupplyWei;
 
-    SupplyData[] public rewardPools;
+    SupplyData[] public tokenPools;
 
     Inflation public inflation;
     address public burnAddress;
@@ -61,7 +61,7 @@ contract Supply is Governed, IISupply {
         Inflation _inflation,
         uint256 _initialGenesisAmountWei,
         uint256 _totalFoundationSupplyWei,
-        IIRewardPool[] memory _rewardPools
+        IITokenPool[] memory _tokenPools
     )
         Governed(_governance)
     {
@@ -74,8 +74,8 @@ contract Supply is Governed, IISupply {
 
         _increaseCirculatingSupply(_initialGenesisAmountWei.sub(_totalFoundationSupplyWei));
 
-        for (uint256 i = 0; i < _rewardPools.length; i++) {
-            _addRewardPool(_rewardPools[i]);
+        for (uint256 i = 0; i < _tokenPools.length; i++) {
+            _addTokenPool(_tokenPools[i]);
         }
 
         _updateCirculatingSupply();
@@ -105,26 +105,26 @@ contract Supply is Governed, IISupply {
     }
 
     /**
-     * @notice Adds reward pool so it can call updateRewardPoolDistributedAmount method when 
+     * @notice Adds token pool so it can call updateTokenPoolDistributedAmount method when 
         some tokens are distributed
-     * @param _rewardPool                           Reward pool address
-     * @param _decreaseFoundationSupplyByAmountWei  If reward poll was given initial supply from fundation supply, 
+     * @param _tokenPool                            Token pool address
+     * @param _decreaseFoundationSupplyByAmountWei  If token pool was given initial supply from fundation supply, 
         decrease it's value by this amount
      */
-    function addRewardPool(
-        IIRewardPool _rewardPool,
+    function addTokenPool(
+        IITokenPool _tokenPool,
         uint256 _decreaseFoundationSupplyByAmountWei
     )
         external
         onlyGovernance
     {
         _decreaseFoundationSupply(_decreaseFoundationSupplyByAmountWei);
-        _addRewardPool(_rewardPool);
+        _addTokenPool(_tokenPool);
         _updateCirculatingSupply();
     }
 
     /**
-     * @notice Decrease foundation supply when foundation funds are released to a reward pool or team members
+     * @notice Decrease foundation supply when foundation funds are released to a token pool or team members
      * @param _amountWei                            Amount to decrease by
      */
     function decreaseFoundationSupply(uint256 _amountWei) external onlyGovernance {
@@ -191,16 +191,16 @@ contract Supply is Governed, IISupply {
     }
 
     function _updateCirculatingSupply() internal {
-        uint256 len = rewardPools.length;
+        uint256 len = tokenPools.length;
         for (uint256 i = 0; i < len; i++) {
-            SupplyData storage data = rewardPools[i];
+            SupplyData storage data = tokenPools[i];
 
             uint256 newFoundationAllocatedFundsWei;
             uint256 newTotalInflationAuthorizedWei;
             uint256 newTotalClaimedWei;
             
             (newFoundationAllocatedFundsWei, newTotalInflationAuthorizedWei, newTotalClaimedWei) = 
-                data.rewardPool.getRewardPoolSupplyData();
+                data.tokenPool.getTokenPoolSupplyData();
             assert(newFoundationAllocatedFundsWei.add(newTotalInflationAuthorizedWei) >= newTotalClaimedWei);
             
             // updates total inflation authorized with daily authorized inflation
@@ -226,15 +226,15 @@ contract Supply is Governed, IISupply {
         burnAddressBalance = newBalance;
     }
 
-    function _addRewardPool(IIRewardPool _rewardPool) internal {
-        uint256 len = rewardPools.length;
+    function _addTokenPool(IITokenPool _tokenPool) internal {
+        uint256 len = tokenPools.length;
         for (uint256 i = 0; i < len; i++) {
-            if (_rewardPool == rewardPools[i].rewardPool) {
-                revert(ERR_REWARD_POOL_ALREADY_ADDED);
+            if (_tokenPool == tokenPools[i].tokenPool) {
+                revert(ERR_TOKEN_POOL_ALREADY_ADDED);
             }
         }
-        rewardPools.push();
-        rewardPools[len].rewardPool = _rewardPool;
+        tokenPools.push();
+        tokenPools[len].tokenPool = _tokenPool;
     }
     
     function _decreaseFoundationSupply(uint256 _amountWei) internal {

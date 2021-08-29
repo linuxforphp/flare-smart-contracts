@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-interface IValidatorRewardManager {
+interface IDataAvailabilityRewardManager {
 
     event RewardClaimed(
-        address indexed validator,
+        address indexed whoClaimed,
         address indexed sentTo,
         uint256 rewardEpoch, 
         uint256 amount

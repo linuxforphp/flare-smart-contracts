@@ -1,12 +1,12 @@
 import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import {
-    InflationMockInstance, MockContractInstance, SuicidalMockInstance, ValidatorRewardManagerInstance
+    InflationMockInstance, MockContractInstance, SuicidalMockInstance, DataAvailabilityRewardManagerInstance
 } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 
-const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
 const InflationMock = artifacts.require("InflationMock");
 const MockContract = artifacts.require("MockContract");
 const SuicidalMock = artifacts.require("SuicidalMock");
@@ -14,7 +14,7 @@ const SuicidalMock = artifacts.require("SuicidalMock");
 const REWARD_EPOCH_DURATION_S = 7 * 24 * 60 * 60; // 7 days
 
 // contains a fresh contract for each test
-let validatorRewardManager: ValidatorRewardManagerInstance;
+let dataAvailabilityRewardManager: DataAvailabilityRewardManagerInstance;
 let startTs: BN;
 let mockInflation: InflationMockInstance;
 let mockStateConnector: MockContractInstance;
@@ -81,7 +81,7 @@ async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN)
     await mockInflation.setDailyAuthorizedInflation(1000000);
 }
 
-contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator reward manager unit tests`, async accounts => {
+contract(`DataAvailabilityRewardManager.sol; ${ getTestFile(__filename) }; Data availability reward manager unit tests`, async accounts => {
 
     let mockSuicidal: SuicidalMockInstance;
 
@@ -89,72 +89,72 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
         mockInflation = await InflationMock.new();
         mockStateConnector = await MockContract.new();
         
-        validatorRewardManager = await ValidatorRewardManager.new(
+        dataAvailabilityRewardManager = await DataAvailabilityRewardManager.new(
             accounts[0],
             10,
             mockStateConnector.address,
             mockInflation.address
         );
             
-        await mockInflation.setInflationReceiver(validatorRewardManager.address);
+        await mockInflation.setInflationReceiver(dataAvailabilityRewardManager.address);
 
         // Get the timestamp for the just mined block
         startTs = await time.latest();
 
-        mockSuicidal = await SuicidalMock.new(validatorRewardManager.address);
+        mockSuicidal = await SuicidalMock.new(dataAvailabilityRewardManager.address);
 
-        await validatorRewardManager.activate();
+        await dataAvailabilityRewardManager.activate();
     });
 
     describe("basic", async () => {
         it("Should revert calling activate if not from governance", async () => {
-            await expectRevert(validatorRewardManager.activate({ from: accounts[1]}), "only governance");
+            await expectRevert(dataAvailabilityRewardManager.activate({ from: accounts[1]}), "only governance");
         });
 
         it("Should deactivate and disable claiming rewards", async () => {
-            await validatorRewardManager.deactivate();
+            await dataAvailabilityRewardManager.deactivate();
 
-            await expectRevert(validatorRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
+            await expectRevert(dataAvailabilityRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
         });
 
         it("Should revert calling deactivate if not from governance", async () => {
-            await expectRevert(validatorRewardManager.deactivate({ from: accounts[1]}), "only governance");
+            await expectRevert(dataAvailabilityRewardManager.deactivate({ from: accounts[1]}), "only governance");
         });
         
         it("Should update state connector", async () => {
-            expect(await validatorRewardManager.stateConnector()).to.equals(mockStateConnector.address);
-            await validatorRewardManager.setStateConnector(accounts[8]);
-            expect(await validatorRewardManager.stateConnector()).to.equals(accounts[8]);
+            expect(await dataAvailabilityRewardManager.stateConnector()).to.equals(mockStateConnector.address);
+            await dataAvailabilityRewardManager.setStateConnector(accounts[8]);
+            expect(await dataAvailabilityRewardManager.stateConnector()).to.equals(accounts[8]);
         });
 
         it("Should revert calling setStateConnector if not from governance", async () => {
-            await expectRevert(validatorRewardManager.setStateConnector(accounts[2], { from: accounts[1]}), "only governance");
+            await expectRevert(dataAvailabilityRewardManager.setStateConnector(accounts[2], { from: accounts[1]}), "only governance");
         });
 
         it("Should revert calling setStateConnector if setting to address(0)", async () => {
-            await expectRevert(validatorRewardManager.setStateConnector(constants.ZERO_ADDRESS), "no state connector");
+            await expectRevert(dataAvailabilityRewardManager.setStateConnector(constants.ZERO_ADDRESS), "no state connector");
         });
 
         it("Should update inflation", async () => {
-            expect(await validatorRewardManager.inflation()).to.equals(mockInflation.address);
-            await validatorRewardManager.setInflation(accounts[8]);
-            expect(await validatorRewardManager.inflation()).to.equals(accounts[8]);
+            expect(await dataAvailabilityRewardManager.inflation()).to.equals(mockInflation.address);
+            await dataAvailabilityRewardManager.setInflation(accounts[8]);
+            expect(await dataAvailabilityRewardManager.inflation()).to.equals(accounts[8]);
         });
         
         it("Should revert calling setInflation if not from governance", async () => {
-            await expectRevert(validatorRewardManager.setInflation(accounts[2], { from: accounts[1]}), "only governance");
+            await expectRevert(dataAvailabilityRewardManager.setInflation(accounts[2], { from: accounts[1]}), "only governance");
         });
 
         it("Should revert calling setInflation if setting to address(0)", async () => {
-            await expectRevert(validatorRewardManager.setInflation(constants.ZERO_ADDRESS), "inflation zero");
+            await expectRevert(dataAvailabilityRewardManager.setInflation(constants.ZERO_ADDRESS), "inflation zero");
         });
 
         it("Should get epoch to expire next", async () => {
-            expect((await validatorRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(0);
+            expect((await dataAvailabilityRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(0);
             await travelToAndSetNewRewardEpoch(10, startTs);
-            expect((await validatorRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(0);
+            expect((await dataAvailabilityRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(0);
             await travelToAndSetNewRewardEpoch(11, startTs);
-            expect((await validatorRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(1);
+            expect((await dataAvailabilityRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(1);
         });
     });
 
@@ -167,7 +167,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Assert
             // 1000000 authorized inflation per day
             // 7 * 1000000 = 7000000
-            let rewardEpoch = await validatorRewardManager.getEpochReward(0);
+            let rewardEpoch = await dataAvailabilityRewardManager.getEpochReward(0);
             assert.equal(rewardEpoch[0].toNumber(), 7000000);
             assert.equal(rewardEpoch[1].toNumber(), 0);
         });
@@ -178,9 +178,9 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await travelToAndSetNewRewardEpoch(3, startTs);
 
             // Assert
-            assert.equal((await validatorRewardManager.getEpochReward(0))[0].toNumber(), 7000000);
-            assert.equal((await validatorRewardManager.getEpochReward(1))[0].toNumber(), 0);
-            assert.equal((await validatorRewardManager.getEpochReward(2))[0].toNumber(), 14000000);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(0))[0].toNumber(), 7000000);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(1))[0].toNumber(), 0);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(2))[0].toNumber(), 14000000);
         });
 
         it("Should finalize reward epochs and distribute all authorized inflation to reward epochs - inflation authorized not called from beginning", async () => {
@@ -193,16 +193,16 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await travelToAndSetNewRewardEpoch(4, startTs);
 
             // Assert
-            assert.equal((await validatorRewardManager.getEpochReward(0))[0].toNumber(), 333333);
-            assert.equal((await validatorRewardManager.getEpochReward(1))[0].toNumber(), 333333);
-            assert.equal((await validatorRewardManager.getEpochReward(2))[0].toNumber(), 333334);
-            assert.equal((await validatorRewardManager.getEpochReward(3))[0].toNumber(), 5000000);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(0))[0].toNumber(), 333333);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(1))[0].toNumber(), 333333);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(2))[0].toNumber(), 333334);
+            assert.equal((await dataAvailabilityRewardManager.getEpochReward(3))[0].toNumber(), 5000000);
         });
     });
 
     describe("getters and setters", async () => {
-        it("Should get reward pool supply data", async () => {
-            let data = await validatorRewardManager.getRewardPoolSupplyData();
+        it("Should get token pool supply data", async () => {
+            let data = await dataAvailabilityRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(0);
             expect(data[2].toNumber()).to.equals(0);
@@ -211,9 +211,9 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await travelToAndSetNewRewardEpoch(1, startTs);
 
             await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
-            await validatorRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
+            await dataAvailabilityRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
 
-            data = await validatorRewardManager.getRewardPoolSupplyData();
+            data = await dataAvailabilityRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(7000000);
             expect(data[2].toNumber()).to.equals(1909090); // 7 * 1000000 * 15 / 55
@@ -222,24 +222,24 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
         it("Should get state of rewards", async () => {
             let data;
             
-            await expectRevert(validatorRewardManager.getStateOfRewards(accounts[1], 0), "unknown reward epoch");
+            await expectRevert(dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0), "unknown reward epoch");
             await mockTotalDataAvailabilityPeriodsMined([0], [55]);
             await mockDataAvailabilityPeriodsMined([0], [11], accounts[1]);
 
             await travelToAndSetNewRewardEpoch(1, startTs);
-            data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
+            data = await dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].toNumber()).to.equals(1400000); // 7 * 1000000 * 11 / 55
             expect(data[1]).to.equals(false);
             expect(data[2]).to.equals(true);
             
-            await validatorRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
-            data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
+            await dataAvailabilityRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
+            data = await dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].toNumber()).to.equals(1400000);
             expect(data[1]).to.equals(true);
             expect(data[2]).to.equals(true);
 
             await travelToAndSetNewRewardEpoch(11, startTs);
-            data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
+            data = await dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].toNumber()).to.equals(1400000);
             expect(data[1]).to.equals(true);
             expect(data[2]).to.equals(false);
@@ -249,19 +249,19 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             let data;
 
             await travelToAndSetNewRewardEpoch(1, startTs);
-            data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
+            data = await dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1]).to.equals(false);
             expect(data[2]).to.equals(true);
 
-            await validatorRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
-            data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
+            await dataAvailabilityRewardManager.claimReward(accounts[1], [0], { from: accounts[1]});
+            data = await dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1]).to.equals(true);
             expect(data[2]).to.equals(true);
 
             await travelToAndSetNewRewardEpoch(11, startTs);
-            data = await validatorRewardManager.getStateOfRewards(accounts[1], 0);
+            data = await dataAvailabilityRewardManager.getStateOfRewards(accounts[1], 0);
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1]).to.equals(true);
             expect(data[2]).to.equals(false);
@@ -275,7 +275,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Inflation must call ftso reward manager during funding, and this proxy does it.
             await mockInflation.receiveInflation({ value: "1000000" });
             // Assert
-            let balance = web3.utils.toBN(await web3.eth.getBalance(validatorRewardManager.address));
+            let balance = web3.utils.toBN(await web3.eth.getBalance(dataAvailabilityRewardManager.address));
             assert.equal(balance.toNumber(), 1000000);
         });
 
@@ -285,37 +285,37 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
           await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
           // Sneak it into ftso reward manager
           await mockSuicidal.die();
-          assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "1");
+          assert.equal(await web3.eth.getBalance(dataAvailabilityRewardManager.address), "1");
           // Act
           await mockInflation.receiveInflation({ value: "1" });
           // Assert
-          assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "2");
-          const selfDestructReceived = await validatorRewardManager.totalSelfDestructReceivedWei();
+          assert.equal(await web3.eth.getBalance(dataAvailabilityRewardManager.address), "2");
+          const selfDestructReceived = await dataAvailabilityRewardManager.totalSelfDestructReceivedWei();
           assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
         it("Should gracefully receive self-destruct proceeds - initial balance > 0", async() => {
             // Add some initial balance (inflation)
             await mockInflation.receiveInflation({ value: "1" });
-            assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "1");
+            assert.equal(await web3.eth.getBalance(dataAvailabilityRewardManager.address), "1");
             // Assemble
             // Give suicidal some native token
             await web3.eth.sendTransaction({from: accounts[0], to: mockSuicidal.address, value: 1});
             // Sneak it into ftso reward manager
             await mockSuicidal.die();
-            assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "2");
+            assert.equal(await web3.eth.getBalance(dataAvailabilityRewardManager.address), "2");
             // Act
             await mockInflation.receiveInflation({ value: "1" });
             // Assert
-            assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "3");
-            const selfDestructReceived = await validatorRewardManager.totalSelfDestructReceivedWei();
+            assert.equal(await web3.eth.getBalance(dataAvailabilityRewardManager.address), "3");
+            const selfDestructReceived = await dataAvailabilityRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
         it("Should not accept native token unless from inflation", async () => {
           // Assemble
           // Act
-          const receivePromise = validatorRewardManager.receiveInflation({ value: "1000000" });
+          const receivePromise = dataAvailabilityRewardManager.receiveInflation({ value: "1000000" });
           // Assert
           await expectRevert(receivePromise, "inflation only");
         });
@@ -330,7 +330,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
+            await dataAvailabilityRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be 7 days * 1000000 * 15 / 55 = 1909090
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
@@ -354,16 +354,16 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
+            await dataAvailabilityRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a1 -> a3 claimed should be (7 * 1000000) * 15 / 55 = 1909090
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 1909090);
-            let selfDestructProceeds = await validatorRewardManager.totalSelfDestructReceivedWei();
+            let selfDestructProceeds = await dataAvailabilityRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 1);
 
             // Create another suicidal
-            const anotherMockSuicidal = await SuicidalMock.new(validatorRewardManager.address);
+            const anotherMockSuicidal = await SuicidalMock.new(dataAvailabilityRewardManager.address);
             // Give suicidal some native token
             await web3.eth.sendTransaction({from: accounts[0], to: anotherMockSuicidal.address, value: 1});
             // Sneak it into ftso reward manager
@@ -373,7 +373,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Claim reward to a4 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[4]));
-            await validatorRewardManager.claimReward(accounts[4], [0], { from: accounts[2] });
+            await dataAvailabilityRewardManager.claimReward(accounts[4], [0], { from: accounts[2] });
             // a1 -> a3 claimed should be (7 * 1000000 - 1909090) * 15 / 40 = 1909091
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[4]));
             assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 1909091);
@@ -382,11 +382,11 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            await validatorRewardManager.claimReward(accounts[5], [0], { from: accounts[3] });
+            await dataAvailabilityRewardManager.claimReward(accounts[5], [0], { from: accounts[3] });
             // a2 -> a5 claimed should be (7 * 1000000) - 1909090 - 1909091 = 3181819
             let natClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             assert.equal(natClosingBalance3.sub(natOpeningBalance3).toNumber(), 3181819);
-            selfDestructProceeds = await validatorRewardManager.totalSelfDestructReceivedWei();
+            selfDestructProceeds = await dataAvailabilityRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 2);
         });
 
@@ -400,7 +400,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
+            await dataAvailabilityRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
             // a4 -> a3 claimed should be (7 * 1000000) * 15 / 55 = 1909090
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
@@ -408,7 +408,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
             // if claiming again, get 0
             let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
+            await dataAvailabilityRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             let natClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance1.sub(natOpeningBalance1).toNumber(), 0);
         });
@@ -427,7 +427,7 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
 
             // can claim Math.floor(7 * 1000000 * 15 / 55) + Math.floor(7 * 1000000 * 12 / 50) + Math.floor(7 * 1000000 * 17 / 25) = 1909090 + 1680000 + 4760000 = 8349090
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], [0, 1, 2, 3, 4], { from: accounts[1] });
+            await dataAvailabilityRewardManager.claimReward(accounts[3], [0, 1, 2, 3, 4], { from: accounts[1] });
 
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 8349090);
@@ -441,14 +441,14 @@ contract(`ValidatorRewardManager.sol; ${ getTestFile(__filename) }; Validator re
             await mockDataAvailabilityPeriodsMined([0], [15], accounts[1]);
 
             await travelToAndSetNewRewardEpoch(1, startTs);
-            await validatorRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
+            await dataAvailabilityRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
 
             await travelToAndSetNewRewardEpoch(10, startTs);
-            let rewardExpired = await validatorRewardManager.totalExpiredWei();
+            let rewardExpired = await dataAvailabilityRewardManager.totalExpiredWei();
             assert.equal(rewardExpired.toNumber(), 0);
 
             await travelToAndSetNewRewardEpoch(11, startTs);
-            rewardExpired = await validatorRewardManager.totalExpiredWei();
+            rewardExpired = await dataAvailabilityRewardManager.totalExpiredWei();
             assert.equal(rewardExpired.toNumber(), 5090910); // (7 * 1000000) - 1909090 = 5090910
         });
 
