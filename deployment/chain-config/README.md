@@ -124,7 +124,7 @@ All numeric parameter names have units appended at the end. Most unit names are 
     Reward expiry time in days. After this many days reward epoch funds expire and can not be claimed any more. 
     If expiry value is 90 days and reward epoch length is 10 days, any reward epoch that was opened more then 90 days ago will expire. 
 
-- `validatorRewardExpiryOffsetEpochs` - 
+- `dataAvailabilityRewardExpiryOffsetEpochs` - 
     The duration after which old reward epochs will expire, as a number of reward epochs.
     For test purposes we recommend 100, so if current reward epoch is 120, reward epochs 20 and below will expire.
 

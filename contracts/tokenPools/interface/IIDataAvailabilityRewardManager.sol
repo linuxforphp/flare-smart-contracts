@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IValidatorRewardManager.sol";
+import "../../userInterfaces/IDataAvailabilityRewardManager.sol";
 import "../../genesis/implementation/StateConnector.sol";
 
-interface IIValidatorRewardManager is IValidatorRewardManager {
+interface IIDataAvailabilityRewardManager is IDataAvailabilityRewardManager {
 
     event DailyAuthorizedInflationSet(uint256 authorizedAmountWei);
     event InflationReceived(uint256 amountReceivedWei);

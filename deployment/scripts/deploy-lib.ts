@@ -18,7 +18,7 @@ import {
   FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance,
   StateConnectorInstance,
   SupplyInstance,
-  ValidatorRewardManagerInstance,
+  DataAvailabilityRewardManagerInstance,
   WNatInstance
 } from "../../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
@@ -31,7 +31,7 @@ export interface AssetDefinition {
   initialPriceUSD5Dec: number;
 }
 
-export interface AssetContracts {  
+export interface AssetContracts {
   xAssetToken: AssetTokenInstance | WNatInstance;
   ftso: FtsoInstance;
   dummyAssetMinter?: DummyAssetMinterInstance;
@@ -45,7 +45,7 @@ export interface DeployedFlareContracts {
   ftsoManager: FtsoManagerInstance,
   flareDaemon: FlareDaemonInstance,
   priceSubmitter: PriceSubmitterInstance,
-  validatorRewardManager: ValidatorRewardManagerInstance,
+  dataAvailabilityRewardManager: DataAvailabilityRewardManagerInstance,
   supply: SupplyInstance,
   inflationAllocation: InflationAllocationInstance,
   stateConnector: StateConnectorInstance,
@@ -61,6 +61,7 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
 import { waitFinalize3 } from "../../test/utils/test-helpers";
+import { TestableFlareDaemonInstance } from "../../typechain-truffle/TestableFlareDaemon";
 
 export async function fullDeploy(parameters: any, quiet = false) {
   // Define repository for created contracts
@@ -86,24 +87,25 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const InflationAllocation = artifacts.require("InflationAllocation");
   const StateConnector = artifacts.require("StateConnector");
   const FlareDaemon = artifacts.require("FlareDaemon");
+  const TestableFlareDaemon = artifacts.require("TestableFlareDaemon");
   const Ftso = artifacts.require("Ftso");
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
-  const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+  const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
   const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
   const VoterWhitelister = artifacts.require("VoterWhitelister");
   const WNAT = artifacts.require("WNat");
   const Distribution = artifacts.require("Distribution");
-console.error("START HERE")
+
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBIPS);
   spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address, quiet);
-console.error("State connector")
+
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
   try {
@@ -124,14 +126,17 @@ console.error("State connector")
   }
 
   // Initialize the daemon
-  let flareDaemon: FlareDaemonInstance;
+  let flareDaemon: FlareDaemonInstance | TestableFlareDaemonInstance;
   try {
     flareDaemon = await FlareDaemon.at(parameters.flareDaemonAddress);
   } catch (e) {
     if (!quiet) {
       console.error("FlareDaemon not in genesis...creating new.")
     }
-    flareDaemon = await FlareDaemon.new();
+    // If the flare daemon is not in the genesis block, it will never be triggered automatically.
+    // Therefore we need TestableFlareDaemon which can be triggered from outside.
+    // WARNING: This should only happen in test.
+    flareDaemon = await TestableFlareDaemon.new();
   }
 
   spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
@@ -145,19 +150,15 @@ console.error("State connector")
   let currentGovernanceAddress = await flareDaemon.governance()
 
   // Unregister whatever is registered with verification
-  while (true) {
+  try {
+    console.error("Unregistring contracts");
     try {
-      let lastAddress = await flareDaemon.daemonizeContracts(0);
-      console.error("Unregistring contracts");
-      try {
-        await waitFinalize3(currentGovernanceAddress, () => flareDaemon.registerToDaemonize([], { from: currentGovernanceAddress }));
-      } catch (ee) {
-        console.error("Error while unregistring. ", ee)
-      }
-    } catch (e) {
-      console.error("No more kept contracts")
-      break;
+      await waitFinalize3(currentGovernanceAddress, () => flareDaemon.registerToDaemonize([], { from: currentGovernanceAddress }));
+    } catch (ee) {
+      console.error("Error while unregistring. ", ee)
     }
+  } catch (e) {
+    console.error("No more kept contracts")
   }
 
   await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
@@ -202,10 +203,10 @@ console.error("State connector")
 
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
-  
+
   // Delayed reward epoch start time
   const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds + parameters.revealEpochDurationSeconds);
-  
+
   // Inflation contract
   const inflation = await Inflation.new(
     deployerAccount.address,
@@ -239,13 +240,13 @@ console.error("State connector")
     inflation.address);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address, quiet);
 
-  // ValidatorRewardManager contract
-  const validatorRewardManager = await ValidatorRewardManager.new(
+  // DataAvailabilityRewardManager contract
+  const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.new(
     deployerAccount.address,
-    parameters.validatorRewardExpiryOffsetEpochs,
+    parameters.dataAvailabilityRewardExpiryOffsetEpochs,
     stateConnector.address,
     inflation.address);
-  spewNewContractInfo(contracts, ValidatorRewardManager.contractName, validatorRewardManager.address, quiet);
+  spewNewContractInfo(contracts, DataAvailabilityRewardManager.contractName, dataAvailabilityRewardManager.address, quiet);
 
   // CleanupBlockNumberManager contract
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.new(
@@ -257,12 +258,12 @@ console.error("State connector")
   // Inflation allocation needs to know about reward managers
   // await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
   await inflationAllocation.setSharingPercentages(
-    [ftsoRewardManager.address, validatorRewardManager.address], 
-    [parameters.ftsoRewardManagerSharingPercentageBIPS, parameters.validatorRewardManagerSharingPercentageBIPS]   
+    [ftsoRewardManager.address, dataAvailabilityRewardManager.address],
+    [parameters.ftsoRewardManagerSharingPercentageBIPS, parameters.validatorRewardManagerSharingPercentageBIPS]
   );
   // Supply contract needs to know about reward managers
-  await supply.addRewardPool(ftsoRewardManager.address, 0);
-  await supply.addRewardPool(validatorRewardManager.address, 0);
+  await supply.addTokenPool(ftsoRewardManager.address, 0);
+  await supply.addTokenPool(dataAvailabilityRewardManager.address, 0);
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);
@@ -298,7 +299,7 @@ console.error("State connector")
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
   await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
   await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
-  
+
   await voterWhitelister.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: currentGovernanceAddress });
   await priceSubmitter.setContractAddresses(ftsoRegistry.address, voterWhitelister.address, ftsoManager.address, { from: currentGovernanceAddress });
 
@@ -389,7 +390,7 @@ console.error("State connector")
   let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
 
   // Set initial number of voters
-  for (let asset of ['NAT', ...assets]){
+  for (let asset of ['NAT', ...assets]) {
 
     const assetContract = assetToContracts.get(asset)!;
     const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
@@ -408,7 +409,7 @@ console.error("State connector")
   }
   await ftsoManager.activate();
   await ftsoRewardManager.activate();
-  await validatorRewardManager.activate();
+  await dataAvailabilityRewardManager.activate();
 
   // Turn over governance
   if (!quiet) {
@@ -419,7 +420,7 @@ console.error("State connector")
   await inflationAllocation.proposeGovernance(governanceAccount.address);
   await flareDaemon.proposeGovernance(governanceAccount.address);
   await ftsoRewardManager.proposeGovernance(governanceAccount.address);
-  await validatorRewardManager.proposeGovernance(governanceAccount.address);
+  await dataAvailabilityRewardManager.proposeGovernance(governanceAccount.address);
   await ftsoManager.proposeGovernance(governanceAccount.address);
   await priceSubmitter.proposeGovernance(governanceAccount.address, { from: currentGovernanceAddress });
   await voterWhitelister.proposeGovernance(governanceAccount.address, { from: currentGovernanceAddress });
@@ -436,7 +437,7 @@ console.error("State connector")
     ftsoManager: ftsoManager,
     flareDaemon: flareDaemon,
     priceSubmitter: priceSubmitter,
-    validatorRewardManager: validatorRewardManager,
+    dataAvailabilityRewardManager: dataAvailabilityRewardManager,
     supply: supply,
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,

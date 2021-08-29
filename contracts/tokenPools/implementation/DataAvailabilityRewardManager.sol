@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interface/IIValidatorRewardManager.sol";
-import "../interface/IIRewardPool.sol";
+import "../interface/IIDataAvailabilityRewardManager.sol";
+import "../interface/IITokenPool.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
@@ -12,14 +12,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
- * ValidatorRewardManager is in charge of:
+ * DataAvailabilityRewardManager is in charge of:
  * - distributing rewards according to state of StateConnector
  * - allowing claims for rewards
  */    
 
 //solhint-disable-next-line max-states-count
-contract ValidatorRewardManager is 
-        IIValidatorRewardManager, IIInflationReceiver, IIRewardPool, Governed, ReentrancyGuard {
+contract DataAvailabilityRewardManager is 
+        IIDataAvailabilityRewardManager, IIInflationReceiver, IITokenPool, Governed, ReentrancyGuard {
     using SafePct for uint256;
     using SafeMath for uint256;
 
@@ -56,7 +56,7 @@ contract ValidatorRewardManager is
     // id of the first epoch to expire. Closed = expired and unclaimed funds sent back
     uint256 private firstEpochToCheckExpiry; 
     
-    mapping(uint256 => mapping(address => RewardClaim)) private epochValidatorReward;
+    mapping(uint256 => mapping(address => RewardClaim)) private epochDataAvailabilityProviderReward;
     RewardEpochData[] internal rewardEpochs;
 
     // Totals
@@ -251,12 +251,12 @@ contract ValidatorRewardManager is
     }
     
     /**
-     * @notice Return reward pool supply data
+     * @notice Return token pool supply data
      * @return _foundationAllocatedFundsWei     Foundation allocated funds (wei)
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getRewardPoolSupplyData() external view override 
+    function getTokenPoolSupplyData() external view override 
         returns (
             uint256 _foundationAllocatedFundsWei,
             uint256 _totalInflationAuthorizedWei,
@@ -351,12 +351,12 @@ contract ValidatorRewardManager is
             totalClaimedWei += rewardAmount;
         }
 
-        RewardClaim storage rewardClaim = epochValidatorReward[_rewardEpoch][msg.sender];
+        RewardClaim storage rewardClaim = epochDataAvailabilityProviderReward[_rewardEpoch][msg.sender];
         rewardClaim.claimed = true;
         rewardClaim.amount = rewardAmount;
 
         emit RewardClaimed({
-            validator: msg.sender,
+            whoClaimed: msg.sender,
             sentTo: _recipient,
             rewardEpoch: _rewardEpoch,
             amount: rewardAmount
@@ -445,7 +445,7 @@ contract ValidatorRewardManager is
         internal view
         returns (bool)
     {
-        return epochValidatorReward[_rewardEpoch][_claimer].claimed;
+        return epochDataAvailabilityProviderReward[_rewardEpoch][_claimer].claimed;
     }
 
     /**
@@ -460,7 +460,7 @@ contract ValidatorRewardManager is
         internal view
         returns (uint256)
     {
-        return epochValidatorReward[_rewardEpoch][_claimer].amount;
+        return epochDataAvailabilityProviderReward[_rewardEpoch][_claimer].amount;
     }
 
     /**
