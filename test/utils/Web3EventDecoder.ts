@@ -16,8 +16,8 @@ export interface RawEvent {
 export function formatEvent(event: Truffle.TransactionLog<any>) {
     const keys = Object.keys(event.args).filter(k => /^\d+$/.test(k)).map(k => Number(k));
     keys.sort((a, b) => a - b);
-    const args = keys.map(k => event.args[k]).map(x => web3.utils.isBN(x) ? x.toNumber() : x);
-    return `${event.address} ${event.event}(${args.join(', ')})`;
+    const args = keys.map(k => event.args[k]).map(x => web3.utils.isBN(x) ? x.toString() : x);
+    return `${event.address.slice(0, 10)}:${event.event}(${args.join(', ')})`;
 }
 
 export class Web3EventDecoder {

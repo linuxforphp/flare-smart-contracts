@@ -86,6 +86,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const InflationAllocation = artifacts.require("InflationAllocation");
   const StateConnector = artifacts.require("StateConnector");
   const FlareDaemon = artifacts.require("FlareDaemon");
+  const TestableFlareDaemon = artifacts.require("TestableFlareDaemon");
   const Ftso = artifacts.require("Ftso");
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
@@ -131,7 +132,10 @@ export async function fullDeploy(parameters: any, quiet = false) {
     if (!quiet) {
       console.error("FlareDaemon not in genesis...creating new.")
     }
-    flareDaemon = await FlareDaemon.new();
+    // If the flare daemon is not in the genesis block, it will never be triggered automatically.
+    // Therefore we need TestableFlareDaemon which can be triggered from outside.
+    // WARNING: This should only happen in test.
+    flareDaemon = await TestableFlareDaemon.new();
   }
   spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
   let currentGovernanceAddress = null;

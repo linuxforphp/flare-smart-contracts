@@ -215,7 +215,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await wNAT.delegate(p2, 5000, { from: d1 });
 
     // Prime the daemon to establish vote power block.
-    await flareDaemon.trigger();
+    await flareDaemon.trigger({ gas: 2_000_000 });
 
     // Supply contract - inflatable balance should be updated
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
@@ -241,7 +241,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await time.advanceBlock();
     await time.increaseTo(rewardEpochsStartTs.add(BN(1))); // sometimes we get a glitch
 
-    await flareDaemon.trigger(); // initialize reward epoch - also start of new price epoch
+    await flareDaemon.trigger({ gas: 2_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.rewardEpochs(0);
     let votePowerBlock = firstRewardEpoch[0];
 
@@ -259,7 +259,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let bchPrices = [1100, 1203, 1210];
     let ftsos = [ftsoWnat, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFdgb, ftsoFada, ftsoFalgo, ftsoFbch];
     let ftsoIndices = [];
-
 
     for(let ftso of ftsos){
       ftsoIndices.push(await registry.getFtsoIndex( await ftso.symbol()));
@@ -281,7 +280,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
 
     console.log(`Initializing price epoch for reveal`);
-    await flareDaemon.trigger();
+    await flareDaemon.trigger({ gas: 5_000_000 });
 
     // Time travel to reveal period
     await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), testPriceEpoch);
@@ -299,7 +298,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       testPriceEpoch);
     
     console.log(`Finalizing price for epoch ${testPriceEpoch}`);
-    await flareDaemon.trigger({ gas: 10000000 });
+    await flareDaemon.trigger({ gas: 5_000_000 });
     
     // There should be a balance to claim within reward manager at this point
     assert(BN(await web3.eth.getBalance(ftsoRewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
@@ -312,7 +311,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       rewardEpochDurationSeconds.toNumber(),
       rewardEpochId.toNumber());
     console.log(`Finalizing reward epoch ${rewardEpochId.toNumber()}`);
-    await flareDaemon.trigger();
+    await flareDaemon.trigger({ gas: 2_000_000 });
 
     // TODO: Check ftso prices if they are correct
 
