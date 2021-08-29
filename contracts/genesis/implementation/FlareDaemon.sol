@@ -68,10 +68,11 @@ contract FlareDaemon is GovernedAtGenesis {
     uint256 internal constant MAX_MINTING_REQUEST_FREQUENCY_SEC = 24 hours;
     // By how much can the maximum be increased (as a percentage of the previous maximum)
     uint256 internal constant MAX_MINTING_REQUEST_INCREASE_PERCENT = 110;
+    // upper estimate of gas needed after error occurs in call to daemonizedContract.daemonize()
+    uint256 internal constant MIN_GAS_LEFT_AFTER_DAEMONIZE = 250000;
+    // lower estimate for gas needed for daemonize() call in trigger
+    uint256 internal constant MIN_GAS_FOR_DAEMONIZE_CALL = 5000;
 
-    IFlareDaemonize[] public daemonizeContracts;
-    mapping (IFlareDaemonize => uint256) public gasLimits;
-    mapping (IFlareDaemonize => uint256) public blockHoldoffsRemaining;
     Inflation public inflation;
     uint256 public systemLastTriggeredAt;
     uint256 public totalMintingRequestedWei;
@@ -87,6 +88,12 @@ contract FlareDaemon is GovernedAtGenesis {
     uint256 private lastBalance;
     uint256 private expectedMintRequest;
     bool private initialized;
+
+    // track deamonized contracts
+    IFlareDaemonize[] internal daemonizeContracts;
+    mapping (IFlareDaemonize => uint256) internal gasLimits;
+    mapping (IFlareDaemonize => uint256) internal blockHoldoffsRemaining;
+
     // track daemonize errors
     mapping(bytes32 => DaemonizedError) internal daemonizedErrors;
     bytes32 [] internal daemonizeErrorHashes;
@@ -94,11 +101,12 @@ contract FlareDaemon is GovernedAtGenesis {
     event ContractDaemonized(address theContract);
     event ContractDaemonizeErrored(address theContract, uint256 atBlock, string theMessage);
     event ContractHeldOff(address theContract, uint256 blockHoldoffsRemaining);
-    event MintingRequested (uint256 amountWei);
-    event MintingReceived (uint256 amountWei);
+    event ContractsSkippedOutOfGas(uint256 numberOfSkippedConstracts);
+    event MintingRequested(uint256 amountWei);
+    event MintingReceived(uint256 amountWei);
     event MintingWithdrawn(uint256 amountWei);
-    event RegistrationUpdated (IFlareDaemonize theContract, bool add);
-    event SelfDestructReceived (uint256 amountWei);
+    event RegistrationUpdated(IFlareDaemonize theContract, bool add);
+    event SelfDestructReceived(uint256 amountWei);
     event InflationSet(Inflation theNewContract, Inflation theOldContract);
 
     /**
@@ -131,6 +139,15 @@ contract FlareDaemon is GovernedAtGenesis {
      */
     modifier onlyInflation (address _inflation) {
         require (address(inflation) == _inflation, ERR_NOT_INFLATION);
+        _;
+    }
+    
+    /**
+     * @dev Access control to protect trigger() method. 
+     * Please note that the sender address is the same as deployed FlareDaemon address in this case.
+     */
+    modifier onlySystemTrigger {
+        require (msg.sender == 0x1000000000000000000000000000000000000002);
         _;
     }
 
@@ -260,108 +277,35 @@ contract FlareDaemon is GovernedAtGenesis {
      *   it happen for some reason.
      */
     //slither-disable-next-line reentrancy-eth      // method protected by reentrancy guard (see comment below)
-    function trigger() external inflationSet mustBalance returns (uint256 _toMintWei) {
-        // only one trigger() call per block allowed
-        // this also serves as reentrancy guard, since any re-entry will happen in the same block
-        require(block.number > systemLastTriggeredAt, ERR_BLOCK_NUMBER_SMALL);
-        systemLastTriggeredAt = block.number;
-
-        uint256 currentBalance = address(this).balance;
-
-        // Did the validator or a self-destructor conjure some native token?
-        if (currentBalance > lastBalance) {
-            uint256 balanceExpected = lastBalance.add(expectedMintRequest);
-            // Did we get what was last asked for?
-            if (currentBalance == balanceExpected) {
-                // Yes, so assume it all came from the validator.
-                uint256 minted = expectedMintRequest;
-                totalMintingReceivedWei = totalMintingReceivedWei.add(minted);
-                emit MintingReceived(minted);
-                //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
-                try inflation.receiveMinting{ value: minted }() {
-                    totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(minted);
-                    emit MintingWithdrawn(minted);
-                } catch Error(string memory message) {
-                    addDaemonizeError(address(this), message);
-                }
-            } else if (currentBalance < balanceExpected) {
-                // No, and if less, there are two possibilities: 1) the validator did not
-                // send us what we asked (not possible unless a bug), or 2) an attacker
-                // sent us something in between a request and a mint. Assume 2.
-                uint256 selfDestructReceived = currentBalance.sub(lastBalance);
-                totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
-                emit SelfDestructReceived(selfDestructReceived);
-            } else {
-                // No, so assume we got a minting request (perhaps zero...does not matter)
-                // and some self-destruct proceeds (unlikely but can happen).
-                totalMintingReceivedWei = totalMintingReceivedWei.add(expectedMintRequest);
-                uint256 selfDestructReceived = currentBalance.sub(lastBalance).sub(expectedMintRequest);
-                totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
-                emit MintingReceived(expectedMintRequest);
-                emit SelfDestructReceived(selfDestructReceived);
-                //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
-                try inflation.receiveMinting{ value: expectedMintRequest }() {
-                    totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(expectedMintRequest);
-                    emit MintingWithdrawn(expectedMintRequest);
-                } catch Error(string memory message) {
-                    addDaemonizeError(address(this), message);
-                }
-            }
-        }
-
-        uint256 len = daemonizeContracts.length;
-
-        // Perform trigger operations here
-        for (uint256 i = 0; i < len; i++) {
-            uint256 blockHoldoffRemainingForContract = blockHoldoffsRemaining[daemonizeContracts[i]];
-            if (blockHoldoffRemainingForContract > 0) {
-                blockHoldoffsRemaining[daemonizeContracts[i]] = blockHoldoffRemainingForContract - 1;
-                emit ContractHeldOff(address(daemonizeContracts[i]), blockHoldoffRemainingForContract);
-            } else {
-                // Figure out what gas to limit call by
-                uint256 startGas = gasleft();
-                uint256 gasLimit = gasLimits[daemonizeContracts[i]];
-                // Use ternary in needless variable because slither has problems with some in-line ternary expressions
-                uint256 useGas = gasLimit > 0 ? gasLimit : startGas; 
-                // Run daemonize for the contract, consume errors, and record
-                try daemonizeContracts[i].daemonize{gas: useGas} ()
-                {
-                    emit ContractDaemonized(address(daemonizeContracts[i]));
-                // Catch all requires with messages
-                } catch Error(string memory message) {
-                    addDaemonizeError(address(daemonizeContracts[i]), message);
-                // Catch everything else...out of gas, div by zero, asserts, etc.
-                } catch {
-                    uint256 endGas = gasleft();
-                    // Interpret out of gas errors
-                    if (startGas.sub(endGas) >= gasLimits[daemonizeContracts[i]]) {
-                        blockHoldoffsRemaining[daemonizeContracts[i]] = blockHoldoff;
-                        addDaemonizeError(address(daemonizeContracts[i]), ERR_OUT_OF_GAS);
-                    } else {
-                        // Don't know error cause...just log it as unknown
-                        addDaemonizeError(address(daemonizeContracts[i]), "unknown");
-                    }
-                }
-            }
-        }
-
-        // Get any requested minting and return to validator
-        _toMintWei = getPendingMintRequest();
-        if (_toMintWei > 0) {
-            expectedMintRequest = _toMintWei;
-            emit MintingRequested(_toMintWei);
-        } else {
-            expectedMintRequest = 0;            
-        }
-
-        lastBalance = address(this).balance;
+    function trigger() external virtual inflationSet mustBalance onlySystemTrigger returns (uint256 _toMintWei) {
+        return triggerInternal();
     }
-
+    
     /**
      * @notice Unregister all contracts from being polled by the daemon process.
      */
     function unregisterAll() external onlyGovernance {
         _unregisterAll();
+    }
+
+    function getDaemonizedContractsData() external view 
+        returns(
+            IFlareDaemonize[] memory _daemonizeContracts,
+            uint256[] memory _gasLimits,
+            uint256[] memory _blockHoldoffsRemaining
+        )
+    {
+        uint256 len = daemonizeContracts.length;
+        _daemonizeContracts = new IFlareDaemonize[](len);
+        _gasLimits = new uint256[](len);
+        _blockHoldoffsRemaining = new uint256[](len);
+
+        for (uint256 i; i < len; i++) {
+            IFlareDaemonize daemonizeContract = daemonizeContracts[i];
+            _daemonizeContracts[i] = daemonizeContract;
+            _gasLimits[i] = gasLimits[daemonizeContract];
+            _blockHoldoffsRemaining[i] = blockHoldoffsRemaining[daemonizeContract];
+        }
     }
 
     function showLastDaemonizedError () external view 
@@ -428,27 +372,133 @@ contract FlareDaemon is GovernedAtGenesis {
         _totalDaemonizedErrors = errorData.totalDaemonizedErrors;
     }
 
-    function addDaemonizeError(address daemonizedContract, string memory message) internal {
-        bytes32 errorStringHash = keccak256(abi.encode(daemonizedContract, message));
+    /**
+     * @notice Implementation of the trigger() method. The external wrapper has extra guard for msg.sender.
+     */
+    //slither-disable-next-line reentrancy-eth      // method protected by reentrancy guard (see comment below)
+    function triggerInternal() internal returns (uint256 _toMintWei) {
+        // only one trigger() call per block allowed
+        // this also serves as reentrancy guard, since any re-entry will happen in the same block
+        require(block.number > systemLastTriggeredAt, ERR_BLOCK_NUMBER_SMALL);
+        systemLastTriggeredAt = block.number;
 
-        errorData.totalDaemonizedErrors += 1;
-        daemonizedErrors[errorStringHash].numErrors += 1;
-        daemonizedErrors[errorStringHash].lastErrorBlock = uint192(block.number);
-        emit ContractDaemonizeErrored(daemonizedContract, block.number, message);
+        uint256 currentBalance = address(this).balance;
 
-        if (daemonizedErrors[errorStringHash].numErrors > 1) {
-            // not first time this errors
-            errorData.lastErrorTypeIndex = daemonizedErrors[errorStringHash].errorTypeIndex;
-            return;
+        // Did the validator or a self-destructor conjure some native token?
+        if (currentBalance > lastBalance) {
+            uint256 balanceExpected = lastBalance.add(expectedMintRequest);
+            // Did we get what was last asked for?
+            if (currentBalance == balanceExpected) {
+                // Yes, so assume it all came from the validator.
+                uint256 minted = expectedMintRequest;
+                totalMintingReceivedWei = totalMintingReceivedWei.add(minted);
+                emit MintingReceived(minted);
+                //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
+                try inflation.receiveMinting{ value: minted }() {
+                    totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(minted);
+                    emit MintingWithdrawn(minted);
+                } catch Error(string memory message) {
+                    addDaemonizeError(address(this), message);
+                }
+            } else if (currentBalance < balanceExpected) {
+                // No, and if less, there are two possibilities: 1) the validator did not
+                // send us what we asked (not possible unless a bug), or 2) an attacker
+                // sent us something in between a request and a mint. Assume 2.
+                uint256 selfDestructReceived = currentBalance.sub(lastBalance);
+                totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
+                emit SelfDestructReceived(selfDestructReceived);
+            } else {
+                // No, so assume we got a minting request (perhaps zero...does not matter)
+                // and some self-destruct proceeds (unlikely but can happen).
+                totalMintingReceivedWei = totalMintingReceivedWei.add(expectedMintRequest);
+                uint256 selfDestructReceived = currentBalance.sub(lastBalance).sub(expectedMintRequest);
+                totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(selfDestructReceived);
+                emit MintingReceived(expectedMintRequest);
+                emit SelfDestructReceived(selfDestructReceived);
+                //slither-disable-next-line arbitrary-send          // only sent to inflation, set by governance
+                try inflation.receiveMinting{ value: expectedMintRequest }() {
+                    totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(expectedMintRequest);
+                    emit MintingWithdrawn(expectedMintRequest);
+                } catch Error(string memory message) {
+                    addDaemonizeError(address(this), message);
+                }
+            }
         }
 
-        // first time we recieve this error string.
-        daemonizeErrorHashes.push(errorStringHash);
-        daemonizedErrors[errorStringHash].fromContract = daemonizedContract;
-        daemonizedErrors[errorStringHash].errorMessage = message;
-        daemonizedErrors[errorStringHash].errorTypeIndex = uint64(daemonizeErrorHashes.length - 1);
+        uint256 len = daemonizeContracts.length;
 
-        errorData.lastErrorTypeIndex = daemonizedErrors[errorStringHash].errorTypeIndex;        
+        // Perform trigger operations here
+        for (uint256 i = 0; i < len; i++) {
+            IFlareDaemonize daemonizedContract = daemonizeContracts[i];
+            uint256 blockHoldoffRemainingForContract = blockHoldoffsRemaining[daemonizedContract];
+            if (blockHoldoffRemainingForContract > 0) {
+                blockHoldoffsRemaining[daemonizedContract] = blockHoldoffRemainingForContract - 1;
+                emit ContractHeldOff(address(daemonizedContract), blockHoldoffRemainingForContract);
+            } else {
+                // Figure out what gas to limit call by
+                uint256 gasLimit = gasLimits[daemonizedContract];
+                uint256 startGas = gasleft();
+                // End loop if there isn't enough gas left for any daemonize call
+                if (startGas < MIN_GAS_LEFT_AFTER_DAEMONIZE + MIN_GAS_FOR_DAEMONIZE_CALL) {
+                    emit ContractsSkippedOutOfGas(len - i);
+                    break;
+                }
+                // Calculate the gas limit for the next call
+                uint256 useGas = startGas - MIN_GAS_LEFT_AFTER_DAEMONIZE;
+                if (gasLimit > 0 && gasLimit < useGas) {
+                    useGas = gasLimit;
+                }
+                // Run daemonize for the contract, consume errors, and record
+                try daemonizedContract.daemonize{gas: useGas}() {
+                    emit ContractDaemonized(address(daemonizedContract));
+                // Catch all requires with messages
+                } catch Error(string memory message) {
+                    addDaemonizeError(address(daemonizedContract), message);
+                // Catch everything else...out of gas, div by zero, asserts, etc.
+                } catch {
+                    uint256 endGas = gasleft();
+                    // Interpret out of gas errors
+                    if (gasLimit > 0 && startGas.sub(endGas) >= gasLimit) {
+                        blockHoldoffsRemaining[daemonizedContract] = blockHoldoff;
+                        addDaemonizeError(address(daemonizedContract), ERR_OUT_OF_GAS);
+                    } else {
+                        // Don't know error cause...just log it as unknown
+                        addDaemonizeError(address(daemonizedContract), "unknown");
+                    }
+                }
+            }
+        }
+
+        // Get any requested minting and return to validator
+        _toMintWei = getPendingMintRequest();
+        if (_toMintWei > 0) {
+            expectedMintRequest = _toMintWei;
+            emit MintingRequested(_toMintWei);
+        } else {
+            expectedMintRequest = 0;            
+        }
+
+        lastBalance = address(this).balance;
+    }
+
+    function addDaemonizeError(address daemonizedContract, string memory message) internal {
+        bytes32 errorStringHash = keccak256(abi.encode(daemonizedContract, message));
+        
+        DaemonizedError storage daemonizedError = daemonizedErrors[errorStringHash];
+        if (daemonizedError.numErrors == 0) {
+            // first time we recieve this error string.
+            daemonizeErrorHashes.push(errorStringHash);
+            daemonizedError.fromContract = daemonizedContract;
+            // limit message length to fit in fixed number of storage words (to make gas usage predictable)
+            daemonizedError.errorMessage = truncateString(message, 64);
+            daemonizedError.errorTypeIndex = uint64(daemonizeErrorHashes.length - 1);
+        }
+        daemonizedError.numErrors += 1;
+        daemonizedError.lastErrorBlock = uint192(block.number);
+        emit ContractDaemonizeErrored(daemonizedContract, block.number, message);
+        
+        errorData.totalDaemonizedErrors += 1;
+        errorData.lastErrorTypeIndex = daemonizedError.errorTypeIndex;        
     }
 
     /**
@@ -479,5 +529,17 @@ contract FlareDaemon is GovernedAtGenesis {
      */
     function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
         _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
+    }
+    
+    function truncateString(string memory _str, uint256 _maxlength) private pure returns (string memory) {
+        bytes memory strbytes = bytes(_str);
+        if (strbytes.length <= _maxlength) {
+            return _str;
+        }
+        bytes memory result = new bytes(_maxlength);
+        for (uint256 i = 0; i < _maxlength; i++) {
+            result[i] = strbytes[i];
+        }
+        return string(result);
     }
 }
