@@ -74,13 +74,13 @@ contract(`MockPriceSubmitter.sol; MockPriceSubmitter unit tests`, async accounts
             const hash2 = submitPriceHash(prices[2], randoms[2], accounts[10]);            
 
             // Ftsos for symbols that are deployed by mock contract
-            let ftso0 = await ftsoRegistry.getFtsoBySymbol("FXRP");
-            let ftso1 = await ftsoRegistry.getFtsoBySymbol("FXLM");
-            let ftso2 = await ftsoRegistry.getFtsoBySymbol("FBCH");
+            let ftso0 = await ftsoRegistry.getFtsoBySymbol("XRP");
+            let ftso1 = await ftsoRegistry.getFtsoBySymbol("XLM");
+            let ftso2 = await ftsoRegistry.getFtsoBySymbol("BCH");
 
-            let ftso0Ind = await ftsoRegistry.getFtsoIndex("FXRP");
-            let ftso1Ind = await ftsoRegistry.getFtsoIndex("FXLM");
-            let ftso2Ind = await ftsoRegistry.getFtsoIndex("FBCH");
+            let ftso0Ind = await ftsoRegistry.getFtsoIndex("XRP");
+            let ftso1Ind = await ftsoRegistry.getFtsoIndex("XLM");
+            let ftso2Ind = await ftsoRegistry.getFtsoIndex("BCH");
 
 
             await voterWhitelister.requestFullVoterWhitelisting(accounts[10]);

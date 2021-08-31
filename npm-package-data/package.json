@@ -1,6 +1,6 @@
 {
   "name": "@flarenetwork/ftso_price_provider_kick_off_package",
-  "version": "0.0.16",
+  "version": "0.0.23",
   "description": "Kick of package for FTSO price providers. Includes user facing interfaces and mock contracts to test price provider pipeline.",
   "main": "demo_package_main.js",
   "repository": {
@@ -17,6 +17,8 @@
     "tsconfig.json",
     "yarn.lock",
     "test-1020-accounts.json",
+
+    "CHANGELOG.md",
 
     "scripts/flatten.sh",
     "scripts/flatten-fix.ts",
@@ -80,6 +82,8 @@
     "@openzeppelin/contracts": "3.4.0",
     "@typescript-eslint/eslint-plugin": "4.28.3",
     "@typescript-eslint/parser": "4.28.3",
+    "cli-progress": "3.9.0",
+    "csv": "5.5.0",
     "dotenv": "8.2.0",
     "eslint": "7.30.0",
     "got": "11.8.2",

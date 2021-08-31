@@ -54,7 +54,7 @@ async function main() {
     const voterWhitelister: IVoterWhitelisterInstance = await MockVoterWhitelister.at(await priceSubmitter.getVoterWhitelister());
 
     // Get indices for specific symbols
-    const symbols = ["WNAT", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"];
+    const symbols = ["SGB", "XRP", "LTC", "XLM", "XDG", "ADA", "ALGO", "BCH", "DGB", "BTC"];
     const ftsos = await Promise.all(
         symbols.map(async sym => await MockFtso.at(await ftsoRegistry.getFtsoBySymbol(sym)))
     ) as IFtsoInstance[];
@@ -116,7 +116,7 @@ async function main() {
         console.log("Prices: ", prices);
         console.log("Randoms: ", randoms);
         // Submit price, on everything
-        const submission = await priceSubmitter.submitPriceHashes(
+        const submission = await priceSubmitter.submitPriceHashes(currentEpoch, 
             ftsoIndices, hashes, {from: priceProviderAccount.address}
         );
         expectEvent(submission, "PriceHashesSubmitted", { ftsos: ftsoAddresses, 
