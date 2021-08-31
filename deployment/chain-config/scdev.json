@@ -37,63 +37,63 @@
     "initialWnatPriceUSD5Dec": 0,
     "XRP": {
         "xAssetName": "xAsset XRP",
-        "xAssetSymbol": "FXRP",
+        "xAssetSymbol": "XRP",
         "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
     "LTC": {
         "xAssetName": "xAsset Litecoin",
-        "xAssetSymbol": "FLTC",
+        "xAssetSymbol": "LTC",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 4000000000,
         "initialPriceUSD5Dec": 0
     },
     "XLM": {
         "xAssetName": "xAsset XLM (Lumen)",
-        "xAssetSymbol": "FXLM",
+        "xAssetSymbol": "XLM",
         "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
     "XDG": {
         "xAssetName": "xAsset Dogecoin",
-        "xAssetSymbol": "FXDG",
+        "xAssetSymbol": "XDG",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 13000000000000,
         "initialPriceUSD5Dec": 0
     },
     "ADA": {
         "xAssetName": "xAsset ADA (Cardano)",
-        "xAssetSymbol": "FADA",
+        "xAssetSymbol": "ADA",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 45000000000,
         "initialPriceUSD5Dec": 0
     },
     "ALGO": {
         "xAssetName": "xAsset Algorand",
-        "xAssetSymbol": "FALGO",
+        "xAssetSymbol": "ALGO",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 5000000000,
         "initialPriceUSD5Dec": 0
     },
     "BCH": {
         "xAssetName": "xAsset Bitcoin Cash",
-        "xAssetSymbol": "FBCH",
+        "xAssetSymbol": "BCH",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 21000000000,
         "initialPriceUSD5Dec": 0
     },
     "DGB": {
         "xAssetName": "xAsset Digibyte",
-        "xAssetSymbol": "FDGB",
+        "xAssetSymbol": "DGB",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 10000000000,
         "initialPriceUSD5Dec": 0
     },
     "BTC": {
         "xAssetName": "xAsset BTC",
-        "xAssetSymbol": "FBTC",
+        "xAssetSymbol": "BTC",
         "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
