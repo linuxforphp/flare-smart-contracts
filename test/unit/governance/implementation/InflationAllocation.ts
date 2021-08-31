@@ -28,6 +28,14 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
+
+    it("Should cap initial percentage at 10%", async() => {
+      // Assemble
+      // Act
+      const promise = InflationAllocation.new(accounts[0], accounts[0], 1001);
+      // Assert
+      await expectRevert(promise, ERR_OUT_OF_BOUNDS);
+    });
   });
 
   describe("annual inflation percentage schedule", async() => {

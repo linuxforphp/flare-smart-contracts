@@ -67,6 +67,7 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
     event RewardServiceTopupRequestReceived(IIInflationReceiver inflationReceiver, uint256 amountWei);
     event SupplySet(IISupply oldSupply, IISupply newSupply);
     event TopupConfigurationSet(TopupConfiguration topupConfiguration);
+    event NewAnnumInitialized(InflationAnnum.InflationAnnumState inflationAnnum);
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -298,6 +299,7 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
                 inflationPercentageProvider.getAnnualPercentageBips()
             );
             InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+            emit NewAnnumInitialized(inflationAnnum);
             emit InflationRecognized(inflationAnnum.recognizedInflationWei);
         }
 
@@ -311,6 +313,7 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
                 inflationPercentageProvider.getAnnualPercentageBips()
             );
             InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+            emit NewAnnumInitialized(inflationAnnum);
             emit InflationRecognized(inflationAnnum.recognizedInflationWei);
         }
 
