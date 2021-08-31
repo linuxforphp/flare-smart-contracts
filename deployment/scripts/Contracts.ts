@@ -3,10 +3,12 @@ import { ReadStream } from "fs";
 
 export class Contract {
   name: string;
+  contractName: string;
   address: string;
 
-  constructor(name: string, address: string) {
+  constructor(name: string, contractName: string, address: string) {
     this.name = name;
+    this.contractName = contractName;
     this.address = address;
   }
 }
@@ -58,7 +60,7 @@ export class Contracts {
   async deserialize(stream: any) {
     const contractsJson = await this.read(stream);
     const parsedContracts = JSON.parse(contractsJson);
-    parsedContracts.forEach((contract: { name: string; address: string; }) => {
+    parsedContracts.forEach((contract: { name: string; contractName: string, address: string; }) => {
       this.contracts.set(contract.name, contract.address);
       this.collection.push(contract);
     })

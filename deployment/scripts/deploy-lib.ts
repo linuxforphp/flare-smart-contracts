@@ -61,6 +61,7 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../test/utils/constants";
+import { string } from "hardhat/internal/core/params/argumentTypes";
 
 export async function fullDeploy(parameters: any, quiet = false) {  
   // Define repository for created contracts
@@ -103,7 +104,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBIPS);
-  spewNewContractInfo(contracts, InflationAllocation.contractName, inflationAllocation.address, quiet);
+  spewNewContractInfo(contracts, InflationAllocation.contractName, `InflationAllocation.sol` ,inflationAllocation.address, quiet);
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -115,7 +116,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     }
     stateConnector = await StateConnector.new();
   }
-  spewNewContractInfo(contracts, StateConnector.contractName, stateConnector.address, quiet);
+  spewNewContractInfo(contracts, StateConnector.contractName, `StateConnector.sol`, stateConnector.address, quiet);
 
   try {
     await stateConnector.initialiseChains();
@@ -137,7 +138,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     // WARNING: This should only happen in test.
     flareDaemon = await TestableFlareDaemon.new();
   }
-  spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
+  spewNewContractInfo(contracts, FlareDaemon.contractName, `FlareDaemon.sol`, flareDaemon.address, quiet);
   let currentGovernanceAddress = null;
   try {
     await flareDaemon.initialiseFixedAddress();
@@ -166,7 +167,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     inflationAllocation.address,
     startTs
   );
-  spewNewContractInfo(contracts, Inflation.contractName, inflation.address, quiet);
+  spewNewContractInfo(contracts, Inflation.contractName, `Inflation.sol`, inflation.address, quiet);
   // The daemon needs a reference to the inflation contract.
   await flareDaemon.setInflation(inflation.address);
   // InflationAllocation needs a reference to the inflation contract.
@@ -181,7 +182,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     BN(parameters.totalFoundationSupplyNAT).mul(BN(10).pow(BN(18))),
     []
   );
-  spewNewContractInfo(contracts, Supply.contractName, supply.address, quiet);
+  spewNewContractInfo(contracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
 
   // FtsoRewardManager contract
   const ftsoRewardManager = await FtsoRewardManager.new(
@@ -189,7 +190,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     parameters.rewardFeePercentageUpdateOffsetEpochs,
     parameters.defaultRewardFeePercentageBIPS,
     inflation.address);
-  spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address, quiet);
+  spewNewContractInfo(contracts, FtsoRewardManager.contractName, `FtsoRewardManager.sol`, ftsoRewardManager.address, quiet);
 
   // DataAvailabilityRewardManager contract
   const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.new(
@@ -197,13 +198,13 @@ export async function fullDeploy(parameters: any, quiet = false) {
     parameters.dataAvailabilityRewardExpiryOffsetEpochs,
     stateConnector.address,
     inflation.address);
-  spewNewContractInfo(contracts, DataAvailabilityRewardManager.contractName, dataAvailabilityRewardManager.address, quiet);
+  spewNewContractInfo(contracts, DataAvailabilityRewardManager.contractName, `DataAvailabilityRewardManager.sol`, dataAvailabilityRewardManager.address, quiet);
 
   // CleanupBlockNumberManager contract
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.new(
     deployerAccount.address,
   );
-  spewNewContractInfo(contracts, CleanupBlockNumberManager.contractName, cleanupBlockNumberManager.address, quiet);
+  spewNewContractInfo(contracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
 
   // Inflation allocation needs to know about reward managers
@@ -226,19 +227,19 @@ export async function fullDeploy(parameters: any, quiet = false) {
     priceSubmitter = await PriceSubmitter.new();
     await priceSubmitter.initialiseFixedAddress();
   }
-  spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
+  spewNewContractInfo(contracts, PriceSubmitter.contractName, `PriceSubmitter.sol`, priceSubmitter.address, quiet);
 
   // FtsoRegistryContract
   const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
-  spewNewContractInfo(contracts, FtsoRegistry.contractName, ftsoRegistry.address, quiet);
+  spewNewContractInfo(contracts, FtsoRegistry.contractName, `FtsoRegistry.sol`, ftsoRegistry.address, quiet);
 
   // VoterWhitelisting
   const voterWhitelister = await VoterWhitelister.new(currentGovernanceAddress, priceSubmitter.address, parameters.defaultVoterWhitelistSize);
-  spewNewContractInfo(contracts, VoterWhitelister.contractName, voterWhitelister.address, quiet);
+  spewNewContractInfo(contracts, VoterWhitelister.contractName, `VoterWhitelister.sol`, voterWhitelister.address, quiet);
 
   // Distribution Contract
   const distribution = await Distribution.new();
-  spewNewContractInfo(contracts, Distribution.contractName, distribution.address, quiet);
+  spewNewContractInfo(contracts, Distribution.contractName, `Distribution.sol`, distribution.address, quiet);
 
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
@@ -254,7 +255,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     parameters.rewardEpochDurationSeconds,
     rewardEpochStartTs,
     parameters.votePowerIntervalFraction);
-  spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address, quiet);
+  spewNewContractInfo(contracts, FtsoManager.contractName, `FtsoManager.sol`, ftsoManager.address, quiet);
 
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
   await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
@@ -275,7 +276,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // Deploy wrapped native token
   const wnat = await WNAT.new(deployerAccount.address);
-  spewNewContractInfo(contracts, WNAT.contractName, wnat.address, quiet);
+  spewNewContractInfo(contracts, WNAT.contractName, `WNat.sol`, wnat.address, quiet);
 
   await setDefaultVPContract(wnat, deployerAccount.address);
   await cleanupBlockNumberManager.registerToken(wnat.address);
@@ -287,7 +288,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   // Create a non-asset FTSO
   // Register an FTSO for WNAT
   const ftsoWnat = await Ftso.new("WNAT", wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
-  spewNewContractInfo(contracts, `FTSO WNAT`, ftsoWnat.address, quiet);
+  spewNewContractInfo(contracts, `FTSO WNAT`, `Ftso.sol`, ftsoWnat.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
   assetToContracts.set("NAT", {
@@ -429,14 +430,14 @@ async function deployNewAsset(
   // Deploy Asset
   const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.symbol, xAssetDefinition.decimals);
   await setDefaultVPContract(xAssetToken, deployerAccountAddress);
-  spewNewContractInfo(contracts, xAssetDefinition.symbol, xAssetToken.address, quiet);
+  spewNewContractInfo(contracts, xAssetDefinition.symbol, `AssetToken.sol`, xAssetToken.address, quiet);
 
   await cleanupBlockNumberManager.registerToken(xAssetToken.address);
   await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
 
   // Deploy dummy Asset minter
   const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
-  spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.symbol} minter`, dummyAssetMinter.address, quiet);
+  spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.symbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet);
 
   // Establish governance over Asset by minter
   await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
@@ -445,16 +446,16 @@ async function deployNewAsset(
   // Register an FTSO for the new Asset
   const ftso = await Ftso.new(xAssetDefinition.symbol, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
   await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
-  spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, ftso.address, quiet);
+  spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, `Ftso.sol`, ftso.address, quiet);
 
   return { xAssetToken, dummyAssetMinter, ftso };
 }
 
-function spewNewContractInfo(contracts: Contracts, name: string, address: string, quiet = false) {
+function spewNewContractInfo(contracts: Contracts, name: string, contractName: string, address: string, quiet = false) {
   if (!quiet) {
     console.error(`${name} contract: `, address);
   }
-  contracts.add(new Contract(pascalCase(name), address));
+  contracts.add(new Contract(pascalCase(name), contractName, address));
 }
 
 function rewrapXassetParams(data: any): AssetDefinition {
