@@ -1,7 +1,7 @@
 [
   {
     "name": "InflationAllocation",
-    "address": "0x0078371BDeDE8aAc7DeBfFf451B74c5EDB385Af7"
+    "address": "0x7fAeC7791277Ff512c41CA903c177B2Ed952dDAc"
   },
   {
     "name": "StateConnector",
@@ -17,154 +17,154 @@
   },
   {
     "name": "Inflation",
-    "address": "0x500D1d6A4c7D8Ae28240b47c8FCde034D827fD5e"
+    "address": "0xadc8f433eA2371bE71D986d9B131892122969CA6"
   },
   {
     "name": "Supply",
-    "address": "0x8B5B7a6055E54a36fF574bbE40cf2eA68d5554b3"
+    "address": "0xFf130817Aa9863B3D809A2A11617c05646245d80"
   },
   {
     "name": "FtsoRewardManager",
-    "address": "0xEcc0a6dbC0bb4D51E4F84A315a9e5B0438cAD4f0"
+    "address": "0x987D8EE0F70EdC8e9651c9E6a1618B8Bc8B9FB61"
   },
   {
-    "name": "ValidatorRewardManager",
-    "address": "0x20Ce94F404343aD2752A2D01b43fa407db9E0D00"
+    "name": "DataAvailabilityRewardManager",
+    "address": "0xAF4AC65bBdFfA029335436d85E1B57c77995C59B"
   },
   {
     "name": "CleanupBlockNumberManager",
-    "address": "0x1d80315fac6aBd3EfeEbE97dEc44461ba7556160"
+    "address": "0x3D0ED84712f1635e755870d63D9D30B33BaEaDc4"
   },
   {
     "name": "FtsoRegistry",
-    "address": "0x5bcb88A0d20426e451332eE6C4324b0e663c50E0"
+    "address": "0x65A7D8d33E148D5Bf9fe11FD1425D31A4Bf3d9E1"
   },
   {
     "name": "VoterWhitelister",
-    "address": "0x3521eF8AaB0323004A6dD8b03CE890F4Ea3A13f5"
+    "address": "0x314B40e9232177AB0B54E874A7d351c781eFe44d"
   },
   {
     "name": "Distribution",
-    "address": "0x53369fd4680FfE3DfF39Fc6DDa9CfbfD43daeA2E"
+    "address": "0x90b17b801434FB1c48a4f1888dd6C410d11Bda59"
   },
   {
     "name": "FtsoManager",
-    "address": "0xB00cC45B4a7d3e1FEE684cFc4417998A1c183e6d"
+    "address": "0xeB80313502EA077FA9B8E89b45e4a1B236cA17Ea"
   },
   {
-    "name": "WFlr",
-    "address": "0xFAe0fd738dAbc8a0426F47437322b6d026A9FD95"
+    "name": "WNat",
+    "address": "0x95A1C22E8A89f7b3cCa63a9ea3c064E72C96CAa0"
   },
   {
-    "name": "FtsoWflr",
-    "address": "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
+    "name": "FtsoWnat",
+    "address": "0xE0A5AD869ce74bB9e6bF4A5Dc9C0bDBcf5B6B6F9"
   },
   {
     "name": "Fxrp",
-    "address": "0x06bA8d8af0dF898D0712DffFb0f862cC51AF45c2"
+    "address": "0x0b4789F2aB956463b3cEadE041CAC04D8b95a792"
   },
   {
     "name": "DummyFxrpMinter",
-    "address": "0xe1B3b8F6b298b52bCd15357ED29e65e66a4045fF"
+    "address": "0xd44937448A9f229bfae84e7d256810Ba4C4a93cC"
   },
   {
     "name": "FtsoFxrp",
-    "address": "0x79dC3dA279A2ADc72210BD00e10951AB9dC70ABc"
+    "address": "0xbCf57D16d9d63aDDea3c2056A1de2A33ebD353F0"
   },
   {
     "name": "Fltc",
-    "address": "0xE78d9772cED3eD5C595d9E438a87602eD86bfE9b"
+    "address": "0x70325F3D34D83391a3b6ffE77a9fB62c033e8e55"
   },
   {
     "name": "DummyFltcMinter",
-    "address": "0xdDD96662ea11dA6F289A5D00da41Ec5F3b67d2b4"
+    "address": "0x626FdE749F9d499d3777320CAf29484B624ab84a"
   },
   {
     "name": "FtsoFltc",
-    "address": "0x053568617FFccEe2F75073975CC0e1549Ff9db71"
+    "address": "0xA0AB1cB92A4AF81f84dCd258155B5c25D247b54E"
   },
   {
     "name": "Fxlm",
-    "address": "0x26d1E94963C8b382Ad66320826399E4B30347404"
+    "address": "0xE91bBe8ee03560E3dda2786f95335F5399813Ca0"
   },
   {
     "name": "DummyFxlmMinter",
-    "address": "0xA48096237053a0B74E15cEd6FA33F7c96A5acf50"
+    "address": "0xbC7Ab6F930D83CB7e80A207d4dD3DD80aA8a2153"
   },
   {
     "name": "FtsoFxlm",
-    "address": "0x2F0fA68F3fD995522E5aB49131c36fc52B6353B2"
+    "address": "0x2E5a2652BDB3da24249EaDf9028a6D75e20D86C5"
   },
   {
     "name": "Fxdg",
-    "address": "0xbaE65084Ad10E56012d5c61148f614DF85cbB31a"
+    "address": "0x63b9792E7A95e3aa037255E8cAa0Dfd76f7383e7"
   },
   {
     "name": "DummyFxdgMinter",
-    "address": "0xe04ed89798eb331e515E9D1D93604792b75c0463"
+    "address": "0xf4a603251E93fAc1DB29AdC48B9446E753e5A755"
   },
   {
     "name": "FtsoFxdg",
-    "address": "0xB30914453D4CeB5B9a3bD9460D039391D787D33f"
+    "address": "0x587BF1Bc96163E279D2Ea1b27F3b41cC34b171C3"
   },
   {
     "name": "Fada",
-    "address": "0x36e656E489918C3a5c58Be0551Fe12F3bF5E9830"
+    "address": "0xFb6888b081b6A32A18cD7Dd77238207DB51450BB"
   },
   {
     "name": "DummyFadaMinter",
-    "address": "0x3D8FFB457fedDFBc760F3F243283F52692b579B1"
+    "address": "0xb2B548BE73010C188C083c510d255Aed74843b05"
   },
   {
     "name": "FtsoFada",
-    "address": "0xAF6BA11790D1942625C0c2dA07da19AB63845cfF"
+    "address": "0x93bB79570dFECC052e36E25cE10793A139e75f1b"
   },
   {
     "name": "Falgo",
-    "address": "0x474d9b0D5F1Bb1602711F9346743a7a7478d6f52"
+    "address": "0x63387deC8C4a0F17Cf0C27Ea3476F03F6a45d3AE"
   },
   {
     "name": "DummyFalgoMinter",
-    "address": "0x30E34e984FE7537dD3B1F4eB8F0f9eC7AB1cEA05"
+    "address": "0xC6bA6049F86d528698B5924B8fC2FE7289D38578"
   },
   {
     "name": "FtsoFalgo",
-    "address": "0xCeEa6148D75268b6E930AE41d7a31baE1CA318d8"
+    "address": "0x392E5355a0e88Bd394F717227c752670fb3a8020"
   },
   {
     "name": "Fbch",
-    "address": "0x98B40aAC844674B2287556E75b3ef5530DfCfcB7"
+    "address": "0xEBAB67ee3ef604D5c250A53b4b8fcbBC6ec3007C"
   },
   {
     "name": "DummyFbchMinter",
-    "address": "0x72358bcB1b8B60Ca2f30244e50Be20C3ecaC74B2"
+    "address": "0xcdF1185e592AFc8d8754C4BC8479C39b20437E42"
   },
   {
     "name": "FtsoFbch",
-    "address": "0x8dAEc17f8ec64117bA09A44aD1923900B5476A6C"
+    "address": "0x1bb3d8FA7bDa74Af0D64d348a2545E7570863fA8"
   },
   {
     "name": "Fdgb",
-    "address": "0x3cE8165eA4300AF4306cA53c6dbf388aF7cC7e3E"
+    "address": "0xB7d4f04E8dF26d2FEE35D4AeB2A63fEB49451B78"
   },
   {
     "name": "DummyFdgbMinter",
-    "address": "0x1256eBA4d0a7A38D10BaF4F61775ba491Ce7EE25"
+    "address": "0xb840b4fe440b5E26e1840cd2D6320FAda1C0ca5d"
   },
   {
     "name": "FtsoFdgb",
-    "address": "0x920d847fE49E54C19047ba8bc236C45A8068Bca7"
+    "address": "0x5c98c9202b73d27A618662d34A6805c34AB041B8"
   },
   {
     "name": "Fbtc",
-    "address": "0x35c1419Da7cf0Ff885B8Ef8EA9242FEF6800c99b"
+    "address": "0xBE7fFcC01164C890e59D298FD755FcBE6B7941a9"
   },
   {
     "name": "DummyFbtcMinter",
-    "address": "0x0EBCa695959e5f138Af772FAa44ce1A9C7aEd921"
+    "address": "0x22B37db37e9992728245A7dD0536892AF9bA1baB"
   },
   {
     "name": "FtsoFbtc",
-    "address": "0x0459c841b02Aee8730730C737582c53B20a27288"
+    "address": "0x850Fae11E1313e6C23Db7c2410Ec0985d9Ea325A"
   }
 ]
