@@ -61,9 +61,9 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../test/utils/constants";
-import { string } from "hardhat/internal/core/params/argumentTypes";
+import { boolean, string } from "hardhat/internal/core/params/argumentTypes";
 
-export async function fullDeploy(parameters: any, quiet = false) {  
+export async function fullDeploy(parameters: any, quiet:boolean = false, realNetDeploy: boolean = false) {  
   // Define repository for created contracts
   const contracts = new Contracts();
 
@@ -302,7 +302,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   for (let asset of assets) {
     if (!quiet) {
-      console.error(`Rigging ${asset}...`);
+      console.error(`Rigging ${asset}... ${realNetDeploy}`);
     }
 
     let assetContracts = await deployNewAsset(
@@ -314,7 +314,8 @@ export async function fullDeploy(parameters: any, quiet = false) {
       cleanupBlockNumberManager,
       rewrapXassetParams(parameters[asset]),
       parameters.priceDeviationThresholdBIPS,
-      quiet
+      quiet,
+      realNetDeploy
     );
     assetToContracts.set(asset, {
       assetSymbol: asset,
@@ -415,39 +416,48 @@ async function deployNewAsset(
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
   xAssetDefinition: AssetDefinition,
   priceDeviationThresholdBIPS: number,
-  quiet = false):
-  Promise<{
-    xAssetToken: AssetTokenInstance,
-    dummyAssetMinter: DummyAssetMinterInstance,
-    ftso: FtsoInstance
-  }> {
+  quiet = false,
+  real = true):
+  Promise< any
+  // {
+  //   xAssetToken: AssetTokenInstance | null,
+  //   dummyAssetMinter: DummyAssetMinterInstance | null,
+  //   ftso: FtsoInstance
+  // }
+  > {
 
   const DummyAssetMinter = artifacts.require("DummyAssetMinter");
   const AssetToken = artifacts.require("AssetToken");
   const Ftso = artifacts.require("Ftso");
 
-  // Deploy Asset
-  const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.symbol, xAssetDefinition.decimals);
-  await setDefaultVPContract(xAssetToken, deployerAccountAddress);
-  spewNewContractInfo(contracts, xAssetDefinition.symbol, `AssetToken.sol`, xAssetToken.address, quiet);
-
-  await cleanupBlockNumberManager.registerToken(xAssetToken.address);
-  await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
-
-  // Deploy dummy Asset minter
-  const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
-  spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.symbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet);
-
-  // Establish governance over Asset by minter
-  await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
-  await dummyAssetMinter.claimGovernanceOverMintableToken();
-
   // Register an FTSO for the new Asset
   const ftso = await Ftso.new(xAssetDefinition.symbol, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
-  await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, `Ftso.sol`, ftso.address, quiet);
 
-  return { xAssetToken, dummyAssetMinter, ftso };
+  // Deploy Asset if we are not deploying on real network
+  if(!real){
+    const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.symbol, xAssetDefinition.decimals);
+    await setDefaultVPContract(xAssetToken, deployerAccountAddress);
+    spewNewContractInfo(contracts, xAssetDefinition.symbol, `AssetToken.sol`, xAssetToken.address, quiet);
+
+    await cleanupBlockNumberManager.registerToken(xAssetToken.address);
+    await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
+
+    // Deploy dummy Asset minter
+    const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
+    spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.symbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet);
+
+    // Establish governance over Asset by minter
+    await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
+    await dummyAssetMinter.claimGovernanceOverMintableToken();
+
+    await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
+
+    return { xAssetToken, dummyAssetMinter, ftso };
+  }
+
+  return { ftso }
+  
 }
 
 function spewNewContractInfo(contracts: Contracts, name: string, contractName: string, address: string, quiet = false) {
