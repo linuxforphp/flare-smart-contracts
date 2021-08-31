@@ -570,8 +570,7 @@ contract MockPriceSubmitter is IPriceSubmitter {
         voterWhitelister = new MockVoterWhitelister(this);
         voterWhitelister.setFtsoRegistry(ftsoRegistry);
         // Initialize all mock ftsos for pacakge
-        //                            ["WSGB", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"]
-        string[10] memory symbols = ["WSGB", "FXRP", "FLTC", "FXLM", "FXDG", "FADA", "FALGO", "FBCH", "FDGB", "FBTC"];
+        string[10] memory symbols = ["SGB", "XRP", "LTC", "XLM", "XDG", "ADA", "ALGO", "BCH", "DGB", "BTC"];
         for (uint256 i = 0; i < symbols.length; ++i) {
             string memory symbol = symbols[i];
             MockNpmFtso ftso = new MockNpmFtso(symbol, this, block.timestamp - 120, 120, 30);

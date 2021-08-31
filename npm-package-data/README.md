@@ -74,6 +74,8 @@ Mock implementation implements `submitPriceHashes` and `revealPrices` as faithfu
 - It checks that price provider is allowed to submit price hash to provided FTSO indices and reverts in the same way as a production version would.
 - It checks that price provider is allowed to participate in price reveal period.
 - It checks that the revealed prices are correct with regard to submitted hashes.
+- It checks that the price is submitted with the correct epoch id.
+- It checks that the price is submitted at most once per epoch.
 - It checks that the reveal was done in the correct time interval _and_ in the correct reveal epoch.
 - The emitted events are the same as on production network.
 - The revert conditions are the same as on production network.
@@ -112,7 +114,7 @@ The mock implementation allows only one user per asset to be listed and does not
 ### [IFtsoRegistry.sol](contracts/userInterfaces/IFtsoRegistry.sol)
 
 `FtsoRegistry` provides access to available FTSOs, corresponding currency symbols, and convenience methods for interactions.
-To get FTSO index for a `FXRP` use `ftsoRegistry.getFtsoIndex("FXRP")`. This index can be used to act as a price provider for `FXRP`.
+To get FTSO index for a `XRP` use `ftsoRegistry.getFtsoIndex("XRP")`. This index can be used to act as a price provider for `XRP`.
 
 *Methods unavailable in mock setting*: All methods available in `IFtsoRegistry` are working in mock setting.
 
@@ -124,7 +126,7 @@ To get FTSO index for a `FXRP` use `ftsoRegistry.getFtsoIndex("FXRP")`. This ind
 
 **FTSO index for a symbol is FIXED and it will NEVER change.**
 
-If the FTSO index for `FXRP` is `1` at any time, than price submission for `FXRP` would always happen at FTSO with index `1` and no other symbol can have index `1`.
+If the FTSO index for `XRP` is `1` at any time, then price submission for `XRP` would always happen at FTSO with index `1` and no other symbol can have index `1`.
 Underlying `FTSO` contract for this symbol might be upgraded with new functionality and security updates... but it will still correspond to the same FTSO index.
 
 ## Basic Tests

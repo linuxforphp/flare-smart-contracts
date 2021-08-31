@@ -1,7 +1,7 @@
 # Publish demo npm kick off for Price providers
 
 Price provider kick off package [https://www.npmjs.com/package/@flarenetwork/ftso_price_provider_kick_off_package](https://www.npmjs.com/package/@flarenetwork/ftso_price_provider_kick_off_package) only exposes a part of smart contracts repository.
-Since npm publish automatically takes `pacakge.json` and `README.md` from root folder and uses full folder special files are prepared for package publishing and stored in folder `npm-package-data`
+Since npm publish automatically takes `pacakge.json` and `README.md` from root folder and uses full folder, special files are prepared for package publishing and stored in folder `npm-package-data`
 
 ## Publishing steps
 

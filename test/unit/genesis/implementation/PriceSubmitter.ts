@@ -45,7 +45,6 @@ async function setGetFtsosMock(ftsoIndices: number[]) {
     );
 }
 
-// TODO FILIP: Some of the logic in this tests is now in other places
 contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit tests`, async accounts => {
 
     const FTSO_MANAGER_ADDRESS = accounts[12];

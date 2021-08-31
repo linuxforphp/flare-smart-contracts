@@ -7,7 +7,7 @@ const priceEpochDurationSeconds;
 const ftsoRegistry = priceSubmitter.getFtsoRegistry();
 const voterWhitelister = priceSubmitter.getVoterWhitelister();
 const FtsoIndexList { // get ftso indices for the desired symbols
-    ftsoRegistry.getFtsoIndex("FXRP"), ftsoRegistry.getFtsoIndex("FTLC"), ftsoRegistry.getFtsoIndex("FXDG")
+    ftsoRegistry.getFtsoIndex("XRP"), ftsoRegistry.getFtsoIndex("TLC"), ftsoRegistry.getFtsoIndex("XDG")
 };
 // ftsoRegistry.getSupportedSymbolsAndFtsos() can be used to return all available symbols and corresponding ftsos
 
@@ -75,7 +75,7 @@ main() {
  
         // submit hashes in batch
         if (validFtsoIndexList.length > 0) {
-            priceSubmitter.submitPriceHashes(validFtsoIndexList, ftsoPriceHashes);
+            priceSubmitter.submitPriceHashes(epochId, validFtsoIndexList, ftsoPriceHashes);
         }
  
         // wait for this commit period to end
