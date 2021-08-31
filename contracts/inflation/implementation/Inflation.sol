@@ -341,7 +341,12 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
         }
         return true;
     }
-
+    
+    function switchToFallbackMode() external view override onlyFlareDaemon returns (bool) {
+        // do nothing - there is no fallback mode in Inflation
+        return false;
+    }
+    
     /**
      * @notice Compute the expected balance of this contract.
      * @param _balanceExpectedWei   The computed balance expected.
