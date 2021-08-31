@@ -56,9 +56,9 @@
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
-    "XDG": {
+    "DOGE": {
         "xAssetName": "xAsset Dogecoin",
-        "xAssetSymbol": "XDG",
+        "xAssetSymbol": "DOGE",
         "xAssetDecimals": 8,
         "dummyAssetMinterMax": 13000000000000,
         "initialPriceUSD5Dec": 0

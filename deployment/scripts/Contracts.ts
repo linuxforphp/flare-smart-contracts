@@ -28,28 +28,28 @@ export class Contracts {
   public static readonly VOTER_WHITELISTER = "VoterWhitelister";
   public static readonly FLARE_DAEMON = "FlareDaemon";
   public static readonly WNAT = "WNat";
-  public static readonly FXRP = "Fxrp";
+  public static readonly FXRP = "xrp";
   public static readonly DUMMY_FXRP_MINTER = "DummyFxrpMinter";
-  public static readonly FTSO_FXRP = "FtsoFxrp";
-  public static readonly FLTC = "Fltc";
+  public static readonly FTSO_FXRP = "FtsoXrp";
+  public static readonly FLTC = "ltc";
   public static readonly DUMMY_FLTC_MINTER = "DummyFltcMinter";
-  public static readonly FTSO_FLTC = "FtsoFltc";
-  public static readonly FXDG = "Fxdg";
-  public static readonly DUMMY_FXDG_MINTER = "DummyFxdgMinter";
-  public static readonly FTSO_FXDG = "FtsoFxdg";
+  public static readonly FTSO_FLTC = "FtsoLtc";
+  public static readonly FDOGE = "doge";
+  public static readonly DUMMY_FDOGE_MINTER = "DummyFdogeMinter";
+  public static readonly FTSO_FDOGE = "FtsoDoge";
   public static readonly FTSO_WNAT = "FtsoWnat";
-  public static readonly FADA = "Fada";
+  public static readonly FADA = "ada";
   public static readonly DUMMY_FADA_MINTER = "DummyFadaMinter";
-  public static readonly FTSO_FADA = "FtsoFada";
-  public static readonly FALGO = "Falgo";
+  public static readonly FTSO_FADA = "FtsoAda";
+  public static readonly FALGO = "algo";
   public static readonly DUMMY_FALGO_MINTER = "DummyFalgoMinter";
-  public static readonly FTSO_FALGO = "FtsoFalgo";
-  public static readonly FBCH = "Fbch";
+  public static readonly FTSO_FALGO = "FtsoAlgo";
+  public static readonly FBCH = "bch";
   public static readonly DUMMY_FBCH_MINTER = "DummyFbchMinter";
-  public static readonly FTSO_FBCH = "FtsoFbch";
-  public static readonly FDGB = "Fdgb";
+  public static readonly FTSO_FBCH = "FtsoBch";
+  public static readonly FDGB = "dgb";
   public static readonly DUMMY_FDGB_MINTER = "DummyFdgbMinter";
-  public static readonly FTSO_FDGB = "FtsoFdgb";
+  public static readonly FTSO_FDGB = "FtsoDgb";
 
   constructor() {
     // Maps a contract name to an address

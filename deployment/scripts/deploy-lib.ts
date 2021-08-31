@@ -298,8 +298,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   })
 
   // Deploy asset, minter, and initial FTSOs 
-  let assets = ['XRP', 'LTC', 'XLM', 'XDG', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
-
+  let assets = ['XRP', 'LTC', 'XLM', 'DOGE', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
 
   for (let asset of assets) {
     if (!quiet) {
@@ -358,7 +357,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   }
 
   // Set FTSOs to multi Asset WNAT contract
-  let multiAssets = ["XRP", "LTC", "XDG"]
+  let multiAssets = ["XRP", "LTC", "DOGE"]
   let multiAssetFtsos = multiAssets.map(asset => assetToContracts.get(asset)!.ftso!.address)
   // [ftsoFxrp.address, ftsoFltc.address, ftsoFxdg.address]
   await ftsoManager.setFtsoAssetFtsos(ftsoWnat.address, multiAssetFtsos);

@@ -168,7 +168,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     Ftso = artifacts.require("Ftso");
     ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FLTC));
-    ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXDG));
+    ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FDOGE));
     ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXRP));
     ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
     ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FDGB));
