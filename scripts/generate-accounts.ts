@@ -10,10 +10,13 @@ function generateAccounts() {
     for (let i = 0; i < accountsCount; i++) {
         let wallet = Wallet.generate();
         accounts.push({ privateKey: wallet.getPrivateKeyString(), balance });
-        console.log(wallet.address)
+        // console.log(wallet.address)
+        if(i % 1000 == 0) {
+            console.log(i);
+        }
     }
-
-    fs.writeFileSync("accounts.json", JSON.stringify(accounts));
+    let fname = process.argv[3] || "accounts.json";
+    fs.writeFileSync(fname, JSON.stringify(accounts));
     console.log(`${ accountsCount } accounts generated`);
 }
 

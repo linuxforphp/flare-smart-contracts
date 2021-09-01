@@ -31,7 +31,7 @@ export interface AssetDefinition {
   initialPriceUSD5Dec: number;
 }
 
-export interface AssetContracts {  
+export interface AssetContracts {
   xAssetToken: AssetTokenInstance | WNatInstance;
   ftso: FtsoInstance;
   dummyAssetMinter?: DummyAssetMinterInstance;
@@ -60,9 +60,10 @@ export function ftsoContractForSymbol(contracts: DeployedFlareContracts, symbol:
 
 const BN = web3.utils.toBN;
 import { constants, time } from '@openzeppelin/test-helpers';
-import { defaultPriceEpochCyclicBufferSize } from "../../test/utils/constants";
+import { waitFinalize3 } from "../../test/utils/test-helpers";
+import { TestableFlareDaemonInstance } from "../../typechain-truffle/TestableFlareDaemon";
 
-export async function fullDeploy(parameters: any, quiet = false) {  
+export async function fullDeploy(parameters: any, quiet = false) {
   // Define repository for created contracts
   const contracts = new Contracts();
 
@@ -125,7 +126,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   }
 
   // Initialize the daemon
-  let flareDaemon: FlareDaemonInstance;
+  let flareDaemon: FlareDaemonInstance | TestableFlareDaemonInstance;
   try {
     flareDaemon = await FlareDaemon.at(parameters.flareDaemonAddress);
   } catch (e) {
@@ -137,27 +138,75 @@ export async function fullDeploy(parameters: any, quiet = false) {
     // WARNING: This should only happen in test.
     flareDaemon = await TestableFlareDaemon.new();
   }
+
   spewNewContractInfo(contracts, FlareDaemon.contractName, flareDaemon.address, quiet);
-  let currentGovernanceAddress = null;
+
   try {
     await flareDaemon.initialiseFixedAddress();
-    currentGovernanceAddress = genesisGovernanceAccount.address;
   } catch (e) {
-    // daemon might be already initialized if redeploy
-    // NOTE: unregister must claim governance of flareDaemon!
-    currentGovernanceAddress = governanceAccount.address
+    console.error(`flareDaemon.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
   }
+
+  let currentGovernanceAddress = await flareDaemon.governance()
+
+  // Unregister whatever is registered with verification
+  try {
+    console.error("Unregistring contracts");
+    try {
+      await waitFinalize3(currentGovernanceAddress, () => flareDaemon.registerToDaemonize([], { from: currentGovernanceAddress }));
+    } catch (ee) {
+      console.error("Error while unregistring. ", ee)
+    }
+  } catch (e) {
+    console.error("No more kept contracts")
+  }
+
   await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
   await flareDaemon.claimGovernance({ from: deployerAccount.address });
-  // Set the block holdoff should a daemonize contract exceeded its max gas allocation
+  // Set the block holdoff should a kept contract exceeded its max gas allocation
   await flareDaemon.setBlockHoldoff(parameters.flareDaemonGasExceededHoldoffBlocks);
+
+  // PriceSubmitter contract
+  let priceSubmitter: PriceSubmitterInstance;
+  try {
+    priceSubmitter = await PriceSubmitter.at(parameters.priceSubmitterAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("PriceSubmitter not in genesis...creating new.")
+    }
+    priceSubmitter = await PriceSubmitter.new();
+  }
+  // This has to be done always
+  try {
+    await priceSubmitter.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`priceSubmitter.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
+  // Checking if governance is OK, especially when redeploying.
+  let priceSubmitterGovernance = await priceSubmitter.governance();
+  if (currentGovernanceAddress != priceSubmitterGovernance) {
+    console.error("Current governance does not match price submitter governance");
+    console.error("Current governance:", currentGovernanceAddress);
+    console.error("Price submitter goveranance:", priceSubmitterGovernance);
+    await priceSubmitter.proposeGovernance(currentGovernanceAddress, { from: priceSubmitterGovernance });
+    await priceSubmitter.claimGovernance({ from: currentGovernanceAddress })
+    let newPriceSubmitterGovernance = await priceSubmitter.governance();
+    if (currentGovernanceAddress == newPriceSubmitterGovernance) {
+      console.error("Governance of PriceSubmitter changed")
+    } else {
+      console.error("Governance for PriceSubmitter does not match. Bailing out ...")
+      process.exit(1)
+    }
+  }
+  spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
 
   // Get the timestamp for the just mined block
   const startTs = await time.latest();
-  
+
   // Delayed reward epoch start time
   const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds + parameters.revealEpochDurationSeconds);
-  
+
   // Inflation contract
   const inflation = await Inflation.new(
     deployerAccount.address,
@@ -207,26 +256,17 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
 
   // Inflation allocation needs to know about reward managers
-  await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, dataAvailabilityRewardManager.address], [8000, 2000]);
+  // await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
+  await inflationAllocation.setSharingPercentages(
+    [ftsoRewardManager.address, dataAvailabilityRewardManager.address],
+    [parameters.ftsoRewardManagerSharingPercentageBIPS, parameters.dataAvailabilityRewardManagerSharingPercentageBIPS]
+  );
   // Supply contract needs to know about reward managers
   await supply.addTokenPool(ftsoRewardManager.address, 0);
   await supply.addTokenPool(dataAvailabilityRewardManager.address, 0);
 
   // The inflation needs a reference to the supply contract.
   await inflation.setSupply(supply.address);
-
-  // PriceSubmitter contract
-  let priceSubmitter: PriceSubmitterInstance;
-  try {
-    priceSubmitter = await PriceSubmitter.at(parameters.priceSubmitterAddress);
-  } catch (e) {
-    if (!quiet) {
-      console.error("PriceSubmitter not in genesis...creating new.")
-    }
-    priceSubmitter = await PriceSubmitter.new();
-    await priceSubmitter.initialiseFixedAddress();
-  }
-  spewNewContractInfo(contracts, PriceSubmitter.contractName, priceSubmitter.address, quiet);
 
   // FtsoRegistryContract
   const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address);
@@ -259,7 +299,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
   await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
   await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
-  
+
   await voterWhitelister.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: currentGovernanceAddress });
   await priceSubmitter.setContractAddresses(ftsoRegistry.address, voterWhitelister.address, ftsoManager.address, { from: currentGovernanceAddress });
 
@@ -286,7 +326,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // Create a non-asset FTSO
   // Register an FTSO for WNAT
-  const ftsoWnat = await Ftso.new("WNAT", wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
+  const ftsoWnat = await Ftso.new("WNAT", wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO WNAT`, ftsoWnat.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -314,6 +354,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
       cleanupBlockNumberManager,
       rewrapXassetParams(parameters[asset]),
       parameters.priceDeviationThresholdBIPS,
+      parameters.priceEpochCyclicBufferSize,
       quiet
     );
     assetToContracts.set(asset, {
@@ -343,17 +384,17 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   for (let asset of ['NAT', ...assets]) {
     let ftsoContract = (assetToContracts.get(asset) as AssetContracts).ftso;
-    await ftsoManager.addFtso(ftsoContract.address);
+    await waitFinalize3(deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
   }
 
-  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());  
+  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
 
   // Set initial number of voters
-  for (let asset of ['NAT', ...assets]){
+  for (let asset of ['NAT', ...assets]) {
 
-    const assetContract = assetToContracts.get(asset)!; 
+    const assetContract = assetToContracts.get(asset)!;
     const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
-    await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, {from: currentGovernanceAddress});
+    await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, { from: currentGovernanceAddress });
   }
 
   // Set FTSOs to multi Asset WNAT contract
@@ -415,6 +456,7 @@ async function deployNewAsset(
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
   xAssetDefinition: AssetDefinition,
   priceDeviationThresholdBIPS: number,
+  priceEpochCyclicBufferSize: number,
   quiet = false):
   Promise<{
     xAssetToken: AssetTokenInstance,
@@ -443,7 +485,7 @@ async function deployNewAsset(
   await dummyAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new Asset
-  const ftso = await Ftso.new(xAssetDefinition.symbol, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
+  const ftso = await Ftso.new(xAssetDefinition.symbol, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
   await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, ftso.address, quiet);
 

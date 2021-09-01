@@ -1,126 +1,170 @@
 [
   {
     "name": "InflationAllocation",
-    "address": "0x7c2C195CD6D34B8F845992d380aADB2730bB9C6F"
+    "address": "0x7fAeC7791277Ff512c41CA903c177B2Ed952dDAc"
+  },
+  {
+    "name": "StateConnector",
+    "address": "0x1000000000000000000000000000000000000001"
   },
   {
     "name": "FlareDaemon",
     "address": "0x1000000000000000000000000000000000000002"
   },
   {
-    "name": "Inflation",
-    "address": "0xf4e77E5Da47AC3125140c470c71cBca77B5c638c"
-  },
-  {
-    "name": "Supply",
-    "address": "0x3619DbE27d7c1e7E91aA738697Ae7Bc5FC3eACA5"
-  },
-  {
-    "name": "FtsoRewardManager",
-    "address": "0x038B86d9d8FAFdd0a02ebd1A476432877b0107C8"
-  },
-  {
     "name": "PriceSubmitter",
     "address": "0x1000000000000000000000000000000000000003"
   },
   {
-    "name": "FtsoManager",
-    "address": "0xD6C850aeBFDC46D7F4c207e445cC0d6B0919BDBe"
+    "name": "Inflation",
+    "address": "0xadc8f433eA2371bE71D986d9B131892122969CA6"
   },
   {
-    "name": "WNat",
-    "address": "0x1d80315fac6aBd3EfeEbE97dEc44461ba7556160"
+    "name": "Supply",
+    "address": "0xFf130817Aa9863B3D809A2A11617c05646245d80"
   },
   {
-    "name": "FtsoWnat",
-    "address": "0x52d3b94181f8654db2530b0fEe1B19173f519C52"
+    "name": "FtsoRewardManager",
+    "address": "0x987D8EE0F70EdC8e9651c9E6a1618B8Bc8B9FB61"
   },
   {
-    "name": "Fxrp",
-    "address": "0xd15468525c35BDBC1eD8F2e09A00F8a173437f2f"
+    "name": "DataAvailabilityRewardManager",
+    "address": "0xAF4AC65bBdFfA029335436d85E1B57c77995C59B"
   },
   {
-    "name": "DummyFxrpMinter",
-    "address": "0x7e35Eaf7e8FBd7887ad538D4A38Df5BbD073814a"
+    "name": "CleanupBlockNumberManager",
+    "address": "0x3D0ED84712f1635e755870d63D9D30B33BaEaDc4"
   },
   {
-    "name": "FtsoFxrp",
-    "address": "0x53369fd4680FfE3DfF39Fc6DDa9CfbfD43daeA2E"
+    "name": "FtsoRegistry",
+    "address": "0x65A7D8d33E148D5Bf9fe11FD1425D31A4Bf3d9E1"
   },
   {
-    "name": "Fltc",
-    "address": "0x58F132FBB86E21545A4Bace3C19f1C05d86d7A22"
-  },
-  {
-    "name": "DummyFltcMinter",
-    "address": "0xa4bcDF64Cdd5451b6ac3743B414124A6299B65FF"
-  },
-  {
-    "name": "FtsoFltc",
-    "address": "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
-  },
-  {
-    "name": "Fxdg",
-    "address": "0x6082731fdAba4761277Fb31299ebC782AD3bCf24"
-  },
-  {
-    "name": "DummyFxdgMinter",
-    "address": "0x8456161947DFc1fC159A0B26c025cD2b4bba0c3e"
-  },
-  {
-    "name": "FtsoFxdg",
-    "address": "0x92cfBAB5A86631e9F1A6126b42E01A74eadA61Df"
-  },
-  {
-    "name": "Fada",
-    "address": "0x0C6c3C47A1f650809B0D1048FDf9603e09473D7E"
-  },
-  {
-    "name": "DummyFadaMinter",
-    "address": "0x06bA8d8af0dF898D0712DffFb0f862cC51AF45c2"
-  },
-  {
-    "name": "FtsoFada",
-    "address": "0xE4C10Db67595aF2Cb4166c8C274e0140f7E43059"
-  },
-  {
-    "name": "Falgo",
-    "address": "0x85bdE212E66e2BAE510E44Ed59116c1eC712795b"
-  },
-  {
-    "name": "DummyFalgoMinter",
-    "address": "0xe1B3b8F6b298b52bCd15357ED29e65e66a4045fF"
-  },
-  {
-    "name": "FtsoFalgo",
-    "address": "0x79dC3dA279A2ADc72210BD00e10951AB9dC70ABc"
-  },
-  {
-    "name": "Fbch",
-    "address": "0xE78d9772cED3eD5C595d9E438a87602eD86bfE9b"
-  },
-  {
-    "name": "DummyFbchMinter",
-    "address": "0xA17827A991EB72793fa437e580B084ceB25Ab0f9"
-  },
-  {
-    "name": "FtsoFbch",
-    "address": "0x57965788BD1a93639CE738a58176e1A3d6F4d04f"
-  },
-  {
-    "name": "Fdgb",
-    "address": "0xdDD96662ea11dA6F289A5D00da41Ec5F3b67d2b4"
-  },
-  {
-    "name": "DummyFdgbMinter",
-    "address": "0xecE50C63d1Ae02Ba306c2b2E1579d0327220196e"
-  },
-  {
-    "name": "FtsoFdgb",
-    "address": "0xA40A2298B02a8597321580fdAD8518A6d6601b6C"
+    "name": "VoterWhitelister",
+    "address": "0x314B40e9232177AB0B54E874A7d351c781eFe44d"
   },
   {
     "name": "Distribution",
-    "address": "0x29296bF8A0cC6D5E1aC7c25613715315D264F6A4"
+    "address": "0x90b17b801434FB1c48a4f1888dd6C410d11Bda59"
+  },
+  {
+    "name": "FtsoManager",
+    "address": "0xeB80313502EA077FA9B8E89b45e4a1B236cA17Ea"
+  },
+  {
+    "name": "WNat",
+    "address": "0x95A1C22E8A89f7b3cCa63a9ea3c064E72C96CAa0"
+  },
+  {
+    "name": "FtsoWnat",
+    "address": "0xE0A5AD869ce74bB9e6bF4A5Dc9C0bDBcf5B6B6F9"
+  },
+  {
+    "name": "Fxrp",
+    "address": "0x0b4789F2aB956463b3cEadE041CAC04D8b95a792"
+  },
+  {
+    "name": "DummyFxrpMinter",
+    "address": "0xd44937448A9f229bfae84e7d256810Ba4C4a93cC"
+  },
+  {
+    "name": "FtsoFxrp",
+    "address": "0xbCf57D16d9d63aDDea3c2056A1de2A33ebD353F0"
+  },
+  {
+    "name": "Fltc",
+    "address": "0x70325F3D34D83391a3b6ffE77a9fB62c033e8e55"
+  },
+  {
+    "name": "DummyFltcMinter",
+    "address": "0x626FdE749F9d499d3777320CAf29484B624ab84a"
+  },
+  {
+    "name": "FtsoFltc",
+    "address": "0xA0AB1cB92A4AF81f84dCd258155B5c25D247b54E"
+  },
+  {
+    "name": "Fxlm",
+    "address": "0xE91bBe8ee03560E3dda2786f95335F5399813Ca0"
+  },
+  {
+    "name": "DummyFxlmMinter",
+    "address": "0xbC7Ab6F930D83CB7e80A207d4dD3DD80aA8a2153"
+  },
+  {
+    "name": "FtsoFxlm",
+    "address": "0x2E5a2652BDB3da24249EaDf9028a6D75e20D86C5"
+  },
+  {
+    "name": "Fxdg",
+    "address": "0x63b9792E7A95e3aa037255E8cAa0Dfd76f7383e7"
+  },
+  {
+    "name": "DummyFxdgMinter",
+    "address": "0xf4a603251E93fAc1DB29AdC48B9446E753e5A755"
+  },
+  {
+    "name": "FtsoFxdg",
+    "address": "0x587BF1Bc96163E279D2Ea1b27F3b41cC34b171C3"
+  },
+  {
+    "name": "Fada",
+    "address": "0xFb6888b081b6A32A18cD7Dd77238207DB51450BB"
+  },
+  {
+    "name": "DummyFadaMinter",
+    "address": "0xb2B548BE73010C188C083c510d255Aed74843b05"
+  },
+  {
+    "name": "FtsoFada",
+    "address": "0x93bB79570dFECC052e36E25cE10793A139e75f1b"
+  },
+  {
+    "name": "Falgo",
+    "address": "0x63387deC8C4a0F17Cf0C27Ea3476F03F6a45d3AE"
+  },
+  {
+    "name": "DummyFalgoMinter",
+    "address": "0xC6bA6049F86d528698B5924B8fC2FE7289D38578"
+  },
+  {
+    "name": "FtsoFalgo",
+    "address": "0x392E5355a0e88Bd394F717227c752670fb3a8020"
+  },
+  {
+    "name": "Fbch",
+    "address": "0xEBAB67ee3ef604D5c250A53b4b8fcbBC6ec3007C"
+  },
+  {
+    "name": "DummyFbchMinter",
+    "address": "0xcdF1185e592AFc8d8754C4BC8479C39b20437E42"
+  },
+  {
+    "name": "FtsoFbch",
+    "address": "0x1bb3d8FA7bDa74Af0D64d348a2545E7570863fA8"
+  },
+  {
+    "name": "Fdgb",
+    "address": "0xB7d4f04E8dF26d2FEE35D4AeB2A63fEB49451B78"
+  },
+  {
+    "name": "DummyFdgbMinter",
+    "address": "0xb840b4fe440b5E26e1840cd2D6320FAda1C0ca5d"
+  },
+  {
+    "name": "FtsoFdgb",
+    "address": "0x5c98c9202b73d27A618662d34A6805c34AB041B8"
+  },
+  {
+    "name": "Fbtc",
+    "address": "0xBE7fFcC01164C890e59D298FD755FcBE6B7941a9"
+  },
+  {
+    "name": "DummyFbtcMinter",
+    "address": "0x22B37db37e9992728245A7dD0536892AF9bA1baB"
+  },
+  {
+    "name": "FtsoFbtc",
+    "address": "0x850Fae11E1313e6C23Db7c2410Ec0985d9Ea325A"
   }
 ]

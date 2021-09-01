@@ -22,6 +22,10 @@ async function sleep(ms: number) {
 
 async function main(parameters: any) {
 
+  if (process.env.GOVERNANCE_PRIVATE_KEY) {
+    parameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
+  }
+
   // Define accounts in play for the deployment process
   const governanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.governancePrivateKey);
 
