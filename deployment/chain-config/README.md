@@ -132,6 +132,14 @@ All numeric parameter names have units appended at the end. Most unit names are 
     The USD price of Native at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
     Usually 0, which means that the useful starting price is obtained after first voting.
 
+## Reward sharing percentages
+
+- `ftsoRewardManagerSharingPercentageBIPS` - 
+    Share of inflation that is dedicated for FTSO system rewards. Initial setting is 80% (8000).
+
+- `dataAvailabilityRewardManagerSharingPercentageBIPS`
+    Share of inflation that is dedicated for validator data provision rewards. Initial setting is 20% (2000)
+    
 ## Currency settings
 
 Each currency definition is under it symbol's key. For example we have
