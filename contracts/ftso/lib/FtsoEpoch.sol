@@ -158,11 +158,31 @@ library FtsoEpoch {
         internal
     {
         _instance.assets = _assets;
+
+        _instance.assetWeightedPrices = _getAssetWeightedPrices(_state, _assets, _assetVotePowers, _assetPrices);
+
+        // compute vote power
+        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);
+        _instance.votePowerAsset = votePower;
+
+        // compute base weight ratio between asset and native token
+        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePower);
+    }
+    
+    function _getAssetWeightedPrices(
+        State storage _state,
+        IIVPToken[] memory _assets,
+        uint256[] memory _assetVotePowers,
+        uint256[] memory _assetPrices
+    )
+        internal view
+        returns (uint256[] memory)
+    {
         uint256 count = _assets.length;
+        uint256[] memory values = new uint256[](count); // array of values which eventually contains weighted prices
 
         // compute sum of vote powers in USD
         uint256 votePowerSumUSD = 0;
-        uint256[] memory values = new uint256[](count); // array of values which eventually contains weighted prices
         for (uint256 i = 0; i < count; i++) {
             if (address(_assets[i]) == address(0)) {
                 continue;
@@ -180,14 +200,8 @@ library FtsoEpoch {
                 values[i] = values[i].mulDiv(_assetPrices[i].mul(BIPS100), votePowerSumUSD);
             }
         }
-        _instance.assetWeightedPrices = values;
-
-        // compute vote power
-        uint256 votePower = _getAssetVotePower(_state, _instance, _assetVotePowers);
-        _instance.votePowerAsset = votePower;
-
-        // compute base weight ratio between asset and native token
-        _instance.baseWeightRatio = _getAssetBaseWeightRatio(_state, votePower);
+        
+        return values;
     }
 
     /**
@@ -279,26 +293,54 @@ library FtsoEpoch {
     }
 
     /**
+     * @notice Returns combined asset vote power, same as _getAssetVotePower(...), but doesn't need _instance
+     * @param _state                Epoch state
+     * @param _assets               The list of assets, some may be address(0)
+     * @param _votePowers           Array of asset vote powers
+     * @param _assetWeightedPrices  Asset weighted prices as calculated by _getAssetWeightedPrices
+     * @dev Asset vote power is specified in USD and weighted among assets
+     */
+    function _calculateAssetVotePower(
+        FtsoEpoch.State storage _state,
+        IIVPToken[] memory _assets,
+        uint256[] memory _votePowers,
+        uint256[] memory _assetWeightedPrices
+    )
+        internal view
+        returns (uint256)
+    {
+        uint256 votePower = 0;
+        for (uint256 i = 0; i < _assets.length; i++) {
+            if (address(_assets[i]) != address(0)) {
+                uint256 vp = _assetWeightedPrices[i].mulDiv(_votePowers[i], _state.assetNorm[_assets[i]]) / BIPS100;
+                votePower = votePower.add(vp);
+            }
+        }
+        return votePower;
+    }
+
+    /**
      * Get multipliers for converting asset vote powers to asset vote power weights as in
      * FTSO price calculation. Weights are multiplied by (TERA / BIPS100 * 1e18).
      * Used in VoterWhitelister to emulate ftso weight calculation.
      */
     function _getAssetVoteMultipliers(
         FtsoEpoch.State storage _state,
-        FtsoEpoch.Instance storage _instance
+        IIVPToken[] memory _assets,
+        uint256[] memory _assetWeightedPrices
     )
         internal view 
         returns (uint256[] memory _assetMultipliers)
     {
-        uint256 numAssets = _instance.assets.length;
+        uint256 numAssets = _assets.length;
         _assetMultipliers = new uint256[](numAssets);
         for (uint256 i = 0; i < numAssets; i++) {
-            if (address(_instance.assets[i]) != address(0)) {
-                uint256 divisor = _state.assetNorm[_instance.assets[i]];
+            if (address(_assets[i]) != address(0)) {
+                uint256 divisor = _state.assetNorm[_assets[i]];
                 // Since we divide by `_state.assetNorm[_instance.assets[i]]` we multiply by 1e18 to prevent underflow
                 // (we assume that assetNorm is never much bigger than that)
                 // The value is only used in VoterWhitelister._getAssetVotePowerWeights, where we divide by 1e18
-                _assetMultipliers[i] = _instance.assetWeightedPrices[i].mulDiv(TERA / BIPS100 * 1e18, divisor);
+                _assetMultipliers[i] = _assetWeightedPrices[i].mulDiv(TERA / BIPS100 * 1e18, divisor);
             } else {
                 _assetMultipliers[i] = 0;
             }

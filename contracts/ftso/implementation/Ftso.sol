@@ -582,26 +582,18 @@ contract Ftso is IIFtso {
         )
     {
         _assets = assets;
-        if (lastRevealEpochId > 0) {
-            //slither-disable-next-line weak-prng // not used for random
-            FtsoEpoch.Instance storage epoch = epochs.instance[lastRevealEpochId % priceEpochCyclicBufferSize];
-            _assetMultipliers = epochs._getAssetVoteMultipliers(epoch);
-            _totalVotePowerNat = epoch.votePowerNat;
-            _totalVotePowerAsset = epoch.votePowerAsset;
-            _assetWeightRatio = epoch.baseWeightRatio;
-            _votePowerBlock = epoch.votePowerBlock;
-        } else {
-            // this case might happen on first block, just return some safe params
-            // (in this case, only native token vote powers will be used)
-            _assetMultipliers = new uint256[](_assets.length);
-            for (uint256 i = 0; i < _assets.length; i++) {
-                _assetMultipliers[i] = 0;
-            }
-            _totalVotePowerNat = 1;
-            _totalVotePowerAsset = 1;
-            _assetWeightRatio = 0;
-            _votePowerBlock = epochs.votePowerBlock;
+        _votePowerBlock = epochs.votePowerBlock;
+        uint256[] memory assetVotePowers = new uint256[](_assets.length);
+        uint256[] memory assetPrices = new uint256[](_assets.length);
+        for (uint256 i = 0; i < _assets.length; i++) {
+            assetVotePowers[i] = address(_assets[i]) != address(0) ? _assets[i].totalVotePowerAt(_votePowerBlock) : 0;
+            (assetPrices[i], ) = assetFtsos[i].getCurrentPrice();
         }
+        uint256[] memory assetWeightedPrices = epochs._getAssetWeightedPrices(_assets, assetVotePowers, assetPrices);
+        _assetMultipliers = epochs._getAssetVoteMultipliers(_assets, assetWeightedPrices);
+        _totalVotePowerNat = wNat.totalVotePowerAt(_votePowerBlock);
+        _totalVotePowerAsset = epochs._calculateAssetVotePower(_assets, assetVotePowers, assetWeightedPrices);
+        _assetWeightRatio = epochs._getAssetBaseWeightRatio(_totalVotePowerAsset);
     }
 
     /**
