@@ -27,6 +27,7 @@ const ERR_IS_ZERO = "address is 0";
 
 const INFLATIONRECOGNIZED_EVENT = "InflationRecognized";
 const INFLATIONAUTHORIZED_EVENT = "InflationAuthorized";
+const ANNUM_INITIALIZED_EVENT = "NewAnnumInitialized";
 const TOPUPREQUESTED_EVENT = "TopupRequested";
 const REWARDSERVICETOPUPCOMPUTED_EVENT = "RewardServiceTopupComputed";
 const REWARDSERVICEDAILYAUTHORIZEDINFLATIONCOMPUTED_EVENT = "RewardServiceDailyAuthorizedInflationComputed";
@@ -101,6 +102,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Act
         const response = await mockFlareDaemon.trigger();
         const nowTs = await time.latest() as BN;
+        const newAnnum = await inflation.getCurrentAnnum();
         // Assert
         const { 
           0: recognizedInflationWei, 
@@ -112,6 +114,17 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(startTimeStamp, nowTs.toNumber());
         assert.equal(endTimeStamp, nowTs.addn((365 * 86400) - 1).toNumber());
         await expectEvent.inTransaction(response.tx, inflation, INFLATIONRECOGNIZED_EVENT, { amountWei: recognizedInflationWei });
+        await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, 
+          {
+             recognizedInflationWei: newAnnum.recognizedInflationWei,
+             daysInAnnum: newAnnum.daysInAnnum  ,
+             startTimeStamp: newAnnum.startTimeStamp  ,
+             endTimeStamp: newAnnum.endTimeStamp  ,
+             totalAuthorizedInflationWei: newAnnum.rewardServices.totalAuthorizedInflationWei  ,
+             totalInflationTopupRequestedWei: newAnnum.rewardServices.totalInflationTopupRequestedWei  ,
+             totalInflationTopupReceivedWei: newAnnum.rewardServices.totalInflationTopupReceivedWei  ,
+             totalInflationTopupWithdrawnWei: newAnnum.rewardServices.totalInflationTopupWithdrawnWei  ,
+        });
       });
     });
 
@@ -126,11 +139,23 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await time.increaseTo(nowTs.addn((365 * 86400)));
         // Act
         const response = await mockFlareDaemon.trigger();
+        const newAnnum = await inflation.getCurrentAnnum();
         // Assert
         const {4: recognizedInflation} = await inflation.getTotals();
         // We should have twice the recognized inflation accumulated...
         assert.equal(recognizedInflation.toNumber(), inflationForAnnum * 2);
         await expectEvent.inTransaction(response.tx, inflation, INFLATIONRECOGNIZED_EVENT, { amountWei: inflationForAnnum.toString() });
+        await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, 
+          {
+             recognizedInflationWei: newAnnum.recognizedInflationWei,
+             daysInAnnum: newAnnum.daysInAnnum  ,
+             startTimeStamp: newAnnum.startTimeStamp  ,
+             endTimeStamp: newAnnum.endTimeStamp  ,
+             totalAuthorizedInflationWei: newAnnum.rewardServices.totalAuthorizedInflationWei  ,
+             totalInflationTopupRequestedWei: newAnnum.rewardServices.totalInflationTopupRequestedWei  ,
+             totalInflationTopupReceivedWei: newAnnum.rewardServices.totalInflationTopupReceivedWei  ,
+             totalInflationTopupWithdrawnWei: newAnnum.rewardServices.totalInflationTopupWithdrawnWei  ,
+        });
       });
     });
 
