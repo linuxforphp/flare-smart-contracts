@@ -117,7 +117,7 @@ async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: str
 export async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
     let currentFtsoManagerAddress = await ftsoRewardManager.ftsoManager();
     await ftsoRewardManager.setFTSOManager(deployer);
-    await ftsoRewardManager.closeExpiredRewardEpoch(rewardEpoch, rewardEpoch + 1);
+    await ftsoRewardManager.closeExpiredRewardEpoch(rewardEpoch);
     await ftsoRewardManager.setFTSOManager(currentFtsoManagerAddress);
 }
 
@@ -207,15 +207,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
             accounts[0],
-            ftsoRewardManager.address,
             accounts[7],
-            ftsoRegistry.address,
-            accounts[8],
-            PRICE_EPOCH_DURATION_S,
             startTs,
+            PRICE_EPOCH_DURATION_S,
             REVEAL_EPOCH_DURATION_S,
-            REWARD_EPOCH_DURATION_S,
             startTs.addn(REVEAL_EPOCH_DURATION_S),
+            REWARD_EPOCH_DURATION_S,
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
@@ -1689,7 +1686,6 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
 
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
-            // await mockFtsoManager.closeExpiredRewardEpochCall(0, 2);
             let rewardExpired = await ftsoRewardManager.totalExpiredWei();
             assert.equal(rewardExpired.toNumber(), 0);
 
@@ -1697,13 +1693,22 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expireRewardEpoch(0, ftsoRewardManager, accounts[0]);            
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
-            await mockFtsoManager.closeExpiredRewardEpochCall(0, 3);
             rewardExpired = await ftsoRewardManager.totalExpiredWei();
             assert.equal(rewardExpired.toNumber(), 2082);
         });
 
         it("Should only be called from ftso manager", async () => {
-            await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0, 1), "ftso manager only");
+            await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0), "ftso manager only");
+        });
+
+        it("Should only expire correct reward epoch and proceed", async () => {
+            // update ftso manager to accounts[0] to be able to call closeExpiredRewardEpoch
+            await ftsoRewardManager.setFTSOManager(accounts[0]);
+            
+            await ftsoRewardManager.closeExpiredRewardEpoch(0); // should work
+            await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0), "wrong reward epoch id");
+            await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(2), "wrong reward epoch id");
+            await ftsoRewardManager.closeExpiredRewardEpoch(1); // should work
         });
 
         // it("Should expire rewards after set time in days", async () => {

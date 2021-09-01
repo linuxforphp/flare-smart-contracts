@@ -1,7 +1,7 @@
 import { FlareDaemonInstance, 
   MockContractInstance } from "../../../typechain-truffle";
 
-import {time} from '@openzeppelin/test-helpers';
+import {constants, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 import { advanceBlock } from '../../utils/test-helpers';
@@ -63,17 +63,15 @@ const MockContract = artifacts.require("MockContract");
             const ftsoManager = await FtsoManager.new(
               accounts[1],
               flareDaemon.address,
-              rewardManagerMock.address,
               accounts[7],
-              accounts[8],
-              accounts[9],
-              60,
               startTs,
+              60,
               5,
-              600,
               startTs + 5,
+              600,
               0
             );
+            await ftsoManager.setContractAddresses(rewardManagerMock.address, accounts[8], accounts[9], constants.ZERO_ADDRESS, {from: accounts[1]});
             const fromBlock = await flareDaemon.systemLastTriggeredAt();
             await flareDaemon.registerToDaemonize([{daemonizedContract: ftsoManager.address, gasLimit: 0}], {from: GOVERNANCE_GENESIS_ADDRESS});
             // Act

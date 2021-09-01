@@ -40,4 +40,11 @@ interface IFtsoManager {
             uint256 _priceEpochDurationSeconds,
             uint256 _revealEpochDurationSeconds
         );
+
+    function getFallbackMode() external view 
+        returns (
+            bool _fallbackMode,
+            IIFtso[] memory _ftsos,
+            bool[] memory _ftsoInFallbackMode
+        );
 }

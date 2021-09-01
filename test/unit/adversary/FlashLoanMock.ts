@@ -58,6 +58,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             mockSupply = await MockSupply.new();
             ftso = await MockFtso.new(
                 "ATOK",
+                accounts[4],
                 wnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -67,7 +68,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 35
             );
             await ftso.configureEpochs( 1, 1, 1000, 10000, 500, 500, [], { from: accounts[10] });
-            await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });
+            await ftso.activateFtso(0, 120, 60, { from: accounts[10] });
             // init lender
             flashLenderMock = await FlashLenderMock.new();
             await flashLenderMock.send(LENDER_AMOUNT);

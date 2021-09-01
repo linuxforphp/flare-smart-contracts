@@ -109,6 +109,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -122,38 +123,37 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         });
 
         it("Should activate ftso", async() => {
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
             let hash = submitPriceHash(500, 123, accounts[1]);  
             let epochId = await ftso.getCurrentEpochId();          
             expectEvent(await ftso.submitPriceHash(epochId, hash, {from: accounts[1]}), "PriceHashSubmitted");
         });
 
         it("Should not activate ftso if not ftso manager", async() => {
-            await expectRevert(ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[1]}), "Access denied");
+            await expectRevert(ftso.activateFtso(0, 120, 60, {from: accounts[1]}), "Access denied");
             let hash = submitPriceHash(500, 123, accounts[1]);
             await expectRevert(ftso.submitPriceHash(epochId, hash, {from: accounts[1]}), "FTSO not active");
         });
 
         it("Should know about PriceSubmitter", async() => {
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
             expect(await ftso.priceSubmitter()).to.equals(accounts[4]);
         });
 
         it("Should not activate ftso if already activated", async() => {
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
-            await expectRevert(ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]}), "FTSO already activated");
-            await expectRevert(ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[1]}), "Access denied");
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
+            await expectRevert(ftso.activateFtso( 0, 120, 60, {from: accounts[10]}), "FTSO already activated");
+            await expectRevert(ftso.activateFtso(0, 120, 60, {from: accounts[1]}), "Access denied");
         });
 
         it("Should deactivate ftso", async() => {
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
             expect(await ftso.active()).to.be.true;
             await ftso.deactivateFtso({from: accounts[10]});
             expect(await ftso.active()).to.be.false;
         });
 
         it("Should not deactivate ftso if not ftso manager", async() => {
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
             expect(await ftso.active()).to.be.true;
             await expectRevert(ftso.deactivateFtso({from: accounts[1]}), "Access denied");
             expect(await ftso.active()).to.be.true;
@@ -166,7 +166,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should update initial price", async() => {
             await ftso.updateInitialPrice(900, 5000, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
             let data = await ftso.getCurrentPrice();
             expect(data[0].toNumber()).to.equals(900);
             expect(data[1].toNumber()).to.equals(5000);
@@ -177,7 +177,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         });
 
         it("Should not update initial price if already activated", async() => {
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
             await expectRevert(ftso.updateInitialPrice(900, 3000, {from: accounts[10]}), "FTSO already activated");
             expect((await ftso.getCurrentPrice())[0].toNumber()).to.equals(1);
         });
@@ -238,6 +238,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -251,7 +252,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             // await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.configureEpochs(50, 50, 1000, 10000, 50, 15, [], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -319,6 +320,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -331,7 +333,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -594,6 +596,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             const ftso = await Ftso.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -604,7 +607,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [], { from: accounts[10] });
             await ftso.setVotePowerBlock(10, { from: accounts[10] });
-            await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });
+            await ftso.activateFtso(0, 120, 60, { from: accounts[10] });
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -628,6 +631,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -640,7 +644,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -1077,6 +1081,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -1089,7 +1094,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -1194,6 +1199,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -1205,7 +1211,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [], { from: accounts[10] });
             await ftso.setVotePowerBlock(10, { from: accounts[10] });
-            await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });
+            await ftso.activateFtso(0, 120, 60, { from: accounts[10] });
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -1410,6 +1416,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -1422,7 +1429,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -1465,6 +1472,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should not get asset if asset is not set", async() => {
             const ftso = await MockFtsoFull.new(
                 "WNAT",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -1641,6 +1649,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should get current random for epoch 0", async() => {
             const ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -1655,7 +1664,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             // Get the timestamp for the just mined block
             let timestamp = await time.latest();
 
-            await ftso.activateFtso(accounts[4], timestamp.toNumber() + 500, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(timestamp.toNumber() + 500, 120, 60, {from: accounts[10]});
             let currentEpoch = await ftso.getCurrentEpochId();
             expect(currentEpoch.toNumber()).to.equals(0);
 
@@ -1911,8 +1920,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
         it("Should get epoch id - no underflow", async() => {
             const ftso1 = await MockFtsoFull.new(
+                "ATOK",
+                accounts[4],
                 mockWnat.address,
-                mockVpToken.address,
                 accounts[10],
                 mockSupply.address,
                 0, 0, 0, // Force init as normal FTSO with access to submit_hash
@@ -1920,14 +1930,15 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1e10,
                 defaultPriceEpochCyclicBufferSize
             );
-            await ftso1.activateFtso(accounts[4], 500, 120, 60, {from: accounts[10]});
+            await ftso1.activateFtso(500, 120, 60, {from: accounts[10]});
 
             let currentEpochId = await ftso1.getEpochId(0);
             expect(currentEpochId.toString()).to.equals('0');
 
             ftso = await MockFtsoFull.new(
+                "ATOK",
+                accounts[4],
                 mockWnat.address,
-                mockVpToken.address,
                 accounts[10],
                 mockSupply.address,
                 0, 0, 0, // Force init as normal FTSO with access to submit_hash
@@ -1935,7 +1946,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1e10,
                 defaultPriceEpochCyclicBufferSize
             );
-            await ftso.activateFtso(accounts[4], (await time.latest()).toNumber() + 500, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso((await time.latest()).toNumber() + 500, 120, 60, {from: accounts[10]});
 
             let currentEpochId1 = await ftso.getCurrentEpochId();
             expect(currentEpochId1.toString()).to.equals('0');
@@ -2404,6 +2415,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -2415,7 +2427,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[6]], { from: accounts[10] });
             await ftso.setVotePowerBlock(10, { from: accounts[10] });
-            await ftso.activateFtso(accounts[4], 0, 120, 60, { from: accounts[10] });
+            await ftso.activateFtso(0, 120, 60, { from: accounts[10] });
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();
@@ -2757,6 +2769,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockSupply = await MockSupply.new();
             ftso = await MockFtsoFull.new(
                 "WNAT",
+                accounts[4],
                 mockWnat.address,
                 accounts[10],
                 mockSupply.address,
@@ -2783,7 +2796,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await ftso.setAssetFtsos([mockFtsos[0].address, mockFtsos[1].address, mockFtsos[2].address], {from: accounts[10]});
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
             await ftso.setVotePowerBlock(10, {from: accounts[10]});
-            await ftso.activateFtso(accounts[4], 0, 120, 60, {from: accounts[10]});
+            await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
             // Force a block in order to get most up to date time
             await time.advanceBlock();

@@ -36,7 +36,8 @@ contract(`PriceSubmitter gas usage tests`, async accounts => {
             let initialBalance = toBN(await web3.eth.getBalance(account));
             console.log(initialBalance.toString());
             
-            let tx = await priceSubmitter.submitPriceHashes([index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
+            let epochId = (await ftsoManager.getCurrentPriceEpochData())[0];
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
             let gasUsed = toBN(tx.receipt.gasUsed);
             console.log(gasUsed.toString());
 
@@ -53,10 +54,10 @@ contract(`PriceSubmitter gas usage tests`, async accounts => {
             // submit price
             let hash = submitPriceHash(price, random, account);
 
-            await priceSubmitter.submitPriceHashes([index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
+            let epochId = (await ftsoManager.getCurrentPriceEpochData())[0];
+            await priceSubmitter.submitPriceHashes(epochId, [index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
 
             // wait
-            let epochId = (await ftsoManager.getCurrentPriceEpochData())[0];
             let priceEpochData = await ftsoManager.getPriceEpochConfiguration();
 
             console.log(priceEpochData[0].add((epochId.addn(1)).mul(priceEpochData[1])).add(priceEpochData[2].divn(10)).toString());
@@ -92,10 +93,10 @@ contract(`PriceSubmitter gas usage tests`, async accounts => {
             // submit price
             let hash = submitPriceHash(price, random, account);
 
-            await priceSubmitter.submitPriceHashes([index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
+            let epochId = (await ftsoManager.getCurrentPriceEpochData())[0];
+            await priceSubmitter.submitPriceHashes(epochId, [index], [hash], { from: account, gasPrice: gasPrice, gas: gas });
 
             // wait
-            let epochId = (await ftsoManager.getCurrentPriceEpochData())[0];
             let priceEpochData = await ftsoManager.getPriceEpochConfiguration();
 
             console.log(priceEpochData[0].add((epochId.addn(1)).mul(priceEpochData[1])).add(priceEpochData[2].divn(10)).toString());

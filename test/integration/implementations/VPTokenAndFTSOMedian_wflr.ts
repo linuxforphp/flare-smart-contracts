@@ -6,7 +6,7 @@ import { newContract } from "../../utils/test-helpers";
 import { TestExampleLogger } from "../../utils/TestExampleLogger";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
-import { expectRevert } from '@openzeppelin/test-helpers';
+import { constants, expectRevert } from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
 
 async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number): Promise<{ natToken: WNat; assetToken: VPTokenMock; ftso: MockFtso; }> {
@@ -19,7 +19,7 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
     let mockSupply = await createMockSupplyContract(signer.address, 1000);
 
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
-        "XASSET", natToken.address, signer.address, mockSupply.address, // symbol, address _wNat, address _ftsoManager, address _supply
+        "XASSET", constants.ZERO_ADDRESS, natToken.address, signer.address, mockSupply.address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager, address _supply
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
         1, //uint256 _initialPrice

@@ -69,6 +69,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
                     `ATOK${i}`,
+                    priceSubmitter.address,
                     mockWnat.address,
                     accounts[10],
                     mockSupply.address,
@@ -78,7 +79,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 );
                 await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
                 await ftso.setVotePowerBlock(1, {from: accounts[10]});
-                await ftso.activateFtso(priceSubmitter.address, 0, 120, 60, {from: accounts[10]});
+                await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
                 ftsos[i] = ftso;
             }

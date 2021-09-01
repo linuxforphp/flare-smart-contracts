@@ -50,6 +50,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
+            constants.ZERO_ADDRESS as any,
             0,
             1e10,
             defaultPriceEpochCyclicBufferSize
@@ -84,17 +85,17 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
-            ftsoRewardManager.address,
             mockPriceSubmitter.address,
-            ftsoRegistry.address,
-            mockVoterWhitelister.address,
-            PRICE_EPOCH_DURATION_S,
             startTs,
+            PRICE_EPOCH_DURATION_S,
             REVEAL_EPOCH_DURATION_S,
-            REWARD_EPOCH_DURATION_S,
             startTs.addn(REVEAL_EPOCH_DURATION_S),
+            REWARD_EPOCH_DURATION_S,
             VOTE_POWER_BOUNDARY_FRACTION
         );
+
+        await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, 
+            mockVoterWhitelister.address, constants.ZERO_ADDRESS, {from: accounts[0]});
         await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
         wNat = await WNAT.new(accounts[0]);

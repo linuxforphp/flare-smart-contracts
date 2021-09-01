@@ -41,7 +41,7 @@
   },
   {
     "function": "initialize for reveal for wNat ftso with 4 assets",
-    "gasUsed": 895817
+    "gasUsed": 787394
   },
   {
     "function": "submit price for single ftso",
@@ -53,19 +53,19 @@
   },
   {
     "function": "initialize for reveal for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 3910056
+    "gasUsed": 3829694
   },
   {
     "function": "submit prices for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 409950
+    "gasUsed": 409914
   },
   {
     "function": "reveal prices for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 1531455
+    "gasUsed": 1520514
   },
   {
     "function": "finalize price epoch for 50 submissions",
-    "gasUsed": 857010
+    "gasUsed": 856792
   },
   {
     "function": "finalize price epoch for 100 submissions",

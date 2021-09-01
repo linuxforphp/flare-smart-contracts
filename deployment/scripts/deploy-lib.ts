@@ -284,20 +284,17 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     flareDaemon.address,
-    ftsoRewardManager.address,
     priceSubmitter.address,
-    ftsoRegistry.address,
-    voterWhitelister.address,
-    parameters.priceEpochDurationSeconds,
     startTs,
+    parameters.priceEpochDurationSeconds,
     parameters.revealEpochDurationSeconds,
-    parameters.rewardEpochDurationSeconds,
     rewardEpochStartTs,
+    parameters.rewardEpochDurationSeconds,
     parameters.votePowerIntervalFraction);
   spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address, quiet);
 
+  await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, voterWhitelister.address, cleanupBlockNumberManager.address);
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
-  await ftsoManager.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
   await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
 
   await voterWhitelister.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: currentGovernanceAddress });
@@ -326,7 +323,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
 
   // Create a non-asset FTSO
   // Register an FTSO for WNAT
-  const ftsoWnat = await Ftso.new("WNAT", wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
+  const ftsoWnat = await Ftso.new("WNAT", priceSubmitter.address, wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO WNAT`, ftsoWnat.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -350,6 +347,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
       deployerAccount.address,
       ftsoManager,
       supply.address,
+      priceSubmitter.address,
       wnat.address,
       cleanupBlockNumberManager,
       rewrapXassetParams(parameters[asset]),
@@ -452,6 +450,7 @@ async function deployNewAsset(
   deployerAccountAddress: string,
   ftsoManager: FtsoManagerInstance,
   supplyAddress: string,
+  priceSubmitterAddress: string,
   wnatAddress: string,
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
   xAssetDefinition: AssetDefinition,
@@ -485,7 +484,7 @@ async function deployNewAsset(
   await dummyAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new Asset
-  const ftso = await Ftso.new(xAssetDefinition.symbol, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
+  const ftso = await Ftso.new(xAssetDefinition.symbol, priceSubmitterAddress, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
   await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, ftso.address, quiet);
 

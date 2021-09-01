@@ -1,4 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { constants } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 import path from "path";
 import { MockFtso, VPTokenMock, WNat } from "../../../typechain";
@@ -59,7 +60,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             let mockSupply = await createMockSupplyContract(signers[0].address, 1000);
 
             let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signers[0],
-                "XASSET", natToken.address, signers[0].address, mockSupply.address, // symbol, address _wNat, address _ftsoManager, address _supply
+                "XASSET", constants.ZERO_ADDRESS ,natToken.address, signers[0].address, mockSupply.address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager, address _supply
                 epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
                 1, //uint256 _initialPrice
