@@ -64,3 +64,6 @@ deployment/deploys/*
 
 ## Slither working files
 slither.json
+
+## Tenderly 
+deployments
