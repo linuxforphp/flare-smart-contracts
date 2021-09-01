@@ -12,6 +12,7 @@ import 'solidity-coverage';
 import "hardhat-gas-reporter"
 import "hardhat-contract-sizer";
 import 'hardhat-deploy';
+import "@tenderly/hardhat-tenderly"
 import { HardhatUserConfig } from "hardhat/config";
 const intercept = require('intercept-stdout');
 
@@ -26,12 +27,12 @@ task(TASK_COMPILE)
       if ((/Ownable.sol/.test(text) || /ERC20.sol/.test(text)) &&
         /Warning: Visibility for constructor is ignored/.test(text)) return '';
       if (text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
-      if ((/DelegatableMock.sol/.test(text)) && 
+      if ((/DelegatableMock.sol/.test(text)) &&
         /Warning: This declaration shadows an existing declaration/.test(text)) return '';
-      if (/MockContract.sol/.test(text) && 
+      if (/MockContract.sol/.test(text) &&
         /Warning: This contract has a payable fallback function, but no receive ether function/.test(text)) return '';
       if (/VPToken.sol/.test(text) &&
-        /Warning: This declaration shadows an existing declaration/.test(text) && 
+        /Warning: This declaration shadows an existing declaration/.test(text) &&
         /votePower/.test(text)) return '';
       if (/ReentrancyGuard.sol/.test(text) &&
         /Warning: Visibility for constructor is ignored/.test(text)) return '';
@@ -67,7 +68,7 @@ let accounts  = [
   //   0x0a057a7172d0466aef80976d7e8c80647dfd35e3
   //   0x68dfc526037e9030c8f813d014919cc89e7d4d74
   //   0x26c43a1d431a4e5ee86cd55ed7ef9edf3641e901
-  ...JSON.parse(fs.readFileSync('test-1020-accounts.json'))
+  ...JSON.parse(fs.readFileSync('test-1020-accounts.json')).slice(0, process.env.TENDERLY == 'true' ? 150 : 2000)
 ];
 
 const config: HardhatUserConfig = {
@@ -81,14 +82,15 @@ const config: HardhatUserConfig = {
       accounts: accounts.map((x: any) => x.privateKey)
     },
     scdev: {
-      url: "http://127.0.0.1:9660/ext/bc/C/rpc",
-      gas: 80000000,
+      url: "http://127.0.0.1:9650/ext/bc/C/rpc",
+      gas: 8000000,
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
     costonPrivateBeta: {
       url: process.env.COSTON_PRIVATE_BETA_RPC || "http://127.0.0.1:9660/ext/bc/C/rpc",
-      gas: 10000000,
+      // gas: 8000000,
+      // gasPrice: 500000000000,
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
@@ -117,25 +119,25 @@ const config: HardhatUserConfig = {
     overrides: {
       "contracts/utils/Imports.sol": {
         version: "0.6.12",
-        settings: { }
+        settings: {}
       },
       "contracts/ftso/mock/FtsoManagerMock.sol": {
         version: "0.6.12",
-        settings: { }
+        settings: {}
       },
       "contracts/inflation/mock/InflationMock.sol": {
         version: "0.6.12",
-        settings: { }
+        settings: {}
       },
       "contracts/genesis/mock/FlareDaemonMock.sol": {
         version: "0.6.12",
-        settings: { }
+        settings: {}
       },
       "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
         version: "0.6.12",
-        settings: { }
+        settings: {}
       }
-    }    
+    }
   },
 
   paths: {
@@ -154,7 +156,11 @@ const config: HardhatUserConfig = {
   gasReporter: {
     showTimeSpent: true,
     outputFile: ".gas-report.txt"
-  }  
+  },
+  tenderly: {
+    username: process.env.TENDERLY_USERNAME || "undefined",
+    project: "flare"
+  }
 };
 
 export default config;

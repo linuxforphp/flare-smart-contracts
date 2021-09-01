@@ -212,6 +212,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         return true;
     }
 
+    function switchToFallbackMode() external override onlyFlareDaemon returns (bool) {
+        if (!fallbackMode) {
+            fallbackMode = true;
+            emit FallbackMode(true);
+            return true;
+        }
+        return false;
+    }
+
      /**
      * @notice Adds FTSO to the list of rewarded FTSOs
      * All ftsos in multi asset ftso must be managed by this ftso manager
@@ -631,7 +640,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         uint256 numFtsos = _ftsos.length;
 
         // Are there any FTSOs to process?
-        if (numFtsos > 0) {
+        if (numFtsos > 0 && !fallbackMode) {
             // choose winning ftso
             uint256 chosenFtsoId;
             if (lastUnprocessedPriceEpoch == 0 || priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso == address(0)) {
@@ -682,26 +691,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                         IFtso.PriceFinalizationType.WEIGHTED_MEDIAN
                     );
                     addRevertError(address(_ftsos[id]), message);
-
-                    try _ftsos[id].averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                    } catch Error(string memory message1) {
-                        emit FinalizingPriceEpochFailed(
-                            _ftsos[id], 
-                            lastUnprocessedPriceEpoch, 
-                            IFtso.PriceFinalizationType.TRUSTED_ADDRESSES
-                        );
-                        addRevertError(address(_ftsos[id]), message1);
-
-                        try _ftsos[id].forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-                        } catch Error(string memory message2) {
-                            emit FinalizingPriceEpochFailed(
-                                _ftsos[id], 
-                                lastUnprocessedPriceEpoch, 
-                                IFtso.PriceFinalizationType.PREVIOUS_PRICE_COPIED
-                            );
-                            addRevertError(address(_ftsos[id]), message2);
-                        }
-                    }
+                    
+                    _fallbackFinalizePriceEpoch(_ftsos[id]);
                 }
             }
 
@@ -734,6 +725,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
             emit PriceEpochFinalized(rewardedFtsoAddress, currentRewardEpoch);
         } else {
+            // only for fallback mode
+            for (uint256 i = 0; i < numFtsos; i++) {
+                _fallbackFinalizePriceEpoch(_ftsos[i]);
+            }
+            
             uint256 currentRewardEpoch = getCurrentRewardEpoch();
             
             priceEpochs[lastUnprocessedPriceEpoch] = PriceEpochData({
@@ -746,6 +742,28 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         }
         
         priceEpochInitialized = false;
+    }
+    
+    function _fallbackFinalizePriceEpoch(IIFtso _ftso) internal {
+        try _ftso.averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+        } catch Error(string memory message1) {
+            emit FinalizingPriceEpochFailed(
+                _ftso, 
+                lastUnprocessedPriceEpoch, 
+                IFtso.PriceFinalizationType.TRUSTED_ADDRESSES
+            );
+            addRevertError(address(_ftso), message1);
+
+            try _ftso.forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+            } catch Error(string memory message2) {
+                emit FinalizingPriceEpochFailed(
+                    _ftso, 
+                    lastUnprocessedPriceEpoch, 
+                    IFtso.PriceFinalizationType.PREVIOUS_PRICE_COPIED
+                );
+                addRevertError(address(_ftso), message2);
+            }
+        }
     }
     
     /**

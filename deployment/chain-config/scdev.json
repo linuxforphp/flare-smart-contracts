@@ -35,6 +35,9 @@
     "ftsoRewardExpiryOffsetDays": 30,
     "dataAvailabilityRewardExpiryOffsetEpochs": 100,
     "initialWnatPriceUSD5Dec": 0,
+    "priceEpochCyclicBufferSize": 10,
+    "ftsoRewardManagerSharingPercentageBIPS": 8000,
+    "dataAvailabilityRewardManagerSharingPercentageBIPS": 2000,
     "XRP": {
         "xAssetName": "xAsset XRP",
         "xAssetSymbol": "XRP",

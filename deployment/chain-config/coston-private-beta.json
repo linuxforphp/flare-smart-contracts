@@ -9,7 +9,7 @@
     "totalNativeSupplyNAT": 100000000000,
     "totalFoundationSupplyNAT": 0,
     "inflationPercentageBIPS": 1000,
-    "rewardEpochDurationSeconds": 420,
+    "rewardEpochDurationSeconds": 540,
     "revealEpochDurationSeconds": 90,
     "priceEpochDurationSeconds": 180,
     "rewardEpochsStartDelayPriceEpochs": 3,
@@ -35,66 +35,69 @@
     "ftsoRewardExpiryOffsetDays": 30,
     "dataAvailabilityRewardExpiryOffsetEpochs": 100,
     "initialWnatPriceUSD5Dec": 0,
+    "priceEpochCyclicBufferSize": 10,
+    "ftsoRewardManagerSharingPercentageBIPS": 8000,
+    "dataAvailabilityRewardManagerSharingPercentageBIPS": 2000,
     "XRP": {
-        "assetName": "Flare asset XRP",
-        "assetSymbol": "XRP",
-        "assetDecimals": 6,
+        "xAssetName": "xAsset XRP",
+        "xAssetSymbol": "FXRP",
+        "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
     "LTC": {
-        "assetName": "Flare asset Litecoin",
-        "assetSymbol": "LTC",
-        "assetDecimals": 8,
+        "xAssetName": "xAsset Litecoin",
+        "xAssetSymbol": "FLTC",
+        "xAssetDecimals": 8,
         "dummyAssetMinterMax": 4000000000,
         "initialPriceUSD5Dec": 0
     },
     "XLM": {
-        "assetName": "Flare asset XLM (Stellar Lumen)",
-        "assetSymbol": "XLM",
-        "assetDecimals": 6,
+        "xAssetName": "xAsset XLM (Lumen)",
+        "xAssetSymbol": "FXLM",
+        "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
-    "DOGE": {
-        "assetName": "Flare asset Dogecoin",
-        "assetSymbol": "DOGE",
-        "assetDecimals": 8,
+    "XDG": {
+        "xAssetName": "xAsset Dogecoin",
+        "xAssetSymbol": "FXDG",
+        "xAssetDecimals": 8,
         "dummyAssetMinterMax": 13000000000000,
         "initialPriceUSD5Dec": 0
     },
     "ADA": {
-        "assetName": "Flare asset ADA (Cardano)",
-        "assetSymbol": "ADA",
-        "assetDecimals": 8,
+        "xAssetName": "xAsset ADA (Cardano)",
+        "xAssetSymbol": "FADA",
+        "xAssetDecimals": 8,
         "dummyAssetMinterMax": 45000000000,
         "initialPriceUSD5Dec": 0
     },
     "ALGO": {
-        "assetName": "Flare asset Algorand",
-        "assetSymbol": "ALGO",
-        "assetDecimals": 8,
+        "xAssetName": "xAsset Algorand",
+        "xAssetSymbol": "FALGO",
+        "xAssetDecimals": 8,
         "dummyAssetMinterMax": 5000000000,
         "initialPriceUSD5Dec": 0
     },
     "BCH": {
-        "assetName": "Flare asset Bitcoin Cash",
-        "assetSymbol": "BCH",
-        "assetDecimals": 8,
+        "xAssetName": "xAsset Bitcoin Cash",
+        "xAssetSymbol": "FBCH",
+        "xAssetDecimals": 8,
         "dummyAssetMinterMax": 21000000000,
         "initialPriceUSD5Dec": 0
     },
     "DGB": {
-        "assetName": "Flare asset Digibyte",
-        "assetSymbol": "DGB",
-        "assetDecimals": 8,
+        "xAssetName": "xAsset Digibyte",
+        "xAssetSymbol": "FDGB",
+        "xAssetDecimals": 8,
         "dummyAssetMinterMax": 10000000000,
         "initialPriceUSD5Dec": 0
     },
     "BTC": {
-        "assetName": "Flare asset BTC",
-        "assetSymbol": "BTC",
-        "assetDecimals": 6,
+        "xAssetName": "xAsset BTC",
+        "xAssetSymbol": "FBTC",
+        "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     }

@@ -50,7 +50,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     await flareDaemon.initialiseFixedAddress();
     mockContractToDaemonize = await MockContract.new();
     mockInflation = await InflationMock.new();
-    endlessLoop = await EndlessLoopMock.new();
+    endlessLoop = await EndlessLoopMock.new(false, false);
   });
 
   describe("register", async() => {
@@ -770,6 +770,52 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       // Assert
       expectEvent(receipt, CONTRACTDAEMONIZEERRORED_EVENT, {theContract: endlessLoop.address});
       expectEvent(receipt, CONTRACTDAEMONIZED_EVENT, {theContract: mockContractToDaemonize.address});
+    });
+
+    it("Should fallback instead of holdoff if possible", async () => {
+      // Assemble
+      const fallbackEndlessLoop = await EndlessLoopMock.new(true, false); // endless loop with fallback mode support
+      await mockContractToDaemonize.givenMethodReturnBool(daemonize, true);
+      const registrations = [
+        { daemonizedContract: fallbackEndlessLoop.address, gasLimit: 1000000 },
+        { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
+      ];
+      await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.setBlockHoldoff(5, { from: GOVERNANCE_GENESIS_ADDRESS });
+      // Act
+      const receipt1 = await flareDaemon.trigger(); // endlessLoop fails and goes to fallback
+      const receipt2 = await flareDaemon.trigger(); // both succeed (endlessLoop in fallback mode)
+      // Assert
+      expectEvent(receipt1, CONTRACTDAEMONIZEERRORED_EVENT, { theContract: fallbackEndlessLoop.address });
+      expectEvent(receipt1, CONTRACTDAEMONIZED_EVENT, { theContract: mockContractToDaemonize.address });
+      await expectEvent.inTransaction(receipt1.tx, fallbackEndlessLoop, "FallbackMode", {});
+      expectEvent(receipt2, CONTRACTDAEMONIZED_EVENT, { theContract: fallbackEndlessLoop.address });
+      expectEvent(receipt2, CONTRACTDAEMONIZED_EVENT, { theContract: mockContractToDaemonize.address });
+    });
+
+    it("If fallback also fails (due to gas), it should holdoff afterwards", async () => {
+      // Assemble
+      const fallbackEndlessLoop = await EndlessLoopMock.new(true, true); // endless loop with wrong fallback mode, that also loops
+      await mockContractToDaemonize.givenMethodReturnBool(daemonize, true);
+      const registrations = [
+        { daemonizedContract: fallbackEndlessLoop.address, gasLimit: 1000000 },
+        { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
+      ];
+      await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.setBlockHoldoff(5, { from: GOVERNANCE_GENESIS_ADDRESS });
+      // Act
+      const receipt1 = await flareDaemon.trigger(); // endlessLoop fails and goes to fallback
+      const receipt2 = await flareDaemon.trigger(); // both succeed (endlessLoop in fallback mode)
+      // Assert
+      expectEvent(receipt1, CONTRACTDAEMONIZEERRORED_EVENT, { theContract: fallbackEndlessLoop.address });
+      expectEvent(receipt1, CONTRACTDAEMONIZED_EVENT, { theContract: mockContractToDaemonize.address });
+      await expectEvent.inTransaction(receipt1.tx, fallbackEndlessLoop, "FallbackMode", {});
+      expectEvent(receipt2, CONTRACTDAEMONIZEERRORED_EVENT, { theContract: fallbackEndlessLoop.address });
+      expectEvent(receipt2, CONTRACTDAEMONIZED_EVENT, { theContract: mockContractToDaemonize.address });
+      const { 2: holdoffRemaining } = await flareDaemon.getDaemonizedContractsData();
+      assert.equal(holdoffRemaining[0].toNumber(), 5);
     });
 
     it("Should set holdoff", async() => {

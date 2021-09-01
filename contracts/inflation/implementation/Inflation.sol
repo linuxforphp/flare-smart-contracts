@@ -67,6 +67,16 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
     event RewardServiceTopupRequestReceived(IIInflationReceiver inflationReceiver, uint256 amountWei);
     event SupplySet(IISupply oldSupply, IISupply newSupply);
     event TopupConfigurationSet(TopupConfiguration topupConfiguration);
+    event NewAnnumInitialized(
+        uint256 recognizedInflationWei,
+        uint16 daysInAnnum,
+        uint256 startTimeStamp,
+        uint256 endTimeStamp,
+        uint256 totalAuthorizedInflationWei,
+        uint256 totalInflationTopupRequestedWei,
+        uint256 totalInflationTopupReceivedWei,
+        uint256 totalInflationTopupWithdrawnWei
+    );
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -298,6 +308,16 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
                 inflationPercentageProvider.getAnnualPercentageBips()
             );
             InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+            emit NewAnnumInitialized(
+                inflationAnnum.recognizedInflationWei, 
+                inflationAnnum.daysInAnnum, 
+                inflationAnnum.startTimeStamp,
+                inflationAnnum.endTimeStamp,
+                inflationAnnum.rewardServices.totalAuthorizedInflationWei,
+                inflationAnnum.rewardServices.totalInflationTopupRequestedWei,
+                inflationAnnum.rewardServices.totalInflationTopupReceivedWei,
+                inflationAnnum.rewardServices.totalInflationTopupWithdrawnWei
+            );
             emit InflationRecognized(inflationAnnum.recognizedInflationWei);
         }
 
@@ -311,6 +331,16 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
                 inflationPercentageProvider.getAnnualPercentageBips()
             );
             InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+            emit NewAnnumInitialized(
+                inflationAnnum.recognizedInflationWei, 
+                inflationAnnum.daysInAnnum, 
+                inflationAnnum.startTimeStamp,
+                inflationAnnum.endTimeStamp,
+                inflationAnnum.rewardServices.totalAuthorizedInflationWei,
+                inflationAnnum.rewardServices.totalInflationTopupRequestedWei,
+                inflationAnnum.rewardServices.totalInflationTopupReceivedWei,
+                inflationAnnum.rewardServices.totalInflationTopupWithdrawnWei
+            );
             emit InflationRecognized(inflationAnnum.recognizedInflationWei);
         }
 
@@ -341,7 +371,12 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
         }
         return true;
     }
-
+    
+    function switchToFallbackMode() external view override onlyFlareDaemon returns (bool) {
+        // do nothing - there is no fallback mode in Inflation
+        return false;
+    }
+    
     /**
      * @notice Compute the expected balance of this contract.
      * @param _balanceExpectedWei   The computed balance expected.

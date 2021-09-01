@@ -69,7 +69,7 @@ contract FlareDaemon is GovernedAtGenesis {
     // By how much can the maximum be increased (as a percentage of the previous maximum)
     uint256 internal constant MAX_MINTING_REQUEST_INCREASE_PERCENT = 110;
     // upper estimate of gas needed after error occurs in call to daemonizedContract.daemonize()
-    uint256 internal constant MIN_GAS_LEFT_AFTER_DAEMONIZE = 250000;
+    uint256 internal constant MIN_GAS_LEFT_AFTER_DAEMONIZE = 300000;
     // lower estimate for gas needed for daemonize() call in trigger
     uint256 internal constant MIN_GAS_FOR_DAEMONIZE_CALL = 5000;
 
@@ -454,16 +454,26 @@ contract FlareDaemon is GovernedAtGenesis {
                 // Catch all requires with messages
                 } catch Error(string memory message) {
                     addDaemonizeError(address(daemonizedContract), message);
+                    daemonizedContract.switchToFallbackMode();
                 // Catch everything else...out of gas, div by zero, asserts, etc.
                 } catch {
                     uint256 endGas = gasleft();
                     // Interpret out of gas errors
                     if (gasLimit > 0 && startGas.sub(endGas) >= gasLimit) {
-                        blockHoldoffsRemaining[daemonizedContract] = blockHoldoff;
                         addDaemonizeError(address(daemonizedContract), ERR_OUT_OF_GAS);
+                        // When daemonize() fails with out-of-gas, try to fix it in two steps:
+                        // 1) try to switch contract to fallback mode
+                        //    (to allow the contract's daemonize() to recover in fallback mode in next block)
+                        // 2) if constract is already in fallback mode or fallback mode is not supported
+                        //    (switchToFallbackMode() returns false), start the holdoff for this contract
+                        bool switchedToFallback = daemonizedContract.switchToFallbackMode();
+                        if (!switchedToFallback) {
+                            blockHoldoffsRemaining[daemonizedContract] = blockHoldoff;
+                        }
                     } else {
                         // Don't know error cause...just log it as unknown
                         addDaemonizeError(address(daemonizedContract), "unknown");
+                        daemonizedContract.switchToFallbackMode();
                     }
                 }
             }
