@@ -342,6 +342,21 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       assert.equal(totalDaemonizedErrors2.toNumber(), 2);
     });
 
+    it("Should shorten error to 64 chars to make gas usage predictable", async () => {
+      // Assemble
+      await mockContractToDaemonize.givenMethodRevertWithMessage(daemonize, "This is a very long error message that should be shortened to fit into 64 character limit");
+      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
+      await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
+
+      // Act
+      let tx = await flareDaemon.trigger();
+      const { 2: errorStringArr } = await flareDaemon.showLastDaemonizedError();
+
+      // Assert
+      assert.equal(errorStringArr[0], "This is a very long error message that should be shortened to fi");
+    });
+
     it("Should show last daemonized error data for two strings", async() => {
       // Assemble
       const mockDaemonizedContract = await MockContract.new();
