@@ -62,7 +62,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     }
 
     async function createFtso(symbol: string, initialPrice: BN) {
-        const ftso = await Ftso.new(symbol, wnat.address, ftsoManager, supplyMock.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, priceSubmitter.address, wnat.address, ftsoManager, supplyMock.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // add ftso to price submitter and whitelist
         const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -70,7 +70,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         const trustedVoters = accounts.slice(101, 101 + 10);
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
-        await ftso.activateFtso(priceSubmitter.address, 0, epochDurationSec, revealDurationSec, { from: ftsoManager });
+        await ftso.activateFtso(0, epochDurationSec, revealDurationSec, { from: ftsoManager });
         return ftso;
     }
 

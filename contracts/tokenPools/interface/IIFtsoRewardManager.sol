@@ -12,7 +12,7 @@ interface IIFtsoRewardManager is IFtsoRewardManager {
 
     function activate() external;
     function deactivate() external;
-    function closeExpiredRewardEpoch(uint256 _rewardEpochId, uint256 _currentRewardEpoch) external;
+    function closeExpiredRewardEpoch(uint256 _rewardEpochId) external;
     function setFTSOManager(IIFtsoManager _ftsoManager) external;
     function setWNAT(WNat _wNat) external;
 

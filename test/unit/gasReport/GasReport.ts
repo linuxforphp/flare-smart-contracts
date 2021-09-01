@@ -60,7 +60,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   let ftsoRewardManager: FtsoRewardManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, wNat.address, ftsoManager, supplyInterface.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager, supplyInterface.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
     await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -68,7 +68,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
     // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
     const trustedVoters = accounts.slice(101, 101 + 10);
     await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
-    await ftso.activateFtso(priceSubmitter.address, 0, epochDurationSec, revealDurationSec, { from: ftsoManager });
+    await ftso.activateFtso(0, epochDurationSec, revealDurationSec, { from: ftsoManager });
     return ftso;
   }
 
@@ -285,7 +285,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
         await ftso.setAsset(assets[i].address, { from: ftsoManager });
         ftsos.push(ftso);
       }
-      await natFtso.setAssetFtsos(ftsos.slice(0,5).map(f => f.address), { from: ftsoManager });
+      await natFtso.setAssetFtsos(ftsos.slice(0,4).map(f => f.address), { from: ftsoManager });
     });
 
     it("Should test gas to initialize for reveal for one ftso", async () => {

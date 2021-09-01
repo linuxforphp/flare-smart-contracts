@@ -351,27 +351,18 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     }
     
     /**
-     * @notice Collects funds from expired reward epochs and totals.
+     * @notice Collects funds from expired reward epoch and totals.
      * @dev Triggered by ftsoManager on finalization of a reward epoch.
      * Operation is irreversible: when some reward epoch is closed according to current
      * settings of parameters, it cannot be reopened even if new parameters would 
-     * allow it since nextRewardEpochToExpire never decreases.
+     * allow it since nextRewardEpochToExpire in ftsoManager never decreases.
      */
-    function closeExpiredRewardEpoch(
-        uint256 _rewardEpoch, uint256 _currentRewardEpoch
-    )
-        external override
-        onlyFtsoManager
-    {
-        uint256 expiredRewards = 0;
-        while (nextRewardEpochToExpire < _currentRewardEpoch && nextRewardEpochToExpire <= _rewardEpoch) {
-            expiredRewards += 
-                totalRewardEpochRewards[nextRewardEpochToExpire] - 
-                claimedRewardEpochRewards[nextRewardEpochToExpire];
-            emit RewardClaimsExpired(nextRewardEpochToExpire);
-            nextRewardEpochToExpire++;
-        }
-        totalExpiredWei = totalExpiredWei.add(expiredRewards);
+    function closeExpiredRewardEpoch(uint256 _rewardEpoch) external override onlyFtsoManager {
+        require(nextRewardEpochToExpire == _rewardEpoch, "wrong reward epoch id");
+        uint256 expiredWei = totalRewardEpochRewards[_rewardEpoch] - claimedRewardEpochRewards[_rewardEpoch];
+        totalExpiredWei = totalExpiredWei.add(expiredWei);
+        emit RewardClaimsExpired(_rewardEpoch);
+        nextRewardEpochToExpire = _rewardEpoch + 1;
     }
 
     /**

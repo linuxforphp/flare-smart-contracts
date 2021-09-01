@@ -173,5 +173,6 @@ gas-report:
     <<: *yarn-setup
     script:
         - yarn c
-        - env TEST_PATH=./test/unit/gasReport yarn hardhat test --network hardhat
+        - yarn hardhat test --network hardhat test/unit/gasReport/GasReport.ts
+#        - env TEST_PATH=./test/unit/gasReport yarn hardhat test --network hardhat
 #        - yarn gas-report-check

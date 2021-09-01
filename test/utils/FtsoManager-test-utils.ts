@@ -61,7 +61,7 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
     let mockSupply = await createMockSupplyContract(accounts[0], 10000);
     
     let ftso1 = await Ftso.new(
-        "FA1", natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
+        "FA1", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
@@ -71,7 +71,7 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
     await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
 
     let ftso2 = await Ftso.new(
-        "FA2", natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
+        "FA2", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
@@ -102,7 +102,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     let mockSupply = await createMockSupplyContract(accounts[0], 10000);
     
     let ftso1 = await Ftso.new(
-        natContract ? "NAT" : "FA1", natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
+        natContract ? "NAT" : "FA1", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
@@ -114,7 +114,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     }
 
     let ftso2 = await Ftso.new(
-        "FA2", natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
+        "FA2", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
@@ -124,7 +124,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
     let ftso3 = await Ftso.new(
-        "FA3", natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
+        "FA3", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
@@ -134,7 +134,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     await ftsoManager.setFtsoAsset(ftso3.address, xasset3Token.address);
 
     let ftso4 = await Ftso.new(
-        "FA4", natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
+        "FA4", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, mockSupply.address,  // _symbol, address _wNat, address _ftsoManager, address _suppy,
         0, // uint256 _startTimestamp // do not init/activate
         0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
         0, //uint256 _initialPrice
