@@ -212,7 +212,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             VOTE_POWER_BOUNDARY_FRACTION
         );
 
-        wNat = await WNAT.new(accounts[0]);
+        wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
         await setDefaultVPContract(wNat, accounts[0]);
 
         await ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, wNat.address);

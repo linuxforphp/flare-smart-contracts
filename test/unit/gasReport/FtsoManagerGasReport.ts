@@ -262,7 +262,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       await ftsoManager.activate({ from: governance });
       
       // create wNat
-      wNat = await WNat.new(governance);
+      wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
 
       // set contract addresses

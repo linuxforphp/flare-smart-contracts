@@ -300,7 +300,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await priceSubmitter.setContractAddresses(ftsoRegistry.address, voterWhitelister.address, ftsoManager.address, { from: currentGovernanceAddress });
 
   // Deploy wrapped native token
-  const wnat = await WNAT.new(deployerAccount.address);
+  const wnat = await WNAT.new(deployerAccount.address, parameters.wrappedNativeName, parameters.wrappedNativeSymbol);
   spewNewContractInfo(contracts, WNAT.contractName, wnat.address, quiet);
 
   await setDefaultVPContract(wnat, deployerAccount.address);

@@ -42,7 +42,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
 
             // Contract deployment
-            let natToken: WNat = await newContract<WNat>("WNat", signers[0], signers[0].address);
+            let natToken: WNat = await newContract<WNat>("WNat", signers[0], signers[0].address, "Wrapped NAT", "WNAT");
             await setDefaultVPContract_ethers(natToken, signers[0]);
             for (let i = 0; i < testExample.weightsNat.length; i++) {
                 await natToken.connect(signers[i]).depositTo(signers[i].address, {value: testExample.weightsNat[i]})
@@ -75,4 +75,3 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
         });
     });
 });
-

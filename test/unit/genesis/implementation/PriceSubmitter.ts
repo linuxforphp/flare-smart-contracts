@@ -52,7 +52,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
             ftsos = [];
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             mockSupply = await MockSupply.new();
