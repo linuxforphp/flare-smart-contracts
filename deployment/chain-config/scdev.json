@@ -131,14 +131,6 @@
             "xAssetSymbol": "xFIL",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
-        },
-        {
-            "assetSymbol": "NAT",
-            "assetDecimals": 18,
-            "xAssetName": "not relevant",
-            "xAssetSymbol": "not relevant",
-            "dummyAssetMinterMax": 10000000000,
-            "initialPriceUSD5Dec": 0
         }
     ]
 }

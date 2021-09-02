@@ -9,7 +9,7 @@
     "governancePrivateKey": "<use .env: GOVERNANCE_PRIVATE_KEY>",
     "burnAddress": "0x0000000000000000000000000000000000000000",
     "totalNativeSupplyNAT": 100000000000,
-    "totalFoundationSupplyNAT": 0,
+    "totalFoundationSupplyNAT": 15000000000,
     "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [800,  600],
     "inflationTopUpType": 0,
@@ -47,80 +47,80 @@
         {
             "assetSymbol": "XRP",
             "assetDecimals": 6,
-            "xAssetName": "xAsset XRP",
-            "xAssetSymbol": "fXRP",            
+            "xAssetName": "sAsset XRP",
+            "xAssetSymbol": "sXRP",            
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "LTC",
             "assetDecimals": 8,
-            "xAssetName": "xAsset Litecoin",
-            "xAssetSymbol": "fLTC",            
+            "xAssetName": "sAsset Litecoin",
+            "xAssetSymbol": "sLTC",            
             "dummyAssetMinterMax": 4000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "XLM",
             "assetDecimals": 6,
-            "xAssetName": "xAsset XLM (Lumen)",
-            "xAssetSymbol": "fXLM",            
+            "xAssetName": "sAsset XLM (Lumen)",
+            "xAssetSymbol": "sXLM",            
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "DOGE",
             "assetDecimals": 8,
-            "xAssetName": "xAsset Dogecoin",
-            "xAssetSymbol": "fDOGE",            
+            "xAssetName": "sAsset Dogecoin",
+            "xAssetSymbol": "sDOGE",            
             "dummyAssetMinterMax": 13000000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ADA",
             "assetDecimals": 8,
-            "xAssetName": "xAsset ADA (Cardano)",
-            "xAssetSymbol": "fADA",            
+            "xAssetName": "sAsset ADA (Cardano)",
+            "xAssetSymbol": "sADA",            
             "dummyAssetMinterMax": 45000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ALGO",
             "assetDecimals": 8,
-            "xAssetName": "xAsset Algorand",
-            "xAssetSymbol": "fALGO",         
+            "xAssetName": "sAsset Algorand",
+            "xAssetSymbol": "sALGO",         
             "dummyAssetMinterMax": 5000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "BCH",
             "assetDecimals": 8,
-            "xAssetName": "xAsset Bitcoin Cash",
-            "xAssetSymbol": "fBCH",            
+            "xAssetName": "sAsset Bitcoin Cash",
+            "xAssetSymbol": "sBCH",            
             "dummyAssetMinterMax": 21000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "DGB",
             "assetDecimals": 8,
-            "xAssetName": "xAsset Digibyte",
-            "xAssetSymbol": "fDGB",         
+            "xAssetName": "sAsset Digibyte",
+            "xAssetSymbol": "sDGB",         
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "BTC",
             "assetDecimals": 6,
-            "xAssetName": "xAsset BTC",
-            "xAssetSymbol": "fBTC",            
+            "xAssetName": "sAsset BTC",
+            "xAssetSymbol": "sBTC",            
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ETH",
             "assetDecimals": 18,
-            "xAssetName": "xAsset ETH",
-            "xAssetSymbol": "fETH",            
+            "xAssetName": "sAsset ETH",
+            "xAssetSymbol": "sETH",            
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
@@ -128,15 +128,7 @@
             "assetSymbol": "FIL",
             "assetDecimals": 18,
             "xAssetName": "xAsset FIL",
-            "xAssetSymbol": "fFIL",            
-            "dummyAssetMinterMax": 10000000000,
-            "initialPriceUSD5Dec": 0
-        },
-        {
-            "assetSymbol": "SGB",
-            "assetDecimals": 18,
-            "xAssetName": "xAsset SGB",
-            "xAssetSymbol": "sSGB",            
+            "xAssetSymbol": "sFIL",            
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         }
