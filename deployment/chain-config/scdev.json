@@ -129,6 +129,14 @@
             "xAssetDecimals": 18,
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "SGB",
+            "xAssetName": "xAsset SGB",
+            "xAssetSymbol": "sSGB",
+            "xAssetDecimals": 18,
+            "dummyAssetMinterMax": 10000000000,
+            "initialPriceUSD5Dec": 0
         }
     ]
 }

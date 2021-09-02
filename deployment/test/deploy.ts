@@ -19,6 +19,10 @@ const BN = web3.utils.toBN;
 function capitalizeFirstLetter(st: string) {
   return st.charAt(0).toUpperCase() + st.slice(1).toLocaleLowerCase();
 }
+let realNetworkDeploy = false;
+if (process.env.REAL_NETWORK) {
+  realNetworkDeploy = process.env.REAL_NETWORK === "true"
+}
 
 async function findDaemonizedContract(contracts: Contracts, address: string): Promise<boolean> {
   const FlareDaemon = artifacts.require("FlareDaemon");
@@ -299,22 +303,24 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  for(let asset of parameters.assets){
-    describe(`Dummy${asset.xAssetSymbol}minter`, async () => {
-      it("Should mint ", async () => {
-        // Assemble
-        const DummyAssetMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
-        const dummyAssetMinter = await DummyAssetMinter.at(contracts.getContractAddress(`Dummy${asset.xAssetSymbol}minter`));
-        const FAsset = artifacts.require("AssetToken") as AssetTokenContract;
-        const fAsset = await FAsset.at(contracts.getContractAddress(asset.xAssetSymbol));
-        const openingBalance = await fAsset.balanceOf(accounts[1])
-        // Act
-        await waitFinalize3(accounts[0], () => dummyAssetMinter.mintRequest(10, accounts[1], constants.ZERO_ADDRESS));
-        // Assert
-        const balance = await fAsset.balanceOf(accounts[1])
-        assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
+  if (!realNetworkDeploy){
+    for(let asset of parameters.assets){
+      describe(`Dummy${asset.xAssetSymbol}minter`, async () => {
+        it("Should mint ", async () => {
+          // Assemble
+          const DummyAssetMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
+          const dummyAssetMinter = await DummyAssetMinter.at(contracts.getContractAddress(`Dummy${asset.xAssetSymbol}minter`));
+          const FAsset = artifacts.require("AssetToken") as AssetTokenContract;
+          const fAsset = await FAsset.at(contracts.getContractAddress(asset.xAssetSymbol));
+          const openingBalance = await fAsset.balanceOf(accounts[1])
+          // Act
+          await waitFinalize3(accounts[0], () => dummyAssetMinter.mintRequest(10, accounts[1], constants.ZERO_ADDRESS));
+          // Assert
+          const balance = await fAsset.balanceOf(accounts[1])
+          assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
+        });
       });
-    });
+    }
   }
 
   describe(Contracts.FTSO_WNAT, async () => {
@@ -349,6 +355,16 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assert
       assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     });
+
+    for(let asset of ["XRP", "LTC", "DOGE"]){ 
+      it(`Should know about ${asset} Asset FTSO`, async () => {
+        // Assemble
+        // Act
+        const found = await findAssetFtso(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset)}`));
+      // Assert
+      assert(found);
+      });
+    }
 
     it("Should know about XRP Asset FTSO", async () => {
       // Assemble
@@ -411,32 +427,34 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   }
 
-  for(let asset of parameters.assets){
-    describe(`${asset.xAssetSymbol}`, async () => {
-      let FAsset: AssetTokenContract;
-      let fAsset: AssetTokenInstance;
-  
-      beforeEach(async () => {
-        FAsset = artifacts.require("AssetToken");
-        fAsset = await FAsset.at(contracts.getContractAddress(`${asset.xAssetSymbol}`));
+  if (!realNetworkDeploy){
+    for(let asset of parameters.assets){
+      describe(`${asset.xAssetSymbol}`, async () => {
+        let FAsset: AssetTokenContract;
+        let fAsset: AssetTokenInstance;
+    
+        beforeEach(async () => {
+          FAsset = artifacts.require("AssetToken");
+          fAsset = await FAsset.at(contracts.getContractAddress(`${asset.xAssetSymbol}`));
+        });
+    
+        it("Should be an asset representing XRP", async () => {
+          // Assemble
+          // Act
+          const symbol = await fAsset.symbol();
+          // Assert
+          assert.equal(symbol, asset.xAssetSymbol);
+        });
+    
+        it("Should represent XRP decimals correctly", async () => {
+          // Assemble
+          // Act
+          const decimals = await fAsset.decimals();
+          // Assert
+          assert.equal(decimals.toNumber(), asset.xAssetDecimals);
+        });
       });
-  
-      it("Should be an asset representing XRP", async () => {
-        // Assemble
-        // Act
-        const symbol = await fAsset.symbol();
-        // Assert
-        assert.equal(symbol, asset.xAssetSymbol);
-      });
-  
-      it("Should represent XRP decimals correctly", async () => {
-        // Assemble
-        // Act
-        const decimals = await fAsset.decimals();
-        // Assert
-        assert.equal(decimals.toNumber(), asset.xAssetDecimals);
-      });
-    });
+    }
   }
 
   describe(Contracts.FTSO_MANAGER, async () => {
