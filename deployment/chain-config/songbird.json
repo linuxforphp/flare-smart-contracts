@@ -41,81 +41,94 @@
     "priceEpochCyclicBufferSize": 10,
     "inflationReceivers" : ["FtsoRewardManager"],
     "inflationSharingBIPS": [10000],
-    "XRP": {
-        "xAssetName": "xAsset XRP",
-        "xAssetSymbol": "XRP",
-        "xAssetDecimals": 6,
-        "dummyAssetMinterMax": 7000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "LTC": {
-        "xAssetName": "xAsset Litecoin",
-        "xAssetSymbol": "LTC",
-        "xAssetDecimals": 8,
-        "dummyAssetMinterMax": 4000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "XLM": {
-        "xAssetName": "xAsset XLM (Lumen)",
-        "xAssetSymbol": "XLM",
-        "xAssetDecimals": 6,
-        "dummyAssetMinterMax": 7000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "DOGE": {
-        "xAssetName": "xAsset Dogecoin",
-        "xAssetSymbol": "DOGE",
-        "xAssetDecimals": 8,
-        "dummyAssetMinterMax": 13000000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "ADA": {
-        "xAssetName": "xAsset ADA (Cardano)",
-        "xAssetSymbol": "ADA",
-        "xAssetDecimals": 8,
-        "dummyAssetMinterMax": 45000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "ALGO": {
-        "xAssetName": "xAsset Algorand",
-        "xAssetSymbol": "ALGO",
-        "xAssetDecimals": 8,
-        "dummyAssetMinterMax": 5000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "BCH": {
-        "xAssetName": "xAsset Bitcoin Cash",
-        "xAssetSymbol": "BCH",
-        "xAssetDecimals": 8,
-        "dummyAssetMinterMax": 21000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "DGB": {
-        "xAssetName": "xAsset Digibyte",
-        "xAssetSymbol": "DGB",
-        "xAssetDecimals": 8,
-        "dummyAssetMinterMax": 10000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "BTC": {
-        "xAssetName": "xAsset BTC",
-        "xAssetSymbol": "BTC",
-        "xAssetDecimals": 6,
-        "dummyAssetMinterMax": 7000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "ETH": {
-        "xAssetName": "xAsset ETH",
-        "xAssetSymbol": "ETH",
-        "xAssetDecimals": 18,
-        "dummyAssetMinterMax": 10000000000,
-        "initialPriceUSD5Dec": 0
-    },
-    "FIL": {
-        "xAssetName": "xAsset FIL",
-        "xAssetSymbol": "FIL",
-        "xAssetDecimals": 18,
-        "dummyAssetMinterMax": 10000000000,
-        "initialPriceUSD5Dec": 0
-    }
+    "assets": [
+        {
+            "assetSymbol": "XRP",
+            "xAssetName": "xAsset XRP",
+            "xAssetSymbol": "sXRP",
+            "xAssetDecimals": 6,
+            "dummyAssetMinterMax": 7000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "LTC",
+            "xAssetName": "xAsset Litecoin",
+            "xAssetSymbol": "sLTC",
+            "xAssetDecimals": 8,
+            "dummyAssetMinterMax": 4000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "XLM",
+            "xAssetName": "xAsset XLM (Lumen)",
+            "xAssetSymbol": "sXLM",
+            "xAssetDecimals": 6,
+            "dummyAssetMinterMax": 7000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "DOGE",
+            "xAssetName": "xAsset Dogecoin",
+            "xAssetSymbol": "sDOGE",
+            "xAssetDecimals": 8,
+            "dummyAssetMinterMax": 13000000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "ADA",
+            "xAssetName": "xAsset ADA (Cardano)",
+            "xAssetSymbol": "sADA",
+            "xAssetDecimals": 8,
+            "dummyAssetMinterMax": 45000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "ALGO",
+            "xAssetName": "xAsset Algorand",
+            "xAssetSymbol": "sALGO",
+            "xAssetDecimals": 8,
+            "dummyAssetMinterMax": 5000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "BCH",
+            "xAssetName": "xAsset Bitcoin Cash",
+            "xAssetSymbol": "sBCH",
+            "xAssetDecimals": 8,
+            "dummyAssetMinterMax": 21000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "DGB",
+            "xAssetName": "xAsset Digibyte",
+            "xAssetSymbol": "sDGB",
+            "xAssetDecimals": 8,
+            "dummyAssetMinterMax": 10000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "BTC",
+            "xAssetName": "xAsset BTC",
+            "xAssetSymbol": "sBTC",
+            "xAssetDecimals": 6,
+            "dummyAssetMinterMax": 7000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "ETH",
+            "xAssetName": "xAsset ETH",
+            "xAssetSymbol": "sETH",
+            "xAssetDecimals": 18,
+            "dummyAssetMinterMax": 10000000000,
+            "initialPriceUSD5Dec": 0
+        },
+        {
+            "assetSymbol": "FIL",
+            "xAssetName": "xAsset FIL",
+            "xAssetSymbol": "sFIL",
+            "xAssetDecimals": 18,
+            "dummyAssetMinterMax": 10000000000,
+            "initialPriceUSD5Dec": 0
+        }
+    ]
 }

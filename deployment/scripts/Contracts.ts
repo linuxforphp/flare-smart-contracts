@@ -17,6 +17,8 @@ export class Contracts {
   private contracts: Map<string, string>;
   private collection: Contract[];
 
+  private static WRAP_SYMBOL = "F";
+  private static WRAP_SYMBOL_MINT = "";
   public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";
@@ -28,27 +30,27 @@ export class Contracts {
   public static readonly VOTER_WHITELISTER = "VoterWhitelister";
   public static readonly FLARE_DAEMON = "FlareDaemon";
   public static readonly WNAT = "WNat";
-  public static readonly XRP = "Xrp";
-  public static readonly DUMMY_XRP_MINTER = "DummyXrpMinter";
-  public static readonly FTSO_XRP = "FtsoXrp";
-  public static readonly LTC = "Ltc";
-  public static readonly DUMMY_LTC_MINTER = "DummyLtcMinter";
-  public static readonly FTSO_LTC = "FtsoLtc";
-  public static readonly DOGE = "Doge";
-  public static readonly DUMMY_DOGE_MINTER = "DummyDogeMinter";
-  public static readonly FTSO_DOGE = "FtsoDoge";
   public static readonly FTSO_WNAT = "FtsoWnat";
-  public static readonly ADA = "Ada";
-  public static readonly DUMMY_ADA_MINTER = "DummyAdaMinter";
+  public static readonly XRP = `${Contracts.WRAP_SYMBOL}Xrp` 
+  public static readonly DUMMY_XRP_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}XrpMinter`;
+  public static readonly FTSO_XRP = "FtsoXrp";
+  public static readonly LTC = `${Contracts.WRAP_SYMBOL}Ltc`;
+  public static readonly DUMMY_LTC_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}LtcMinter`;
+  public static readonly FTSO_LTC = "FtsoLtc";
+  public static readonly DOGE = `${Contracts.WRAP_SYMBOL}Doge`;
+  public static readonly DUMMY_DOGE_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}DogeMinter`;
+  public static readonly FTSO_DOGE = "FtsoDoge"; 
+  public static readonly ADA = `${Contracts.WRAP_SYMBOL}Ada`;
+  public static readonly DUMMY_ADA_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}AdaMinter`;
   public static readonly FTSO_ADA = "FtsoAda";
-  public static readonly ALGO = "Algo";
-  public static readonly DUMMY_ALGO_MINTER = "DummyAlgoMinter";
+  public static readonly ALGO = `${Contracts.WRAP_SYMBOL}Algo`;
+  public static readonly DUMMY_ALGO_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}AlgoMinter`;
   public static readonly FTSO_ALGO = "FtsoAlgo";
-  public static readonly BCH = "Bch";
-  public static readonly DUMMY_BCH_MINTER = "DummyBchMinter";
+  public static readonly BCH = `${Contracts.WRAP_SYMBOL}Bch`;
+  public static readonly DUMMY_BCH_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}BchMinter`;
   public static readonly FTSO_BCH = "FtsoBch";
-  public static readonly DGB = "Dgb";
-  public static readonly DUMMY_DGB_MINTER = "DummyDgbMinter";
+  public static readonly DGB = `${Contracts.WRAP_SYMBOL}Dgb`;
+  public static readonly DUMMY_DGB_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}DgbMinter`;
   public static readonly FTSO_DGB = "FtsoDgb";
 
   constructor() {

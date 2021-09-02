@@ -26,6 +26,7 @@ import { Contract, Contracts } from "./Contracts";
 export interface AssetDefinition {
   name: string;
   symbol: string;
+  wSymbol: string;
   decimals: number;
   maxMintRequestTwei: number;
   initialPriceUSD5Dec: number;
@@ -346,11 +347,11 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
   })
 
   // Deploy asset, minter, and initial FTSOs 
-  let assets = ['XRP', 'LTC', 'XLM', 'DOGE', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
+  // let assets = ['XRP', 'LTC', 'XLM', 'DOGE', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
 
-  for (let asset of assets) {
+  for (let asset of parameters.assets) {
     if (!quiet) {
-      console.error(`Rigging ${asset}... ${realNetDeploy}`);
+      console.error(`Rigging ${asset.assetSymbol}... ${realNetDeploy}`);
     }
 
     let assetContracts = await deployNewAsset(
@@ -360,14 +361,14 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
       supply.address,
       wnat.address,
       cleanupBlockNumberManager,
-      rewrapXassetParams(parameters[asset]),
+      rewrapXassetParams(asset),
       parameters.priceDeviationThresholdBIPS,
       parameters.priceEpochCyclicBufferSize,
       realNetDeploy,
       quiet, 
     );
-    assetToContracts.set(asset, {
-      assetSymbol: asset,
+    assetToContracts.set(asset.assetSymbol, {
+      assetSymbol: asset.assetSymbol,
       ...assetContracts
     });
   }
@@ -391,17 +392,17 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
     console.error("Adding FTSOs to manager...");
   }
 
-  for (let asset of ['NAT', ...assets]) {
-    let ftsoContract = (assetToContracts.get(asset) as AssetContracts).ftso;
+  for (let asset of [{assetSymbol: 'NAT'}, ...parameters.assets]) {
+    let ftsoContract = (assetToContracts.get(asset.assetSymbol) as AssetContracts).ftso;
     await waitFinalize3(deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
   }
 
   let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
 
   // Set initial number of voters
-  for (let asset of ['NAT', ...assets]) {
+  for (let asset of [{assetSymbol: 'NAT'}, ...parameters.assets])  {
 
-    const assetContract = assetToContracts.get(asset)!;
+    const assetContract = assetToContracts.get(asset.assetSymbol)!;
     const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
     await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, { from: currentGovernanceAddress });
   }
@@ -451,7 +452,7 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,
     ftsoRegistry: ftsoRegistry,
-    ftsoContracts: ["WNAT", ...assets].map(asset => assetToContracts.get(asset))
+    ftsoContracts: [{xAssetSymbol: 'WNAT'}, ...parameters.assets].map(asset => assetToContracts.get(asset.xAssetSymbol))
     // Add other contracts as needed and fix the interface above accordingly
   } as DeployedFlareContracts;
 }
@@ -487,16 +488,16 @@ async function deployNewAsset(
 
   // Deploy Asset if we are not deploying on real network
   if(!real){
-    const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.symbol, xAssetDefinition.decimals);
+    const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.wSymbol, xAssetDefinition.decimals);
     await setDefaultVPContract(xAssetToken, deployerAccountAddress);
-    spewNewContractInfo(contracts, xAssetDefinition.symbol, `AssetToken.sol`, xAssetToken.address, quiet);
+    spewNewContractInfo(contracts, xAssetDefinition.wSymbol, `AssetToken.sol`, xAssetToken.address, quiet);
 
     await cleanupBlockNumberManager.registerToken(xAssetToken.address);
     await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
 
     // Deploy dummy Asset minter
     const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
-    spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.symbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet);
+    spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.wSymbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet);
 
     // Establish governance over Asset by minter
     await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
@@ -521,7 +522,8 @@ function spewNewContractInfo(contracts: Contracts, name: string, contractName: s
 function rewrapXassetParams(data: any): AssetDefinition {
   return {
     name: data.xAssetName,
-    symbol: data.xAssetSymbol,
+    symbol: data.assetSymbol,
+    wSymbol: data.xAssetSymbol,
     decimals: data.xAssetDecimals,
     maxMintRequestTwei: data.dummyAssetMinterMax,
     initialPriceUSD5Dec: data.initialPriceUSD5Dec

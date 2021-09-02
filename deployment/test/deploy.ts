@@ -723,7 +723,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await fxrp.symbol();
       // Assert
-      assert.equal(symbol, parameters.XRP.xAssetSymbol);
+      assert.equal(symbol, parameters.XRP.assetSymbol);
     });
 
     it("Should represent XRP decimals correctly", async () => {
@@ -749,7 +749,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await fltc.symbol();
       // Assert
-      assert.equal(symbol, parameters.LTC.xAssetSymbol);
+      assert.equal(symbol, parameters.LTC.assetSymbol);
     });
 
     it("Should represent LTC decimals correctly", async () => {
@@ -775,7 +775,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await fxdg.symbol();
       // Assert
-      assert.equal(symbol, parameters.DOGE.xAssetSymbol);
+      assert.equal(symbol, parameters.DOGE.assetSymbol);
     });
 
     it("Should represent DOGE decimals correctly", async () => {
@@ -801,7 +801,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await fada.symbol();
       // Assert
-      assert.equal(symbol, parameters.ADA.xAssetSymbol);
+      assert.equal(symbol, parameters.ADA.assetSymbol);
     });
 
     it("Should represent ADA decimals correctly", async () => {
@@ -827,7 +827,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await falgo.symbol();
       // Assert
-      assert.equal(symbol, parameters.ALGO.xAssetSymbol);
+      assert.equal(symbol, parameters.ALGO.assetSymbol);
     });
 
     it("Should represent ALGO decimals correctly", async () => {
@@ -853,7 +853,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await fbch.symbol();
       // Assert
-      assert.equal(symbol, parameters.BCH.xAssetSymbol);
+      assert.equal(symbol, parameters.BCH.assetSymbol);
     });
 
     it("Should represent BCH decimals correctly", async () => {
@@ -879,7 +879,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Act
       const symbol = await fdgb.symbol();
       // Assert
-      assert.equal(symbol, parameters.DGB.xAssetSymbol);
+      assert.equal(symbol, parameters.DGB.assetSymbol);
     });
 
     it("Should represent DGB decimals correctly", async () => {
