@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { MockFtso, VPTokenMock, WNat } from "../../../typechain";
-import { checkTestCase, createMockSupplyContract, finalizePriceEpochWithResult, getWeightRatio, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
+import { checkTestCase, finalizePriceEpochWithResult, getWeightRatio, moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart, prettyPrintEpochResult, prettyPrintVoteInfo, resultsFromTestData, revealPrice, submitPrice, TestCase, TestExample, testFTSOMedian2, toEpochResult, updateWithRewardedVotesInfo } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { TestExampleLogger } from "../../utils/TestExampleLogger";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
@@ -16,10 +16,8 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, signer.address, "xAsset", "XASSET");
     await setDefaultVPContract_ethers(assetToken, signer);
 
-    let mockSupply = await createMockSupplyContract(signer.address, 1000);
-
     let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signer,
-        "XASSET", constants.ZERO_ADDRESS, natToken.address, signer.address, mockSupply.address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager, address _supply
+        "XASSET", constants.ZERO_ADDRESS, natToken.address, signer.address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
         1, //uint256 _initialPrice
@@ -182,7 +180,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let epoch = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         await submitPrice(epoch, signers, ftso, prices);
 
-        await ftso.initializeCurrentEpochStateForReveal(false);
+        await ftso.initializeCurrentEpochStateForReveal(1000, false);
 
         logger.log(`REVEAL PRICE 5`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -249,7 +247,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let epoch = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         await submitPrice(epoch, signers, ftso, testExample.prices);
 
-        await ftso.initializeCurrentEpochStateForReveal(false);
+        await ftso.initializeCurrentEpochStateForReveal(1000, false);
 
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -281,7 +279,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         // Test results
         checkTestCase(testCase);
 
-        await ftso.initializeCurrentEpochStateForReveal(false);
+        await ftso.initializeCurrentEpochStateForReveal(1000, false);
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);
@@ -346,7 +344,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         let epoch = await moveFromCurrentToNextEpochStart(epochStartTimestamp, epochPeriod);
         await submitPrice(epoch, signers, ftso, testExample.prices);
         
-        await ftso.initializeCurrentEpochStateForReveal(false);
+        await ftso.initializeCurrentEpochStateForReveal(1000, false);
 
         logger.log(`REVEAL PRICE 1 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch);
@@ -393,7 +391,7 @@ describe("VPToken and FTSO contract - integration tests - wnat", () => {
         // Test results
         checkTestCase(testCase);
 
-        await ftso.initializeCurrentEpochStateForReveal(false);
+        await ftso.initializeCurrentEpochStateForReveal(1000, false);
 
         logger.log(`REVEAL PRICE 2 - 10`)
         await moveToRevealStart(epochStartTimestamp, epochPeriod, epoch+1);

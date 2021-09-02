@@ -56,7 +56,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let ftsoManager: FtsoManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager.address, supplyInterface.address, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager.address, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
     await ftsoManager.addFtso(ftso.address, { from: governance });
     return ftso;
   }
@@ -229,12 +229,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       ftsoRewardManager = await FtsoRewardManager.new(
         governance,
         3,
-        0,
-        inflation
+        0
       );
 
-      // set the daily authorized inflation...this proxies call to ftso reward manager
-      await ftsoRewardManager.setDailyAuthorizedInflation(1000000, { from: inflation });
       // create supply
       supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, inflation, 10_000, 0, []);
       // create registry
@@ -258,20 +255,25 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       );
       
       await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, 
-        whitelist.address, constants.ZERO_ADDRESS, {from: governance});
+        whitelist.address, supplyInterface.address, constants.ZERO_ADDRESS, {from: governance});
       
       const trustedVoters = accounts.slice(101, 101 + 5);
       await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });
       await ftsoManager.activate({ from: governance });
+      
+      // create wNat
+      wNat = await WNat.new(governance);
+      await setDefaultVPContract(wNat, governance);
 
       // set contract addresses
       await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, { from: governance });
       await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: governance });
       await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager.address, { from: governance });
+      await ftsoRewardManager.setContractAddresses(inflation, ftsoManager.address, wNat.address, { from: governance });
+      await ftsoRewardManager.activate({ from: governance });
       
-      // create wNat
-      wNat = await WNat.new(governance);
-      await setDefaultVPContract(wNat, governance);
+      // set the daily authorized inflation...this proxies call to ftso reward manager
+      await ftsoRewardManager.setDailyAuthorizedInflation(1000000, { from: inflation });
     });
 
     it("Ftso manager daemonize calls for wNat ftso with 4 assets + 4 ftsos (100 voters, random prices)", async () => {

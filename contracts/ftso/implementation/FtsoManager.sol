@@ -9,6 +9,7 @@ import "../../genesis/implementation/FlareDaemon.sol";
 import "../../genesis/interface/IFlareDaemonize.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
+import "../../inflation/interface/IISupply.sol";
 import "../../tokenPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
@@ -85,6 +86,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     IIFtsoRewardManager public rewardManager;
     IIFtsoRegistry public ftsoRegistry;
     IIVoterWhitelister public voterWhitelister;
+    IISupply public supply;
     CleanupBlockNumberManager public cleanupBlockNumberManager;
 
     // indicates if lastUnprocessedPriceEpoch is initialized for reveal
@@ -142,6 +144,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         IIFtsoRewardManager _rewardManager,
         IIFtsoRegistry _ftsoRegistry,
         IIVoterWhitelister _voterWhitelister,
+        IISupply _supply,
         CleanupBlockNumberManager _cleanupBlockNumberManager
     )
         external
@@ -150,6 +153,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         rewardManager = _rewardManager;
         ftsoRegistry = _ftsoRegistry;
         voterWhitelister = _voterWhitelister;
+        supply = _supply;
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
     
@@ -558,10 +562,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         // @dev when considering block boundary for vote power block:
         // - if far from now, it doesn't reflect last vote power changes
         // - if too small, possible loan attacks.     
-        // IMPORTANT: currentRewardEpoch is actually the one just geting finalized!
+        // IMPORTANT: currentRewardEpoch is actually the one just getting finalized!
         uint256 votepowerBlockBoundary = 
             (block.number - rewardEpochs[getCurrentRewardEpoch()].startBlock) / votePowerIntervalFraction;
-        // additional notice: votePowerIntervalFraction > 0
+        // note: votePowerIntervalFraction > 0
  
         if (votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
@@ -715,8 +719,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                     priceEpochDurationSeconds,
                     currentRewardEpoch,
                     _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1, // actual end time (included)
-                    rewardEpochs[currentRewardEpoch].votepowerBlock)
-                {
+                    rewardEpochs[currentRewardEpoch].votepowerBlock) {
                 } catch Error(string memory message) {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
                     addRevertError(address(this), message);
@@ -730,11 +733,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             for (uint256 i = 0; i < numFtsos; i++) {
                 _fallbackFinalizePriceEpoch(ftsos[i]);
             }
-            
-            uint256 currentRewardEpoch = getCurrentRewardEpoch();
 
             lastRewardedFtsoAddress = address(0);
-            emit PriceEpochFinalized(address(0), currentRewardEpoch);
+            emit PriceEpochFinalized(address(0), getCurrentRewardEpoch());
         }
         
         priceEpochInitialized = false;
@@ -774,6 +775,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
         IIFtso[] memory ftsos = _getFtsos();
         uint256 numFtsos = ftsos.length;
+
+        // circulating supply is used only when ftso is not in fallback mode
+        uint256 circulatingSupplyNat;
+        if (numFtsos > 0 && !fallbackMode) {
+            uint256 votePowerBlock = rewardEpochs[rewardEpochs.length - 1].votepowerBlock;
+            circulatingSupplyNat = supply.getCirculatingSupplyAtCached(votePowerBlock);
+        }
         for (uint256 i = 0; i < numFtsos; i++) {
             IIFtso ftso = ftsos[i];
             if (settings.changed) {
@@ -788,7 +796,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 );
             }
 
-            try ftso.initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[ftso]) {
+            try ftso.initializeCurrentEpochStateForReveal(
+                circulatingSupplyNat,
+                fallbackMode || ftsoInFallbackMode[ftso]) {
             } catch Error(string memory message) {
                 emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
                 addRevertError(address(this), message);

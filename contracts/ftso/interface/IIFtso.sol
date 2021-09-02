@@ -58,7 +58,7 @@ interface IIFtso is IFtso, IFtsoGenesis {
     // reward manager only can set this data. 
     function setVotePowerBlock(uint256 _blockNumber) external;
 
-    function initializeCurrentEpochStateForReveal(bool _fallbackMode) external;
+    function initializeCurrentEpochStateForReveal(uint256 _circulatingSupplyNat, bool _fallbackMode) external;
   
     /**
      * @notice Returns the FTSO asset

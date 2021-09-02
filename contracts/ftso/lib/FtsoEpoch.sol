@@ -73,6 +73,7 @@ library FtsoEpoch {
      * @notice Initializes a new epoch instance for reveal with instance specific settings
      * @param _state                    Epoch state
      * @param _instance                 Epoch instance
+     * @param _circulatingSupplyNat     Epoch native token circulating supply
      * @param _votePowerNat             Epoch native token vote power
      * @param _assets                   List of assets
      * @param _assetVotePowers          List of asset vote powers

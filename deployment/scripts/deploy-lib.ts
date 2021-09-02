@@ -236,8 +236,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     parameters.rewardFeePercentageUpdateOffsetEpochs,
-    parameters.defaultRewardFeePercentageBIPS,
-    inflation.address);
+    parameters.defaultRewardFeePercentageBIPS);
   spewNewContractInfo(contracts, FtsoRewardManager.contractName, ftsoRewardManager.address, quiet);
 
   // DataAvailabilityRewardManager contract
@@ -293,22 +292,12 @@ export async function fullDeploy(parameters: any, quiet = false) {
     parameters.votePowerIntervalFraction);
   spewNewContractInfo(contracts, FtsoManager.contractName, ftsoManager.address, quiet);
 
-  await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, voterWhitelister.address, cleanupBlockNumberManager.address);
+  await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, voterWhitelister.address, supply.address, cleanupBlockNumberManager.address);
   await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address);
   await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
 
   await voterWhitelister.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: currentGovernanceAddress });
   await priceSubmitter.setContractAddresses(ftsoRegistry.address, voterWhitelister.address, ftsoManager.address, { from: currentGovernanceAddress });
-
-  // Tell reward manager about ftso manager
-  await ftsoRewardManager.setFTSOManager(ftsoManager.address);
-
-  // Register daemonized contracts to the daemon...order matters. Inflation first.
-  const registrations = [
-    { daemonizedContract: inflation.address, gasLimit: 10000000 },
-    { daemonizedContract: ftsoManager.address, gasLimit: 10000000 }
-  ];
-  await flareDaemon.registerToDaemonize(registrations);
 
   // Deploy wrapped native token
   const wnat = await WNAT.new(deployerAccount.address);
@@ -318,12 +307,20 @@ export async function fullDeploy(parameters: any, quiet = false) {
   await cleanupBlockNumberManager.registerToken(wnat.address);
   await wnat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address)
 
+  // Tell reward manager about contracts
+  await ftsoRewardManager.setContractAddresses(inflation.address, ftsoManager.address, wnat.address);
 
-  await ftsoRewardManager.setWNAT(wnat.address);
+  // Register daemonized contracts to the daemon...order matters. Inflation first.
+  // Can only be registered after all inflation receivers know about inflation
+  const registrations = [
+    { daemonizedContract: inflation.address, gasLimit: 10000000 },
+    { daemonizedContract: ftsoManager.address, gasLimit: 10000000 }
+  ];
+  await flareDaemon.registerToDaemonize(registrations);
 
   // Create a non-asset FTSO
   // Register an FTSO for WNAT
-  const ftsoWnat = await Ftso.new("WNAT", priceSubmitter.address, wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
+  const ftsoWnat = await Ftso.new("WNAT", priceSubmitter.address, wnat.address, ftsoManager.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO WNAT`, ftsoWnat.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -346,7 +343,6 @@ export async function fullDeploy(parameters: any, quiet = false) {
       contracts,
       deployerAccount.address,
       ftsoManager,
-      supply.address,
       priceSubmitter.address,
       wnat.address,
       cleanupBlockNumberManager,
@@ -383,16 +379,6 @@ export async function fullDeploy(parameters: any, quiet = false) {
   for (let asset of ['NAT', ...assets]) {
     let ftsoContract = (assetToContracts.get(asset) as AssetContracts).ftso;
     await waitFinalize3(deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
-  }
-
-  let registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
-
-  // Set initial number of voters
-  for (let asset of ['NAT', ...assets]) {
-
-    const assetContract = assetToContracts.get(asset)!;
-    const ftsoIndex = await registry.getFtsoIndex(await assetContract.ftso.symbol());
-    await voterWhitelister.setMaxVotersForFtso(ftsoIndex, 100, { from: currentGovernanceAddress });
   }
 
   // Set FTSOs to multi Asset WNAT contract
@@ -440,7 +426,7 @@ export async function fullDeploy(parameters: any, quiet = false) {
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,
     ftsoRegistry: ftsoRegistry,
-    ftsoContracts: ["WNAT", ...assets].map(asset => assetToContracts.get(asset))
+    ftsoContracts: ["NAT", ...assets].map(asset => assetToContracts.get(asset))
     // Add other contracts as needed and fix the interface above accordingly
   } as DeployedFlareContracts;
 }
@@ -449,7 +435,6 @@ async function deployNewAsset(
   contracts: Contracts,
   deployerAccountAddress: string,
   ftsoManager: FtsoManagerInstance,
-  supplyAddress: string,
   priceSubmitterAddress: string,
   wnatAddress: string,
   cleanupBlockNumberManager: CleanupBlockNumberManagerInstance,
@@ -484,7 +469,7 @@ async function deployNewAsset(
   await dummyAssetMinter.claimGovernanceOverMintableToken();
 
   // Register an FTSO for the new Asset
-  const ftso = await Ftso.new(xAssetDefinition.symbol, priceSubmitterAddress, wnatAddress, ftsoManager.address, supplyAddress, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
+  const ftso = await Ftso.new(xAssetDefinition.symbol, priceSubmitterAddress, wnatAddress, ftsoManager.address, xAssetDefinition.initialPriceUSD5Dec, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
   await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
   spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, ftso.address, quiet);
 

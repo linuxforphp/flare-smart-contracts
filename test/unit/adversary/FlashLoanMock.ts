@@ -1,8 +1,7 @@
-import { soliditySha3Raw as soliditySha3 } from "web3-utils";
-import { FlashLenderMockInstance, FlashLoanMockInstance, MockFtsoInstance, MockContractInstance, SupplyInstance, VotingFlashLoanMockInstance, VPTokenInstance, WNatInstance } from "../../../typechain-truffle";
+import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { FlashLenderMockInstance, FlashLoanMockInstance, MockFtsoInstance, VotingFlashLoanMockInstance, VPTokenInstance, WNatInstance } from "../../../typechain-truffle";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const { getTestFile } = require('../../utils/constants');
 
 const FlashLenderMock = artifacts.require("FlashLenderMock");
@@ -33,8 +32,6 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
     let votingFlashLoanMock: VotingFlashLoanMockInstance;
     let wnat: WNatInstance;
     let vpToken: VPTokenInstance;
-    let mockSupply: MockContractInstance;
-    let supplyInterface: SupplyInstance;
     let ftso: MockFtsoInstance;
     let epochId: number;
     
@@ -51,17 +48,16 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
     });
 
     describe("vote with real native tokens", async () => {
+        const accountAmount = toBN(3).mul(AMOUNT);
+
         beforeEach(async () => {
             wnat = await Wnat.new(accounts[0]);
             await setDefaultVPContract(wnat, accounts[0]);
-            supplyInterface = await Supply.new(accounts[0], constants.ZERO_ADDRESS, accounts[0], 1000, 0, []);
-            mockSupply = await MockSupply.new();
             ftso = await MockFtso.new(
                 "ATOK",
                 accounts[4],
                 wnat.address,
                 accounts[10],
-                mockSupply.address,
                 0, 0, 0,    // special mock settings, not needed here
                 1,
                 1e10,
@@ -74,13 +70,8 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             await flashLenderMock.send(LENDER_AMOUNT);
             await time.advanceBlock();
             // give dummy user wnats to create vote threshold
-            const accountAmount = toBN(3).mul(AMOUNT);
             await flashLenderMock.donateTo(accounts[1], accountAmount);
             await wnat.deposit({ from: accounts[1], value: accountAmount });  // mint wnat for contract
-
-            const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(0).encodeABI();
-            const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', accountAmount);
-            await mockSupply.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
         });
 
         it("Should be able to vote with donated native tokens", async () => {
@@ -101,7 +92,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             await flashLoanMock.submitPriceHash(epochId, 380, 234);
             // reveal epoch
-            await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
+            await ftso.initializeCurrentEpochStateForReveal(accountAmount, false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // reveals
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }), 
@@ -145,7 +136,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
                 "PriceHashSubmitted", { submitter: accounts[1], epochId: toBN(epochId) });
             await flashLoanMock.submitPriceHash(epochId, 380, 234);
             // reveal epoch
-            await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
+            await ftso.initializeCurrentEpochStateForReveal(accountAmount, false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // reveals
             expectEvent(await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] }),
@@ -183,7 +174,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
             lastBlock = await web3.eth.getBlockNumber();
             await ftso.setVotePowerBlock(lastBlock, { from: accounts[10] });    // in the past - ok
             // start reveal
-            await ftso.initializeCurrentEpochStateForReveal(false, { from: accounts[10] });
+            await ftso.initializeCurrentEpochStateForReveal(accountAmount, false, { from: accounts[10] });
             await increaseTimeTo((epochId + 1) * 120, 'web3'); // reveal period start
             // take loan and vote
 

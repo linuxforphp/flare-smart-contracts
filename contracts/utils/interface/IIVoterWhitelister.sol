@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IFtsoRegistry.sol";
 import "../../userInterfaces/IVoterWhitelister.sol";
 
 
@@ -18,12 +17,6 @@ interface IIVoterWhitelister is IVoterWhitelister {
      * Only governance can call this method.
      */
     function setDefaultMaxVotersForFtso(uint256 _defaultMaxVotersForFtso) external;
-
-    /**
-     * Sets ftsoRegistry and ftsoManager addresses.
-     * Only governance can call this method.
-     */
-    function setContractAddresses(IFtsoRegistry _ftsoRegistry, address _ftsoManager) external;
 
     /**
      * Create whitelist with default size for ftso.

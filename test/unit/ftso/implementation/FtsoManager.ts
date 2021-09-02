@@ -22,6 +22,7 @@ import { compareArrays, doBNListsMatch, lastOf, numberedKeyedObjectToList, toBN 
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
+import { createMockSupplyContract } from "../../../utils/FTSO-test-utils";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -59,6 +60,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
     let ftsoRegistry: FtsoRegistryInstance;
     let mockPriceSubmitter: MockContractInstance;
     let mockVoterWhitelister: MockContractInstance;
+    let mockSupply: MockContractInstance;
 
     async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance){        
         const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
@@ -71,7 +73,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         mockFtso = await MockFtso.new();
         ftsoInterface = await Ftso.new(
             "NAT",
-            constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
@@ -91,8 +92,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         ftsoRewardManagerInterface = await FtsoRewardManager.new(
             accounts[0],
             3,
-            0,
-            (await MockContract.new()).address
+            0
         );
 
         ftsoRegistry = await FtsoRegistry.new(accounts[0]);
@@ -107,6 +107,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             0
         )
         mockVoterWhitelister = await MockContract.new();
+
+        mockSupply = await createMockSupplyContract(accounts[0], 10000);
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
@@ -123,7 +125,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0]);
 
         await ftsoManager.setContractAddresses(mockRewardManager.address, ftsoRegistry.address, 
-            mockVoterWhitelister.address, cleanupBlockNumberManager.address, {from: accounts[0]});
+            mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address, {from: accounts[0]});
 
         await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
@@ -402,7 +404,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             );
 
             await ftsoManager.setContractAddresses(mockRewardManager.address, ftsoRegistry.address, 
-                mockVoterWhitelister.address, cleanupBlockNumberManager.address, {from: accounts[0]});
+                mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address, {from: accounts[0]});
             
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
@@ -646,7 +648,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should successfully replace an FTSO and change asset ftso", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
-            let multiFtso = await Ftso.new('NAT', mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address, constants.ZERO_ADDRESS, 0, 1e10, defaultPriceEpochCyclicBufferSize);
+            let multiFtso = await Ftso.new('NAT', mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address, 0, 1e10, defaultPriceEpochCyclicBufferSize);
             await ftsoManager.addFtso(multiFtso.address);
             await ftsoManager.addFtso(mockFtso.address);
             await ftsoManager.setFtsoAssetFtsos(multiFtso.address, [mockFtso.address]);
@@ -1061,7 +1063,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should emit event if initialize price epoch fails and catches reverted error", async () => {
             // Assemble
             // stub ftso initialize
-            const initializePriceEpoch = ftsoInterface.contract.methods.initializeCurrentEpochStateForReveal(false).encodeABI();
+            const initializePriceEpoch = ftsoInterface.contract.methods.initializeCurrentEpochStateForReveal(1000, false).encodeABI();
             await mockFtso.givenMethodRevertWithMessage(initializePriceEpoch,"I am broken");
 
             await setDefaultGovernanceParameters(ftsoManager);
@@ -1724,7 +1726,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             );
             
             await ftsoManager.setContractAddresses(mockRewardManager.address, ftsoRegistry.address, 
-                mockVoterWhitelister.address, cleanupBlockNumberManager.address, {from: accounts[0]});
+                mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address, {from: accounts[0]});
 
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 

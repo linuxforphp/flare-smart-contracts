@@ -37,38 +37,38 @@
   },
   {
     "function": "initialize for reveal for single ftso",
-    "gasUsed": 382112
+    "gasUsed": 349642
   },
   {
     "function": "initialize for reveal for wNat ftso with 4 assets",
-    "gasUsed": 787394
+    "gasUsed": 754924
   },
   {
     "function": "submit price for single ftso",
-    "gasUsed": 78216
+    "gasUsed": 76094
   },
   {
     "function": "reveal price for single ftso",
-    "gasUsed": 213298
+    "gasUsed": 211220
   },
   {
     "function": "initialize for reveal for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 3829694
+    "gasUsed": 3753520
   },
   {
     "function": "submit prices for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 409914
+    "gasUsed": 390852
   },
   {
     "function": "reveal prices for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 1520514
+    "gasUsed": 1501648
   },
   {
     "function": "finalize price epoch for 50 submissions",
-    "gasUsed": 856792
+    "gasUsed": 857010
   },
   {
     "function": "finalize price epoch for 100 submissions",
-    "gasUsed": 2474386
+    "gasUsed": 2474822
   }
 ]
