@@ -27,7 +27,7 @@ if (process.env.REAL_NETWORK) {
 async function findDaemonizedContract(contracts: Contracts, address: string): Promise<boolean> {
   const FlareDaemon = artifacts.require("FlareDaemon");
   const flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
-  const {0: daemonizedContracts} = await flareDaemon.getDaemonizedContractsData();
+  const { 0: daemonizedContracts } = await flareDaemon.getDaemonizedContractsData();
   return daemonizedContracts && daemonizedContracts.indexOf(address) >= 0
 }
 
@@ -159,7 +159,7 @@ contract(`deploy.ts system tests`, async accounts => {
       assert(systemLastTriggeredAt.toNumber() > 0);
     });
 
-    it("Should be daemonizing inflation contract", async() => {
+    it("Should be daemonizing inflation contract", async () => {
       // Assemble
       // Act
       const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.INFLATION));
@@ -167,7 +167,7 @@ contract(`deploy.ts system tests`, async accounts => {
       assert(found);
     });
 
-    it("Should be daemonizing ftso manager", async() => {
+    it("Should be daemonizing ftso manager", async () => {
       // Assemble
       // Act
       const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.FTSO_MANAGER));
@@ -250,7 +250,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assert
       if (rewardEpochStartTs.lt(startTs)) {
         const { 0: recognizedInflationWei } = await inflation.getCurrentAnnum() as any;
-        assert(BN(recognizedInflationWei).gt(BN(0)));  
+        assert(BN(recognizedInflationWei).gt(BN(0)));
       }
     });
 
@@ -303,8 +303,8 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  if (!realNetworkDeploy){
-    for(let asset of parameters.assets){
+  if (!realNetworkDeploy) {
+    for (let asset of parameters.assets) {
       describe(`Dummy${asset.xAssetSymbol}minter`, async () => {
         it("Should mint ", async () => {
           // Assemble
@@ -356,13 +356,13 @@ contract(`deploy.ts system tests`, async accounts => {
       assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     });
 
-    for(let asset of ["XRP", "LTC", "DOGE"]){ 
+    for (let asset of ["XRP", "LTC", "DOGE"]) {
       it(`Should know about ${asset} Asset FTSO`, async () => {
         // Assemble
         // Act
         const found = await findAssetFtso(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset)}`));
-      // Assert
-      assert(found);
+        // Assert
+        assert(found);
       });
     }
 
@@ -391,24 +391,28 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  for(let asset of parameters.assets){
-    describe(`Ftso${asset.assetSymbol}`, async () => {
+  for (let asset of [{assetSymbol: "WNAT"}, ...parameters.assets]) {
+    describe(pascalCase(`FTSO ${asset.assetSymbol}`), async () => {
       let FtsoAsset: FtsoContract;
       let ftsoAsset: FtsoInstance;
-  
+
       beforeEach(async () => {
-        FtsoAsset = artifacts.require("Ftso");        
+        FtsoAsset = artifacts.require("Ftso");
         ftsoAsset = await FtsoAsset.at(contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
       });
-  
+
       it(`Should be on oracle for ${asset.assetSymbol}`, async () => {
         // Assemble
         // Act
         const address = await ftsoAsset.getAsset();
         // Assert
-        assert.equal(address, contracts.getContractAddress(asset.xAssetSymbol));
+        if (process.env.REAL_NETWORK === 'true') {
+          assert.equal(address, constants.ZERO_ADDRESS);
+        } else {
+          assert.equal(address, contracts.getContractAddress(pascalCase(`FTSO ${asset.assetSymbol}`)));
+        }
       });
-  
+
       it("Should be managed", async () => {
         // Assemble
         // Act
@@ -416,7 +420,7 @@ contract(`deploy.ts system tests`, async accounts => {
         // Assert 
         assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
       });
-  
+
       it("Should know about PriceSubmitter", async () => {
         // Assemble
         // Act
@@ -427,17 +431,17 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   }
 
-  if (!realNetworkDeploy){
-    for(let asset of parameters.assets){
+  if (!realNetworkDeploy) {
+    for (let asset of parameters.assets) {
       describe(`${asset.xAssetSymbol}`, async () => {
         let FAsset: AssetTokenContract;
         let fAsset: AssetTokenInstance;
-    
+
         beforeEach(async () => {
           FAsset = artifacts.require("AssetToken");
           fAsset = await FAsset.at(contracts.getContractAddress(`${asset.xAssetSymbol}`));
         });
-    
+
         it("Should be an asset representing XRP", async () => {
           // Assemble
           // Act
@@ -445,7 +449,7 @@ contract(`deploy.ts system tests`, async accounts => {
           // Assert
           assert.equal(symbol, asset.xAssetSymbol);
         });
-    
+
         it("Should represent XRP decimals correctly", async () => {
           // Assemble
           // Act
@@ -466,7 +470,7 @@ contract(`deploy.ts system tests`, async accounts => {
       ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    for(let asset of parameters.assets){ 
+    for (let asset of parameters.assets) {
       it(`Should be managing an ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act
