@@ -490,14 +490,14 @@ async function deployNewAsset(
   if(!real){
     const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.wSymbol, xAssetDefinition.decimals);
     await setDefaultVPContract(xAssetToken, deployerAccountAddress);
-    spewNewContractInfo(contracts, xAssetDefinition.wSymbol, `AssetToken.sol`, xAssetToken.address, quiet);
+    spewNewContractInfo(contracts, xAssetDefinition.wSymbol, `AssetToken.sol`, xAssetToken.address, quiet, false);
 
     await cleanupBlockNumberManager.registerToken(xAssetToken.address);
     await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
 
     // Deploy dummy Asset minter
     const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
-    spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.wSymbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet);
+    spewNewContractInfo(contracts, `Dummy ${xAssetDefinition.wSymbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet, false);
 
     // Establish governance over Asset by minter
     await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
@@ -512,11 +512,16 @@ async function deployNewAsset(
   
 }
 
-function spewNewContractInfo(contracts: Contracts, name: string, contractName: string, address: string, quiet = false) {
+function spewNewContractInfo(contracts: Contracts, name: string, contractName: string, address: string, quiet = false, pascal=true) {
   if (!quiet) {
     console.error(`${name} contract: `, address);
   }
-  contracts.add(new Contract(pascalCase(name), contractName, address));
+  if(pascal){
+    contracts.add(new Contract(pascalCase(name), contractName, address));
+  }
+  else {
+    contracts.add(new Contract(name.replace(/\s/g, ""), contractName, address));
+  }
 }
 
 function rewrapXassetParams(data: any): AssetDefinition {
