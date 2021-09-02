@@ -43,63 +43,63 @@
     "XRP": {
         "xAssetName": "xAsset XRP",
         "xAssetSymbol": "FXRP",
-        "xAssetDecimals": 6,
+        "assetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
     "LTC": {
         "xAssetName": "xAsset Litecoin",
         "xAssetSymbol": "FLTC",
-        "xAssetDecimals": 8,
+        "assetDecimals": 8,
         "dummyAssetMinterMax": 4000000000,
         "initialPriceUSD5Dec": 0
     },
     "XLM": {
         "xAssetName": "xAsset XLM (Lumen)",
         "xAssetSymbol": "FXLM",
-        "xAssetDecimals": 6,
+        "assetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     },
     "XDG": {
         "xAssetName": "xAsset Dogecoin",
         "xAssetSymbol": "FXDG",
-        "xAssetDecimals": 8,
+        "assetDecimals": 8,
         "dummyAssetMinterMax": 13000000000000,
         "initialPriceUSD5Dec": 0
     },
     "ADA": {
         "xAssetName": "xAsset ADA (Cardano)",
         "xAssetSymbol": "FADA",
-        "xAssetDecimals": 8,
+        "assetDecimals": 8,
         "dummyAssetMinterMax": 45000000000,
         "initialPriceUSD5Dec": 0
     },
     "ALGO": {
         "xAssetName": "xAsset Algorand",
         "xAssetSymbol": "FALGO",
-        "xAssetDecimals": 8,
+        "assetDecimals": 8,
         "dummyAssetMinterMax": 5000000000,
         "initialPriceUSD5Dec": 0
     },
     "BCH": {
         "xAssetName": "xAsset Bitcoin Cash",
         "xAssetSymbol": "FBCH",
-        "xAssetDecimals": 8,
+        "assetDecimals": 8,
         "dummyAssetMinterMax": 21000000000,
         "initialPriceUSD5Dec": 0
     },
     "DGB": {
         "xAssetName": "xAsset Digibyte",
         "xAssetSymbol": "FDGB",
-        "xAssetDecimals": 8,
+        "assetDecimals": 8,
         "dummyAssetMinterMax": 10000000000,
         "initialPriceUSD5Dec": 0
     },
     "BTC": {
         "xAssetName": "xAsset BTC",
         "xAssetSymbol": "FBTC",
-        "xAssetDecimals": 6,
+        "assetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
         "initialPriceUSD5Dec": 0
     }

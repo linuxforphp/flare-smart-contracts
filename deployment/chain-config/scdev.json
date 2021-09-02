@@ -46,97 +46,97 @@
     "assets": [
         {
             "assetSymbol": "XRP",
+            "assetDecimals": 6,
             "xAssetName": "xAsset XRP",
-            "xAssetSymbol": "fXRP",
-            "xAssetDecimals": 6,
+            "xAssetSymbol": "xXRP",
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "LTC",
+            "assetDecimals": 8,
             "xAssetName": "xAsset Litecoin",
-            "xAssetSymbol": "fLTC",
-            "xAssetDecimals": 8,
+            "xAssetSymbol": "xLTC",
             "dummyAssetMinterMax": 4000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "XLM",
+            "assetDecimals": 6,
             "xAssetName": "xAsset XLM (Lumen)",
-            "xAssetSymbol": "fXLM",
-            "xAssetDecimals": 6,
+            "xAssetSymbol": "xXLM",
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "DOGE",
+            "assetDecimals": 8,
             "xAssetName": "xAsset Dogecoin",
-            "xAssetSymbol": "fDOGE",
-            "xAssetDecimals": 8,
+            "xAssetSymbol": "xDOGE",
             "dummyAssetMinterMax": 13000000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ADA",
+            "assetDecimals": 8,
             "xAssetName": "xAsset ADA (Cardano)",
-            "xAssetSymbol": "fADA",
-            "xAssetDecimals": 8,
+            "xAssetSymbol": "xADA",
             "dummyAssetMinterMax": 45000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ALGO",
+            "assetDecimals": 8,
             "xAssetName": "xAsset Algorand",
-            "xAssetSymbol": "fALGO",
-            "xAssetDecimals": 8,
+            "xAssetSymbol": "xALGO",
             "dummyAssetMinterMax": 5000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "BCH",
+            "assetDecimals": 8,
             "xAssetName": "xAsset Bitcoin Cash",
-            "xAssetSymbol": "fBCH",
-            "xAssetDecimals": 8,
+            "xAssetSymbol": "xBCH",
             "dummyAssetMinterMax": 21000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "DGB",
+            "assetDecimals": 8,
             "xAssetName": "xAsset Digibyte",
-            "xAssetSymbol": "fDGB",
-            "xAssetDecimals": 8,
+            "xAssetSymbol": "xDGB",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "BTC",
+            "assetDecimals": 6,
             "xAssetName": "xAsset BTC",
-            "xAssetSymbol": "fBTC",
-            "xAssetDecimals": 6,
+            "xAssetSymbol": "xBTC",
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ETH",
+            "assetDecimals": 18,
             "xAssetName": "xAsset ETH",
-            "xAssetSymbol": "fETH",
-            "xAssetDecimals": 18,
+            "xAssetSymbol": "xETH",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "FIL",
+            "assetDecimals": 18,
             "xAssetName": "xAsset FIL",
-            "xAssetSymbol": "fFIL",
-            "xAssetDecimals": 18,
+            "xAssetSymbol": "xFIL",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
         {
-            "assetSymbol": "SGB",
-            "xAssetName": "xAsset SGB",
-            "xAssetSymbol": "sSGB",
-            "xAssetDecimals": 18,
+            "assetSymbol": "NAT",
+            "assetDecimals": 18,
+            "xAssetName": "not relevant",
+            "xAssetSymbol": "not relevant",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         }

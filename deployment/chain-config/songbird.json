@@ -46,81 +46,81 @@
     "assets": [
         {
             "assetSymbol": "XRP",
-            "xAssetName": "xAsset XRP",
+            "assetDecimals": 6,
+            "xAssetName": "sAsset XRP",
             "xAssetSymbol": "sXRP",
-            "xAssetDecimals": 6,
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "LTC",
-            "xAssetName": "xAsset Litecoin",
+            "assetDecimals": 8,
+            "xAssetName": "sAsset Litecoin",
             "xAssetSymbol": "sLTC",
-            "xAssetDecimals": 8,
             "dummyAssetMinterMax": 4000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "XLM",
-            "xAssetName": "xAsset XLM (Lumen)",
+            "assetDecimals": 6,
+            "xAssetName": "sAsset XLM (Lumen)",
             "xAssetSymbol": "sXLM",
-            "xAssetDecimals": 6,
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "DOGE",
-            "xAssetName": "xAsset Dogecoin",
+            "assetDecimals": 8,
+            "xAssetName": "sAsset Dogecoin",
             "xAssetSymbol": "sDOGE",
-            "xAssetDecimals": 8,
             "dummyAssetMinterMax": 13000000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ADA",
-            "xAssetName": "xAsset ADA (Cardano)",
+            "assetDecimals": 8,
+            "xAssetName": "sAsset ADA (Cardano)",
             "xAssetSymbol": "sADA",
-            "xAssetDecimals": 8,
             "dummyAssetMinterMax": 45000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ALGO",
-            "xAssetName": "xAsset Algorand",
+            "assetDecimals": 8,
+            "xAssetName": "sAsset Algorand",
             "xAssetSymbol": "sALGO",
-            "xAssetDecimals": 8,
             "dummyAssetMinterMax": 5000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "BCH",
-            "xAssetName": "xAsset Bitcoin Cash",
+            "assetDecimals": 8,
+            "xAssetName": "sAsset Bitcoin Cash",
             "xAssetSymbol": "sBCH",
-            "xAssetDecimals": 8,
             "dummyAssetMinterMax": 21000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "DGB",
-            "xAssetName": "xAsset Digibyte",
+            "assetDecimals": 8,
+            "xAssetName": "sAsset Digibyte",
             "xAssetSymbol": "sDGB",
-            "xAssetDecimals": 8,
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "BTC",
-            "xAssetName": "xAsset BTC",
+            "assetDecimals": 6,
+            "xAssetName": "sAsset BTC",
             "xAssetSymbol": "sBTC",
-            "xAssetDecimals": 6,
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "ETH",
-            "xAssetName": "xAsset ETH",
+            "assetDecimals": 18,
+            "xAssetName": "sAsset ETH",
             "xAssetSymbol": "sETH",
-            "xAssetDecimals": 18,
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
@@ -128,15 +128,15 @@
             "assetSymbol": "FIL",
             "xAssetName": "xAsset FIL",
             "xAssetSymbol": "sFIL",
-            "xAssetDecimals": 18,
+            "assetDecimals": 18,
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         },
         {
             "assetSymbol": "SGB",
-            "xAssetName": "xAsset SGB",
-            "xAssetSymbol": "sSGB",
-            "xAssetDecimals": 18,
+            "assetDecimals": 18,
+            "xAssetName": "not relevant",
+            "xAssetSymbol": "not relevant",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSD5Dec": 0
         }
