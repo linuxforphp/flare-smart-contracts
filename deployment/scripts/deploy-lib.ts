@@ -110,9 +110,6 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
   // set scheduled inflation
   await inflationAllocation.setAnnualInflation(parameters.scheduledInflationPercentageBIPS)
 
-  // set sharing percentages
-  // await inflationAllocation.setSharingPercentages(parameters.inflationReceivers,parameters.inflationSharingBIPS);
-
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
   try {
@@ -267,10 +264,12 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
 
   // Inflation allocation needs to know about reward managers
   // await inflationAllocation.setSharingPercentages([ftsoRewardManager.address, validatorRewardManager.address], [8000, 2000]);
-  await inflationAllocation.setSharingPercentages(
-    [ftsoRewardManager.address, dataAvailabilityRewardManager.address],
-    [parameters.ftsoRewardManagerSharingPercentageBIPS, parameters.dataAvailabilityRewardManagerSharingPercentageBIPS]
-  );
+  let receiversAddresses = []
+  for(let a of parameters.inflationReceivers){
+    receiversAddresses.push(contracts.getContractAddress(a));
+  }
+  await inflationAllocation.setSharingPercentages(receiversAddresses, parameters.inflationSharingBIPS);
+
   // Supply contract needs to know about reward managers
   await supply.addTokenPool(ftsoRewardManager.address, 0);
   await supply.addTokenPool(dataAvailabilityRewardManager.address, 0);

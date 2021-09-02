@@ -10,8 +10,6 @@
     "totalFoundationSupplyNAT": 0,
     "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [800,  600],
-    "inflationReceivers" : [],
-    "inflationSharingBIPS": [8000, 2000],
     "inflationTopUpType": 0,
     "inflationTopUpFactor": 3000,
     "rewardEpochDurationSeconds": 180,
@@ -41,8 +39,8 @@
     "dataAvailabilityRewardExpiryOffsetEpochs": 100,
     "initialWnatPriceUSD5Dec": 0,
     "priceEpochCyclicBufferSize": 10,
-    "ftsoRewardManagerSharingPercentageBIPS": 8000,
-    "dataAvailabilityRewardManagerSharingPercentageBIPS": 2000,
+    "inflationReceivers" : ["FtsoRewardManager"],
+    "inflationSharingBIPS": [10000],
     "XRP": {
         "xAssetName": "xAsset XRP",
         "xAssetSymbol": "XRP",
@@ -104,6 +102,20 @@
         "xAssetSymbol": "BTC",
         "xAssetDecimals": 6,
         "dummyAssetMinterMax": 7000000000,
+        "initialPriceUSD5Dec": 0
+    },
+    "ETH": {
+        "xAssetName": "xAsset ETH",
+        "xAssetSymbol": "ETH",
+        "xAssetDecimals": 18,
+        "dummyAssetMinterMax": 10000000000,
+        "initialPriceUSD5Dec": 0
+    },
+    "FIL": {
+        "xAssetName": "xAsset FIL",
+        "xAssetSymbol": "FIL",
+        "xAssetDecimals": 18,
+        "dummyAssetMinterMax": 10000000000,
         "initialPriceUSD5Dec": 0
     }
 }
