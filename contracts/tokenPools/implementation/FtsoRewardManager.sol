@@ -2,11 +2,12 @@
 pragma solidity 0.7.6;
 
 import "../interface/IIFtsoRewardManager.sol";
-import "../../governance/implementation/Governed.sol";
-import "../../utils/implementation/SafePct.sol";
-import "../../inflation/implementation/Inflation.sol";
 import "../interface/IITokenPool.sol";
+import "../../ftso/interface/IIFtsoManager.sol";
+import "../../governance/implementation/Governed.sol";
 import "../../inflation/interface/IIInflationReceiver.sol";
+import "../../token/implementation/WNat.sol";
+import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -87,8 +88,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
 
     /// addresses
     IIFtsoManager public ftsoManager;
-    Inflation public inflation;
-
+    address public inflation;
     WNat public wNat; 
 
     modifier mustBalance {
@@ -107,21 +107,17 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     }
 
     modifier onlyInflation {
-        require(msg.sender == address(inflation), ERR_INFLATION_ONLY);
+        require(msg.sender == inflation, ERR_INFLATION_ONLY);
         _;
     }
 
     constructor(
         address _governance,
         uint256 _feePercentageUpdateOffset,
-        uint256 _defaultFeePercentage,
-        Inflation _inflation
+        uint256 _defaultFeePercentage
     )
         Governed(_governance)
     {
-        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
-
-        inflation = _inflation;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
     }
@@ -210,8 +206,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
      * @notice Activates reward manager (allows claiming rewards)
      */
     function activate() external override onlyGovernance {
-        require(address(ftsoManager) != address(0), ERR_FTSO_MANAGER_ZERO);
-        require(address(wNat) != address(0), ERR_WNAT_ZERO);
+        require(inflation != address(0) && address(ftsoManager) != address(0) && address(wNat) != address(0),
+            "contract addresses not set");
         active = true;
     }
 
@@ -223,26 +219,22 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     }
    
     /**
-     * @notice sets FTSO manager corresponding to the reward manager
+     * @notice Sets inflation, ftsoManager and wNat addresses.
+     * Only governance can call this method.
      */
-    function setFTSOManager(IIFtsoManager _ftsoManager) external override onlyGovernance {
+    function setContractAddresses(
+        address _inflation,
+        IIFtsoManager _ftsoManager,
+        WNat _wNat
+    ) 
+        external
+        onlyGovernance
+    {
+        require(_inflation != address(0), ERR_INFLATION_ZERO);
         require(address(_ftsoManager) != address(0), ERR_FTSO_MANAGER_ZERO);
-        ftsoManager = _ftsoManager;
-    }
-
-    /**
-     * @notice Sets inflation contract
-     */
-    function setInflation(Inflation _inflation) external onlyGovernance {
-        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
-        inflation = _inflation;
-    }
-
-    /**
-     * @notice Sets wrapped native token.
-     */
-    function setWNAT(WNat _wNat) external override onlyGovernance {
         require(address(_wNat) != address(0), ERR_WNAT_ZERO);
+        inflation = _inflation;
+        ftsoManager = _ftsoManager;
         wNat = _wNat;
     }
 
@@ -351,27 +343,18 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     }
     
     /**
-     * @notice Collects funds from expired reward epochs and totals.
+     * @notice Collects funds from expired reward epoch and totals.
      * @dev Triggered by ftsoManager on finalization of a reward epoch.
      * Operation is irreversible: when some reward epoch is closed according to current
      * settings of parameters, it cannot be reopened even if new parameters would 
-     * allow it since nextRewardEpochToExpire never decreases.
+     * allow it since nextRewardEpochToExpire in ftsoManager never decreases.
      */
-    function closeExpiredRewardEpoch(
-        uint256 _rewardEpoch, uint256 _currentRewardEpoch
-    )
-        external override
-        onlyFtsoManager
-    {
-        uint256 expiredRewards = 0;
-        while (nextRewardEpochToExpire < _currentRewardEpoch && nextRewardEpochToExpire <= _rewardEpoch) {
-            expiredRewards += 
-                totalRewardEpochRewards[nextRewardEpochToExpire] - 
-                claimedRewardEpochRewards[nextRewardEpochToExpire];
-            emit RewardClaimsExpired(nextRewardEpochToExpire);
-            nextRewardEpochToExpire++;
-        }
-        totalExpiredWei = totalExpiredWei.add(expiredRewards);
+    function closeExpiredRewardEpoch(uint256 _rewardEpoch) external override onlyFtsoManager {
+        require(nextRewardEpochToExpire == _rewardEpoch, "wrong reward epoch id");
+        uint256 expiredWei = totalRewardEpochRewards[_rewardEpoch] - claimedRewardEpochRewards[_rewardEpoch];
+        totalExpiredWei = totalExpiredWei.add(expiredWei);
+        emit RewardClaimsExpired(_rewardEpoch);
+        nextRewardEpochToExpire = _rewardEpoch + 1;
     }
 
     /**

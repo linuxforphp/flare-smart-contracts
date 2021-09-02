@@ -1,6 +1,6 @@
-import { constants, time } from "@openzeppelin/test-helpers";
+import { time } from "@openzeppelin/test-helpers";
 import fs from "fs";
-import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, PriceSubmitterInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
@@ -10,7 +10,6 @@ const WNat = artifacts.require("WNat");
 const Ftso = artifacts.require("Ftso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
-const Supply = artifacts.require("Supply");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const AssetToken = artifacts.require("AssetToken") as AssetTokenContract;
 
@@ -39,7 +38,6 @@ const gasReport: object[] = [];
 contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, async accounts => {
   const governance = GOVERNANCE_GENESIS_ADDRESS;
   const ftsoManager = accounts[33];
-  const inflation = accounts[34];
 
   const epochDurationSec = 1000;
   const revealDurationSec = 500;
@@ -53,14 +51,11 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
 
   let ftsoRegistry: FtsoRegistryInstance;
 
-  let supplyInterface: SupplyInstance;
-
   let vpBlockNumber: number;
   let epochId: number;
-  let ftsoRewardManager: FtsoRewardManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, wNat.address, ftsoManager, supplyInterface.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
     await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -68,7 +63,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
     // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
     const trustedVoters = accounts.slice(101, 101 + 10);
     await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
-    await ftso.activateFtso(priceSubmitter.address, 0, epochDurationSec, revealDurationSec, { from: ftsoManager });
+    await ftso.activateFtso(0, epochDurationSec, revealDurationSec, { from: ftsoManager });
     return ftso;
   }
 
@@ -103,7 +98,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
     const ftsoAddrList = await ftsoRegistry.getAllFtsos();
     const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
     for (const ftso of ftsoList) {
-      await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      await ftso.initializeCurrentEpochStateForReveal(10000, false, { from: ftsoManager });
     }
     await advanceTimeTo((epochId + 1) * epochDurationSec); // reveal period start
   }
@@ -111,7 +106,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   describe('Wnat transfer', function () {
 
     beforeEach(async () => {
-      wNat = await WNat.new(governance);
+      wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
     });
     
@@ -248,16 +243,6 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
 
       startTs = await time.latest();
 
-      ftsoRewardManager = await FtsoRewardManager.new(
-        accounts[0],
-        3,
-        0,
-        inflation
-      );
-
-      // set the daily authorized inflation...this proxies call to ftso reward manager
-      await ftsoRewardManager.setDailyAuthorizedInflation(1000000, { from: inflation });
-
       // create registry
       ftsoRegistry = await FtsoRegistry.new(governance);
       await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
@@ -266,7 +251,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
       await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
       // create assets
-      wNat = await WNat.new(governance);
+      wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
       assets = [];
       for (const [name, symbol, _] of assetData) {
@@ -274,8 +259,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
         await setDefaultVPContract(asset, governance);
         assets.push(asset);
       }
-      // create supply
-      supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
+
       // create ftsos
       natFtso = await createFtso("NAT", usd(1));
       ftsos = [];
@@ -285,7 +269,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
         await ftso.setAsset(assets[i].address, { from: ftsoManager });
         ftsos.push(ftso);
       }
-      await natFtso.setAssetFtsos(ftsos.slice(0,5).map(f => f.address), { from: ftsoManager });
+      await natFtso.setAssetFtsos(ftsos.slice(0,4).map(f => f.address), { from: ftsoManager });
     });
 
     it("Should test gas to initialize for reveal for one ftso", async () => {
@@ -296,7 +280,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await initializeRewardEpoch();
 
       // Act
-      let initializeForRevealTx = await ftsos[0].initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      let initializeForRevealTx = await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, { from: ftsoManager });
       console.log(`initialize for reveal for single ftso: ${initializeForRevealTx.receipt.gasUsed}`);
       gasReport.push({ "function": "initialize for reveal for single ftso", "gasUsed": initializeForRevealTx.receipt.gasUsed });
     });
@@ -312,7 +296,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await initializeRewardEpoch();
 
       // Act
-      let initializeForRevealTx = await natFtso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+      let initializeForRevealTx = await natFtso.initializeCurrentEpochStateForReveal(10000, false, { from: ftsoManager });
       console.log(`initialize for reveal for wNat ftso with 4 assets: ${initializeForRevealTx.receipt.gasUsed}`);
       gasReport.push({ "function": "initialize for reveal for wNat ftso with 4 assets", "gasUsed": initializeForRevealTx.receipt.gasUsed });
     });
@@ -380,7 +364,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
 
       let gasUsed = 0;
       for (const ftso of allFtsos) {
-        let initializeForRevealTx = await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+        let initializeForRevealTx = await ftso.initializeCurrentEpochStateForReveal(10000, false, { from: ftsoManager });
         gasUsed += initializeForRevealTx.receipt.gasUsed;
       }
 

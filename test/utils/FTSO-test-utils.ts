@@ -836,10 +836,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         signers.slice(0, len).map(signer => signer.address), testExample.weightsAsset
     )
 
-    let mockSupply = await createMockSupplyContract(signers[0].address, 1000);
-
     let ftso = await newContract<MockFtso>("MockFtso", signers[0],
-        assetToken._symbol(), natToken.address, signers[0].address, mockSupply.address,  // address _wNat, address _xAsset, address _supply
+        assetToken._symbol(), constants.ZERO_ADDRESS, natToken.address, signers[0].address,  // symbol, address priceSubmitter, address _wNat, address _xAsset,
         // testExample.randomizedPivot, // bool _randomizedPivot
         epochStartTimestamp, // uint256 _startTimestamp
         epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
@@ -886,7 +884,7 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     logger.log(`SUBMIT PRICE ${ len }`);
     await submitPrice(epochId, signers, ftso, testExample.prices);
 
-    await ftso.initializeCurrentEpochStateForReveal(false);
+    await ftso.initializeCurrentEpochStateForReveal(1000, false);
 
     // Reveal price
     await moveToRevealStart(epochStartTimestamp, epochPeriod, epochId);

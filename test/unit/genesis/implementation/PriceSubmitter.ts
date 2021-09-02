@@ -52,7 +52,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
             ftsos = [];
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             mockSupply = await MockSupply.new();
@@ -69,16 +69,16 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
                     `ATOK${i}`,
+                    priceSubmitter.address,
                     mockWnat.address,
                     accounts[10],
-                    mockSupply.address,
                     1, // initial token price 0.00001$
                     1e10,
                     defaultPriceEpochCyclicBufferSize
                 );
                 await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
                 await ftso.setVotePowerBlock(1, {from: accounts[10]});
-                await ftso.activateFtso(priceSubmitter.address, 0, 120, 60, {from: accounts[10]});
+                await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
                 ftsos[i] = ftso;
             }
@@ -419,9 +419,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([0, 1, 2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = await priceSubmitter.revealPrices(epochId, [0, 1, 2], prices, randoms, {from: accounts[1]});
@@ -458,9 +458,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([0, 1 ,2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = await priceSubmitter.revealPrices(epochId, [0, 1, 2], prices, randoms, {from: accounts[6]});
@@ -483,9 +483,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([0, 1, 2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[6], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = await priceSubmitter.revealPrices(epochId, [0, 1, 2], prices, randoms, {from: accounts[6]});
@@ -505,9 +505,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([1, 0, 2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
 
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = await priceSubmitter.revealPrices(epochId, [1, 0, 2], prices, randoms, {from: accounts[1]});
@@ -558,9 +558,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([1, 0, 2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
             
             // Kick 1 out
             await voterWhitelister.setMaxVotersForFtso(0, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
@@ -585,9 +585,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([1, 0, 2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
             
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = priceSubmitter.revealPrices(epochId, [1, 0, 2], [10, 10, 10], randoms, {from: accounts[1]});
@@ -607,9 +607,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             await setGetFtsosMock([1, 0, 2]);
             let tx = await priceSubmitter.submitPriceHashes(epochId, [1, 0, 2], hashes, {from: accounts[1]});
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
             
             // Kick 1 out
             await voterWhitelister.setMaxVotersForFtso(0, 1, {from : GOVERNANCE_GENESIS_ADDRESS});
@@ -652,9 +652,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             expectEvent(txAttacker, "PriceHashesSubmitted", {submitter: accounts[2], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
             
-            await ftsos[0].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[1].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
-            await ftsos[2].initializeCurrentEpochStateForReveal(false, {from: accounts[10]});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
             
             await increaseTimeTo((epochId + 1) * 120); // reveal period start
             let tx2 = await priceSubmitter.revealPrices(epochId, [0, 1], prices, randoms, {from: accounts[1]});

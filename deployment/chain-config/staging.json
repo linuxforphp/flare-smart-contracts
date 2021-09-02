@@ -1,4 +1,6 @@
 {
+    "wrappedNativeName": "Wrapped Songbird",
+    "wrappedNativeSymbol": "WSGB",
     "stateConnectorAddress": "0x1000000000000000000000000000000000000001",
     "flareDaemonAddress": "0x1000000000000000000000000000000000000002",
     "priceSubmitterAddress": "0x1000000000000000000000000000000000000003",
@@ -11,7 +13,7 @@
     "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [800,  600],
     "inflationTopUpType": 0,
-    "inflationTopUpFactor": 3000,
+    "inflationTopUpFactorx100": 300,
     "rewardEpochDurationSeconds": 540,
     "revealEpochDurationSeconds": 45,
     "priceEpochDurationSeconds": 90,
@@ -41,7 +43,6 @@
     "priceEpochCyclicBufferSize": 10,
     "inflationReceivers" : ["FtsoRewardManager","DataAvailabilityRewardManager"],
     "inflationSharingBIPS": [8000, 2000],
-    "wNATSymbol": "SGB",
     "assets": [
         {
             "assetSymbol": "XRP",

@@ -1,9 +1,10 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { constants } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 import path from "path";
 import { MockFtso, VPTokenMock, WNat } from "../../../typechain";
 import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
-import { checkTestCase, createMockSupplyContract, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
+import { checkTestCase, randomizeExampleGenerator, readTestData, TestCase, testFTSOMedian2 } from "../../utils/FTSO-test-utils";
 import { newContract } from "../../utils/test-helpers";
 import { setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 
@@ -41,7 +42,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             if (signers.length < len) throw Error(`To few accounts/signers: ${ signers.length }. Required ${ len }.`);
 
             // Contract deployment
-            let natToken: WNat = await newContract<WNat>("WNat", signers[0], signers[0].address);
+            let natToken: WNat = await newContract<WNat>("WNat", signers[0], signers[0].address, "Wrapped NAT", "WNAT");
             await setDefaultVPContract_ethers(natToken, signers[0]);
             for (let i = 0; i < testExample.weightsNat.length; i++) {
                 await natToken.connect(signers[i]).depositTo(signers[i].address, {value: testExample.weightsNat[i]})
@@ -56,10 +57,8 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
 
             let blockNumber = await ethers.provider.getBlockNumber();
 
-            let mockSupply = await createMockSupplyContract(signers[0].address, 1000);
-
             let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signers[0],
-                "XASSET", natToken.address, signers[0].address, mockSupply.address, // symbol, address _wNat, address _ftsoManager, address _supply
+                "XASSET", constants.ZERO_ADDRESS ,natToken.address, signers[0].address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager
                 epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
                 1, //uint256 _initialPrice
@@ -76,4 +75,3 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
         });
     });
 });
-

@@ -9,6 +9,7 @@ import "../../genesis/implementation/FlareDaemon.sol";
 import "../../genesis/interface/IFlareDaemonize.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
+import "../../inflation/interface/IISupply.sol";
 import "../../tokenPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
@@ -30,12 +31,6 @@ import "../../utils/interface/IIVoterWhitelister.sol";
 contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemonize, RevertErrorTracking {
     using FtsoManagerSettings for FtsoManagerSettings.State;
 
-    struct PriceEpochData {
-        address chosenFtso;
-        uint256 rewardEpochId;
-        bool rewardDistributed;
-    }
-
     struct RewardEpochData {
         uint256 votepowerBlock;
         uint256 startBlock;
@@ -51,6 +46,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     string internal constant ERR_REWARD_EPOCH_START_CONDITION_INVALID = "Reward epoch start condition invalid";
     string internal constant ERR_REWARD_EPOCH_DURATION_CONDITION_INVALID = "Reward epoch duration condition invalid";
     string internal constant ERR_PRICE_EPOCH_DURATION_ZERO = "Price epoch 0";
+    string internal constant ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO = "Vote power interval fraction 0";
     string internal constant ERR_REVEAL_PRICE_EPOCH_DURATION_ZERO = "Reveal price epoch 0";
     string internal constant ERR_REVEAL_PRICE_EPOCH_TOO_LONG = "Reveal price epoch too long";
     string internal constant ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized";
@@ -66,8 +62,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
     bool public override active;
     RewardEpochData[] public rewardEpochs;
+    address public lastRewardedFtsoAddress;
 
-    mapping(uint256 => PriceEpochData) public priceEpochs;
     FtsoManagerSettings.State public settings;
 
     // price epoch data
@@ -80,16 +76,17 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     // reward Epoch data
     uint256 immutable public rewardEpochDurationSeconds;
     uint256 immutable public rewardEpochsStartTs;
+    uint256 immutable internal votePowerIntervalFraction;
     uint256 internal currentRewardEpochEnds;
-    uint256 internal votePowerIntervalFraction;
     uint256 internal nextRewardEpochToExpire;
 
     mapping(IIFtso => bool) internal managedFtsos;
-    IIFtsoRewardManager internal rewardManager;
-    IIPriceSubmitter internal immutable priceSubmitter;
-    IIFtsoRegistry public immutable ftsoRegistry;
-    IIVoterWhitelister public immutable voterWhitelister;
 
+    IIPriceSubmitter internal immutable priceSubmitter;
+    IIFtsoRewardManager public rewardManager;
+    IIFtsoRegistry public ftsoRegistry;
+    IIVoterWhitelister public voterWhitelister;
+    IISupply public supply;
     CleanupBlockNumberManager public cleanupBlockNumberManager;
 
     // indicates if lastUnprocessedPriceEpoch is initialized for reveal
@@ -97,25 +94,19 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     bool private priceEpochInitialized;
 
     // fallback mode
-    bool public fallbackMode; // all ftsos in fallback mode
-    mapping(IIFtso => bool) public ftsoInFallbackMode;
+    bool internal fallbackMode; // all ftsos in fallback mode
+    mapping(IIFtso => bool) internal ftsoInFallbackMode;
 
-    // Testing information:
-    // IIPriceSubmitter should be a new contract for a new deploy or at least
-    // _priceEpochDurationSeconds, _firstEpochStartTs and _revealEpochDurationSeconds must match
     constructor(
         address _governance,
         FlareDaemon _flareDaemon,
-        IIFtsoRewardManager _rewardManager,
         IIPriceSubmitter _priceSubmitter,
-        IIFtsoRegistry _ftsoRegistry,
-        IIVoterWhitelister _voterWhitelister,
-        uint256 _priceEpochDurationSeconds,
         uint256 _firstEpochStartTs,
+        uint256 _priceEpochDurationSeconds,
         uint256 _revealEpochDurationSeconds,
-        uint256 _rewardEpochDurationSeconds,
         uint256 _rewardEpochsStartTs,
-        uint256 _votePowerBoundaryFraction
+        uint256 _rewardEpochDurationSeconds,
+        uint256 _votePowerIntervalFraction
     ) 
         GovernedAndFlareDaemonized(_governance, _flareDaemon)
     {
@@ -123,6 +114,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_priceEpochDurationSeconds > 0, ERR_PRICE_EPOCH_DURATION_ZERO);
         require(_revealEpochDurationSeconds > 0, ERR_REVEAL_PRICE_EPOCH_DURATION_ZERO);
+        require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
 
         require(_revealEpochDurationSeconds < _priceEpochDurationSeconds, ERR_REVEAL_PRICE_EPOCH_TOO_LONG);
         require(_firstEpochStartTs + _revealEpochDurationSeconds <= _rewardEpochsStartTs, 
@@ -135,6 +127,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         // reward epoch
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
         rewardEpochsStartTs = _rewardEpochsStartTs;
+        votePowerIntervalFraction = _votePowerIntervalFraction;
         currentRewardEpochEnds = _rewardEpochsStartTs + _rewardEpochDurationSeconds;
 
         // price epoch
@@ -144,22 +137,23 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         lastUnprocessedPriceEpochRevealEnds = _rewardEpochsStartTs;
         lastUnprocessedPriceEpoch = (_rewardEpochsStartTs - _firstEpochStartTs) / _priceEpochDurationSeconds;
 
-        votePowerIntervalFraction = _votePowerBoundaryFraction;
-        rewardManager = _rewardManager;
         priceSubmitter = _priceSubmitter;
-        ftsoRegistry = _ftsoRegistry;
-        voterWhitelister = _voterWhitelister;
     }
 
-    /**
-     * @notice Sets history cleanup manager.
-     */
-    function setCleanupBlockNumberManager(
+    function setContractAddresses(
+        IIFtsoRewardManager _rewardManager,
+        IIFtsoRegistry _ftsoRegistry,
+        IIVoterWhitelister _voterWhitelister,
+        IISupply _supply,
         CleanupBlockNumberManager _cleanupBlockNumberManager
     )
         external
         onlyGovernance
     {
+        rewardManager = _rewardManager;
+        ftsoRegistry = _ftsoRegistry;
+        voterWhitelister = _voterWhitelister;
+        supply = _supply;
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
     
@@ -179,26 +173,21 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
      */
     function daemonize() external override onlyFlareDaemon returns (bool) {
         // flare daemon trigger. once every block
-        
-        // TODO: remove this event after testing phase
-        emit DaemonizeTrigger(block.number, block.timestamp);
         if (!active) return false;
 
-        IIFtso[] memory _ftsos = _getFtsos();
-
         if (rewardEpochs.length == 0) {
-            _initializeFirstRewardEpoch(_ftsos);
+            _initializeFirstRewardEpoch();
         } else {
             // all three conditions can be executed in the same block,
             // but are split into three `if else if` groups to reduce gas usage per one block
             if (priceEpochInitialized && lastUnprocessedPriceEpochRevealEnds <= block.timestamp) {
                 // finalizes initialized price epoch if reveal period is over
                 // sets priceEpochInitialized = false
-                _finalizePriceEpoch(_ftsos);
+                _finalizePriceEpoch();
             } else if (!priceEpochInitialized && currentRewardEpochEnds <= block.timestamp) {
                 // initialized price epoch must be finalized before new reward epoch can start
                 // advance currentRewardEpochEnds
-                _finalizeRewardEpoch(_ftsos);
+                _finalizeRewardEpoch();
                 _closeExpiredRewardEpochs();
                 _cleanupOnRewardEpochFinalization();
             } else if (lastUnprocessedPriceEpochRevealEnds <= block.timestamp) {
@@ -206,7 +195,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 // and after new reward epoch was started (if needed)
                 // initializes price epoch and sets governance parameters on ftsos and price submitter
                 // advance lastUnprocessedPriceEpochRevealEnds, sets priceEpochInitialized = true
-                _initializeCurrentEpochFTSOStatesForReveal(_ftsos); 
+                _initializeCurrentEpochFTSOStatesForReveal(); 
             }
         }
         return true;
@@ -259,7 +248,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             ERR_FTSO_SYMBOLS_MUST_MATCH);
 
         // Check if it already exists
-        IIFtso[] memory availableFtsos = ftsoRegistry.getSupportedFtsos();
+        IIFtso[] memory availableFtsos = _getFtsos();
         uint256 len = availableFtsos.length;
         uint256 k = 0;
         while (k < len) {
@@ -292,7 +281,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         _addFtso(_ftsoToAdd, false);
         
         // replace old contract with the new one in multi asset ftsos
-        IIFtso[] memory contracts = ftsoRegistry.getSupportedFtsos();
+        IIFtso[] memory contracts = _getFtsos();
 
         uint256 ftsosLen = contracts.length;
         for (uint256 i = 0; i < ftsosLen; i++) {
@@ -393,6 +382,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             _trustedAddresses
         );
     }
+
+    function getVotePowerIntervalFraction() external view returns (uint256) {
+        return votePowerIntervalFraction;
+    }
     
     function getPriceSubmitter() external view override returns (IPriceSubmitter) {
         return priceSubmitter;
@@ -444,7 +437,24 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     {
         return (firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
     }
-    
+
+    function getFallbackMode() external view override
+        returns (
+            bool _fallbackMode,
+            IIFtso[] memory _ftsos,
+            bool[] memory _ftsoInFallbackMode
+        )
+    {
+        _fallbackMode = fallbackMode;
+        _ftsos = _getFtsos();
+        uint256 len = _ftsos.length;
+        _ftsoInFallbackMode = new bool[](len);
+        
+        for (uint256 i = 0; i < len; i++) {
+            _ftsoInFallbackMode[i] = ftsoInFallbackMode[_ftsos[i]];
+        }
+    }
+        
     /**
      * @notice Returns current reward epoch index (one currently running)
      */
@@ -472,9 +482,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             }
         }
 
-        _ftso.activateFtso(
-            address(priceSubmitter), firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds
-        );
+        _ftso.activateFtso(firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
 
         // Set the vote power block
         if (rewardEpochs.length != 0) {
@@ -515,9 +523,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     /**
      * @notice Initializes first reward epoch. Also sets vote power block to FTSOs
      */
-    function _initializeFirstRewardEpoch(IIFtso[] memory _ftsos) internal {
+    function _initializeFirstRewardEpoch() internal {
+
         if (block.timestamp >= currentRewardEpochEnds - rewardEpochDurationSeconds) {
-            uint256 numFtsos = _ftsos.length;
+            IIFtso[] memory ftsos = _getFtsos();
+            uint256 numFtsos = ftsos.length;
             // Prime the reward epoch array with a new reward epoch
             RewardEpochData memory epochData = RewardEpochData({
                 votepowerBlock: block.number - 1,
@@ -528,7 +538,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             rewardEpochs.push(epochData);
 
             for (uint256 i = 0; i < numFtsos; ++i) {
-                _ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
+                ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
         }
     }
@@ -536,14 +546,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     /**
      * @notice Finalizes reward epoch
      */
-    function _finalizeRewardEpoch(IIFtso[] memory _ftsos) internal {
-        uint256 numFtsos = _ftsos.length;
+    function _finalizeRewardEpoch() internal {
+        IIFtso[] memory ftsos = _getFtsos();
+        uint256 numFtsos = ftsos.length;
 
         uint256 lastRandom = block.timestamp;
         // Are there any FTSOs to process?
         if (numFtsos > 0) {
             for (uint256 i = 0; i < numFtsos; ++i) {
-                lastRandom += _ftsos[i].getCurrentRandom();
+                lastRandom += ftsos[i].getCurrentRandom();
             }
         }
 
@@ -551,12 +562,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         // @dev when considering block boundary for vote power block:
         // - if far from now, it doesn't reflect last vote power changes
         // - if too small, possible loan attacks.     
-        // IMPORTANT: currentRewardEpoch is actually the one just geting finalized!
+        // IMPORTANT: currentRewardEpoch is actually the one just getting finalized!
         uint256 votepowerBlockBoundary = 
-            (block.number - rewardEpochs[getCurrentRewardEpoch()].startBlock) / 
-              (votePowerIntervalFraction == 0 ? 1 : votePowerIntervalFraction);
-        // additional notice: if someone sets votePowerIntervalFraction to 0
-        // this would cause division by 0 and effectively revert would halt the system
+            (block.number - rewardEpochs[getCurrentRewardEpoch()].startBlock) / votePowerIntervalFraction;
+        // note: votePowerIntervalFraction > 0
  
         if (votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
@@ -577,7 +586,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         });
         rewardEpochs.push(epochData);
         for (uint256 i = 0; i < numFtsos; i++) {
-            _ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
+            ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
         }
 
         emit RewardEpochFinalized(epochData.votepowerBlock, epochData.startBlock);
@@ -601,7 +610,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             rewardEpochs[nextRewardEpochToExpire + 1].startTimestamp <= expiryThreshold) 
         {   // Note: Since nextRewardEpochToExpire + 1 starts at that time
             // nextRewardEpochToExpire ends strictly before expiryThreshold, 
-            try rewardManager.closeExpiredRewardEpoch(nextRewardEpochToExpire, currentRewardEpoch) {
+            try rewardManager.closeExpiredRewardEpoch(nextRewardEpochToExpire) {
                 nextRewardEpochToExpire++;
             } catch Error(string memory message) {
                 // closing of expired failed, which is not critical
@@ -636,14 +645,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     /**
      * @notice Finalizes price epoch
      */
-    function _finalizePriceEpoch(IIFtso[] memory _ftsos) internal {
-        uint256 numFtsos = _ftsos.length;
+    function _finalizePriceEpoch() internal {
+        IIFtso[] memory ftsos = _getFtsos();
+        uint256 numFtsos = ftsos.length;
 
         // Are there any FTSOs to process?
         if (numFtsos > 0 && !fallbackMode) {
             // choose winning ftso
             uint256 chosenFtsoId;
-            if (lastUnprocessedPriceEpoch == 0 || priceEpochs[lastUnprocessedPriceEpoch-1].chosenFtso == address(0)) {
+            if (lastRewardedFtsoAddress == address(0)) {
                 // pump not yet primed
                 //slither-disable-next-line weak-prng           // only used for first epoch
                 chosenFtsoId = uint256(keccak256(abi.encode(
@@ -653,7 +663,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 // at least one finalize with real FTSO
                 uint256 currentRandomSum = 0;
                 for (uint256 i = 0; i < numFtsos; i++) {
-                    currentRandomSum += _ftsos[i].getCurrentRandom(); // may overflow but it is still ok
+                    currentRandomSum += ftsos[i].getCurrentRandom(); // may overflow but it is still ok
                 }
                 //slither-disable-next-line weak-prng           // ftso random calculated safely from inputs
                 chosenFtsoId = uint256(keccak256(abi.encode(
@@ -673,8 +683,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             for (uint256 i = 0; i < numFtsos; i++) {
                 //slither-disable-next-line weak-prng           // not a random, just choosing next
                 uint256 id = (chosenFtsoId + i) % numFtsos;
+                IIFtso ftso = ftsos[id];
 
-                try _ftsos[id].finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
+                try ftso.finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
                     address[] memory _addresses,
                     uint256[] memory _weights,
                     uint256 _totalWeight
@@ -682,27 +693,21 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                     if (!wasDistributed && _addresses.length > 0) { // change also in FTSO if condition changes
                         (addresses, weights, totalWeight) = (_addresses, _weights, _totalWeight);
                         wasDistributed = true;
-                        rewardedFtsoAddress = address(_ftsos[id]);
+                        rewardedFtsoAddress = address(ftso);
                     }
                 } catch Error(string memory message) {
                     emit FinalizingPriceEpochFailed(
-                        _ftsos[id], 
+                        ftso, 
                         lastUnprocessedPriceEpoch, 
                         IFtso.PriceFinalizationType.WEIGHTED_MEDIAN
                     );
-                    addRevertError(address(_ftsos[id]), message);
+                    addRevertError(address(ftso), message);
                     
-                    _fallbackFinalizePriceEpoch(_ftsos[id]);
+                    _fallbackFinalizePriceEpoch(ftso);
                 }
             }
 
             uint256 currentRewardEpoch = getCurrentRewardEpoch();
-
-            priceEpochs[lastUnprocessedPriceEpoch] = PriceEpochData({
-                chosenFtso: rewardedFtsoAddress,
-                rewardEpochId: currentRewardEpoch,
-                rewardDistributed: false
-            });
 
             if (wasDistributed) {
                 try rewardManager.distributeRewards(
@@ -714,31 +719,23 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                     priceEpochDurationSeconds,
                     currentRewardEpoch,
                     _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1, // actual end time (included)
-                    rewardEpochs[currentRewardEpoch].votepowerBlock)
-                {
-                    priceEpochs[lastUnprocessedPriceEpoch].rewardDistributed = true;
+                    rewardEpochs[currentRewardEpoch].votepowerBlock) {
                 } catch Error(string memory message) {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
                     addRevertError(address(this), message);
                 }
             }
 
+            lastRewardedFtsoAddress = rewardedFtsoAddress;
             emit PriceEpochFinalized(rewardedFtsoAddress, currentRewardEpoch);
         } else {
             // only for fallback mode
             for (uint256 i = 0; i < numFtsos; i++) {
-                _fallbackFinalizePriceEpoch(_ftsos[i]);
+                _fallbackFinalizePriceEpoch(ftsos[i]);
             }
-            
-            uint256 currentRewardEpoch = getCurrentRewardEpoch();
-            
-            priceEpochs[lastUnprocessedPriceEpoch] = PriceEpochData({
-                chosenFtso: address(0),
-                rewardEpochId: currentRewardEpoch,
-                rewardDistributed: false
-            });
 
-            emit PriceEpochFinalized(address(0), currentRewardEpoch);
+            lastRewardedFtsoAddress = address(0);
+            emit PriceEpochFinalized(address(0), getCurrentRewardEpoch());
         }
         
         priceEpochInitialized = false;
@@ -771,15 +768,24 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
      * Prior to initialization it sets governance parameters, if 
      * governance has changed them. It also sets price submitter trusted addresses.
      */
-    function _initializeCurrentEpochFTSOStatesForReveal(IIFtso[] memory _ftsos) internal {
+    function _initializeCurrentEpochFTSOStatesForReveal() internal {
         if (settings.changed) {
             priceSubmitter.setTrustedAddresses(settings.trustedAddresses);
         }
 
-        uint256 numFtsos = _ftsos.length;
+        IIFtso[] memory ftsos = _getFtsos();
+        uint256 numFtsos = ftsos.length;
+
+        // circulating supply is used only when ftso is not in fallback mode
+        uint256 circulatingSupplyNat;
+        if (numFtsos > 0 && !fallbackMode) {
+            uint256 votePowerBlock = rewardEpochs[rewardEpochs.length - 1].votepowerBlock;
+            circulatingSupplyNat = supply.getCirculatingSupplyAtCached(votePowerBlock);
+        }
         for (uint256 i = 0; i < numFtsos; i++) {
+            IIFtso ftso = ftsos[i];
             if (settings.changed) {
-                _ftsos[i].configureEpochs(
+                ftso.configureEpochs(
                     settings.maxVotePowerNatThresholdFraction,
                     settings.maxVotePowerAssetThresholdFraction,
                     settings.lowAssetUSDThreshold,
@@ -790,9 +796,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 );
             }
 
-            try _ftsos[i].initializeCurrentEpochStateForReveal(fallbackMode || ftsoInFallbackMode[_ftsos[i]]) {
+            try ftso.initializeCurrentEpochStateForReveal(
+                circulatingSupplyNat,
+                fallbackMode || ftsoInFallbackMode[ftso]) {
             } catch Error(string memory message) {
-                emit InitializingCurrentEpochStateForRevealFailed(_ftsos[i], _getCurrentPriceEpochId());
+                emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
                 addRevertError(address(this), message);
             }
         }

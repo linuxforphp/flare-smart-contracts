@@ -48,23 +48,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
     let ftsoRegistry: FtsoRegistryInstance;
 
-    let supplyInterface: SupplyInstance;
-    let supplyMock: MockContractInstance;
-
     let vpBlockNumber: number;
 
-    async function setNatSupply(amount: number | BN, blockNumber: number) {
-        const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
-        const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', amount);
-        await supplyMock.givenCalldataReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
-    }
-
     async function createFtso(symbol: string, initialPriceUSD5Dec: BN) {
-        const ftso = await Ftso.new(symbol, wNat.address, ftsoManager, supplyMock.address, 0, 0, 0, initialPriceUSD5Dec, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager, 0, 0, 0, initialPriceUSD5Dec, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });
-        await ftso.activateFtso(priceSubmitter.address, 0, 120, 60, { from: ftsoManager });
+        await ftso.activateFtso(0, 120, 60, { from: ftsoManager });
         return ftso;
     }
 
@@ -76,10 +67,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         for (const ftso of ftsoList) {
             await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
         }
-        await setNatSupply(natSupply, vpBlockNumber);
+
         // initial reveal
         for (const ftso of ftsoList) {
-            await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+            await ftso.initializeCurrentEpochStateForReveal(natSupply, false, { from: ftsoManager });
         }
     }
     
@@ -96,15 +87,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
             // create assets
-            wNat = await WNat.new(governance);
+            wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wNat, governance);
             fxrp = await VPToken.new(governance, "Ripple", "XRP");
             await setDefaultVPContract(fxrp, governance);
             fbtc = await VPToken.new(governance, "Bitcoin", "BTC");
             await setDefaultVPContract(fbtc, governance);
-            // create supply
-            supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
-            supplyMock = await MockContract.new();
             // create ftsos
             natFtso = await createFtso("NAT", usd(1));
             xrpFtso = await createFtso("XRP", usd(0.5));
@@ -720,7 +708,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
             // create assets
-            wNat = await WNat.new(governance);
+            wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wNat, governance);
             assets = [];
             for (const [name, symbol, _] of assetData) {
@@ -728,9 +716,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
                 await setDefaultVPContract(asset, governance);
                 assets.push(asset);
             }
-            // create supply
-            supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
-            supplyMock = await MockContract.new();
+            
             // create ftsos
             natFtso = await createFtso("NAT", usd(1));
             ftsos = [];

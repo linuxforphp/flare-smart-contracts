@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import "../../token/interface/IIVPToken.sol";
-import "../../inflation/interface/IISupply.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
@@ -38,13 +37,13 @@ contract Ftso is IIFtso {
     
     
     // storage
-    uint256 public immutable priceDeviationThresholdBIPS; // threshold for price deviation between consecutive epochs
+    uint256 public immutable priceDeviationThresholdBIPS;   // threshold for price deviation between consecutive epochs
     uint256 public immutable priceEpochCyclicBufferSize;
     bool public override active;                // activation status of FTSO
     string public override symbol;              // asset symbol that identifies FTSO
 
     uint256 internal assetPriceUSD;             // current asset USD price
-    uint256 internal assetPriceTimestamp;      // time when price was updated    
+    uint256 internal assetPriceTimestamp;       // time when price was updated    
     FtsoEpoch.State internal epochs;            // epoch storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
     uint256 internal lastRevealEpochId;
@@ -52,8 +51,7 @@ contract Ftso is IIFtso {
     // external contracts
     IIVPToken public immutable override wNat;    // wrapped native token
     IIFtsoManager public immutable ftsoManager;  // FTSO manager contract
-    IISupply public immutable supply;            // Supply contract
-    IPriceSubmitter public priceSubmitter;       // Price submitter contract
+    IPriceSubmitter public immutable priceSubmitter;        // Price submitter contract
     IIVPToken[] public assets;                   // array of assets
     IIFtso[] public assetFtsos;                  // FTSOs for assets (for a multi-asset FTSO)
 
@@ -82,18 +80,18 @@ contract Ftso is IIFtso {
 
     constructor(
         string memory _symbol,
+        IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
-        IISupply _supply,
         uint256 _initialPriceUSD,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize
     )
     {
         symbol = _symbol;
+        priceSubmitter = _priceSubmitter;
         wNat = _wNat;
         ftsoManager = _ftsoManager;
-        supply = _supply;
         assetPriceUSD = _initialPriceUSD;
         assetPriceTimestamp = block.timestamp;
         priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
@@ -256,13 +254,11 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Initializes ftso immutable settings and activates oracle
-     * @param _priceSubmitter       Price submitter contract
      * @param _firstEpochStartTime  Timestamp of the first epoch as seconds from unix epoch
      * @param _submitPeriod         Duration of epoch submission period in seconds
      * @param _revealPeriod         Duration of epoch reveal period in seconds
      */
     function activateFtso(
-        address _priceSubmitter,
         uint256 _firstEpochStartTime,
         uint256 _submitPeriod,
         uint256 _revealPeriod
@@ -271,7 +267,6 @@ contract Ftso is IIFtso {
         onlyFtsoManager
     {
         require(!active, ERR_ALREADY_ACTIVATED);
-        priceSubmitter = IPriceSubmitter(_priceSubmitter);
         epochs.firstEpochStartTime = _firstEpochStartTime;
         epochs.submitPeriod = _submitPeriod;
         epochs.revealPeriod = _revealPeriod;
@@ -379,9 +374,16 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Initializes current epoch instance for reveal
-     * @param _fallbackMode            Current epoch in fallback mode
+     * @param _circulatingSupplyNat     Epoch native token circulating supply
+     * @param _fallbackMode             Current epoch in fallback mode
      */
-    function initializeCurrentEpochStateForReveal(bool _fallbackMode) external override onlyFtsoManager {
+    function initializeCurrentEpochStateForReveal(
+        uint256 _circulatingSupplyNat,
+        bool _fallbackMode
+    )
+        external override
+        onlyFtsoManager
+    {
         uint256 epochId = getCurrentEpochId();
         //slither-disable-next-line weak-prng // not used for random
         FtsoEpoch.Instance storage epoch = epochs.instance[epochId % priceEpochCyclicBufferSize];
@@ -404,7 +406,7 @@ contract Ftso is IIFtso {
 
         epochs._initializeInstanceForReveal(
             epoch,
-            supply.getCirculatingSupplyAtCached(epochs.votePowerBlock),
+            _circulatingSupplyNat,
             _getVotePowerAt(wNat, epochs.votePowerBlock),
             assets,
             assetVotePowers,

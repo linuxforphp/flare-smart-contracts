@@ -29,7 +29,6 @@ interface IIFtso is IFtso, IFtsoGenesis {
     // activateFtso will be called by ftso manager once ftso is added 
     // before this is done, FTSO can't run
     function activateFtso(
-        address _priceSubmitter, // hardhat flatten does not allow cyclic imports, do this outside typesystem
         uint256 _firstEpochStartTs,
         uint256 _epochPeriod,
         uint256 _revealPeriod
@@ -59,7 +58,7 @@ interface IIFtso is IFtso, IFtsoGenesis {
     // reward manager only can set this data. 
     function setVotePowerBlock(uint256 _blockNumber) external;
 
-    function initializeCurrentEpochStateForReveal(bool _fallbackMode) external;
+    function initializeCurrentEpochStateForReveal(uint256 _circulatingSupplyNat, bool _fallbackMode) external;
   
     /**
      * @notice Returns the FTSO asset

@@ -22,9 +22,9 @@ contract MockFtso is SimpleMockFtso {
     
     constructor(
         string memory _symbol,
+        IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
-        IISupply _supply,
         uint256 _startTimestamp,
         uint256 _submitPeriod,
         uint256 _revealPeriod,
@@ -34,9 +34,9 @@ contract MockFtso is SimpleMockFtso {
     )
         SimpleMockFtso(
             _symbol,
+            _priceSubmitter,
             _wNat,
             _ftsoManager,
-            _supply,
             _initialPrice,
             _priceDeviationThresholdBIPS,
             _cyclicBufferSize

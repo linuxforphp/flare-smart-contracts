@@ -55,14 +55,8 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     let vpBlockNumber: number;
     let epochId: number;
 
-    async function setNatSupply(amount: number | BN, blockNumber: number) {
-        const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(blockNumber).encodeABI();
-        const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', amount);
-        await supplyMock.givenMethodReturn(getCirculatingSupplyAtCached, getCirculatingSupplyAtCachedReturn);
-    }
-
     async function createFtso(symbol: string, initialPrice: BN) {
-        const ftso = await Ftso.new(symbol, wnat.address, ftsoManager, supplyMock.address, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, priceSubmitter.address, wnat.address, ftsoManager, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // add ftso to price submitter and whitelist
         const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -70,11 +64,11 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         const trustedVoters = accounts.slice(101, 101 + 10);
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
-        await ftso.activateFtso(priceSubmitter.address, 0, epochDurationSec, revealDurationSec, { from: ftsoManager });
+        await ftso.activateFtso(0, epochDurationSec, revealDurationSec, { from: ftsoManager });
         return ftso;
     }
 
-    async function initializeRewardEpoch(vpBlock?: number, natSupply: BN | number = eth(1000)) {
+    async function initializeRewardEpoch(vpBlock?: number) {
         // set votepower block
         vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
         await time.advanceBlock();
@@ -83,7 +77,6 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         for (const ftso of ftsoList) {
             await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
         }
-        await setNatSupply(natSupply, vpBlockNumber);
         await startNewPriceEpoch();
     }
     
@@ -101,11 +94,11 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         await increaseTimeTo(epochId * epochDurationSec, 'web3');
     }
     
-    async function initializeForReveal() {
+    async function initializeForReveal(natSupply: BN | number = eth(1000)) {
         const ftsoAddrList = await ftsoRegistry.getAllFtsos();
         const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
         for (const ftso of ftsoList) {
-            await ftso.initializeCurrentEpochStateForReveal(false, { from: ftsoManager });
+            await ftso.initializeCurrentEpochStateForReveal(natSupply, false, { from: ftsoManager });
         }
         await advanceTimeTo((epochId + 1) * epochDurationSec); // reveal period start
     }
@@ -134,7 +127,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
             await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
             // create assets
-            wnat = await WNat.new(governance);
+            wnat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnat, governance);
             assets = [];
             for (const [name, symbol, _] of assetData) {

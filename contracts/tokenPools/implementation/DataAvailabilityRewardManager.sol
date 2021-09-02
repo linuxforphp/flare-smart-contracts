@@ -6,7 +6,6 @@ import "../interface/IITokenPool.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
-import "../../inflation/implementation/Inflation.sol";
 import "../../inflation/interface/IIInflationReceiver.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -72,8 +71,8 @@ contract DataAvailabilityRewardManager is
     uint256 private lastBalance;
 
     /// addresses
-    StateConnector public stateConnector;
-    Inflation public inflation;
+    StateConnector public immutable stateConnector;
+    address public inflation;
 
     modifier mustBalance {
         _;
@@ -94,12 +93,12 @@ contract DataAvailabilityRewardManager is
         address _governance,
         uint256 _rewardExpiryOffset,
         StateConnector _stateConnector,
-        Inflation _inflation
+        address _inflation
     )
         Governed(_governance)
     {
         require(address(_stateConnector) != address(0), ERR_STATE_CONNECTOR_ZERO);
-        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
+        require(_inflation != address(0), ERR_INFLATION_ZERO);
 
         inflation = _inflation;
         stateConnector = _stateConnector;
@@ -154,20 +153,12 @@ contract DataAvailabilityRewardManager is
     function deactivate() external override onlyGovernance {
         active = false;
     }
-   
-    /**
-     * @notice sets state connector corresponding to the reward manager
-     */
-    function setStateConnector(StateConnector _stateConnector) external override onlyGovernance {
-        require(address(_stateConnector) != address(0), ERR_STATE_CONNECTOR_ZERO);
-        stateConnector = _stateConnector;
-    }
 
     /**
      * @notice Sets inflation contract
      */
-    function setInflation(Inflation _inflation) external onlyGovernance {
-        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
+    function setInflation(address _inflation) external override onlyGovernance {
+        require(_inflation != address(0), ERR_INFLATION_ZERO);
         inflation = _inflation;
     }
 

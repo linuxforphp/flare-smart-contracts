@@ -142,7 +142,12 @@ All numeric parameter names have units appended at the end. Most unit names are 
     
 ## Currency settings
 
-Each currency definition is under it symbol's key. For example we have
+For wrapped native currency, there are two settings
+
+- `wrappedNativeName` - the name of the wrapped currency
+- `wrappedNativeSymbol` - the symbol of the wrapped currency
+
+Every other currency definition is under it symbol's key. For example we have
 ```
   "XRP": {
       "assetName": "Flare Asset XRP",

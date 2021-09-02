@@ -12,6 +12,7 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
+import { createMockSupplyContract } from "../../utils/FTSO-test-utils";
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const BN = web3.utils.toBN;
@@ -41,6 +42,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let ftsoRegistry: FtsoRegistryInstance;
     let mockPriceSubmitter: MockContractInstance;
     let mockVoterWhitelister: MockContractInstance;
+    let mockSupply: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
@@ -54,18 +56,13 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             1e10,
             defaultPriceEpochCyclicBufferSize
         );
-
-        mockInflation = await InflationMock.new();
-
+        
         ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
             3,
-            0,
-            mockInflation.address
-        );
+            0
+            );
 
-        await mockInflation.setInflationReceiver(ftsoRewardManager.address);
-        await mockInflation.setDailyAuthorizedInflation(BN(1000000));
         // Get the timestamp for the just mined block
         startTs = await time.latest();
         
@@ -81,27 +78,33 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         mockVoterWhitelister = await MockContract.new();
 
+        mockSupply = await createMockSupplyContract(accounts[0], 10000);
+
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
-            ftsoRewardManager.address,
             mockPriceSubmitter.address,
-            ftsoRegistry.address,
-            mockVoterWhitelister.address,
-            PRICE_EPOCH_DURATION_S,
             startTs,
+            PRICE_EPOCH_DURATION_S,
             REVEAL_EPOCH_DURATION_S,
-            REWARD_EPOCH_DURATION_S,
             startTs.addn(REVEAL_EPOCH_DURATION_S),
+            REWARD_EPOCH_DURATION_S,
             VOTE_POWER_BOUNDARY_FRACTION
         );
+
+        mockInflation = await InflationMock.new();
+        await mockInflation.setInflationReceiver(ftsoRewardManager.address);
+
+        await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, 
+            mockVoterWhitelister.address, mockSupply.address, constants.ZERO_ADDRESS, {from: accounts[0]});
         await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
-        wNat = await WNAT.new(accounts[0]);
+        wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
         await setDefaultVPContract(wNat, accounts[0]);
 
-        await ftsoRewardManager.setFTSOManager(ftsoManager.address);
-        await ftsoRewardManager.setWNAT(wNat.address);
+        await ftsoRewardManager.setContractAddresses(mockInflation.address, ftsoManager.address, wNat.address);
+        await mockInflation.setDailyAuthorizedInflation(BN(1000000));
+
         await ftsoRewardManager.activate();
     });
 

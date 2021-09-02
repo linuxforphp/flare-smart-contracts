@@ -250,7 +250,6 @@ contract MockNpmFtso is IIFtso {
     // activateFtso will be called by ftso manager once ftso is added 
     // before this is done, FTSO can't run
     function activateFtso(
-        address,
         uint256,
         uint256,
         uint256) 
@@ -297,7 +296,7 @@ contract MockNpmFtso is IIFtso {
         require(false, UNAVAILABLE);
     }
 
-    function initializeCurrentEpochStateForReveal(bool) external pure override {
+    function initializeCurrentEpochStateForReveal(uint256, bool) external pure override {
         require(false, UNAVAILABLE);
     }
   
