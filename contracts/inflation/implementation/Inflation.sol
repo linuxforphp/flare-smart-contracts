@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import  "../../genesis/implementation/FlareDaemon.sol";
 import "../../genesis/interface/IFlareDaemonize.sol";
+import "../../genesis/interface/IInflationGenesis.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../lib/InflationAnnum.sol";
 import "../lib/InflationAnnums.sol";
@@ -21,7 +22,7 @@ import "../../utils/implementation/SafePct.sol";
  *   native tokens for Flare services that are rewardable by inflation.
  * @dev Please see docs/specs/Inflation.md to better understand this terminology.
  **/
-contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
+contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemonize {
     using InflationAnnums for InflationAnnums.InflationAnnumsState;
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -164,7 +165,7 @@ contract Inflation is GovernedAndFlareDaemonized, IFlareDaemonize {
      *   Also assume that any balance received greater than the topup request calculated
      *   came from self-destructor sending a balance to this contract.
      */
-    function receiveMinting() external payable onlyFlareDaemon mustBalance {
+    function receiveMinting() external override payable onlyFlareDaemon mustBalance {
         uint256 amountPostedWei = inflationAnnums.receiveTopupRequest();
         // Assume that if we received (or already have) more than we posted, 
         // it must be amounts sent from a contract self-destruct
