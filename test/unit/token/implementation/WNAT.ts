@@ -17,7 +17,7 @@ contract(`WNat; ${getTestFile(__filename)}`, async accounts => {
 
   // Do clean unit tests by spinning up a fresh contract for each test
   beforeEach(async () => {
-    wNat = await WNAT.new(accounts[0]);
+    wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
     await setDefaultVPContract(wNat, accounts[0]);
   });
 

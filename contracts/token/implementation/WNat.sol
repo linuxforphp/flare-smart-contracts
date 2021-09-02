@@ -20,7 +20,9 @@ contract WNat is VPToken, IWNat {
     /**
      * Construct an ERC20 token.
      */
-    constructor(address _governance) VPToken(_governance, "Wrapped NAT", "WNAT") {
+    constructor(address _governance, string memory _name, string memory _symbol) 
+        VPToken(_governance, _name, _symbol) 
+    {
     }
 
     receive() external payable {

@@ -11,7 +11,7 @@ import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
 
 async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: number, epochPeriod: number, revealPeriod: number): Promise<{ natToken: WNat; assetToken: VPTokenMock; ftso: MockFtso; }> {
 
-    let natToken: WNat = await newContract<WNat>("WNat", signer, signer.address);
+    let natToken: WNat = await newContract<WNat>("WNat", signer, signer.address, "Wrapped NAT", "WNAT");
     await setDefaultVPContract_ethers(natToken, signer);
     let assetToken: VPTokenMock = await newContract<VPTokenMock>("VPTokenMock", signer, signer.address, "xAsset", "XASSET");
     await setDefaultVPContract_ethers(assetToken, signer);

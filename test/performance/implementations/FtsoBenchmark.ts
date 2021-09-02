@@ -127,7 +127,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
             await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
             // create assets
-            wnat = await WNat.new(governance);
+            wnat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnat, governance);
             assets = [];
             for (const [name, symbol, _] of assetData) {

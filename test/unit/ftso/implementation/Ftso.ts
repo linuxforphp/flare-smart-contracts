@@ -90,7 +90,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("initialize and configure", async() => {
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -217,7 +217,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("min/max vote power threshold", async() => {
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
             mockVpToken = await MockVpToken.new();
@@ -295,7 +295,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -569,7 +569,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
     describe("finalize price", async() => {
     
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -1016,7 +1016,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
     describe("short cyclic FTSO buffer", async() => {
     
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -1131,7 +1131,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("finalize price (without xAsset)", async () => {
         beforeEach(async () => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -1345,7 +1345,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("getters", async() => {
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -2337,7 +2337,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("getters (without xAsset)", async () => {
         beforeEach(async () => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");
@@ -2681,7 +2681,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
     describe("multi asset ftsos", async() => {
         beforeEach(async() => {
-            wnatInterface = await Wnat.new(accounts[0]);
+            wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnatInterface, accounts[0]);
             mockWnat = await MockWnat.new();
             vpTokenInterface = await VpToken.new(accounts[0], "A token", "ATOK");

@@ -106,7 +106,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   describe('Wnat transfer', function () {
 
     beforeEach(async () => {
-      wNat = await WNat.new(governance);
+      wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
     });
     
@@ -251,7 +251,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
       await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
       // create assets
-      wNat = await WNat.new(governance);
+      wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
       assets = [];
       for (const [name, symbol, _] of assetData) {

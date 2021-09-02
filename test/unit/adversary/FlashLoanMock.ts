@@ -51,7 +51,7 @@ contract(`FlashLoanMock.sol; ${getTestFile(__filename)}; FlashLoanMock unit test
         const accountAmount = toBN(3).mul(AMOUNT);
 
         beforeEach(async () => {
-            wnat = await Wnat.new(accounts[0]);
+            wnat = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnat, accounts[0]);
             ftso = await MockFtso.new(
                 "ATOK",

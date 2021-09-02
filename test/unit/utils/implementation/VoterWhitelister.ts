@@ -87,7 +87,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
             // create assets
-            wNat = await WNat.new(governance);
+            wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wNat, governance);
             fxrp = await VPToken.new(governance, "Ripple", "XRP");
             await setDefaultVPContract(fxrp, governance);
@@ -708,7 +708,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             ftsoRegistry = await FtsoRegistry.new(governance);
             await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
             // create assets
-            wNat = await WNat.new(governance);
+            wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wNat, governance);
             assets = [];
             for (const [name, symbol, _] of assetData) {
