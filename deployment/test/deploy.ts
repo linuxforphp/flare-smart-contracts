@@ -301,7 +301,7 @@ contract(`deploy.ts system tests`, async accounts => {
   });
 
   describe(Contracts.DUMMY_XRP_MINTER, async () => {
-    it.only("Should mint", async () => {
+    it("Should mint", async () => {
       // Assemble
       const DummyFxrpMinter = artifacts.require("DummyAssetMinter") as DummyAssetMinterContract;
       const dummyFxrpMinter = await DummyFxrpMinter.at(contracts.getContractAddress(Contracts.DUMMY_XRP_MINTER));
@@ -770,20 +770,20 @@ contract(`deploy.ts system tests`, async accounts => {
       fxdg = await FXDG.at(contracts.getContractAddress(Contracts.DOGE));
     });
 
-    it("Should be an asset representing XDG", async () => {
+    it("Should be an asset representing DOGE", async () => {
       // Assemble
       // Act
       const symbol = await fxdg.symbol();
       // Assert
-      assert.equal(symbol, parameters.XDG.xAssetSymbol);
+      assert.equal(symbol, parameters.DOGE.xAssetSymbol);
     });
 
-    it("Should represent XDG decimals correctly", async () => {
+    it("Should represent DOGE decimals correctly", async () => {
       // Assemble
       // Act
       const decimals = await fxdg.decimals();
       // Assert
-      assert.equal(decimals.toNumber(), parameters.XDG.xAssetDecimals);
+      assert.equal(decimals.toNumber(), parameters.DOGE.xAssetDecimals);
     });
   });
 
