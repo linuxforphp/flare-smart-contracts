@@ -40,7 +40,7 @@
     "ftsoRewardExpiryOffsetDays": 30,
     "dataAvailabilityRewardExpiryOffsetEpochs": 100,
     "initialWnatPriceUSD5Dec": 0,
-    "priceEpochCyclicBufferSize": 10,
+    "priceEpochCyclicBufferSize": 200,
     "inflationReceivers" : ["FtsoRewardManager"],
     "inflationSharingBIPS": [10000],
     "assets": [
