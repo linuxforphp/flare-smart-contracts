@@ -451,7 +451,7 @@ contract(`deploy.ts system tests`, async accounts => {
           // Act
           const decimals = await fAsset.decimals();
           // Assert
-          assert.equal(decimals.toNumber(), asset.xAssetDecimals);
+          assert.equal(decimals.toNumber(), asset.assetDecimals);
         });
       });
     }

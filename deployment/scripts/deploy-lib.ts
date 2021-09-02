@@ -529,7 +529,7 @@ function rewrapXassetParams(data: any): AssetDefinition {
     name: data.xAssetName,
     symbol: data.assetSymbol,
     wSymbol: data.xAssetSymbol,
-    decimals: data.xAssetDecimals,
+    decimals: data.assetDecimals,
     maxMintRequestTwei: data.dummyAssetMinterMax,
     initialPriceUSD5Dec: data.initialPriceUSD5Dec
   }
