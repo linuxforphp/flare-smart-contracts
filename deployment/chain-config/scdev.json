@@ -13,7 +13,7 @@
     "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [800,  600],
     "inflationTopUpType": 0,
-    "inflationTopUpFactor": 3000,
+    "inflationTopUpFactorx100": 300,
     "rewardEpochDurationSeconds": 180,
     "revealEpochDurationSeconds": 45,
     "priceEpochDurationSeconds": 90,
