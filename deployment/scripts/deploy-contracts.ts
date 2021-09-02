@@ -17,7 +17,7 @@ import { constants, time } from '@openzeppelin/test-helpers';
 async function main() {
   if (process.env.CHAIN_CONFIG) {
     // const parameters = JSON.parse(serializedParameters);
-    let realNetworkDeploy = false;
+    let realNetworkDeploy = process.env.REAL_NETWORK === "true";
     const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
 
     // inject private keys from .env, if they exist
@@ -29,9 +29,6 @@ async function main() {
     }
     if (process.env.GOVERNANCE_PRIVATE_KEY) {
       parameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
-    }
-    if (process.env.REAL_NETWORK) {
-      realNetworkDeploy = process.env.REAL_NETWORK === "true"
     }
     await fullDeploy(parameters, false, realNetworkDeploy);
   }

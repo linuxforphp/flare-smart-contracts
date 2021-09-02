@@ -15,5 +15,5 @@ This document is intended for Flare network smart contracts developer and descri
 ## Deployment to Coston private beta network
 
 - Prepare relevant `.env` file for coston private beta deployment.
-- Run relevant deploy, e.g: `yarn deploy_network_coston_private_beta` (this also executes some tests)
+
 

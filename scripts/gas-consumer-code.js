@@ -1,6 +1,6 @@
 // For use with hardhat console
 // Run hardhat console with:
-// yarn hardhat console --network costonPrivateBeta
+// yarn hardhat console --network staging
 
 // Helper functions
 

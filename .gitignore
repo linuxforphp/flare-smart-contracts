@@ -56,7 +56,8 @@ flattened
 
 ## Test deploys info
 deployment/deploys/*
-!deployment/deploys/coston-private-beta.json
+!deployment/deploys/staging.json
+!deployment/deploys/songbird.json
 
 ## .env
 .env

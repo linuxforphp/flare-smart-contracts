@@ -41,6 +41,7 @@
     "priceEpochCyclicBufferSize": 10,
     "inflationReceivers" : ["FtsoRewardManager","DataAvailabilityRewardManager"],
     "inflationSharingBIPS": [8000, 2000],
+    "wNATSymbol": "FLR",
     "assets": [
         {
             "assetSymbol": "XRP",

@@ -336,7 +336,7 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
 
   // Create a non-asset FTSO
   // Register an FTSO for WNAT
-  const ftsoWnat = await Ftso.new("WNAT", wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
+  const ftsoWnat = await Ftso.new(parameters.wNATSymbol, wnat.address, ftsoManager.address, supply.address, parameters.initialWnatPriceUSD5Dec, parameters.priceDeviationThresholdBIPS, defaultPriceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO WNAT`, `Ftso.sol`, ftsoWnat.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -347,8 +347,7 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
   })
 
   // Deploy asset, minter, and initial FTSOs 
-  // let assets = ['XRP', 'LTC', 'XLM', 'DOGE', 'ADA', 'ALGO', 'BCH', 'DGB', 'BTC'];
-
+  
   for (let asset of parameters.assets) {
     if (!quiet) {
       console.error(`Rigging ${asset.assetSymbol}... ${realNetDeploy}`);
