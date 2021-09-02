@@ -7,7 +7,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "../../governance/implementation/GovernedAtGenesis.sol";
-import "../../inflation/implementation/Inflation.sol";
+import "../interface/IInflationGenesis.sol";
 import "../interface/IFlareDaemonize.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
@@ -73,7 +73,7 @@ contract FlareDaemon is GovernedAtGenesis {
     // lower estimate for gas needed for daemonize() call in trigger
     uint256 internal constant MIN_GAS_FOR_DAEMONIZE_CALL = 5000;
 
-    Inflation public inflation;
+    IInflationGenesis public inflation;
     uint256 public systemLastTriggeredAt;
     uint256 public totalMintingRequestedWei;
     uint256 public totalMintingReceivedWei;
@@ -107,7 +107,7 @@ contract FlareDaemon is GovernedAtGenesis {
     event MintingWithdrawn(uint256 amountWei);
     event RegistrationUpdated(IFlareDaemonize theContract, bool add);
     event SelfDestructReceived(uint256 amountWei);
-    event InflationSet(Inflation theNewContract, Inflation theOldContract);
+    event InflationSet(IInflationGenesis theNewContract, IInflationGenesis theOldContract);
 
     /**
      * @dev As there is not a constructor, this modifier exists to make sure the inflation
@@ -257,7 +257,7 @@ contract FlareDaemon is GovernedAtGenesis {
      *   rewarding contracts.
      * @param _inflation   The inflation contract.
      */
-    function setInflation(Inflation _inflation) external onlyGovernance {
+    function setInflation(IInflationGenesis _inflation) external onlyGovernance {
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
         emit InflationSet(inflation, _inflation);
         inflation = _inflation;
