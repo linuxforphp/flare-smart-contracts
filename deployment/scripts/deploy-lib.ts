@@ -108,8 +108,11 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
   spewNewContractInfo(contracts, InflationAllocation.contractName, `InflationAllocation.sol` ,inflationAllocation.address, quiet);
   
   // set scheduled inflation
-  inflationAllocation.setAnnualInflation(parameters.scheduledInflationPercentageBIPS)
-  
+  await inflationAllocation.setAnnualInflation(parameters.scheduledInflationPercentageBIPS)
+
+  // set sharing percentages
+  // await inflationAllocation.setSharingPercentages(parameters.inflationReceivers,parameters.inflationSharingBIPS);
+
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
   try {

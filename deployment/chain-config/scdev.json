@@ -10,7 +10,7 @@
     "totalFoundationSupplyNAT": 0,
     "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [800,  600],
-    "inflationRecievers" : [],
+    "inflationReceivers" : [],
     "inflationSharingBIPS": [8000, 2000],
     "rewardEpochDurationSeconds": 180,
     "revealEpochDurationSeconds": 45,
