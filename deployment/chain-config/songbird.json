@@ -12,6 +12,8 @@
     "scheduledInflationPercentageBIPS": [800,  600],
     "inflationReceivers" : [],
     "inflationSharingBIPS": [8000, 2000],
+    "inflationTopUpType": 0,
+    "inflationTopUpFactor": 3000,
     "rewardEpochDurationSeconds": 180,
     "revealEpochDurationSeconds": 45,
     "priceEpochDurationSeconds": 90,

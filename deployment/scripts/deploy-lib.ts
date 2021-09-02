@@ -221,6 +221,10 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
     inflationAllocation.address,
     startTs
   );
+
+  // setup topup factor
+  await inflation.setTopupConfiguration(inflationAllocation.address, parameters.inflationTopUpType, parameters.inflationTopUpFactor )
+
   spewNewContractInfo(contracts, Inflation.contractName, `Inflation.sol`, inflation.address, quiet);
   // The daemon needs a reference to the inflation contract.
   await flareDaemon.setInflation(inflation.address);
