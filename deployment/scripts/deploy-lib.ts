@@ -104,9 +104,12 @@ export async function fullDeploy(parameters: any, quiet:boolean = false, realNet
 
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
-  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.inflationPercentageBIPS);
+  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, constants.ZERO_ADDRESS, parameters.initialInflationPercentageBIPS);
   spewNewContractInfo(contracts, InflationAllocation.contractName, `InflationAllocation.sol` ,inflationAllocation.address, quiet);
-
+  
+  // set scheduled inflation
+  inflationAllocation.setAnnualInflation(parameters.scheduledInflationPercentageBIPS)
+  
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
   try {
