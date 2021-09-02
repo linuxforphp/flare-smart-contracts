@@ -411,188 +411,33 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   }
 
-  describe(Contracts.XRP, async () => {
-    let FXRP: AssetTokenContract;
-    let fxrp: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FXRP = artifacts.require("AssetToken");
-      fxrp = await FXRP.at(contracts.getContractAddress(Contracts.XRP));
+  for(let asset of parameters.assets){
+    describe(`${asset.xAssetSymbol}`, async () => {
+      let FAsset: AssetTokenContract;
+      let fAsset: AssetTokenInstance;
+  
+      beforeEach(async () => {
+        FAsset = artifacts.require("AssetToken");
+        fAsset = await FAsset.at(contracts.getContractAddress(`${asset.xAssetSymbol}`));
+      });
+  
+      it("Should be an asset representing XRP", async () => {
+        // Assemble
+        // Act
+        const symbol = await fAsset.symbol();
+        // Assert
+        assert.equal(symbol, asset.xAssetSymbol);
+      });
+  
+      it("Should represent XRP decimals correctly", async () => {
+        // Assemble
+        // Act
+        const decimals = await fAsset.decimals();
+        // Assert
+        assert.equal(decimals.toNumber(), asset.xAssetDecimals);
+      });
     });
-
-    it("Should be an asset representing XRP", async () => {
-      // Assemble
-      // Act
-      const symbol = await fxrp.symbol();
-      // Assert
-      assert.equal(symbol, parameters.XRP.assetSymbol);
-    });
-
-    it("Should represent XRP decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await fxrp.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.XRP.xAssetDecimals);
-    });
-  });
-
-  describe(Contracts.LTC, async () => {
-    let FLTC: AssetTokenContract;
-    let fltc: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FLTC = artifacts.require("AssetToken");
-      fltc = await FLTC.at(contracts.getContractAddress(Contracts.LTC));
-    });
-
-    it("Should be an asset representing LTC", async () => {
-      // Assemble
-      // Act
-      const symbol = await fltc.symbol();
-      // Assert
-      assert.equal(symbol, parameters.LTC.assetSymbol);
-    });
-
-    it("Should represent LTC decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await fltc.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.LTC.xAssetDecimals);
-    });
-  });
-
-  describe(Contracts.DOGE, async () => {
-    let FXDG: AssetTokenContract;
-    let fxdg: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FXDG = artifacts.require("AssetToken");
-      fxdg = await FXDG.at(contracts.getContractAddress(Contracts.DOGE));
-    });
-
-    it("Should be an asset representing DOGE", async () => {
-      // Assemble
-      // Act
-      const symbol = await fxdg.symbol();
-      // Assert
-      assert.equal(symbol, parameters.DOGE.assetSymbol);
-    });
-
-    it("Should represent DOGE decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await fxdg.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.DOGE.xAssetDecimals);
-    });
-  });
-
-  describe(Contracts.ADA, async () => {
-    let FADA: AssetTokenContract;
-    let fada: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FADA = artifacts.require("AssetToken");
-      fada = await FADA.at(contracts.getContractAddress(Contracts.ADA));
-    });
-
-    it("Should be an asset representing ADA", async () => {
-      // Assemble
-      // Act
-      const symbol = await fada.symbol();
-      // Assert
-      assert.equal(symbol, parameters.ADA.assetSymbol);
-    });
-
-    it("Should represent ADA decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await fada.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.ADA.xAssetDecimals);
-    });
-  });
-
-  describe(Contracts.ALGO, async () => {
-    let FALGO: AssetTokenContract;
-    let falgo: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FALGO = artifacts.require("AssetToken");
-      falgo = await FALGO.at(contracts.getContractAddress(Contracts.ALGO));
-    });
-
-    it("Should be an asset representing ALGO", async () => {
-      // Assemble
-      // Act
-      const symbol = await falgo.symbol();
-      // Assert
-      assert.equal(symbol, parameters.ALGO.assetSymbol);
-    });
-
-    it("Should represent ALGO decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await falgo.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.ALGO.xAssetDecimals);
-    });
-  });
-
-  describe(Contracts.BCH, async () => {
-    let FBCH: AssetTokenContract;
-    let fbch: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FBCH = artifacts.require("AssetToken");
-      fbch = await FBCH.at(contracts.getContractAddress(Contracts.BCH));
-    });
-
-    it("Should be an asset representing BCH", async () => {
-      // Assemble
-      // Act
-      const symbol = await fbch.symbol();
-      // Assert
-      assert.equal(symbol, parameters.BCH.assetSymbol);
-    });
-
-    it("Should represent BCH decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await fbch.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.BCH.xAssetDecimals);
-    });
-  });
-
-  describe(Contracts.DGB, async () => {
-    let FDGB: AssetTokenContract;
-    let fdgb: AssetTokenInstance;
-
-    beforeEach(async () => {
-      FDGB = artifacts.require("AssetToken");
-      fdgb = await FDGB.at(contracts.getContractAddress(Contracts.DGB));
-    });
-
-    it("Should be an asset representing DGB", async () => {
-      // Assemble
-      // Act
-      const symbol = await fdgb.symbol();
-      // Assert
-      assert.equal(symbol, parameters.DGB.assetSymbol);
-    });
-
-    it("Should represent DGB decimals correctly", async () => {
-      // Assemble
-      // Act
-      const decimals = await fdgb.decimals();
-      // Assert
-      assert.equal(decimals.toNumber(), parameters.DGB.xAssetDecimals);
-    });
-  });
-
+  }
 
   describe(Contracts.FTSO_MANAGER, async () => {
     let FtsoManager: FtsoManagerContract;
@@ -603,62 +448,15 @@ contract(`deploy.ts system tests`, async accounts => {
       ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    it("Should be managing an XRP FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_XRP));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be managing an LTC FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_LTC));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be managing an XDG FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_DOGE));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be managing an ADA FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_ADA));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be managing an ALGO FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_ALGO));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be managing an BCH FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_BCH));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be managing an DGB FTSO", async () => {
-      // Assemble
-      // Act
-      const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_DGB));
-      // Assert
-      assert(found);
-    });
-
+    for(let asset of parameters.assets){ 
+      it(`Should be managing an ${asset.assetSymbol} FTSO`, async () => {
+        // Assemble
+        // Act
+        const found = await findFtso(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
+        // Assert
+        assert(found);
+      });
+    }
 
     it("Should be managing a WNAT FTSO", async () => {
       // Assemble
