@@ -11,5 +11,5 @@ interface IIDataAvailabilityRewardManager is IDataAvailabilityRewardManager {
 
     function activate() external;
     function deactivate() external;
-    function setStateConnector(StateConnector _stateConnector) external;
+    function setInflation(address _inflation) external;
 }

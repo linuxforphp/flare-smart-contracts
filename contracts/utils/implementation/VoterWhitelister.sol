@@ -5,6 +5,7 @@ import "../interface/IIVoterWhitelister.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/interface/IIVPToken.sol";
+import "../../userInterfaces/IFtsoRegistry.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -129,7 +130,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
      * Sets ftsoRegistry and ftsoManager addresses.
      * Only governance can call this method.
      */
-    function setContractAddresses(IFtsoRegistry _ftsoRegistry, address _ftsoManager) external override onlyGovernance {
+    function setContractAddresses(IFtsoRegistry _ftsoRegistry, address _ftsoManager) external onlyGovernance {
         ftsoRegistry = _ftsoRegistry;
         ftsoManager = _ftsoManager;
     }

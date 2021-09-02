@@ -120,20 +120,6 @@ contract(`DataAvailabilityRewardManager.sol; ${ getTestFile(__filename) }; Data 
         it("Should revert calling deactivate if not from governance", async () => {
             await expectRevert(dataAvailabilityRewardManager.deactivate({ from: accounts[1]}), "only governance");
         });
-        
-        it("Should update state connector", async () => {
-            expect(await dataAvailabilityRewardManager.stateConnector()).to.equals(mockStateConnector.address);
-            await dataAvailabilityRewardManager.setStateConnector(accounts[8]);
-            expect(await dataAvailabilityRewardManager.stateConnector()).to.equals(accounts[8]);
-        });
-
-        it("Should revert calling setStateConnector if not from governance", async () => {
-            await expectRevert(dataAvailabilityRewardManager.setStateConnector(accounts[2], { from: accounts[1]}), "only governance");
-        });
-
-        it("Should revert calling setStateConnector if setting to address(0)", async () => {
-            await expectRevert(dataAvailabilityRewardManager.setStateConnector(constants.ZERO_ADDRESS), "no state connector");
-        });
 
         it("Should update inflation", async () => {
             expect(await dataAvailabilityRewardManager.inflation()).to.equals(mockInflation.address);

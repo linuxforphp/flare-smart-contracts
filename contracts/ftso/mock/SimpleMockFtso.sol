@@ -12,7 +12,6 @@ contract SimpleMockFtso is Ftso {
         IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
-        IISupply _supply,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize
@@ -22,7 +21,6 @@ contract SimpleMockFtso is Ftso {
             _priceSubmitter,
             _wNat,
             _ftsoManager,
-            _supply,
             _initialPrice,
             _priceDeviationThresholdBIPS,
             _cyclicBufferSize

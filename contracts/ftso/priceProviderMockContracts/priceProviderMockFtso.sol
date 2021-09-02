@@ -296,7 +296,7 @@ contract MockNpmFtso is IIFtso {
         require(false, UNAVAILABLE);
     }
 
-    function initializeCurrentEpochStateForReveal(bool) external pure override {
+    function initializeCurrentEpochStateForReveal(uint256, bool) external pure override {
         require(false, UNAVAILABLE);
     }
   

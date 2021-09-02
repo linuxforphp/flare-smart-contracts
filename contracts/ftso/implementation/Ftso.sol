@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import "../../token/interface/IIVPToken.sol";
-import "../../inflation/interface/IISupply.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
@@ -52,7 +51,6 @@ contract Ftso is IIFtso {
     // external contracts
     IIVPToken public immutable override wNat;    // wrapped native token
     IIFtsoManager public immutable ftsoManager;  // FTSO manager contract
-    IISupply public immutable supply;            // Supply contract
     IPriceSubmitter public immutable priceSubmitter;        // Price submitter contract
     IIVPToken[] public assets;                   // array of assets
     IIFtso[] public assetFtsos;                  // FTSOs for assets (for a multi-asset FTSO)
@@ -85,7 +83,6 @@ contract Ftso is IIFtso {
         IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
-        IISupply _supply,
         uint256 _initialPriceUSD,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize
@@ -95,7 +92,6 @@ contract Ftso is IIFtso {
         priceSubmitter = _priceSubmitter;
         wNat = _wNat;
         ftsoManager = _ftsoManager;
-        supply = _supply;
         assetPriceUSD = _initialPriceUSD;
         assetPriceTimestamp = block.timestamp;
         priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
@@ -378,9 +374,16 @@ contract Ftso is IIFtso {
 
     /**
      * @notice Initializes current epoch instance for reveal
-     * @param _fallbackMode            Current epoch in fallback mode
+     * @param _circulatingSupplyNat     Epoch native token circulating supply
+     * @param _fallbackMode             Current epoch in fallback mode
      */
-    function initializeCurrentEpochStateForReveal(bool _fallbackMode) external override onlyFtsoManager {
+    function initializeCurrentEpochStateForReveal(
+        uint256 _circulatingSupplyNat,
+        bool _fallbackMode
+    )
+        external override
+        onlyFtsoManager
+    {
         uint256 epochId = getCurrentEpochId();
         //slither-disable-next-line weak-prng // not used for random
         FtsoEpoch.Instance storage epoch = epochs.instance[epochId % priceEpochCyclicBufferSize];
@@ -403,7 +406,7 @@ contract Ftso is IIFtso {
 
         epochs._initializeInstanceForReveal(
             epoch,
-            supply.getCirculatingSupplyAtCached(epochs.votePowerBlock),
+            _circulatingSupplyNat,
             _getVotePowerAt(wNat, epochs.votePowerBlock),
             assets,
             assetVotePowers,
