@@ -85,3 +85,6 @@ let gasConsumer5 = await GasConsumer5.new(2000000, { gasPrice: "5000000000000", 
 let contracts5 = await generateContracts(GasConsumer5, 10, 2000000)
 contracts5.map(contract => contract.address)
 
+// GasConsumer6.sol
+let GasConsumer6 = artifacts.require("GasConsumer6");
+let gasConsumer6 = await GasConsumer6.new(100, { gasPrice: "5000000000000", gas: "2000000" });
