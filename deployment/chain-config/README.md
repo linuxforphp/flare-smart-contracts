@@ -39,10 +39,29 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `flareDaemonGasExceededHoldoffBlocks` - 
     The number of blocks a daemon called contract is skipped if it consumes more than its alloted amount of gas.
 
+- `inflationGasLimit` - 
+    Gas limit for daemonize calls of on Inflation contract.
+
+- `ftsoManagerGasLimit` -
+    Gas limit for daemonize calls of on FtsoManager contract.
+
 ## Inflation settings
 
 - `inflationPercentageBIPS` - 
     Yearly inflation in BIPS. Usual value is 1000 (10%).
+
+- `inflationReceivers` - 
+    List of contract names (strings) that are inflation receivers.
+
+- `inflationSharingBIPS` -
+    List of inflation sharing percentages in BIPS for inflation receivers. Should match contracts `inflationReceivers`.
+Should add up to 100 Percent
+
+- `inflationTopUpTypes` - 
+    List of inflation top up types for inflation receivers. Should match contracts `inflationReceivers`. Can be 0 or 1 (see relevant enum in `Inflation.sol`)
+
+- `inflationTopUpFactorsx100` - 
+    List of inflation top up factors for inflation receivers. Should match contracts `inflationReceivers`. E.g. 300 means 3x of expected daily allocation.
 
 ## Supply settings
 - `totalFlareSupplyFLR` - 
@@ -51,6 +70,14 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `totalFoundationSupplyFLR` - 
     non circulating supply that the foundation holds.
 
+## Deployment options settings 
+
+- `deployDistributionContract` - 
+    Whether `Distribution` contract should be deployed
+
+- `deployDummyXAssetTokensAndMinters` -
+    Whether dummy FAsset tokens should be deployed. Option with `true` is used for dev testing.
+    
 ## FTSO system settings 
 
 - `rewardEpochDurationSeconds` - 
@@ -128,7 +155,7 @@ All numeric parameter names have units appended at the end. Most unit names are 
     The duration after which old reward epochs will expire, as a number of reward epochs.
     For test purposes we recommend 100, so if current reward epoch is 120, reward epochs 20 and below will expire.
 
-- `initialWnatPriceUSD5Dec` -
+- `initialWnatPriceUSDDec5` -
     The USD price of Native at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
     Usually 0, which means that the useful starting price is obtained after first voting.
 
@@ -154,7 +181,7 @@ Every other currency definition is under it symbol's key. For example we have
       "assetSymbol": "FXRP",
       "assetDecimals": 6,
       "dummyAssetMinterMax": 7000000000,
-      "initialPriceUSD5Dec": 0
+      "initialPriceUSDDec5": 0
   },
 ```
 
@@ -170,8 +197,8 @@ Every other currency definition is under it symbol's key. For example we have
 - `dummyAssetMinterMax` - 
     Maximal amount that can be minted (integer numbers including decimals. Eg. if `assetDecimals` equals 3, then for 3 currency units we write `1000`)
     
-- `initialPriceUSD5Dec` - 
-    Initial price in dollars. The convention is that prices are posted with 5 decimals, so 1$ = 100000 // TODO
+- `initialPriceUSDDec5` - 
+    Initial price in dollars. The convention is that prices are posted with 5 decimals, so 1$ = 100000
 
 # Comments on parameters
 

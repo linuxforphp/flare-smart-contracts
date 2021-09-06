@@ -1,5 +1,6 @@
-import { deployments } from "hardhat";
-import { DeployedFlareContracts, ftsoContractForSymbol, fullDeploy } from "../../../../deployment/scripts/deploy-lib";
+import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import BN from "bn.js";
+import { DeployedFlareContracts, ftsoContractForSymbol } from "../../../../deployment/scripts/deploy-lib";
 import {
     FtsoManagerContract,
     FtsoManagerInstance,
@@ -15,9 +16,7 @@ import {
 import { compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
-import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
-import BN from "bn.js";
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;

@@ -86,9 +86,18 @@ const config: HardhatUserConfig = {
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
-    costonPrivateBeta: {
-      url: process.env.COSTON_PRIVATE_BETA_RPC || "http://127.0.0.1:9660/ext/bc/C/rpc",
-      gas: 10000000,
+    staging: {
+      url: process.env.STAGING_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+      timeout: 40000,
+      accounts: accounts.map((x: any) => x.privateKey)
+    },
+    songbird: {
+      url: process.env.SONGBIRD_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+      timeout: 40000,
+      accounts: accounts.map((x: any) => x.privateKey)
+    },
+    coston: {
+      url: process.env.COSTON_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },

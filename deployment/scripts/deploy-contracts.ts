@@ -29,7 +29,7 @@ async function main() {
     if (process.env.GOVERNANCE_PRIVATE_KEY) {
       parameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
     }
-    await fullDeploy(parameters);
+    await fullDeploy(parameters, false);
   }
 }
 

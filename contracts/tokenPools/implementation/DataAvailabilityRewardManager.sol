@@ -48,7 +48,7 @@ contract DataAvailabilityRewardManager is
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
     string internal constant ERR_UNKNOWN_REWARD_EPOCH = "unknown reward epoch";
     
-    bool internal active;
+    bool public active;
 
     uint256 public immutable rewardExpiryOffset; // period of reward expiry (in reward epochs)
     

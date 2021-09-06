@@ -167,14 +167,14 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     Supply = artifacts.require("Supply");
     supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     Ftso = artifacts.require("Ftso");
-    ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FLTC));
-    ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXDG));
-    ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FXRP));
+    ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_LTC));
+    ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_DOGE));
+    ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_XRP));
     ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
-    ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FDGB));
-    ftsoFada = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FADA));
-    ftsoFalgo = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FALGO));
-    ftsoFbch = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_FBCH));
+    ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_DGB));
+    ftsoFada = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_ADA));
+    ftsoFalgo = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_ALGO));
+    ftsoFbch = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_BCH));
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     firstPriceEpochStartTs = (await ftsoWnat.getPriceEpochConfiguration())[0];
@@ -280,7 +280,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
 
     console.log(`Initializing price epoch for reveal`);
-    await flareDaemon.trigger({ gas: 5_000_000 });
+    await flareDaemon.trigger({ gas: 50_000_000 });
 
     // Time travel to reveal period
     await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), testPriceEpoch);
@@ -298,7 +298,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       testPriceEpoch);
     
     console.log(`Finalizing price for epoch ${testPriceEpoch}`);
-    await flareDaemon.trigger({ gas: 5_000_000 });
+    await flareDaemon.trigger({ gas: 50_000_000 });
     
     // There should be a balance to claim within reward manager at this point
     assert(BN(await web3.eth.getBalance(ftsoRewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
