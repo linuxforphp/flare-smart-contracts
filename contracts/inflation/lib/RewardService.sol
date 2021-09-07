@@ -93,13 +93,17 @@ library RewardService {
         returns (uint256 _topupRequestWei)
     {
         // Get the balance of the inflation receiver
-        uint256 _inflationReceiverBalanceWei = address(_self.inflationReceiver).balance;
+        uint256 inflationReceiverBalanceWei = address(_self.inflationReceiver).balance;
         if (_topupConfiguration.topupType == TopupType.FACTOROFDAILYAUTHORIZED) {
             // Compute a topup request based purely on the given factor, the last daily authorization, and
             // the balance that is sitting in the reward service contract.
-            uint256 rawTopupRequestWei = _self.lastDailyAuthorizedInflationWei
-                .mulDiv(_topupConfiguration.topupFactorX100, 100)
-                .sub(_inflationReceiverBalanceWei);
+            uint256 requestedBalanceWei = _self.lastDailyAuthorizedInflationWei
+                .mulDiv(_topupConfiguration.topupFactorX100, 100);
+            uint256 rawTopupRequestWei = 0;
+            // If current balance is less then requested, request some more.
+            if (requestedBalanceWei > inflationReceiverBalanceWei) {
+                rawTopupRequestWei = requestedBalanceWei.sub(inflationReceiverBalanceWei);
+            }
             // Compute what is already pending to be topped up
             uint256 topupPendingWei = getPendingTopup(_self);
             // If what is pending to topup is greater than the raw request, request no more.
