@@ -50,6 +50,9 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     string internal constant ERR_IS_ZERO = "address is 0";
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_TOPUP_LOW = "topup low";
+    string internal constant ERR_GET_ANNUAL_PERCENT = "unknown error. getAnnualPercentageBips";
+    string internal constant ERR_SUPPLY_UPDATE = "unknown error. updateAuthorizedInflationAndCirculatingSupply";
+    string internal constant ERR_REQUEST_MINT = "unknown error. requestMinting";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
     uint256 internal constant DEFAULT_TOPUP_FACTOR_X100 = 120;
@@ -57,7 +60,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     uint256 internal constant AUTHORIZE_TIME_FRAME_SEC = 1 days;
 
     event InflationAuthorized(uint256 amountWei);
-    event InflationRecognized(uint256 amountWei);
     event MintingReceived(uint256 amountWei, uint256 selfDestructAmountWei);
     event TopupRequested(uint256 amountWei);
     event InflationPercentageProviderSet(IIInflationPercentageProvider inflationPercentageProvider);
@@ -69,10 +71,11 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     event SupplySet(IISupply oldSupply, IISupply newSupply);
     event TopupConfigurationSet(TopupConfiguration topupConfiguration);
     event NewAnnumInitialized(
-        uint256 recognizedInflationWei,
         uint16 daysInAnnum,
         uint256 startTimeStamp,
         uint256 endTimeStamp,
+        uint256 inflatableSupplyWei,
+        uint256 recognizedInflationWei,
         uint256 totalAuthorizedInflationWei,
         uint256 totalInflationTopupRequestedWei,
         uint256 totalInflationTopupReceivedWei,
@@ -303,46 +306,14 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
 
         // Is it time to recognize an initial inflation annum?
         if (inflationAnnums.getCount() == 0) {
-            inflationAnnums.initializeNewAnnum(
-                block.timestamp, 
-                supply.getInflatableBalance(), 
-                inflationPercentageProvider.getAnnualPercentageBips()
-            );
-            InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
-            emit NewAnnumInitialized(
-                inflationAnnum.recognizedInflationWei, 
-                inflationAnnum.daysInAnnum, 
-                inflationAnnum.startTimeStamp,
-                inflationAnnum.endTimeStamp,
-                inflationAnnum.rewardServices.totalAuthorizedInflationWei,
-                inflationAnnum.rewardServices.totalInflationTopupRequestedWei,
-                inflationAnnum.rewardServices.totalInflationTopupReceivedWei,
-                inflationAnnum.rewardServices.totalInflationTopupWithdrawnWei
-            );
-            emit InflationRecognized(inflationAnnum.recognizedInflationWei);
-        }
+            _initNewAnnum(block.timestamp);
+        } else {
+            uint256 currentAnnumEndTimeStamp = inflationAnnums.getCurrentAnnum().endTimeStamp;
 
-        uint256 currentAnnumEndTimeStamp = inflationAnnums.getCurrentAnnum().endTimeStamp;
-
-        // Is it time to recognize a new inflation annum?
-        if (block.timestamp > currentAnnumEndTimeStamp) {
-            inflationAnnums.initializeNewAnnum(
-                currentAnnumEndTimeStamp.add(1),
-                supply.getInflatableBalance(), 
-                inflationPercentageProvider.getAnnualPercentageBips()
-            );
-            InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
-            emit NewAnnumInitialized(
-                inflationAnnum.recognizedInflationWei, 
-                inflationAnnum.daysInAnnum, 
-                inflationAnnum.startTimeStamp,
-                inflationAnnum.endTimeStamp,
-                inflationAnnum.rewardServices.totalAuthorizedInflationWei,
-                inflationAnnum.rewardServices.totalInflationTopupRequestedWei,
-                inflationAnnum.rewardServices.totalInflationTopupReceivedWei,
-                inflationAnnum.rewardServices.totalInflationTopupWithdrawnWei
-            );
-            emit InflationRecognized(inflationAnnum.recognizedInflationWei);
+            // Is it time to recognize a new inflation annum?
+            if (block.timestamp > currentAnnumEndTimeStamp) {
+                _initNewAnnum(currentAnnumEndTimeStamp.add(1));
+            }
         }
 
         // Is it time to authorize new inflation? Do it daily.
@@ -360,7 +331,12 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
             emit InflationAuthorized(amountAuthorizedWei);
 
             // Call supply contract to keep inflatable balance and circulating supply updated.
-            supply.updateAuthorizedInflationAndCirculatingSupply(amountAuthorizedWei);
+            try supply.updateAuthorizedInflationAndCirculatingSupply(amountAuthorizedWei) {
+            } catch Error(string memory message) {
+                revert(message);
+            } catch {
+                revert(ERR_SUPPLY_UPDATE);
+            }
 
             // Time to compute topup amount for inflation receivers.
             uint256 topupRequestWei = inflationAnnums.computeTopupRequest(this);
@@ -368,16 +344,47 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
             emit TopupRequested(topupRequestWei);
 
             // Send mint request to the daemon.
-            flareDaemon.requestMinting(topupRequestWei);
+            try flareDaemon.requestMinting(topupRequestWei) {
+            } catch Error(string memory message) {
+                revert(message);
+            } catch {
+                revert(ERR_REQUEST_MINT);
+            }
         }
         return true;
     }
-    
+
     function switchToFallbackMode() external view override onlyFlareDaemon returns (bool) {
         // do nothing - there is no fallback mode in Inflation
         return false;
     }
-    
+
+    function _initNewAnnum(uint256 startTs) internal {
+        uint256 inflatableSupply = supply.getInflatableBalance();
+
+        try inflationPercentageProvider.getAnnualPercentageBips() returns(uint256 annualPercentBips) {
+            inflationAnnums.initializeNewAnnum(startTs, inflatableSupply, annualPercentBips);
+        } catch Error(string memory message) {
+            revert(message);
+        } catch {
+            revert(ERR_GET_ANNUAL_PERCENT);
+        }
+
+        InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
+
+        emit NewAnnumInitialized(
+            inflationAnnum.daysInAnnum, 
+            inflationAnnum.startTimeStamp,
+            inflationAnnum.endTimeStamp,
+            inflatableSupply,
+            inflationAnnum.recognizedInflationWei,
+            inflationAnnum.rewardServices.totalAuthorizedInflationWei,
+            inflationAnnum.rewardServices.totalInflationTopupRequestedWei,
+            inflationAnnum.rewardServices.totalInflationTopupReceivedWei,
+            inflationAnnum.rewardServices.totalInflationTopupWithdrawnWei
+        );
+    }
+
     /**
      * @notice Compute the expected balance of this contract.
      * @param _balanceExpectedWei   The computed balance expected.

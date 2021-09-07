@@ -1074,7 +1074,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize();
 
-            
             await time.increaseTo(startTs.addn(120));
 
             // Act
@@ -1094,7 +1093,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(lastErrorBlockArr[0].toNumber(), tx.logs[1].blockNumber);
             assert.equal(numErrorsArr[0].toNumber(), 1);
             assert.equal(errorStringArr[0], "I am broken");
-            assert.equal(errorContractArr[0], ftsoManager.address);
+            assert.equal(errorContractArr[0], mockFtso.address);
             assert.equal(totalDaemonizedErrors.toNumber(), 1);    
         });
 
@@ -1386,8 +1385,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const averageFinalizePriceEpoch = ftsoInterface.contract.methods.averageFinalizePriceEpoch(0).encodeABI();
             const forceFinalizePriceEpoch = ftsoInterface.contract.methods.forceFinalizePriceEpoch(0).encodeABI();
             await mockFtso.givenMethodRevertWithMessage(finalizePriceEpoch,"I am broken");
-            await mockFtso.givenMethodRevertWithMessage(averageFinalizePriceEpoch,"averageFinalizePriceEpoch broken too");
-            await mockFtso.givenMethodRevertWithMessage(forceFinalizePriceEpoch,"forceFinalizePriceEpoch broken too");
+            await mockFtso.givenMethodReturnUint(averageFinalizePriceEpoch,0);
+            await mockFtso.givenMethodReturnUint(forceFinalizePriceEpoch,0);
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -1423,7 +1422,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(numErrorsArr[0].toNumber(), 1);
             assert.equal(errorStringArr[0], "I am broken");
             assert.equal(errorContractArr[0], mockFtso.address);
-            assert.equal(totalDaemonizedErrors.toNumber(), 3);
         });
 
         it("Should emit event if finalize price epoch fails due to TRUSTED_ADDRESSES", async () => {
@@ -1437,7 +1435,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             const forceFinalizePriceEpoch = ftsoInterface.contract.methods.forceFinalizePriceEpoch(0).encodeABI();
             await mockFtso.givenMethodRevertWithMessage(finalizePriceEpoch,"I am broken");
             await mockFtso.givenMethodRevertWithMessage(averageFinalizePriceEpoch,"averageFinalizePriceEpoch broken too");
-            await mockFtso.givenMethodRevertWithMessage(forceFinalizePriceEpoch,"forceFinalizePriceEpoch broken too");
+            await mockFtso.givenMethodReturnUint(forceFinalizePriceEpoch,0);
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -1452,7 +1450,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(120 + 30));
 
             // Act
-            // Simulate the keeper tickling reward manager
+            // Simulate the flare daemon tickling reward manager
             let tx = await ftsoManager.daemonize();
 
             // Assert
@@ -1473,10 +1471,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(numErrorsArr1[1].toNumber(), 1);
             assert.equal(errorStringArr1[1], "averageFinalizePriceEpoch broken too");
             assert.equal(errorContractArr1[1], mockFtso.address);
-            assert.equal(totalDaemonizedErrors1.toNumber(), 3);
         });
 
-        it("Should emit event if finalize price epoch fails due to PREVIOUS_PRICE_COPIED", async () => {
+        it("Should revert if finalize price epoch fails due to PREVIOUS_PRICE_COPIED", async () => {
             // Assemble
             // stub ftso randomizer
             const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
@@ -1502,28 +1499,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await time.increaseTo(startTs.addn(120 + 30));
 
             // Act
-            // Simulate the keeper tickling reward manager
-            let tx = await ftsoManager.daemonize();
-
-            // Assert
-            // FinalizingPriceEpochFailed due to PREVIOUS_PRICE_COPIED
-            expectEvent(tx, "FinalizingPriceEpochFailed", {ftso: mockFtso.address, epochId: toBN(0), failingType:toBN(3)})
-            
-            let finalizingPriceEpochFailedEvents = await ftsoManager.getPastEvents("FinalizingPriceEpochFailed")
-            
-            const {
-                0: lastErrorBlockArr2,
-                1: numErrorsArr2,
-                2: errorStringArr2,
-                3: errorContractArr2,
-                4: totalDaemonizedErrors2
-            } = await ftsoManager.showRevertedErrors(0, 3);
-
-            assert.equal(lastErrorBlockArr2[2].toNumber(), finalizingPriceEpochFailedEvents[2].blockNumber);
-            assert.equal(numErrorsArr2[2].toNumber(), 1);
-            assert.equal(errorStringArr2[2], "forceFinalizePriceEpoch broken too");
-            assert.equal(errorContractArr2[2], mockFtso.address);
-            assert.equal(totalDaemonizedErrors2.toNumber(), 3);
+            // Simulate the flare daemon tickling reward manager
+            await expectRevert(ftsoManager.daemonize(), "forceFinalizePriceEpoch broken too");
         });
     });
     

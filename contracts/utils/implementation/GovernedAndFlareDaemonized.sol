@@ -6,7 +6,7 @@ import { Governed } from "../../governance/implementation/Governed.sol";
 
 contract GovernedAndFlareDaemonized is Governed {
 
-    FlareDaemon public flareDaemon;
+    FlareDaemon public immutable flareDaemon;
 
     modifier onlyFlareDaemon () {
         require (msg.sender == address(flareDaemon), "only flare daemon");
@@ -14,11 +14,6 @@ contract GovernedAndFlareDaemonized is Governed {
     }
 
     constructor(address _governance, FlareDaemon _flareDaemon) Governed(_governance) {
-        require(address(_flareDaemon) != address(0), "flare daemon zero");
-        flareDaemon = _flareDaemon;
-    }
-    
-    function setFlareDaemon(FlareDaemon _flareDaemon) external onlyGovernance {
         require(address(_flareDaemon) != address(0), "flare daemon zero");
         flareDaemon = _flareDaemon;
     }

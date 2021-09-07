@@ -58,6 +58,7 @@ contract FlareDaemon is GovernedAtGenesis {
     string internal constant ERR_DUPLICATE_ADDRESS = "dup address";
     string internal constant ERR_ADDRESS_ZERO = "address zero";
     string internal constant ERR_OUT_OF_GAS = "out of gas";
+    string internal constant ERR_INFLATION_MINT_RECEIVE_FAIL = "unknown error. receiveMinting";
 
     uint256 internal constant MAX_DAEMONIZE_CONTRACTS = 10;
     // Initial max mint request - 50 million native token
@@ -98,8 +99,8 @@ contract FlareDaemon is GovernedAtGenesis {
     mapping(bytes32 => DaemonizedError) internal daemonizedErrors;
     bytes32 [] internal daemonizeErrorHashes;
 
-    event ContractDaemonized(address theContract);
-    event ContractDaemonizeErrored(address theContract, uint256 atBlock, string theMessage);
+    event ContractDaemonized(address theContract, uint256 gasConsumed);
+    event ContractDaemonizeErrored(address theContract, uint256 atBlock, string theMessage, uint256 gasConsumed);
     event ContractHeldOff(address theContract, uint256 blockHoldoffsRemaining);
     event ContractsSkippedOutOfGas(uint256 numberOfSkippedConstracts);
     event MintingRequested(uint256 amountWei);
@@ -116,7 +117,7 @@ contract FlareDaemon is GovernedAtGenesis {
     modifier inflationSet {
         // Don't revert...just report.
         if (address(inflation) == address(0)) {
-            addDaemonizeError(address(this), ERR_INFLATION_ZERO);
+            addDaemonizeError(address(this), ERR_INFLATION_ZERO, 0);
         }
         _;
     }
@@ -129,7 +130,7 @@ contract FlareDaemon is GovernedAtGenesis {
         // We should be in balance - don't revert, just report...
         uint256 contractBalanceExpected = getExpectedBalance();
         if (contractBalanceExpected != address(this).balance) {
-            addDaemonizeError(address(this), ERR_OUT_OF_BALANCE);
+            addDaemonizeError(address(this), ERR_OUT_OF_BALANCE, 0);
         }
     }
 
@@ -213,7 +214,7 @@ contract FlareDaemon is GovernedAtGenesis {
      */
     function requestMinting(uint256 _amountWei) external onlyInflation(msg.sender) {
         require(_amountWei <= maxMintingRequestWei, ERR_TOO_BIG);
-        require(lastMintRequestTs.add(MAX_MINTING_FREQUENCY_SEC) < block.timestamp, ERR_TOO_OFTEN);
+        require(_getNextMintRequestAllowedTs() < block.timestamp, ERR_TOO_OFTEN);
         if (_amountWei > 0) {
             lastMintRequestTs = block.timestamp;
             totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
@@ -308,6 +309,10 @@ contract FlareDaemon is GovernedAtGenesis {
         }
     }
 
+    function getNextMintRequestAllowedTs() external view returns(uint256) {
+        return _getNextMintRequestAllowedTs();
+    }
+
     function showLastDaemonizedError () external view 
         returns(
             uint256[] memory _lastErrorBlock,
@@ -398,7 +403,9 @@ contract FlareDaemon is GovernedAtGenesis {
                     totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(minted);
                     emit MintingWithdrawn(minted);
                 } catch Error(string memory message) {
-                    addDaemonizeError(address(this), message);
+                    addDaemonizeError(address(this), message, 0);
+                } catch {
+                    addDaemonizeError(address(this), ERR_INFLATION_MINT_RECEIVE_FAIL, 0);
                 }
             } else if (currentBalance < balanceExpected) {
                 // No, and if less, there are two possibilities: 1) the validator did not
@@ -420,7 +427,9 @@ contract FlareDaemon is GovernedAtGenesis {
                     totalMintingWithdrawnWei = totalMintingWithdrawnWei.add(expectedMintRequest);
                     emit MintingWithdrawn(expectedMintRequest);
                 } catch Error(string memory message) {
-                    addDaemonizeError(address(this), message);
+                    addDaemonizeError(address(this), message, 0);
+                } catch {
+                    addDaemonizeError(address(this), ERR_INFLATION_MINT_RECEIVE_FAIL, 0);
                 }
             }
         }
@@ -450,17 +459,17 @@ contract FlareDaemon is GovernedAtGenesis {
                 }
                 // Run daemonize for the contract, consume errors, and record
                 try daemonizedContract.daemonize{gas: useGas}() {
-                    emit ContractDaemonized(address(daemonizedContract));
+                    emit ContractDaemonized(address(daemonizedContract), (startGas - gasleft()));
                 // Catch all requires with messages
                 } catch Error(string memory message) {
-                    addDaemonizeError(address(daemonizedContract), message);
+                    addDaemonizeError(address(daemonizedContract), message, (startGas - gasleft()));
                     daemonizedContract.switchToFallbackMode();
                 // Catch everything else...out of gas, div by zero, asserts, etc.
                 } catch {
                     uint256 endGas = gasleft();
                     // Interpret out of gas errors
                     if (gasLimit > 0 && startGas.sub(endGas) >= gasLimit) {
-                        addDaemonizeError(address(daemonizedContract), ERR_OUT_OF_GAS);
+                        addDaemonizeError(address(daemonizedContract), ERR_OUT_OF_GAS, (startGas - endGas));
                         // When daemonize() fails with out-of-gas, try to fix it in two steps:
                         // 1) try to switch contract to fallback mode
                         //    (to allow the contract's daemonize() to recover in fallback mode in next block)
@@ -472,7 +481,7 @@ contract FlareDaemon is GovernedAtGenesis {
                         }
                     } else {
                         // Don't know error cause...just log it as unknown
-                        addDaemonizeError(address(daemonizedContract), "unknown");
+                        addDaemonizeError(address(daemonizedContract), "unknown", (startGas - endGas));
                         daemonizedContract.switchToFallbackMode();
                     }
                 }
@@ -491,9 +500,9 @@ contract FlareDaemon is GovernedAtGenesis {
         lastBalance = address(this).balance;
     }
 
-    function addDaemonizeError(address daemonizedContract, string memory message) internal {
+    function addDaemonizeError(address daemonizedContract, string memory message, uint256 gasConsumed) internal {
         bytes32 errorStringHash = keccak256(abi.encode(daemonizedContract, message));
-        
+
         DaemonizedError storage daemonizedError = daemonizedErrors[errorStringHash];
         if (daemonizedError.numErrors == 0) {
             // first time we recieve this error string.
@@ -505,8 +514,8 @@ contract FlareDaemon is GovernedAtGenesis {
         }
         daemonizedError.numErrors += 1;
         daemonizedError.lastErrorBlock = uint192(block.number);
-        emit ContractDaemonizeErrored(daemonizedContract, block.number, message);
-        
+        emit ContractDaemonizeErrored(daemonizedContract, block.number, message, gasConsumed);
+
         errorData.totalDaemonizedErrors += 1;
         errorData.lastErrorTypeIndex = daemonizedError.errorTypeIndex;        
     }
@@ -540,7 +549,12 @@ contract FlareDaemon is GovernedAtGenesis {
     function getPendingMintRequest() private view returns(uint256 _mintRequestPendingWei) {
         _mintRequestPendingWei = totalMintingRequestedWei.sub(totalMintingReceivedWei);
     }
-    
+
+
+    function _getNextMintRequestAllowedTs() internal view returns (uint256) {
+        return (lastMintRequestTs + MAX_MINTING_FREQUENCY_SEC);
+    }
+
     function truncateString(string memory _str, uint256 _maxlength) private pure returns (string memory) {
         bytes memory strbytes = bytes(_str);
         if (strbytes.length <= _maxlength) {

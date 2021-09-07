@@ -190,8 +190,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
             writeVPC.revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber);
         }
         if (address(readVPC) != address(writeVPC) && address(readVPC) != address(0)) {
-            try readVPC.revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber) {} 
-            catch Error(string memory) {}
+            try readVPC.revokeDelegationAt(msg.sender, _who, balanceOfAt(msg.sender, _blockNumber), _blockNumber) {
+            } catch {
+                // do nothing
+            }
         }
     }
 
