@@ -59,6 +59,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     string internal constant ERR_FTSO_SYMBOLS_MUST_MATCH = "FTSO symbols must match";
     string internal constant ERR_REWARD_EXPIRY_OFFSET_INVALID = "Reward expiry invalid";
     string internal constant ERR_MAX_TRUSTED_ADDRESSES_LENGTH_EXCEEDED = "Max trusted addresses length exceeded";
+    string internal constant ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL = "Unknown fail when closing expired";
+    string internal constant ERR_SET_CLEANUP_BLOCK_FAIL = "unknown fail. setting cleanup block";
+    string internal constant ERR_PRICE_EPOCH_FINALIZE_FAIL = "unknown fail. finalize price epoch";
+    string internal constant ERR_DISTRIBUTE_REWARD_FAIL = "unknown fail. distribute rewards";
+    string internal constant ERR_FALLBACK_FINALIZE_FAIL = "unknown fail. fallback finalize price epoch";
+    string internal constant ERR_INIT_EPOCH_REVEAL_FAIL = "unknown fail. init epoch for reveal";
 
     bool public override active;
     RewardEpochData[] public rewardEpochs;
@@ -81,6 +87,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     uint256 internal nextRewardEpochToExpire;
 
     mapping(IIFtso => bool) internal managedFtsos;
+    mapping(IIFtso => bool) internal justAddedFtsos;
 
     IIPriceSubmitter internal immutable priceSubmitter;
     IIFtsoRewardManager public rewardManager;
@@ -500,6 +507,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             settings.trustedAddresses
         );
         
+        // skip first round of price finalization if price epoch was already initialized for reveal
+        justAddedFtsos[_ftso] = priceEpochInitialized;
         managedFtsos[_ftso] = true;
         uint256 ftsoIndex = ftsoRegistry.addFtso(_ftso);
 
@@ -515,6 +524,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         _ftso.deactivateFtso();
         // Since this is as mapping, we can also just delete it, as false is default value for non-existing keys
         delete ftsoInFallbackMode[_ftso];
+        delete justAddedFtsos[_ftso];
         delete managedFtsos[_ftso];
         _checkMultiAssetFtsosAreManaged(_getFtsos());
         emit FtsoAdded(_ftso, false);
@@ -616,7 +626,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 // closing of expired failed, which is not critical
                 // just emit event for diagnostics
                 emit ClosingExpiredRewardEpochFailed(nextRewardEpochToExpire);
-                addRevertError(address(this), message);
+                addRevertError(address(rewardManager), message);
+                // Do not proceed with the loop.
+                break;
+            } catch {
+                emit ClosingExpiredRewardEpochFailed(nextRewardEpochToExpire);
+                addRevertError(address(rewardManager), ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL);
                 // Do not proceed with the loop.
                 break;
             }
@@ -638,8 +653,23 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             // cleanup block number manager call failed, which is not critical
             // just emit event for diagnostics
             emit CleanupBlockNumberManagerFailedForBlock(cleanupBlock);
-            addRevertError(address(this), message);
-        }        
+            addRevertError(address(cleanupBlockNumberManager), message);
+        } catch {
+            emit CleanupBlockNumberManagerFailedForBlock(cleanupBlock);
+            addRevertError(address(cleanupBlockNumberManager), ERR_SET_CLEANUP_BLOCK_FAIL);
+        }
+    }
+
+    function _finalizePriceEpochFailed(IIFtso ftso, string memory message) internal {
+        emit FinalizingPriceEpochFailed(
+            ftso, 
+            lastUnprocessedPriceEpoch, 
+            IFtso.PriceFinalizationType.WEIGHTED_MEDIAN
+        );
+
+        addRevertError(address(ftso), message);
+
+        _fallbackFinalizePriceEpoch(ftso);
     }
 
     /**
@@ -685,6 +715,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 uint256 id = (chosenFtsoId + i) % numFtsos;
                 IIFtso ftso = ftsos[id];
 
+                // skip finalizing just added ftso, as it is not initialized for reveal and tx would revert
+                if (justAddedFtsos[ftso]) {
+                    delete justAddedFtsos[ftso];
+                    continue;
+                }
+
                 try ftso.finalizePriceEpoch(lastUnprocessedPriceEpoch, !wasDistributed) returns (
                     address[] memory _addresses,
                     uint256[] memory _weights,
@@ -696,14 +732,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                         rewardedFtsoAddress = address(ftso);
                     }
                 } catch Error(string memory message) {
-                    emit FinalizingPriceEpochFailed(
-                        ftso, 
-                        lastUnprocessedPriceEpoch, 
-                        IFtso.PriceFinalizationType.WEIGHTED_MEDIAN
-                    );
-                    addRevertError(address(ftso), message);
-                    
-                    _fallbackFinalizePriceEpoch(ftso);
+                    _finalizePriceEpochFailed(ftso, message);
+                } catch {
+                    _finalizePriceEpochFailed(ftso, ERR_PRICE_EPOCH_FINALIZE_FAIL);
                 }
             }
 
@@ -722,7 +753,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                     rewardEpochs[currentRewardEpoch].votepowerBlock) {
                 } catch Error(string memory message) {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
-                    addRevertError(address(this), message);
+                    addRevertError(address(rewardManager), message);
+                } catch {
+                    emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
+                    addRevertError(address(rewardManager), ERR_DISTRIBUTE_REWARD_FAIL);
                 }
             }
 
@@ -731,7 +765,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         } else {
             // only for fallback mode
             for (uint256 i = 0; i < numFtsos; i++) {
-                _fallbackFinalizePriceEpoch(ftsos[i]);
+                IIFtso ftso = ftsos[i];
+                // skip finalizing just added ftso, as it is not initialized for reveal and tx would revert
+                if (justAddedFtsos[ftso]) {
+                    delete justAddedFtsos[ftso];
+                    continue;
+                }
+                _fallbackFinalizePriceEpoch(ftso);
             }
 
             lastRewardedFtsoAddress = address(0);
@@ -740,29 +780,28 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         
         priceEpochInitialized = false;
     }
-    
+
+    function _fallbackFinalizePriceEpochFailed(IIFtso _ftso, string memory message) internal {
+        emit FinalizingPriceEpochFailed(
+            _ftso, 
+            lastUnprocessedPriceEpoch, 
+            IFtso.PriceFinalizationType.TRUSTED_ADDRESSES
+        );
+        addRevertError(address(_ftso), message);
+
+        // if reverts we want to propagate up to daemon
+        _ftso.forceFinalizePriceEpoch(lastUnprocessedPriceEpoch);
+    }
+
     function _fallbackFinalizePriceEpoch(IIFtso _ftso) internal {
         try _ftso.averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-        } catch Error(string memory message1) {
-            emit FinalizingPriceEpochFailed(
-                _ftso, 
-                lastUnprocessedPriceEpoch, 
-                IFtso.PriceFinalizationType.TRUSTED_ADDRESSES
-            );
-            addRevertError(address(_ftso), message1);
-
-            try _ftso.forceFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
-            } catch Error(string memory message2) {
-                emit FinalizingPriceEpochFailed(
-                    _ftso, 
-                    lastUnprocessedPriceEpoch, 
-                    IFtso.PriceFinalizationType.PREVIOUS_PRICE_COPIED
-                );
-                addRevertError(address(_ftso), message2);
-            }
+        } catch Error(string memory message) {
+            _fallbackFinalizePriceEpochFailed(_ftso, message);
+        } catch {
+            _fallbackFinalizePriceEpochFailed(_ftso, ERR_FALLBACK_FINALIZE_FAIL);
         }
     }
-    
+
     /**
      * @notice Initializes epoch states in FTSOs for reveal. 
      * Prior to initialization it sets governance parameters, if 
@@ -782,6 +821,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             uint256 votePowerBlock = rewardEpochs[rewardEpochs.length - 1].votepowerBlock;
             circulatingSupplyNat = supply.getCirculatingSupplyAtCached(votePowerBlock);
         }
+
         for (uint256 i = 0; i < numFtsos; i++) {
             IIFtso ftso = ftsos[i];
             if (settings.changed) {
@@ -801,8 +841,12 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 fallbackMode || ftsoInFallbackMode[ftso]) {
             } catch Error(string memory message) {
                 emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
-                addRevertError(address(this), message);
+                addRevertError(address(ftso), message);
+            } catch {
+                emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
+                addRevertError(address(ftso), ERR_INIT_EPOCH_REVEAL_FAIL);
             }
+
         }
         settings.changed = false;
 
@@ -810,10 +854,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         uint256 currentPriceEpochId = _getCurrentPriceEpochId();
         lastUnprocessedPriceEpoch = currentPriceEpochId;
         lastUnprocessedPriceEpochRevealEnds = _getPriceEpochRevealEndTime(currentPriceEpochId);
-        
+
         priceEpochInitialized = true;
     }
-    
+
     /**
      * @notice Check if asset ftsos are managed by this ftso manager, revert otherwise
      */

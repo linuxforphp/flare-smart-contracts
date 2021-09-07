@@ -25,7 +25,6 @@ const ERR_TOPUP_LOW = "topup low";
 const ONLY_GOVERNANCE_MSG = "only governance";
 const ERR_IS_ZERO = "address is 0";
 
-const INFLATIONRECOGNIZED_EVENT = "InflationRecognized";
 const INFLATIONAUTHORIZED_EVENT = "InflationAuthorized";
 const ANNUM_INITIALIZED_EVENT = "NewAnnumInitialized";
 const TOPUPREQUESTED_EVENT = "TopupRequested";
@@ -113,17 +112,18 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(daysInAnnum, 365);
         assert.equal(startTimeStamp, nowTs.toNumber());
         assert.equal(endTimeStamp, nowTs.addn((365 * 86400) - 1).toNumber());
-        await expectEvent.inTransaction(response.tx, inflation, INFLATIONRECOGNIZED_EVENT, { amountWei: recognizedInflationWei });
-        await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, 
-          {
-             recognizedInflationWei: newAnnum.recognizedInflationWei,
-             daysInAnnum: newAnnum.daysInAnnum  ,
-             startTimeStamp: newAnnum.startTimeStamp  ,
-             endTimeStamp: newAnnum.endTimeStamp  ,
-             totalAuthorizedInflationWei: newAnnum.rewardServices.totalAuthorizedInflationWei  ,
-             totalInflationTopupRequestedWei: newAnnum.rewardServices.totalInflationTopupRequestedWei  ,
-             totalInflationTopupReceivedWei: newAnnum.rewardServices.totalInflationTopupReceivedWei  ,
-             totalInflationTopupWithdrawnWei: newAnnum.rewardServices.totalInflationTopupWithdrawnWei  ,
+        
+        //const inflatableBalanceWei = await mockSupply.getInflatableBalance();
+        await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, {
+          daysInAnnum: newAnnum.daysInAnnum  ,
+          startTimeStamp: newAnnum.startTimeStamp  ,
+          endTimeStamp: newAnnum.endTimeStamp  ,
+          inflatableSupplyWei: toBN(supply),
+          recognizedInflationWei: newAnnum.recognizedInflationWei,
+          totalAuthorizedInflationWei: newAnnum.rewardServices.totalAuthorizedInflationWei  ,
+          totalInflationTopupRequestedWei: newAnnum.rewardServices.totalInflationTopupRequestedWei  ,
+          totalInflationTopupReceivedWei: newAnnum.rewardServices.totalInflationTopupReceivedWei  ,
+          totalInflationTopupWithdrawnWei: newAnnum.rewardServices.totalInflationTopupWithdrawnWei  ,
         });
       });
     });
@@ -144,17 +144,18 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         const {4: recognizedInflation} = await inflation.getTotals();
         // We should have twice the recognized inflation accumulated...
         assert.equal(recognizedInflation.toNumber(), inflationForAnnum * 2);
-        await expectEvent.inTransaction(response.tx, inflation, INFLATIONRECOGNIZED_EVENT, { amountWei: inflationForAnnum.toString() });
-        await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, 
-          {
-             recognizedInflationWei: newAnnum.recognizedInflationWei,
-             daysInAnnum: newAnnum.daysInAnnum  ,
-             startTimeStamp: newAnnum.startTimeStamp  ,
-             endTimeStamp: newAnnum.endTimeStamp  ,
-             totalAuthorizedInflationWei: newAnnum.rewardServices.totalAuthorizedInflationWei  ,
-             totalInflationTopupRequestedWei: newAnnum.rewardServices.totalInflationTopupRequestedWei  ,
-             totalInflationTopupReceivedWei: newAnnum.rewardServices.totalInflationTopupReceivedWei  ,
-             totalInflationTopupWithdrawnWei: newAnnum.rewardServices.totalInflationTopupWithdrawnWei  ,
+
+        //const inflatableBalanceWei = await mockSupply.getInflatableBalance();
+        await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, {
+          daysInAnnum: newAnnum.daysInAnnum,
+          startTimeStamp: newAnnum.startTimeStamp,
+          endTimeStamp: newAnnum.endTimeStamp,
+          inflatableSupplyWei: toBN(supply),
+          recognizedInflationWei: newAnnum.recognizedInflationWei,
+          totalAuthorizedInflationWei: newAnnum.rewardServices.totalAuthorizedInflationWei,
+          totalInflationTopupRequestedWei: newAnnum.rewardServices.totalInflationTopupRequestedWei,
+          totalInflationTopupReceivedWei: newAnnum.rewardServices.totalInflationTopupReceivedWei,
+          totalInflationTopupWithdrawnWei: newAnnum.rewardServices.totalInflationTopupWithdrawnWei,
         });
       });
     });
@@ -883,41 +884,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         // Assert
         await expectRevert(changePromise, ERR_IS_ZERO);
         assert.equal((await inflation.inflationSharingPercentageProvider()), mockInflationSharingPercentageProvider.address);
-      });
-
-      it("Should set new flare daemon", async()=> {
-        // Assemble
-        const newMockFlareDaemon = await MockContract.new();
-        
-        // Act
-        await inflation.setFlareDaemon(newMockFlareDaemon.address);
-        
-        // Assert
-        assert.equal((await inflation.flareDaemon()), newMockFlareDaemon.address);
-
-      });
-
-      it("Should reject flare daemon change if not from governed", async() => {
-        // Assemble
-        const newMockFlareDaemon = await MockContract.new();
-        
-        // Act
-        const changePromise = inflation.setFlareDaemon(newMockFlareDaemon.address, {from: accounts[2]});
-        
-        // Assert
-        await expectRevert(changePromise, ONLY_GOVERNANCE_MSG);
-        assert.equal((await inflation.flareDaemon()), mockFlareDaemon.address);
-      });
-
-      it("Should reject flare daemon with 0 address", async() => {
-        // Assemble
-        
-        // Act
-        const changePromise = inflation.setFlareDaemon(constants.ZERO_ADDRESS);
-        
-        // Assert
-        await expectRevert(changePromise, "flare daemon zero");
-        assert.equal((await inflation.flareDaemon()), mockFlareDaemon.address);
       });
 
       it("Should set new supply", async()=> {
