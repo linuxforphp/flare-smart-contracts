@@ -423,7 +423,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end
     });
 
-    it("Should test gas for finalizing price epoch for 50 submissions", async () => {
+    it.skip("Should test gas for finalizing price epoch for 50 submissions", async () => {
       const voters = accounts.slice(101, 101 + 50);
       const vp = eth(1.5);
       // Assemble

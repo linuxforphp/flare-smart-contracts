@@ -107,6 +107,10 @@ The weighted median code will iterate all submitted prices, find the weighted me
 
 As described above, a dedicated trigger executed by the [Flare Daemon] will activate the price finalization code. It is not user triggered, and thus it differs from classic smart contract design patterns. The trigger is initiated by the validator, enters into [Flare Daemon], and is dispatched to the [FTSO Manager] contract. [Ftso Manager] will calculate the weighted median and for one FTSO, sending a list of eligible address to the [FTSO Reward Manager], which handles the [rewarding] process.
 
+### FTSO manager redeploy
+
+If there is a need to redeploy FTSO manager, also all FTSO contracts must be redeployed. In order to keep the same FTSO indices they are replaced in FTSO registry, but they should not be added to VoterWhitelister again as it would revert.
+
 ## Price submitter contract
 FTSO price submission might create a lot of on-chain traffic. To reduce traffic, a [price submitter contract] will enable a price provider to submit all prices in one batch. This contract will receive a list of destination address and submission data and send it over to the target contracts. 
 

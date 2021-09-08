@@ -65,6 +65,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     string internal constant ERR_DISTRIBUTE_REWARD_FAIL = "unknown fail. distribute rewards";
     string internal constant ERR_FALLBACK_FINALIZE_FAIL = "unknown fail. fallback finalize price epoch";
     string internal constant ERR_INIT_EPOCH_REVEAL_FAIL = "unknown fail. init epoch for reveal";
+    string internal constant ERR_FALLBACK_INIT_EPOCH_REVEAL_FAIL = "unknown fail. fallback init epoch for reveal";
 
     bool public override active;
     RewardEpochData[] public rewardEpochs;
@@ -87,7 +88,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     uint256 internal nextRewardEpochToExpire;
 
     mapping(IIFtso => bool) internal managedFtsos;
-    mapping(IIFtso => bool) internal justAddedFtsos;
+    mapping(IIFtso => bool) internal notInitializedFtsos;
 
     IIPriceSubmitter public immutable priceSubmitter;
     IIFtsoRewardManager public rewardManager;
@@ -508,7 +509,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         );
         
         // skip first round of price finalization if price epoch was already initialized for reveal
-        justAddedFtsos[_ftso] = priceEpochInitialized;
+        notInitializedFtsos[_ftso] = priceEpochInitialized;
         managedFtsos[_ftso] = true;
         uint256 ftsoIndex = ftsoRegistry.addFtso(_ftso);
 
@@ -524,7 +525,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         _ftso.deactivateFtso();
         // Since this is as mapping, we can also just delete it, as false is default value for non-existing keys
         delete ftsoInFallbackMode[_ftso];
-        delete justAddedFtsos[_ftso];
+        delete notInitializedFtsos[_ftso];
         delete managedFtsos[_ftso];
         _checkMultiAssetFtsosAreManaged(_getFtsos());
         emit FtsoAdded(_ftso, false);
@@ -715,9 +716,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 uint256 id = (chosenFtsoId + i) % numFtsos;
                 IIFtso ftso = ftsos[id];
 
-                // skip finalizing just added ftso, as it is not initialized for reveal and tx would revert
-                if (justAddedFtsos[ftso]) {
-                    delete justAddedFtsos[ftso];
+                // skip finalizing ftso, as it is not initialized for reveal and tx would revert
+                if (notInitializedFtsos[ftso]) {
+                    delete notInitializedFtsos[ftso];
                     continue;
                 }
 
@@ -766,9 +767,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             // only for fallback mode
             for (uint256 i = 0; i < numFtsos; i++) {
                 IIFtso ftso = ftsos[i];
-                // skip finalizing just added ftso, as it is not initialized for reveal and tx would revert
-                if (justAddedFtsos[ftso]) {
-                    delete justAddedFtsos[ftso];
+                // skip finalizing ftso, as it is not initialized for reveal and tx would revert
+                if (notInitializedFtsos[ftso]) {
+                    delete notInitializedFtsos[ftso];
                     continue;
                 }
                 _fallbackFinalizePriceEpoch(ftso);
@@ -840,11 +841,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
                 circulatingSupplyNat,
                 fallbackMode || ftsoInFallbackMode[ftso]) {
             } catch Error(string memory message) {
-                emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
-                addRevertError(address(ftso), message);
+                _initializeCurrentEpochStateForRevealFailed(ftso, message);
             } catch {
-                emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
-                addRevertError(address(ftso), ERR_INIT_EPOCH_REVEAL_FAIL);
+                _initializeCurrentEpochStateForRevealFailed(ftso, ERR_INIT_EPOCH_REVEAL_FAIL);
             }
 
         }
@@ -856,6 +855,27 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         lastUnprocessedPriceEpochRevealEnds = _getPriceEpochRevealEndTime(currentPriceEpochId);
 
         priceEpochInitialized = true;
+    }
+
+    function _initializeCurrentEpochStateForRevealFailed(IIFtso ftso, string memory message) internal {
+        emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
+        addRevertError(address(ftso), message);
+
+        // if it was already called with fallback = true, just mark as not initialized, else retry
+        if (fallbackMode || ftsoInFallbackMode[ftso]) {
+            notInitializedFtsos[ftso] = true;
+        } else {
+            try ftso.initializeCurrentEpochStateForReveal(0, true) {
+            } catch Error(string memory message1) {
+                notInitializedFtsos[ftso] = true;
+                emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
+                addRevertError(address(ftso), message1);
+            } catch {
+                notInitializedFtsos[ftso] = true;
+                emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
+                addRevertError(address(ftso), ERR_FALLBACK_INIT_EPOCH_REVEAL_FAIL);
+            }
+        }
     }
 
     /**
