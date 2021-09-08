@@ -1,4 +1,4 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetTokenInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
 import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
@@ -42,13 +42,11 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let startTs: BN;
   let rewardStartTs: BN;
 
-  
   let assets: AssetTokenInstance[];
   let ftsos: FtsoInstance[];
   let wNat: WNatInstance;
   let natFtso: FtsoInstance;
-
-
+  let trustedVoters: string[];
 
   let vpBlockNumber: number;
   let epochId: number;
@@ -61,7 +59,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
     return ftso;
   }
 
-  async function createAssetsAndFtsos(number: number) {
+  async function createAssetsAndFtsos(noOfSingleAssetFtsos: number, noOfAssetsInMultiFtso: number) {
     let assetData: Array<[name: string, symbol: string, price: BN]> = [
       ["Ripple", "XRP", usd(0.5)],
       ["Litecoin", "LTC", usd(1.1)],
@@ -83,7 +81,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
 
     // create assets
     assets = [];
-    for (const [name, symbol, _] of assetData.slice(0, number)) {
+    for (const [name, symbol, _] of assetData.slice(0, noOfSingleAssetFtsos)) {
       const asset = await AssetToken.new(governance, name, symbol, 18);
       await setDefaultVPContract(asset, governance);
       assets.push(asset);
@@ -98,7 +96,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       await ftsoManager.setFtsoAsset(ftso.address, assets[i].address, { from: governance });
       ftsos.push(ftso);
     }
-    await ftsoManager.setFtsoAssetFtsos(natFtso.address, ftsos.slice(0, Math.min(4, number)).map(f => f.address), { from: governance });
+    await ftsoManager.setFtsoAssetFtsos(natFtso.address, ftsos.slice(0, noOfAssetsInMultiFtso).map(f => f.address), { from: governance });
   }
 
   async function getCurrentEpochId(): Promise<number> {
@@ -107,119 +105,128 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
     return Math.floor(timestamp.sub(startTs).toNumber() / epochDurationSec);
   }
 
-  async function ftsoManagerGasBenchmarking(noOfVoters: number, noOfAssets: number, noOfPriceEpochs:number, randomPrices: boolean, updateGovernanceParameters: boolean) {
-    const voters = accounts.slice(0, noOfVoters);
+  async function ftsoManagerGasBenchmarking(
+    noOfVoters: number,
+    noOfSingleAssetFtsos: number,
+    noOfAssetsInMultiFtso: number,
+    noOfPriceEpochs: number,
+    randomPrices: boolean,
+    updateGovernanceParameters: boolean
+  ) {
+    const voters = accounts.slice(10, 10 + noOfVoters);
 
-      // Assemble
-      await createAssetsAndFtsos(noOfAssets);
-      for (const voter of voters) {
-        await wNat.deposit({ from: voter, value: toBN(Math.round(Math.random() * 1e18)) });
-        for (const asset of assets) {
-          await asset.mint(voter, toBN(Math.round(Math.random() * 1e18)), { from: governance });
+    // Assemble
+    await createAssetsAndFtsos(noOfSingleAssetFtsos, noOfAssetsInMultiFtso);
+    for (const voter of voters) {
+      await wNat.deposit({ from: voter, value: toBN(Math.round(Math.random() * 1e18)) });
+      for (const asset of assets) {
+        await asset.mint(voter, toBN(Math.round(Math.random() * 1e18)), { from: governance });
+      }
+    }
+
+    let normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
+    console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
+
+    const allFtsos = [natFtso, ...ftsos];
+    const indices: BN[] = [];
+    for (const ftso of allFtsos) {
+      const symbol = await ftso.symbol();
+      indices.push(await ftsoRegistry.getFtsoIndex(symbol));
+    }
+    // whitelist
+    for (const voter of voters) {
+      await whitelist.requestFullVoterWhitelisting(voter);
+    }
+
+    normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
+    console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
+
+    await increaseTimeTo(rewardStartTs, 'web3');
+
+    // initialize first reward epoch
+    await expectRevert(ftsoManager.getCurrentRewardEpoch(), "Reward epoch not initialized yet");
+    let initializeFirstRewardEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
+    vpBlockNumber = (await ftsoManager.getRewardEpochVotePowerBlock(0)).toNumber();
+    assert(vpBlockNumber > 0, "first reward epoch not initialized");
+    console.log(`initialize first reward epoch: ${initializeFirstRewardEpochTx.receipt.gasUsed}`);
+
+    epochId = await getCurrentEpochId();
+    assert(epochId > 0, "epochId == 0");
+
+    for (let i = 0; i < noOfPriceEpochs; i++) {
+      await expectRevert(natFtso.getEpochPrice(epochId), "Epoch data not available");
+
+      if (updateGovernanceParameters) {
+        if (i % 2 == 0) {
+          trustedVoters = accounts.slice(0, 5);
+          await ftsoManager.setGovernanceParameters(9, 11, 1, 3000000001, 99, 1, 2, trustedVoters, { from: governance });
+        } else {
+          trustedVoters = accounts.slice(1, 6);
+          await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });
         }
       }
+      let initializePriceEpochForRevealTx = await ftsoManager.daemonize({ from: flareDaemon });
+      let price = await natFtso.getEpochPrice(epochId); // should not revert
+      assert(price.toNumber() == 0, "price != 0");
+      console.log(`initialize price epoch for reveal: ${initializePriceEpochForRevealTx.receipt.gasUsed}`);
 
-      let normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
+      normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
       console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
 
-      const allFtsos = [natFtso, ...ftsos];
-      const indices: BN[] = [];
-      for (const ftso of allFtsos) {
-        const symbol = await ftso.symbol();
-        indices.push(await ftsoRegistry.getFtsoIndex(symbol));
-      }
-      // whitelist
-      for (const voter of voters) {
-        await whitelist.requestFullVoterWhitelisting(voter);
+      const voterPrices = new Map<string, BN[]>();
+      const voterRandoms = new Map<string, BN[]>();
+
+      // submit hashes (worst case - all users submits equal prices)
+      const equalPrices = allFtsos.map(_ => toBN(Math.round(Math.random() * 2e5)));
+      for (const voter of [...trustedVoters, ...voters]) {
+        const randoms = allFtsos.map(_ => toBN(Math.round(Math.random() * 1e9)));
+        const prices = randomPrices ? allFtsos.map(_ => toBN(Math.round(Math.random() * 2e5))) : equalPrices;
+        voterPrices.set(voter, prices);
+        voterRandoms.set(voter, randoms);
+        const hashes = allFtsos.map((_, i) => submitPriceHash(prices[i], randoms[i], voter));
+        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
       }
 
       normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
       console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
 
-      await increaseTimeTo(rewardStartTs, 'web3');
 
-      // initialize first reward epoch
-      await expectRevert(ftsoManager.getCurrentRewardEpoch(), "Reward epoch not initialized yet");
-      let initializeFirstRewardEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
-      vpBlockNumber = (await ftsoManager.getRewardEpochVotePowerBlock(0)).toNumber();
-      assert(vpBlockNumber > 0, "first reward epoch not initialized");
-      console.log(`initialize first reward epoch: ${initializeFirstRewardEpochTx.receipt.gasUsed}`);
-
-      epochId = await getCurrentEpochId();
-      assert(epochId > 0, "epochId == 0");
-
-      for (let i = 0; i < noOfPriceEpochs; i++) {
-        await expectRevert(natFtso.getEpochPrice(epochId), "Epoch data not available");
-        
-        if (updateGovernanceParameters) {
-          if (i % 2 == 0) {
-            const trustedVoters = accounts.slice(100, 100 + 5);
-            await ftsoManager.setGovernanceParameters(9, 11, 1, 3000000001, 99, 1, 2, trustedVoters, { from: governance });
-          } else {
-            const trustedVoters = accounts.slice(101, 101 + 5);
-            await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });
-          }
-        }
-        let initializePriceEpochForRevealTx = await ftsoManager.daemonize({ from: flareDaemon });
-        let price = await natFtso.getEpochPrice(epochId); // should not revert
-        assert(price.toNumber() == 0, "price != 0");
-        console.log(`initialize price epoch for reveal: ${initializePriceEpochForRevealTx.receipt.gasUsed}`);
-
-        normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
-        console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
-
-        const voterPrices = new Map<string, BN[]>();
-        const voterRandoms = new Map<string, BN[]>();
-
-        // submit hashes (worst case - all users submits equal prices)
-        const equalPrices = allFtsos.map(_ => toBN(Math.round(Math.random() * 2e5)));
-        for (const voter of voters) {
-          const randoms = allFtsos.map(_ => toBN(Math.round(Math.random() * 1e9)));
-          const prices = randomPrices ? allFtsos.map(_ => toBN(Math.round(Math.random() * 2e5))) : equalPrices;
-          voterPrices.set(voter, prices);
-          voterRandoms.set(voter, randoms);
-          const hashes = allFtsos.map((_, i) => submitPriceHash(prices[i], randoms[i], voter));
-          await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
-        }
-
-        normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
-        console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
-
-
-        // reveal prices
-        await increaseTimeTo(startTs.addn((epochId + 1) * epochDurationSec), 'web3'); // reveal period start
-        for (const voter of voters) {
-          await priceSubmitter.revealPrices(epochId, indices, voterPrices.get(voter)!, voterRandoms.get(voter)!, { from: voter });
-        }
-
-        normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
-        console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
-
-        // finalize price epoch
-        await increaseTimeTo(startTs.addn((epochId + 1) * epochDurationSec + revealDurationSec), 'web3'); // reveal period end
-        price = await natFtso.getEpochPrice(epochId); // should not revert
-        assert(price.toNumber() == 0, "price != 0");
-        let finalizePriceEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
-        price = await natFtso.getEpochPrice(epochId); // should not revert
-        assert(price.toNumber() > 0, "price == 0");
-        console.log(`finalize price epoch: ${finalizePriceEpochTx.receipt.gasUsed}`);
-
-        epochId++;
+      // reveal prices
+      await increaseTimeTo(startTs.addn((epochId + 1) * epochDurationSec), 'web3'); // reveal period start
+      for (const voter of [...trustedVoters, ...voters]) {
+        await priceSubmitter.revealPrices(epochId, indices, voterPrices.get(voter)!, voterRandoms.get(voter)!, { from: voter });
       }
 
+      normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
+      console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
 
-      // finalize first reward epoch
-      await increaseTimeTo(rewardStartTs.addn(rewardDurationSec), 'web3'); // reward epoch end
-      let rewardEpoch = await ftsoManager.getCurrentRewardEpoch();
-      assert(rewardEpoch.toNumber() == 0, "rewardEpoch != 0");
-      let finalizeRewardEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
-      rewardEpoch = await ftsoManager.getCurrentRewardEpoch();
-      assert(rewardEpoch.toNumber() > 0, "rewardEpoch == 0");
-      console.log(`finalize first reward epoch: ${finalizeRewardEpochTx.receipt.gasUsed}`);
+      // finalize price epoch
+      await increaseTimeTo(startTs.addn((epochId + 1) * epochDurationSec + revealDurationSec), 'web3'); // reveal period end
+      price = await natFtso.getEpochPrice(epochId); // should not revert
+      assert(price.toNumber() == 0, "price != 0");
+      let finalizePriceEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
+      price = await natFtso.getEpochPrice(epochId); // should not revert
+      assert(price.toNumber() > 0, "price == 0");
+      console.log(`finalize price epoch: ${finalizePriceEpochTx.receipt.gasUsed}`);
+
+      expectEvent.inTransaction(finalizePriceEpochTx.tx, ftsoRewardManager, "RewardsDistributed", { epochId: toBN(epochId) });
+
+      epochId++;
+    }
+
+
+    // finalize first reward epoch
+    await increaseTimeTo(rewardStartTs.addn(rewardDurationSec), 'web3'); // reward epoch end
+    let rewardEpoch = await ftsoManager.getCurrentRewardEpoch();
+    assert(rewardEpoch.toNumber() == 0, "rewardEpoch != 0");
+    let finalizeRewardEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
+    rewardEpoch = await ftsoManager.getCurrentRewardEpoch();
+    assert(rewardEpoch.toNumber() > 0, "rewardEpoch == 0");
+    console.log(`finalize first reward epoch: ${finalizeRewardEpochTx.receipt.gasUsed}`);
   }
 
   describe("Ftso manager gas benchmarking", async () => {
-  
+
     beforeEach(async () => {
       // create price submitter
       priceSubmitter = await PriceSubmitter.new();
@@ -237,30 +244,30 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       // create registry
       ftsoRegistry = await FtsoRegistry.new(governance);
       // create whitelister
-      whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 500);
+      whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 100);
 
       // create ftso manager
       startTs = await time.latest();
       rewardStartTs = startTs.addn(2 * epochDurationSec + revealDurationSec);
       ftsoManager = await FtsoManager.new(
-        governance, 
-        flareDaemon, 
-        priceSubmitter.address, 
-        startTs, 
-        epochDurationSec, 
-        revealDurationSec, 
-        rewardStartTs, 
-        rewardDurationSec, 
+        governance,
+        flareDaemon,
+        priceSubmitter.address,
+        startTs,
+        epochDurationSec,
+        revealDurationSec,
+        rewardStartTs,
+        rewardDurationSec,
         7
       );
-      
-      await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, 
-        whitelist.address, supplyInterface.address, constants.ZERO_ADDRESS, {from: governance});
-      
-      const trustedVoters = accounts.slice(101, 101 + 5);
+
+      await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address,
+        whitelist.address, supplyInterface.address, constants.ZERO_ADDRESS, { from: governance });
+
+      trustedVoters = accounts.slice(1, 6);
       await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });
       await ftsoManager.activate({ from: governance });
-      
+
       // create wNat
       wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
@@ -271,42 +278,51 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager.address, { from: governance });
       await ftsoRewardManager.setContractAddresses(inflation, ftsoManager.address, wNat.address, { from: governance });
       await ftsoRewardManager.activate({ from: governance });
-      
+
       // set the daily authorized inflation...this proxies call to ftso reward manager
       await ftsoRewardManager.setDailyAuthorizedInflation(1000000, { from: inflation });
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 4 ftsos (100 voters, random prices)", async () => {
-      await ftsoManagerGasBenchmarking(100, 4, 4, true, false);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 4 ftsos (10 voters + 5 trusted addresses, 4 runs, random prices)", async () => {
+      await ftsoManagerGasBenchmarking(100, 4, 4, 4, true, false);
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 4 ftsos (100 voters, equal prices, update governance parameters)", async () => {
-      await ftsoManagerGasBenchmarking(100, 4, 4, false, true);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 4 ftsos (100 voters + 5 trusted addresses, 4 runs, equal prices, update governance parameters)", async () => {
+      await ftsoManagerGasBenchmarking(100, 4, 4, 4, false, true);
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 8 ftsos (100 voters, random prices)", async () => {
-      await ftsoManagerGasBenchmarking(100, 8, 4, true, false);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 8 ftsos (100 voters + 5 trusted addresses, 4 runs, random prices)", async () => {
+      await ftsoManagerGasBenchmarking(100, 8, 4, 4, true, false);
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 8 ftsos (100 voters, equal prices, update governance parameters)", async () => {
-      await ftsoManagerGasBenchmarking(100, 8, 4, false, true);
-    });
-    
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 12 ftsos (100 voters, random prices)", async () => {
-      await ftsoManagerGasBenchmarking(100, 12, 4, true, false);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 8 ftsos (100 voters + 5 trusted addresses, 4 runs, equal prices, update governance parameters)", async () => {
+      await ftsoManagerGasBenchmarking(100, 8, 4, 4, false, true);
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 12 ftsos (100 voters, equal prices, update governance parameters)", async () => {
-      await ftsoManagerGasBenchmarking(100, 12, 4, false, true);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 12 ftsos (100 voters + 5 trusted addresses, 4 runs, random prices)", async () => {
+      await ftsoManagerGasBenchmarking(100, 12, 4, 4, true, false);
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 16 ftsos (100 voters, random prices)", async () => {
-      await ftsoManagerGasBenchmarking(100, 16, 4, true, false);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 12 ftsos (100 voters + 5 trusted addresses, 4 runs, equal prices, update governance parameters)", async () => {
+      await ftsoManagerGasBenchmarking(100, 12, 4, 4, false, true);
     });
 
-    it("Ftso manager daemonize calls for wNat ftso with 4 assets + 16 ftsos (100 voters, equal prices, update governance parameters)", async () => {
-      await ftsoManagerGasBenchmarking(100, 16, 4, false, true);
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 16 ftsos (100 voters + 5 trusted addresses, 4 runs, random prices)", async () => {
+      await ftsoManagerGasBenchmarking(100, 16, 4, 4, true, false);
     });
-      
+
+    it.skip("Ftso manager daemonize calls for wNat ftso with 4 assets + 16 ftsos (100 voters + 5 trusted addresses, 4 runs, equal prices, update governance parameters)", async () => {
+      await ftsoManagerGasBenchmarking(100, 16, 4, 4, false, true);
+    });
+
+    // real conditions
+    it("Ftso manager daemonize calls for wNat ftso with 5 assets + 14 ftsos (100 voters + 5 trusted addresses, 4 runs, random prices)", async () => {
+      await ftsoManagerGasBenchmarking(100, 14, 5, 4, true, false);
+    });
+
+    it.skip("Ftso manager daemonize calls for wNat ftso with 5 assets + 14 ftsos (100 voters + 5 trusted addresses, 4 runs, equal prices, update governance parameters)", async () => {
+      await ftsoManagerGasBenchmarking(100, 14, 5, 4, false, true);
+    });
+
   });
 });
