@@ -47,6 +47,7 @@ contract DataAvailabilityRewardManager is
     string internal constant ERR_CLAIM_FAILED = "claim failed";
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
     string internal constant ERR_UNKNOWN_REWARD_EPOCH = "unknown reward epoch";
+    string internal constant ERR_REWARD_EXPIRY_OFFSET_INVALID = "reward expiry invalid";
     
     bool public active;
 
@@ -99,6 +100,7 @@ contract DataAvailabilityRewardManager is
     {
         require(address(_stateConnector) != address(0), ERR_STATE_CONNECTOR_ZERO);
         require(_inflation != address(0), ERR_INFLATION_ZERO);
+        require(_rewardExpiryOffset > 0, ERR_REWARD_EXPIRY_OFFSET_INVALID);
 
         inflation = _inflation;
         stateConnector = _stateConnector;
