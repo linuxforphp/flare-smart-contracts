@@ -6,7 +6,6 @@ import "../../tokenPools/interface/IITokenPool.sol";
 import "../../token/lib/CheckPointHistory.sol";
 import "../../token/lib/CheckPointHistoryCache.sol";
 import "../../governance/implementation/Governed.sol";
-import "../../inflation/implementation/Inflation.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
@@ -41,7 +40,7 @@ contract Supply is Governed, IISupply {
 
     SupplyData[] public tokenPools;
 
-    Inflation public inflation;
+    address public inflation;
     address public burnAddress;
 
     // balance of burn address at last check - needed for updating circulating supply
@@ -51,21 +50,21 @@ contract Supply is Governed, IISupply {
     event AuthorizedInflationUpdateError(uint256 actual, uint256 expected);
 
     modifier onlyInflation {
-        require(msg.sender == address(inflation), ERR_INFLATION_ONLY);
+        require(msg.sender == inflation, ERR_INFLATION_ONLY);
         _;
     }
 
     constructor(
         address _governance,
         address _burnAddress,
-        Inflation _inflation,
+        address _inflation,
         uint256 _initialGenesisAmountWei,
         uint256 _totalFoundationSupplyWei,
         IITokenPool[] memory _tokenPools
     )
         Governed(_governance)
     {
-        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
+        require(_inflation != address(0), ERR_INFLATION_ZERO);
         require(_initialGenesisAmountWei > 0, ERR_INITIAL_GENESIS_AMOUNT_ZERO);
         burnAddress = _burnAddress;
         inflation = _inflation;
@@ -102,6 +101,14 @@ contract Supply is Governed, IISupply {
             emit AuthorizedInflationUpdateError(totalInflationAuthorizedWei - oldTotalInflationAuthorizedWei,
                 _inflationAuthorizedWei);
         }
+    }
+
+    /**
+     * @notice Sets inflation contract. Only governance can call this method.
+     */
+    function setInflation(address _inflation) external override onlyGovernance {
+        require(_inflation != address(0), ERR_INFLATION_ZERO);
+        inflation = _inflation;
     }
 
     /**

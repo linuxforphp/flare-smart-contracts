@@ -76,6 +76,17 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         expect((await supply.initialGenesisAmountWei()).toNumber()).to.equals(initialGenesisAmountWei);
     });
 
+    it("Should change inflation", async() => {
+        expect(await supply.inflation()).to.equals(inflationAddress);
+        await supply.setInflation(accounts[8], { from: governanceAddress});
+        expect(await supply.inflation()).to.not.equals(inflationAddress);
+        expect(await supply.inflation()).to.equals(accounts[8]);
+    });
+
+    it("Should revert changing inflation if not from governance", async() => {
+        await expectRevert(supply.setInflation(accounts[8], { from: accounts[1]}), "only governance");
+    });
+
     it("Should get circulating supply", async() => {
         const currentBlockNumber = await web3.eth.getBlockNumber();
         expect((await supply.getCirculatingSupplyAt(currentBlockNumber + 5)).toNumber()).to.equals(circulatingSupply);
