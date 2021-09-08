@@ -57,7 +57,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
 
     bool public active;
 
-    uint256 internal immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
+    uint256 public immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
     uint256 public immutable defaultFeePercentage; // default value for fee percentage
         
     // id of the first epoch to expire. Closed = expired and unclaimed funds sent back

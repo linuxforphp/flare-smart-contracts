@@ -56,7 +56,7 @@ contract DataAvailabilityRewardManager is
     uint256 private firstEpochToCheckExpiry; 
     
     mapping(uint256 => mapping(address => RewardClaim)) private epochDataAvailabilityProviderReward;
-    RewardEpochData[] internal rewardEpochs;
+    RewardEpochData[] public rewardEpochs;
 
     // Totals
     uint256 public totalAwardedWei;

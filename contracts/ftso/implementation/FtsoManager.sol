@@ -82,7 +82,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
 
     mapping(IIFtso => bool) internal managedFtsos;
 
-    IIPriceSubmitter internal immutable priceSubmitter;
+    IIPriceSubmitter public immutable priceSubmitter;
     IIFtsoRewardManager public rewardManager;
     IIFtsoRegistry public ftsoRegistry;
     IIVoterWhitelister public voterWhitelister;

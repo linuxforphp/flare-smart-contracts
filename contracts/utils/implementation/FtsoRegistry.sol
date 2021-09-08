@@ -25,7 +25,7 @@ contract FtsoRegistry is Governed, IIFtsoRegistry {
 
     // addresses
     // This address has to be set in deploy phase
-    IIFtsoManager private ftsoManager;
+    IIFtsoManager public ftsoManager;
 
     modifier onlyFtsoManager () {
         require (msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);

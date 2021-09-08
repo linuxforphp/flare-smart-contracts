@@ -28,11 +28,11 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     // mapping: ftsoIndex => array of whitelisted voters for this ftso
     mapping (uint256 => address[]) internal whitelist;
     
-    IIPriceSubmitter internal priceSubmitter;
+    IIPriceSubmitter public immutable priceSubmitter;
     
-    IFtsoRegistry internal ftsoRegistry;
+    IFtsoRegistry public ftsoRegistry;
 
-    address internal ftsoManager;
+    address public ftsoManager;
 
     modifier onlyFtsoManager {
         require(msg.sender == ftsoManager, "only ftso manager");
