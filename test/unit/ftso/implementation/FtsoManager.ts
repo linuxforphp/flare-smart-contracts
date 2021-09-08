@@ -1060,11 +1060,13 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             compareArrays(trustedAddresses, trustedAddresses2 as string[]);
         });
 
-        it("Should emit event if initialize price epoch fails and catches reverted error", async () => {
+        it("Should emit event if initialize price epoch fails and catches reverted errors", async () => {
             // Assemble
             // stub ftso initialize
-            const initializePriceEpoch = ftsoInterface.contract.methods.initializeCurrentEpochStateForReveal(1000, false).encodeABI();
-            await mockFtso.givenMethodRevertWithMessage(initializePriceEpoch,"I am broken");
+            const initializePriceEpoch = ftsoInterface.contract.methods.initializeCurrentEpochStateForReveal(10000, false).encodeABI();
+            await mockFtso.givenCalldataRevertWithMessage(initializePriceEpoch,"I am broken");
+            const initializePriceEpochFallback = ftsoInterface.contract.methods.initializeCurrentEpochStateForReveal(0, true).encodeABI();
+            await mockFtso.givenCalldataRunOutOfGas(initializePriceEpochFallback);
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -1080,7 +1082,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Simulate the daemon tickling reward manager
             let tx = await ftsoManager.daemonize();
             // Assert
-            expectEvent(tx, "InitializingCurrentEpochStateForRevealFailed", {ftso: mockFtso.address, epochId: toBN(1)})
+            expectEvent(tx, "InitializingCurrentEpochStateForRevealFailed", {ftso: mockFtso.address, epochId: toBN(1)});
 
             const { 
                 0: lastErrorBlockArr,
@@ -1088,13 +1090,19 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
                 2: errorStringArr,
                 3: errorContractArr,
                 4: totalDaemonizedErrors
-               } = await ftsoManager.showRevertedErrors(0, 1);
+               } = await ftsoManager.showRevertedErrors(0, 2);
 
-            assert.equal(lastErrorBlockArr[0].toNumber(), tx.logs[1].blockNumber);
+            assert.equal(lastErrorBlockArr[0].toNumber(), tx.logs[0].blockNumber);
             assert.equal(numErrorsArr[0].toNumber(), 1);
             assert.equal(errorStringArr[0], "I am broken");
             assert.equal(errorContractArr[0], mockFtso.address);
-            assert.equal(totalDaemonizedErrors.toNumber(), 1);    
+            assert.equal(totalDaemonizedErrors.toNumber(), 2);
+
+            assert.equal(lastErrorBlockArr[1].toNumber(), tx.logs[0].blockNumber);
+            assert.equal(numErrorsArr[1].toNumber(), 1);
+            assert.equal(errorStringArr[1], "unknown fail. fallback init epoch for reveal");
+            assert.equal(errorContractArr[1], mockFtso.address);
+            assert.equal(totalDaemonizedErrors.toNumber(), 2);
         });
 
     });
