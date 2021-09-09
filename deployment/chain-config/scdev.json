@@ -25,7 +25,7 @@
     "lowAssetThresholdUSDDec5": 200000000,
     "highAssetThresholdUSDDec5": 3000000000,
     "highAssetTurnoutThresholdBIPS": 100,
-    "lowNatTurnoutThresholdBIPS": 300,
+    "lowNatTurnoutThresholdBIPS": 500,
     "priceDeviationThresholdBIPS": 10000,
     "trustedAddresses": [
         "0xc783df8a850f42e7f7e57013759c285caa701eb6",

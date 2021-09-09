@@ -161,10 +161,6 @@ Should add up to 100 Percent
     The duration after which old reward epochs will expire, as a number of reward epochs.
     For test purposes we recommend 100, so if current reward epoch is 120, reward epochs 20 and below will expire.
 
-- `initialWnatPriceUSDDec5` -
-    The USD price of Native at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
-    Usually 0, which means that the useful starting price is obtained after first voting.
-
 ## Reward sharing percentages
 
 - `ftsoRewardManagerSharingPercentageBIPS` - 
@@ -177,8 +173,13 @@ Should add up to 100 Percent
 
 For wrapped native currency, there are two settings
 
+- `nativeSymbol` - the symbol of the native currency (used as symbol for FTSO)
 - `wrappedNativeName` - the name of the wrapped currency
 - `wrappedNativeSymbol` - the symbol of the wrapped currency
+- `initialWnatPriceUSDDec5` -
+    The USD price of Native at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 
+    Usually 0, which means that the useful starting price is obtained after first voting.
+
 
 Every other currency definition is under it symbol's key. For example we have
 ```

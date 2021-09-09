@@ -417,7 +417,12 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     console.error("Adding FTSOs to manager...");
   }
 
-  for (let asset of [{ assetSymbol: 'NAT' }, ...parameters.assets]) {
+  let assetList = [
+    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : []), 
+    ...parameters.assets
+  ]
+
+  for (let asset of assetList) {
     let ftsoContract = (assetToContracts.get(asset.assetSymbol) as AssetContracts).ftso;
     await waitFinalize3(hre, deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
   }
