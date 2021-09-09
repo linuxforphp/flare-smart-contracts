@@ -77,7 +77,13 @@ Should add up to 100 Percent
 
 - `deployDummyXAssetTokensAndMinters` -
     Whether dummy FAsset tokens should be deployed. Option with `true` is used for dev testing.
-    
+
+- `deployNATFtso` -
+    Whether NAT token FTSO should be deployed.
+
+- `NATMultiAssets` - 
+    List of multiasset symbols
+
 ## FTSO system settings 
 
 - `rewardEpochDurationSeconds` - 

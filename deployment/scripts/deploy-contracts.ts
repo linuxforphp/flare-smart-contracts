@@ -54,22 +54,22 @@ export interface DeployedFlareContracts {
  * @param func 
  * @returns 
  */
- async function waitFinalize3(hre: HardhatRuntimeEnvironment, address: string, func: () => any) {
+async function waitFinalize3(hre: HardhatRuntimeEnvironment, address: string, func: () => any) {
   const web3 = hre.web3;
   let nonce = await web3.eth.getTransactionCount(address);
   let res = await func();
   while ((await web3.eth.getTransactionCount(address)) == nonce) {
-      await new Promise((resolve: any) => { setTimeout(() => { resolve() }, 1000) })
-      // console.log("Waiting...")
+    await new Promise((resolve: any) => { setTimeout(() => { resolve() }, 1000) })
+    // console.log("Waiting...")
   }
   return res;
 }
 
 interface IISetVpContract {
-    address: string;
-    setReadVpContract(_vpContract: string, txDetails?: any): Promise<any>;
-    setWriteVpContract(_vpContract: string, txDetails?: any): Promise<any>;
-    needsReplacementVPContract(): Promise<boolean>;
+  address: string;
+  setReadVpContract(_vpContract: string, txDetails?: any): Promise<any>;
+  setWriteVpContract(_vpContract: string, txDetails?: any): Promise<any>;
+  needsReplacementVPContract(): Promise<boolean>;
 }
 
 async function setDefaultVPContract(hre: HardhatRuntimeEnvironment, token: IISetVpContract, governance: string) {
@@ -320,7 +320,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, VoterWhitelister.contractName, `VoterWhitelister.sol`, voterWhitelister.address, quiet);
 
   // Distribution Contract
-  if (parameters.deployDistributionContract) {  
+  if (parameters.deployDistributionContract) {
     const distribution = await Distribution.new(deployerAccount.address);
     spewNewContractInfo(contracts, Distribution.contractName, `Distribution.sol`, distribution.address, quiet);
   }
@@ -356,18 +356,21 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Tell reward manager about contracts
   await ftsoRewardManager.setContractAddresses(inflation.address, ftsoManager.address, wnat.address);
 
+  let assetToContracts = new Map<string, AssetContracts>();
+
   // Create a non-asset FTSO
   // Register an FTSO for WNAT
-  const ftsoWnat = await Ftso.new(parameters.wrappedNativeSymbol, priceSubmitter.address, wnat.address, ftsoManager.address, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
-  spewNewContractInfo(contracts, `FTSO ${parameters.wrappedNativeSymbol}`, `Ftso.sol`, ftsoWnat.address, quiet);
+  let ftsoWnat: any;
+  if (parameters.deployNATFtso) {
+    ftsoWnat = await Ftso.new(parameters.nativeSymbol, priceSubmitter.address, wnat.address, ftsoManager.address, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
+    spewNewContractInfo(contracts, `FTSO ${parameters.wrappedNativeSymbol}`, `Ftso.sol`, ftsoWnat.address, quiet);
 
-  let assetToContracts = new Map<string, AssetContracts>();
-  assetToContracts.set("NAT", {
-    xAssetToken: wnat,
-    ftso: ftsoWnat,
-    assetSymbol: 'NAT'
-  })
-
+    assetToContracts.set(parameters.nativeSymbol, {
+      xAssetToken: wnat,
+      ftso: ftsoWnat,
+      assetSymbol: parameters.nativeSymbol
+    })
+  }
   // Deploy asset, minter, and initial FTSOs 
 
   for (let asset of parameters.assets) {
@@ -419,11 +422,12 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     await waitFinalize3(hre, deployerAccount.address, () => ftsoManager.addFtso(ftsoContract.address));
   }
 
-  // Set FTSOs to multi Asset WNAT contract
-  let multiAssets = ["XRP", "LTC", "DOGE"]
-  let multiAssetFtsos = multiAssets.map(asset => assetToContracts.get(asset)!.ftso!.address)
-  // [ftsoFxrp.address, ftsoFltc.address, ftsoFxdg.address]
-  await ftsoManager.setFtsoAssetFtsos(ftsoWnat.address, multiAssetFtsos);
+  if (parameters.deployNATFtso) {
+    // Set FTSOs to multi Asset WNAT contract
+    let multiAssets = parameters.NATMultiAssets;
+    let multiAssetFtsos = multiAssets.map((asset: any) => assetToContracts.get(asset)!.ftso!.address)
+    await ftsoManager.setFtsoAssetFtsos(ftsoWnat.address, multiAssetFtsos);
+  }
 
   if (!quiet) {
     console.error("Contracts in JSON:");
@@ -442,8 +446,10 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,
     ftsoRegistry: ftsoRegistry,
-    ftsoContracts: [{ xAssetSymbol: 'WNAT' }, ...parameters.assets].map(asset => assetToContracts.get(asset.xAssetSymbol))
-    // ftsoContracts: ["NAT", ...assets].map(asset => assetToContracts.get(asset)) !!!
+    ftsoContracts: [
+      ...(parameters.deployNATFtso ? [{ xAssetSymbol: 'WNAT' }] : []),
+      ...parameters.assets
+    ].map(asset => assetToContracts.get(asset.xAssetSymbol))
     // Add other contracts as needed and fix the interface above accordingly
   } as DeployedFlareContracts;
 }
