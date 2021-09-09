@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../governance/implementation/GovernedAtGenesis.sol";
+import "../../governance/implementation/Governed.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
@@ -14,7 +14,7 @@ import "../../userInterfaces/IDistribution.sol";
  * @notice A contract to manage the ongoing airdrop distribution after the genesis allocation. 
  * The remaining ammount is distributed by this contract, with a set rate every 30 days
  **/
-contract Distribution is GovernedAtGenesis, IDistribution {
+contract Distribution is Governed, IDistribution {
     using SafeCast for uint256;
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -85,11 +85,7 @@ contract Distribution is GovernedAtGenesis, IDistribution {
         _;
     }
 
-    /**
-     * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
-     *   The super constructor is called for testing convenience.
-     */
-    constructor() GovernedAtGenesis(address(0)) {
+    constructor(address _governance) Governed(_governance) {
         /* empty block */
     }
 

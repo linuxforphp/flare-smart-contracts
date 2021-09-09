@@ -104,11 +104,6 @@ contract FtsoEpochMock {
         state.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
         state.trustedAddresses = _trustedAddresses;
     }
-
-    function setVotePowerBlock(uint256 _votePowerBlock) public {
-        require (_votePowerBlock < 2 ** 240);
-        state.votePowerBlock = uint240(_votePowerBlock);
-    }
     
     function setAssets(
         uint256 _epochId, 

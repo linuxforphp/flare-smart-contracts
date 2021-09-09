@@ -425,7 +425,7 @@ library DelegationHistory {
             _index = historyCount - 1;  // safe, historyCount != 0 in this branch
         } else if (_blockNumber < _checkpoints[_startIndex].fromBlock) {
             // reading data before `_startIndex` is only safe before first cleanup
-            require(_startIndex == 0, "Reading from old (cleaned-up) block");
+            require(_startIndex == 0, "DelegationHistory: reading from cleaned-up block");
             _found = false;
         } else {
             _found = true;

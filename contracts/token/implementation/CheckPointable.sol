@@ -43,7 +43,7 @@ abstract contract CheckPointable {
     //   - total supply history when either `from` or `to` is zero
     
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
-        require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
+        require(_blockNumber >= cleanupBlockNumber, "CheckPointable: reading from cleaned-up block");
         _;
     }
     

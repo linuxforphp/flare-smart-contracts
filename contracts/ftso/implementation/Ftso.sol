@@ -393,10 +393,11 @@ contract Ftso is IIFtso {
         epoch.accumulatedVotePowerNat = 0;
         epoch.random = 0; // for easier testing.
         epoch.nextVoteIndex = 0;
+        epoch.votePowerBlock = epochs.votePowerBlock;
+        epoch.fallbackMode = _fallbackMode;
         epoch.epochId = epochId;
 
         if (_fallbackMode) {
-            epoch.fallbackMode = true;
             return;
         }
 
@@ -604,9 +605,7 @@ contract Ftso is IIFtso {
      * @param _epochId              Id of the epoch
      */
     function wNatVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
-        return _getVotePowerOfAt(
-            wNat, _owner, epochs.instance[_epochId % priceEpochCyclicBufferSize].votePowerBlock
-        );
+        return _getVotePowerOfAt(wNat, _owner, _getEpochInstance(_epochId).votePowerBlock);
     }
 
     /**
@@ -663,6 +662,7 @@ contract Ftso is IIFtso {
         require(epochVoterHash[_epochId][_voter] == keccak256(abi.encode(_price, _random, _voter)), 
                 ERR_PRICE_INVALID);
         // get epoch
+        //slither-disable-next-line weak-prng // not used for random
         FtsoEpoch.Instance storage epoch = epochs.instance[_epochId % priceEpochCyclicBufferSize];
         // read all storage from one slot
         bool fallbackMode = epoch.fallbackMode;
@@ -798,7 +798,7 @@ contract Ftso is IIFtso {
         internal
     {
         if (_epochId > 0) {
-            _epoch.price = epochs.instance[(_epochId - 1) % priceEpochCyclicBufferSize].price;
+            _epoch.price = assetPriceUSD;
         } else {
             _epoch.price = 0;
         }

@@ -14,6 +14,15 @@ import "hardhat-contract-sizer";
 import 'hardhat-deploy';
 import "@tenderly/hardhat-tenderly"
 import { HardhatUserConfig } from "hardhat/config";
+import { verifyParameters } from "./deployment/scripts/verify-parameters";
+import { Contracts } from "./deployment/scripts/Contracts";
+import { deployContracts } from "./deployment/scripts/deploy-contracts";
+import { daemonizeContracts } from "./deployment/scripts/daemonize-contracts";
+import { activateManagers } from "./deployment/scripts/activate-managers";
+import { proposeGovernance } from "./deployment/scripts/propose-governance";
+import { claimGovernance } from "./deployment/scripts/claim-governance";
+import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
+import { transferGovernance } from "./deployment/scripts/transfer-governance";
 const intercept = require('intercept-stdout');
 
 // Override solc compile task and filter out useless warnings
@@ -42,6 +51,183 @@ task(TASK_COMPILE)
   });
 
 dotenv.config();
+
+function getChainConfigParameters(chainConfig: string | undefined): any {
+  if (chainConfig) {
+    const parameters = require(`./deployment/chain-config/${process.env.CHAIN_CONFIG}.json`)
+
+    // inject private keys from .env, if they exist
+    if (process.env.DEPLOYER_PRIVATE_KEY) {
+      parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
+    }
+    if (process.env.GENESIS_GOVERNANCE_PRIVATE_KEY) {
+      parameters.genesisGovernancePrivateKey = process.env.GENESIS_GOVERNANCE_PRIVATE_KEY
+    }
+    if (process.env.GOVERNANCE_PRIVATE_KEY) {
+      parameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
+    }
+    if (process.env.GOVERNANCE_PUBLIC_KEY) {
+      parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
+    }
+    verifyParameters(parameters);
+    return parameters;
+  } else {
+    return undefined;
+  }
+}
+
+// Rig up deployment tasks
+task("deploy-contracts", "Deploy all contracts")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      await deployContracts(hre, parameters, args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("daemonize-contracts", "Register contracts to be daemonized with the FlareDaemon.")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      await daemonizeContracts(
+        hre,
+        contracts, 
+        parameters.deployerPrivateKey, 
+        parameters.inflationReceivers, 
+        parameters.inflationGasLimit, 
+        parameters.ftsoManagerGasLimit, 
+        args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("activate-managers", "Activate all manager contracts.")
+    .addFlag("quiet", "Suppress console output")
+    .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
+      await activateManagers(
+        hre,
+        contracts, 
+        parameters.deployerPrivateKey, 
+        dataAvailabilityRewardManagerDeployed,
+        args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("propose-governance", "Propose governance change for all governed contracts.")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
+      await proposeGovernance(
+        hre,
+        contracts, 
+        parameters.deployerPrivateKey, 
+        parameters.genesisGovernancePrivateKey, 
+        parameters.governancePublicKey, 
+        dataAvailabilityRewardManagerDeployed,
+        parameters.deployDistributionContract,
+        args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("transfer-governance", "Transfer governance directly for all governed contracts.")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
+      await transferGovernance(
+        hre,
+        contracts, 
+        parameters.deployerPrivateKey, 
+        parameters.genesisGovernancePrivateKey, 
+        parameters.governancePublicKey, 
+        dataAvailabilityRewardManagerDeployed,
+        parameters.deployDistributionContract,
+        args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+// This will work with Gnosis safe. A signed transaction will have to be executed instead.
+task("claim-governance", "Claim governance change for all governed contracts.")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
+      await claimGovernance(
+        hre,
+        contracts, 
+        parameters.governancePrivateKey, 
+        dataAvailabilityRewardManagerDeployed,
+        parameters.deployDistributionContract,
+        args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("undaemonize-contracts", "Remove daemonized contracts from the FlareDaemon.")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      try {
+        // Try first with the deployer key
+        await undaemonizeContracts(
+          hre,
+          contracts, 
+          parameters.deployerPrivateKey, 
+          args.quiet);
+      } catch {
+        try {
+          // That did not work, so try with the genesis governance private key
+          await undaemonizeContracts(
+            hre,
+            contracts, 
+            parameters.genesisGovernancePrivateKey, 
+            args.quiet);  
+        } catch {
+          // That did not work, so try with the governance private key, if it exists (won't work with Gnosis safe)
+          await undaemonizeContracts(
+            hre,
+            contracts, 
+            parameters.governancePrivateKey,
+            args.quiet);
+          // If this throws, let it...
+        }
+      }
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
 
 let fs = require('fs');
 

@@ -131,4 +131,8 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
             .add(totalSelfDestructReceivedWei)
             .sub(totalClaimedWei);
     }
+
+    function getInflationAddress() external view override returns(address) {
+        return inflation;
+    }
 }

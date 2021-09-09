@@ -265,9 +265,9 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     }
     // Assert
     for (let i = 0; i < 5; i++) {
-      await expectRevert(delegation.getDelegatedValueAt(accounts[1], b[i]), "Reading from old (cleaned-up) block");
-      await expectRevert(delegation.getDelegationsAt(b[i]), "Reading from old (cleaned-up) block");
-      await expectRevert(delegation.getDelegatedTotalAt(b[i]), "Reading from old (cleaned-up) block");
+      await expectRevert(delegation.getDelegatedValueAt(accounts[1], b[i]), "DelegationHistory: reading from cleaned-up block");
+      await expectRevert(delegation.getDelegationsAt(b[i]), "DelegationHistory: reading from cleaned-up block");
+      await expectRevert(delegation.getDelegatedTotalAt(b[i]), "DelegationHistory: reading from cleaned-up block");
     }
     for (let i = 5; i < 10; i++) {
       const value = await delegation.getDelegatedValueAt(accounts[1], b[i]);

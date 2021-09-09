@@ -95,7 +95,6 @@ library FtsoEpoch {
         // all divisions guaranteed not to divide with 0 - checked in ftso manager setGovernanceParameters(...)
         _setAssets(_state, _instance, _assets, _assetVotePowers, _assetPrices);
 
-        _instance.votePowerBlock = _state.votePowerBlock;
         _instance.highAssetTurnoutThresholdBIPS = _state.highAssetTurnoutThresholdBIPS;
         _instance.lowNatTurnoutThresholdBIPS = _state.lowNatTurnoutThresholdBIPS;
         _instance.circulatingSupplyNat = _circulatingSupplyNat;

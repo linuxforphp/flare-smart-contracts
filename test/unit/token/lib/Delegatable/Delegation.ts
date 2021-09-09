@@ -183,7 +183,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     // Assert
     // should fail at blk1
     await expectRevert(delegatable.votePowerOfAt(accounts[1], blk1), 
-      "Reading from old (cleaned-up) block");
+      "Delegatable: reading from cleaned-up block");
     // and work at blk2
     const value = await delegatable.votePowerOfAt(accounts[1], blk2);
     assert.equal(value.toNumber(), 150);
@@ -203,7 +203,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     // Assert
     // should fail at blk1
     await expectRevert(delegatable.undelegatedVotePowerOfAt(accounts[1], blk1),
-      "Reading from old (cleaned-up) block");
+      "Delegatable: reading from cleaned-up block");
     // and work at blk2
     const undelegated = await delegatable.undelegatedVotePowerOfAt(accounts[1], blk2);
     assert.equal(undelegated.toNumber(), 70);
@@ -223,7 +223,7 @@ contract(`Delegatable.sol; ${getTestFile(__filename)}; Delegation unit tests`, a
     // Assert
     // should fail at blk1
     await expectRevert(delegatable.undelegatedVotePowerOfAt(accounts[1], blk1),
-      "Reading from old (cleaned-up) block");
+      "Delegatable: reading from cleaned-up block");
     // and work at blk2
     const undelegated = await delegatable.undelegatedVotePowerOfAt(accounts[1], blk2);
     assert.equal(undelegated.toNumber(), 70);

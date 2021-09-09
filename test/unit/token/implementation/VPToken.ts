@@ -678,7 +678,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     // should fail at blk1
     await expectRevert(vpToken.balanceOfAt(accounts[1], blk1),
-      "Reading from old (cleaned-up) block");
+      "CheckPointable: reading from cleaned-up block");
     // and work at blk2
     const value = await vpToken.balanceOfAt(accounts[1], blk2);
     assert.equal(value.toNumber(), 90);
@@ -700,7 +700,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     // should fail at blk1
     await expectRevert(vpToken.undelegatedVotePowerOfAt(accounts[1], blk1),
-      "Reading from old (cleaned-up) block");
+      "CheckPointable: reading from cleaned-up block");
     // and work at blk2
     const undelegated = await vpToken.undelegatedVotePowerOfAt(accounts[1], blk2);
     assert.equal(undelegated.toNumber(), 70);
@@ -731,7 +731,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Assert
     // should fail at blk1
     await expectRevert(vpToken.undelegatedVotePowerOfAt(accounts[1], blk2),
-      "Reading from old (cleaned-up) block");
+      "CheckPointable: reading from cleaned-up block");
     // and work at blk2
     const undelegated = await vpToken.undelegatedVotePowerOfAt(accounts[1], blk3);
     assert.equal(undelegated.toNumber(), 100);
