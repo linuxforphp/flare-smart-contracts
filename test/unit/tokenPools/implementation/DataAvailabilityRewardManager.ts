@@ -122,9 +122,9 @@ contract(`DataAvailabilityRewardManager.sol; ${ getTestFile(__filename) }; Data 
         });
 
         it("Should update inflation", async () => {
-            expect(await dataAvailabilityRewardManager.inflation()).to.equals(mockInflation.address);
+            expect(await dataAvailabilityRewardManager.getInflationAddress()).to.equals(mockInflation.address);
             await dataAvailabilityRewardManager.setInflation(accounts[8]);
-            expect(await dataAvailabilityRewardManager.inflation()).to.equals(accounts[8]);
+            expect(await dataAvailabilityRewardManager.getInflationAddress()).to.equals(accounts[8]);
         });
         
         it("Should revert calling setInflation if not from governance", async () => {

@@ -73,7 +73,7 @@ contract DataAvailabilityRewardManager is
 
     /// addresses
     StateConnector public immutable stateConnector;
-    address public inflation;
+    address private inflation;
 
     modifier mustBalance {
         _;
@@ -242,7 +242,16 @@ contract DataAvailabilityRewardManager is
         }
         return 0;
     }
-    
+
+    /**
+     * @notice Returns the Inflation contract address.
+     * @dev Inflation receivers must have a reference to Inflation in order to receive native tokens for claiming.
+     * @return The inflation address
+     */
+    function getInflationAddress() external view override returns(address) {
+        return inflation;
+    }
+
     /**
      * @notice Return token pool supply data
      * @return _foundationAllocatedFundsWei     Foundation allocated funds (wei)

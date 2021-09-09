@@ -1,6 +1,6 @@
 import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import BN from "bn.js";
-import { DeployedFlareContracts, ftsoContractForSymbol } from "../../../../deployment/scripts/deploy-lib";
+import { DeployedFlareContracts, ftsoContractForSymbol } from "../../../../deployment/scripts/deploy-contracts";
 import {
     FtsoManagerContract,
     FtsoManagerInstance,
@@ -277,9 +277,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         });
 
         it("Should update inflation", async () => {
-            expect(await ftsoRewardManager.inflation()).to.equals(mockInflation.address);
+            expect(await ftsoRewardManager.getInflationAddress()).to.equals(mockInflation.address);
             await ftsoRewardManager.setContractAddresses(accounts[8], mockFtsoManager.address, wNat.address);
-            expect(await ftsoRewardManager.inflation()).to.equals(accounts[8]);
+            expect(await ftsoRewardManager.getInflationAddress()).to.equals(accounts[8]);
         });
 
         it("Should issue event when daily authorized infaltion is set", async () => {

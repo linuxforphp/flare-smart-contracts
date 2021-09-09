@@ -97,7 +97,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
     // Assert
     // should fail at blk1
     await expectRevert(checkPointable.balanceOfAt(accounts[1], blk1),
-      "Reading from old (cleaned-up) block");
+      "CheckPointable: reading from cleaned-up block");
     // and work at blk2
     const value = await checkPointable.balanceOfAt(accounts[1], blk2);
     assert.equal(value.toNumber(), 90);

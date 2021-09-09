@@ -12,4 +12,9 @@ interface IIInflationReceiver {
      * Receive native tokens from inflation.
      */
     function receiveInflation() external payable;
+
+    /**
+     * Inflation receivers have a reference to the Inflation contract.
+     */
+    function getInflationAddress() external returns(address);
 }

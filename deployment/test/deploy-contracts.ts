@@ -20,13 +20,6 @@ function capitalizeFirstLetter(st: string) {
   return st.charAt(0).toUpperCase() + st.slice(1).toLocaleLowerCase();
 }
 
-async function findDaemonizedContract(contracts: Contracts, address: string): Promise<boolean> {
-  const FlareDaemon = artifacts.require("FlareDaemon");
-  const flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
-  const { 0: daemonizedContracts } = await flareDaemon.getDaemonizedContractsData();
-  return daemonizedContracts && daemonizedContracts.indexOf(address) >= 0
-}
-
 async function findAssetFtso(contracts: Contracts, address: string): Promise<boolean> {
   const Ftso = artifacts.require("Ftso");
   const ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
@@ -71,7 +64,7 @@ async function findRoleMember(role: string, permissioningAddress: any, memberAdd
  * This test assumes a local chain is running with Flare allocated in accounts
  * listed in `./hardhat.config.ts`
  */
-contract(`deploy.ts system tests`, async accounts => {
+contract(`deploy-contracts.ts system tests`, async accounts => {
   let contracts: Contracts;
 
   before(async () => {
@@ -155,22 +148,6 @@ contract(`deploy.ts system tests`, async accounts => {
       assert(systemLastTriggeredAt.toNumber() > 0);
     });
 
-    it("Should be daemonizing inflation contract", async () => {
-      // Assemble
-      // Act
-      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.INFLATION));
-      // Assert
-      assert(found);
-    });
-
-    it("Should be daemonizing ftso manager", async () => {
-      // Assemble
-      // Act
-      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-      // Assert
-      assert(found);
-    });
-
     it("Should have block holdoff set", async () => {
       // Assemble
       // Act
@@ -193,7 +170,7 @@ contract(`deploy.ts system tests`, async accounts => {
       // Assemble
       const startTs = await time.latest();
       const rewardEpochStartTs = await ftsoManager.rewardEpochsStartTs();
-      if (rewardEpochStartTs.lt(startTs)) {
+      if (rewardEpochStartTs.lt(startTs) && await ftsoManager.active()) {
         // Act
         const startBlock = (await ftsoManager.rewardEpochs(0))[0];
         // Assert
@@ -387,7 +364,7 @@ contract(`deploy.ts system tests`, async accounts => {
     });
   });
 
-  for (let asset of [{assetSymbol: "WNAT"}, ...parameters.assets]) {
+  for (let asset of [...parameters.assets]) {
     describe(pascalCase(`FTSO ${asset.assetSymbol}`), async () => {
       let FtsoAsset: FtsoContract;
       let ftsoAsset: FtsoInstance;
@@ -403,7 +380,7 @@ contract(`deploy.ts system tests`, async accounts => {
         const address = await ftsoAsset.getAsset();
         // Assert
         if(parameters.deployDummyXAssetTokensAndMinters) {
-          assert.equal(address, contracts.getContractAddress(pascalCase(`FTSO ${asset.assetSymbol}`)));
+          assert.equal(address, contracts.getContractAddress(`x${asset.assetSymbol}`));
         } else {
           assert.equal(address, constants.ZERO_ADDRESS);
         }

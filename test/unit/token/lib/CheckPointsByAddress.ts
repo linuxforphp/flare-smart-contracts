@@ -142,7 +142,7 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
     }
     // Assert
     for (let i = 0; i < 5; i++) {
-      await expectRevert(checkPointsByAddressMock.valueOfAt(accounts[1], b[i]), "Reading from old (cleaned-up) block");
+      await expectRevert(checkPointsByAddressMock.valueOfAt(accounts[1], b[i]), "CheckPointHistory: reading from cleaned-up block");
     }
     for (let i = 5; i < 10; i++) {
       const value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[i]);

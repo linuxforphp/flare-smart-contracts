@@ -19,6 +19,9 @@ export class Contracts {
 
   private static WRAP_SYMBOL = "f";
   private static WRAP_SYMBOL_MINT = "";
+  public static readonly CLEANUP_BLOCK_NUMBER_MANAGER = "CleanupBlockNumberManager";
+  public static readonly FTSO_REGISTRY = "FtsoRegistry";
+  public static readonly DISTRIBUTION = "Distribution";
   public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";

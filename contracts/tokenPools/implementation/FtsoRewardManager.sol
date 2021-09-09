@@ -88,7 +88,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
 
     /// addresses
     IIFtsoManager public ftsoManager;
-    address public inflation;
+    address private inflation;
     WNat public wNat; 
 
     modifier mustBalance {
@@ -371,6 +371,15 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     {
         _totalReward = totalRewardEpochRewards[_rewardEpoch];
         _claimedReward = claimedRewardEpochRewards[_rewardEpoch];
+    }
+
+    /**
+     * @notice Returns the Inflation contract address.
+     * @dev Inflation receivers must have a reference to Inflation in order to receive native tokens for claiming.
+     * @return The inflation address
+     */
+    function getInflationAddress() external view override returns(address) {
+        return inflation;
     }
 
     /**

@@ -16,8 +16,9 @@
       "./typechain", 
       "./typechain-truffle", 
       "./deployment/scripts", 
-      "deployment/test/deploy.ts", 
-      "deployment/test/priceSubmitter.ts", 
+      "deployment/test/deploy-contracts.ts", 
+      "deployment/test/daemonize-contracts.ts", 
+      "./deployment/test/priceSubmitter.ts", 
     ],
     "files": ["./hardhat.config.ts"]
   }

@@ -85,7 +85,7 @@ contract Delegatable is IVPContractEvents {
      * might have been deleted and is thus unreliable.
      */    
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
-        require(_blockNumber >= cleanupBlockNumber, "Reading from old (cleaned-up) block");
+        require(_blockNumber >= cleanupBlockNumber, "Delegatable: reading from cleaned-up block");
         _;
     }
     

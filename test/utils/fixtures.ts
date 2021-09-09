@@ -1,5 +1,5 @@
 import { deployments } from "hardhat";
-import { fullDeploy } from "../../deployment/scripts/deploy-lib";
+import { deployContracts } from "../../deployment/scripts/lib/deploy-contracts";
 const fs = require('fs');
 const BN = web3.utils.toBN;
 
@@ -31,7 +31,7 @@ export function readDeploymentParametersForConfiguration(configName: string) {
 // Returns full deployment fixture
 export function fullDeploymentFixture(deploymentParameters: any) {
     return deployments.createFixture(async (env, options) => {
-        let contracts = await fullDeploy(deploymentParameters, true);
+        let contracts = await deployContracts(deploymentParameters, true);
         return contracts;
     });
 }

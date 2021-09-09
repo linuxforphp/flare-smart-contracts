@@ -32,8 +32,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         await ftsoEpoch.setAssetNorm(mockVpToken2.address, 3);
         await ftsoEpoch.setAssetNorm(mockVpToken3.address, 3);
 
-        await ftsoEpoch.setVotePowerBlock(1);
-
         // uint256 _maxVotePowerNatThresholdFraction,
         // uint256 _maxVotePowerAssetThresholdFraction,
         // uint256 _lowAssetUSDThreshold,
@@ -127,18 +125,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch2.maxVotePowerAsset).to.equals('100');
         expect(epoch2.highAssetTurnoutThresholdBIPS).to.equals('40');
         expect(epoch2.lowNatTurnoutThresholdBIPS).to.equals('1400');
-    });
-
-    it(`Should change vote power block of a new epoch only`, async () => {
-        await ftsoEpoch.initializeInstanceForReveal(1, 50, 40, [mockVpToken.address], [60000], [2]);
-        await ftsoEpoch.setVotePowerBlock(3);
-        await ftsoEpoch.initializeInstanceForReveal(2, 70, 60, [mockVpToken.address], [50000], [2]);
-
-        const epoch = await ftsoEpoch.getEpochInstance(1);
-        expect(epoch.votePowerBlock).to.equals('1');
-
-        const epoch2 = await ftsoEpoch.getEpochInstance(2);
-        expect(epoch2.votePowerBlock).to.equals('3');
     });
 
     it(`Should calculate asset base weight ratio correctly`, async () => {

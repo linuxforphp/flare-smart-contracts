@@ -31,7 +31,7 @@
 
 # Initialization sequence
 note: note fully updated.
-See [deployment script](../../scripts/deploy-contracts.ts) for more details
+See [deployment script](../../scripts/deploy-app.ts) for more details
 
 - `Daemon` contract is already deployed on the blockchain.
 - First, `FTSORewardManager` is deployed.
