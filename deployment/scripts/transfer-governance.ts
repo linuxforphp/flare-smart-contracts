@@ -34,6 +34,7 @@ export async function transferGovernance(
   if (!quiet) {
     console.error(`Transfering with address ${deployerAccount.address}`);
     console.error(`Transfer to address ${newGovernanceAccountAddress}`);
+    console.error(`Genesis governance address is ${genesisGovernanceAccount.address}`);
   }
 
   // Wire up the default account that will do the deployment
@@ -65,14 +66,9 @@ export async function transferGovernance(
   const voterWhitelister = await VoterWhitelister.at(contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.at(contracts.getContractAddress(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER));
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
-  const wNat = await FtsoRegistry.at(contracts.getContractAddress(Contracts.WNAT));
+  const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
 
-  if (!quiet) {
-    console.error(`Genesis governance address is ${genesisGovernanceAccount.address}`);
-    console.error(`Proposed address is ${newGovernanceAccountAddress}`);
-  }
-
-  // Propose
+  // Transfer
   await supply.transferGovernance(newGovernanceAccountAddress);
   await inflation.transferGovernance(newGovernanceAccountAddress);
   await inflationAllocation.transferGovernance(newGovernanceAccountAddress);
