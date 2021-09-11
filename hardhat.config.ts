@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-ethers";
 // Use also truffle and web3 for backward compatibility
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
-import { task } from "hardhat/config";
+import { extendEnvironment, task } from "hardhat/config";
 import {
   TASK_COMPILE,
 } from 'hardhat/builtin-tasks/task-names';
@@ -23,6 +23,7 @@ import { proposeGovernance } from "./deployment/scripts/propose-governance";
 import { claimGovernance } from "./deployment/scripts/claim-governance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
 import { transferGovernance } from "./deployment/scripts/transfer-governance";
+import "./type-extensions";
 const intercept = require('intercept-stdout');
 
 // Override solc compile task and filter out useless warnings
@@ -69,12 +70,17 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
     if (process.env.GOVERNANCE_PUBLIC_KEY) {
       parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
     }
+    parameters.dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
     verifyParameters(parameters);
     return parameters;
   } else {
     return undefined;
   }
 }
+
+extendEnvironment((hre) => {
+  hre.getChainConfigParameters = getChainConfigParameters;
+});
 
 // Rig up deployment tasks
 task("deploy-contracts", "Deploy all contracts")
@@ -115,12 +121,11 @@ task("activate-managers", "Activate all manager contracts.")
     if (parameters) {
       const contracts = new Contracts();
       await contracts.deserialize(process.stdin);
-      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
       await activateManagers(
         hre,
         contracts, 
         parameters.deployerPrivateKey, 
-        dataAvailabilityRewardManagerDeployed,
+        parameters.dataAvailabilityRewardManagerDeployed,
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
@@ -134,14 +139,13 @@ task("propose-governance", "Propose governance change for all governed contracts
     if (parameters) {
       const contracts = new Contracts();
       await contracts.deserialize(process.stdin);
-      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
       await proposeGovernance(
         hre,
         contracts, 
         parameters.deployerPrivateKey, 
         parameters.genesisGovernancePrivateKey, 
         parameters.governancePublicKey, 
-        dataAvailabilityRewardManagerDeployed,
+        parameters.dataAvailabilityRewardManagerDeployed,
         parameters.deployDistributionContract,
         args.quiet);
     } else {
@@ -156,14 +160,13 @@ task("transfer-governance", "Transfer governance directly for all governed contr
     if (parameters) {
       const contracts = new Contracts();
       await contracts.deserialize(process.stdin);
-      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
       await transferGovernance(
         hre,
         contracts, 
         parameters.deployerPrivateKey, 
         parameters.genesisGovernancePrivateKey, 
         parameters.governancePublicKey, 
-        dataAvailabilityRewardManagerDeployed,
+        parameters.dataAvailabilityRewardManagerDeployed,
         parameters.deployDistributionContract,
         args.quiet);
     } else {
