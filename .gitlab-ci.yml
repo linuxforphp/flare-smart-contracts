@@ -177,3 +177,10 @@ gas-report:
         - yarn hardhat test --network hardhat test/unit/gasReport/GasReport.ts
 #        - env TEST_PATH=./test/unit/gasReport yarn hardhat test --network hardhat
 #        - yarn gas-report-check
+
+onlyDetector:
+    stage: test
+    image: node:latest
+    <<: *pipeline-settings
+    script:
+        - sh scripts/test-only.sh
