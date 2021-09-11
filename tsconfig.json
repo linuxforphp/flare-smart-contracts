@@ -16,6 +16,7 @@
       "./typechain", 
       "./typechain-truffle", 
       "./deployment/scripts", 
+      "deployment/test/activate-managers.ts", 
       "deployment/test/deploy-contracts.ts", 
       "deployment/test/daemonize-contracts.ts", 
       "deployment/test/transfer-governance.ts", 
