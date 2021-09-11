@@ -112,7 +112,8 @@ contract StateConnector {
         chains[1] = Chain(true, 2086110, 0, 1, 12, 0, 2086110, block.timestamp, 150, 30); //LTC
         chains[2] = Chain(true, 3768500, 0, 2, 40, 0, 3768500, block.timestamp, 120, 30); //DOGE
         chains[3] = Chain(true, 62880000, 0, 30, 1, 0, 62880000, block.timestamp, 120, 30); //XRP
-        numChains = 4;
+        chains[4] = Chain(true, 16169600, 0, 26, 1, 0, 16169600, block.timestamp, 120, 30); //ALGO
+        numChains = 5;
         commitRevealLowerBound = 30;
         commitRevealUpperBound = 1 days;
         rewardPeriodTimespan = 7 days; //604800
