@@ -32,7 +32,7 @@ import { increaseTimeTo, submitPriceHash } from '../../utils/test-helpers';
 import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
-var randomNumber = require("random-number-csprng");
+let randomNumber = require("random-number-csprng");
 const calcGasCost = require('../../utils/eth').calcGasCost;
 
 async function getRandom() {

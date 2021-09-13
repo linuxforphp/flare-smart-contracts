@@ -230,7 +230,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, PriceSubmitter.contractName, "PriceSubmitter.sol", priceSubmitter.address, quiet);
 
   // Get the timestamp for the just mined block
-  var currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
+  let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
   const startTs = BN(currentBlock.timestamp);
 
   // Delayed reward epoch start time
