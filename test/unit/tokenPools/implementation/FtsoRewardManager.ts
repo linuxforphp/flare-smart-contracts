@@ -282,7 +282,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             expect(await ftsoRewardManager.getInflationAddress()).to.equals(accounts[8]);
         });
 
-        it("Should issue event when daily authorized infaltion is set", async () => {
+        it("Should issue event when daily authorized inflation is set", async () => {
             const txReceipt = await mockInflation.setDailyAuthorizedInflation(1000000);
             await expectEvent.inTransaction(
                 txReceipt.tx,
@@ -523,9 +523,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0], false);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
-            compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [694]);
-            compareArrays(data[2], [true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
+            expect(data[2].length).to.equals(0);
             expect(data[3]).to.equals(false);
         });
 
@@ -604,15 +604,15 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
-            compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
-            compareArrays(data[2], [true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
+            expect(data[2].length).to.equals(0);
             expect(data[3]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[4], 0);
-            compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
-            compareArrays(data[2], [true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
+            expect(data[2].length).to.equals(0);
             expect(data[3]).to.equals(false);
         });
 
@@ -694,15 +694,15 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
-            compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
-            compareArrays(data[2], [true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
+            expect(data[2].length).to.equals(0);
             expect(data[3]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[2], 0);
-            compareArrays(data[0], [accounts[2], accounts[1]]);
-            compareNumberArrays(data[1], [2082, 347]);
-            compareArrays(data[2], [true, true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
+            expect(data[2].length).to.equals(0);
             expect(data[3]).to.equals(false);
         });
 
@@ -818,19 +818,19 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
-            compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
-            compareArrays(data[2], [true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
+            expect(data[2].length).to.equals(0);
             expect(data[3]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[1], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 0]);
-            compareArrays(data[1], [true, false]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
             expect(data[2]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[2], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 2082]);
-            compareArrays(data[1], [true, true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
             expect(data[2]).to.equals(false);
         });
 
@@ -897,8 +897,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[1], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [0, 0]);
-            compareArrays(data[1], [true, true]);
+            expect(data[0].length).to.equals(0);
+            expect(data[1].length).to.equals(0);
             expect(data[2]).to.equals(false);
         });
 
