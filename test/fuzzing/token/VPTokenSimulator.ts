@@ -1,4 +1,4 @@
-import { VPTokenMockInstance } from "../../../typechain-truffle";
+import { WNatInstance } from "../../../typechain-truffle";
 import { loadJson, saveJson, toBN } from "./FuzzingUtils";
 import { VPTokenState } from "./VPTokenState";
 
@@ -9,7 +9,10 @@ export type BNArg = number | BN;
 export type VPTokenAction = { context: any, sender: string } &
     (
         | { name: '_checkpoint', checkpointId: string }
-        | { name: 'mint', to: string, amount: BN }
+        | { name: 'deposit', amount: BN }
+        | { name: 'withdraw', amount: BN }
+        | { name: 'depositTo', recipient: string, amount: BN }
+        | { name: 'withdrawFrom', owner: string, amount: BN }
         | { name: 'approve', spender: string, amount: BN }
         | { name: 'transfer', recipient: string, amount: BN }
         | { name: 'transferFrom', source: string, recipient: string, amount: BN }
@@ -37,14 +40,14 @@ export class VPTokenHistory {
     public checkpoints: Map<string, Checkpoint> = new Map();
 
     constructor(
-        private vpToken: VPTokenMockInstance
+        private vpToken: WNatInstance
     ) { }
 
     run(action: VPTokenAction) {
         this.history.push(action);
         return this.execute(action);
     }
-    
+
     checkpointList() {
         return Array.from(this.checkpoints.values());
     }
@@ -80,13 +83,29 @@ export class VPTokenHistory {
                     this.checkpoints.set(method.checkpointId, { id: method.checkpointId, blockNumber: blockNumber, state: this.state.clone() });
                     return;
                 }
-                case "mint": {
-                    const result = await this.vpToken.mint(method.to, method.amount, { from: method.sender });
-                    this.state.balances.set(method.to, (this.state.balances.get(method.to)).add(method.amount));
+                case "deposit": {
+                    const result = await this.vpToken.deposit({ from: method.sender, value: method.amount });
+                    this.state.balances.set(method.sender, (this.state.balances.get(method.sender)).add(method.amount));
+                    return result;
+                }
+                case "withdraw": {
+                    const result = await this.vpToken.withdraw(method.amount, { from: method.sender });
+                    this.state.balances.set(method.sender, (this.state.balances.get(method.sender)).sub(method.amount));
+                    return result;
+                }
+                case "depositTo": {
+                    const result = await this.vpToken.depositTo(method.recipient, { from: method.sender, value: method.amount });
+                    this.state.balances.set(method.recipient, (this.state.balances.get(method.recipient)).add(method.amount));
+                    return result;
+                }
+                case "withdrawFrom": {
+                    const result = await this.vpToken.withdrawFrom(method.owner, method.amount, { from: method.sender });
+                    this.state.balances.set(method.owner, (this.state.balances.get(method.owner)).sub(method.amount));
                     return result;
                 }
                 case "approve": {
-                    return this.vpToken.approve(method.spender, method.amount, { from: method.sender });
+                    const result = await this.vpToken.approve(method.spender, method.amount, { from: method.sender });
+                    return result;
                 }
                 case "transfer": {
                     const result = await this.vpToken.transfer(method.recipient, method.amount, { from: method.sender });
@@ -128,11 +147,11 @@ export class VPTokenHistory {
                 }
                 case "votePowerAtCached": {
                     const checkpoint = this.checkpoint(method.checkpointId);
-                    return this.vpToken.totalVotePowerAtCached(checkpoint.blockNumber, { from: method.sender });
+                    return await this.vpToken.totalVotePowerAtCached(checkpoint.blockNumber, { from: method.sender });
                 }
                 case "votePowerOfAtCached": {
                     const checkpoint = this.checkpoint(method.checkpointId);
-                    return this.vpToken.votePowerOfAtCached(method.who, checkpoint.blockNumber, { from: method.sender });
+                    return await this.vpToken.votePowerOfAtCached(method.who, checkpoint.blockNumber, { from: method.sender });
                 }
                 case "setCleanupBlock": {
                     const checkpoint = this.checkpoint(method.checkpointId);
@@ -155,7 +174,7 @@ export class VPTokenHistory {
                     return result;
                 }
                 case "replaceReadVpContract": {
-                    const writeVpContract = await this.vpToken.getWriteVpContract();
+                    const writeVpContract = await this.vpToken.writeVotePowerContract();
                     return await this.vpToken.setReadVpContract(writeVpContract, { from: method.sender });
                 }
             }
@@ -179,8 +198,24 @@ export class VPTokenSimulator {
         return result;
     }
 
-    mint(sender: string, to: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "mint", sender, to, amount: toBN(amount) });
+    deposit(sender: string, amount: BNArg) {
+        return this.history.run({ context: this.context, name: "deposit", sender, amount: toBN(amount) });
+    }
+
+    withdraw(sender: string, amount: BNArg) {
+        return this.history.run({ context: this.context, name: "withdraw", sender, amount: toBN(amount) });
+    }
+
+    depositTo(sender: string, recipient: string, amount: BNArg) {
+        return this.history.run({ context: this.context, name: "depositTo", sender, recipient, amount: toBN(amount) });
+    }
+
+    withdrawFrom(sender: string, owner: string, amount: BNArg) {
+        return this.history.run({ context: this.context, name: "withdrawFrom", sender, owner, amount: toBN(amount) });
+    }
+
+    approve(sender: string, spender: string, amount: BNArg) {
+        return this.history.run({ context: this.context, name: "approve", sender, spender, amount: toBN(amount) });
     }
 
     transfer(sender: string, recipient: string, amount: BNArg) {
@@ -210,15 +245,15 @@ export class VPTokenSimulator {
     totalVotePowerAtCached(sender: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "votePowerAtCached", sender, checkpointId });
     }
-    
+
     votePowerOfAtCached(sender: string, who: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "votePowerOfAtCached", sender, who, checkpointId });
     }
-    
+
     setCleanupBlock(sender: string, checkpointId: string) {
         return this.history.run({ context: this.context, name: "setCleanupBlock", sender, checkpointId });
     }
-    
+
     replaceWriteVpContract(sender: string) {
         return this.history.run({ context: this.context, name: "replaceWriteVpContract", sender });
     }
