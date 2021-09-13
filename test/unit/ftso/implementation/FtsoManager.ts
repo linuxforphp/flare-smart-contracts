@@ -426,7 +426,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Get the invocation count for setting new vote power block on mocked FTSO
             const setVotePowerBlock = web3.utils.sha3("setVotePowerBlock(uint256)")!.slice(0,10); // first 4 bytes is function selector
             // Act
-            for (var i = 1; i < 10; i++) {
+            for (let i = 1; i < 10; i++) {
                 // Time travel to trigger a first initialize reward epoch
                 // Cheat and do every 50 seconds to reduce test time
                 await time.increaseTo(startTs.addn(60 * i));
@@ -1652,7 +1652,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await ftsoManager.daemonize();
 
             // Act
-            for (var i = 1; i <= (172800 / 1200); i++) {
+            for (let i = 1; i <= (172800 / 1200); i++) {
                 // Time travel to trigger a price epoch change
                 // Cheat and do every 20 mins to reduce test time
                 await time.increaseTo(startTs.addn(1200 * i + REVEAL_EPOCH_DURATION_S));

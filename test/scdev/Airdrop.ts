@@ -43,12 +43,12 @@ function parseAndProcessData(dataFile:string):ProcessedLineItem[] {
   let seenNATAddressesDetail: {[name: string]: BN } = {};
   let seenNATAddresses:Set<string> = new Set();
   for(let XRPLine of parsed_file){
-    if(!seenNATAddresses.has(XRPLine.NativeAddress)){
-      seenNATAddresses.add(XRPLine.NativeAddress);
-      seenNATAddressesDetail[XRPLine.NativeAddress] = BN(XRPLine.NativeBalance);
+    if(!seenNATAddresses.has(XRPLine.FlareAddress)){
+      seenNATAddresses.add(XRPLine.FlareAddress);
+      seenNATAddressesDetail[XRPLine.FlareAddress] = BN(XRPLine.FlareBalance);
     } 
     else {
-      seenNATAddressesDetail[XRPLine.NativeAddress] =seenNATAddressesDetail[XRPLine.NativeAddress].add(BN(XRPLine.NativeBalance));
+      seenNATAddressesDetail[XRPLine.FlareAddress] =seenNATAddressesDetail[XRPLine.FlareAddress].add(BN(XRPLine.FlareBalance));
     }    
   }
   let processedFile:ProcessedLineItem[] = []
@@ -93,7 +93,7 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     distribution = await Distribution.new();
     await distribution.initialiseFixedAddress();
 
-    parsedAirdrop = parseAndProcessData("test/scdev/airdropUtils/export.csv");
+    parsedAirdrop = parseAndProcessData("../../airdrop/data/export.csv");
   });
 
   it(`Test Initial airdrop accounting`, async function(){

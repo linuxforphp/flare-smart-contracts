@@ -7,15 +7,20 @@
       "outDir": "dist",
       "typeRoots": [
         "test/types",
-        "node_modules/@types"
+        "node_modules/@types",
+        "airdrop/utils/airdropTypes.tss"
       ]
     },
     "include": [
+      "./airdrop",
       "./scripts", 
       "./test", 
       "./typechain", 
       "./typechain-truffle", 
       "./deployment/scripts", 
+      "deployment/test/",
+      "deployment/test/deploy.ts", 
+      "deployment/test/priceSubmitter.ts", 
       "./deployment/genesis", 
       "deployment/test/activate-managers.ts", 
       "deployment/test/deploy-contracts.ts", 

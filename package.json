@@ -29,6 +29,7 @@
     "test_performance_hh": "env TEST_PATH=./test/performance yarn hardhat test --network hardhat",
     "test_fuzzing_hh": "./scripts/test-fuzzing.sh",
     "compare_state_connector_file_to_flare_repo": "curl https://gitlab.com/flarenetwork/flare/-/raw/master/src/stateco/StateConnector.sol > /tmp/StateConnector.sol && diff contracts/genesis/implementation/StateConnector.sol /tmp/StateConnector.sol > /dev/null",
+
     "---------TEST---SCRIPTS-EXPERIMENTAL": "",
     "test_timeshift": "env VM_FLARE_TEST=shift yarn hardhat test --network scdev",
     "test_timeshift_help": "echo 'Run tests with time shifts in VM'",
@@ -36,6 +37,7 @@
     "test_timewait_help": "echo 'Run tests with actual delays'",
     "test_fuzzing_token": "yarn hardhat test --network hardhat test/fuzzing/token/VPTokenFuzzing.ts",
     "eslint": "eslint . --ext .ts",
+
     "---------DEPLOY---TEST---SCRIPTS": "",
     "test_deploy_local_scdev": "cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev TEST_PATH=./deployment/test yarn --silent hardhat test --no-compile --network scdev ./deployment/test/deploy-contracts.ts",
     "test_deploy_network_songbird": "cat deployment/deploys/songbird.json | env CHAIN_CONFIG=songbird TEST_PATH=./deployment/test yarn --silent hardhat test --no-compile --network songbird ./deployment/test/deploy-contracts.ts",
@@ -53,6 +55,14 @@
     "test_transfer_governance_network_staging": "cat deployment/deploys/staging.json | env CHAIN_CONFIG=staging TEST_PATH=./deployment/test yarn hardhat test --no-compile --network staging ./deployment/test/transfer-governance.ts",
     "test_transfer_governance_network_songbird": "cat deployment/deploys/songbird.json | env CHAIN_CONFIG=songbird TEST_PATH=./deployment/test yarn hardhat test --no-compile --network songbird ./deployment/test/transfer-governance.ts",
     "test_transfer_governance_local_scdev": "cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev TEST_PATH=./deployment/test yarn hardhat test --no-compile --network scdev ./deployment/test/transfer-governance.ts",
+
+    "---------AIRDROP---SCRIPTS": "",
+    "test_initial_airdrop_state": "yarn test deployment/test/initialVerificationTest.ts",
+    "create_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/createAirdropTransactions.ts --snapshot-file airdrop/data/export.csv --transaction-file airdrop/files/trans/unsigned_transactions.json --override -h true -i 16",
+    "sign_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/signAirdropTransactions.ts -f airdrop/files/trans/unsigned_transactions.json -o airdrop/files/trans/signed_transactions.json",
+    "send_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/sendAirdropTransactions.ts -f airdrop/files/trans/signed_transactions.json",
+    "test_final_airdrop_state": "yarn test deployment/test/airdropDataTest.ts",
+
     "---------DEPLOY---SCRIPTS": "",
     "deploy_local_scdev": "yarn deploy_contracts_local_scdev && yarn daemonize_contracts_local_scdev && yarn activate_managers_local_scdev && yarn transfer_governance_local_scdev",
     "transfer_governance_local_scdev": "cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev transfer-governance && yarn test_transfer_governance_local_scdev",
@@ -86,9 +96,11 @@
     "activate_managers_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost activate-managers && yarn test_activate_managers_hardhat",
     "daemonize_contracts_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost daemonize-contracts && yarn test_daemonize_hardhat",
     "deploy_contracts_local_hardhat": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json && yarn test_deploy_hardhat",
+
     "---------UNREGISTER---SCRIPTS": "",
     "unregister_local_scdev": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev undaemonize-contracts",
     "unregister_network_staging": "env CHAIN_CONFIG=staging yarn --silent hardhat --network staging undaemonize-contracts",
+
     "---------COMPILE---SCRIPTS": "",
     "compile": "yarn hardhat compile && yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
     "c": "yarn compile",
@@ -100,13 +112,16 @@
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node scripts/slither-parse.js ./slither.json",
     "gas-report-check": "./scripts/gas-report-check.sh",
+
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node scripts/process-gas-report.ts && cat .gas-report.txt",
     "gas": "cat .gas-report.txt",
+
     "---------HELPER---SCRIPTS": "",
     "accounts": "ts-node scripts/generate-accounts.ts",
     "go-accounts": "ts-node ./scripts/generate-addresses-for-go.ts",
+
     "---------VM-(MULTIPASS)-MANGEMENT--SCRIPTS": "",
     "vm_launch": "./scripts/local-flare-chain-vm/launch.sh",
     "vm_shell": "multipass shell flare",
@@ -127,6 +142,7 @@
     "csv": "5.5.0",
     "dotenv": "8.2.0",
     "eslint": "7.30.0",
+    "ethereum-tx-decoder": "3.0.0",
     "got": "11.8.2",
     "hardhat": "2.3.0",
     "solhint": "3.3.2",
@@ -156,6 +172,7 @@
     "hardhat-deploy": "0.7.10",
     "hardhat-gas-reporter": "1.0.4",
     "intercept-stdout": "0.1.2",
+    "openpgp": "5.0.0",
     "pascal-case": "3.1.2",
     "random-number-csprng": "1.0.2",
     "ripple-lib": "1.9.7",

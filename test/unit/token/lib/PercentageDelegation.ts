@@ -222,7 +222,7 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     if (accounts.length > maxDelegateCount.toNumber()) {
       // Assemble
       // Add maxDelegateCount delegates with 50 bips each
-      for (var i = 1; i <= maxDelegateCount.toNumber(); i++) {
+      for (let i = 1; i <= maxDelegateCount.toNumber(); i++) {
         await delegation.addReplaceDelegate(accounts[i], 50);
       }
       // Act

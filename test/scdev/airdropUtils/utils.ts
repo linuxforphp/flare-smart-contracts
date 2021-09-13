@@ -13,9 +13,9 @@ export function isBaseTenNumber(x:string):boolean {
 
 export interface LineItem {
     XRPAddress: string,
-    NativeAddress: string,
+    FlareAddress: string,
     XRPBalance: string,
-    NativeBalance: string
+    FlareBalance: string
 }
 
 export interface ProcessedLineItem {
