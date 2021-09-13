@@ -1,10 +1,10 @@
-import { VPTokenMockInstance } from "../../../typechain-truffle";
+import { WNatInstance } from "../../../typechain-truffle";
 import { BN_ZERO, Nullable, toBN } from "./FuzzingUtils";
 import { VPTokenState } from "./VPTokenState";
 
 export class VPTokenChecker {
     constructor(
-        private vpToken: VPTokenMockInstance,
+        private vpToken: WNatInstance,
         private blockNumber: Nullable<number>,
         private accounts: string[],
         private state: VPTokenState,
@@ -23,6 +23,18 @@ export class VPTokenChecker {
     balanceOf(account: string) {
         return this.cached(['balanceOf', account],
             () => this.blockNumber == null ? this.vpToken.balanceOf(account) : this.vpToken.balanceOfAt(account, this.blockNumber));
+    }
+    
+    // only works for present block!
+    totalNativeBalance() {
+        return this.cached(['totalNativeBalance'],
+            () => web3.eth.getBalance(this.vpToken.address).then(toBN));
+    }
+
+    // only works for present block!
+    nativeBalanceOf(account: string) {
+        return this.cached(['nativeBalanceOf', account],
+            () => web3.eth.getBalance(account).then(toBN));
     }
 
     totalVotePower() {
@@ -102,6 +114,7 @@ export class VPTokenChecker {
 
     async checkInvariants() {
         await this.checkTotalBalance();
+        await this.checkTotalNativeBalance();
         await this.checkTotalVotePower();
         await this.checkVotePowerIsUndelegatedPlusDelegationsTo();
         await this.checkVotePowerIsBalanceMinusFromPlusToDelegations();
@@ -118,6 +131,14 @@ export class VPTokenChecker {
     async checkTotalBalance() {
         console.log('   checkTotalBalance');
         const balance = await this.totalBalance();
+        const supply = await this.totalSupply();
+        assert(balance.eq(supply), `Balance does not match supply: ${balance} != ${supply}`);
+    }
+
+    async checkTotalNativeBalance() {
+        if (this.blockNumber != null) return;   // can only get native balance for the present
+        console.log('   checkTotalNativeBalance');
+        const balance = await this.totalNativeBalance();
         const supply = await this.totalSupply();
         assert(balance.eq(supply), `Balance does not match supply: ${balance} != ${supply}`);
     }

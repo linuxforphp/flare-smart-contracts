@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { VPTokenMockContract, VPTokenMockInstance } from "../../../typechain-truffle";
+import { WNatInstance } from "../../../typechain-truffle";
 import { getTestFile } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "./FuzzingUtils";
@@ -7,10 +7,10 @@ import { VPTokenChecker } from "./VPTokenChecker";
 import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator";
 
 
-const VPToken = artifacts.require("VPTokenMock") as VPTokenMockContract;
+const VPToken = artifacts.require("WNat");
 
 contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availableAccounts => {
-    let vpToken: VPTokenMockInstance;
+    let vpToken: WNatInstance;
     let history: VPTokenHistory;
     let simulator: VPTokenSimulator;
     
@@ -97,12 +97,16 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     });
 
     async function runRandomActions() {
-        console.log("Minting...");
+        console.log("Depositing initial funds...");
         for (const account of accounts) {
-            await simulator.mint(governance, account, INIT_AMOUNT);
+            await simulator.deposit(account, INIT_AMOUNT);
         }
 
         const presentActions: Array<[() => Promise<void>, number]> = [
+            [testDeposit, 5],
+            [testWithdraw, 5],
+            [testDepositTo, 5],
+            [testWithdrawFrom, 5],
             [testTransfer, 5],
             [testDelegate, 10],
             [testDelegateExplicit, 10],
@@ -160,7 +164,37 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     async function setCleanupBlock(checkpointId: string) {
         await simulator.setCleanupBlock(governance, checkpointId);
     }
-    
+
+    async function testDeposit() {
+        const to = randomChoice(accounts);
+        const amount = randomInt(INIT_AMOUNT);
+        await simulator.deposit(to, amount);
+    }
+
+    async function testWithdraw() {
+        const from = randomChoice(accounts);
+        const balance = history.state.balances.get(from).toNumber();
+        const amount = coinFlip(0.9) ? randomInt(balance) : randomInt(INIT_AMOUNT);
+        await simulator.withdraw(from, amount);
+    }
+
+    async function testDepositTo() {
+        const from = randomChoice(accounts);
+        const to = randomChoice(accounts);
+        const amount = randomInt(INIT_AMOUNT);
+        await simulator.depositTo(from, to, amount);
+    }
+
+    async function testWithdrawFrom() {
+        const sender = randomChoice(accounts);
+        const from = randomChoice(accounts);
+        const balance = history.state.balances.get(from).toNumber();
+        const amount = coinFlip(0.9) ? randomInt(balance) : randomInt(INIT_AMOUNT);
+        const approval = randomInt(0.9 * amount, 1.1 * amount);
+        await simulator.approve(from, sender, approval);
+        await simulator.withdrawFrom(sender, from, amount);
+    }
+
     async function testTransfer() {
         const from = randomChoice(accounts);
         const to = randomChoice(accounts);
@@ -220,7 +254,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         await simulator.votePowerOfAtCached(plainuser, from, cp.id);
     }
 
-    async function performChecks(vpToken: VPTokenMockInstance, history: VPTokenHistory, checkpoint: Nullable<Checkpoint>) {
+    async function performChecks(vpToken: WNatInstance, history: VPTokenHistory, checkpoint: Nullable<Checkpoint>) {
         const checker = checkpoint != null
             ? new VPTokenChecker(vpToken, checkpoint.blockNumber, accounts, checkpoint.state)
             : new VPTokenChecker(vpToken, null, accounts, history.state)
