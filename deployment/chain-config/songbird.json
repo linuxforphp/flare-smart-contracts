@@ -1,4 +1,5 @@
 {
+    "nativeSymbol": "SGB",     
     "wrappedNativeName": "Wrapped Songbird",
     "wrappedNativeSymbol": "WSGB",
     "stateConnectorAddress": "0x1000000000000000000000000000000000000001",
@@ -25,7 +26,7 @@
     "lowAssetThresholdUSDDec5": 200000000,
     "highAssetThresholdUSDDec5": 3000000000,
     "highAssetTurnoutThresholdBIPS": 100,
-    "lowNatTurnoutThresholdBIPS": 300,
+    "lowNatTurnoutThresholdBIPS": 500,
     "priceDeviationThresholdBIPS": 10000,
     "trustedAddresses": [
     ],
@@ -43,6 +44,8 @@
     "ftsoManagerGasLimit": 40000000,
     "deployDistributionContract": false,
     "deployDummyXAssetTokensAndMinters": false,
+    "deployNATFtso": false,
+    "NATMultiAssets": ["XRP", "LTC", "DOGE"],
     "assets": [
         {
             "assetSymbol": "XRP",

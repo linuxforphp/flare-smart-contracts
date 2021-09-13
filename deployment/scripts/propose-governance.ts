@@ -21,12 +21,10 @@ export async function proposeGovernance(
 
   // Define accounts in play for the deployment process
   let deployerAccount: any;
-  let genesisGovernanceAccount: any;
 
   // Get deployer account
   try {
     deployerAccount = web3.eth.accounts.privateKeyToAccount(deployerPrivateKey);
-    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(genesisGovernancePrivateKey);
   } catch (e) {
     throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
   }
@@ -67,7 +65,6 @@ export async function proposeGovernance(
   const wNat = await FtsoRegistry.at(contracts.getContractAddress(Contracts.WNAT));
 
   if (!quiet) {
-    console.error(`Genesis governance address is ${genesisGovernanceAccount.address}`);
     console.error(`Proposed address is ${newGovernanceAccountAddress}`);
   }
 
@@ -86,7 +83,7 @@ export async function proposeGovernance(
     await distribution.proposeGovernance(newGovernanceAccountAddress);
   }
   await ftsoManager.proposeGovernance(newGovernanceAccountAddress);
-  await priceSubmitter.proposeGovernance(newGovernanceAccountAddress, { from: genesisGovernanceAccount.address });
+  await priceSubmitter.proposeGovernance(newGovernanceAccountAddress);
   await voterWhitelister.proposeGovernance(newGovernanceAccountAddress);
   await cleanupBlockNumberManager.proposeGovernance(newGovernanceAccountAddress);
   await ftsoRegistry.proposeGovernance(newGovernanceAccountAddress);

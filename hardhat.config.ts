@@ -235,6 +235,8 @@ task("undaemonize-contracts", "Remove daemonized contracts from the FlareDaemon.
 let fs = require('fs');
 
 let accounts  = [
+  // In Truffle, default account is always the first one.
+  ...(process.env.DEPLOYER_PRIVATE_KEY ? [{privateKey: process.env.DEPLOYER_PRIVATE_KEY, balance:"100000000000000000000000000000000"}] : []),  
   // First 20 accounts with 10^14 NAT each 
   // Addresses:
   //   0xc783df8a850f42e7f7e57013759c285caa701eb6
@@ -257,7 +259,9 @@ let accounts  = [
   //   0x0a057a7172d0466aef80976d7e8c80647dfd35e3
   //   0x68dfc526037e9030c8f813d014919cc89e7d4d74
   //   0x26c43a1d431a4e5ee86cd55ed7ef9edf3641e901
-  ...JSON.parse(fs.readFileSync('test-1020-accounts.json')).slice(0, process.env.TENDERLY == 'true' ? 150 : 2000)
+  ...JSON.parse(fs.readFileSync('test-1020-accounts.json')).slice(0, process.env.TENDERLY == 'true' ? 150 : 2000).filter((x: any) => x.privateKey != process.env.DEPLOYER_PRIVATE_KEY),
+  ...(process.env.GENESIS_GOVERNANCE_PRIVATE_KEY ? [{privateKey: process.env.GENESIS_GOVERNANCE_PRIVATE_KEY, balance:"100000000000000000000000000000000"}] : []),
+  ...(process.env.GOVERNANCE_PRIVATE_KEY ? [{privateKey: process.env.GOVERNANCE_PRIVATE_KEY, balance:"100000000000000000000000000000000"}] : []),
 ];
 
 const config: HardhatUserConfig = {

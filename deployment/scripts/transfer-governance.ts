@@ -21,12 +21,10 @@ export async function transferGovernance(
 
   // Define accounts in play for the deployment process
   let deployerAccount: any;
-  let genesisGovernanceAccount: any;
 
   // Get deployer account
   try {
     deployerAccount = web3.eth.accounts.privateKeyToAccount(deployerPrivateKey);
-    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(genesisGovernancePrivateKey);
   } catch (e) {
     throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
   }
@@ -34,7 +32,6 @@ export async function transferGovernance(
   if (!quiet) {
     console.error(`Transfering with address ${deployerAccount.address}`);
     console.error(`Transfer to address ${newGovernanceAccountAddress}`);
-    console.error(`Genesis governance address is ${genesisGovernanceAccount.address}`);
   }
 
   // Wire up the default account that will do the deployment
@@ -83,7 +80,7 @@ export async function transferGovernance(
     await distribution.transferGovernance(newGovernanceAccountAddress);
   }
   await ftsoManager.transferGovernance(newGovernanceAccountAddress);
-  await priceSubmitter.transferGovernance(newGovernanceAccountAddress, { from: genesisGovernanceAccount.address });
+  await priceSubmitter.transferGovernance(newGovernanceAccountAddress);
   await voterWhitelister.transferGovernance(newGovernanceAccountAddress);
   await cleanupBlockNumberManager.transferGovernance(newGovernanceAccountAddress);
   await ftsoRegistry.transferGovernance(newGovernanceAccountAddress);
