@@ -24,6 +24,7 @@ import { claimGovernance } from "./deployment/scripts/claim-governance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
 import { transferGovernance } from "./deployment/scripts/transfer-governance";
 import "./type-extensions";
+import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-working-balance";
 const intercept = require('intercept-stdout');
 
 // Override solc compile task and filter out useless warnings
@@ -168,6 +169,20 @@ task("transfer-governance", "Transfer governance directly for all governed contr
         parameters.governancePublicKey, 
         parameters.dataAvailabilityRewardManagerDeployed,
         parameters.deployDistributionContract,
+        args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("transfer-gov-working-balance", "Transfer working balance to multisig governance accounts.")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      await transferGovWorkingBalance(
+        hre,
+        parameters.deployerPrivateKey, 
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
