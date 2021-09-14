@@ -139,13 +139,15 @@ contract Delegatable is IVPContractEvents {
      * @param _amount The amount of vote power to burn.
      */
     function _burnVotePower(address _owner, uint256 _ownerCurrentBalance, uint256 _amount) internal {
-        // Is there enough unallocated VP _to burn if explicitly delegated?
+        // for PERCENTAGE delegation: reduce owner vote power allocations
+        // revert with the same error as ERC20 in case transfer exceeds balance
+        uint256 newOwnerBalance = _ownerCurrentBalance.sub(_amount, "ERC20: transfer amount exceeds balance");
+        _allocateVotePower(_owner, _ownerCurrentBalance, newOwnerBalance);
+        // for AMOUNT delegation: is there enough unallocated VP _to burn if explicitly delegated?
         require(_isTransmittable(_owner, _ownerCurrentBalance, _amount), UNDELEGATED_VP_TOO_SMALL_MSG);
         // burn vote power
         votePower._burn(_owner, _amount);
         votePower.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
-        // Reduce newly burned vote power over delegates
-        _allocateVotePower(_owner, _ownerCurrentBalance, _ownerCurrentBalance.sub(_amount));
     }
 
     /**

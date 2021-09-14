@@ -1,5 +1,5 @@
 import { WNatContract, WNatInstance } from "../../../../typechain-truffle";
-import { toBN } from "../../../utils/test-helpers";
+import { assertNumberEqual, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const calcGasCost = require('../../../utils/eth').calcGasCost;
@@ -267,5 +267,56 @@ contract(`WNat; ${getTestFile(__filename)}`, async accounts => {
     let withdrawResult = await wNat.withdrawFrom(accounts[1], toBN(10), { from: accounts[2] });
     // Assert
     expectEvent(withdrawResult, "Withdrawal", { src: accounts[1], amount: toBN(10) });
+  });
+
+  it("Should withdraw when requested amount more than undelegated and then redelegate remainder (delegate percentage).", async () => {
+    // Assemble
+    await wNat.deposit({ value: toBN(100), from: accounts[1] });
+    await wNat.delegate(accounts[2], 4000, { from: accounts[1] });
+    // Act
+    let result = await wNat.withdraw(toBN(80), { from: accounts[1] });
+    // Assert
+    expectEvent(result, "Withdrawal", { src: accounts[1], amount: toBN(80) });
+    assertNumberEqual(await wNat.votePowerOf(accounts[1]), 12);
+    assertNumberEqual(await wNat.votePowerOf(accounts[2]), 8);
+    assertNumberEqual(await wNat.votePowerFromTo(accounts[1], accounts[2]), 8);
+  });
+
+  it("Should not withdraw when amount requested more than undelegated (delegate explicit).", async () => {
+    // Assemble
+    await wNat.deposit({ value: toBN(100), from: accounts[1] });
+    await wNat.delegateExplicit(accounts[2], 40, { from: accounts[1] });
+    // Act
+    let resultPromise = wNat.withdraw(toBN(80), { from: accounts[1] });
+    // Assert
+    await expectRevert(resultPromise, "Undelegated vote power too small");
+  });
+
+  it("Should redelegate when depositing (delegate percentage).", async () => {
+    // Assemble
+    await wNat.deposit({ value: toBN(100), from: accounts[1] });
+    await wNat.delegate(accounts[2], 4000, { from: accounts[1] });
+    // Act
+    let result = await wNat.deposit({ from: accounts[1], value: toBN(50) });
+    // Assert
+    expectEvent(result, "Deposit", { dst: accounts[1], amount: toBN(50) });
+    assertNumberEqual(await wNat.balanceOf(accounts[1]), 150);
+    assertNumberEqual(await wNat.votePowerOf(accounts[1]), 90);
+    assertNumberEqual(await wNat.votePowerOf(accounts[2]), 60);
+    assertNumberEqual(await wNat.votePowerFromTo(accounts[1], accounts[2]), 60);
+  });
+
+  it("Should increase undelegated amount when depositing (delegate explicit).", async () => {
+    // Assemble
+    await wNat.deposit({ value: toBN(100), from: accounts[1] });
+    await wNat.delegateExplicit(accounts[2], 40, { from: accounts[1] });
+    // Act
+    let result = await wNat.deposit({ from: accounts[1], value: toBN(50) });
+    // Assert
+    expectEvent(result, "Deposit", { dst: accounts[1], amount: toBN(50) });
+    assertNumberEqual(await wNat.balanceOf(accounts[1]), 150);
+    assertNumberEqual(await wNat.votePowerOf(accounts[1]), 110);
+    assertNumberEqual(await wNat.votePowerOf(accounts[2]), 40);
+    assertNumberEqual(await wNat.votePowerFromTo(accounts[1], accounts[2]), 40);
   });
 });

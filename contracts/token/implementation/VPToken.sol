@@ -125,7 +125,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
 
     /**
-     * @notice Delegate `pct` of voting power to `_to` from `msg.sender`
+     * @notice Delegate `_amount` of voting power to `_to` from `msg.sender`
      * @param _to The address of the recipient
      * @param _amount An explicit vote power amount to be delegated.
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
