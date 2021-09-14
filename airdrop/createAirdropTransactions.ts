@@ -141,7 +141,7 @@ if(!fs.existsSync(logPath)){
 if(!fs.existsSync(transactionFile)){
     let transaction_dir = transactionFile.split("/");
     if(transaction_dir.length > 1){
-        transaction_dir = transaction_dir.slice(0, -1).join("")
+        transaction_dir = transaction_dir.slice(0, -1).join("/")        
         fs.mkdirSync(transaction_dir, {recursive: true});
     }
 }

@@ -79,9 +79,8 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
         totalBalance = totalBalance.plus(decoded.value);
         let decodedGas = new BigNumber(decoded.gasLimit);
         totalGasPrice = totalGasPrice.plus(decodedGas.multipliedBy(decoded.gasPrice));
-        // await web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => console.log(e));
-        promises.push(web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => console.log(e)));
-        await sleep(10)
+        promises.push(web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => null));
+        await sleep(6)
         progress += 1;
         if(!quiet) bar1.update(progress);
     }
