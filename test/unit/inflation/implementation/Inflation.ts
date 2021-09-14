@@ -534,6 +534,73 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         assert.equal(rewardServicesState.rewardServices[1].inflationTopupRequestedWei, expectedTopupService2);
       });
 
+      it("Should request inflation to topup - second cycle, 2 sharing percentages, by non default factor type", async() => {
+        // Assemble
+        // Set up two sharing percentages
+        const sharingPercentages = [];
+        const receiver1 = await MockContract.new();
+        const receiver2 = await MockContract.new();
+        sharingPercentages[0] = {inflationReceiver: receiver1.address, percentBips: 3000};
+        sharingPercentages[1] = {inflationReceiver: receiver2.address, percentBips: 7000};
+        const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
+        await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+        await inflation.setTopupConfiguration(receiver1.address, TopupType.FACTOROFDAILYAUTHORIZED, 120);
+        await inflation.setTopupConfiguration(receiver2.address, TopupType.FACTOROFDAILYAUTHORIZED, 110);
+        await mockFlareDaemon.trigger();
+        const nowTs = await time.latest() as BN;
+        // A day passes...
+        await time.increaseTo(nowTs.addn(86400));
+        // Act
+        await mockFlareDaemon.trigger();
+        // Assert
+        const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
+        const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
+        const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 0.3);
+        const expectedAuthorizedInflationCycle2Service2 = expectedAuthorizedInflationCycle2 - expectedAuthorizedInflationCycle2Service1;
+        const expectedTopupService1 = Math.floor(expectedAuthorizedInflationCycle2Service1 * 1.2);
+        const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 1.1);
+        const { 
+          4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        // Check topup inflation for first reward service
+        assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService1);
+        // Check topup inflation for the second reward service
+        assert.equal(rewardServicesState.rewardServices[1].inflationTopupRequestedWei, expectedTopupService2);
+      });
+
+
+      it("Should request inflation to topup - second cycle, 2 sharing percentages, by mixed factor type", async() => {
+        // Assemble
+        // Set up two sharing percentages
+        const sharingPercentages = [];
+        const receiver1 = await MockContract.new();
+        const receiver2 = await MockContract.new();
+        sharingPercentages[0] = {inflationReceiver: receiver1.address, percentBips: 2000};
+        sharingPercentages[1] = {inflationReceiver: receiver2.address, percentBips: 8000};
+        const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
+        await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+        await inflation.setTopupConfiguration(receiver1.address, TopupType.ALLAUTHORIZED, 0);
+        await inflation.setTopupConfiguration(receiver2.address, TopupType.FACTOROFDAILYAUTHORIZED, 140);
+        await mockFlareDaemon.trigger();
+        const nowTs = await time.latest() as BN;
+        // A day passes...
+        await time.increaseTo(nowTs.addn(86400));
+        // Act
+        await mockFlareDaemon.trigger();
+        // Assert
+        const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
+        const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
+        const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 0.2);
+        const expectedAuthorizedInflationCycle2Service2 = expectedAuthorizedInflationCycle2 - expectedAuthorizedInflationCycle2Service1;
+        const expectedTopupService1 = Math.floor(expectedAuthorizedInflationCycle2Service1 * 2);
+        const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 1.4);
+        const { 
+          4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        // Check topup inflation for first reward service
+        assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService1);
+        // Check topup inflation for the second reward service
+        assert.equal(rewardServicesState.rewardServices[1].inflationTopupRequestedWei, expectedTopupService2);
+      });
+
       it("Should request inflation to topup - second cycle, 2 sharing percentages, for type all authorized", async() => {
         // Assemble
         // Set up two sharing percentages
