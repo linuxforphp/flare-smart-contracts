@@ -404,11 +404,14 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
             bool _claimable
         ) 
     {
-        RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
-        _dataProviders = rewardState.dataProviders;
-        _rewardAmounts = rewardState.amounts;
-        _claimed = rewardState.claimed;
-        _claimable = _isRewardClaimable(_rewardEpoch, ftsoManager.getCurrentRewardEpoch());
+        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
+        _claimable = _isRewardClaimable(_rewardEpoch, currentRewardEpoch);
+        if (_claimable || _rewardEpoch == currentRewardEpoch) {
+            RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
+            _dataProviders = rewardState.dataProviders;
+            _rewardAmounts = rewardState.amounts;
+            _claimed = rewardState.claimed;
+        }
     }
 
     /**
@@ -432,15 +435,18 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
             bool _claimable
         )
     {
-        RewardState memory rewardState = _getStateOfRewardsFromDataProviders(
-            _beneficiary,
-            _rewardEpoch,
-            _dataProviders,
-            false
-        );
-        _rewardAmounts = rewardState.amounts;
-        _claimed = rewardState.claimed;
-        _claimable = _isRewardClaimable(_rewardEpoch, ftsoManager.getCurrentRewardEpoch());
+        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
+        _claimable = _isRewardClaimable(_rewardEpoch, currentRewardEpoch);
+        if (_claimable || _rewardEpoch == currentRewardEpoch) {
+            RewardState memory rewardState = _getStateOfRewardsFromDataProviders(
+                _beneficiary,
+                _rewardEpoch,
+                _dataProviders,
+                false
+            );
+            _rewardAmounts = rewardState.amounts;
+            _claimed = rewardState.claimed;
+        }
     }
 
     /**
