@@ -24,7 +24,7 @@ function parseAndProcessData(dataFile:string):ProcessedLineItem[] {
       seenNATAddressesDetail[XRPLine.FlareAddress] = toBN(XRPLine.FlareBalance);
     } 
     else {
-      seenNATAddressesDetail[XRPLine.FlareAddress] =seenNATAddressesDetail[XRPLine.FlareBalance].add(toBN(XRPLine.FlareBalance));
+      seenNATAddressesDetail[XRPLine.FlareAddress] =seenNATAddressesDetail[XRPLine.FlareAddress].add(toBN(XRPLine.FlareBalance));
     }    
   }
   let processedFile:ProcessedLineItem[] = []

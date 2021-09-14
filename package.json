@@ -62,6 +62,7 @@
     "sign_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/signAirdropTransactions.ts -f airdrop/files/trans/unsigned_transactions.json -o airdrop/files/trans/signed_transactions.json",
     "send_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/sendAirdropTransactions.ts -f airdrop/files/trans/signed_transactions.json",
     "test_final_airdrop_state": "yarn test deployment/test/airdropDataTest.ts",
+    "songbird_airdrop": "yarn test_initial_airdrop_state && yarn create_airdrop_transactions && yarn sign_airdrop_transactions && yarn send_airdrop_transactions && yarn test_final_airdrop_state",
 
     "---------DEPLOY---SCRIPTS": "",
     "deploy_local_scdev": "yarn deploy_contracts_local_scdev && yarn daemonize_contracts_local_scdev && yarn activate_managers_local_scdev && yarn transfer_governance_local_scdev",
