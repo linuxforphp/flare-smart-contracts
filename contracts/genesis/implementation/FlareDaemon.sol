@@ -103,7 +103,8 @@ contract FlareDaemon is GovernedAtGenesis {
     event ContractDaemonizeErrored(address theContract, uint256 atBlock, string theMessage, uint256 gasConsumed);
     event ContractHeldOff(address theContract, uint256 blockHoldoffsRemaining);
     event ContractsSkippedOutOfGas(uint256 numberOfSkippedConstracts);
-    event MintingRequested(uint256 amountWei);
+    event MintingRequestReceived(uint256 amountWei);
+    event MintingRequestTriggered(uint256 amountWei);
     event MintingReceived(uint256 amountWei);
     event MintingWithdrawn(uint256 amountWei);
     event RegistrationUpdated(IFlareDaemonize theContract, bool add);
@@ -218,7 +219,7 @@ contract FlareDaemon is GovernedAtGenesis {
         if (_amountWei > 0) {
             lastMintRequestTs = block.timestamp;
             totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
-            emit MintingRequested(_amountWei);
+            emit MintingRequestReceived(_amountWei);
         }
     }
 
@@ -260,7 +261,7 @@ contract FlareDaemon is GovernedAtGenesis {
      */
     function setInflation(IInflationGenesis _inflation) external onlyGovernance {
         require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
-        emit InflationSet(inflation, _inflation);
+        emit InflationSet(_inflation, inflation);
         inflation = _inflation;
         if (maxMintingRequestWei == 0) {
             maxMintingRequestWei = MAX_MINTING_REQUEST_DEFAULT;
@@ -384,7 +385,7 @@ contract FlareDaemon is GovernedAtGenesis {
     function triggerInternal() internal returns (uint256 _toMintWei) {
         // only one trigger() call per block allowed
         // this also serves as reentrancy guard, since any re-entry will happen in the same block
-        require(block.number > systemLastTriggeredAt, ERR_BLOCK_NUMBER_SMALL);
+        if(block.number == systemLastTriggeredAt) return 0;
         systemLastTriggeredAt = block.number;
 
         uint256 currentBalance = address(this).balance;
@@ -492,7 +493,7 @@ contract FlareDaemon is GovernedAtGenesis {
         _toMintWei = getPendingMintRequest();
         if (_toMintWei > 0) {
             expectedMintRequest = _toMintWei;
-            emit MintingRequested(_toMintWei);
+            emit MintingRequestTriggered(_toMintWei);
         } else {
             expectedMintRequest = 0;            
         }
