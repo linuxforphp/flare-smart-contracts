@@ -55,6 +55,8 @@
     "test_transfer_governance_network_staging": "cat deployment/deploys/staging.json | env CHAIN_CONFIG=staging TEST_PATH=./deployment/test yarn hardhat test --no-compile --network staging ./deployment/test/transfer-governance.ts",
     "test_transfer_governance_network_songbird": "cat deployment/deploys/songbird.json | env CHAIN_CONFIG=songbird TEST_PATH=./deployment/test yarn hardhat test --no-compile --network songbird ./deployment/test/transfer-governance.ts",
     "test_transfer_governance_local_scdev": "cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev TEST_PATH=./deployment/test yarn hardhat test --no-compile --network scdev ./deployment/test/transfer-governance.ts",
+    "test_transfer_gov_working_balance_hardhat": "env CHAIN_CONFIG=scdev TEST_PATH=./deployment/test yarn hardhat test --no-compile --network scdev ./deployment/test/transfer-gov-working-balance.ts",
+    "test_transfer_gov_working_balance_network_songbird": "env CHAIN_CONFIG=songbird TEST_PATH=./deployment/test yarn hardhat test --no-compile --network songbird ./deployment/test/transfer-gov-working-balance.ts",
 
     "---------AIRDROP---SCRIPTS": "",
     "test_initial_airdrop_state": "yarn test deployment/test/initialVerificationTest.ts",
@@ -74,6 +76,7 @@
     "deploy_contracts_local_scdev": "yarn compile && env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev deploy-contracts > ./deployment/deploys/scdev.json && yarn test_deploy_local_scdev",
 
     "deploy_network_songbird": "yarn deploy_contracts_network_songbird && yarn daemonize_contracts_network_songbird && yarn activate_managers_network_songbird && yarn transfer_governance_network_songbird",
+    "transfer_gov_working_balance_network_songbird": "env CHAIN_CONFIG=songbird yarn --silent hardhat --network songbird transfer-gov-working-balance && yarn test_transfer_gov_working_balance__network_songbird",
     "claim_governance_network_songbird": "cat deployment/deploys/songbird.json | env CHAIN_CONFIG=songbird yarn --silent hardhat --network songbird claim-governance",    
     "transfer_governance_network_songbird": "cat deployment/deploys/songbird.json | env CHAIN_CONFIG=songbird yarn --silent hardhat --network songbird transfer-governance && yarn test_transfer_governance_network_songbird",    
     "propose_governance_network_songbird": "cat deployment/deploys/songbird.json | env CHAIN_CONFIG=songbird yarn --silent hardhat --network songbird propose-governance",
@@ -91,6 +94,7 @@
 
     "deploy_local_hardhat": "concurrently -r -k --success last \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && yarn typechain-ethers-v5 && yarn typechain-truffle-v5 && yarn deploy_local_hardhat_commands\"",
     "deploy_local_hardhat_commands": "yarn deploy_contracts_local_hardhat && yarn daemonize_contracts_local_hardhat && yarn activate_managers_local_hardhat && yarn transfer_governance_local_hardhat",
+    "transfer_gov_working_balance_local_hardhat": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost transfer-gov-working-balance && yarn test_transfer_gov_working_balance_hardhat",
     "transfer_governance_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost transfer-governance && yarn test_transfer_governance_hardhat",
     "claim_governance_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost claim-governance",
     "propose_governance_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost propose-governance",
