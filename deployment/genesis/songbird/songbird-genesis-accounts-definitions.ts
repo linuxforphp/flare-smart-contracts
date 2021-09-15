@@ -29,22 +29,22 @@ export const songbirdGenesisAccountDefinitions: GenesisAccount[] = [
     {
         id: 6,
         address: "0xd197F63CEefDaFaAF771a722c0A9cce771912b41",
-        initialEntryNat: "937,500,000"
+        initialEntryWei: "796,452,292.290 750 000 000 000 000"
     },
     {
         id: 7,
         address: "0x10fc0865d11eebc61eA23511183305EE18b77939",
-        initialEntryNat: "937,500,000"
+        initialEntryWei: "796,452,292.290 750 000 000 000 000"
     },
     {
         id: 8,
         address: "0xdde49343a309941ca44ea257bA3c897B47B6b1D4",
-        initialEntryNat: "937,500,000"
+        initialEntryWei: "796,452,292.290 750 000 000 000 000"
     },
     {
         id: 9,
         address: "0x8078637A052E39A2Fc8833878D70Ae41f7310290",
-        initialEntryNat: "937,500,000"
+        initialEntryWei: "796,452,292.290 750 000 000 000 000"
     },
     {
         id: 10,
