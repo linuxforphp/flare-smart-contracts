@@ -1,11 +1,12 @@
-package genesis
+// (c) 2021, Flare Networks Limited. All rights reserved.
+// Please see the file LICENSE for licensing terms.
 
-// REMOVE BEFORE FLIGHT: Change chainId from 190 to 19 as per https://github.com/ethereum-lists/chains/blob/master/_data/chains/eip155-19.json
+package genesis
 
 var (
 	testnetCChainGenesis = `{
 		"config": {
-			"chainId": 190,
+			"chainId": 19,
 			"homesteadBlock": 0,
 			"daoForkBlock": 0,
 			"daoForkSupport": true,
