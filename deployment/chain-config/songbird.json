@@ -11,7 +11,7 @@
     "governancePublicKey": "<use .env: GOVERNANCE_PUBLIC_KEY>",
     "burnAddress": "0x0100000000000000000000000000000000000000",
     "totalNativeSupplyNAT": 15000000000,
-    "totalFoundationSupplyNAT": 5596817986,
+    "totalFoundationSupplyNAT": 5596817223,
     "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [800,  600],
     "rewardEpochDurationSeconds": 604800,
@@ -30,7 +30,8 @@
     "priceDeviationThresholdBIPS": 1500,
     "trustedAddresses": [
         "0x021305Bb75B9D7F720fD328d137114C930917B62",
-        "0x651ccEBfA2C5aa1e6d9C6180d91079F120314080"
+        "0x651ccEBfA2C5aa1e6d9C6180d91079F120314080",
+        "0x96b83D3F73E44c9A96388CF1D116595551dAeB5A"
     ],
     "rewardFeePercentageUpdateOffsetEpochs": 3,
     "defaultRewardFeePercentageBIPS": 2000,
