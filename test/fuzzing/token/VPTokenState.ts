@@ -1,7 +1,7 @@
 import { BN_ZERO, MAX_BIPS, saveJson } from "./FuzzingUtils";
 import { SparseArray, SparseMatrix } from "./SparseMatrix";
 
-enum DelegationMode {
+export enum DelegationMode {
     NOTSET = 0,
     PERCENTAGE = 1,
     AMOUNT = 2,
@@ -39,7 +39,7 @@ export class VPTokenState {
         for (const amount of this.amountDelegations.rowMap(account).values()) {
             res = res.add(amount); // delegations from account
         }
-        // Revocations are only removed from delegatee not added back to teh delegator.
+        // Revocations are only removed from delegatee not added back to the delegator.
         // However, in the simulated state, the value is removed from delegation matrix,
         // which affects both delegatee and delegator. Therefore we add the revoked
         // value back to the total delegated value of the delegator.
@@ -122,10 +122,17 @@ export class VPTokenState {
     }
 
     delegateesOf(account: string) {
-        return Array.from(this.bipsDelegations.rowMap(account).keys())
-            .concat(Array.from(this.amountDelegations.rowMap(account).keys()));
+        return this.bipsDelegateesOf(account).concat(this.amountDelegateesOf(account));
     }
-    
+
+    bipsDelegateesOf(account: string) {
+        return Array.from(this.bipsDelegations.rowMap(account).keys());
+    }
+
+    amountDelegateesOf(account: string) {
+        return Array.from(this.amountDelegations.rowMap(account).keys());
+    }
+
     clone(): VPTokenState {
         return new VPTokenState(
             this.balances.clone(),

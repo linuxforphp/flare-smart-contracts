@@ -20,6 +20,18 @@ export class SparseArray {
     keys() {
         return this.data.keys();
     }
+    
+    countNonZero() {
+        return this.data.size;
+    }
+    
+    total() {
+        let result = BN_ZERO;
+        for (const value of this.data.values()) {
+            result = result.add(value);
+        }
+        return result;
+    }
 
     clear() {
         this.data.clear();
