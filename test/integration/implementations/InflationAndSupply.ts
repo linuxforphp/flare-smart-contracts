@@ -1,4 +1,4 @@
-import { time } from "@openzeppelin/test-helpers";
+import { constants, time } from "@openzeppelin/test-helpers";
 import { 
   FlareDaemonMockInstance,
   InflationInstance,
@@ -8,6 +8,7 @@ import {
   SharingPercentageProviderMockInstance } from "../../../typechain-truffle";
 
 const getTestFile = require('../../utils/constants').getTestFile;
+const cliProgress = require('cli-progress');
 
 const Inflation = artifacts.require("Inflation");
 const MockContract = artifacts.require("MockContract");
@@ -62,7 +63,7 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
     // Wire up supply contract
     supply = await Supply.new(
       accounts[0],
-      "0x0000000000000000000000000000000000000000",
+      constants.ZERO_ADDRESS,
       inflation.address,
       initialGenesisAmountWei,
       foundationSupplyWei,
@@ -116,6 +117,38 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
       await mockFlareDaemon.trigger();
       // Assert
       // Supply should have a new inflatable balance for original supply plus two authorization periods
+      const expectedInflatableBalance = initialGenesisAmountWei.add(totalInflationAuthorizedWei);
+      const inflatableBalance = await supply.getInflatableBalance();
+      assert.equal(inflatableBalance.toString(), expectedInflatableBalance.toString());      
+    });
+  });
+
+  describe("annual roll", async() => {
+    it("Should recognize 2nd year annual inflation and update inflatable balance on supply", async() => {
+      // Assemble
+      const firstYearAnnualInflationAuthorized = initialGenesisAmountWei.mul(BN(inflationBips)).div(BN(10000));
+      const firstDayYear2InflationAuthorized = initialGenesisAmountWei.add(firstYearAnnualInflationAuthorized).mul(BN(inflationBips)).div(BN(10000)).div(BN(365));
+      // Total inflation authorized over 1 year + 1 day
+      const totalInflationAuthorizedWei = firstYearAnnualInflationAuthorized.add(firstDayYear2InflationAuthorized);
+
+      // Act
+      // Force a block in order to get most up to date time
+      await time.advanceBlock();
+      // Entertain ourselves...
+      const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+      progressBar.start(366, 0);
+      for (let i = 0; i < 366; i++) {
+        // Advance time to next day if not day 0
+        if (i != 0) {
+          await time.increase(86400);
+        }
+        // Pulse inflation for that day by calling daemon
+        await mockFlareDaemon.trigger();
+        progressBar.update(i);
+      }
+
+      // Assert
+      // Supply should have a new inflatable balance for original supply, plus 1 year of inflation, plus 1 day
       const expectedInflatableBalance = initialGenesisAmountWei.add(totalInflationAuthorizedWei);
       const inflatableBalance = await supply.getInflatableBalance();
       assert.equal(inflatableBalance.toString(), expectedInflatableBalance.toString());      
