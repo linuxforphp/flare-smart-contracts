@@ -30,7 +30,7 @@ contract FlareDaemonWithInflationMock is GovernedAtGenesis {
     uint256 public lastMintRequestTs;
     uint256 public lastUpdateMaxMintRequestTs;
 
-    event MintingRequested(uint256 amountWei);
+    event MintingRequestReceived(uint256 amountWei);
     event InflationSet(IInflationGenesis theNewContract, IInflationGenesis theOldContract);
 
     
@@ -79,7 +79,7 @@ contract FlareDaemonWithInflationMock is GovernedAtGenesis {
         if (_amountWei > 0) {
             lastMintRequestTs = block.timestamp;
             totalMintingRequestedWei = totalMintingRequestedWei.add(_amountWei);
-            emit MintingRequested(_amountWei);
+            emit MintingRequestReceived(_amountWei);
         }
     }
 }

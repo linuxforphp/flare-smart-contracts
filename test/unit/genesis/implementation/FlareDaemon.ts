@@ -4,7 +4,7 @@ import {
   InflationMockInstance, 
   MockContractInstance } from "../../../../typechain-truffle";
 
-import {expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import {expectRevert, expectEvent, time, constants} from '@openzeppelin/test-helpers';
 import { toBN } from "../../../utils/test-helpers";
 import { TestableFlareDaemonInstance } from "../../../../typechain-truffle/TestableFlareDaemon";
 const getTestFile = require('../../../utils/constants').getTestFile;
@@ -23,7 +23,8 @@ const ONLY_GOVERNANCE_MSG = "only governance";
 const TOO_MANY_CONTRACTS_MSG = "too many";
 const INFLATION_ZERO_MSG = "inflation zero";
 const REGISTRATIONUPDATED_EVENT = "RegistrationUpdated";
-const MINTINGREQUESTED_EVENT = "MintingRequested";
+const MINTINGREQUESTRECEIVED_EVENT = "MintingRequestReceived";
+const MINTINGREQUESTTRIGGERED_EVENT = "MintingRequestTriggered";
 const MINTINGRECEIVED_EVENT = "MintingReceived";
 const MINTINGWITHDRAWN_EVENT = "MintingWithdrawn";
 const SELFDESTRUCTRECEIVED_EVENT = "SelfDestructReceived";
@@ -205,11 +206,12 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should emit event when triggered with a pending mint request", async() => {
       // Assemble
       await flareDaemon.setInflation(accounts[0], {from: GOVERNANCE_GENESIS_ADDRESS});
-      await flareDaemon.requestMinting(BN(100), { from: accounts[0] });
       // Act
-      const tx = await flareDaemon.trigger();
+      const txReq = await flareDaemon.requestMinting(BN(100), { from: accounts[0] });
+      const txTrigger = await flareDaemon.trigger();
       // Assert
-      expectEvent(tx, MINTINGREQUESTED_EVENT, {amountWei: BN(100)});
+      expectEvent(txReq, MINTINGREQUESTRECEIVED_EVENT, {amountWei: BN(100)});
+      expectEvent(txTrigger, MINTINGREQUESTTRIGGERED_EVENT, { amountWei: BN(100) });
     });
 
     it("Should log error if inflation not set", async() => {
@@ -419,15 +421,22 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       const receipt = await flareDaemon.setInflation(mockInflation.address, {from: GOVERNANCE_GENESIS_ADDRESS});
       // Assert
       assert.equal(await flareDaemon.inflation(), mockInflation.address);
-      expectEvent(receipt, INFLATIONSET_EVENT);
+      expectEvent(receipt, INFLATIONSET_EVENT, {
+        theNewContract: mockInflation.address,
+        theOldContract: constants.ZERO_ADDRESS}
+      );
     });
 
     it("Should not set inflation if not from governance", async() => {
       // Assemble
       // Act
-      const promise = flareDaemon.setInflation(mockInflation.address, {from: accounts[0]});
-      // Assert
-      await expectRevert(promise, "only governance");
+      // const promise = flareDaemon.setInflation(mockInflation.address, {from: accounts[0]});
+      // // Assert
+      // await expectRevert(promise, "only governance");
+      await expectRevert(
+        flareDaemon.setInflation(mockInflation.address, {from: accounts[0]}),
+        "only governance"
+      )
     });
 
     it("Should request and transfer minted amount to inflation", async() => {
