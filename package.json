@@ -60,7 +60,7 @@
 
     "---------AIRDROP---SCRIPTS": "",
     "test_initial_airdrop_state": "yarn test deployment/test/initialVerificationTest.ts",
-    "create_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/createAirdropTransactions.ts --snapshot-file airdrop/data/export.csv --transaction-file airdrop/files/trans/unsigned_transactions.json --override -h true -i 16",
+    "create_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/createAirdropTransactions.ts --snapshot-file airdrop/data/export.csv --transaction-file airdrop/files/trans/unsigned_transactions.json --override -h true -i 19",
     "sign_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/signAirdropTransactions.ts -f airdrop/files/trans/unsigned_transactions.json -o airdrop/files/trans/signed_transactions.json",
     "send_airdrop_transactions": "yarn ts-node -r dotenv/config airdrop/sendAirdropTransactions.ts -f airdrop/files/trans/signed_transactions.json",
     "test_final_airdrop_state": "yarn test deployment/test/airdropDataTest.ts",
