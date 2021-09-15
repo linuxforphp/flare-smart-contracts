@@ -77,16 +77,27 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
 
     // utility functions
     it("run randomized tests", async () => {
-        if (REPLAY) {
-            await loadAndReplayHistory();
-        } else {
-            await runRandomActions();
-            saveHistory();
-        }
-
-        history.state.save('cache/state.json', 4);
-        for (const cp of history.checkpoints.values()) {
-            cp.state.save(`cache/state-${cp.id}.json`, 4);
+        try {
+            if (REPLAY) {
+                await loadAndReplayHistory();
+            } else {
+                await runRandomActions();
+            }
+        } finally {
+            // save history and state, even on fail (last command will be the failing one)
+            if (!REPLAY) {
+                saveHistory();
+            }
+            
+            history.state.save('cache/state.json', 4);
+            for (const cp of history.checkpoints.values()) {
+                cp.state.save(`cache/state-${cp.id}.json`, 4);
+            }
+            
+            console.log("Error counts:");
+            for (const [key, count] of history.errorCounts.entries()) {
+                console.log(`   ${key}  -  ${count}`);
+            }
         }
 
         console.log("Checking...");

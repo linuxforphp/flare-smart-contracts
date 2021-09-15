@@ -1,12 +1,17 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { WNatInstance } from "../../../typechain-truffle";
-import { loadJson, saveJson, toBN } from "./FuzzingUtils";
-import { VPTokenState } from "./VPTokenState";
+import { loadJson, MAX_BIPS, saveJson, toBN } from "./FuzzingUtils";
+import { DelegationMode, VPTokenState } from "./VPTokenState";
+
+const MAX_BIPS_DELEGATIONS = 2;
 
 const VPContract = artifacts.require("VPContract");
 
 export type BNArg = number | BN;
 
-export type VPTokenAction = { context: any, sender: string } &
+export type ConditionalErrors = { [error: string]: boolean };
+
+export type VPTokenAction = { context: any, sender: string, allowedErrors: ConditionalErrors } &
     (
         | { name: '_checkpoint', checkpointId: string }
         | { name: 'deposit', amount: BN }
@@ -38,14 +43,18 @@ export class VPTokenHistory {
     public history: VPTokenAction[] = [];
     public state: VPTokenState = new VPTokenState();
     public checkpoints: Map<string, Checkpoint> = new Map();
+    public errorCounts: Map<string, number> = new Map();
 
     constructor(
         private vpToken: WNatInstance
     ) { }
 
-    run(action: VPTokenAction) {
+    async run(action: VPTokenAction) {
+        if (action.sender === constants.ZERO_ADDRESS) {
+            return;     // ignore actions from zero - they always fail
+        }
         this.history.push(action);
-        return this.execute(action);
+        return await this.execute(action);
     }
 
     checkpointList() {
@@ -53,7 +62,7 @@ export class VPTokenHistory {
     }
 
     async createCheckpoint(checkpointId: string) {
-        await this.run({ name: '_checkpoint', sender: '', context: null, checkpointId });
+        await this.run({ name: '_checkpoint', sender: '', context: null, checkpointId, allowedErrors: {} });
     }
 
     checkpoint(checkpointId: string) {
@@ -179,8 +188,17 @@ export class VPTokenHistory {
                 }
             }
         } catch (e) {
-            const msg = e instanceof Error ? e.message : e;
+            const msg = e instanceof Error ? e.message : '' + e;
             console.log(`  ${method.context ?? ''} ${method.name}: ${msg}`);
+            // update error count
+            const cleanedMsg = (msg ?? '').replace(/VM Exception while processing transaction:/, '').trim();
+            const errorKey = `${method.name}: ${cleanedMsg}`;
+            this.errorCounts.set(errorKey, (this.errorCounts.get(errorKey) ?? 0) + 1);
+            // methods must be explicitly allowed
+            if (!method.allowedErrors[cleanedMsg]) {
+                console.log(method.allowedErrors);
+                throw e;
+            }
         }
     }
 }
@@ -199,66 +217,123 @@ export class VPTokenSimulator {
     }
 
     deposit(sender: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "deposit", sender, amount: toBN(amount) });
+        const allowedErrors = { };
+        return this.history.run({ context: this.context, name: "deposit", sender, amount: toBN(amount), allowedErrors });
     }
 
     withdraw(sender: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "withdraw", sender, amount: toBN(amount) });
+        const allowedErrors = {
+            'revert Undelegated vote power too small': this.history.state.delegationModeOf(sender) === DelegationMode.AMOUNT,
+            'revert ERC20: transfer amount exceeds balance': this.history.state.balances.get(sender).lt(toBN(amount)),
+        };
+        return this.history.run({ context: this.context, name: "withdraw", sender, amount: toBN(amount), allowedErrors });
     }
 
     depositTo(sender: string, recipient: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "depositTo", sender, recipient, amount: toBN(amount) });
+        const allowedErrors = {
+            'revert Cannot deposit to zero address': recipient === constants.ZERO_ADDRESS,
+        };
+        return this.history.run({ context: this.context, name: "depositTo", sender, recipient, amount: toBN(amount), allowedErrors });
     }
 
     withdrawFrom(sender: string, owner: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "withdrawFrom", sender, owner, amount: toBN(amount) });
+        const allowedErrors = {
+            'revert ERC20: approve from the zero address': owner === constants.ZERO_ADDRESS,
+            'revert Undelegated vote power too small': this.history.state.delegationModeOf(owner) === DelegationMode.AMOUNT,
+            'revert allowance below zero': true,    // we do not track allowance (it's openzeppelin ERC20 functionality, no need to test it)
+            'revert ERC20: transfer amount exceeds balance': this.history.state.balances.get(owner).lt(toBN(amount)),
+        };
+        return this.history.run({ context: this.context, name: "withdrawFrom", sender, owner, amount: toBN(amount), allowedErrors });
     }
 
     approve(sender: string, spender: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "approve", sender, spender, amount: toBN(amount) });
+        const allowedErrors = {
+            'revert ERC20: approve to the zero address': spender === constants.ZERO_ADDRESS,
+        };
+        return this.history.run({ context: this.context, name: "approve", sender, spender, amount: toBN(amount), allowedErrors });
     }
 
     transfer(sender: string, recipient: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "transfer", sender, recipient, amount: toBN(amount) });
+        const allowedErrors = {
+            'revert Cannot transfer to self': sender === recipient,
+            'revert ERC20: transfer amount exceeds balance': this.history.state.balances.get(sender).lt(toBN(amount)),
+            'revert ERC20: transfer to the zero address': recipient === constants.ZERO_ADDRESS,
+            'revert Undelegated vote power too small': this.history.state.delegationModeOf(sender) === DelegationMode.AMOUNT,
+        };
+        return this.history.run({ context: this.context, name: "transfer", sender, recipient, amount: toBN(amount), allowedErrors });
     }
 
     delegate(sender: string, to: string, bips: BNArg) {
-        return this.history.run({ context: this.context, name: "delegate", sender, to, bips: toBN(bips) });
+        const delegations = this.history.state.bipsDelegations.row(sender);
+        const allowedErrors = {
+            'revert Already delegated explicitly': this.history.state.delegationModeOf(sender) !== DelegationMode.PERCENTAGE,
+            'revert Cannot delegate to self': sender === to,
+            'revert Cannot delegate to zero': to === constants.ZERO_ADDRESS,
+            'revert Max delegates exceeded': delegations.countNonZero() >= MAX_BIPS_DELEGATIONS,
+            'revert Max delegation bips exceeded': delegations.total().add(toBN(bips)).gt(MAX_BIPS),
+        };
+        return this.history.run({ context: this.context, name: "delegate", sender, to, bips: toBN(bips), allowedErrors });
     }
 
     delegateExplicit(sender: string, to: string, amount: BNArg) {
-        return this.history.run({ context: this.context, name: "delegateExplicit", sender, to, amount: toBN(amount) });
+        const delegations = this.history.state.amountDelegations.row(sender);
+        const allowedErrors = {
+            'revert Already delegated by percentage': this.history.state.delegationModeOf(sender) !== DelegationMode.AMOUNT,
+            'revert Cannot delegate to self': sender === to,
+            'revert Cannot delegate to zero': to === constants.ZERO_ADDRESS,
+            'revert Undelegated vote power too small': delegations.total().add(toBN(amount)).gt(this.history.state.balances.get(sender)),
+        };
+        return this.history.run({ context: this.context, name: "delegateExplicit", sender, to, amount: toBN(amount), allowedErrors });
     }
 
     revokeDelegationAt(sender: string, who: string, checkpointId: string) {
-        return this.history.run({ context: this.context, name: "revokeDelegationAt", sender, who, checkpointId });
+        const allowedErrors = {
+            'revert Already revoked': true,                             // fuzzing system doesn't track revocations
+            'revert Delegatable: reading from cleaned-up block': true,  // fuzzing system doesn't track cleanup block
+        };
+        return this.history.run({ context: this.context, name: "revokeDelegationAt", sender, who, checkpointId, allowedErrors });
     }
 
     undelegateAll(sender: string) {
-        return this.history.run({ context: this.context, name: "undelegateAll", sender });
+        const allowedErrors = {
+            'revert Already delegated explicitly': this.history.state.delegationModeOf(sender) !== DelegationMode.PERCENTAGE,
+        };
+        return this.history.run({ context: this.context, name: "undelegateAll", sender, allowedErrors });
     }
 
     undelegateAllExplicit(sender: string, delegateAddresses: string[]) {
-        return this.history.run({ context: this.context, name: "undelegateAllExplicit", sender, delegateAddresses });
+        const allowedErrors = {
+            'revert Already delegated by percentage': this.history.state.delegationModeOf(sender) !== DelegationMode.AMOUNT,
+        };
+        return this.history.run({ context: this.context, name: "undelegateAllExplicit", sender, delegateAddresses, allowedErrors });
     }
 
     totalVotePowerAtCached(sender: string, checkpointId: string) {
-        return this.history.run({ context: this.context, name: "votePowerAtCached", sender, checkpointId });
+        const allowedErrors = {
+            'revert Delegatable: reading from cleaned-up block': true,
+        };
+        return this.history.run({ context: this.context, name: "votePowerAtCached", sender, checkpointId, allowedErrors });
     }
 
     votePowerOfAtCached(sender: string, who: string, checkpointId: string) {
-        return this.history.run({ context: this.context, name: "votePowerOfAtCached", sender, who, checkpointId });
+        const allowedErrors = {
+            'revert Delegatable: reading from cleaned-up block': true,
+        };
+        return this.history.run({ context: this.context, name: "votePowerOfAtCached", sender, who, checkpointId, allowedErrors });
     }
 
     setCleanupBlock(sender: string, checkpointId: string) {
-        return this.history.run({ context: this.context, name: "setCleanupBlock", sender, checkpointId });
+        const allowedErrors = { };
+        return this.history.run({ context: this.context, name: "setCleanupBlock", sender, checkpointId, allowedErrors });
     }
 
     replaceWriteVpContract(sender: string) {
-        return this.history.run({ context: this.context, name: "replaceWriteVpContract", sender });
+        const allowedErrors = { };
+        return this.history.run({ context: this.context, name: "replaceWriteVpContract", sender, allowedErrors });
     }
 
     replaceReadVpContract(sender: string) {
-        return this.history.run({ context: this.context, name: "replaceReadVpContract", sender });
+        const allowedErrors = { };
+        return this.history.run({ context: this.context, name: "replaceReadVpContract", sender, allowedErrors });
     }
 }
