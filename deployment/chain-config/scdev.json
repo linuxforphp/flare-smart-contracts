@@ -37,7 +37,7 @@
     ],
     "rewardFeePercentageUpdateOffsetEpochs": 3,
     "defaultRewardFeePercentageBIPS": 0,
-    "ftsoRewardExpiryOffsetDays": 30,
+    "ftsoRewardExpiryOffsetDays": 0.01,
     "dataAvailabilityRewardExpiryOffsetEpochs": 26,
     "initialWnatPriceUSDDec5": 0,
     "priceEpochCyclicBufferSize": 10,

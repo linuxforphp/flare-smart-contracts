@@ -1,6 +1,6 @@
 import { VPContractInstance, VPTokenMockInstance } from "../../../../typechain-truffle";
 import { SimpleHistoryCleaner } from "../../../utils/SimpleHistoryCleaner";
-import { assertNumberEqual } from "../../../utils/test-helpers";
+import { assertNumberEqual, compareArrays, compareNumberArrays } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 // Unit tests for VPToken: checkpointable, delegatable, and ERC20 sanity tests
@@ -157,6 +157,72 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             assertNumberEqual(await vpContract.explicitDelegationHistoryCleanup.call(accounts[2], accounts[3], 1, { from: accounts[5] }), 0);
             assertNumberEqual(await vpContract.votePowerCacheCleanup.call(accounts[1], blk1, { from: accounts[5] }), 0);
             assertNumberEqual(await vpContract.revocationCleanup.call(accounts[1], accounts[3], blk1, { from: accounts[5] }), 0);
+        });
+
+        it("values at cleanup block are still available after cleanup", async () => {
+            // Assemble
+            await vpToken.mint(accounts[1], 100);
+            await vpToken.mint(accounts[2], 100);
+            await vpToken.delegate(accounts[3], 1000, { from: accounts[1] });
+            await vpToken.delegate(accounts[4], 2000, { from: accounts[1] });
+            await vpToken.delegateExplicit(accounts[3], 10, { from: accounts[2] });
+            await vpToken.delegateExplicit(accounts[4], 20, { from: accounts[2] });
+            await vpToken.mint(accounts[1], 50);
+            await vpToken.mint(accounts[2], 50);
+            await vpToken.delegate(accounts[3], 2000, { from: accounts[1] });
+            await vpToken.delegateExplicit(accounts[3], 20, { from: accounts[2] });
+            const blk2 = await web3.eth.getBlockNumber();
+            await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
+            // Assert
+            // there should be opportunities to clean
+            assertNumberEqual(await vpToken.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpToken.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpToken.balanceHistoryCleanup.call(accounts[2], 1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpContract.votePowerHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpContract.votePowerHistoryCleanup.call(accounts[2], 1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpContract.percentageDelegationHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 1);
+            assertNumberEqual(await vpContract.explicitDelegationHistoryCleanup.call(accounts[2], accounts[3], 1, { from: accounts[5] }), 2);
+            // Act
+            for (let i = 0; i < 5; i++) {
+                await vpToken.totalSupplyHistoryCleanup(1, { from: accounts[5] });
+                await vpToken.balanceHistoryCleanup(accounts[1], 1, { from: accounts[5] });
+                await vpToken.balanceHistoryCleanup(accounts[2], 1, { from: accounts[5] });
+                await vpContract.votePowerHistoryCleanup(accounts[1], 1, { from: accounts[5] });
+                await vpContract.votePowerHistoryCleanup(accounts[2], 1, { from: accounts[5] });
+                await vpContract.percentageDelegationHistoryCleanup(accounts[1], 1, { from: accounts[5] });
+                await vpContract.explicitDelegationHistoryCleanup(accounts[2], accounts[3], 1, { from: accounts[5] });
+            }
+            // Assert
+            // everything should be cleaned before cleanup block
+            assertNumberEqual(await vpToken.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 0);
+            assertNumberEqual(await vpToken.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+            assertNumberEqual(await vpToken.balanceHistoryCleanup.call(accounts[2], 1, { from: accounts[5] }), 0);
+            assertNumberEqual(await vpContract.votePowerHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+            assertNumberEqual(await vpContract.votePowerHistoryCleanup.call(accounts[2], 1, { from: accounts[5] }), 0);
+            assertNumberEqual(await vpContract.percentageDelegationHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+            assertNumberEqual(await vpContract.explicitDelegationHistoryCleanup.call(accounts[2], accounts[3], 1, { from: accounts[5] }), 0);
+            // the state at blk2 should still be ok
+            // wNat.delegatesOfAt
+            assertNumberEqual(await vpToken.totalSupplyAt(blk2), 300);
+            assertNumberEqual(await vpToken.totalVotePowerAt(blk2), 300);
+            assertNumberEqual(await vpToken.balanceOfAt(accounts[1], blk2), 150);
+            assertNumberEqual(await vpToken.balanceOfAt(accounts[2], blk2), 150);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[1], blk2), 90);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[2], blk2), 110);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[3], blk2), 50);
+            assertNumberEqual(await vpToken.votePowerOfAt(accounts[4], blk2), 50);
+            assertNumberEqual(await vpToken.undelegatedVotePowerOfAt(accounts[1], blk2), 90);
+            assertNumberEqual(await vpToken.undelegatedVotePowerOfAt(accounts[2], blk2), 110);
+            assertNumberEqual(await vpToken.undelegatedVotePowerOfAt(accounts[3], blk2), 0);
+            assertNumberEqual(await vpToken.undelegatedVotePowerOfAt(accounts[4], blk2), 0);
+            assertNumberEqual(await vpToken.votePowerFromToAt(accounts[1], accounts[3], blk2), 30);
+            assertNumberEqual(await vpToken.votePowerFromToAt(accounts[1], accounts[4], blk2), 30);
+            assertNumberEqual(await vpToken.votePowerFromToAt(accounts[2], accounts[3], blk2), 20);
+            assertNumberEqual(await vpToken.votePowerFromToAt(accounts[2], accounts[4], blk2), 20);
+            const { 0: delegates, 1: bips } = await vpToken.delegatesOfAt(accounts[1], blk2);
+            compareArrays(delegates, [accounts[3], accounts[4]]);
+            compareNumberArrays(bips, [2000, 2000]);
         });
 
         it("cleaning history twice when is allowed and is a no-op if everything was emptied the first time", async () => {
