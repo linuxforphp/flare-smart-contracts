@@ -30,10 +30,44 @@ import { moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
 import { increaseTimeTo, submitPriceHash } from '../../utils/test-helpers';
 import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+import { submit } from "ripple-lib/dist/npm/common/validate";
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
 let randomNumber = require("random-number-csprng");
 const calcGasCost = require('../../utils/eth').calcGasCost;
+
+let contracts: Contracts;
+let FlareDaemon: FlareDaemonContract;
+let flareDaemon: FlareDaemonInstance;
+let FtsoRewardManager: FtsoRewardManagerContract;
+let ftsoRewardManager: FtsoRewardManagerInstance;
+let FtsoManager: FtsoManagerContract;
+let ftsoManager: FtsoManagerInstance;
+let PriceSubmitter: PriceSubmitterContract;
+let priceSubmiter: PriceSubmitterInstance;
+let WNat: WNatContract;
+let wNAT: WNatInstance;
+let Supply: SupplyContract;
+let supply: SupplyInstance;
+let Ftso: FtsoContract;
+let ftsoFltc: FtsoInstance;
+let ftsoFxdg: FtsoInstance;
+let ftsoFxrp: FtsoInstance;
+let ftsoWnat: FtsoInstance;
+let ftsoFdgb: FtsoInstance;
+let ftsoFada: FtsoInstance;
+let ftsoFalgo: FtsoInstance;
+let ftsoFbch: FtsoInstance;
+let firstPriceEpochStartTs: BN;
+let priceEpochDurationSeconds: BN;
+let revealEpochDurationSeconds: BN;
+let rewardEpochDurationSeconds: BN;
+let rewardEpochsStartTs: BN;
+let SuicidalMock: SuicidalMockContract;
+let suicidalMock: SuicidalMockInstance;
+let registry: FtsoRegistryInstance;
+let VoterWhitelister: VoterWhitelisterContract;
+let voterWhitelister: VoterWhitelisterInstance;
 
 async function getRandom() {
   return await randomNumber(0, 10 ** 5);
@@ -93,6 +127,49 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[
   expectEvent(tx, "PricesRevealed");
 };
 
+async function submitRevealAndFinalizeRewardEpoch(submitters: string[], ftsos: FtsoInstance[], ftsoIndices: BN[], priceSeries: number[][]): Promise<{firstPriceEpoch: number, firstRewardEpochId: number}> {
+  let submitterPrices: PriceInfo[][] = [];
+
+      for (let i = 0; i < submitters.length; i++) {
+        let priceInfo = await submitPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, priceSeries[i], submitters[i]);
+        submitterPrices.push(priceInfo!);
+      }
+
+      let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
+
+      console.log(`Initializing price epoch for reveal`);
+      await flareDaemon.trigger({ gas: 40_000_000 });
+
+      // Time travel to reveal period
+      await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), testPriceEpoch);
+
+      // Reveal prices
+      for (let i = 0; i < submitterPrices.length; i++) {
+        await revealPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, submitterPrices[i]!, submitters[i]);
+      }
+
+      // Time travel to price epoch finalization -> using ~3.2M gas
+      await moveToFinalizeStart(
+        firstPriceEpochStartTs.toNumber(),
+        priceEpochDurationSeconds.toNumber(),
+        revealEpochDurationSeconds.toNumber(),
+        testPriceEpoch);
+      
+      console.log(`Finalizing price for epoch ${testPriceEpoch}`);
+      await flareDaemon.trigger({ gas: 40_000_000 });
+
+      // Time travel to reward epoch finalization
+      const rewardEpochId = await ftsoManager.getCurrentRewardEpoch();
+      await moveToRewardFinalizeStart(
+        rewardEpochsStartTs.toNumber(),
+        rewardEpochDurationSeconds.toNumber(),
+        rewardEpochId.toNumber());
+      console.log(`Finalizing reward epoch ${rewardEpochId.toNumber()}`);
+      await flareDaemon.trigger({ gas: 40_000_000 });
+
+      return {firstPriceEpoch: testPriceEpoch, firstRewardEpochId: rewardEpochId.toNumber()}
+}
+
 
 function spewClaimError(account: string, e: unknown) {
   if (e instanceof Error) {
@@ -112,38 +189,7 @@ function spewClaimError(account: string, e: unknown) {
  * Test to see if minting faucet will topup reward manager native token balance at next topup interval.
  */
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
-  let contracts: Contracts;
-  let FlareDaemon: FlareDaemonContract;
-  let flareDaemon: FlareDaemonInstance;
-  let FtsoRewardManager: FtsoRewardManagerContract;
-  let ftsoRewardManager: FtsoRewardManagerInstance;
-  let FtsoManager: FtsoManagerContract;
-  let ftsoManager: FtsoManagerInstance;
-  let PriceSubmitter: PriceSubmitterContract;
-  let priceSubmiter: PriceSubmitterInstance;
-  let WNat: WNatContract;
-  let wNAT: WNatInstance;
-  let Supply: SupplyContract;
-  let supply: SupplyInstance;
-  let Ftso: FtsoContract;
-  let ftsoFltc: FtsoInstance;
-  let ftsoFxdg: FtsoInstance;
-  let ftsoFxrp: FtsoInstance;
-  let ftsoWnat: FtsoInstance;
-  let ftsoFdgb: FtsoInstance;
-  let ftsoFada: FtsoInstance;
-  let ftsoFalgo: FtsoInstance;
-  let ftsoFbch: FtsoInstance;
-  let firstPriceEpochStartTs: BN;
-  let priceEpochDurationSeconds: BN;
-  let revealEpochDurationSeconds: BN;
-  let rewardEpochDurationSeconds: BN;
-  let rewardEpochsStartTs: BN;
-  let SuicidalMock: SuicidalMockContract;
-  let suicidalMock: SuicidalMockInstance;
-  let registry: FtsoRegistryInstance;
-  let VoterWhitelister: VoterWhitelisterContract;
-  let voterWhitelister: VoterWhitelisterInstance;
+
 
   before(async () => {
     // Get contract addresses of deployed contracts
@@ -198,14 +244,16 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Assemble
     // Define delegators
     let d1 = accounts[5];
+    let d2 = accounts[6];
     // Define price providers
-    let p1 = accounts[6];
-    let p2 = accounts[7];
-    let p3 = accounts[8];
+    let p1 = accounts[7];
+    let p2 = accounts[8];
+    let p3 = accounts[9];
 
     // Mint some WNAT for each delegator and price provider
     const someNAT = web3.utils.toWei(BN(3000000000));
     await wNAT.deposit({ from: d1, value: someNAT });
+    await wNAT.deposit({ from: d2, value: someNAT });
     await wNAT.deposit({ from: p1, value: someNAT });
     await wNAT.deposit({ from: p2, value: someNAT });
     await wNAT.deposit({ from: p3, value: someNAT });
@@ -213,6 +261,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Delegator delegates vote power
     await wNAT.delegate(p1, 2500, { from: d1 });
     await wNAT.delegate(p2, 5000, { from: d1 });
+    await wNAT.delegateExplicit(p1, 1_000_000_000, { from: d2 });
+    await wNAT.delegateExplicit(p2, 1_000_000_000, { from: d2 });
+    await wNAT.delegateExplicit(p3, 1_000_000_000, { from: d2 });
 
     // Prime the daemon to establish vote power block.
     await flareDaemon.trigger({ gas: 2_000_000 });
@@ -250,7 +301,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     assert((await wNAT.votePowerOfAt(p3, votePowerBlock)).gt(BN(0)), "Vote power of p3 must be > 0")
 
     let natPrices = [0.35, 0.40, 0.50];
-    let xrpPrices = [1.40, 1.50, 1.35];
+    let xrpPrices = [1.40, 1.50, 1.55];
     let ltcPrices = [320, 340, 350];
     let xdgPrices = [0.37, 0.45, 0.48];
     let dgbPrices = [0.08, 0.11, 0.13];
@@ -267,67 +318,45 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let pricesMatrix = [natPrices, xrpPrices, ltcPrices, xdgPrices, dgbPrices, adaPrices, algoPrices, bchPrices];
     // transpose
     let priceSeries = pricesMatrix[0].map((_, colIndex) => pricesMatrix.map(row => row[colIndex]));
-
-    let submitterPrices: PriceInfo[][] = [];
     let submitters = [p1, p2, p3];
 
+    // whitelist submitters
     for (let i = 0; i < submitters.length; i++) {
       await voterWhitelister.requestFullVoterWhitelisting(submitters[i]);
-      let priceInfo = await submitPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, priceSeries[i], submitters[i]);
-      submitterPrices.push(priceInfo!);
     }
 
-    let testPriceEpoch = parseInt(submitterPrices[0][0]!.epochId!);
+    let firstPriceEpoch: number = -1;
+    let firstRewardEpochId: number = -1;
+    const rewardExpiryOffsetSeconds = (await ftsoManager.settings())[6].toNumber();
 
-    console.log(`Initializing price epoch for reveal`);
-    await flareDaemon.trigger({ gas: 50_000_000 });
-
-    // Time travel to reveal period
-    await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), testPriceEpoch);
-
-    // Reveal prices
-    for (let i = 0; i < submitters.length; i++) {
-      await revealPricePriceSubmitter(ftsos, ftsoIndices, priceSubmiter, submitterPrices[i]!, submitters[i]);
+    while((await (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds)) {
+      let result = await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
+      if (firstPriceEpoch < 0 && firstRewardEpochId < 0) {
+        firstPriceEpoch = result.firstPriceEpoch;
+        firstRewardEpochId = result.firstRewardEpochId;
+      }
     }
-
-    // Time travel to price epoch finalization -> using ~3.2M gas
-    await moveToFinalizeStart(
-      firstPriceEpochStartTs.toNumber(),
-      priceEpochDurationSeconds.toNumber(),
-      revealEpochDurationSeconds.toNumber(),
-      testPriceEpoch);
-    
-    console.log(`Finalizing price for epoch ${testPriceEpoch}`);
-    await flareDaemon.trigger({ gas: 50_000_000 });
     
     // There should be a balance to claim within reward manager at this point
     assert(BN(await web3.eth.getBalance(ftsoRewardManager.address)) > BN(0), "No reward manager balance. Did you forget to mint some?");
     
-    // Rewards should now be claimable 
-    // Time travel to reward epoch finalization
-    const rewardEpochId = await ftsoManager.getCurrentRewardEpoch();
-    await moveToRewardFinalizeStart(
-      rewardEpochsStartTs.toNumber(),
-      rewardEpochDurationSeconds.toNumber(),
-      rewardEpochId.toNumber());
-    console.log(`Finalizing reward epoch ${rewardEpochId.toNumber()}`);
-    await flareDaemon.trigger({ gas: 2_000_000 });
-
     // TODO: Check ftso prices if they are correct
-
+    
+    // Rewards should now be claimable 
     // Get the opening balances
     const p1OpeningBalance = BN(await web3.eth.getBalance(p1));
     const p2OpeningBalance = BN(await web3.eth.getBalance(p2));
     const p3OpeningBalance = BN(await web3.eth.getBalance(p3));
     const d1OpeningBalance = BN(await web3.eth.getBalance(d1));
+    const d2OpeningBalance = BN(await web3.eth.getBalance(d2));
 
 
     // Act
     // Claim rewards
     const rewardEpochs = [];
-    rewardEpochs[0] = rewardEpochId;
+    rewardEpochs[0] = firstRewardEpochId;
     
-    console.log(`Claiming rewards for reward epoch ${rewardEpochId}`);
+    console.log(`Claiming rewards for reward epoch ${firstRewardEpochId}`);
     
     let gasCost = BN(0);
     try {
@@ -354,6 +383,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     } catch (e: unknown) {
       spewClaimError("d1", e);
     }
+    try {
+      const tx = await ftsoRewardManager.claimRewardFromDataProviders(d2, rewardEpochs, [p1, p2, p3], { from: d2 });
+      gasCost = gasCost.add(await calcGasCost(tx));
+    } catch (e: unknown) {
+      spewClaimError("d2", e);
+    }
 
     // Assert
     // Get the closing balances
@@ -361,6 +396,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const p2ClosingBalance = BN(await web3.eth.getBalance(p2));
     const p3ClosingBalance = BN(await web3.eth.getBalance(p3));
     const d1ClosingBalance = BN(await web3.eth.getBalance(d1));
+    const d2ClosingBalance = BN(await web3.eth.getBalance(d2));
 
     // Compute the closing and opening balance differences, and account for gas used
     const computedRewardClaimed =
@@ -368,6 +404,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
         .add(p2ClosingBalance).sub(p2OpeningBalance)
         .add(p3ClosingBalance).sub(p3OpeningBalance)
         .add(d1ClosingBalance).sub(d1OpeningBalance)
+        .add(d2ClosingBalance).sub(d2OpeningBalance)
         .add(gasCost);
 
     // Compute what we should have distributed for one price epoch
@@ -378,12 +415,35 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // use the same formula as in ftso reward manager to calculate claimable value
     const dailyPeriodEndTs = authorizedInflationTimestamp.add(almostFullDaySec);
-    const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (testPriceEpoch + 1) * priceEpochDurationSeconds.toNumber() - 1);
+    const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (firstPriceEpoch + 1) * priceEpochDurationSeconds.toNumber() - 1);
     const shouldaClaimed = dailyAuthorizedInflation.div( 
         (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSeconds).add(BN(1))
     );
 
     // After all that, one little test...
     assert(shouldaClaimed.eq(computedRewardClaimed), `should have claimed ${ shouldaClaimed } but actually claimed ${ computedRewardClaimed }`);
+
+    // Time travel to next reward epoch finalization
+    const rewardEpochId = await ftsoManager.getCurrentRewardEpoch();
+    await moveToRewardFinalizeStart(
+      rewardEpochsStartTs.toNumber(),
+      rewardEpochDurationSeconds.toNumber(),
+      rewardEpochId.toNumber());
+    console.log(`Finalizing reward epoch ${rewardEpochId.toNumber()}`);
+    await flareDaemon.trigger({ gas: 40_000_000 });
+    
+    const rewardEpochToExpireNext = (await ftsoRewardManager.getRewardEpochToExpireNext()).toNumber();
+    console.log("Reward epoch to expire next: " + rewardEpochToExpireNext);
+    assert(rewardEpochToExpireNext == 1, 'wrong reward epoch to expire next');
+    assert((await wNAT.cleanupBlockNumber()).eq(await ftsoManager.getRewardEpochVotePowerBlock(rewardEpochToExpireNext)), 'wrong clean-up block set');
+    
+    // should return not claimable for expired and future reward epochs
+    assert((await ftsoRewardManager.getStateOfRewards(p1, firstRewardEpochId, { from: p1 }))[3] == false);
+    assert((await ftsoRewardManager.getStateOfRewards(p1, 500, { from: p1 }))[3] == false);
+  
+    assert ((await ftsoRewardManager.claimReward.call(p2, [firstRewardEpochId + 1], { from: p2 })).gt(BN(0)));
+    assert ((await ftsoRewardManager.claimRewardFromDataProviders.call(d2, [firstRewardEpochId + 1], [p1, p2, p3], { from: d2 })).gt(BN(0)));
+
+    await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
   });
 });

@@ -26,6 +26,7 @@
     "test_endtoend_scdev": "cat deployment/deploys/scdev.json | env TEST_PATH=./test/scdev/system yarn hardhat test --network scdev test/scdev/EndToEnd.ts",
     "test_airdrop_scdev": "env CHAIN_CONFIG=scdev yarn test test/scdev/Airdrop.ts --network scdev",
     "test_endtoend_hardhat": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && yarn deploy_local_hardhat_commands && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/EndToEnd.ts\"",
+    "test_endtoend_hardhat_fast": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && yarn deploy_local_hardhat_commands_fast && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/EndToEnd.ts\"",
     "test_performance_hh": "env TEST_PATH=./test/performance yarn hardhat test --network hardhat",
     "test_fuzzing_hh": "./scripts/test-fuzzing.sh",
     "compare_state_connector_file_to_flare_repo": "curl https://gitlab.com/flarenetwork/flare/-/raw/master/src/stateco/StateConnector.sol > /tmp/StateConnector.sol && diff contracts/genesis/implementation/StateConnector.sol /tmp/StateConnector.sol > /dev/null",
@@ -101,6 +102,12 @@
     "activate_managers_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost activate-managers && yarn test_activate_managers_hardhat",
     "daemonize_contracts_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost daemonize-contracts && yarn test_daemonize_hardhat",
     "deploy_contracts_local_hardhat": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json && yarn test_deploy_hardhat",
+
+    "---------FAST---SCRIPTS---SKIP---DEPLOY---TESTS": "",
+    "deploy_local_hardhat_commands_fast": "yarn deploy_contracts_local_hardhat_fast && yarn daemonize_contracts_local_hardhat_fast && yarn activate_managers_local_hardhat_fast",
+    "activate_managers_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost activate-managers",
+    "daemonize_contracts_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost daemonize-contracts",
+    "deploy_contracts_local_hardhat_fast": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json",
 
     "---------UNREGISTER---SCRIPTS": "",
     "unregister_local_scdev": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev undaemonize-contracts",
