@@ -3,13 +3,13 @@ import { governanceAccounts, WORKING_BALANCE_WEI } from "../scripts/multisig-gov
 contract(`transfer-gov-working-balance.ts system tests`, async accounts => {
   describe("Multisig governance accounts balance check", async () => {
     it("Should have working balances", async () => {
-      governanceAccounts.forEach(async (item, index) => {
+      for(let i = 0; i < governanceAccounts.length; i++) {
         // Assemble
         // Act
-        const balance = await web3.eth.getBalance(item);
+        const balance = await web3.eth.getBalance(governanceAccounts[i]);
         // Assert
-        assert.equal(balance, WORKING_BALANCE_WEI.toString(), `Address ${item} does not have ${WORKING_BALANCE_WEI.toString()} wei.`);
-      });
+        assert.equal(balance, WORKING_BALANCE_WEI, `Address ${governanceAccounts[i]} does not have ${WORKING_BALANCE_WEI} wei.`);
+      };
     });
   });
 });

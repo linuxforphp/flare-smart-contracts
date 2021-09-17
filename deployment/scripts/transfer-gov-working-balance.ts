@@ -25,9 +25,10 @@ export async function transferGovWorkingBalance(
   // Wire up the default account that will do the deployment
   web3.eth.defaultAccount = deployerAccount.address;
  
-  governanceAccounts.forEach(async (item, index) => {
-    await web3.eth.sendTransaction({ from: deployerAccount.address, to: item, value: WORKING_BALANCE_WEI });
-  });
+  for (let i = 0; i < governanceAccounts.length; i++) {
+    console.log(`Send ${WORKING_BALANCE_WEI} WEI to ${governanceAccounts[i]}`);
+    await web3.eth.sendTransaction({ from: deployerAccount.address, to: governanceAccounts[i], value: WORKING_BALANCE_WEI });
+  };
 
   if (!quiet) {
     console.error("Transfering complete.");
