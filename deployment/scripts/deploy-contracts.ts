@@ -69,13 +69,13 @@ interface IISetVpContract {
   address: string;
   setReadVpContract(_vpContract: string, txDetails?: any): Promise<any>;
   setWriteVpContract(_vpContract: string, txDetails?: any): Promise<any>;
-  needsReplacementVPContract(): Promise<boolean>;
+  vpContractInitialized(): Promise<boolean>;
 }
 
 async function setDefaultVPContract(hre: HardhatRuntimeEnvironment, token: IISetVpContract, governance: string) {
   const artifacts = hre.artifacts;
   const VPContractContract = artifacts.require("VPContract");
-  const replacement = await token.needsReplacementVPContract();
+  const replacement = await token.vpContractInitialized();
   const vpContract = await VPContractContract.new(token.address, replacement);
   await token.setWriteVpContract(vpContract.address, { from: governance });
   await token.setReadVpContract(vpContract.address, { from: governance });

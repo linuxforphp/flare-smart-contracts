@@ -900,6 +900,15 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assert.isTrue(await readVpContract.isReplacement());
   });
 
+  it("After setting VPContract, vpContractInitialized is true", async () => {
+    // Assemble
+    const vpToken1 = await VPToken.new(accounts[0], "A token without VPContract", "ATOK");
+    // Assert
+    assert.isFalse(await vpToken1.vpContractInitialized());
+    await setDefaultVPContract(vpToken1, accounts[0]);
+    assert.isTrue(await vpToken1.vpContractInitialized());
+  });
+
   it("After transfer without VPContract, VPContract must have isReplacement true", async () => {
     // Assemble
     const vpToken1 = await VPToken.new(accounts[0], "A token without VPContract", "ATOK");
