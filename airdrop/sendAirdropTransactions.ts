@@ -80,7 +80,7 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
         let decodedGas = new BigNumber(decoded.gasLimit);
         totalGasPrice = totalGasPrice.plus(decodedGas.multipliedBy(decoded.gasPrice));
         promises.push(web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => null));
-        await sleep(6)
+        await sleep(8);
         progress += 1;
         if(!quiet) bar1.update(progress);
     }
