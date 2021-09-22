@@ -43,7 +43,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * When true, the argument to `setWriteVpContract` must be a vpContract
      * with `isReplacement` set to `true`. To be used for creating the correct VPContract.
      */
-    bool public needsReplacementVPContract = false;
+    bool public vpContractInitialized = false;
 
     /**
      * Event used to track history of VPToken -> VPContract / GovernanceVotePower 
@@ -385,10 +385,10 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         IIVPContract vpc = writeVpContract;
         if (address(vpc) != address(0)) {
             vpc.updateAtTokenTransfer(_from, _to, fromBalance, toBalance, _amount);
-        } else if (!needsReplacementVPContract) {
+        } else if (!vpContractInitialized) {
             // transfers without vpcontract are allowed, but after they are made
             // any added vpcontract must have isReplacement set
-            needsReplacementVPContract = true;
+            vpContractInitialized = true;
         }
         
         // update governance vote powers
@@ -432,12 +432,12 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
         if (address(_vpContract) != address(0)) {
             require(address(_vpContract.ownerToken()) == address(this),
                 "VPContract not owned by this token");
-            require(!needsReplacementVPContract || _vpContract.isReplacement(),
+            require(!vpContractInitialized || _vpContract.isReplacement(),
                 "VPContract not configured for replacement");
             // set contract's cleanup block
             _vpContract.setCleanupBlockNumber(_cleanupBlockNumber());
             // once a non-null vpcontract is set, every other has to have isReplacement flag set
-            needsReplacementVPContract = true;
+            vpContractInitialized = true;
         }
         emit VotePowerContractChanged(1, address(writeVpContract), address(_vpContract));
         writeVpContract = _vpContract;
