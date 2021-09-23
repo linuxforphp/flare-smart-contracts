@@ -25,6 +25,7 @@ import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts
 import { transferGovernance } from "./deployment/scripts/transfer-governance";
 import "./type-extensions";
 import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-working-balance";
+import { inflationContractsFix } from "./deployment/scripts/inflation-contracts-fix";
 const intercept = require('intercept-stdout');
 
 // Override solc compile task and filter out useless warnings
@@ -246,6 +247,20 @@ task("undaemonize-contracts", "Remove daemonized contracts from the FlareDaemon.
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
     }
   });
+
+// Fix inflation deployment task
+task("inflation-contracts-fix", "Deploy Inflation, InflationAllocation, Supply and FtsoRewardManager contracts")
+.addFlag("quiet", "Suppress console output")
+.setAction(async (args, hre, runSuper) => {
+  const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+  if (parameters) {
+    const contracts = new Contracts();
+    await contracts.deserialize(process.stdin);
+    await inflationContractsFix(hre, contracts, parameters, args.quiet);
+  } else {
+    throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+  }
+});
 
 let fs = require('fs');
 

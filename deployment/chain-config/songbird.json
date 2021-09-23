@@ -13,7 +13,7 @@
     "totalNativeSupplyNAT": 15000000000,
     "totalFoundationSupplyNAT": 5596817223,
     "initialInflationPercentageBIPS": 1000,
-    "scheduledInflationPercentageBIPS": [800,  600],
+    "scheduledInflationPercentageBIPS": [1000, 800, 600],
     "rewardEpochDurationSeconds": 604800,
     "revealEpochDurationSeconds": 90,
     "priceEpochDurationSeconds": 180,

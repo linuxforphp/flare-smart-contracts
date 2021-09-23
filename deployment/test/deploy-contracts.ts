@@ -145,6 +145,16 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       // Assert
       assert(percentage.gt(BN(0)));
     });
+
+    it("Should new annual inflation percentage equal 10%", async () => {
+      // Assemble
+      // Act
+      const percentage = await inflationAllocation.annualInflationPercentagesBips(0);
+      const percentage2 = await inflationAllocation.lastAnnualInflationPercentageBips();
+      // Assert
+      assert(percentage.eq(BN(1000)));
+      assert(percentage2.eq(BN(1000)));
+    });
   });
 
   describe(Contracts.FLARE_DAEMON, async () => {
