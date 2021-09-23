@@ -58,6 +58,7 @@ flattened
 deployment/deploys/*
 !deployment/deploys/staging.json
 !deployment/deploys/songbird.json
+!deployment/deploys/songbird_fix.json
 
 ## .env
 .env
