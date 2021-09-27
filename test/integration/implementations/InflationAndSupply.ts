@@ -124,12 +124,15 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
   });
 
   describe("annual roll", async() => {
-    it("Should recognize 2nd year annual inflation and update inflatable balance on supply", async() => {
+    it("Should recognize 2nd year annual inflation, update inflatable balance on supply, and issue new daily authorized", async() => {
       // Assemble
       const firstYearAnnualInflationAuthorized = initialGenesisAmountWei.mul(BN(inflationBips)).div(BN(10000));
       const firstDayYear2InflationAuthorized = initialGenesisAmountWei.add(firstYearAnnualInflationAuthorized).mul(BN(inflationBips)).div(BN(10000)).div(BN(365));
       // Total inflation authorized over 1 year + 1 day
       const totalInflationAuthorizedWei = firstYearAnnualInflationAuthorized.add(firstDayYear2InflationAuthorized);
+
+      let firstAnnumStart: BN = BN(0);
+      let firstAnnum: any = null;
 
       // Act
       // Force a block in order to get most up to date time
@@ -145,7 +148,25 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
         // Pulse inflation for that day by calling daemon
         await mockFlareDaemon.trigger();
         progressBar.update(i);
+        if(i == 1){
+          firstAnnum = await inflation.getCurrentAnnum();
+          firstAnnumStart = BN(firstAnnum.startTimeStamp.toString());
+        }
       }
+
+      const secondAnnum = await inflation.getCurrentAnnum();
+
+      // New annum should be initialized
+      assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
+      // Should recognize more inflation
+      assert.equal(
+        secondAnnum.recognizedInflationWei.toString(), 
+        initialGenesisAmountWei.muln(110).divn(100).divn(10).toString()) // 10 percent of 110% percent of initial
+
+      assert.equal(
+        (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
+        firstDayYear2InflationAuthorized.toString()) 
+
 
       // Assert
       // Supply should have a new inflatable balance for original supply, plus 1 year of inflation, plus 1 day
