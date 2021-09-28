@@ -41,8 +41,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
         internal topupConfigurations;                                   // A topup configuration for a contract
                                                                         //   receiving inflation.
     uint256 public totalSelfDestructReceivedWei;
-    //slither-disable-next-line uninitialized-state                     // no problem, will be zero initialized anyway
-    uint256 public totalSelfDestructWithdrawnWei;
     uint256 immutable public rewardEpochStartTs;                        // Do not start inflation annums before this
     uint256 public rewardEpochStartedTs;                                // When the first reward epoch was started
 
@@ -119,7 +117,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
      * @return _totalInflationTopupWithdrawnWei Total inflation used for funding reward services
      * @return _totalRecognizedInflationWei     Total inflation recognized for rewarding
      * @return _totalSelfDestructReceivedWei    Total balance received as a self-destruct recipient
-     * @return _totalSelfDestructWithdrawnWei   Total self-destruct balance withdrawn
      */
     function getTotals()
         external view 
@@ -129,8 +126,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
             uint256 _totalInflationTopupReceivedWei,
             uint256 _totalInflationTopupWithdrawnWei,
             uint256 _totalRecognizedInflationWei,
-            uint256 _totalSelfDestructReceivedWei,
-            uint256 _totalSelfDestructWithdrawnWei
+            uint256 _totalSelfDestructReceivedWei
         )
     {
         _totalAuthorizedInflationWei = inflationAnnums.totalAuthorizedInflationWei;
@@ -139,7 +135,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
         _totalInflationTopupWithdrawnWei = inflationAnnums.totalInflationTopupWithdrawnWei;
         _totalRecognizedInflationWei = inflationAnnums.totalRecognizedInflationWei;
         _totalSelfDestructReceivedWei = totalSelfDestructReceivedWei;
-        _totalSelfDestructWithdrawnWei = totalSelfDestructWithdrawnWei;
     }
 
     /**
@@ -317,7 +312,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
         }
 
         // Is it time to authorize new inflation? Do it daily.
-        if (lastAuthorizationTs.add(AUTHORIZE_TIME_FRAME_SEC) < block.timestamp) {
+        if (lastAuthorizationTs.add(AUTHORIZE_TIME_FRAME_SEC) <= block.timestamp) {
 
             // Update time we last authorized.
             lastAuthorizationTs = block.timestamp;
@@ -392,7 +387,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     function getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
         return inflationAnnums.totalInflationTopupReceivedWei        
             .sub(inflationAnnums.totalInflationTopupWithdrawnWei)
-            .add(totalSelfDestructReceivedWei)
-            .sub(totalSelfDestructWithdrawnWei);
+            .add(totalSelfDestructReceivedWei);
     }
 }

@@ -138,13 +138,10 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
-  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, "0x0000000000000000000000000000000000000000", parameters.initialInflationPercentageBIPS);
+  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, "0x0000000000000000000000000000000000000000", parameters.scheduledInflationPercentageBIPS);
   spewNewContractInfo(contracts, InflationAllocation.contractName, `InflationAllocation.sol`, inflationAllocation.address, quiet);
 
   let deployDataAvailabilityRewardManager = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
-
-  // set scheduled inflation
-  await inflationAllocation.setAnnualInflation(parameters.scheduledInflationPercentageBIPS)
 
   // Initialize the state connector
   let stateConnector: any;

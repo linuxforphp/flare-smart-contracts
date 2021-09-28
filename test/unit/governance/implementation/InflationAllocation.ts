@@ -9,6 +9,7 @@ const MockContract = artifacts.require("MockContract");
 const BN = web3.utils.toBN;
 
 const ERR_OUT_OF_BOUNDS = "annual inflation out of bounds";
+const ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY = "annual inflation schedule empty";
 const ERR_TOO_MANY = "too many";
 const ERR_NOT_100_PCT = "sum sharing percentage not 100%";
 const ERR_ONLY_GOVERNANCE = "only governance";
@@ -24,7 +25,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should require initial percentage greater than 0", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], accounts[0], 0);
+      const promise = InflationAllocation.new(accounts[0], accounts[0], [0]);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
@@ -32,15 +33,37 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should cap initial percentage at 10%", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], accounts[0], 1001);
+      const promise = InflationAllocation.new(accounts[0], accounts[0], [1001]);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
+    });
+
+    it("Should revert if initial schedule is empty", async() => {
+      // Assemble
+      // Act
+      const promise = InflationAllocation.new(accounts[0], accounts[0], []);
+      // Assert
+      await expectRevert(promise, ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY);
+    });
+
+    it("Should accept initial inflation percentage schedule", async() => {
+      // Assemble
+      const schedule: BN[] = [BN(1000), BN(900), BN(800)];
+      // Act
+      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], schedule);
+      // Assert
+      const percentage0 = await inflationAllocation.annualInflationPercentagesBips(0);
+      const percentage1 = await inflationAllocation.annualInflationPercentagesBips(1);
+      const percentage2 = await inflationAllocation.annualInflationPercentagesBips(2);
+      assert.equal(percentage0.toNumber(), 1000);
+      assert.equal(percentage1.toNumber(), 900);
+      assert.equal(percentage2.toNumber(), 800);
     });
   });
 
   describe("annual inflation percentage schedule", async() => {
     beforeEach(async() => {
-      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], 1000);
+      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], [1000]);
     });
     
     it("Should get the initial annual percentage if no schedule", async() => {
@@ -153,7 +176,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
 
   describe("sharing percentages", async() => {
     beforeEach(async() => {
-      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], 1000);
+      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], [1000]);
     });
 
     it("Should require sharing percentages to sum to 100%", async() => {

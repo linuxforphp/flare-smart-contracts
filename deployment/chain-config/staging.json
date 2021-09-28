@@ -12,7 +12,6 @@
     "burnAddress": "0x0000000000000000000000000000000000000000",
     "totalNativeSupplyNAT": 100000000000,
     "totalFoundationSupplyNAT": 15000000000,
-    "initialInflationPercentageBIPS": 1000,
     "scheduledInflationPercentageBIPS": [1000, 800, 600],
     "rewardEpochDurationSeconds": 540,
     "revealEpochDurationSeconds": 90,
