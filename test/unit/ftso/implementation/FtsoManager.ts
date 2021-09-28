@@ -326,6 +326,21 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10*DAY, [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Max trusted addresses length exceeded");
         });
 
+        it("Should set votePowerIntervalFraction", async () => {
+            expect((await ftsoManager.getVotePowerIntervalFraction()).toNumber()).to.equals(VOTE_POWER_BOUNDARY_FRACTION);
+            await ftsoManager.setVotePowerIntervalFraction(VOTE_POWER_BOUNDARY_FRACTION + 3);
+            expect((await ftsoManager.getVotePowerIntervalFraction()).toNumber()).to.equals(VOTE_POWER_BOUNDARY_FRACTION + 3);
+        });
+
+        it("Should revert setting votePowerIntervalFraction to 0", async () => {
+            await ftsoManager.setVotePowerIntervalFraction(VOTE_POWER_BOUNDARY_FRACTION + 3);
+            await expectRevert(ftsoManager.setVotePowerIntervalFraction(0), "Vote power interval fraction 0");
+        });
+
+        it("Should not set votePowerIntervalFraction if not from governance", async () => {
+            await expectRevert(ftsoManager.setVotePowerIntervalFraction(1, { from: accounts[2] }), "only governance");
+        });
+
         it("Should activate", async () => {
             await ftsoManager.activate();
         });

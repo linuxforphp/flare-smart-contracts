@@ -103,7 +103,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
 
     for (let i = 1; i <= noOfDays; i++) {
 
-      await increaseTimeTo(startTs.addn(i * dayDurationSec + i), 'web3');
+      await increaseTimeTo(startTs.addn(i * dayDurationSec), 'web3');
 
       for (let j = 0; j < tokenPools.length; j++) {
         await tokenPools[j].receiveFoundationAllocatedFunds({ value: toBN(50), from: governance });
@@ -147,7 +147,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
     beforeEach(async () => {
 
       // create inflation allocation
-      inflationAllocation = await InflationAllocation.new(governance, constants.ZERO_ADDRESS, 1000);
+      inflationAllocation = await InflationAllocation.new(governance, constants.ZERO_ADDRESS, [1000]);
 
       // create flare daemon with inflation mock
       flareDaemon = await FlareDaemonWithInflationMock.new();

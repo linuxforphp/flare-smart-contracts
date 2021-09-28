@@ -25,6 +25,7 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
     string internal constant ERR_SUM_SHARING_PERCENTAGE = "sum sharing percentage not 100%";
     string internal constant ERR_IS_ZERO = "address is 0"; 
     string internal constant ANNUAL_INFLATION_OUT_OF_BOUNDS = "annual inflation out of bounds";
+    string internal constant ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY = "annual inflation schedule empty";
     string internal constant ERR_TOO_MANY = "too many";
     string internal constant ERR_ONLY_INFLATION = "only inflation";
 
@@ -63,15 +64,16 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
     constructor(
         address _governance,
         Inflation _inflation,
-        uint256 _annualInflationBips
+        uint256[] memory _annualInflationScheduleBips
     ) 
         Governed(_governance)
     {
-        require(
-            _annualInflationBips > 0 && _annualInflationBips <= MAX_INFLATION_PERCENTAGE_BIPS,
-            ANNUAL_INFLATION_OUT_OF_BOUNDS);
-        lastAnnualInflationPercentageBips = _annualInflationBips;
+        require(_annualInflationScheduleBips.length > 0, ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY);
         inflation = _inflation;
+
+        // validity is checked in _setAnnualInflationSchedule
+        lastAnnualInflationPercentageBips = _annualInflationScheduleBips[0];
+        _setAnnualInflationSchedule(_annualInflationScheduleBips);
     }
 
     /**
@@ -89,7 +91,7 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
      * @param _inflationRecievers   An array of contracts to receive inflation rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
-    function setSharingPercentages (
+    function setSharingPercentages(
         IIInflationReceiver[] memory _inflationRecievers, 
         uint256[] memory _percentagePerReceiverBips
     )
@@ -129,30 +131,16 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
      * @dev The schedule must be a decaying schedule. Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
-    function setAnnualInflation (uint256[] calldata _annualInflationScheduleBips) external onlyGovernance {
-        require(_annualInflationScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
-        // Validate the schedule...percentages must be the same or decay, and cannot be greater than last given.
-        uint256 len = _annualInflationScheduleBips.length;
-        uint256 lastOne = lastAnnualInflationPercentageBips;
-        for (uint256 i = 0; i < len; i++) {
-            require(
-                _annualInflationScheduleBips[i] <= lastOne && 
-                _annualInflationScheduleBips[i] > 0 &&
-                _annualInflationScheduleBips[i] <= MAX_INFLATION_PERCENTAGE_BIPS,
-                ANNUAL_INFLATION_OUT_OF_BOUNDS);
-                lastOne = _annualInflationScheduleBips[i];
-        }
-
+    function setAnnualInflation(uint256[] memory _annualInflationScheduleBips) external onlyGovernance {
         // Clear the existing schedule
         uint256 lenExistingSchedule = annualInflationPercentagesBips.length;
         for (uint256 i = 0; i < lenExistingSchedule; i++) {
             annualInflationPercentagesBips.pop();
         }
 
-        // Push in the new schedule
-        for (uint256 i = 0; i < len; i++) {
-            annualInflationPercentagesBips.push(_annualInflationScheduleBips[i]);
-        }
+        // Set new schedule
+        _setAnnualInflationSchedule(_annualInflationScheduleBips);
+
         emit AnnualInflationPercentageScheduleSet(_annualInflationScheduleBips);
     }
 
@@ -192,6 +180,32 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
         for (uint i = 0; i < len; i++) {
             _sharingPercentages[i].percentBips = inflationReceivers[i].percentageBips;
             _sharingPercentages[i].inflationReceiver = inflationReceivers[i].receiverContract;
+        }
+    }
+
+     /**
+     * @notice Set the annual inflation percentage schedule. This schedule is meant to be set for recognition
+     *   a per-annum basis.
+     * @param _annualInflationScheduleBips  An array of inflation percentages in bips.
+     * @dev The schedule must be a decaying schedule. Once the schedule has been used up, the last percentage
+     *   yielded will be the percentage that will continue to be yielded.
+     */
+    function _setAnnualInflationSchedule(uint256[] memory _annualInflationScheduleBips) internal {
+        require(_annualInflationScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
+        uint256 len = _annualInflationScheduleBips.length;
+        uint256 lastOne = lastAnnualInflationPercentageBips;
+
+        for (uint256 i = 0; i < len; i++) {
+            // Validate the schedule...percentages must be the same or decay, and cannot be greater than last given.
+            require(
+                _annualInflationScheduleBips[i] <= lastOne && 
+                _annualInflationScheduleBips[i] > 0 &&
+                _annualInflationScheduleBips[i] <= MAX_INFLATION_PERCENTAGE_BIPS,
+                ANNUAL_INFLATION_OUT_OF_BOUNDS);
+                lastOne = _annualInflationScheduleBips[i];
+
+            // Push in the new schedule
+            annualInflationPercentagesBips.push(_annualInflationScheduleBips[i]);
         }
     }
 }

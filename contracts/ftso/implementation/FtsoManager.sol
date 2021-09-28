@@ -83,7 +83,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     // reward Epoch data
     uint256 immutable public rewardEpochDurationSeconds;
     uint256 immutable public rewardEpochsStartTs;
-    uint256 immutable internal votePowerIntervalFraction;
+    uint256 internal votePowerIntervalFraction;
     uint256 internal currentRewardEpochEnds;
     uint256 internal nextRewardEpochToExpire;
 
@@ -389,6 +389,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             _rewardExpiryOffsetSeconds,
             _trustedAddresses
         );
+    }
+
+    function setVotePowerIntervalFraction(uint256 _votePowerIntervalFraction) external onlyGovernance {
+        require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
+        votePowerIntervalFraction = _votePowerIntervalFraction;
     }
 
     function getVotePowerIntervalFraction() external view returns (uint256) {

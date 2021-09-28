@@ -65,13 +65,10 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
 
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
-  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, "0x0000000000000000000000000000000000000000", parameters.initialInflationPercentageBIPS);
+  const inflationAllocation = await InflationAllocation.new(deployerAccount.address, "0x0000000000000000000000000000000000000000", parameters.scheduledInflationPercentageBIPS);
   spewNewContractInfo(contracts, InflationAllocation.contractName, `InflationAllocation.sol`, inflationAllocation.address, quiet);
 
   let deployDataAvailabilityRewardManager = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
-
-  // set scheduled inflation
-  await inflationAllocation.setAnnualInflation(parameters.scheduledInflationPercentageBIPS)
 
   // Get the timestamp for the just mined block
   // let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
