@@ -341,6 +341,26 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await expectRevert(ftsoManager.setVotePowerIntervalFraction(1, { from: accounts[2] }), "only governance");
         });
 
+        it("Should set rewardEpochDurationSeconds", async () => {
+            expect((await ftsoManager.rewardEpochDurationSeconds()).toNumber()).to.equals(REWARD_EPOCH_DURATION_S);
+            await ftsoManager.setRewardEpochDurationSeconds(REWARD_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+            expect((await ftsoManager.rewardEpochDurationSeconds()).toNumber()).to.equals(REWARD_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+        });
+
+        it("Should revert setting rewardEpochDurationSeconds to 0", async () => {
+            await ftsoManager.setRewardEpochDurationSeconds(REWARD_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+            await expectRevert(ftsoManager.setRewardEpochDurationSeconds(0), "Reward epoch 0");
+        });
+
+        it("Should revert setting rewardEpochDurationSeconds if not multiple of price epoch duration", async () => {
+            await ftsoManager.setRewardEpochDurationSeconds(10 * PRICE_EPOCH_DURATION_S);
+            await expectRevert(ftsoManager.setRewardEpochDurationSeconds(10 * PRICE_EPOCH_DURATION_S + 1), "Reward epoch duration condition invalid");
+        });
+
+        it("Should not set rewardEpochDurationSeconds if not from governance", async () => {
+            await expectRevert(ftsoManager.setRewardEpochDurationSeconds(1, { from: accounts[2] }), "only governance");
+        });
+
         it("Should activate", async () => {
             await ftsoManager.activate();
         });

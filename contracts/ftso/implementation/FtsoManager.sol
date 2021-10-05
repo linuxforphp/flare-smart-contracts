@@ -81,7 +81,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     uint256 internal lastUnprocessedPriceEpochRevealEnds;
 
     // reward Epoch data
-    uint256 immutable public rewardEpochDurationSeconds;
+    uint256 public rewardEpochDurationSeconds;
     uint256 immutable public rewardEpochsStartTs;
     uint256 internal votePowerIntervalFraction;
     uint256 internal currentRewardEpochEnds;
@@ -136,7 +136,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
         rewardEpochsStartTs = _rewardEpochsStartTs;
         votePowerIntervalFraction = _votePowerIntervalFraction;
-        currentRewardEpochEnds = _rewardEpochsStartTs + _rewardEpochDurationSeconds;
 
         // price epoch
         firstPriceEpochStartTs = _firstEpochStartTs;
@@ -391,6 +390,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         );
     }
 
+    function setRewardEpochDurationSeconds(uint256 _rewardEpochDurationSeconds) external onlyGovernance {
+        require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
+        require(_rewardEpochDurationSeconds % priceEpochDurationSeconds == 0,
+            ERR_REWARD_EPOCH_DURATION_CONDITION_INVALID);
+        rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
+    }
+
     function setVotePowerIntervalFraction(uint256 _votePowerIntervalFraction) external onlyGovernance {
         require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
         votePowerIntervalFraction = _votePowerIntervalFraction;
@@ -541,7 +547,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
      */
     function _initializeFirstRewardEpoch() internal {
 
-        if (block.timestamp >= currentRewardEpochEnds - rewardEpochDurationSeconds) {
+        if (block.timestamp >= rewardEpochsStartTs) {
             IIFtso[] memory ftsos = _getFtsos();
             uint256 numFtsos = ftsos.length;
             // Prime the reward epoch array with a new reward epoch
@@ -556,6 +562,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             for (uint256 i = 0; i < numFtsos; ++i) {
                 ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
+            
+            currentRewardEpochEnds = rewardEpochsStartTs + rewardEpochDurationSeconds;
         }
     }
 
