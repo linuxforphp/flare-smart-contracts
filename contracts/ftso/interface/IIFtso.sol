@@ -22,7 +22,7 @@ interface IIFtso is IFtso, IFtsoGenesis {
             uint256 _totalNatWeight
         );
 
-    function averageFinalizePriceEpoch(uint256 _epochId) external;
+    function fallbackFinalizePriceEpoch(uint256 _epochId) external;
 
     function forceFinalizePriceEpoch(uint256 _epochId) external;
 

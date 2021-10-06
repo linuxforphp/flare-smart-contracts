@@ -238,7 +238,7 @@ contract MockNpmFtso is IIFtso {
         return (new address[](0), new uint256[](0), 0);
     }
 
-    function averageFinalizePriceEpoch(uint256) external pure override {
+    function fallbackFinalizePriceEpoch(uint256) external pure override {
         require(false, UNAVAILABLE);
     }
 

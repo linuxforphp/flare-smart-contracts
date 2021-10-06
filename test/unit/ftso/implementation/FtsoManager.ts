@@ -1405,10 +1405,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
             // stub ftso finalizer
             const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
-            const averageFinalizePriceEpoch = ftsoInterface.contract.methods.averageFinalizePriceEpoch(0).encodeABI();
+            const fallbackFinalizePriceEpoch = ftsoInterface.contract.methods.fallbackFinalizePriceEpoch(0).encodeABI();
             const forceFinalizePriceEpoch = ftsoInterface.contract.methods.forceFinalizePriceEpoch(0).encodeABI();
             await mockFtso.givenMethodRevertWithMessage(finalizePriceEpoch,"I am broken");
-            await mockFtso.givenMethodReturnUint(averageFinalizePriceEpoch,0);
+            await mockFtso.givenMethodReturnUint(fallbackFinalizePriceEpoch,0);
             await mockFtso.givenMethodReturnUint(forceFinalizePriceEpoch,0);
 
             await setDefaultGovernanceParameters(ftsoManager);
@@ -1454,10 +1454,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
             // stub ftso finalizer
             const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
-            const averageFinalizePriceEpoch = ftsoInterface.contract.methods.averageFinalizePriceEpoch(0).encodeABI();
+            const fallbackFinalizePriceEpoch = ftsoInterface.contract.methods.fallbackFinalizePriceEpoch(0).encodeABI();
             const forceFinalizePriceEpoch = ftsoInterface.contract.methods.forceFinalizePriceEpoch(0).encodeABI();
             await mockFtso.givenMethodRevertWithMessage(finalizePriceEpoch,"I am broken");
-            await mockFtso.givenMethodRevertWithMessage(averageFinalizePriceEpoch,"averageFinalizePriceEpoch broken too");
+            await mockFtso.givenMethodRevertWithMessage(fallbackFinalizePriceEpoch,"fallbackFinalizePriceEpoch broken too");
             await mockFtso.givenMethodReturnUint(forceFinalizePriceEpoch,0);
 
             await setDefaultGovernanceParameters(ftsoManager);
@@ -1492,7 +1492,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
 
             assert.equal(lastErrorBlockArr1[1].toNumber(), finalizingPriceEpochFailedEvents[1].blockNumber);
             assert.equal(numErrorsArr1[1].toNumber(), 1);
-            assert.equal(errorStringArr1[1], "averageFinalizePriceEpoch broken too");
+            assert.equal(errorStringArr1[1], "fallbackFinalizePriceEpoch broken too");
             assert.equal(errorContractArr1[1], mockFtso.address);
         });
 
@@ -1503,10 +1503,10 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
             // stub ftso finalizer
             const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
-            const averageFinalizePriceEpoch = ftsoInterface.contract.methods.averageFinalizePriceEpoch(0).encodeABI();
+            const fallbackFinalizePriceEpoch = ftsoInterface.contract.methods.fallbackFinalizePriceEpoch(0).encodeABI();
             const forceFinalizePriceEpoch = ftsoInterface.contract.methods.forceFinalizePriceEpoch(0).encodeABI();
             await mockFtso.givenMethodRevertWithMessage(finalizePriceEpoch,"I am broken");
-            await mockFtso.givenMethodRevertWithMessage(averageFinalizePriceEpoch,"averageFinalizePriceEpoch broken too");
+            await mockFtso.givenMethodRevertWithMessage(fallbackFinalizePriceEpoch,"fallbackFinalizePriceEpoch broken too");
             await mockFtso.givenMethodRevertWithMessage(forceFinalizePriceEpoch,"forceFinalizePriceEpoch broken too");
 
             await setDefaultGovernanceParameters(ftsoManager);

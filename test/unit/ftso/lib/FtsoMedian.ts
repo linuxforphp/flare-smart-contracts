@@ -176,11 +176,11 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(value.toNumber()).to.equals(50);
     });
 
-    it(`Should compute median correctly`, async () => {
+    it(`Should compute weighted median correctly`, async () => {
         let weight: number[] = [500,200,1000,300,500];
         
         let price: number[] = [30,35,40,35,50];
-        let data = await ftsoMedian.compute(price, weight);
+        let data = await ftsoMedian.computeWeighted(price, weight);
         compareNumberArrays(data[2], price);
         compareNumberArrays(data[3], weight);
         let index = data[0];
@@ -197,11 +197,11 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.quartile3Price).to.equals('40');
     });
 
-    it(`Should compute median correctly - same prices`, async () => {
+    it(`Should compute weighted median correctly - same prices`, async () => {
         let weight: number[] = [500,200,1000,300,500];
         
         let price: number[] = [40,40,40,40,40];
-        let data = await ftsoMedian.compute(price, weight);
+        let data = await ftsoMedian.computeWeighted(price, weight);
         compareNumberArrays(data[2], price);
         compareNumberArrays(data[3], weight);
         let index = data[0];
@@ -218,11 +218,11 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.quartile3Price).to.equals('40');
     });
 
-    it(`Should compute median correctly - middle price`, async () => {
+    it(`Should compute weighted median correctly - middle price`, async () => {
         let weight: number[] = [500,200,400,300,800];
         
         let price: number[] = [25,20,30,50,40];
-        let data = await ftsoMedian.compute(price, weight);
+        let data = await ftsoMedian.computeWeighted(price, weight);
         compareNumberArrays(data[2], price);
         compareNumberArrays(data[3], weight);
         let index = data[0];
@@ -239,11 +239,11 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.quartile3Price).to.equals('40');
     });
 
-    it(`Should compute median correctly - quartile prices`, async () => {
+    it(`Should compute weighted median correctly - quartile prices`, async () => {
         let weight: number[] = [20,20,20,20,20];
 
         let price: number[] = [10,20,30,40,50];
-        let data = await ftsoMedian.compute(price, weight);
+        let data = await ftsoMedian.computeWeighted(price, weight);
         compareNumberArrays(data[2], price);
         compareNumberArrays(data[3], weight);
         let index = data[0];
@@ -253,5 +253,35 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
         expect(d.quartile3Index).to.equals('3');
         expect(d.quartile1Price).to.equals('20');
         expect(d.quartile3Price).to.equals('40');
+    });
+
+    it(`Should compute simple median correctly`, async () => {
+        let prices: number[] = [50,20,40,10,30];
+        const {0: finalMedianPrice, 1: sortedPrices, 2: count} = await ftsoMedian.computeSimple(prices, prices.length);
+
+        prices = prices.sort();
+        compareNumberArrays(sortedPrices, prices);
+        expect(finalMedianPrice.toString()).to.equals('30');
+        expect(count.toString()).to.equals('5');
+    });
+
+    it(`Should compute simple median correctly - middle price`, async () => {
+        let prices: number[] = [50,20,40,10];
+        const {0: finalMedianPrice, 1: sortedPrices, 2: count} = await ftsoMedian.computeSimple(prices, prices.length);
+
+        prices = prices.sort();
+        compareNumberArrays(sortedPrices, prices);
+        expect(finalMedianPrice.toString()).to.equals('30');
+        expect(count.toString()).to.equals('4');
+    });
+
+    it(`Should show that a single hacked key can't skew the fall back price result`, async () => {
+        let prices: number[] = [50000,20,40,10];
+        const {0: finalMedianPrice, 1: sortedPrices, 2: count} = await ftsoMedian.computeSimple(prices, prices.length);
+
+        prices = prices.sort();
+        compareNumberArrays(sortedPrices, prices);
+        expect(finalMedianPrice.toString()).to.equals('30');
+        expect(count.toString()).to.equals('4');
     });
 });
