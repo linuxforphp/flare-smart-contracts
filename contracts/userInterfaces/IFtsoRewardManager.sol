@@ -65,6 +65,11 @@ interface IFtsoRewardManager {
         external returns (uint256 _validFromEpoch);
 
     /**
+     * @notice Allows reward claiming
+     */
+    function active() external view returns (bool);
+
+    /**
      * @notice Returns the current fee percentage of `_dataProvider`
      * @param _dataProvider         address representing data provider
      */

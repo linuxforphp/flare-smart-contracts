@@ -33,7 +33,6 @@ contract MockNpmFtso is IIFtso {
     uint256 internal assetPriceTimestamp;      // time when price was updated    
 
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
-    uint256 internal lastRevealEpochId;
 
     // external contracts
     IPriceSubmitter public priceSubmitter;       // Price submitter contract

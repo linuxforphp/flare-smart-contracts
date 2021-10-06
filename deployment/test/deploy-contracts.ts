@@ -198,7 +198,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should have a reward epoch if rewarding started and being daemonized by daemon", async () => {
       // Assemble
       const startTs = await time.latest();
-      const rewardEpochStartTs = await ftsoManager.rewardEpochsStartTs();
+      const rewardEpochStartTs = (await ftsoManager.getRewardEpochConfiguration())[0];
       if (rewardEpochStartTs.lt(startTs) && await ftsoManager.active()) {
         // Act
         const startBlock = (await ftsoManager.rewardEpochs(0))[0];
@@ -212,7 +212,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about PriceSubmitter", async () => {
       // Assemble
       // Act
-      const priceSubmitter = await ftsoManager.getPriceSubmitter();
+      const priceSubmitter = await ftsoManager.priceSubmitter();
       // Assert
       assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     });
@@ -498,7 +498,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
 
     it("Should have goveranance parameters set", async () => {
       // Assemble
-      const settings = await ftsoManager.settings();
+      const settings = await ftsoManager.getGovernanceParameters();
       // Act
       const maxVotePowerNatThresholdFraction = settings[0];
       const maxVotePowerAssetThresholdFraction = settings[1];

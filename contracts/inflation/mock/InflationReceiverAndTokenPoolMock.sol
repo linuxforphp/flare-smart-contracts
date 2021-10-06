@@ -101,6 +101,10 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
     {
         return (foundationAllocatedFundsWei, totalInflationAuthorizedWei, totalClaimedWei);
     }
+    
+    function getInflationAddress() external view override returns(address) {
+        return inflation;
+    }
 
     function _transferReward(address payable _recipient, uint256 _rewardAmount) internal {
         if (_rewardAmount > 0) {
@@ -130,9 +134,5 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
             .add(totalInflationReceivedWei)
             .add(totalSelfDestructReceivedWei)
             .sub(totalClaimedWei);
-    }
-
-    function getInflationAddress() external view override returns(address) {
-        return inflation;
     }
 }

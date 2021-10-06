@@ -30,6 +30,11 @@ interface IDataAvailabilityRewardManager {
         );
 
     /**
+     * @notice Allows reward claiming
+     */
+    function active() external view returns (bool);
+
+    /**
      * @notice Returns information on epoch reward
      * @param _rewardEpoch          reward epoch number
      * @return _totalReward         number representing the total epoch reward

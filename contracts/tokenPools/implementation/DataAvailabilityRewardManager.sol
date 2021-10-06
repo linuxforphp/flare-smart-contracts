@@ -49,7 +49,7 @@ contract DataAvailabilityRewardManager is
     string internal constant ERR_UNKNOWN_REWARD_EPOCH = "unknown reward epoch";
     string internal constant ERR_REWARD_EXPIRY_OFFSET_INVALID = "reward expiry invalid";
     
-    bool public active;
+    bool public override active;
 
     uint256 public immutable rewardExpiryOffset; // period of reward expiry (in reward epochs)
     
@@ -73,7 +73,7 @@ contract DataAvailabilityRewardManager is
 
     /// addresses
     StateConnector public immutable stateConnector;
-    address private inflation;
+    address internal inflation;
 
     modifier mustBalance {
         _;

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./IPriceSubmitter.sol";
 import "../ftso/interface/IIFtso.sol";
 
 interface IFtsoManager {
@@ -16,12 +15,12 @@ interface IFtsoManager {
     event DistributingRewardsFailed(address ftso, uint256 epochId);
 
     function active() external view returns (bool);
-    
-    function getPriceSubmitter() external view returns (IPriceSubmitter);
 
     function getCurrentRewardEpoch() external view returns (uint256);
 
     function getRewardEpochVotePowerBlock(uint256 _rewardEpoch) external view returns (uint256);
+
+    function getRewardEpochToExpireNext() external view returns (uint256);
     
     function getCurrentPriceEpochData() external view 
         returns (
@@ -39,6 +38,12 @@ interface IFtsoManager {
             uint256 _firstPriceEpochStartTs,
             uint256 _priceEpochDurationSeconds,
             uint256 _revealEpochDurationSeconds
+        );
+
+    function getRewardEpochConfiguration() external view 
+        returns (
+            uint256 _rewardEpochsStartTs,
+            uint256 _rewardEpochDurationSeconds
         );
 
     function getFallbackMode() external view 

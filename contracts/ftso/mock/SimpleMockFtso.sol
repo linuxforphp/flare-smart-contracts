@@ -72,12 +72,12 @@ contract SimpleMockFtso is Ftso {
     }
     
     function getVotePowerOf(address _owner) public returns (uint256 _votePowerNat, uint256 _votePowerAsset) {
-        FtsoEpoch.Instance storage epoch = _getEpochInstance(lastRevealEpochId);
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(_getLastRevealEpochId());
 
         return _getVotePowerOf(
             epoch,
             _owner,
-            wNatVotePowerCached(_owner, lastRevealEpochId),
+            wNatVotePowerCached(_owner, _getLastRevealEpochId()),
             epoch.fallbackMode,
             uint256(epoch.votePowerBlock)
         );
@@ -85,14 +85,14 @@ contract SimpleMockFtso is Ftso {
 
     // Simplified version of vote power weight calculation (no vote commit/reveal, but result should be equal)
     function getVotePowerWeights(address[] memory _owners) public returns (uint256[] memory _weights) {
-        FtsoEpoch.Instance storage epoch = _getEpochInstance(lastRevealEpochId);
+        FtsoEpoch.Instance storage epoch = _getEpochInstance(_getLastRevealEpochId());
         uint256[] memory weightsNat = new uint256[](_owners.length);
         uint256[] memory weightsAsset = new uint256[](_owners.length);
         for (uint256 i = 0; i < _owners.length; i++) {
             (uint256 votePowerNat, uint256 votePowerAsset) = _getVotePowerOf(
                 epoch,
                 _owners[i],
-                wNatVotePowerCached(_owners[i], lastRevealEpochId),
+                wNatVotePowerCached(_owners[i], _getLastRevealEpochId()),
                 epoch.fallbackMode,
                 uint256(epoch.votePowerBlock)
             );
@@ -102,5 +102,14 @@ contract SimpleMockFtso is Ftso {
             weightsAsset[i] = vote.weightAsset;
         }
         return FtsoEpoch._computeWeights(epoch, weightsNat, weightsAsset);
+    }
+
+    function _getLastRevealEpochId() internal view returns (uint256) {
+        uint256 currentEpochId = getCurrentEpochId();
+        //slither-disable-next-line weak-prng // not used for random
+        if (epochs.instance[currentEpochId % priceEpochCyclicBufferSize].epochId == currentEpochId) {
+            return currentEpochId;
+        }
+        return currentEpochId - 1;
     }
 }

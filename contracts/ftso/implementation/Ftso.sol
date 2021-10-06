@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../token/interface/IIVPToken.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
@@ -43,10 +44,9 @@ contract Ftso is IIFtso {
     string public override symbol;              // asset symbol that identifies FTSO
 
     uint256 internal assetPriceUSD;             // current asset USD price
-    uint256 internal assetPriceTimestamp;       // time when price was updated    
+    uint256 internal assetPriceTimestamp;       // time when price was updated
     FtsoEpoch.State internal epochs;            // epoch storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
-    uint256 internal lastRevealEpochId;
 
     // external contracts
     IIVPToken public immutable override wNat;    // wrapped native token
@@ -112,7 +112,7 @@ contract Ftso is IIFtso {
     ) 
         external override 
         whenActive 
-        onlyPriceSubmitter         
+        onlyPriceSubmitter
     {
         _submitPriceHash(_sender, _epochId, _hash);
     }
@@ -413,8 +413,6 @@ contract Ftso is IIFtso {
             assetVotePowers,
             assetPrices
         );
-
-        lastRevealEpochId = epochId;
 
         emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId), block.timestamp);
     }
