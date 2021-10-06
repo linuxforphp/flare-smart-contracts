@@ -179,7 +179,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     FtsoManager = artifacts.require("FtsoManager");
     ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     FtsoRegistry = artifacts.require("FtsoRegistry");
-    ftsoRegistry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
+    ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
     PriceSubmitter = artifacts.require("PriceSubmitter");
     priceSubmiter = await PriceSubmitter.at(contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
     VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -202,8 +202,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     revealEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
-    rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
-    rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
+    rewardEpochsStartTs = (await ftsoManager.getRewardEpochConfiguration())[0];
+    rewardEpochDurationSeconds = (await ftsoManager.getRewardEpochConfiguration())[1];
 
     console.log("Depositing and delegating NAT...");
 
@@ -291,7 +291,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     console.log("Waiting for reward finalization to start...");
 
-    rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
     const rewardEpochId = await ftsoManager.getCurrentRewardEpoch();
 
     await waitTillRewardFinalizeStart(
