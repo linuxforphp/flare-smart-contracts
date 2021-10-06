@@ -5,13 +5,13 @@ interface IFtso {
     enum PriceFinalizationType {
         // initial state
         NOT_FINALIZED,
-        // median calculation used to decide price
+        // median calculation used to find price
         WEIGHTED_MEDIAN,
-        // low turnout - price decided from average of trusted addresses
+        // low turnout - price calculated from median of trusted addresses
         TRUSTED_ADDRESSES,
         // low turnout + no votes from trusted addresses - price copied from previous epoch
         PREVIOUS_PRICE_COPIED,
-        // price decided from average of trusted addresses - triggered due to an exception
+        // price calculated from median of trusted addresses - triggered due to an exception
         TRUSTED_ADDRESSES_EXCEPTION,
         // previous price copied - triggered due to an exception
         PREVIOUS_PRICE_COPIED_EXCEPTION

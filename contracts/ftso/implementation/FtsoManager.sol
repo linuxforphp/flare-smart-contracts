@@ -873,7 +873,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     }
 
     function _fallbackFinalizePriceEpoch(IIFtso _ftso) internal {
-        try _ftso.averageFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
+        try _ftso.fallbackFinalizePriceEpoch(lastUnprocessedPriceEpoch) {
         } catch Error(string memory message) {
             _fallbackFinalizePriceEpochFailed(_ftso, message);
         } catch {
