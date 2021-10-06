@@ -337,6 +337,42 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     });    
   });
 
+  describe("Token Pool tests", async() => {
+    beforeEach(async() => {
+      await bulkLoad(BN(1000));
+    });
+
+    it("Returns proper token pool numbers to be used by token pool at initial time", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now);
+      // Act
+      const {0: allocatedWei, 1: inflationWei, 2: claimedWei} = await distribution.getTokenPoolSupplyData()
+      // Assert
+      assert.equal(allocatedWei.toString(10),"8500");
+      assert.equal(inflationWei.toString(10),"0");
+      assert.equal(claimedWei.toString(10),"0");
+    });
+
+    it("Returns proper token pool numbers after some claiming", async() => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now);
+      // Act
+      await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
+      for(let i of [0,1,2,3,4,5]){
+        await distribution.claim({from: claimants[i]});
+      }
+      // Assert
+      let {0: allocatedWei, 1: inflationWei, 2: claimedWei} = await distribution.getTokenPoolSupplyData()
+      assert.equal(allocatedWei.toString(10),"8500");
+      assert.equal(inflationWei.toString(10),"0");
+      assert.equal(claimedWei.toString(10),"5100");
+    });
+  });
+
   describe("Claiming", async() => {
     beforeEach(async() => {
       await bulkLoad(BN(1000));
