@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "outDir": "build"
+  },
+  "include": ["./src", "./test"],
+  "exclude": ["./typechain", "./typechain-truffle"],
+  "files": ["./hardhat.config.ts", "../deployment/scripts/Contracts.ts"]
+}
