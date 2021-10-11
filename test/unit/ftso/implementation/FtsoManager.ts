@@ -1575,6 +1575,31 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expectEvent(tx, "RewardEpochFinalized");
         });
 
+        it("Should finalize current reward epoch at the configured interval and the next one according to changed reward epoch duration", async () => {
+            // Assemble
+            await ftsoManager.activate();
+            await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+            await ftsoManager.daemonize(); // start first reward epoch
+            await ftsoManager.setRewardEpochDurationSeconds(REWARD_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S * 10);
+            // Time travel 2 days
+            await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S + REVEAL_EPOCH_DURATION_S));
+            // Act
+            let tx = await ftsoManager.daemonize();
+            // Assert
+            expectEvent(tx, "RewardEpochFinalized");
+            // Time travel another 2 days
+            await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S * 2 + REVEAL_EPOCH_DURATION_S));
+            tx = await ftsoManager.daemonize(); // initialize ftsos for reveal
+            expectEvent.notEmitted(tx, "RewardEpochFinalized");
+
+            // Time travel to reward epoch end
+            await time.increaseTo(startTs.addn(REWARD_EPOCH_DURATION_S * 2 + REVEAL_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S * 10));
+            tx = await ftsoManager.daemonize(); // finalize ftsos
+            expectEvent.notEmitted(tx, "RewardEpochFinalized");
+            tx = await ftsoManager.daemonize(); // finalize reward epoch
+            expectEvent(tx, "RewardEpochFinalized");
+        });
+
         it("Should set cleanup block after finalization", async () => {
             // Assemble
             await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
@@ -1609,7 +1634,6 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             expectEvent(receipt, "CleanupBlockNumberManagerFailedForBlock", {});
             await expectEvent.notEmitted.inTransaction(receipt.tx, cleanupBlockNumberManager, "CleanupBlockNumberSet")
         });
-
 
         it("Should setup a reward epoch when initial startup time passes", async () => {
             // Assemble
