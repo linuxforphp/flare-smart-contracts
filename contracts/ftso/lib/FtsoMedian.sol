@@ -43,7 +43,7 @@ library FtsoMedian {
      * @return _index               permutation of indices of the input arrays that determines the sorting of _price
      * @return _d                   struct storing the weighted median price and accompanying data
      */
-    function _compute(
+    function _computeWeighted(
         uint256[] memory _price,
         uint256[] memory _weight
     ) 
@@ -334,5 +334,46 @@ library FtsoMedian {
             }
         }
         return closestPrice;
+    }
+
+    
+    /**
+     * @notice Computes the simple median price (using insertion sort) - sorts original array
+     * @param _prices               positional array of prices to be sorted
+     * @param _count                number of valid prices in array (array may be longer)
+     * @return _finalMedianPrice    median price
+     */
+    function _computeSimple(
+        uint256[] memory _prices,
+        uint256 _count
+    ) 
+        internal pure 
+        returns (
+            uint256 _finalMedianPrice
+        )
+    {
+        assert(_count > 0 && _prices.length >= _count);
+
+        for (uint256 i = 1; i < _count; i++) {
+            // price to sort next
+            uint256 currentPrice = _prices[i];
+
+            // shift bigger prices right
+            uint256 j = i;
+            while (j > 0 && _prices[j - 1] > currentPrice) {
+                _prices[j] = _prices[j - 1];
+                j--; // no underflow
+            }
+            // insert 
+            _prices[j] = currentPrice;
+        }
+
+        uint256 middleIndex = _count / 2;
+        if (_count % 2 == 1) {
+            return _prices[middleIndex];
+        } else {
+            // if median is "in the middle", take the average price of the two consecutive prices
+            return (_prices[middleIndex - 1] + _prices[middleIndex]) / 2;
+        }
     }
 }

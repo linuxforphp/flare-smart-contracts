@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../token/interface/IIVPToken.sol";
 import "../interface/IIFtso.sol";
 import "../interface/IIFtsoManager.sol";
@@ -43,10 +44,9 @@ contract Ftso is IIFtso {
     string public override symbol;              // asset symbol that identifies FTSO
 
     uint256 internal assetPriceUSD;             // current asset USD price
-    uint256 internal assetPriceTimestamp;       // time when price was updated    
+    uint256 internal assetPriceTimestamp;       // time when price was updated
     FtsoEpoch.State internal epochs;            // epoch storage
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
-    uint256 internal lastRevealEpochId;
 
     // external contracts
     IIVPToken public immutable override wNat;    // wrapped native token
@@ -112,7 +112,7 @@ contract Ftso is IIFtso {
     ) 
         external override 
         whenActive 
-        onlyPriceSubmitter         
+        onlyPriceSubmitter
     {
         _submitPriceHash(_sender, _epochId, _hash);
     }
@@ -173,7 +173,7 @@ contract Ftso is IIFtso {
             if (!epoch.fallbackMode) {
                 emit LowTurnout(_epochId, natTurnout, epoch.lowNatTurnoutThresholdBIPS, block.timestamp);
             }
-            _averageFinalizePriceEpoch(_epochId, epoch, false);
+            _medianFinalizePriceEpoch(_epochId, epoch, false);
 
             // return empty reward data
             return (_eligibleAddresses, _natWeights, _natWeightsSum);
@@ -189,15 +189,15 @@ contract Ftso is IIFtso {
         // compute weighted median and truncated quartiles
         uint256[] memory index;
         FtsoMedian.Data memory data;
-        (index, data) = FtsoMedian._compute(price, weight);
+        (index, data) = FtsoMedian._computeWeighted(price, weight);
 
         // check price deviation
         if (epochs._getPriceDeviation(_epochId, data.finalMedianPrice, priceEpochCyclicBufferSize)
             > 
             priceDeviationThresholdBIPS)
         {
-            // revert to average price calculation
-            _averageFinalizePriceEpoch(_epochId, epoch, false);
+            // revert to median price calculation
+            _medianFinalizePriceEpoch(_epochId, epoch, false);
             // return empty reward data
             return (_eligibleAddresses, _natWeights, _natWeightsSum);
         }
@@ -231,14 +231,14 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Forces finalization of price epoch calculating average price from trusted addresses
+     * @notice Forces finalization of price epoch calculating median price from trusted addresses
      * @param _epochId              Id of the epoch to finalize
      * @dev Used as a fallback method if epoch finalization is failing
      */
-    function averageFinalizePriceEpoch(uint256 _epochId) external override onlyFtsoManager {
+    function fallbackFinalizePriceEpoch(uint256 _epochId) external override onlyFtsoManager {
         FtsoEpoch.Instance storage epoch = _getEpochForFinalization(_epochId);
         epoch.initializedForReveal = false; // set back to false for next usage
-        _averageFinalizePriceEpoch(_epochId, epoch, true);
+        _medianFinalizePriceEpoch(_epochId, epoch, true);
     }
 
     /**
@@ -413,8 +413,6 @@ contract Ftso is IIFtso {
             assetVotePowers,
             assetPrices
         );
-
-        lastRevealEpochId = epochId;
 
         emit PriceEpochInitializedOnFtso(epochId, epochs._epochSubmitEndTime(epochId), block.timestamp);
     }
@@ -744,27 +742,27 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Forces finalization of the epoch calculating average price from trusted addresses
+     * @notice Forces finalization of the epoch calculating median price from trusted addresses
      * @param _epochId              Epoch id
      * @param _epoch                Epoch instance
      * @param _exception            Indicates if the exception happened
-     * @dev Sets the price to be the average of prices from trusted addresses or force finalize if no votes submitted
+     * @dev Sets the price to be the median of prices from trusted addresses or force finalize if no votes submitted
      */
-    function _averageFinalizePriceEpoch(
+    function _medianFinalizePriceEpoch(
         uint256 _epochId,
         FtsoEpoch.Instance storage _epoch,
         bool _exception
     ) 
         internal
     {
-        uint256 _priceSum;
+        uint256[] memory _prices;
         uint256 _count;
         
         // extract data from epoch trusted votes to memory
-        (_priceSum, _count) = _readTrustedVotes(_epoch, epochs.trustedAddresses);
+        (_prices, _count) = _readTrustedVotes(_epoch, epochs.trustedAddresses);
         if (_count > 0) {
             // finalizationType = PriceFinalizationType.TRUSTED_ADDRESSES
-            _epoch.price = _priceSum / _count;
+            _epoch.price = FtsoMedian._computeSimple(_prices, _count);
             _epoch.finalizationType = _exception ?
                 PriceFinalizationType.TRUSTED_ADDRESSES_EXCEPTION : PriceFinalizationType.TRUSTED_ADDRESSES;
 
@@ -947,22 +945,23 @@ contract Ftso is IIFtso {
      * @notice Extract trusted vote data from epoch
      * @param _epoch                Epoch instance
      * @param _trustedAddresses     List of trusted addresses
-     * @return _priceSum            Sum of all prices submitted by trusted addresses
+     * @return _prices              All prices submitted by trusted addresses
      * @return _count               Number of prices submitted by trusted addresses
      */
     function _readTrustedVotes(FtsoEpoch.Instance storage _epoch, address[] memory _trustedAddresses) internal view 
         returns (
-            uint256 _priceSum,
+            uint256[] memory _prices,
             uint256 _count
         )
     {
         uint256 length = _epoch.nextVoteIndex;
-
+        uint256 trustedAddressesLength = _trustedAddresses.length;
+        _prices = new uint256[](trustedAddressesLength);
         for (uint256 i = 0; i < length; i++) {
             address voter = _epoch.votes[i].voter;
-            for (uint256 j = 0; j < _trustedAddresses.length; j++) {
+            for (uint256 j = 0; j < trustedAddressesLength; j++) {
                 if (voter == _trustedAddresses[j]) {
-                    _priceSum += _epoch.votes[i].price;     // no overflow as v.price < 2**128
+                    _prices[_count] = uint256(_epoch.votes[i].price);
                     _count++;
                 }
             }

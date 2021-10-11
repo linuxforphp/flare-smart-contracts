@@ -7,14 +7,15 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../userInterfaces/IDistribution.sol";
-
+import "../interface/IITokenPool.sol";
 
 /**
  * @title Distribution
- * @notice A contract to manage the ongoing airdrop distribution after the genesis allocation. 
+ * @notice A contract to manage the ongoing airdrop distribution after the initial airdrop allocation. 
  * The remaining ammount is distributed by this contract, with a set rate every 30 days
+ * @notice The balance that will be added to this contract must initially be a part of circulating supply 
  **/
-contract Distribution is Governed, IDistribution {
+contract Distribution is Governed, IDistribution, IITokenPool {
     using SafeCast for uint256;
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -24,7 +25,7 @@ contract Distribution is Governed, IDistribution {
         uint256 entitlementBalanceWei;            // 100% of entitled airdrop in Wei
         uint256 totalClaimedWei;                  // already claimed Wei
         uint256 optOutBalanceWei;                 // The balance that accounts is opting out (per account)
-        uint256 airdroppedAtGenesisWei;           // Amount airdropped at genesis (initial airdrop amount)
+        uint256 airdroppedAtGenesisWei;           // Amount airdropped (initial airdrop amount)
         // HealthChecks:
         // * entitlementBalanceWei >= totalClaimedWei 
         // * entitlementBalanceWei == totalClaimedWei + optOutBalanceWei if optOutBalanceWei > 0
@@ -183,6 +184,18 @@ contract Distribution is Governed, IDistribution {
         emit OptOutWeiWithdrawn();
         // Send Wei to address
         payable(_targetAddress).transfer(_amountWei);
+    }
+
+    function getTokenPoolSupplyData() external override view 
+        returns (uint256 _foundationAllocatedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
+    {
+        // This is the total amount of tokens that are actually already in circulating supply
+        _foundationAllocatedFundsWei = totalEntitlementWei;
+        // We will never increase this balance since distribution funds are taken from genesis 
+        /// amounts and not from inflation.
+        _totalInflationAuthorizedWei = 0;
+        // What was actually already added to circulating supply
+        _totalClaimedWei = totalClaimedWei + withdrawnOptOutWei;
     }
 
     /**

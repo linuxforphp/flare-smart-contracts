@@ -55,7 +55,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     uint256 constant internal MAX_BIPS = 1e4;
     uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
 
-    bool public active;
+    bool public override active;
 
     uint256 public immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
     uint256 public immutable defaultFeePercentage; // default value for fee percentage

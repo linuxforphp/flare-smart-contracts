@@ -193,7 +193,7 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     it("Should deploy supply with token pools", async() => {
         await createTokenPools([500, 1000], [0, 0], [200, 50]);
-        supply = await Supply.new(governanceAddress, constants.ZERO_ADDRESS, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
+        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 500 - 1000 + 200 + 50);
     });
 

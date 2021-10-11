@@ -228,15 +228,15 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     revealEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[2];
 
     // Set the ftso manager configuration parameters for time travel
-    rewardEpochDurationSeconds = await ftsoManager.rewardEpochDurationSeconds();
-    rewardEpochsStartTs = await ftsoManager.rewardEpochsStartTs();
+    rewardEpochsStartTs = (await ftsoManager.getRewardEpochConfiguration())[0];
+    rewardEpochDurationSeconds = (await ftsoManager.getRewardEpochConfiguration())[1];
 
     // Set up the suicidal mock contract so we can conjure NAT into the daemon by self-destruction
     SuicidalMock = artifacts.require("SuicidalMock");
     suicidalMock = await SuicidalMock.new(flareDaemon.address);
 
     const FtsoRegistry = artifacts.require("FtsoRegistry");
-    registry = await FtsoRegistry.at(await ftsoManager.ftsoRegistry());
+    registry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
 
   });
 
@@ -327,7 +327,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     let firstPriceEpoch: number = -1;
     let firstRewardEpochId: number = -1;
-    const rewardExpiryOffsetSeconds = (await ftsoManager.settings())[6].toNumber();
+    const rewardExpiryOffsetSeconds = (await ftsoManager.getGovernanceParameters())[6].toNumber();
 
     while((await (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds)) {
       let result = await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);

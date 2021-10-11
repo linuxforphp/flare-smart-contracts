@@ -33,7 +33,6 @@ contract MockNpmFtso is IIFtso {
     uint256 internal assetPriceTimestamp;      // time when price was updated    
 
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
-    uint256 internal lastRevealEpochId;
 
     // external contracts
     IPriceSubmitter public priceSubmitter;       // Price submitter contract
@@ -239,7 +238,7 @@ contract MockNpmFtso is IIFtso {
         return (new address[](0), new uint256[](0), 0);
     }
 
-    function averageFinalizePriceEpoch(uint256) external pure override {
+    function fallbackFinalizePriceEpoch(uint256) external pure override {
         require(false, UNAVAILABLE);
     }
 

@@ -91,28 +91,6 @@ export async function distributeRewards(
     await mockFtsoManager.givenMethodReturn(getRewardEpochVotePowerBlock, getRewardEpochVotePowerBlockReturn);
 }
 
-async function runOnePriceEpoch(contracts: DeployedFlareContracts, accounts: string[]) {
-    // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
-    let ftsoWnat = ftsoContractForSymbol(contracts, 'NAT')!.ftso;
-    let firstPriceEpochStartTs = (await ftsoWnat.getPriceEpochConfiguration())[0];
-    let priceEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[1];
-    let revealEpochDurationSeconds = (await ftsoWnat.getPriceEpochConfiguration())[2];
-
-    // Set the ftso manager configuration parameters for time travel
-    let rewardEpochDurationSeconds = await contracts.ftsoManager.rewardEpochDurationSeconds();
-    let rewardEpochsStartTs = await contracts.ftsoManager.rewardEpochsStartTs();
-
-    let wNAT = ftsoContractForSymbol(contracts, 'NAT')!.xAssetToken as WNatInstance;
-    const someNAT = web3.utils.toWei("1", "ether");
-    // mint WNAT
-    let noAccounts = 10;
-    for (let i = 0; i < noAccounts; i++) {
-        await wNAT.deposit({ from: accounts[i], value: someNAT });
-    }
-
-
-}
-
 export async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
     let currentFtsoManagerAddress = await ftsoRewardManager.ftsoManager();
     await ftsoRewardManager.setContractAddresses(mockInflation.address, deployer, wNat.address);

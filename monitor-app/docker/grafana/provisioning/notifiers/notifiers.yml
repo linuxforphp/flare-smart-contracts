@@ -1,0 +1,13 @@
+---
+apiVersion: 2
+
+notifiers:
+  - name: Pagerduty 
+    type: pagerduty
+    uid: notifier1
+    send_reminder: true
+    frequency: 15m
+    settings:
+      autoResolve: true
+    secure_settings:
+      integrationKey: ${SC_PG_INT_KEY}
