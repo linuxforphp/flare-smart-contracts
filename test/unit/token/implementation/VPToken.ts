@@ -87,6 +87,20 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assert.equal(_delegationMode, 1);
   });
 
+  it("Should un-delegate for delegate bips of 0 - not last", async () => {
+    // Assemble
+    await vpToken.delegate(accounts[2], 50, { from: accounts[1] });
+    await vpToken.delegate(accounts[3], 60, { from: accounts[1] });
+    await vpToken.delegate(accounts[2], 0, { from: accounts[1] });
+    // Act
+    const { _delegateAddresses, _bips, _count, _delegationMode } = await vpToken.delegatesOf(accounts[1]) as any;
+    // Assert
+    compareArrays(_delegateAddresses, [accounts[3]])
+    compareNumberArrays(_bips, [60])
+    assert.equal(_count, 1);
+    assert.equal(_delegationMode, 1);
+  });
+
   it("Should return value of delegation", async () => {
     // Assemble
     await vpToken.mint(accounts[1], 100);

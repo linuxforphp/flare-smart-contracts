@@ -98,12 +98,12 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Act
     // delete b, add d, update a, delete d, add c
     await delegation.addReplaceMultipleDelegates([b, d, a, d, c], [0, 100, 3000, 0, 500]);
-    // delete a, add d, update c
-    await delegation.addReplaceMultipleDelegates([a, d, c], [0, 1500, 800]);
+    // delete a, add d, delete c, add b
+    await delegation.addReplaceMultipleDelegates([a, d, c, b], [0, 1500, 0, 800]);
     // Assert
     const { 0: delegates, 1: values } = await delegation.getDelegations();
-    compareArrays(delegates, [c, d]);
-    compareArrays(values.map(x => x.toNumber()), [800, 1500]);
+    compareArrays(delegates, [d, b]);
+    compareArrays(values.map(x => x.toNumber()), [1500, 800]);
   });
 
   it("Should see delegate from the past", async () => {
