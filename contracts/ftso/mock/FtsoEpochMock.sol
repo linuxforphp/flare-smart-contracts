@@ -37,16 +37,6 @@ contract FtsoEpochMock {
 
     FtsoEpoch.State private state;
 
-    constructor(
-        uint256 _firstEpochStartTime,  // start time of the first epoch instance
-        uint256 _submitPeriod,         // duration of price submission for an epoch instance
-        uint256 _revealPeriod)         // duration of price reveal for an epoch instance
-    {
-        state.firstEpochStartTime = _firstEpochStartTime;
-        state.submitPeriod = _submitPeriod;
-        state.revealPeriod = _revealPeriod;
-    }
-
     function setAssetNorm(IIVPToken _asset, uint256 _decimals) public {
         state.assetNorm[_asset] = 10**_decimals;
     }
@@ -175,25 +165,5 @@ contract FtsoEpochMock {
     {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
         return FtsoEpoch._computeWeights(epoch, _weightsNat, _weightsAsset);
-    }
-
-    function getEpochId(uint256 _timestamp) public view returns (uint256) {
-        return state._getEpochId(_timestamp);
-    }
-
-    function epochSubmitStartTime(uint256 _epochId) public view returns (uint256) {
-        return state._epochSubmitStartTime(_epochId);
-    }
-
-    function epochSubmitEndTime(uint256 _epochId) public view returns (uint256) {
-        return state._epochSubmitEndTime(_epochId);
-    }
-
-    function epochRevealEndTime( uint256 _epochId) public view returns (uint256) {
-        return state._epochRevealEndTime(_epochId);
-    }
-
-    function epochRevealInProcess(uint256 _epochId) public view returns (bool) {
-        return state._epochRevealInProcess(_epochId);
     }
 }

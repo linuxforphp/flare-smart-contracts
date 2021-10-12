@@ -54,7 +54,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let ftsoManager: FtsoManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager.address, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
     await ftsoManager.addFtso(ftso.address, { from: governance });
     return ftso;
   }

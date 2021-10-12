@@ -76,6 +76,9 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
+            0, 
+            120, 
+            60,
             0,
             1e10,
             defaultPriceEpochCyclicBufferSize
@@ -683,7 +686,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
         it("Should successfully replace an FTSO and change asset ftso", async () => {
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
-            let multiFtso = await Ftso.new('NAT', mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address, 0, 1e10, defaultPriceEpochCyclicBufferSize);
+            let multiFtso = await Ftso.new('NAT', mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address,
+            startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize);
             await ftsoManager.addFtso(multiFtso.address);
             await ftsoManager.addFtso(mockFtso.address);
             await ftsoManager.setFtsoAssetFtsos(multiFtso.address, [mockFtso.address]);

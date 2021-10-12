@@ -357,7 +357,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Create a FTSO for WNAT
   let ftsoWnat: any;
   if (parameters.deployNATFtso) {
-    ftsoWnat = await Ftso.new(parameters.nativeSymbol, priceSubmitter.address, wnat.address, ftsoManager.address, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
+    ftsoWnat = await Ftso.new(parameters.nativeSymbol, priceSubmitter.address, wnat.address, ftsoManager.address, startTs, parameters.priceEpochDurationSeconds,
+      parameters.revealEpochDurationSeconds, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
     spewNewContractInfo(contracts, `FTSO ${parameters.wrappedNativeSymbol}`, `Ftso.sol`, ftsoWnat.address, quiet);
 
     assetToContracts.set(parameters.nativeSymbol, {
@@ -381,6 +382,9 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
       priceSubmitter.address,
       wnat.address,
       cleanupBlockNumberManager,
+      startTs, 
+      parameters.priceEpochDurationSeconds,
+      parameters.revealEpochDurationSeconds,
       rewrapXassetParams(asset),
       parameters.priceDeviationThresholdBIPS,
       parameters.priceEpochCyclicBufferSize,
@@ -462,6 +466,9 @@ async function deployNewAsset(
   priceSubmitterAddress: string,
   wnatAddress: string,
   cleanupBlockNumberManager: any,
+  startTs: BN,
+  priceEpochDurationSeconds: number,
+  revealEpochDurationSeconds: number,
   xAssetDefinition: AssetDefinition,
   priceDeviationThresholdBIPS: number,
   priceEpochCyclicBufferSize: number,
@@ -482,7 +489,8 @@ async function deployNewAsset(
   const Ftso = artifacts.require("Ftso");
 
   // Register an FTSO for the new Asset
-  const ftso = await Ftso.new(xAssetDefinition.symbol, priceSubmitterAddress, wnatAddress, ftsoManager.address, xAssetDefinition.initialPriceUSDDec5, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
+  const ftso = await Ftso.new(xAssetDefinition.symbol, priceSubmitterAddress, wnatAddress, ftsoManager.address, startTs, priceEpochDurationSeconds,
+    revealEpochDurationSeconds,xAssetDefinition.initialPriceUSDDec5, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
   spewNewContractInfo(contracts, `FTSO ${xAssetDefinition.symbol}`, `Ftso.sol`, ftso.address, quiet);
 
   // Deploy Asset if we are not deploying on real network

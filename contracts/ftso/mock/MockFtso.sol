@@ -30,20 +30,24 @@ contract MockFtso is SimpleMockFtso {
         uint256 _revealPeriod,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
-        uint256 _cyclicBufferSize
+        uint256 _cyclicBufferSize,
+        bool activate
     )
         SimpleMockFtso(
             _symbol,
             _priceSubmitter,
             _wNat,
             _ftsoManager,
+            _startTimestamp,
+            _submitPeriod,
+            _revealPeriod,
             _initialPrice,
             _priceDeviationThresholdBIPS,
             _cyclicBufferSize
         )
     {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol
-        if (_submitPeriod != 0 && _revealPeriod != 0) {
+        if (activate) {
 
             // configureEpochs
             epochs.maxVotePowerNatThresholdFraction = 1;
@@ -55,9 +59,6 @@ contract MockFtso is SimpleMockFtso {
             epochs.trustedAddresses = new address[](0);
 
             // activateFtso
-            epochs.firstEpochStartTime = _startTimestamp;
-            epochs.submitPeriod = _submitPeriod;
-            epochs.revealPeriod = _revealPeriod;
             active = true;
         }
     }
@@ -121,9 +122,9 @@ contract MockFtso is SimpleMockFtso {
             bool _fallbackMode
         )
     {
-        _epochSubmitStartTime = epochs._epochSubmitStartTime(_epochId);
-        _epochSubmitEndTime = epochs._epochSubmitEndTime(_epochId);        
-        _epochRevealEndTime = epochs._epochRevealEndTime(_epochId);
+        _epochSubmitStartTime = _getEpochSubmitStartTime(_epochId);
+        _epochSubmitEndTime = _getEpochSubmitEndTime(_epochId);        
+        _epochRevealEndTime = _getEpochRevealEndTime(_epochId);
         _epochId = _epochId % priceEpochCyclicBufferSize;
         _price = epochs.instance[_epochId].price;
         _numberOfVotes = epochs.instance[_epochId].nextVoteIndex;
@@ -227,5 +228,18 @@ contract MockFtso is SimpleMockFtso {
         result.finalizedTimestamp = block.timestamp;
         result.trustedAddresses = epochs.trustedAddresses;
         result.fallbackMode = epoch.fallbackMode;
+    }
+
+    function getVoteWeightingParameters() external view override 
+        returns (
+            IIVPToken[] memory _assets,
+            uint256[] memory _assetMultipliers,
+            uint256 _totalVotePowerNat,
+            uint256 _totalVotePowerAsset,
+            uint256 _assetWeightRatio,
+            uint256 _votePowerBlock
+        )
+    { 
+        // not needed - to reduce contract size  
     }
 }
