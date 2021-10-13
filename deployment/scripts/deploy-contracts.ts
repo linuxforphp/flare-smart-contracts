@@ -466,7 +466,7 @@ async function deployNewAsset(
   priceSubmitterAddress: string,
   wnatAddress: string,
   cleanupBlockNumberManager: any,
-  startTs: BN,
+  startTs: number,
   priceEpochDurationSeconds: number,
   revealEpochDurationSeconds: number,
   xAssetDefinition: AssetDefinition,
