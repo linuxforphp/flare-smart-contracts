@@ -61,6 +61,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -196,6 +200,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -331,6 +339,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -465,6 +477,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -617,6 +633,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -776,6 +796,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -912,6 +936,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -1040,6 +1068,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -1168,6 +1200,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
@@ -1296,6 +1332,10 @@
         "notifications": [
           {
             "uid": "notifier1"
+          }, 
+
+          {
+            "uid": "notifier2"
           }
         ]
       },
