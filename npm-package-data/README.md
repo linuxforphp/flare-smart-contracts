@@ -120,7 +120,7 @@ To get FTSO index for a `XRP` use `ftsoRegistry.getFtsoIndex("XRP")`. This index
 
 ### [IFtso.sol](contracts/userInterfaces/IFtso.sol)
 
-`FTSO` is the Flare Time Series Oracle. Ftso provides access to specific asset information and price epoch data (submit/reveal perdios len, first epoch start time.
+`FTSO` is the Flare Time Series Oracle. Ftso provides access to specific asset information and price epoch data (submit/reveal periods len, first epoch start timestamp).
 
 *Methods unavailable in mock setting*: `getCurrentPrice`, `getCurrentRandom`. Since no finalization and price calculation is done, calculated prices and randoms are not available. All other methods available in public interface are working.
 

@@ -20,9 +20,6 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
 
     // Do clean unit tests by spinning up a fresh contract for each test
     beforeEach(async () => {
-        // uint256 firstEpochStartTime,
-        // uint256 submitPeriod,
-        // uint256 revealPeriod
         ftsoEpoch = await FtsoEpoch.new();
         mockVpToken = await MockVpToken.new();
         mockVpToken2 = await MockVpToken.new();

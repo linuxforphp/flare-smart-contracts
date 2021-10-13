@@ -25,9 +25,9 @@ contract MockFtso is SimpleMockFtso {
         IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
-        uint256 _startTimestamp,
-        uint256 _submitPeriod,
-        uint256 _revealPeriod,
+        uint256 _firstEpochStartTs,
+        uint256 _submitPeriodSeconds,
+        uint256 _revealPeriodSeconds,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize,
@@ -38,9 +38,9 @@ contract MockFtso is SimpleMockFtso {
             _priceSubmitter,
             _wNat,
             _ftsoManager,
-            _startTimestamp,
-            _submitPeriod,
-            _revealPeriod,
+            _firstEpochStartTs,
+            _submitPeriodSeconds,
+            _revealPeriodSeconds,
             _initialPrice,
             _priceDeviationThresholdBIPS,
             _cyclicBufferSize
@@ -240,6 +240,6 @@ contract MockFtso is SimpleMockFtso {
             uint256 _votePowerBlock
         )
     { 
-        // not needed - to reduce contract size  
+        // not needed in mock - removed to reduce contract size  
     }
 }

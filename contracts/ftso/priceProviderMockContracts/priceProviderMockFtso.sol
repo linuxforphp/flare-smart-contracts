@@ -39,10 +39,9 @@ contract MockNpmFtso is IIFtso {
     IIVPToken[] public assets;                   // array of assets
     IIFtso[] public assetFtsos;                  // FTSOs for assets (for a multi-asset FTSO)
 
-    // Info normally stored in epoch
-    uint256 internal firstEpochStartTime;
-    uint256 internal submitPeriod;
-    uint256 internal revealPeriod;
+    uint256 internal firstEpochStartTs;
+    uint256 internal submitPeriodSeconds;
+    uint256 internal revealPeriodSeconds;
 
     mapping(uint256 => uint256) internal random;
     mapping(uint256 => mapping (address => uint256)) internal revealedPrices;
@@ -57,17 +56,17 @@ contract MockNpmFtso is IIFtso {
     constructor(
         string memory _symbol,
         IPriceSubmitter _priceSubmitter,
-        uint256 _firstEpochStartTime,
-        uint256 _submitPeriod,
-        uint256 _revealPeriod)
+        uint256 _firstEpochStartTs,
+        uint256 _submitPeriodSeconds,
+        uint256 _revealPeriodSeconds)
     {
         symbol = _symbol;
         assetPriceTimestamp = block.timestamp;
         active = true;
         priceSubmitter = _priceSubmitter;
-        firstEpochStartTime = _firstEpochStartTime;
-        submitPeriod = _submitPeriod;
-        revealPeriod = _revealPeriod;
+        firstEpochStartTs = _firstEpochStartTs;
+        submitPeriodSeconds = _submitPeriodSeconds;
+        revealPeriodSeconds = _revealPeriodSeconds;
     }
 
     // This methods should only be used by price submitter
@@ -111,8 +110,8 @@ contract MockNpmFtso is IIFtso {
     {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
         // Check if reveal is in progress
-        uint256 revealStartTime = firstEpochStartTime + (_epochId + 1) * submitPeriod; 
-        require(revealStartTime <= block.timestamp && block.timestamp < revealStartTime + revealPeriod, 
+        uint256 revealStartTime = firstEpochStartTs + (_epochId + 1) * submitPeriodSeconds; 
+        require(revealStartTime <= block.timestamp && block.timestamp < revealStartTime + revealPeriodSeconds, 
                 ERR_PRICE_REVEAL_FAILURE);
         require(epochVoterHash[_epochId][_voter] == keccak256(abi.encode(_price, _random, _voter)), 
                 ERR_PRICE_INVALID);
@@ -165,8 +164,8 @@ contract MockNpmFtso is IIFtso {
         )
     {
         _epochId = _getCurrentEpochId();
-        _epochSubmitEndTime = firstEpochStartTime + (_epochId + 1) * submitPeriod;
-        _epochRevealEndTime = _epochSubmitEndTime + revealPeriod;
+        _epochSubmitEndTime = firstEpochStartTs + (_epochId + 1) * submitPeriodSeconds;
+        _epochRevealEndTime = _epochSubmitEndTime + revealPeriodSeconds;
 
         _votePowerBlock = 0;
         _fallbackMode = false;
@@ -174,21 +173,21 @@ contract MockNpmFtso is IIFtso {
 
     /**
      * @notice Returns current epoch data
-     * @return _firstEpochStartTime         First epoch start time
-     * @return _submitPeriod                Submit period in seconds
-     * @return _revealPeriod                Reveal period in seconds
+     * @return _firstEpochStartTs           First epoch start timestamp
+     * @return _submitPeriodSeconds         Submit period in seconds
+     * @return _revealPeriodSeconds         Reveal period in seconds
      */
     function getPriceEpochConfiguration() external view override 
         returns (
-            uint256 _firstEpochStartTime,
-            uint256 _submitPeriod,
-            uint256 _revealPeriod
+            uint256 _firstEpochStartTs,
+            uint256 _submitPeriodSeconds,
+            uint256 _revealPeriodSeconds
         )
     {
         return (
-            firstEpochStartTime, 
-            submitPeriod,
-            revealPeriod
+            firstEpochStartTs, 
+            submitPeriodSeconds,
+            revealPeriodSeconds
         );
     }
 
@@ -216,10 +215,10 @@ contract MockNpmFtso is IIFtso {
      * @dev Should never revert
      */
     function _getEpochId(uint256 _timestamp) internal view returns (uint256) {
-        if (_timestamp < firstEpochStartTime) {
+        if (_timestamp < firstEpochStartTs) {
             return 0;
         } else {
-            return (_timestamp - firstEpochStartTime) / submitPeriod;
+            return (_timestamp - firstEpochStartTs) / submitPeriodSeconds;
         }
 
     }

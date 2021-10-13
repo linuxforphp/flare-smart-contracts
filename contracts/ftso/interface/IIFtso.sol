@@ -30,8 +30,8 @@ interface IIFtso is IFtso, IFtsoGenesis {
     // before this is done, FTSO can't run
     function activateFtso(
         uint256 _firstEpochStartTs,
-        uint256 _epochPeriod,
-        uint256 _revealPeriod
+        uint256 _submitPeriodSeconds,
+        uint256 _revealPeriodSeconds
     ) external;
 
     function deactivateFtso() external;
