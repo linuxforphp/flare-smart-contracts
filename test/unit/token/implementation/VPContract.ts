@@ -5,7 +5,7 @@ import {constants, expectRevert, time} from '@openzeppelin/test-helpers';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const VPToken = artifacts.require("VPTokenMock");
-const VPContract = artifacts.require("VPContract");
+const VPContract = artifacts.require("VPContractMock");
 
 contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, async accounts => {
   it("Should not create VPContract without owner", async () => {
@@ -69,5 +69,33 @@ contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, as
     // there should be no revert
     await vpContract.setCleanupBlockNumber(1);
     await vpContract.setCleanerContract(accounts[3]);
+  });
+  
+  it("Should check if replacement set (trivial case)", async() => {
+    // Assemble
+    const vpToken = await VPToken.new(accounts[0], "A token", "ATOK");
+    const vpContract = await VPContract.new(vpToken.address, false);
+    // Act
+    const blk = await time.latestBlock();
+    // Assert
+    const repl = await vpContract.votePowerInitializedAt(accounts[1], blk);
+    assert.isTrue(repl);
+  });
+
+  it("Should check if replacement set (nontrivial case)", async () => {
+    // Assemble
+    const vpToken = await VPToken.new(accounts[0], "A token", "ATOK");
+    const vpContract = await VPContract.new(vpToken.address, true);
+    await vpToken.setWriteVpContract(vpContract.address);
+    await vpToken.setReadVpContract(vpContract.address);
+    // Act
+    const blk1 = await time.latestBlock();
+    await vpToken.mint(accounts[1], 1000);
+    const blk2 = await time.latestBlock();
+    // Assert
+    const repl1 = await vpContract.votePowerInitializedAt(accounts[1], blk1);
+    assert.equal(repl1, false);
+    const repl2 = await vpContract.votePowerInitializedAt(accounts[1], blk2);
+    assert.equal(repl2, true);
   });
 });
