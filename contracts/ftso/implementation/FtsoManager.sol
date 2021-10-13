@@ -648,11 +648,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         uint256 numFtsos = ftsos.length;
 
         uint256 lastRandom = block.timestamp;
-        // Are there any FTSOs to process?
-        if (numFtsos > 0) {
-            for (uint256 i = 0; i < numFtsos; ++i) {
-                lastRandom += ftsos[i].getCurrentRandom();
-            }
+        for (uint256 i = 0; i < numFtsos; ++i) {
+            lastRandom += ftsos[i].getCurrentRandom();
         }
 
         lastRandom = uint256(keccak256(abi.encode(lastRandom)));

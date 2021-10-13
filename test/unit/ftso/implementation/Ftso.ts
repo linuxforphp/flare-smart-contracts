@@ -253,16 +253,16 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         });
     
         it("Should return correct epoch submit start time", async () => {
-            const endTime = await ftso.epochSubmitStartTime(0);
-            expect(endTime.toNumber()).to.equals(5);
-            const endTime1 = await ftso.epochSubmitStartTime(1);
-            expect(endTime1.toNumber()).to.equals(125);
-            const endTime2 = await ftso.epochSubmitStartTime(2);
-            expect(endTime2.toNumber()).to.equals(245);
-            const endTime3 = await ftso.epochSubmitStartTime(10);
-            expect(endTime3.toNumber()).to.equals(1205);
-            const endTime4 = await ftso.epochSubmitStartTime(500);
-            expect(endTime4.toNumber()).to.equals(60005);
+            const startTime = await ftso.epochSubmitStartTime(0);
+            expect(startTime.toNumber()).to.equals(5);
+            const startTime1 = await ftso.epochSubmitStartTime(1);
+            expect(startTime1.toNumber()).to.equals(125);
+            const startTime2 = await ftso.epochSubmitStartTime(2);
+            expect(startTime2.toNumber()).to.equals(245);
+            const startTime3 = await ftso.epochSubmitStartTime(10);
+            expect(startTime3.toNumber()).to.equals(1205);
+            const startTime4 = await ftso.epochSubmitStartTime(500);
+            expect(startTime4.toNumber()).to.equals(60005);
         });
     
         it("Should return correct epoch submit end time", async () => {
