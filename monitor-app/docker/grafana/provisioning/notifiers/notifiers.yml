@@ -11,3 +11,17 @@ notifiers:
       autoResolve: true
     secure_settings:
       integrationKey: ${SC_PG_INT_KEY}
+
+  - name: Slack
+    type: slack
+    uid: notifier2
+    org_name: Main Org.
+    send_reminder: true
+    settings: 
+      recipient: ${SC_SLACK_CHANNEL}
+    secure_settings: 
+      token: ${SC_SLACK_TOKEN}
+      url: ${SC_SLACK_CHANNEL_WEBHOOK}
+    
+
+    
