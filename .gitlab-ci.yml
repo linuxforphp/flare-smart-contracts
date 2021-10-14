@@ -9,6 +9,7 @@ variables:
     TEST_INTEGRATION: "test_integration_hh"
     TEST_PERFORMANCE: "test_performance_hh"
     TEST_END_TO_END: "test_endtoend_hardhat"
+    TEST_TOP_UP_ENE: "test_claim_topup_hardhat_fast"
     DEPLOYER_PRIVATE_KEY: "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122"
     GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
     GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
@@ -145,6 +146,13 @@ test-contract-end-to-end:
     script:
         - yarn c
         - yarn $TEST_END_TO_END
+
+test-contract-end-to-end_2:
+    stage: test
+    <<: *yarn-setup
+    script:
+        - yarn c
+        - yarn $TEST_TOP_UP_ENE
 
 slither-check:
     stage: test
