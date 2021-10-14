@@ -84,8 +84,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
     bool internal lastUnprocessedPriceEpochInitialized;
 
     // reward Epoch data
-    uint256 internal immutable firstRewardEpochsStartTs;
-    uint256 internal immutable rewardEpochDurationSeconds;
+    uint256 internal immutable firstRewardEpochStartTs;
+    uint256 internal rewardEpochDurationSeconds;
     uint256 internal votePowerIntervalFraction;
     uint256 public currentRewardEpochEnds;
     uint256 internal nextRewardEpochToExpire;
@@ -111,7 +111,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         uint256 _firstPriceEpochStartTs,
         uint256 _priceEpochDurationSeconds,
         uint256 _revealEpochDurationSeconds,
-        uint256 _firstRewardEpochsStartTs,
+        uint256 _firstRewardEpochStartTs,
         uint256 _rewardEpochDurationSeconds,
         uint256 _votePowerIntervalFraction
     ) 
@@ -124,25 +124,24 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
 
         require(_revealEpochDurationSeconds < _priceEpochDurationSeconds, ERR_REVEAL_PRICE_EPOCH_TOO_LONG);
-        require(_firstPriceEpochStartTs + _revealEpochDurationSeconds <= _firstRewardEpochsStartTs, 
+        require(_firstPriceEpochStartTs + _revealEpochDurationSeconds <= _firstRewardEpochStartTs, 
             ERR_REWARD_EPOCH_START_TOO_SOON);
-        require((_firstRewardEpochsStartTs - _revealEpochDurationSeconds - _firstPriceEpochStartTs) %
+        require((_firstRewardEpochStartTs - _revealEpochDurationSeconds - _firstPriceEpochStartTs) %
             _priceEpochDurationSeconds == 0, ERR_REWARD_EPOCH_START_CONDITION_INVALID);
         require(_rewardEpochDurationSeconds % _priceEpochDurationSeconds == 0,
             ERR_REWARD_EPOCH_DURATION_CONDITION_INVALID);
 
         // reward epoch
-        firstRewardEpochsStartTs = _firstRewardEpochsStartTs;
+        firstRewardEpochStartTs = _firstRewardEpochStartTs;
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
         votePowerIntervalFraction = _votePowerIntervalFraction;
-        currentRewardEpochEnds = _firstRewardEpochsStartTs + _rewardEpochDurationSeconds;
 
         // price epoch
         firstPriceEpochStartTs = _firstPriceEpochStartTs;
         priceEpochDurationSeconds = _priceEpochDurationSeconds;
         revealEpochDurationSeconds = _revealEpochDurationSeconds;
-        lastUnprocessedPriceEpochRevealEnds = _firstRewardEpochsStartTs;
-        lastUnprocessedPriceEpoch = (_firstRewardEpochsStartTs - _firstPriceEpochStartTs) / _priceEpochDurationSeconds;
+        lastUnprocessedPriceEpochRevealEnds = _firstRewardEpochStartTs;
+        lastUnprocessedPriceEpoch = (_firstRewardEpochStartTs - _firstPriceEpochStartTs) / _priceEpochDurationSeconds;
 
         priceSubmitter = _priceSubmitter;
     }
@@ -390,6 +389,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         );
     }
 
+    function setRewardEpochDurationSeconds(uint256 _rewardEpochDurationSeconds) external onlyGovernance {
+        require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
+        require(_rewardEpochDurationSeconds % priceEpochDurationSeconds == 0,
+            ERR_REWARD_EPOCH_DURATION_CONDITION_INVALID);
+        rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
+    }
+
     function setVotePowerIntervalFraction(uint256 _votePowerIntervalFraction) external onlyGovernance {
         require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
         votePowerIntervalFraction = _votePowerIntervalFraction;
@@ -480,7 +486,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             uint256 _rewardEpochDurationSeconds
         )
     {
-        return (firstRewardEpochsStartTs, rewardEpochDurationSeconds);
+        return (firstRewardEpochStartTs, rewardEpochDurationSeconds);
     }
 
     function getFallbackMode() external view override
@@ -614,7 +620,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
      */
     function _initializeFirstRewardEpoch() internal {
 
-        if (block.timestamp >= currentRewardEpochEnds - rewardEpochDurationSeconds) {
+        if (block.timestamp >= firstRewardEpochStartTs) {
             IIFtso[] memory ftsos = _getFtsos();
             uint256 numFtsos = ftsos.length;
             // Prime the reward epoch array with a new reward epoch
@@ -629,6 +635,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
             for (uint256 i = 0; i < numFtsos; ++i) {
                 ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
+            
+            currentRewardEpochEnds = firstRewardEpochStartTs + rewardEpochDurationSeconds;
         }
     }
 
@@ -640,11 +648,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, IFlareDaemoni
         uint256 numFtsos = ftsos.length;
 
         uint256 lastRandom = block.timestamp;
-        // Are there any FTSOs to process?
-        if (numFtsos > 0) {
-            for (uint256 i = 0; i < numFtsos; ++i) {
-                lastRandom += ftsos[i].getCurrentRandom();
-            }
+        for (uint256 i = 0; i < numFtsos; ++i) {
+            lastRandom += ftsos[i].getCurrentRandom();
         }
 
         lastRandom = uint256(keccak256(abi.encode(lastRandom)));

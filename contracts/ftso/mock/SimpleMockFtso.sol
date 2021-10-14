@@ -12,6 +12,9 @@ contract SimpleMockFtso is Ftso {
         IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
+        uint256 _firstEpochStartTs,
+        uint256 _submitPeriodSeconds,
+        uint256 _revealPeriodSeconds,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize
@@ -21,6 +24,9 @@ contract SimpleMockFtso is Ftso {
             _priceSubmitter,
             _wNat,
             _ftsoManager,
+            _firstEpochStartTs,
+            _submitPeriodSeconds,
+            _revealPeriodSeconds,
             _initialPrice,
             _priceDeviationThresholdBIPS,
             _cyclicBufferSize
@@ -102,6 +108,22 @@ contract SimpleMockFtso is Ftso {
             weightsAsset[i] = vote.weightAsset;
         }
         return FtsoEpoch._computeWeights(epoch, weightsNat, weightsAsset);
+    }
+    
+    function epochSubmitStartTime(uint256 _epochId) public view returns (uint256) {
+        return _getEpochSubmitStartTime(_epochId);
+    }
+
+    function epochSubmitEndTime(uint256 _epochId) public view returns (uint256) {
+        return _getEpochSubmitEndTime(_epochId);
+    }
+
+    function epochRevealEndTime( uint256 _epochId) public view returns (uint256) {
+        return _getEpochRevealEndTime(_epochId);
+    }
+
+    function epochRevealInProcess(uint256 _epochId) public view returns (bool) {
+        return _isEpochRevealInProcess(_epochId);
     }
 
     function _getLastRevealEpochId() internal view returns (uint256) {

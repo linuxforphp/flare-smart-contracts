@@ -53,6 +53,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             0,
+            120,
+            60,
+            0,
             1e10,
             defaultPriceEpochCyclicBufferSize
         );

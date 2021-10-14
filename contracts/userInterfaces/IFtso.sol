@@ -97,14 +97,14 @@ interface IFtso {
 
     /**
      * @notice Returns current epoch data
-     * @return _firstEpochStartTime         First epoch start time
-     * @return _submitPeriod                Submit period in seconds
-     * @return _revealPeriod                Reveal period in seconds
+     * @return _firstEpochStartTs           First epoch start timestamp
+     * @return _submitPeriodSeconds         Submit period in seconds
+     * @return _revealPeriodSeconds         Reveal period in seconds
      */
     function getPriceEpochConfiguration() external view returns (
-        uint256 _firstEpochStartTime,
-        uint256 _submitPeriod,
-        uint256 _revealPeriod
+        uint256 _firstEpochStartTs,
+        uint256 _submitPeriodSeconds,
+        uint256 _revealPeriodSeconds
     );
     
     /**

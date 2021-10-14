@@ -63,7 +63,8 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
                 1, //uint256 _initialPrice
                 1e10,
-                defaultPriceEpochCyclicBufferSize
+                defaultPriceEpochCyclicBufferSize,
+                true
             )
             await ftso.connect(signers[0]).setAsset(assetToken.address);
 

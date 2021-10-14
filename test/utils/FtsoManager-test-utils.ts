@@ -56,24 +56,30 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
     let natToken = await MockVPToken.new(accounts.slice(0, 10), []) as MockVPTokenInstance;
     let xasset1Token = await MockVPToken.new(accounts.slice(0, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) as MockVPTokenInstance;
     let xasset2Token = await MockVPToken.new(accounts.slice(0, 10), [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]) as MockVPTokenInstance;
+
+    const {0: startTimestamp, 1: epochPeriod, 2: revealPeriod} = await ftsoManager.getPriceEpochConfiguration();
     
     let ftso1 = await Ftso.new(
         "FA1", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
-        0, // uint256 _startTimestamp // do not init/activate
-        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        startTimestamp,
+        epochPeriod, 
+        revealPeriod,
         0, //uint256 _initialPrice
         1e10,
-        defaultPriceEpochCyclicBufferSize
+        defaultPriceEpochCyclicBufferSize,
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
 
     let ftso2 = await Ftso.new(
         "FA2", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
-        0, // uint256 _startTimestamp // do not init/activate
-        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        startTimestamp,
+        epochPeriod, 
+        revealPeriod,
         0, //uint256 _initialPrice
         1e10,
-        defaultPriceEpochCyclicBufferSize
+        defaultPriceEpochCyclicBufferSize,
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
@@ -95,14 +101,18 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     let xasset2Token = await MockVPToken.new(accounts.slice(0, 10), [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]) as MockVPTokenInstance;
     let xasset3Token = await MockVPToken.new(accounts.slice(0, 10), [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]) as MockVPTokenInstance;
     let xasset4Token = await MockVPToken.new(accounts.slice(0, 10), [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]) as MockVPTokenInstance;
+
+    const {0: startTimestamp, 1: epochPeriod, 2: revealPeriod} = await ftsoManager.getPriceEpochConfiguration();
     
     let ftso1 = await Ftso.new(
         natContract ? "NAT" : "FA1", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
-        0, // uint256 _startTimestamp // do not init/activate
-        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        startTimestamp,
+        epochPeriod, 
+        revealPeriod,
         0, //uint256 _initialPrice
         1e10,
-        defaultPriceEpochCyclicBufferSize
+        defaultPriceEpochCyclicBufferSize,
+        false // do not init/activate
     ) as MockFtsoInstance;
     if (!natContract) {
         await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
@@ -110,31 +120,37 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
 
     let ftso2 = await Ftso.new(
         "FA2", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
-        0, // uint256 _startTimestamp // do not init/activate
-        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        startTimestamp,
+        epochPeriod, 
+        revealPeriod,
         0, //uint256 _initialPrice
         1e10,
-        defaultPriceEpochCyclicBufferSize
+        defaultPriceEpochCyclicBufferSize,
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
     let ftso3 = await Ftso.new(
         "FA3", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
-        0, // uint256 _startTimestamp // do not init/activate
-        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        startTimestamp,
+        epochPeriod, 
+        revealPeriod,
         0, //uint256 _initialPrice
         1e10,
-        defaultPriceEpochCyclicBufferSize
+        defaultPriceEpochCyclicBufferSize,
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso3.address, xasset3Token.address);
 
     let ftso4 = await Ftso.new(
         "FA4", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
-        0, // uint256 _startTimestamp // do not init/activate
-        0, 0, //uint256 _epochPeriod, uint256 _revealPeriod // do not init/activate
+        startTimestamp,
+        epochPeriod, 
+        revealPeriod,
         0, //uint256 _initialPrice
         1e10,
-        defaultPriceEpochCyclicBufferSize
+        defaultPriceEpochCyclicBufferSize,
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso4.address, xasset4Token.address);
 

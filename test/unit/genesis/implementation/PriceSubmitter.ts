@@ -72,6 +72,9 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                     priceSubmitter.address,
                     mockWnat.address,
                     accounts[10],
+                    0,
+                    120,
+                    60,
                     1, // initial token price 0.00001$
                     1e10,
                     defaultPriceEpochCyclicBufferSize

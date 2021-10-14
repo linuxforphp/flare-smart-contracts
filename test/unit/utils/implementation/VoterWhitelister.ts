@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { FtsoRegistryInstance, MockContractInstance, MockFtsoInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { FtsoRegistryInstance, MockContractInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
 import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
@@ -7,7 +7,7 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
 const WNat = artifacts.require("WNat");
 const VPToken = artifacts.require("VPTokenMock");
-const Ftso = artifacts.require("MockFtso");
+const Ftso = artifacts.require("SimpleMockFtso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const Supply = artifacts.require("Supply");
 const MockContract = artifacts.require("MockContract");
@@ -44,14 +44,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     let priceSubmitter: MockContractInstance;
 
     let wNat: WNatInstance;
-    let natFtso: MockFtsoInstance;
+    let natFtso: SimpleMockFtsoInstance;
 
     let ftsoRegistry: FtsoRegistryInstance;
 
     let vpBlockNumber: number;
 
     async function createFtso(symbol: string, initialPriceUSDDec5: BN) {
-        const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager, 0, 0, 0, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager, 0, 120, 60, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });
@@ -78,8 +78,8 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         let fxrp: VPTokenMockInstance;
         let fbtc: VPTokenMockInstance;
 
-        let xrpFtso: MockFtsoInstance;
-        let btcFtso: MockFtsoInstance;
+        let xrpFtso: SimpleMockFtsoInstance;
+        let btcFtso: SimpleMockFtsoInstance;
 
         beforeEach(async () => {
             priceSubmitter = await MockContract.new();
@@ -128,7 +128,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             assert.equal(assetWeightRatio, '5000');
         });
 
-        async function calculateCorrectVotePowers(ftso: MockFtsoInstance) {
+        async function calculateCorrectVotePowers(ftso: SimpleMockFtsoInstance) {
             // Assemble
             for (let i = 1; i < 10; i++) {
                 await wNat.deposit({ from: accounts[i], value: eth(100 * Math.random()) });
@@ -205,7 +205,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -224,7 +224,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -243,14 +243,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -274,7 +274,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -300,7 +300,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -324,7 +324,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -552,7 +552,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (let i = 0; i < 3; ++i) {
                 try {
                     await whitelist.requestWhitelistingVoter(voters[i], ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -565,7 +565,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (let i = 0; i < 5; ++i) {
                 try {
                     await whitelist.requestWhitelistingVoter(voters[i], ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -700,7 +700,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         ]
 
         let assets: VPTokenMockInstance[];
-        let ftsos: MockFtsoInstance[];
+        let ftsos: SimpleMockFtsoInstance[];
 
         beforeEach(async () => {
             priceSubmitter = await MockContract.new();
@@ -753,7 +753,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
@@ -845,7 +845,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             for (const voter of voters) {
                 try {
                     await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
-                } catch (error) {
+                } catch (error: any) {
                     expect(error.message).to.contain(WHITELISTING_ERROR);
                 }
             }
