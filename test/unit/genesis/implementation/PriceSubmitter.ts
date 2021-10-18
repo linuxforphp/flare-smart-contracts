@@ -16,7 +16,10 @@ const VoterWhitelister = artifacts.require("VoterWhitelister") as VoterWhitelist
 const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
 const ERR_FTSO_MANAGER_ONLY = "FTSOManager only";
+const ERR_WHITELISTER_ONLY = "Voter whitelister only"
 const ERR_NOT_WHITELISTED = "Not whitelisted";
+const ERR_ONLY_GOVERNANCE = "only governance";
+const ERR_ARRAY_LENGTHS = "Array lengths do not match";
 
 // contains a fresh contract for each test 
 let wnatInterface: WNatInstance;
@@ -116,6 +119,20 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             compareArrays([], await priceSubmitter.getTrustedAddresses());
             await priceSubmitter.setTrustedAddresses(addresses, {from: FTSO_MANAGER_ADDRESS});
             compareArrays(addresses, await priceSubmitter.getTrustedAddresses());
+        });
+
+        it("Should add to whitelist only if VoterWhitelister", async () => {
+
+            let tx = priceSubmitter.voterWhitelisted(accounts[0], 0);
+            
+            await expectRevert(tx, ERR_WHITELISTER_ONLY);
+        });
+
+        it("Should add to whitelist only if VoterWhitelister", async () => {
+
+            let tx = priceSubmitter.votersRemovedFromWhitelist([accounts[0]], 0);
+            
+            await expectRevert(tx, ERR_WHITELISTER_ONLY);
         });
 
         it("Should correctly set individual part of mask and fire events", async () => {
@@ -343,7 +360,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash1 = submitPriceHash(500, 123, accounts[6]);
             let hash2 = submitPriceHash(200, 124, accounts[6]);
             let hash3 = submitPriceHash(300, 125, accounts[6]);
-            let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
             let tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
@@ -383,7 +399,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let hash1 = submitPriceHash(500, 123, accounts[6]);
             let hash2 = submitPriceHash(200, 124, accounts[6]);
             let hash3 = submitPriceHash(300, 125, accounts[6]);
-            let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
             let hashes = [hash1, hash2, hash3];
             await setGetFtsosMock([0, 1, 2]);
             let tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[6]});
@@ -599,9 +614,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
         it("Should revert reveal if not whitelisted", async () => {
             let prices = [500, 200, 300];
-            let pricesBN = prices.map(x => toBN(x));
             let randoms = [123, 124, 125];
-            let randomsBN = randoms.map(x => toBN(x));
             let addresses = [ftsos[1].address, ftsos[0].address, ftsos[2].address];
             let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
             
@@ -688,5 +701,100 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             assert.isUndefined(f0e2);
             assert.isUndefined(f1e2);
         });
+
+        it("Should revert on wrong argument len: hashes submit", async () => {
+            let prices = [500, 200, 300];
+            let randoms = [123, 124, 125];
+            let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
+            
+            await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
+            
+            await setGetFtsosMock([0, 1, 2]);
+            let tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2, 3], hashes, {from: accounts[1]});
+            await expectRevert(tx, ERR_ARRAY_LENGTHS);
+
+            tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes.concat(hashes), {from: accounts[1]});
+            await expectRevert(tx, ERR_ARRAY_LENGTHS);
+
+            let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
+            tx = priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[1]});
+            expectEvent(await tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
+        });
+
+        it("Should revert on wrong argument len: reveal", async () => {
+            let prices = [500, 200, 300];
+            let pricesBN = prices.map(x => toBN(x));
+            let randoms = [123, 124, 125];
+            let randomsBN = randoms.map(x => toBN(x));
+            let addresses = [ftsos[0].address, ftsos[1].address, ftsos[2].address];
+            let hashes = [submitPriceHash(prices[0], randoms[0], accounts[1]), submitPriceHash(prices[1], randoms[1], accounts[1]), submitPriceHash(prices[2], randoms[2], accounts[1])];
+            
+            await voterWhitelister.requestFullVoterWhitelisting(accounts[1]);
+            
+            await setGetFtsosMock([0, 1, 2]);
+            let tx = await priceSubmitter.submitPriceHashes(epochId, [0, 1, 2], hashes, {from: accounts[1]});
+            expectEvent(tx, "PriceHashesSubmitted", {submitter: accounts[1], epochId: toBN(epochId), ftsos: addresses, hashes: hashes});
+            await ftsos[0].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[1].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+            await ftsos[2].initializeCurrentEpochStateForReveal(10000, false, {from: accounts[10]});
+
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            // Wrong ftso id len
+            let tx2 = priceSubmitter.revealPrices(epochId, [0, 1, 2, 3], prices, randoms, {from: accounts[1]});
+            await expectRevert(tx2, ERR_ARRAY_LENGTHS);
+            // Wrong randoms len
+            tx2 = priceSubmitter.revealPrices(epochId, [0, 1, 2], prices, randoms.concat(randoms), {from: accounts[1]});
+            await expectRevert(tx2, ERR_ARRAY_LENGTHS);
+            // Wrong prices len
+            tx2 = priceSubmitter.revealPrices(epochId, [0, 1, 2], prices.concat(prices), randoms, {from: accounts[1]});
+            await expectRevert(tx2, ERR_ARRAY_LENGTHS);
+            
+            // This should go through
+            tx2 = priceSubmitter.revealPrices(epochId, [0, 1, 2], prices, randoms, {from: accounts[1]});
+            expectEvent(await tx2, "PricesRevealed", {voter: accounts[1], epochId: toBN(epochId), ftsos: addresses, prices: pricesBN, randoms: randomsBN});
+            
+            let ftso0Event = lastOf(await ftsos[0].getPastEvents("PriceRevealed"));
+            let ftso1Event = lastOf(await ftsos[1].getPastEvents("PriceRevealed"));
+            let ftso2Event = lastOf(await ftsos[2].getPastEvents("PriceRevealed"));
+            expect(ftso0Event.args.voter).to.equals(accounts[1]);
+            expect(ftso0Event.args.epochId.toNumber()).to.equals(epochId);
+            expect(ftso0Event.args.price.toNumber()).to.equals(prices[0]);
+            expect(ftso0Event.args.random.toNumber()).to.equals(randoms[0]);
+            expect(ftso1Event.args.voter).to.equals(accounts[1]);
+            expect(ftso1Event.args.epochId.toNumber()).to.equals(epochId);
+            expect(ftso1Event.args.price.toNumber()).to.equals(prices[1]);
+            expect(ftso1Event.args.random.toNumber()).to.equals(randoms[1]);
+            expect(ftso2Event.args.voter).to.equals(accounts[1]);
+            expect(ftso2Event.args.epochId.toNumber()).to.equals(epochId);
+            expect(ftso2Event.args.price.toNumber()).to.equals(prices[2]);
+            expect(ftso2Event.args.random.toNumber()).to.equals(randoms[2]);
+        });
+
+        it("Should not set addresses if not governance", async() => {
+            let tx = priceSubmitter.setContractAddresses(mockFtsoRegistry.address, voterWhitelister.address, FTSO_MANAGER_ADDRESS, { from: accounts[10] });
+
+            await expectRevert(tx, ERR_ONLY_GOVERNANCE);
+        });
+
+        it("Should set contract addresses", async ()=> {
+            await priceSubmitter.setContractAddresses(mockFtsoRegistry.address, voterWhitelister.address, FTSO_MANAGER_ADDRESS, { from: GOVERNANCE_GENESIS_ADDRESS });
+            
+            assert.equal(
+                mockFtsoRegistry.address, 
+                await priceSubmitter.getFtsoRegistry()
+            )
+
+            assert.equal(
+                voterWhitelister.address, 
+                await priceSubmitter.getVoterWhitelister()
+            )
+
+            assert.equal(
+                FTSO_MANAGER_ADDRESS, 
+                await priceSubmitter.getFtsoManager()
+            )
+
+        });
+
     });
 });
