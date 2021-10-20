@@ -1,7 +1,8 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetTokenInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { Contracts } from "../../../deployment/scripts/Contracts";
+import { AssetTokenInstance, CleanupBlockNumberManagerInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
-import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { encodeContractNames, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -13,6 +14,7 @@ const Supply = artifacts.require("Supply");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const AssetToken = artifacts.require("AssetToken");
 const FtsoManager = artifacts.require("FtsoManager");
+const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 
 function toBNFixed(x: number, decimals: number) {
   const prec = Math.min(decimals, 6);
@@ -52,9 +54,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let epochId: number;
   let ftsoRewardManager: FtsoRewardManagerInstance;
   let ftsoManager: FtsoManagerInstance;
+  let cleanupBlockNumberManager: CleanupBlockNumberManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
     await ftsoManager.addFtso(ftso.address, { from: governance });
     return ftso;
   }
@@ -246,13 +249,19 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       // create whitelister
       whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 100);
 
+      cleanupBlockNumberManager = await CleanupBlockNumberManager.new(governance);
+
       // create ftso manager
       startTs = await time.latest();
       rewardStartTs = startTs.addn(2 * epochDurationSec + revealDurationSec);
+
+      const ADDRESS_UPDATER = accounts[16];
       ftsoManager = await FtsoManager.new(
         governance,
         flareDaemon,
+        ADDRESS_UPDATER,
         priceSubmitter.address,
+        constants.ZERO_ADDRESS,
         startTs,
         epochDurationSec,
         revealDurationSec,
@@ -261,8 +270,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
         7
       );
 
-      await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address,
-        whitelist.address, supplyInterface.address, constants.ZERO_ADDRESS, { from: governance });
+      await ftsoManager.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, ftsoRewardManager.address, ftsoRegistry.address, whitelist.address, supplyInterface.address, cleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
+    
 
       trustedVoters = accounts.slice(1, 6);
       await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });

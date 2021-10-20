@@ -35,6 +35,7 @@ export async function claimGovernance(
   }
   
   // Contract definitions
+  const AddressUpdater = artifacts.require("AddressUpdater");
   const InflationAllocation = artifacts.require("InflationAllocation");
   const FlareDaemon = artifacts.require("FlareDaemon");
   const FtsoManager = artifacts.require("FtsoManager");
@@ -50,6 +51,7 @@ export async function claimGovernance(
   const WNat = artifacts.require("WNat");
 
   // Get deployed contracts
+  const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
   const supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
   const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
   const inflationAllocation = await InflationAllocation.at(contracts.getContractAddress(Contracts.INFLATION_ALLOCATION));
@@ -63,6 +65,7 @@ export async function claimGovernance(
   const wNat = await FtsoRegistry.at(contracts.getContractAddress(Contracts.WNAT));
 
   // Claim
+  await addressUpdater.claimGovernance({from: claimantAccount.address});
   await supply.claimGovernance({from: claimantAccount.address});
   await inflation.claimGovernance({from: claimantAccount.address});
   await inflationAllocation.claimGovernance({from: claimantAccount.address});

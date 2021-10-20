@@ -72,6 +72,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             for (let i = 0; i < 3; i++) {
                 let ftso = await Ftso.new(
                     `ATOK${i}`,
+                    5,
                     priceSubmitter.address,
                     mockWnat.address,
                     accounts[10],

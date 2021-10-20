@@ -13,6 +13,8 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
 import { createMockSupplyContract } from "../../utils/FTSO-test-utils";
+import { encodeContractNames } from "../../utils/test-helpers";
+import { Contracts } from "../../../deployment/scripts/Contracts";
 const getTestFile = require('../../utils/constants').getTestFile;
 
 const BN = web3.utils.toBN;
@@ -43,12 +45,14 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockPriceSubmitter: MockContractInstance;
     let mockVoterWhitelister: MockContractInstance;
     let mockSupply: MockContractInstance;
+    let mockCleanupBlockNumberManager: MockContractInstance;
 
     beforeEach(async () => {
         mockFtso = await MockContract.new();
         ftsoRegistry = await FtsoRegistry.new(accounts[0]);
         ftsoInterface = await Ftso.new(
             "NAT",
+            5,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
             constants.ZERO_ADDRESS as any,
@@ -82,11 +86,16 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         mockVoterWhitelister = await MockContract.new();
 
         mockSupply = await createMockSupplyContract(accounts[0], 10000);
+        mockCleanupBlockNumberManager = await MockContract.new();
+
+        const ADDRESS_UPDATER = accounts[16];
 
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
+            ADDRESS_UPDATER,
             mockPriceSubmitter.address,
+            constants.ZERO_ADDRESS,
             startTs,
             PRICE_EPOCH_DURATION_S,
             REVEAL_EPOCH_DURATION_S,
@@ -98,8 +107,10 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         mockInflation = await InflationMock.new();
         await mockInflation.setInflationReceiver(ftsoRewardManager.address);
 
-        await ftsoManager.setContractAddresses(ftsoRewardManager.address, ftsoRegistry.address, 
-            mockVoterWhitelister.address, mockSupply.address, constants.ZERO_ADDRESS, {from: accounts[0]});
+        await ftsoManager.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+            [ADDRESS_UPDATER, ftsoRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, mockCleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
+        
         await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
 
         wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");

@@ -28,6 +28,12 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     // Assert
     assert.equal(governance, parameters.governancePublicKey);
   }
+
+  describe(Contracts.ADDRESS_UPDATER, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.ADDRESS_UPDATER);
+    });
+  });
   
   describe(Contracts.INFLATION_ALLOCATION, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {

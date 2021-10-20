@@ -8,18 +8,9 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { pascalCase } from "pascal-case";
-import { Contract, Contracts } from "./Contracts";
-import { verifyParameters } from './verify-parameters';
+import { Contracts } from "./Contracts";
+import { DeployedFlareContracts, spewNewContractInfo, verifyParameters } from './deploy-utils';
 
-
-export interface DeployedFlareContracts {
-  ftsoRewardManager: any,
-  dataAvailabilityRewardManager: any,
-  supply: any,
-  inflationAllocation: any,
-  inflation: any,
-}
 
 export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldContracts: Contracts, parameters: any, quiet: boolean = false) {
   const web3 = hre.web3;
@@ -55,18 +46,18 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
   const Supply = artifacts.require("Supply");
   
   const stateConnector = await StateConnector.at(oldContracts.getContractAddress(Contracts.STATE_CONNECTOR));
-  spewNewContractInfo(contracts, StateConnector.contractName, `StateConnector.sol`, stateConnector.address, quiet);
+  spewNewContractInfo(contracts, null, StateConnector.contractName, `StateConnector.sol`, stateConnector.address, quiet);
   const flareDaemon = await FlareDaemon.at(oldContracts.getContractAddress(Contracts.FLARE_DAEMON));
-  spewNewContractInfo(contracts, FlareDaemon.contractName, `FlareDaemon.sol`, flareDaemon.address, quiet);
+  spewNewContractInfo(contracts, null, FlareDaemon.contractName, `FlareDaemon.sol`, flareDaemon.address, quiet);
   const ftsoManager = await FtsoManager.at(oldContracts.getContractAddress(Contracts.FTSO_MANAGER));
-  spewNewContractInfo(contracts, FtsoManager.contractName, `FtsoManager.sol`, ftsoManager.address, quiet);
+  spewNewContractInfo(contracts, null, FtsoManager.contractName, `FtsoManager.sol`, ftsoManager.address, quiet);
   const wnat = await WNAT.at(oldContracts.getContractAddress(Contracts.WNAT));
-  spewNewContractInfo(contracts, WNAT.contractName, `WNat.sol`, wnat.address, quiet);
+  spewNewContractInfo(contracts, null, WNAT.contractName, `WNat.sol`, wnat.address, quiet);
 
   // InflationAllocation contract
   // Inflation will be set to 0 for now...it will be set shortly.
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, "0x0000000000000000000000000000000000000000", parameters.scheduledInflationPercentageBIPS);
-  spewNewContractInfo(contracts, InflationAllocation.contractName, `InflationAllocation.sol`, inflationAllocation.address, quiet);
+  spewNewContractInfo(contracts, null, InflationAllocation.contractName, `InflationAllocation.sol`, inflationAllocation.address, quiet);
 
   let deployDataAvailabilityRewardManager = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
 
@@ -84,7 +75,7 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
     startTs
   );
 
-  spewNewContractInfo(contracts, Inflation.contractName, `Inflation.sol`, inflation.address, quiet);
+  spewNewContractInfo(contracts, null, Inflation.contractName, `Inflation.sol`, inflation.address, quiet);
 
   // InflationAllocation needs a reference to the inflation contract.
   await inflationAllocation.setInflation(inflation.address);
@@ -98,14 +89,14 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
     BN(parameters.totalFoundationSupplyNAT).mul(BN(10).pow(BN(18))),
     []
   );
-  spewNewContractInfo(contracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
+  spewNewContractInfo(contracts, null, Supply.contractName, `Supply.sol`, supply.address, quiet);
 
   // FtsoRewardManager contract
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     parameters.rewardFeePercentageUpdateOffsetEpochs,
     parameters.defaultRewardFeePercentageBIPS);
-  spewNewContractInfo(contracts, FtsoRewardManager.contractName, `FtsoRewardManager.sol`, ftsoRewardManager.address, quiet);
+  spewNewContractInfo(contracts, null, FtsoRewardManager.contractName, `FtsoRewardManager.sol`, ftsoRewardManager.address, quiet);
 
   // DataAvailabilityRewardManager contract
   let dataAvailabilityRewardManager: any | null = null;
@@ -116,7 +107,7 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
       parameters.dataAvailabilityRewardExpiryOffsetEpochs,
       stateConnector.address,
       inflation.address);
-    spewNewContractInfo(contracts, DataAvailabilityRewardManager.contractName, `DataAvailabilityRewardManager.sol`, dataAvailabilityRewardManager.address, quiet);
+    spewNewContractInfo(contracts, null, DataAvailabilityRewardManager.contractName, `DataAvailabilityRewardManager.sol`, dataAvailabilityRewardManager.address, quiet);
   }
 
   // Inflation allocation needs to know about reward managers
@@ -187,20 +178,6 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
     dataAvailabilityRewardManager: dataAvailabilityRewardManager,
     supply: supply,
     inflationAllocation: inflationAllocation,
-    inflation: inflation,
-    // Add other contracts as needed and fix the interface above accordingly
+    inflation: inflation
   } as DeployedFlareContracts;
-}
-
-
-function spewNewContractInfo(contracts: Contracts, name: string, contractName: string, address: string, quiet = false, pascal = true) {
-  if (!quiet) {
-    console.error(`${name} contract: `, address);
-  }
-  if (pascal) {
-    contracts.add(new Contract(pascalCase(name), contractName, address));
-  }
-  else {
-    contracts.add(new Contract(name.replace(/\s/g, ""), contractName, address));
-  }
 }

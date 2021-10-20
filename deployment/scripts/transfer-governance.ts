@@ -38,6 +38,7 @@ export async function transferGovernance(
   web3.eth.defaultAccount = deployerAccount.address;
   
   // Contract definitions
+  const AddressUpdater = artifacts.require("AddressUpdater");
   const InflationAllocation = artifacts.require("InflationAllocation");
   const FlareDaemon = artifacts.require("FlareDaemon");
   const FtsoManager = artifacts.require("FtsoManager");
@@ -53,6 +54,7 @@ export async function transferGovernance(
   const WNat = artifacts.require("WNat");
 
   // Get deployed contracts
+  const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
   const supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
   const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
   const inflationAllocation = await InflationAllocation.at(contracts.getContractAddress(Contracts.INFLATION_ALLOCATION));
@@ -66,6 +68,7 @@ export async function transferGovernance(
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
 
   // Transfer
+  await addressUpdater.transferGovernance(newGovernanceAccountAddress);
   await supply.transferGovernance(newGovernanceAccountAddress);
   await inflation.transferGovernance(newGovernanceAccountAddress);
   await inflationAllocation.transferGovernance(newGovernanceAccountAddress);

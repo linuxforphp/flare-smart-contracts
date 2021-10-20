@@ -1,18 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
+pragma abicoder v2;
 
 import "../../ftso/interface/IIFtso.sol";
 import "../../userInterfaces/IFtsoManager.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
 import "../../token/interface/IIVPToken.sol";
 
 
-interface IIFtsoManager is IFtsoManager {
+interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
+
+    struct RewardEpochData {
+        uint256 votepowerBlock;
+        uint256 startBlock;
+        uint256 startTimestamp;
+    }
 
     event ClosingExpiredRewardEpochFailed(uint256 _rewardEpoch);
-    event CleanupBlockNumberManagerUnset();
     event CleanupBlockNumberManagerFailedForBlock(uint256 blockNumber);
+    event FtsoDeactivationFailed(IIFtso _ftso);
 
     function activate() external;
+
+    function setInitialRewardData(
+        uint256 _nextRewardEpochToExpire,
+        uint256 _rewardEpochsLength,
+        uint256 _currentRewardEpochEnds
+    ) external;
 
     function setGovernanceParameters(
         uint256 _maxVotePowerNatThresholdFraction,
@@ -27,11 +41,18 @@ interface IIFtsoManager is IFtsoManager {
 
     function addFtso(IIFtso _ftso) external;
 
+    function addFtsosBulk(IIFtso[] memory _ftsos) external;
+
     function removeFtso(IIFtso _ftso) external;
 
     function replaceFtso(
-        IIFtso _ftsoToRemove,
         IIFtso _ftsoToAdd,
+        bool copyCurrentPrice,
+        bool copyAssetOrAssetFtsos
+    ) external;
+
+    function replaceFtsosBulk(
+        IIFtso[] memory _ftsosToAdd,
         bool copyCurrentPrice,
         bool copyAssetOrAssetFtsos
     ) external;
@@ -43,4 +64,17 @@ interface IIFtsoManager is IFtsoManager {
     function setFallbackMode(bool _fallbackMode) external;
 
     function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external;
+
+    function notInitializedFtsos(IIFtso) external view returns (bool);
+
+    function getRewardEpochData(uint256 _rewardEpochId) external view returns (RewardEpochData memory);
+
+    function currentRewardEpochEnds() external view returns (uint256);
+
+    function getLastUnprocessedPriceEpochData() external view
+        returns(
+            uint256 _lastUnprocessedPriceEpoch,
+            uint256 _lastUnprocessedPriceEpochRevealEnds,
+            bool _lastUnprocessedPriceEpochInitialized
+        );
 }

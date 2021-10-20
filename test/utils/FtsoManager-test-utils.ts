@@ -3,16 +3,17 @@ import { FtsoInstance, FtsoManagerInstance, MockContractInstance, MockFtsoContra
 import { defaultPriceEpochCyclicBufferSize } from "./constants";
 import { submitPriceHash, toBN } from "./test-helpers";
 
-
 export interface RewardEpochData {
     votepowerBlock: BN | number,
-    startBlock: BN | number
+    startBlock: BN | number,
+    startTimestamp: BN | number
 }
 
 export function toNumberify(rewardEpochData: RewardEpochData): RewardEpochData {
     return {
-        votepowerBlock: (rewardEpochData.votepowerBlock as BN).toNumber(),
-        startBlock: (rewardEpochData.startBlock as BN).toNumber()
+        votepowerBlock: Number(rewardEpochData.votepowerBlock),
+        startBlock: Number(rewardEpochData.startBlock),
+        startTimestamp: Number(rewardEpochData.startTimestamp)
     }
 }
 
@@ -60,7 +61,7 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
     const {0: startTimestamp, 1: epochPeriod, 2: revealPeriod} = await ftsoManager.getPriceEpochConfiguration();
     
     let ftso1 = await Ftso.new(
-        "FA1", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
+        "FA1", 5, constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
         startTimestamp,
         epochPeriod, 
         revealPeriod,
@@ -72,7 +73,7 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
     await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
 
     let ftso2 = await Ftso.new(
-        "FA2", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
+        "FA2", 5, constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
         startTimestamp,
         epochPeriod, 
         revealPeriod,
@@ -105,7 +106,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     const {0: startTimestamp, 1: epochPeriod, 2: revealPeriod} = await ftsoManager.getPriceEpochConfiguration();
     
     let ftso1 = await Ftso.new(
-        natContract ? "NAT" : "FA1", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
+        natContract ? "NAT" : "FA1", 5, constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
         startTimestamp,
         epochPeriod, 
         revealPeriod,
@@ -119,7 +120,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     }
 
     let ftso2 = await Ftso.new(
-        "FA2", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
+        "FA2", 5, constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
         startTimestamp,
         epochPeriod, 
         revealPeriod,
@@ -131,7 +132,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
     let ftso3 = await Ftso.new(
-        "FA3", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
+        "FA3", 5, constants.ZERO_ADDRESS, natToken.address, ftsoManager.address, // _symbol, address _wNat, address _ftsoManager,
         startTimestamp,
         epochPeriod, 
         revealPeriod,
@@ -143,7 +144,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
     await ftsoManager.setFtsoAsset(ftso3.address, xasset3Token.address);
 
     let ftso4 = await Ftso.new(
-        "FA4", constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
+        "FA4", 5, constants.ZERO_ADDRESS, natToken.address, ftsoManager.address,  // _symbol, address _wNat, address _ftsoManager,
         startTimestamp,
         epochPeriod, 
         revealPeriod,
