@@ -2,6 +2,8 @@ import { constants, time } from '@openzeppelin/test-helpers';
 import { pascalCase } from 'pascal-case';
 import { waitFinalize3 } from "../../test/utils/test-helpers";
 import {
+  AddressUpdaterContract,
+  AddressUpdaterInstance,
   AssetTokenContract, AssetTokenInstance, DataAvailabilityRewardManagerContract,
   DataAvailabilityRewardManagerInstance, DummyAssetMinterContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
@@ -12,53 +14,10 @@ import {
   SupplyInstance, WNatContract
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
+import { capitalizeFirstLetter, findAssetFtso, findFtsoOnFtsoManager } from '../scripts/deploy-utils';
 
 const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
 const BN = web3.utils.toBN;
-
-function capitalizeFirstLetter(st: string) {
-  return st.charAt(0).toUpperCase() + st.slice(1).toLocaleLowerCase();
-}
-
-async function findAssetFtso(contracts: Contracts, address: string): Promise<boolean> {
-  const Ftso = artifacts.require("Ftso");
-  const ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
-  let xAssetFtso = await ftsoWnat.assetFtsos(0);
-  let i = 1;
-  while (xAssetFtso != "") {
-    if (xAssetFtso == address) {
-      return true;
-    } else {
-      try {
-        xAssetFtso = await ftsoWnat.assetFtsos(i++);
-      } catch (e) {
-        xAssetFtso = "";
-      }
-    }
-  }
-  return false;
-}
-
-async function findFtso(contracts: Contracts, address: string): Promise<boolean> {
-  const FtsoManager = artifacts.require("FtsoManager");
-  const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
-  let ftsos = await ftsoManager.getFtsos();
-  let found = false;
-  ftsos.forEach((ftso) => {
-    if (ftso == address) found = true;
-  });
-  return found;
-}
-
-async function findRoleMember(role: string, permissioningAddress: any, memberAddress: any): Promise<boolean> {
-  const roleMemberCount: BN = await permissioningAddress.getRoleMemberCount(role);
-  for (let i = 0; i < roleMemberCount.toNumber(); i++) {
-    if (await permissioningAddress.getRoleMember(role, i) == memberAddress.address) {
-      return true;
-    }
-  }
-  return false;
-}
 
 /**
  * This test assumes a local chain is running with Flare allocated in accounts
@@ -201,7 +160,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       const rewardEpochStartTs = (await ftsoManager.getRewardEpochConfiguration())[0];
       if (rewardEpochStartTs.lt(startTs) && await ftsoManager.active()) {
         // Act
-        const startBlock = (await ftsoManager.rewardEpochs(0))[0];
+        const startBlock = (await ftsoManager.getRewardEpochData(0)).votepowerBlock;
         // Assert
         // If the daemon is calling daemonize on the RewardManager, then there should be
         // an active reward epoch.
@@ -212,9 +171,57 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about PriceSubmitter", async () => {
       // Assemble
       // Act
-      const priceSubmitter = await ftsoManager.priceSubmitter();
+      const address = await ftsoManager.priceSubmitter();
       // Assert
-      assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+      assert.equal(address, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
+    });
+
+    it("Should know about FtsoRegistry", async () => {
+      // Assemble
+      // Act
+      const address = await ftsoManager.getFtsoRegistry();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.FTSO_REGISTRY));
+    });
+
+    it("Should know about FtsoRewardManager", async () => {
+      // Assemble
+      // Act
+      const address = await ftsoManager.getFtsoRewardManager();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
+    });
+
+    it("Should know about CleanupBlockNumberManager", async () => {
+      // Assemble
+      // Act
+      const address = await ftsoManager.getCleanupBlockNumberManager();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER));
+    });
+
+    it("Should know about VoterWhitelister", async () => {
+      // Assemble
+      // Act
+      const address = await ftsoManager.getVoterWhitelister();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
+    });
+
+    it("Should know about AddressUpdater", async () => {
+      // Assemble
+      // Act
+      const address = await ftsoManager.addressUpdater();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
+    });
+
+    it("Should know about Supply", async () => {
+      // Assemble
+      // Act
+      const address = await ftsoManager.getSupply();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.SUPPLY));
     });
   });
 
@@ -361,6 +368,14 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
       });
 
+      it("Should represent ftso decimals correctly", async () => {
+        // Assemble
+        // Act
+        const decimals = await ftsoWnat.ASSET_PRICE_USD_DECIMALS();
+        // Assert
+        assert.equal(decimals.toNumber(), parameters.nativeFtsoDecimals);
+      });
+
       for (let asset of ["XRP", "LTC", "DOGE"]) {
         it(`Should know about ${asset} Asset FTSO`, async () => {
           // Assemble
@@ -434,6 +449,14 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         // Assert
         assert.equal(priceSubmitter, contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
       });
+
+      it("Should represent ftso decimals correctly", async () => {
+        // Assemble
+        // Act
+        const decimals = await ftsoAsset.ASSET_PRICE_USD_DECIMALS();
+        // Assert
+        assert.equal(decimals.toNumber(), asset.ftsoDecimals);
+      });
     });
   }
 
@@ -480,7 +503,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       it(`Should be managing an ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act
-        const found = await findFtso(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
+        const found = await findFtsoOnFtsoManager(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
         // Assert
         assert(found);
       });
@@ -490,7 +513,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       it("Should be managing a WNAT FTSO", async () => {
         // Assemble
         // Act
-        const found = await findFtso(contracts, contracts.getContractAddress(Contracts.FTSO_WNAT));
+        const found = await findFtsoOnFtsoManager(contracts, contracts.getContractAddress(Contracts.FTSO_WNAT));
         // Assert
         assert(found);
       });
@@ -513,6 +536,37 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
       assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
       assert.equal(lowNatTurnoutThresholdBIPS.toNumber(), parameters.lowNatTurnoutThresholdBIPS);
+    });
+  });
+
+  describe(Contracts.ADDRESS_UPDATER, async () => {
+    let AddressUpdater: AddressUpdaterContract;
+    let addressUpdater: AddressUpdaterInstance;
+
+    beforeEach(async () => {
+      AddressUpdater = artifacts.require("AddressUpdater");
+      addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
+    });
+
+    it("Should know about all contracts", async () => {
+      let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT,
+        Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER,
+        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER];
+
+      if (parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0) {
+        contractNames.push(Contracts.DATA_AVAILABILITY_REWARD_MANAGER);
+      }
+    
+      if (parameters.deployDistributionContract) {
+        contractNames.push(Contracts.DISTRIBUTION);
+      }
+
+      for (let name of contractNames) {
+        // Act
+        const address = await addressUpdater.getContractAddress(name);
+        // Assert
+        assert.equal(address, contracts.getContractAddress(name));
+      }
     });
   });
 });

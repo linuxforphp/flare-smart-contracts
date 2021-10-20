@@ -98,6 +98,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -228,6 +229,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockWnat = await MockWnat.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -327,6 +329,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -407,6 +410,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -687,6 +691,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1135,6 +1140,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1251,6 +1257,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1466,6 +1473,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1522,6 +1530,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should not get asset if asset is not set", async() => {
             const ftso = await MockFtsoFull.new(
                 "WNAT",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1704,6 +1713,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
             const ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1971,6 +1981,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         it("Should get epoch id - no underflow", async() => {
             const ftso1 = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -1988,6 +1999,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             let timestamp = (await time.latest()).toNumber() + 500;
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -2464,6 +2476,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpToken = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "ATOK",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],
@@ -2816,6 +2829,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             mockVpTokens[2] = await MockVpToken.new();
             ftso = await MockFtsoFull.new(
                 "WNAT",
+                5,
                 accounts[4],
                 mockWnat.address,
                 accounts[10],

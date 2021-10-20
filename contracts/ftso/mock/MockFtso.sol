@@ -22,6 +22,7 @@ contract MockFtso is SimpleMockFtso {
     
     constructor(
         string memory _symbol,
+        uint256 _decimals,
         IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
@@ -35,6 +36,7 @@ contract MockFtso is SimpleMockFtso {
     )
         SimpleMockFtso(
             _symbol,
+            _decimals,
             _priceSubmitter,
             _wNat,
             _ftsoManager,

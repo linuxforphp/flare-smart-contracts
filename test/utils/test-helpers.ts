@@ -246,3 +246,7 @@ export function resultTuple(obj: any): any[] {
     keys.sort((a, b) => a - b);
     return keys.map(k => obj[k]);
 }
+
+export function encodeContractNames(names: string[]): string[] {
+    return names.map( name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])) );
+}

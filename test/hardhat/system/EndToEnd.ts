@@ -368,7 +368,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     }
 
     // Verify that rewards epoch did not start yet
-    await expectRevert.unspecified(ftsoManager.rewardEpochs(0))
+    await expectRevert.unspecified(ftsoManager.getRewardEpochData(0))
 
     // Jump to reward epoch start
     await time.increaseTo(rewardEpochsStartTs.sub(BN(1)));
@@ -376,8 +376,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await time.increaseTo(rewardEpochsStartTs.add(BN(1))); // sometimes we get a glitch
 
     await flareDaemon.trigger({ gas: 2_000_000 }); // initialize reward epoch - also start of new price epoch
-    let firstRewardEpoch = await ftsoManager.rewardEpochs(0);
-    let votePowerBlock = firstRewardEpoch[0];
+    let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
+    let votePowerBlock = firstRewardEpoch.votepowerBlock;
 
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
     assert((await wNAT.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")

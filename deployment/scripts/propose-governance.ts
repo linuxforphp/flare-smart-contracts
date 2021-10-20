@@ -37,6 +37,7 @@ export async function proposeGovernance(
   web3.eth.defaultAccount = deployerAccount.address;
   
   // Contract definitions
+  const AddressUpdater = artifacts.require("AddressUpdater");
   const InflationAllocation = artifacts.require("InflationAllocation");
   const FlareDaemon = artifacts.require("FlareDaemon");
   const FtsoManager = artifacts.require("FtsoManager");
@@ -52,6 +53,7 @@ export async function proposeGovernance(
   const WNat = artifacts.require("WNat");
 
   // Get deployed contracts
+  const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
   const supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
   const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
   const inflationAllocation = await InflationAllocation.at(contracts.getContractAddress(Contracts.INFLATION_ALLOCATION));
@@ -69,6 +71,7 @@ export async function proposeGovernance(
   }
 
   // Propose
+  await addressUpdater.proposeGovernance(newGovernanceAccountAddress);
   await supply.proposeGovernance(newGovernanceAccountAddress);
   await inflation.proposeGovernance(newGovernanceAccountAddress);
   await inflationAllocation.proposeGovernance(newGovernanceAccountAddress);

@@ -55,7 +55,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   let epochId: number;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, priceSubmitter.address, wNat.address, ftsoManager, 0, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
     await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);

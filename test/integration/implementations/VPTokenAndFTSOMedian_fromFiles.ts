@@ -58,7 +58,7 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
             let blockNumber = await ethers.provider.getBlockNumber();
 
             let ftso: MockFtso = await newContract<MockFtso>("MockFtso", signers[0],
-                "XASSET", constants.ZERO_ADDRESS ,natToken.address, signers[0].address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager
+                "XASSET", 5, constants.ZERO_ADDRESS ,natToken.address, signers[0].address, // symbol, address priceSubmitter, address _wNat, address _ftsoManager
                 epochStartTimestamp, // uint256 _startTimestamp
                 epochPeriod, revealPeriod, //uint256 _epochPeriod, uint256 _revealPeriod
                 1, //uint256 _initialPrice

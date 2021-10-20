@@ -164,6 +164,7 @@ slither-check:
         - pip3 install slither-analyzer
         - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
     script:
+        - yarn c
         - yarn slither
     cache:  # only save cache here
         - key: always-keep

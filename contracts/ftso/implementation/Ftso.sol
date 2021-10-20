@@ -14,12 +14,7 @@ import "../lib/FtsoMedian.sol";
  * @title A contract implementing Flare Time Series Oracle
  */
 contract Ftso is IIFtso {
-
     using FtsoEpoch for FtsoEpoch.State;
-
-    // number of decimal places in Asset USD price
-    // note that the actual USD price is the integer value divided by 10^ASSET_PRICE_USD_DECIMALS
-    uint256 public constant ASSET_PRICE_USD_DECIMALS = 5;
 
     // errors
     string internal constant ERR_NOT_ACTIVE = "FTSO not active";
@@ -44,6 +39,11 @@ contract Ftso is IIFtso {
     bool public override active;                    // activation status of FTSO
     string public override symbol;                  // asset symbol that identifies FTSO
 
+    // number of decimal places in Asset USD price
+    // note that the actual USD price is the integer value divided by 10^ASSET_PRICE_USD_DECIMALS
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 public immutable ASSET_PRICE_USD_DECIMALS;
+
     uint256 internal assetPriceUSD;                 // current asset USD price
     uint256 internal assetPriceTimestamp;           // time when price was updated
     FtsoEpoch.State internal epochs;                // epoch storage
@@ -56,7 +56,7 @@ contract Ftso is IIFtso {
 
     // external contracts
     IIVPToken public immutable override wNat;       // wrapped native token
-    IIFtsoManager public immutable ftsoManager;     // FTSO manager contract
+    IIFtsoManager immutable public ftsoManager;     // FTSO manager contract
     IPriceSubmitter public immutable priceSubmitter;// Price submitter contract
 
     IIVPToken[] public assets;                      // array of assets
@@ -87,6 +87,7 @@ contract Ftso is IIFtso {
 
     constructor(
         string memory _symbol,
+        uint256 _decimals,
         IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         IIFtsoManager _ftsoManager,
@@ -99,6 +100,7 @@ contract Ftso is IIFtso {
     )
     {
         symbol = _symbol;
+        ASSET_PRICE_USD_DECIMALS = _decimals;
         priceSubmitter = _priceSubmitter;
         wNat = _wNat;
         ftsoManager = _ftsoManager;

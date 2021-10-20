@@ -1,6 +1,6 @@
 import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import BN from "bn.js";
-import { DeployedFlareContracts, ftsoContractForSymbol } from "../../../../deployment/scripts/deploy-contracts";
+import { DeployedFlareContracts } from '../../../../deployment/scripts/deploy-utils';
 import {
     FtsoManagerContract,
     FtsoManagerInstance,
@@ -180,7 +180,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
             accounts[0],
+            accounts[16],
             accounts[7],
+            constants.ZERO_ADDRESS,
             startTs,
             PRICE_EPOCH_DURATION_S,
             REVEAL_EPOCH_DURATION_S,

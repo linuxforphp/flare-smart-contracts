@@ -42,7 +42,7 @@ interface IFtsoManager {
 
     function getRewardEpochConfiguration() external view 
         returns (
-            uint256 _rewardEpochsStartTs,
+            uint256 _firstRewardEpochStartTs,
             uint256 _rewardEpochDurationSeconds
         );
 
