@@ -31,16 +31,16 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     let FtsoManager: FtsoManagerContract;
     let ftsoManager: FtsoManagerInstance;
 
-    beforeEach(async () => {
+    before(async () => {
       FtsoManager = artifacts.require("FtsoManager");
       ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    it("Should have transfered governance to address updater contract", async () => {
+    it("Should have transfered governance to switcher contract", async () => {
       // Act
       const governance = await ftsoManager.governance();
       // Assert
-      assert.equal(governance, contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
+      assert.equal(governance, contracts.getContractAddress(Contracts.FTSO_V2_SWITCHER));
     });
 
     it("Should know about PriceSubmitter", async () => {
@@ -98,6 +98,26 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.SUPPLY));
     });
+
+    
+    it("Should have goveranance parameters set", async () => {
+      // Assemble
+      const settings = await ftsoManager.getGovernanceParameters();
+      // Act
+      const maxVotePowerNatThresholdFraction = settings[0];
+      const maxVotePowerAssetThresholdFraction = settings[1];
+      const lowAssetThresholdUSDDec5 = settings[2];
+      const highAssetThresholdUSDDec5 = settings[3];
+      const highAssetTurnoutThresholdBIPS = settings[4];
+      const lowNatTurnoutThresholdBIPS = settings[5];
+      // Assert
+      assert.equal(maxVotePowerNatThresholdFraction.toNumber(), parameters.maxVotePowerNatThresholdFraction);
+      assert.equal(maxVotePowerAssetThresholdFraction.toNumber(), parameters.maxVotePowerAssetThresholdFraction);
+      assert.equal(lowAssetThresholdUSDDec5.toNumber(), parameters.lowAssetThresholdUSDDec5);
+      assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
+      assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
+      assert.equal(lowNatTurnoutThresholdBIPS.toNumber(), parameters.lowNatTurnoutThresholdBIPS);
+    });
   });
 
 
@@ -106,7 +126,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       let FtsoWnat: FtsoContract;
       let ftsoWnat: FtsoInstance;
 
-      beforeEach(async () => {
+      before(async () => {
         FtsoWnat = artifacts.require("Ftso");
         ftsoWnat = await FtsoWnat.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
       });
@@ -186,7 +206,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       let FtsoAsset: FtsoContract;
       let ftsoAsset: FtsoInstance;
 
-      beforeEach(async () => {
+      before(async () => {
         FtsoAsset = artifacts.require("Ftso");
         ftsoAsset = await FtsoAsset.at(contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
       });
@@ -235,7 +255,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
         let FAsset: AssetTokenContract;
         let fAsset: AssetTokenInstance;
 
-        beforeEach(async () => {
+        before(async () => {
           FAsset = artifacts.require("AssetToken");
           fAsset = await FAsset.at(contracts.getContractAddress(`${asset.xAssetSymbol}`));
         });
@@ -259,41 +279,11 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     }
   }
 
-  describe(Contracts.FTSO_MANAGER, async () => {
-    let FtsoManager: FtsoManagerContract;
-    let ftsoManager: FtsoManagerInstance;
-
-    beforeEach(async () => {
-      FtsoManager = artifacts.require("FtsoManager");
-      ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
-    });
-
-    it("Should have goveranance parameters set", async () => {
-      // Assemble
-      const settings = await ftsoManager.getGovernanceParameters();
-      // Act
-      const maxVotePowerNatThresholdFraction = settings[0];
-      const maxVotePowerAssetThresholdFraction = settings[1];
-      const lowAssetThresholdUSDDec5 = settings[2];
-      const highAssetThresholdUSDDec5 = settings[3];
-      const highAssetTurnoutThresholdBIPS = settings[4];
-      const lowNatTurnoutThresholdBIPS = settings[5];
-      // Assert
-      assert.equal(maxVotePowerNatThresholdFraction.toNumber(), parameters.maxVotePowerNatThresholdFraction);
-      assert.equal(maxVotePowerAssetThresholdFraction.toNumber(), parameters.maxVotePowerAssetThresholdFraction);
-      assert.equal(lowAssetThresholdUSDDec5.toNumber(), parameters.lowAssetThresholdUSDDec5);
-      assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
-      assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
-      assert.equal(lowNatTurnoutThresholdBIPS.toNumber(), parameters.lowNatTurnoutThresholdBIPS);
-    });
-  });
-
-
   describe(Contracts.ADDRESS_UPDATER, async () => {
     let AddressUpdater: AddressUpdaterContract;
     let addressUpdater: AddressUpdaterInstance;
 
-    beforeEach(async () => {
+    before(async () => {
       AddressUpdater = artifacts.require("AddressUpdater");
       addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
     });
@@ -332,7 +322,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     let FtsoV2Switcher: FtsoV2SwitcherContract;
     let ftsoV2Switcher: FtsoV2SwitcherInstance;
 
-    beforeEach(async () => {
+    before(async () => {
       FtsoV2Switcher = artifacts.require("FtsoV2Switcher");
       ftsoV2Switcher = await FtsoV2Switcher.at(contracts.getContractAddress(Contracts.FTSO_V2_SWITCHER));
     });
