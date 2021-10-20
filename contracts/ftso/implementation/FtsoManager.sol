@@ -287,6 +287,35 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             _replaceFtso(_ftsosToAdd[i], _copyCurrentPrice, _copyAssetOrAssetFtsos);
         }
     }
+
+    /**
+     * @notice Deactivates ftsos that are no longer used on ftso registry
+     */
+    function deactivateFtsos(IIFtso[] memory _ftsos) external onlyGovernance {
+        uint256 len = _ftsos.length;
+        while(len > 0) {
+            len--;
+            IIFtso ftso = _ftsos[len];
+            try ftsoRegistry.getFtsoBySymbol(ftso.symbol()) returns (IIFtso _ftso) {
+                if (_ftso != ftso) {
+                    // deactivate ftso if it was already replaced on ftso registry
+                    ftso.deactivateFtso();
+                    delete ftsoInFallbackMode[ftso];
+                    delete notInitializedFtsos[ftso];
+                    delete managedFtsos[ftso];
+                } else {
+                    // ftso still in use on ftso registy - it could be removed using removeFtso call
+                    emit FtsoDeactivationFailed(ftso);
+                }
+            } catch {
+                // deactivate ftso if ftso symbol is not used anymore on ftso registry
+                ftso.deactivateFtso();
+                delete ftsoInFallbackMode[ftso];
+                delete notInitializedFtsos[ftso];
+                delete managedFtsos[ftso];
+            }
+        }
+    }
     
     /**
      * @notice Set asset for FTSO

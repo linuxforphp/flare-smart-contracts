@@ -1169,6 +1169,113 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             assert.equal(totalDaemonizedErrors.toNumber(), 2);
         });
 
+        it("Should revert deactivating ftso if not from governance", async () => {
+            let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            // init reward epoch
+            await setDefaultGovernanceParameters(ftsoManager);
+
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
+
+            await expectRevert(ftsoManager.deactivateFtsos([ftso1.address], {from: accounts[1]}), "only governance");
+            assert(await ftso1.active());
+        });
+
+        it("Should not deactivate ftso if still used on ftso registry", async () => {
+            let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            // init reward epoch
+            await setDefaultGovernanceParameters(ftsoManager);
+
+            await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+            await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
+
+            expectEvent(await ftsoManager.deactivateFtsos([ftso1.address]), "FtsoDeactivationFailed", {ftso: ftso1.address});
+            assert(await ftso1.active());
+        });
+
+        it("Should deactivate ftso if removed from ftso registry", async () => {
+            let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await setDefaultGovernanceParameters(ftsoManager);
+
+            await ftsoManager.addFtsosBulk([ftso1.address, ftso2.address]);
+
+            let ftsoManager2 = await FtsoManager.new(
+                accounts[0],
+                accounts[0],
+                ADDRESS_UPDATER,
+                mockPriceSubmitter.address,
+                constants.ZERO_ADDRESS,
+                startTs,
+                PRICE_EPOCH_DURATION_S,
+                REVEAL_EPOCH_DURATION_S,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
+                REWARD_EPOCH_DURATION_S,
+                VOTE_POWER_BOUNDARY_FRACTION
+            );
+    
+            await ftsoManager2.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+                [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
+            
+            // set new ftso manager
+            await ftsoRegistry.setFtsoManagerAddress(ftsoManager2.address, {from: accounts[0]});
+
+            let [ftso3, ftso4] = await settingWithTwoFTSOs(accounts, ftsoManager2);
+            await setDefaultGovernanceParameters(ftsoManager2);
+
+            // replaces both ftsos
+            await ftsoManager2.replaceFtsosBulk([ftso3.address, ftso4.address], true, false);
+            await ftsoManager2.removeFtso(ftso3.address);
+
+            await ftsoManager.deactivateFtsos([ftso1.address, ftso2.address]);
+
+            assert(!await ftso1.active());
+            assert(!await ftso2.active());
+            assert(!await ftso3.active());
+            assert(await ftso4.active());
+        });
+
+        it("Should deactivate ftso if replaced on ftso registry", async () => {
+            let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+            await setDefaultGovernanceParameters(ftsoManager);
+
+            await ftsoManager.addFtsosBulk([ftso1.address, ftso2.address]);
+
+            let ftsoManager2 = await FtsoManager.new(
+                accounts[0],
+                accounts[0],
+                ADDRESS_UPDATER,
+                mockPriceSubmitter.address,
+                constants.ZERO_ADDRESS,
+                startTs,
+                PRICE_EPOCH_DURATION_S,
+                REVEAL_EPOCH_DURATION_S,
+                startTs.addn(REVEAL_EPOCH_DURATION_S),
+                REWARD_EPOCH_DURATION_S,
+                VOTE_POWER_BOUNDARY_FRACTION
+            );
+    
+            await ftsoManager2.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+                [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
+            
+            // set new ftso manager
+            await ftsoRegistry.setFtsoManagerAddress(ftsoManager2.address, {from: accounts[0]});
+
+            let [ftso3, ftso4] = await settingWithTwoFTSOs(accounts, ftsoManager2);
+            await setDefaultGovernanceParameters(ftsoManager2);
+
+            // replaces both ftsos
+            await ftsoManager2.replaceFtsosBulk([ftso3.address, ftso4.address], true, false);
+
+            await ftsoManager.deactivateFtsos([ftso1.address, ftso2.address]);
+
+            assert(!await ftso1.active());
+            assert(!await ftso2.active());
+            assert(await ftso3.active());
+            assert(await ftso4.active());
+        });
+
     });
 
     describe("Price epochs, finalization", async () => {
