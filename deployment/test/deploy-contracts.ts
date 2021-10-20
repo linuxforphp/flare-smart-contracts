@@ -14,7 +14,7 @@ import {
   SupplyInstance, WNatContract
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
-import { capitalizeFirstLetter, findAssetFtso, findFtsoOnFtsoManager } from '../scripts/deploy-utils';
+import { capitalizeFirstLetter, findAssetFtso, findFtso } from '../scripts/deploy-utils';
 
 const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
 const BN = web3.utils.toBN;
@@ -503,7 +503,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       it(`Should be managing an ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act
-        const found = await findFtsoOnFtsoManager(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
+        const found = await findFtso(ftsoManager, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
         // Assert
         assert(found);
       });
@@ -513,7 +513,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       it("Should be managing a WNAT FTSO", async () => {
         // Assemble
         // Act
-        const found = await findFtsoOnFtsoManager(contracts, contracts.getContractAddress(Contracts.FTSO_WNAT));
+        const found = await findFtso(ftsoManager, contracts.getContractAddress(Contracts.FTSO_WNAT));
         // Assert
         assert(found);
       });

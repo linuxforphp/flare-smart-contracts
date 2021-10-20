@@ -220,21 +220,8 @@ export async function findAssetFtso(contracts: Contracts, address: string): Prom
   return false;
 }
 
-export async function findFtsoOnFtsoManager(contracts: Contracts, address: string): Promise<boolean> {
-  const FtsoManager = artifacts.require("FtsoManager");
-  const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
+export async function findFtso(ftsoManager: FtsoManagerInstance, address: string): Promise<boolean> {
   let ftsos = await ftsoManager.getFtsos();
-  let found = false;
-  ftsos.forEach((ftso) => {
-    if (ftso == address) found = true;
-  });
-  return found;
-}
-
-export async function findFtsoOnAddressUpdater(contracts: Contracts, address: string): Promise<boolean> {
-  const AddressUpdater = artifacts.require("AddressUpdater");
-  const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
-  let ftsos = await addressUpdater.getFtsosToReplace();
   let found = false;
   ftsos.forEach((ftso) => {
     if (ftso == address) found = true;

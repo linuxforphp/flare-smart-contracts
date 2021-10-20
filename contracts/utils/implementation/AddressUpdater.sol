@@ -5,15 +5,6 @@ pragma abicoder v2;
 import "../../governance/implementation/Governed.sol";
 import "../interface/IIAddressUpdatable.sol";
 
-import "../../ftso/interface/IIFtsoManager.sol";
-import "../../ftso/interface/IIFtsoManagerV1.sol";
-import "../../genesis/implementation/FlareDaemon.sol";
-import "../../genesis/implementation/PriceSubmitter.sol";
-import "../../tokenPools/implementation/FtsoRewardManager.sol";
-import "../../token/implementation/CleanupBlockNumberManager.sol";
-import "../../utils/implementation/FtsoRegistry.sol";
-import "../../utils/implementation/VoterWhitelister.sol";
-
 
 contract AddressUpdater is Governed {
 
@@ -23,104 +14,7 @@ contract AddressUpdater is Governed {
     string[] internal contractNames;
     mapping(bytes32 => address) internal contractAddresses;
 
-
-    IIFtso[] internal ftsosToReplace;
-    FlareDaemon.Registration[] internal registrations;
-    
     constructor(address _governance) Governed(_governance) {}
-
-    /**
-     * @notice Set ftsos to be replaced in switchToNewFtsoManager call
-     */
-    function setFtsosToReplace(IIFtso[] memory _ftsosToReplace) external onlyGovernance {
-        ftsosToReplace = _ftsosToReplace;
-    }
-
-    /**
-     * @notice Set flare daemon registrations to be registered in switchToNewFtsoManager call
-     */
-    function setFlareDaemonRegistrations(FlareDaemon.Registration[] memory _registrations) external onlyGovernance {
-        // UnimplementedFeatureError: Copying of type struct ... memory to storage not yet supported.
-        delete registrations;
-        for(uint256 i = 0; i < _registrations.length; i++) {
-            registrations.push(_registrations[i]);
-        }
-    }
-
-    /**
-     * @notice Used to do batch update of ftso manager and all connected contracts
-     * - updates contracts with new ftso manager contract address,
-     * - updates new ftso manager with current reward states,
-     * - activates new ftso manager,
-     * - replaces all ftsos,
-     * - registers contracts at flare daemon,
-     * - transfers governance back to multisig governance
-     */
-    function switchToNewFtsoManager(IIFtsoManagerV1 _oldFtsoManager) external onlyGovernance {
-        require(ftsosToReplace.length > 0, "ftsos not set");
-        require(registrations.length > 0, "registrations not set");
-
-        address ftsoManagerAddress = _getContractAddress("FtsoManager");
-        (uint256 firstRewardEpochStartTs,) = IIFtsoManager(ftsoManagerAddress).getRewardEpochConfiguration();
-        require(_oldFtsoManager.rewardEpochsStartTs() == firstRewardEpochStartTs, "reward epoch start does not match");
-
-        address priceSubmitterAddress = _getContractAddress("PriceSubmitter");
-        address ftsoRewardManagerAddress = _getContractAddress("FtsoRewardManager");
-        address ftsoRegistryAddress = _getContractAddress("FtsoRegistry");
-        address voterWhitelisterAddress = _getContractAddress("VoterWhitelister");
-        address cleanupBlockNumberManagerAddress = _getContractAddress("CleanupBlockNumberManager");
-        address flareDaemonAddress = _getContractAddress("FlareDaemon");
-
-        // update contracts with new ftso manager address
-        PriceSubmitter(priceSubmitterAddress).setContractAddresses(
-            IFtsoRegistryGenesis(ftsoRegistryAddress),
-            voterWhitelisterAddress,
-            ftsoManagerAddress);
-
-        FtsoRewardManager(ftsoRewardManagerAddress).setContractAddresses(
-            _getContractAddress("Inflation"),
-            IIFtsoManager(ftsoManagerAddress),
-            WNat(payable(_getContractAddress("WNat"))));
-
-        FtsoRegistry(ftsoRegistryAddress).setFtsoManagerAddress(IIFtsoManager(ftsoManagerAddress));
-
-        VoterWhitelister(voterWhitelisterAddress).setContractAddresses(
-            IFtsoRegistry(ftsoRegistryAddress),
-            ftsoManagerAddress);
-
-        CleanupBlockNumberManager(cleanupBlockNumberManagerAddress).setTriggerContractAddress(ftsoManagerAddress);
-
-        // set reward data to new ftso manager
-        uint256 nextRewardEpochToExpire = FtsoRewardManager(ftsoRewardManagerAddress).getRewardEpochToExpireNext();
-        uint256 rewardEpochsLength = _oldFtsoManager.getCurrentRewardEpoch() + 1;
-        uint256 currentRewardEpochEnds = _oldFtsoManager.rewardEpochsStartTs() + 
-            rewardEpochsLength * _oldFtsoManager.rewardEpochDurationSeconds();
-
-        IIFtsoManager(ftsoManagerAddress).setInitialRewardData(
-            nextRewardEpochToExpire, 
-            rewardEpochsLength, 
-            currentRewardEpochEnds);
-
-        // activate ftso manager
-        IIFtsoManager(ftsoManagerAddress).activate();
-
-        // replace all ftsos and delete the list
-        IIFtsoManager(ftsoManagerAddress).replaceFtsosBulk(ftsosToReplace, true, false);
-        delete ftsosToReplace;
-
-        // replace daemonized contracts and delete the list
-        FlareDaemon(flareDaemonAddress).registerToDaemonize(registrations);
-        delete registrations;
-
-        // transfer governance back
-        GovernedBase(ftsoManagerAddress).transferGovernance(governance);
-        GovernedBase(priceSubmitterAddress).transferGovernance(governance);
-        GovernedBase(ftsoRewardManagerAddress).transferGovernance(governance);
-        GovernedBase(ftsoRegistryAddress).transferGovernance(governance);
-        GovernedBase(voterWhitelisterAddress).transferGovernance(governance);
-        GovernedBase(cleanupBlockNumberManagerAddress).transferGovernance(governance);
-        GovernedBase(flareDaemonAddress).transferGovernance(governance);
-    }
     
     /**
      * @notice Updates contract addresses on all contracts implementing IIAddressUpdatable interface
@@ -167,15 +61,6 @@ contract AddressUpdater is Governed {
     }
 
     /**
-     * @notice Transfers governance back from address updater contract to current governance
-     */
-    function transferGovernanceBack(GovernedBase[] memory _contracts) external onlyGovernance {
-        for (uint256 i = 0; i < _contracts.length; i++) {
-            _contracts[i].transferGovernance(governance);
-        }
-    }
-
-    /**
      * @notice Returns the contract names and the corresponding addresses
      */
     function getContractNamesAndAddresses() external view returns(
@@ -192,20 +77,6 @@ contract AddressUpdater is Governed {
     }
 
     /**
-     * @notice Returns ftsos to replace in switchToNewFtsoManager call
-     */
-    function getFtsosToReplace() external view returns(IIFtso[] memory _ftsosToReplace) {
-        return ftsosToReplace;
-    }
-
-    /**
-     * @notice Returns flare daemon registrations to be registered in switchToNewFtsoManager call
-     */
-    function getFlareDaemonRegistrations() external view returns(FlareDaemon.Registration[] memory _registrations) {
-        return registrations;
-    }
-
-        /**
      * @notice Returns contract address for the given name and reverts if address(0)
      */
     function getContractAddress(string memory _name) external view returns(address) {

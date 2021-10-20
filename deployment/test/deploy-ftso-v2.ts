@@ -5,10 +5,12 @@ import {
   AddressUpdaterInstance,
   AssetTokenContract, AssetTokenInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
-  FtsoManagerInstance
+  FtsoManagerInstance,
+  FtsoV2SwitcherContract,
+  FtsoV2SwitcherInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
-import { capitalizeFirstLetter, findAssetFtso, findFtsoOnAddressUpdater } from '../scripts/deploy-utils';
+import { capitalizeFirstLetter, findAssetFtso } from '../scripts/deploy-utils';
 
 
 /**
@@ -324,11 +326,22 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       }
     });
 
+  });
+
+  describe(Contracts.FTSO_V2_SWITCHER, async () => {
+    let FtsoV2Switcher: FtsoV2SwitcherContract;
+    let ftsoV2Switcher: FtsoV2SwitcherInstance;
+
+    beforeEach(async () => {
+      FtsoV2Switcher = artifacts.require("FtsoV2Switcher");
+      ftsoV2Switcher = await FtsoV2Switcher.at(contracts.getContractAddress(Contracts.FTSO_V2_SWITCHER));
+    });
+
     for (let asset of parameters.assets) {
       it(`Should know about the ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act
-        const found = await findFtsoOnAddressUpdater(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
+        const found = await findFtso(ftsoV2Switcher, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
         // Assert
         assert(found);
       });
@@ -338,7 +351,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       it("Should know about WNAT FTSO", async () => {
         // Assemble
         // Act
-        const found = await findFtsoOnAddressUpdater(contracts, contracts.getContractAddress(Contracts.FTSO_WNAT));
+        const found = await findFtso(ftsoV2Switcher, contracts.getContractAddress(Contracts.FTSO_WNAT));
         // Assert
         assert(found);
       });
@@ -347,7 +360,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     it("Should know about flare daemon registrants", async () => {
       // Assemble
       // Act
-      const registrations = await addressUpdater.getFlareDaemonRegistrations();
+      const registrations = await ftsoV2Switcher.getFlareDaemonRegistrations();
       // Assert
       assert.equal(registrations[0].daemonizedContract, contracts.getContractAddress(Contracts.INFLATION));
       assert.equal(registrations[0].gasLimit, parameters.inflationGasLimit);
@@ -356,3 +369,12 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     });
   });
 });
+
+async function findFtso(ftsoV2Switcher: FtsoV2SwitcherInstance, address: string): Promise<boolean> {
+  let ftsos = await ftsoV2Switcher.getFtsosToReplace();
+  let found = false;
+  ftsos.forEach((ftso) => {
+    if (ftso == address) found = true;
+  });
+  return found;
+}
