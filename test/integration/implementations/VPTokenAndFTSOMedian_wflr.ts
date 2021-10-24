@@ -23,7 +23,8 @@ async function deployContracts(signer: SignerWithAddress, epochStartTimestamp: n
         1, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        true
+        true,
+        0
     );
     await ftso.connect(signer).setAsset(assetToken.address);
 

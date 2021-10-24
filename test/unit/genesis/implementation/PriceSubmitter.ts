@@ -81,7 +81,8 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                     60,
                     1, // initial token price 0.00001$
                     1e10,
-                    defaultPriceEpochCyclicBufferSize
+                    defaultPriceEpochCyclicBufferSize,
+                    1
                 );
                 await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
                 await ftso.setVotePowerBlock(1, {from: accounts[10]});

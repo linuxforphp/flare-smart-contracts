@@ -15,7 +15,7 @@ const ERR_TOKEN_NOT_SUPPORTED = "FTSO index not supported";
 
 
 async function mockFtso(symbol: string){
-  return await MockFtso.new(symbol, 5, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0, defaultPriceEpochCyclicBufferSize, false);
+  return await MockFtso.new(symbol, 5, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0, defaultPriceEpochCyclicBufferSize, false, 1);
 }
 
 

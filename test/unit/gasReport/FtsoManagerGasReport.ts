@@ -57,7 +57,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let cleanupBlockNumberManager: CleanupBlockNumberManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
+    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize, 1);
     await ftsoManager.addFtso(ftso.address, { from: governance });
     return ftso;
   }

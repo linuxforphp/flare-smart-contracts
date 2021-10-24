@@ -82,7 +82,8 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             60,
             0,
             1e10,
-            defaultPriceEpochCyclicBufferSize
+            defaultPriceEpochCyclicBufferSize,
+            0
         );
 
         await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
@@ -712,7 +713,7 @@ contract(`FtsoManager.sol; ${ getTestFile(__filename) }; Ftso manager unit tests
             // Assemble
             await setDefaultGovernanceParameters(ftsoManager);
             let multiFtso = await Ftso.new('NAT', 5, mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address,
-            startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize);
+            startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize, 0);
             await ftsoManager.addFtso(multiFtso.address);
             await ftsoManager.addFtso(mockFtso.address);
             await ftsoManager.setFtsoAssetFtsos(multiFtso.address, [mockFtso.address]);

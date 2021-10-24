@@ -56,7 +56,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     let epochId: number;
 
     async function createFtso(symbol: string, initialPrice: BN) {
-        const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wnat.address, ftsoManager, 0, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wnat.address, ftsoManager, 0, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize, 1);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // add ftso to price submitter and whitelist
         const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
