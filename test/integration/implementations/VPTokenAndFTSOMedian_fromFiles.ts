@@ -64,7 +64,8 @@ describe("VPToken and FTSO contract - integration test cases from files", () => 
                 1, //uint256 _initialPrice
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                true
+                true,
+                0
             )
             await ftso.connect(signers[0]).setAsset(assetToken.address);
 

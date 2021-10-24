@@ -31,6 +31,7 @@ contract Ftso is IIFtso {
     string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
     string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
     string internal constant ERR_INVALID_PRICE_EPOCH_PARAMETERS = "Invalid price epoch parameters";
+    string internal constant ERR_RANDOM_TOO_SMALL = "Too small random number";
     
     
     // storage
@@ -53,6 +54,9 @@ contract Ftso is IIFtso {
     uint256 private immutable firstEpochStartTs;    // start timestamp of the first epoch instance
     uint256 private immutable submitPeriodSeconds;  // duration of price submission for an epoch instance
     uint256 private immutable revealPeriodSeconds;  // duration of price reveal for an epoch instance
+
+    uint256 public immutable minimalRandom;         // minimal random value for price submission
+
 
     // external contracts
     IIVPToken public immutable override wNat;       // wrapped native token
@@ -96,7 +100,8 @@ contract Ftso is IIFtso {
         uint256 _revealPeriodSeconds,
         uint256 _initialPriceUSD,
         uint256 _priceDeviationThresholdBIPS,
-        uint256 _cyclicBufferSize
+        uint256 _cyclicBufferSize,
+        uint256 _minimalRandom
     )
     {
         symbol = _symbol;
@@ -111,6 +116,7 @@ contract Ftso is IIFtso {
         assetPriceTimestamp = block.timestamp;
         priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
         priceEpochCyclicBufferSize = _cyclicBufferSize;
+        minimalRandom = _minimalRandom;
     }
 
     /**
@@ -671,6 +677,7 @@ contract Ftso is IIFtso {
         internal
     {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
+        require(_random >= minimalRandom, ERR_RANDOM_TOO_SMALL);
         require(_isEpochRevealInProcess(_epochId), ERR_PRICE_REVEAL_FAILURE);
         require(epochVoterHash[_epochId][_voter] == keccak256(abi.encode(_price, _random, _voter)), 
                 ERR_PRICE_INVALID);

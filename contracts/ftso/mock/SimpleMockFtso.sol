@@ -18,7 +18,8 @@ contract SimpleMockFtso is Ftso {
         uint256 _revealPeriodSeconds,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
-        uint256 _cyclicBufferSize
+        uint256 _cyclicBufferSize,
+        uint256 _minimalRandom
     ) 
         Ftso(
             _symbol,
@@ -31,7 +32,8 @@ contract SimpleMockFtso is Ftso {
             _revealPeriodSeconds,
             _initialPrice,
             _priceDeviationThresholdBIPS,
-            _cyclicBufferSize
+            _cyclicBufferSize,
+            _minimalRandom
         )
     {}
 

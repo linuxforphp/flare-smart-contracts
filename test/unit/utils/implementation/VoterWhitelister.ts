@@ -51,7 +51,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     let vpBlockNumber: number;
 
     async function createFtso(symbol: string, initialPriceUSDDec5: BN) {
-        const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, 120, 60, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize);
+        const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, 120, 60, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize, 1);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });

@@ -68,7 +68,8 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false // do not init/activate
+        false, // do not init/activate
+        1
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
 
@@ -80,7 +81,8 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false // do not init/activate
+        false, // do not init/activate
+        1
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
@@ -113,7 +115,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false // do not init/activate
+        false, // do not init/activate
+        1
     ) as MockFtsoInstance;
     if (!natContract) {
         await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
@@ -127,7 +130,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false // do not init/activate
+        false, // do not init/activate
+        1
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
@@ -139,7 +143,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false // do not init/activate
+        false, // do not init/activate
+        1
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso3.address, xasset3Token.address);
 
@@ -151,7 +156,8 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false // do not init/activate
+        false, // do not init/activate
+        1
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso4.address, xasset4Token.address);
 
@@ -171,18 +177,18 @@ export async function setDefaultGovernanceParameters(ftsoManager: FtsoManagerIns
     return paramListBN;
 }
 
-export async function submitSomePrices(epochId: number , ftso: MockFtsoInstance, n: number, accounts: Truffle.Accounts) {
+export async function submitSomePrices(epochId: number , ftso: MockFtsoInstance, n: number, accounts: Truffle.Accounts, minimalRandom: number=10) {
     let epoch!: BN;;
     for(let i = 0; i < n; i++) {        
-        let hash = submitPriceHash(i, i, accounts[i]);
+        let hash = submitPriceHash(i, i + minimalRandom, accounts[i]);
         let res = await ftso.submitPriceHash(epochId, hash, {from: accounts[i]});
         epoch = res.logs[0].args![1] as BN
     }
     return epoch;
 }
 
-export async function revealSomePrices(ftso: MockFtsoInstance, n: number, epoch: number, accounts: Truffle.Accounts) {
+export async function revealSomePrices(ftso: MockFtsoInstance, n: number, epoch: number, accounts: Truffle.Accounts, minimalRandom: number=10) {
     for(let i = 0; i < n; i++) {     
-        await ftso.revealPrice(epoch, i, i, {from: accounts[i]});
+        await ftso.revealPrice(epoch, i, i + minimalRandom, {from: accounts[i]});
     }
 }

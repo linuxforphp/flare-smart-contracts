@@ -61,7 +61,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             60,
             0,
             1e10,
-            defaultPriceEpochCyclicBufferSize
+            defaultPriceEpochCyclicBufferSize,
+            1
         );
         
         ftsoRewardManager = await FtsoRewardManager.new(

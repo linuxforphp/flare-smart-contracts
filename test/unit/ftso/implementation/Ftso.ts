@@ -28,6 +28,7 @@ let epochId: number;
 let mockFtsos: MockContractInstance[];
 let mockVpTokens: MockContractInstance[];
 
+const ERR_RANDOM_TOO_SMALL = "Too small random number";
 
 // WARNING: using givenMethodReturn instead of givenCalldataReturn may cause problems
 // there was a bug in FTSO.natVotePowerCached which used wrong votePowerBlock, but all tests pass before the change
@@ -106,7 +107,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
             let timestamp = await time.latest();
             epochId = Math.floor(timestamp.toNumber() / 120) + 1;
@@ -237,7 +239,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
         });
 
@@ -337,7 +340,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
@@ -418,7 +422,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
@@ -449,17 +454,6 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             let hash = submitPriceHash(500, 123, accounts[1]);            
             await expectRevert(ftso.submitPriceHash(epochId + 1, hash, {from: accounts[1]}), "Wrong epoch id");
             await expectRevert(ftso.submitPriceHash(epochId - 1, hash, {from: accounts[1]}), "Wrong epoch id");
-        });
-
-        it.skip("Should submit price multiple times", async() => {  // only one price can be submitted per epoch - irrelevant
-            let hash1 = submitPriceHash(500, 123, accounts[1]);
-            expectEvent(await ftso.submitPriceHash(epochId, hash1, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash1});
-
-            let hash2 = submitPriceHash(500, 124, accounts[1]);
-            expectEvent(await ftso.submitPriceHash(epochId, hash2, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash2});
-
-            let hash3 = submitPriceHash(500, 125, accounts[1]);
-            expectEvent(await ftso.submitPriceHash(epochId, hash3, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash3});
         });
 
         it("Should submit price multiple times - different users", async() => {
@@ -515,22 +509,6 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             expectEvent(await ftso.revealPrice(epochId, 250, 124, {from: accounts[2]}), "PriceRevealed", {voter: accounts[2], epochId: toBN(epochId), price: toBN(250), random: toBN(124)});
             await setMockVotePowerOfAt(10, 10, 0, accounts[3]);  // vote power of 0 is not allowed
             expectEvent(await ftso.revealPrice(epochId, 400, 125, {from: accounts[3]}), "PriceRevealed", {voter: accounts[3], epochId: toBN(epochId), price: toBN(400), random: toBN(125)});
-        });
-
-        it.skip("Should reveal price for last submitted hash only", async() => {   // only one submit is allowed - irrelevant test
-            let hash1 = submitPriceHash(500, 123, accounts[1]);
-            expectEvent(await ftso.submitPriceHash(epochId, hash1, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash1});
-            let hash2 = submitPriceHash(500, 124, accounts[1]);
-            expectEvent(await ftso.submitPriceHash(epochId, hash2, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash2});
-            let hash3 = submitPriceHash(500, 125, accounts[1]);
-            expectEvent(await ftso.submitPriceHash(epochId, hash3, {from: accounts[1]}), "PriceHashSubmitted", {submitter: accounts[1], epochId: toBN(epochId), hash: hash3});
-            await ftso.initializeCurrentEpochStateForReveal(100000, false, {from: accounts[10]});
-            await increaseTimeTo((epochId + 1) * 120); // reveal period start
-            
-            await setMockVotePowerOfAt(10, 10, 0, accounts[1]);  // vote power of 0 is not allowed
-            await expectRevert(ftso.revealPrice(epochId, 500, 123, {from: accounts[1]}), "Price already revealed or not valid");
-            await expectRevert(ftso.revealPrice(epochId, 500, 124, {from: accounts[1]}), "Price already revealed or not valid");
-            expectEvent(await ftso.revealPrice(epochId, 500, 125, {from: accounts[1]}), "PriceRevealed", {voter: accounts[1], epochId: toBN(epochId), price: toBN(500), random: toBN(125)});
         });
 
         it("Should reveal price (submitter)", async() => {
@@ -629,6 +607,36 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
             await expectRevert(ftso.revealPrice(epochId, price, 123, {from: accounts[1]}), "Price too high");
         });
 
+        it("Should not reveal price if random is too low", async() => {
+            let price = 1234;
+            const random = 12345;
+            // Crete new ftso that has a higher random limit
+            const tempFtso = await MockFtsoFull.new(
+                "ATOK",
+                5,
+                accounts[4],
+                mockWnat.address,
+                accounts[10],
+                0, 120, 60,
+                1, // initial token price 0.00001$
+                1e10,
+                defaultPriceEpochCyclicBufferSize,
+                false,
+                random + 1
+            );
+                
+            await tempFtso.setAsset(mockVpToken.address, {from: accounts[10]});
+            await tempFtso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
+            await tempFtso.setVotePowerBlock(10, {from: accounts[10]});
+            await tempFtso.activateFtso(0, 120, 60, {from: accounts[10]});
+
+            let hash = submitPriceHash(price, random, accounts[1]);
+            await tempFtso.submitPriceHash(epochId, hash, {from: accounts[1]});
+            await tempFtso.initializeCurrentEpochStateForReveal(50000, false, {from: accounts[10]});
+            await increaseTimeTo((epochId + 1) * 120); // reveal period start
+            await expectRevert(tempFtso.revealPrice(epochId, price, random, {from: accounts[1]}), ERR_RANDOM_TOO_SMALL);
+        });
+
         it("Should reduce vote power to max vote power threshold", async() => {
             // round 1 - current asset price = 0
             await ftso.submitPriceHash(epochId, submitPriceHash(500, 123, accounts[1]), {from: accounts[1]});
@@ -699,7 +707,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 10000, // price deviation threshold in BIPS (100%)
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
@@ -1148,7 +1157,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 10000, // price deviation threshold in BIPS (100%)
                 2, // short cyclic buffer
-                false
+                false,
+                1
             );
 
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
@@ -1265,7 +1275,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [], { from: accounts[10] });
@@ -1481,7 +1492,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.setAsset(mockVpToken.address, {from: accounts[10]});
@@ -1538,7 +1550,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
             let address = await ftso.getAsset();
             expect(address).to.equals(constants.ZERO_ADDRESS);
@@ -1721,7 +1734,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.activateFtso(timestamp, 120, 60, {from: accounts[10]});
@@ -1989,7 +2003,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
             await ftso1.activateFtso(500, 120, 60, {from: accounts[10]});
 
@@ -2007,7 +2022,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
             await ftso.activateFtso(timestamp, 120, 60, {from: accounts[10]});
 
@@ -2484,7 +2500,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 1, // initial token price 0.00001$
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[6]], { from: accounts[10] });
@@ -2837,7 +2854,8 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
                 0,
                 1e10,
                 defaultPriceEpochCyclicBufferSize,
-                false
+                false,
+                1
             );
 
             const asset_vpToken = ftso.contract.methods.getAsset().encodeABI();
