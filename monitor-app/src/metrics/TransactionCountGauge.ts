@@ -17,7 +17,8 @@ export function makeTransactionCountGauge(baseContract: BaseContract, namePrefix
       const metricResponseTime = getMetricResponseTimeHistogram();
       const stopTimer = metricResponseTime.startTimer({ metric: TRANSACTION_COUNT_GAUGE});
       try {
-        const txCount = await baseContract.provider.getTransactionCount(baseContract.address);
+        // The number of transactions sent as of the block tag earliest...which will indicate if tx deployed.
+        const txCount = await baseContract.provider.getTransactionCount(baseContract.address, "earliest");
         this.set({"address": baseContract.address}, txCount);
       } catch (e) {
         this.set({"address": baseContract.address}, 0);

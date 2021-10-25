@@ -34,7 +34,7 @@ services:
     networks:
       - monitoring
   monitor-app:
-    image: itsmechuckb/monitor-app
+    image: flarenetwork/monitor-app
     container_name: monitor-app
     volumes:
       - ${DEPLOYMENT_DIRECTORY}:/opt/flare-smart-contracts/deploys
