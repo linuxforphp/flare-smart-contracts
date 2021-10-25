@@ -26,7 +26,7 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     // Act
     const governance = await governedBase.governance();
     // Assert
-    assert.equal(governance, parameters.governancePublicKey);
+    assert.equal(governance.toLowerCase(), parameters.governancePublicKey.toLowerCase());
   }
 
   describe(Contracts.ADDRESS_UPDATER, async () => {
