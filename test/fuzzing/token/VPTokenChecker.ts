@@ -1,5 +1,5 @@
 import { WNatInstance } from "../../../typechain-truffle";
-import { BN_ZERO, Nullable, toBN } from "./FuzzingUtils";
+import { BN_ZERO, Nullable, toBN } from "../FuzzingUtils";
 import { VPTokenState } from "./VPTokenState";
 
 export class VPTokenChecker {

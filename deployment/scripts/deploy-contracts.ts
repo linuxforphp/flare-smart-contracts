@@ -396,6 +396,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     ftsoContracts: [
       ...(parameters.deployNATFtso ? [{ xAssetSymbol: 'WNAT' }] : []),
       ...parameters.assets
-    ].map(asset => assetToContracts.get(asset.xAssetSymbol))
+    ].map(asset => assetToContracts.get(asset.xAssetSymbol)),
+    contracts: contracts,
   } as DeployedFlareContracts;
 }

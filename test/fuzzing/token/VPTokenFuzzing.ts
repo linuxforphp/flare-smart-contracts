@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import { WNatInstance } from "../../../typechain-truffle";
 import { getTestFile } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "./FuzzingUtils";
+import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "../FuzzingUtils";
 import { VPTokenChecker } from "./VPTokenChecker";
 import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator";
 
@@ -217,7 +217,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     async function testDelegate() {
         const from = randomChoice(coinFlip(0.9) ? percentageAccounts : otherAccounts);
         const to = randomChoice(accounts);
-        const bips = randomIntDist(0, MAX_BIPS.toNumber(), linearFallingRandom);
+        const bips = randomIntDist(0, MAX_BIPS, linearFallingRandom);
         await simulator.delegate(from, to, bips);
     }
 

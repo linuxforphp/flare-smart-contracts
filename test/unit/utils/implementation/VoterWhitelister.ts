@@ -1,7 +1,7 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { FtsoRegistryInstance, MockContractInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
-import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, toBN } from "../../../utils/test-helpers";
+import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, toBN, toBNFixedPrecision } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
@@ -15,20 +15,12 @@ const PriceSubmitter = artifacts.require("PriceSubmitter");
 
 const WHITELISTING_ERROR = "vote power too low";
 
-function toBNFixed(x: number, decimals: number) {
-    const prec = Math.min(decimals, 6);
-    const s = x.toFixed(prec);
-    const dot = s.indexOf('.');
-    const bn = toBN(s.slice(0, dot) + s.slice(dot + 1));
-    return prec === decimals ? bn : bn.mul(toBN(10).pow(toBN(decimals - prec)));
-}
-
 function eth(x: number) {
-    return toBNFixed(x, 18);
+    return toBNFixedPrecision(x, 18);
 }
 
 function usd(x: number) {
-    return toBNFixed(x, 5);     // asset prices are multiplied by 10**5 (see Ftso.sol)
+    return toBNFixedPrecision(x, 5);     // asset prices are multiplied by 10**5 (see Ftso.sol)
 }
 
 function fmtNum(x: BN) {

@@ -1,5 +1,5 @@
-// import { ReadStream } from "node:fs";
-import { ReadStream } from "fs";
+import { createReadStream } from "fs";
+import { Readable } from "stream";
 
 export class Contract {
   name: string;
@@ -64,13 +64,21 @@ export class Contracts {
     this.collection = [];
   }
 
-  async deserialize(stream: any) {
+  async deserializeFile(fname: string) {
+    return this.deserialize(createReadStream(fname));
+  }
+  
+  async deserialize(stream: Readable) {
     const contractsJson = await this.read(stream);
     const parsedContracts = JSON.parse(contractsJson);
     parsedContracts.forEach((contract: { name: string; contractName: string, address: string; }) => {
       this.contracts.set(contract.name, contract.address);
       this.collection.push(contract);
     })
+  }
+  
+  allContracts(): Contract[] {
+    return Array.from(this.collection);
   }
 
   getContractAddress(name: string): string {
@@ -81,7 +89,7 @@ export class Contracts {
     }
   }
 
-  async read(stream: ReadStream) {
+  async read(stream: Readable) {
     const chunks = [];
     for await (const chunk of stream) chunks.push(chunk); 
     return Buffer.concat(chunks).toString('utf-8');

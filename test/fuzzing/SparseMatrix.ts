@@ -20,7 +20,7 @@ export class SparseArray {
     keys() {
         return this.data.keys();
     }
-    
+
     countNonZero() {
         return this.data.size;
     }
@@ -31,6 +31,10 @@ export class SparseArray {
             result = result.add(value);
         }
         return result;
+    }
+    
+    addTo(key: string, value: BN) {
+        this.set(key, this.get(key).add(value));
     }
 
     clear() {

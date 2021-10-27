@@ -32,7 +32,8 @@ export interface DeployedFlareContracts {
   inflationAllocation?: InflationAllocationInstance,
   stateConnector?: StateConnectorInstance,
   ftsoRegistry?: FtsoRegistryInstance,
-  ftsoContracts?: AssetContracts[]
+  ftsoContracts?: AssetContracts[],
+  contracts?: Contracts,
 }
 
 // Here we should add certain verifications of parameters
