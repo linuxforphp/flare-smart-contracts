@@ -1,39 +1,39 @@
 [
   {
     "function": "transfer wNat where both sender and receiver have 0 delegates (by percentage)",
-    "gasUsed": 273973
+    "gasUsed": 288181
   },
   {
     "function": "transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage)",
-    "gasUsed": 292092
+    "gasUsed": 311016
   },
   {
     "function": "transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage)",
-    "gasUsed": 292098
+    "gasUsed": 311022
   },
   {
     "function": "transfer wNat where both sender and receiver have 1 delegate (by percentage)",
-    "gasUsed": 310218
+    "gasUsed": 333858
   },
   {
     "function": "transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage)",
-    "gasUsed": 300840
+    "gasUsed": 323002
   },
   {
     "function": "transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage)",
-    "gasUsed": 300846
+    "gasUsed": 323008
   },
   {
     "function": "transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage)",
-    "gasUsed": 318966
+    "gasUsed": 345844
   },
   {
     "function": "transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage)",
-    "gasUsed": 318966
+    "gasUsed": 345844
   },
   {
     "function": "transfer wNat where both sender and receiver have 2 delegates (by percentage)",
-    "gasUsed": 327714
+    "gasUsed": 357830
   },
   {
     "function": "initialize for reveal for single ftso",

@@ -1,6 +1,7 @@
 ### Stages
 ## Temporary revert to run pipeline
 stages:
+    - coverage
     - test
 
 ### Variables
@@ -34,6 +35,8 @@ cache:
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
     - if: '$CI_COMMIT_BRANCH'
@@ -148,6 +151,8 @@ test-contract-end-to-end:
         - yarn $TEST_END_TO_END
 
 test-contract-end-to-end_2:
+    tags:
+        - flarenetworks
     stage: test
     <<: *yarn-setup
     script:
@@ -193,3 +198,16 @@ onlyDetector:
     <<: *pipeline-settings
     script:
         - sh scripts/test-only.sh
+
+coverage:on-schedule:
+    tags:
+        - flarenetworks
+    stage: coverage
+    before_script:
+        - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+    only:
+        - schedules
+    image: node:latest
+    script:
+        - yarn c
+        - yarn cov
