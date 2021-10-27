@@ -29,6 +29,7 @@ node_modules/
 coverage.json
 .nyc_output/
 coverage/
+!test/coverage/
 
 ## hardhat?
 artifacts/
