@@ -1,5 +1,5 @@
-import { BN_ZERO, MAX_BIPS, saveJson } from "./FuzzingUtils";
-import { SparseArray, SparseMatrix } from "./SparseMatrix";
+import { BN_ZERO, MAX_BIPS, saveJson } from "../FuzzingUtils";
+import { SparseArray, SparseMatrix } from "../SparseMatrix";
 
 export enum DelegationMode {
     NOTSET = 0,
@@ -34,7 +34,7 @@ export class VPTokenState {
         let res = BN_ZERO;
         const balance = this.balances.get(account);
         for (const bips of this.bipsDelegations.rowMap(account).values()) {
-            res = res.add(bips.mul(balance).div(MAX_BIPS)); // delegations from account
+            res = res.add(bips.mul(balance).divn(MAX_BIPS)); // delegations from account
         }
         for (const amount of this.amountDelegations.rowMap(account).values()) {
             res = res.add(amount); // delegations from account
@@ -50,7 +50,7 @@ export class VPTokenState {
     private delegatedVPTo(account: string) {
         let res = BN_ZERO;
         for (const [from, bips] of this.bipsDelegations.colMap(account)) {
-            res = res.add(bips.mul(this.balances.get(from)).div(MAX_BIPS)); // delegations to account
+            res = res.add(bips.mul(this.balances.get(from)).divn(MAX_BIPS)); // delegations to account
         }
         for (const amount of this.amountDelegations.colMap(account).values()) {
             res = res.add(amount); // delegations to account
@@ -74,7 +74,7 @@ export class VPTokenState {
     revokeDelegation(from: string, to: string) {
         const bips = this.bipsDelegations.get(from, to)
         if (!bips.isZero()) {
-            const revocation = bips.mul(this.balances.get(from)).div(MAX_BIPS);
+            const revocation = bips.mul(this.balances.get(from)).divn(MAX_BIPS);
             this.revocations.set(from, this.revocations.get(from).add(revocation));
             this.bipsDelegations.set(from, to, BN_ZERO);
         }
@@ -88,7 +88,7 @@ export class VPTokenState {
     votePowerFromTo(from: string, to: string) {
         const bips = this.bipsDelegations.get(from, to);
         if (!bips.isZero()) {
-            return bips.mul(this.balances.get(from)).div(MAX_BIPS);
+            return bips.mul(this.balances.get(from)).divn(MAX_BIPS);
         }
         return this.amountDelegations.get(from, to);    // if missing, zero will be returned anyway
     }

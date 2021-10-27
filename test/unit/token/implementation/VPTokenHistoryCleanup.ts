@@ -284,7 +284,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             const historyCleaner = await HistoryCleanerMock.new();
             await vpToken.setCleanerContract(historyCleaner.address, { from: accounts[0] });    // automatically set to vpContract too
             // cleaner
-            cleaner = new SimpleHistoryCleaner([vpToken, vpContract], historyCleaner);
+            cleaner = new SimpleHistoryCleaner({ vpToken, vpContract }, historyCleaner);
         });
 
         it("record checkpointable events", async () => {

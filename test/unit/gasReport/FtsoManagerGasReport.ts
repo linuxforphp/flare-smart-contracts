@@ -144,7 +144,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
     normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
     console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
 
-    await increaseTimeTo(rewardStartTs, 'web3');
+    await increaseTimeTo(rewardStartTs.toNumber(), 'web3');
 
     // initialize first reward epoch
     await expectRevert(ftsoManager.getCurrentRewardEpoch(), "Reward epoch not initialized yet");
@@ -195,7 +195,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
 
 
       // reveal prices
-      await increaseTimeTo(startTs.addn((epochId + 1) * epochDurationSec), 'web3'); // reveal period start
+      await increaseTimeTo(startTs.toNumber() + (epochId + 1) * epochDurationSec, 'web3'); // reveal period start
       for (const voter of [...trustedVoters, ...voters]) {
         await priceSubmitter.revealPrices(epochId, indices, voterPrices.get(voter)!, voterRandoms.get(voter)!, { from: voter });
       }
@@ -204,7 +204,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
 
       // finalize price epoch
-      await increaseTimeTo(startTs.addn((epochId + 1) * epochDurationSec + revealDurationSec), 'web3'); // reveal period end
+      await increaseTimeTo(startTs.toNumber() + (epochId + 1) * epochDurationSec + revealDurationSec, 'web3'); // reveal period end
       price = await natFtso.getEpochPrice(epochId); // should not revert
       assert(price.toNumber() == 0, "price != 0");
       let finalizePriceEpochTx = await ftsoManager.daemonize({ from: flareDaemon });
@@ -212,14 +212,14 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       assert(price.toNumber() > 0, "price == 0");
       console.log(`finalize price epoch: ${finalizePriceEpochTx.receipt.gasUsed}`);
 
-      expectEvent.inTransaction(finalizePriceEpochTx.tx, ftsoRewardManager, "RewardsDistributed", { epochId: toBN(epochId) });
+      await expectEvent.inTransaction(finalizePriceEpochTx.tx, ftsoRewardManager, "RewardsDistributed", { epochId: toBN(epochId) });
 
       epochId++;
     }
 
 
     // finalize first reward epoch
-    await increaseTimeTo(rewardStartTs.addn(rewardDurationSec), 'web3'); // reward epoch end
+    await increaseTimeTo(rewardStartTs.toNumber() + rewardDurationSec, 'web3'); // reward epoch end
     let rewardEpoch = await ftsoManager.getCurrentRewardEpoch();
     assert(rewardEpoch.toNumber() == 0, "rewardEpoch != 0");
     let finalizeRewardEpochTx = await ftsoManager.daemonize({ from: flareDaemon });

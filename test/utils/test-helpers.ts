@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 // This sometimes break tests
 // @ts-ignore
 import { time } from '@openzeppelin/test-helpers';
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, ContractReceipt, ContractTransaction, Signer } from "ethers";
 import { ethers } from "hardhat";
 
 /**
@@ -34,7 +34,7 @@ export function formatTime(date: Date): string {
  * the the timestamp equal time + 1 
  * @param tm 
  */
-export async function increaseTimeTo(tm: any, callType: 'ethers' | 'web3' = "ethers") {
+export async function increaseTimeTo(tm: number, callType: 'ethers' | 'web3' = "ethers") {
     if (process.env.VM_FLARE_TEST == "real") {
         // delay
         while (true) {
@@ -73,7 +73,7 @@ export async function increaseTimeTo(tm: any, callType: 'ethers' | 'web3' = "eth
  * @param advanceBlock 
  * @returns 
  */
-export async function increaseTimeTo3(tm: any, advanceBlock: () => Promise<FlareBlock>) {
+export async function increaseTimeTo3(tm: number, advanceBlock: () => Promise<FlareBlock>) {
     return increaseTimeTo(tm, "web3")
 }
 
@@ -84,12 +84,14 @@ export async function increaseTimeTo3(tm: any, advanceBlock: () => Promise<Flare
  * @param func 
  * @returns 
  */
-export async function waitFinalize(signer: SignerWithAddress, func: () => any) {
+export async function waitFinalize(signer: SignerWithAddress, func: () => Promise<ContractTransaction>): Promise<ContractReceipt> {
     let nonce = await ethers.provider.getTransactionCount(signer.address);
     let res = await (await func()).wait();
+    if (res.from !== signer.address) {
+        throw new Error("Transaction from and signer mismatch, did you forget connect()?");
+    }
     while ((await ethers.provider.getTransactionCount(signer.address)) == nonce) {
-        await new Promise((resolve: any) => { setTimeout(() => { resolve() }, 100) })
-        // console.log("Delaying")
+        await sleep(100);
     }
     return res;
 }
@@ -101,12 +103,11 @@ export async function waitFinalize(signer: SignerWithAddress, func: () => any) {
  * @param func 
  * @returns 
  */
-export async function waitFinalize3(address: string, func: () => any) {
+export async function waitFinalize3<T>(address: string, func: () => Promise<T>) {
     let nonce = await web3.eth.getTransactionCount(address);
     let res = await func();
     while ((await web3.eth.getTransactionCount(address)) == nonce) {
-        await new Promise((resolve: any) => { setTimeout(() => { resolve() }, 1000) })
-        // console.log("Waiting...")
+        await sleep(1000);
     }
     return res;
 }
@@ -249,4 +250,30 @@ export function resultTuple(obj: any): any[] {
 
 export function encodeContractNames(names: string[]): string[] {
     return names.map( name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])) );
+}
+
+export function isNotNull<T>(x: T): x is NonNullable<T> {
+    return x != null;
+}
+
+// return String(Math.round(x * 10^exponent)), but sets places below float precision to zero instead of some random digits
+export function toStringFixedPrecision(x: number, exponent: number): string {
+    const significantDecimals = x !== 0 ? Math.max(0, 14 - Math.floor(Math.log10(x))) : 0;
+    const precision = Math.min(exponent, significantDecimals);
+    const xstr = x.toFixed(precision);
+    const dot = xstr.indexOf('.');
+    const mantissa = xstr.slice(0, dot) + xstr.slice(dot + 1);
+    if (precision === exponent) return mantissa;
+    const zeros = Array.from({length: exponent - precision}, () => '0').join('');   // trailing zeros
+    return mantissa + zeros;
+}
+
+// return BN(x * 10^exponent)
+export function toBNFixedPrecision(x: number, exponent: number): BN {
+    return toBN(toStringFixedPrecision(x, exponent));
+}
+
+// return BigNumber(x * 10^exponent)
+export function toBigNumberFixedPrecision(x: number, exponent: number): BigNumber {
+    return BigNumber.from(toStringFixedPrecision(x, exponent));
 }

@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import { HistoryCleanerMockInstance, IICleanableInstance } from "../../typechain-truffle";
 import { CreatedVotePowerCache, Delegate, Revoke } from "../../typechain-truffle/VPContract";
 import { CreatedTotalSupplyCache, Transfer, VotePowerContractChanged } from "../../typechain-truffle/VPToken";
-import { formatEvent, Web3EventDecoder } from "./Web3EventDecoder";
+import { formatEvent, Web3EventDecoder } from "./EventDecoder";
 
 const VPToken = artifacts.require("VPTokenMock");
 const VPContract = artifacts.require("VPContract");
@@ -43,7 +43,7 @@ export class SimpleHistoryCleaner {
     public debug = false;
 
     constructor(
-        contracts: Truffle.ContractInstance[],
+        contracts: { [name: string]: Truffle.ContractInstance },
         historyCleaner: HistoryCleanerMockInstance
     ) {
         this.eventDecoder = new Web3EventDecoder(contracts, CLEANUP_EVENTS);

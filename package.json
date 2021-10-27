@@ -42,6 +42,7 @@
     "test_timewait": "env VM_FLARE_TEST=real yarn hardhat test --network scdev",
     "test_timewait_help": "echo 'Run tests with actual delays'",
     "test_fuzzing_token": "yarn hardhat test --network hardhat test/fuzzing/token/VPTokenFuzzing.ts",
+    "test_fuzzing_endtoend": "yarn hardhat test --network hardhat test/fuzzing/endtoend/EndToEndFuzzing.ts",
     "eslint": "eslint . --ext .ts",
 
     "---------DEPLOY---TEST---SCRIPTS": "",
