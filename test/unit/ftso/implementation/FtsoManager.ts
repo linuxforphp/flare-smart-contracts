@@ -2271,8 +2271,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso2.address, add: true });
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso3.address, add: false });
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso4.address, add: true });
-      expectEvent(tx, "FtsoDeactivationFailed", { _ftso: mockFtso3.address });
-      expectEvent(tx, "FtsoDeactivationFailed", { _ftso: mockFtso.address });
+      expectEvent(tx, "FtsoDeactivationFailed", { ftso: mockFtso3.address });
+      expectEvent(tx, "FtsoDeactivationFailed", { ftso: mockFtso.address });
     });
 
     it("Should emit events if (bulk) replacing ftso with the same ftso", async () => {
