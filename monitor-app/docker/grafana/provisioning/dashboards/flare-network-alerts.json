@@ -61,8 +61,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -200,8 +199,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -339,8 +337,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -477,8 +474,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -580,7 +576,7 @@
           {
             "evaluator": {
               "params": [
-                31626000
+                3600
               ],
               "type": "gt"
             },
@@ -633,8 +629,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -729,7 +724,7 @@
         {
           "colorMode": "critical",
           "op": "gt",
-          "value": 31626000,
+          "value": 3600,
           "visible": true
         }
       ],
@@ -796,8 +791,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -874,7 +868,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "block_number_ts - inflation_last_authorization_ts",
+          "expr": "block_number_ts - ignoring(address) inflation_last_authorization_ts",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -936,8 +930,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -1068,8 +1061,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -1200,8 +1192,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -1332,8 +1323,7 @@
         "notifications": [
           {
             "uid": "notifier1"
-          }, 
-
+          },
           {
             "uid": "notifier2"
           }
@@ -1410,7 +1400,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "block_number - flare_daemon_system_last_triggered_at",
+          "expr": "block_number - ignoring(address) flare_daemon_system_last_triggered_at",
           "interval": "",
           "legendFormat": "",
           "refId": "A"

@@ -847,7 +847,8 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         1, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        true
+        true,
+        0
     );
     await ftso.setAsset(assetToken.address);
 

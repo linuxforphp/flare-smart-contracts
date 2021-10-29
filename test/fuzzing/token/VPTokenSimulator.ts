@@ -1,9 +1,8 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { WNatInstance } from "../../../typechain-truffle";
-import { loadJson, MAX_BIPS, saveJson, toBN } from "./FuzzingUtils";
+import { loadJson, MAX_BIPS, MAX_BIPS_DELEGATIONS, saveJson, toBN } from "../FuzzingUtils";
 import { DelegationMode, VPTokenState } from "./VPTokenState";
 
-const MAX_BIPS_DELEGATIONS = 2;
 
 const VPContract = artifacts.require("VPContract");
 
@@ -198,8 +197,8 @@ export class VPTokenHistory {
             if (!method.allowedErrors[cleanedMsg]) {
                 console.log(method.allowedErrors);
                 throw e;
-            }
         }
+    }
     }
 }
 
@@ -270,7 +269,7 @@ export class VPTokenSimulator {
             'revert Cannot delegate to self': sender === to,
             'revert Cannot delegate to zero': to === constants.ZERO_ADDRESS,
             'revert Max delegates exceeded': delegations.countNonZero() >= MAX_BIPS_DELEGATIONS,
-            'revert Max delegation bips exceeded': delegations.total().add(toBN(bips)).gt(MAX_BIPS),
+            'revert Max delegation bips exceeded': delegations.total().add(toBN(bips)).gtn(MAX_BIPS),
         };
         return this.history.run({ context: this.context, name: "delegate", sender, to, bips: toBN(bips), allowedErrors });
     }

@@ -32,7 +32,8 @@ contract MockFtso is SimpleMockFtso {
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize,
-        bool activate
+        bool activate,
+        uint256 _minimalRandom
     )
         SimpleMockFtso(
             _symbol,
@@ -45,7 +46,8 @@ contract MockFtso is SimpleMockFtso {
             _revealPeriodSeconds,
             _initialPrice,
             _priceDeviationThresholdBIPS,
-            _cyclicBufferSize
+            _cyclicBufferSize,
+            _minimalRandom
         )
     {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol

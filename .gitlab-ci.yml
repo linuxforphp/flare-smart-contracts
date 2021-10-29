@@ -1,6 +1,8 @@
 ### Stages
 ## Temporary revert to run pipeline
 stages:
+    - fuzzer
+    - coverage
     - test
 
 ### Variables
@@ -34,6 +36,8 @@ cache:
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
     - if: '$CI_COMMIT_BRANCH'
@@ -45,6 +49,8 @@ workflow:
     rules:
         - if: '$CI_BRANCH_NAME == "master"'
           when: on_success
+        - if: '$CI_PIPELINE_SOURCE == "schedule"'
+          when: never
         - when: manual
 
 .yarn-setup: &yarn-setup
@@ -148,6 +154,8 @@ test-contract-end-to-end:
         - yarn $TEST_END_TO_END
 
 test-contract-end-to-end_2:
+    tags:
+        - flarenetworks
     stage: test
     <<: *yarn-setup
     script:
@@ -193,3 +201,47 @@ onlyDetector:
     <<: *pipeline-settings
     script:
         - sh scripts/test-only.sh
+
+coverage:on-schedule:
+    tags:
+        - flarenetworks
+    stage: coverage
+    before_script:
+        - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME != "fuzzer"'
+        when: always
+    image: node:latest
+    script:
+        - yarn c
+        - yarn cov
+
+e2e-fuzzer:on-schedule:
+    tags:
+        - flarenetworks
+    stage: fuzzer
+    before_script:
+        - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
+        when: always
+    image: node:latest
+    timeout: 4 hours
+    script:
+        - yarn c
+        - NODE_OPTIONS="--max_old_space_size=6144"
+          LOOPS=5000
+          N_PROVIDERS=20
+          N_DELEGATORS=10
+          BIG_JUMP_EVERY=50
+          BIG_JUMP_SECONDS=432000
+          MINING_BATCH_SIZE=20
+          CHAIN_CONFIG='{"defaultVoterWhitelistSize":25,"priceEpochDurationSeconds":180,"revealEpochDurationSeconds":90,"rewardEpochDurationSeconds":604800,"ftsoRewardExpiryOffsetDays":30}'
+          yarn test_fuzzing_endtoend
+    artifacts:
+        paths:
+          - test_logs/end-to-end-fuzzing.log
+        name: end-to-end-fuzzing
+        when: always
+        expire_in: 30 days
+        public: false

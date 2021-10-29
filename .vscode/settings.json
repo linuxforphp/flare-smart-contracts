@@ -1,7 +1,10 @@
 {
   "solidity.compileUsingRemoteVersion": "v0.7.6+commit.7338295f",
   "[javascript]": {
-    "editor.tabSize": 4
+    "editor.tabSize": 2
+  },
+  "[typescript]": {
+    "editor.tabSize": 2
   },
   "[solidity]": {
     "editor.tabSize": 4

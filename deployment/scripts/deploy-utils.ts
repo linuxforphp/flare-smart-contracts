@@ -32,7 +32,8 @@ export interface DeployedFlareContracts {
   inflationAllocation?: InflationAllocationInstance,
   stateConnector?: StateConnectorInstance,
   ftsoRegistry?: FtsoRegistryInstance,
-  ftsoContracts?: AssetContracts[]
+  ftsoContracts?: AssetContracts[],
+  contracts?: Contracts,
 }
 
 // Here we should add certain verifications of parameters
@@ -150,6 +151,7 @@ export async function deployNewAsset(
   xAssetDefinition: AssetDefinition,
   priceDeviationThresholdBIPS: number,
   priceEpochCyclicBufferSize: number,
+  minimalFtsoRandom: number,
   deployDummyTokensAndMinters = true,
   quiet = false
 ):
@@ -168,7 +170,7 @@ export async function deployNewAsset(
 
   // Register an FTSO for the new Asset
   const ftso = await Ftso.new(xAssetDefinition.symbol, xAssetDefinition.ftsoDecimals, priceSubmitterAddress, wnatAddress, ftsoManager.address, startTs, priceEpochDurationSeconds,
-    revealEpochDurationSeconds,xAssetDefinition.initialPriceUSDDec5, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize);
+    revealEpochDurationSeconds,xAssetDefinition.initialPriceUSDDec5, priceDeviationThresholdBIPS, priceEpochCyclicBufferSize, minimalFtsoRandom);
   spewNewContractInfo(contracts, null, `FTSO ${xAssetDefinition.symbol}`, `Ftso.sol`, ftso.address, quiet);
 
   // Deploy Asset if we are not deploying on real network
