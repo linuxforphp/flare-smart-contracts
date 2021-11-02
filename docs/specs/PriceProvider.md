@@ -55,8 +55,8 @@ Together with random, sender's address is included in committed hash to prevent 
 
 # Coding
 Following files expose all relevant functions and events:
-- [FTSO interface](../../contracts/userInterface/IFtso.sol)
-- [Price submitter interface](../../contracts/userInterface/IPriceSubmitter.sol)
+- [FTSO interface](../../contracts/userInterfaces/IFtso.sol)
+- [Price submitter interface](../../contracts/userInterfaces/IPriceSubmitter.sol)
 
 see more details below.
 
