@@ -76,7 +76,8 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher integ
             REVEAL_EPOCH_DURATION_S,
             0,
             1e10,
-            defaultPriceEpochCyclicBufferSize
+            defaultPriceEpochCyclicBufferSize,
+            0
         );
     }
 

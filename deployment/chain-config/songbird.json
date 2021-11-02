@@ -39,6 +39,7 @@
     "dataAvailabilityRewardExpiryOffsetEpochs": 26,
     "initialWnatPriceUSDDec5": 0,
     "priceEpochCyclicBufferSize": 200,
+    "minimalFtsoRandom": 0,
     "inflationReceivers" : ["FtsoRewardManager"],
     "inflationSharingBIPS": [10000],
     "inflationTopUpTypes": [0],
