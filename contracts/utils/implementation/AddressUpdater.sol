@@ -80,13 +80,6 @@ contract AddressUpdater is Governed {
      * @notice Returns contract address for the given name and reverts if address(0)
      */
     function getContractAddress(string memory _name) external view returns(address) {
-        return _getContractAddress(_name);
-    }
-
-    /**
-     * @notice Returns contract address for the given name and reverts if address(0)
-     */
-    function _getContractAddress(string memory _name) internal view returns(address) {
         address a = contractAddresses[_keccak256AbiEncode(_name)];
         require(a != address(0), ERR_ADDRESS_ZERO);
         return a;

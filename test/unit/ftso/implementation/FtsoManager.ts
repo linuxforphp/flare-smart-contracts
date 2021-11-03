@@ -1,3 +1,5 @@
+import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 import {
   CleanupBlockNumberManagerInstance,
   FtsoInstance,
@@ -7,6 +9,8 @@ import {
   MockVPTokenContract,
   MockVPTokenInstance
 } from "../../../../typechain-truffle";
+import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
+import { createMockSupplyContract } from "../../../utils/FTSO-test-utils";
 import {
   revealSomePrices,
   setDefaultGovernanceParameters,
@@ -19,11 +23,6 @@ import {
 import { compareArrays, doBNListsMatch, encodeContractNames, lastOf, numberedKeyedObjectToList, toBN } from "../../../utils/test-helpers";
 
 
-import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
-import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
-import { createMockSupplyContract } from "../../../utils/FTSO-test-utils";
-import { MockFtsoRegistry } from "../../../../typechain";
-import { Contracts } from "../../../../deployment/scripts/Contracts";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
@@ -34,7 +33,6 @@ const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
 const MockContract = artifacts.require("MockContract");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
-const OldFtsoManager = artifacts.require("FtsoManagerV1Mock");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;

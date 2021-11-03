@@ -45,8 +45,8 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
   it("Should add new symbol to registry ", async() => {
     // Assemble
-    let BTC_FTSO_promisse = ftsoRegistryContract.getFtso(0);
-    await expectRevert(BTC_FTSO_promisse, ERR_TOKEN_NOT_SUPPORTED);
+    let BTC_FTSO_promise = ftsoRegistryContract.getFtso(0);
+    await expectRevert(BTC_FTSO_promise, ERR_TOKEN_NOT_SUPPORTED);
     // Act
     let BTCFtsoContractMock = await mockFtso("BTC");
     await ftsoRegistryContract.addFtso(BTCFtsoContractMock.address, {from: MOCK_FTSO_ADDRESS});
