@@ -401,7 +401,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // await wNAT.delegateExplicit(p2, 1_000_000_000, { from: d2 });
     // await wNAT.delegateExplicit(p3, 1_000_000_000, { from: d2 });
     // Prime the daemon to establish vote power block.
-    await flareDaemon.trigger({ gas: 2_000_000 });
+    await flareDaemon.trigger({ gas: 40_000_000 });
 
     // Supply contract - inflatable balance should be updated
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
@@ -421,7 +421,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await time.advanceBlock();
     await time.increaseTo(rewardEpochsStartTs.add(BN(1))); // sometimes we get a glitch
 
-    await flareDaemon.trigger({ gas: 2_000_000 }); // initialize reward epoch - also start of new price epoch
+    await flareDaemon.trigger({ gas: 40_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
     let votePowerBlock = firstRewardEpoch.votepowerBlock;
 
@@ -653,7 +653,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Move forward 1 day (24 1h reward epochs) (to day 4)
     await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
     await FinalizeRewardEpochs(23);
-    await flareDaemon.trigger({ gas: 2_000_000 });
+    await flareDaemon.trigger({ gas: 40_000_000 });
 
     day4_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
     day4_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
@@ -768,7 +768,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await FinalizeRewardEpochs(24 - day4RewardEpochs - 2); // one finalize is in submitRevealAndFinalizeRewardEpoch call
 
     // Prime the daemon to establish vote power block.
-    await flareDaemon.trigger({ gas: 2_000_000 });
+    await flareDaemon.trigger({ gas: 40_000_000 });
 
     // Remember Reward manager opening balance
     const Day5OpeningBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
