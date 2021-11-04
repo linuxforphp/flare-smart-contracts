@@ -183,6 +183,26 @@ export function lastOf(lst: any[]) {
     return lst[lst.length-1];
 }
 
+export function zip<T1, T2>(a: T1[], b: T2[]): [T1, T2][] {
+    return a.map((x, i) => [x, b[i]]);
+}
+
+export function zip_many<T>(l: T[], ...lst: T[][]): T[][] {
+    return l.map(
+        (x, i) => [x, ...lst.map( l => l[i])]
+    );
+}
+
+export function zipi<T1, T2>(a: T1[], b: T2[]): [number, T1, T2][] {
+    return a.map((x, i) => [i, x, b[i]]);
+}
+
+export function zip_manyi<T>(l: T[], ...lst: T[][]): [number, T[]][] {
+    return l.map(
+        (x, i) => [i, [x, ...lst.map( l => l[i])]]
+    );
+}
+
 export function compareNumberArrays(a: BN[], b: number[]) {
     expect(a.length, `Expected array length ${a.length} to equal ${b.length}`).to.equals(b.length);
     for (let i = 0; i < a.length; i++) {
