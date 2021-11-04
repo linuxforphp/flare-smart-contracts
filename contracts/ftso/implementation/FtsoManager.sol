@@ -336,7 +336,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             }
         }
 
-        _checkAssetFtsosAreManaged(_assetFtsos);
+        if (managedFtsos[_ftso]) {
+            _checkAssetFtsosAreManaged(_assetFtsos);
+        }
         _ftso.setAssetFtsos(_assetFtsos);
     }
 

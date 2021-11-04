@@ -210,8 +210,8 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
   await addressUpdater.updateContractAddresses([ftsoManager.address]);
 
   let assetList = [
-    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : []), 
-    ...parameters.assets
+    ...parameters.assets,
+    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : [])
   ]
   let ftsoAddresses: string[] = [];
   for (let asset of assetList) {

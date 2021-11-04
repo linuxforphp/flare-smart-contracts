@@ -986,6 +986,16 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await expectRevert.unspecified(ftso4.assetFtsos(1))
     });
 
+    it("Should set ftsos on multi Asset FTSO even if ftsos are not added, but then it should revert at adding multi Asset FTSO", async () => {
+      // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
+      let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
+      await setDefaultGovernanceParameters(ftsoManager);
+
+      // set asset ftsos to ftso
+      await ftsoManager.setFtsoAssetFtsos(ftso1.address, [ftso2, ftso3, ftso4].map(ftso => ftso.address));
+      await expectRevert(ftsoManager.addFtso(ftso1.address), ERR_XASSET_FTSO_NOT_MANAGED);
+    });
+
     it("Should not add multi Asset FTSO if not all ftsos are added", async () => {
       // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
       let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);

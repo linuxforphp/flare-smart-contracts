@@ -10,7 +10,7 @@ import {
   FtsoRewardManagerInstance, GovernedBaseContract, PriceSubmitterContract, PriceSubmitterInstance, VoterWhitelisterContract, VoterWhitelisterInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
-import { capitalizeFirstLetter, findAssetFtso, findFtso } from '../scripts/deploy-utils';
+import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
 
 
 /**
@@ -322,39 +322,15 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
         assert.equal(decimals.toNumber(), parameters.nativeFtsoDecimals);
       });
 
-      for (let asset of ["XRP", "LTC", "DOGE"]) {
+      for (let asset of parameters.NATMultiAssets) {
         it(`Should know about ${asset} Asset FTSO`, async () => {
           // Assemble
           // Act
-          const found = await findAssetFtso(contracts, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset)}`));
+          const found = await findAssetFtso(ftsoWnat, contracts.getContractAddress(`Ftso${pascalCase(asset)}`));
           // Assert
           assert(found);
         });
       }
-
-      it("Should know about XRP Asset FTSO", async () => {
-        // Assemble
-        // Act
-        const found = await findAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_XRP));
-        // Assert
-        assert(found);
-      });
-
-      it("Should know about LTC Asset FTSO", async () => {
-        // Assemble
-        // Act
-        const found = await findAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_LTC));
-        // Assert
-        assert(found);
-      });
-
-      it("Should know about XDG Asset FTSO", async () => {
-        // Assemble
-        // Act
-        const found = await findAssetFtso(contracts, contracts.getContractAddress(Contracts.FTSO_DOGE));
-        // Assert
-        assert(found);
-      });
     });
   }
 
@@ -365,7 +341,7 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
 
       before(async () => {
         FtsoAsset = artifacts.require("Ftso");
-        ftsoAsset = await FtsoAsset.at(contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
+        ftsoAsset = await FtsoAsset.at(contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
       });
 
       it(`Should be on oracle for ${asset.assetSymbol}`, async () => {
@@ -417,7 +393,7 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
           fAsset = await FAsset.at(contracts.getContractAddress(`${asset.xAssetSymbol}`));
         });
 
-        it("Should be an asset representing XRP", async () => {
+        it(`Should be an asset representing ${asset.assetSymbol}`, async () => {
           // Assemble
           // Act
           const symbol = await fAsset.symbol();
@@ -425,7 +401,7 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
           assert.equal(symbol, asset.xAssetSymbol);
         });
 
-        it("Should represent XRP decimals correctly", async () => {
+        it(`Should represent ${asset.assetSymbol} decimals correctly`, async () => {
           // Assemble
           // Act
           const decimals = await fAsset.decimals();
@@ -449,7 +425,7 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
       it(`Should be managing an ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act
-        const found = await findFtso(ftsoManager, contracts.getContractAddress(`Ftso${capitalizeFirstLetter(asset.assetSymbol)}`));
+        const found = await findFtso(ftsoManager, contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
         // Assert
         assert(found);
       });
