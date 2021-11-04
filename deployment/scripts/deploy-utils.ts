@@ -4,12 +4,12 @@ import { AssetTokenContract, AssetTokenInstance, CleanupBlockNumberManagerInstan
 import { Contract, Contracts } from "./Contracts";
 
 export interface AssetDefinition {
-  name: string;
+  name?: string;
   symbol: string;
-  wSymbol: string;
-  decimals: number;
+  wSymbol?: string;
+  decimals?: number;
   ftsoDecimals: number;
-  maxMintRequestTwei: number;
+  maxMintRequestTwei?: number;
   initialPriceUSDDec5: number;
 }
 
@@ -175,15 +175,15 @@ export async function deployNewAsset(
 
   // Deploy Asset if we are not deploying on real network
   if (deployDummyTokensAndMinters) {
-    const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name, xAssetDefinition.wSymbol, xAssetDefinition.decimals);
+    const xAssetToken = await AssetToken.new(deployerAccountAddress, xAssetDefinition.name!, xAssetDefinition.wSymbol!, xAssetDefinition.decimals!);
     await setDefaultVPContract(hre, xAssetToken, deployerAccountAddress);
-    spewNewContractInfo(contracts, null, xAssetDefinition.wSymbol, `AssetToken.sol`, xAssetToken.address, quiet, false);
+    spewNewContractInfo(contracts, null, xAssetDefinition.wSymbol!, `AssetToken.sol`, xAssetToken.address, quiet, false);
 
     await cleanupBlockNumberManager.registerToken(xAssetToken.address);
     await xAssetToken.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
 
     // Deploy dummy Asset minter
-    const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei);
+    const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei!);
     spewNewContractInfo(contracts, null, `Dummy ${xAssetDefinition.wSymbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet, false);
 
 
@@ -199,21 +199,15 @@ export async function deployNewAsset(
   return { ftso }
 }
 
-export function capitalizeFirstLetter(st: string) {
-  return st.charAt(0).toUpperCase() + st.slice(1).toLocaleLowerCase();
-}
-
-export async function findAssetFtso(contracts: Contracts, address: string): Promise<boolean> {
-  const Ftso = artifacts.require("Ftso");
-  const ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
-  let xAssetFtso = await ftsoWnat.assetFtsos(0);
+export async function findAssetFtso(ftso: FtsoInstance, address: string): Promise<boolean> {
+  let xAssetFtso = await ftso.assetFtsos(0);
   let i = 1;
   while (xAssetFtso != "") {
     if (xAssetFtso == address) {
       return true;
     } else {
       try {
-        xAssetFtso = await ftsoWnat.assetFtsos(i++);
+        xAssetFtso = await ftso.assetFtsos(i++);
       } catch (e) {
         xAssetFtso = "";
       }
@@ -222,21 +216,8 @@ export async function findAssetFtso(contracts: Contracts, address: string): Prom
   return false;
 }
 
-export async function findFtsoOnFtsoManager(contracts: Contracts, address: string): Promise<boolean> {
-  const FtsoManager = artifacts.require("FtsoManager");
-  const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
+export async function findFtso(ftsoManager: FtsoManagerInstance, address: string): Promise<boolean> {
   let ftsos = await ftsoManager.getFtsos();
-  let found = false;
-  ftsos.forEach((ftso) => {
-    if (ftso == address) found = true;
-  });
-  return found;
-}
-
-export async function findFtsoOnAddressUpdater(contracts: Contracts, address: string): Promise<boolean> {
-  const AddressUpdater = artifacts.require("AddressUpdater");
-  const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
-  let ftsos = await addressUpdater.getFtsosToReplace();
   let found = false;
   ftsos.forEach((ftso) => {
     if (ftso == address) found = true;

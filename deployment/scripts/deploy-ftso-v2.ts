@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DataAvailabilityRewardManagerContract, DistributionContract, FlareDaemonContract, FtsoContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, IIFtsoManagerV1Contract, InflationAllocationContract, InflationContract, PriceSubmitterContract, StateConnectorContract, SupplyContract, VoterWhitelisterContract, WNatContract } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DataAvailabilityRewardManagerContract, DistributionContract, FlareDaemonContract, FtsoContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, FtsoV2SwitcherContract, IIFtsoManagerV1Contract, InflationAllocationContract, InflationContract, PriceSubmitterContract, StateConnectorContract, SupplyContract, VoterWhitelisterContract, WNatContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, spewNewContractInfo, verifyParameters } from './deploy-utils';
 
@@ -53,6 +53,7 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
   const VoterWhitelister: VoterWhitelisterContract = artifacts.require("VoterWhitelister");
   const WNat: WNatContract = artifacts.require("WNat");
   const Distribution: DistributionContract = artifacts.require("Distribution");
+  const FtsoV2Switcher: FtsoV2SwitcherContract = artifacts.require("FtsoV2Switcher");
 
   // import old ftso manager interface
   const OldFtsoManager: IIFtsoManagerV1Contract = artifacts.require("IIFtsoManagerV1");
@@ -120,6 +121,9 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
     parameters.votePowerIntervalFraction);
   spewNewContractInfo(contracts, addressUpdaterContracts, FtsoManager.contractName, `FtsoManager.sol`, ftsoManager.address, quiet);
 
+  // FtsoV2Switcher contract
+  const ftsoV2Switcher = await FtsoV2Switcher.new(deployerAccount.address, addressUpdater.address);
+  spewNewContractInfo(contracts, null, FtsoV2Switcher.contractName, `FtsoV2Switcher.sol`, ftsoV2Switcher.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
   
@@ -127,7 +131,7 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
   let ftsoWnat: any;
   if (parameters.deployNATFtso) {
     ftsoWnat = await Ftso.new(parameters.nativeSymbol, parameters.nativeFtsoDecimals, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, priceEpochDurationSeconds,
-      revealEpochDurationSeconds, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize, 0);
+      revealEpochDurationSeconds, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize, parameters.minimalFtsoRandom);
     spewNewContractInfo(contracts, null, `FTSO ${parameters.wrappedNativeSymbol}`, `Ftso.sol`, ftsoWnat.address, quiet);
 
     assetToContracts.set(parameters.nativeSymbol, {
@@ -193,9 +197,21 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
     await ftsoManager.setFtsoAssetFtsos(ftsoWnat.address, multiAssetFtsos);
   }
 
+  if (!quiet) {
+    console.error("Adding contract names and addresses to address updater and setting them on ftso manager...");
+  }
+
+  // Tell address updater about all contracts
+  await addressUpdater.addOrUpdateContractNamesAndAddresses(
+    addressUpdaterContracts, addressUpdaterContracts.map( name => contracts.getContractAddress(name) )
+  );
+
+  // Set contracts on ftso manager
+  await addressUpdater.updateContractAddresses([ftsoManager.address]);
+
   let assetList = [
-    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : []), 
-    ...parameters.assets
+    ...parameters.assets,
+    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : [])
   ]
   let ftsoAddresses: string[] = [];
   for (let asset of assetList) {
@@ -203,11 +219,10 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
     ftsoAddresses.push(ftsoContract.address);
   }
 
-  // Add ftsos to the ftso manager
   if (!quiet) {
-    console.error("Setting address updater data...");
+    console.error("Setting ftso V2 switcher data...");
   }
-  await addressUpdater.setFtsosToReplace(ftsoAddresses);
+  await ftsoV2Switcher.setFtsosToReplace(ftsoAddresses);
 
   // Register daemonized contracts to the daemon...order matters. Inflation first.
   if (!quiet) {
@@ -218,25 +233,18 @@ export async function deployFtsoV2(hre: HardhatRuntimeEnvironment, oldContracts:
     { daemonizedContract: inflation.address, gasLimit: parameters.inflationGasLimit },
     { daemonizedContract: ftsoManager.address, gasLimit: parameters.ftsoManagerGasLimit }
   ];
-  await addressUpdater.setFlareDaemonRegistrations(registrations);
-
-    // Tell address updater about all contracts
-  await addressUpdater.addOrUpdateContractNamesAndAddresses(
-    addressUpdaterContracts, addressUpdaterContracts.map( name => contracts.getContractAddress(name) )
-  );
-
-  // Set contracts on ftso manager
-  await addressUpdater.updateContractAddresses([ftsoManager.address]);
+  await ftsoV2Switcher.setFlareDaemonRegistrations(registrations);
 
   if (!quiet) {
-    console.error("Transferring ftso manager governance to address updater contract...");
+    console.error("Transferring ftso manager governance to ftso V2 switcher contract...");
   }
-  await ftsoManager.transferGovernance(addressUpdater.address);
+  await ftsoManager.transferGovernance(ftsoV2Switcher.address);
 
   if (!quiet) {
-    console.error(`Transferring address updater governance to multisig governance ${parameters.governancePublicKey}`);
+    console.error(`Transferring governance to multisig governance ${parameters.governancePublicKey}`);
   }
   await addressUpdater.transferGovernance(parameters.governancePublicKey);
+  await ftsoV2Switcher.transferGovernance(parameters.governancePublicKey);
 
   if (!quiet) {
     console.error("Contracts in JSON:");
