@@ -333,6 +333,21 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expect((await ftsoManager.getCurrentRewardEpoch()).toNumber()).to.equals(1);
     });
 
+    it("Should get reward epoch data", async () => {
+      await expectRevert(ftsoManager.getRewardEpochData(0), "Reward epoch not initialized yet");
+
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize(); // initalize reward epoch
+
+      let block = await web3.eth.getBlockNumber();
+
+      const rewardEpochData = await ftsoManager.getRewardEpochData(0);
+      expect(rewardEpochData.votepowerBlock.toString()).to.equals((block - 1).toString());
+      expect(rewardEpochData.startBlock.toString()).to.equals(block.toString());
+      expect(rewardEpochData.startTimestamp.toString()).to.equals((await web3.eth.getBlock(block)).timestamp.toString());
+    });
+
     it("Should get reward epoch vote power block", async () => {
       await ftsoManager.activate();
       await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
@@ -691,6 +706,34 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       assert.equal(invocationCount.toNumber(), 1);
     });
 
+    it("Should successfully replace an FTSO", async () => {
+      // Assemble
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(mockFtso.address);
+      let mockFtso2 = await MockFtso.new();
+
+      const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
+      const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
+      await mockFtso.givenMethodReturn(symbol, symbolReturn);
+      await mockFtso2.givenMethodReturn(symbol, symbolReturn);
+
+      // Act
+      let tx = await ftsoManager.replaceFtso(mockFtso2.address, false, true);
+
+      // Assert
+      expectEvent(tx, "FtsoAdded", { ftso: mockFtso.address, add: false });
+      expectEvent(tx, "FtsoAdded", { ftso: mockFtso2.address, add: true });
+      assert.equal((await ftsoManager.getFtsos()).length, 1);
+
+      const setAsset = ftsoInterface.contract.methods.setAsset(accounts[5]).encodeABI();
+      const invocationCount = await mockFtso2.invocationCountForMethod.call(setAsset);
+      assert.equal(invocationCount.toNumber(), 0);
+
+      const setAssetFtsos = ftsoInterface.contract.methods.setAssetFtsos([accounts[5], accounts[6]]).encodeABI();
+      const invocationCount2 = await mockFtso2.invocationCountForMethod.call(setAssetFtsos);
+      assert.equal(invocationCount2.toNumber(), 0);
+    });
+
     it("Should successfully replace an FTSO and update asset", async () => {
       // Assemble
       await setDefaultGovernanceParameters(ftsoManager);
@@ -722,7 +765,13 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     it("Should successfully replace an FTSO and update asset ftsos", async () => {
       // Assemble
       await setDefaultGovernanceParameters(ftsoManager);
+      let mockAssetFtso1 = await MockFtso.new();
+      let mockAssetFtso2 = await MockFtso.new();
+      await mockFtsoSymbol("ATOK1", mockAssetFtso1, ftsoInterface);
+      await mockFtsoSymbol("ATOK2", mockAssetFtso2, ftsoInterface);
       await ftsoManager.addFtso(mockFtso.address);
+      await ftsoManager.addFtso(mockAssetFtso1.address);
+      await ftsoManager.addFtso(mockAssetFtso2.address);
       let mockFtso2 = await MockFtso.new();
 
       const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
@@ -731,8 +780,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await mockFtso2.givenMethodReturn(symbol, symbolReturn);
 
       const assetFtsos = ftsoInterface.contract.methods.getAssetFtsos().encodeABI();
-      const assetFtsosReturn = web3.eth.abi.encodeParameter('address[]', [accounts[5], accounts[6]]);
+      const assetFtsosReturn = web3.eth.abi.encodeParameter('address[]', [mockAssetFtso1.address, mockAssetFtso2.address]);
       await mockFtso.givenMethodReturn(assetFtsos, assetFtsosReturn);
+      await mockFtso2.givenMethodReturn(assetFtsos, assetFtsosReturn);
 
       // Act
       let tx = await ftsoManager.replaceFtso(mockFtso2.address, false, true);
@@ -740,9 +790,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       // Assert
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso.address, add: false });
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso2.address, add: true });
-      assert.equal((await ftsoManager.getFtsos()).length, 1);
+      assert.equal((await ftsoManager.getFtsos()).length, 3);
 
-      const setAssetFtsos = ftsoInterface.contract.methods.setAssetFtsos([accounts[5], accounts[6]]).encodeABI();
+      const setAssetFtsos = ftsoInterface.contract.methods.setAssetFtsos([mockAssetFtso1.address, mockAssetFtso2.address]).encodeABI();
       const invocationCount = await mockFtso2.invocationCountForCalldata.call(setAssetFtsos);
       assert.equal(invocationCount.toNumber(), 1);
     });

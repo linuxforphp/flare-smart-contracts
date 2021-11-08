@@ -1,27 +1,20 @@
+import { time } from '@openzeppelin/test-helpers';
+import { Contracts } from "../../../deployment/scripts/Contracts";
 import {
-    AddressUpdaterInstance,
     CleanupBlockNumberManagerInstance,
-    FtsoInstance,
-    FtsoManagerInstance,
-    FtsoManagerV1MockInstance,
+    FtsoInstance, FtsoManagerV1MockInstance,
     FtsoRegistryInstance,
-    FtsoRewardManagerInstance,
-    FtsoV2SwitcherInstance,
-    InflationMockInstance, MockContractInstance,
+    FtsoRewardManagerInstance, InflationMockInstance, MockContractInstance,
     PriceSubmitterInstance,
     TestableFlareDaemonInstance,
     VoterWhitelisterInstance,
     WNatInstance
 } from "../../../typechain-truffle";
-import { setDefaultGovernanceParameters } from "../../utils/FtsoManager-test-utils";
+import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
+import { createMockSupplyContract } from "../../utils/FTSO-test-utils";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 
-import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
-import { defaultPriceEpochCyclicBufferSize } from "../../utils/constants";
-import { createMockSupplyContract } from "../../utils/FTSO-test-utils";
-import { encodeContractNames } from "../../utils/test-helpers";
-import { Contracts } from "../../../deployment/scripts/Contracts";
 const getTestFile = require('../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
