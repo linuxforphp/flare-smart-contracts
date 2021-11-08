@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
@@ -13,17 +14,21 @@ contract AddressUpdatableMock is AddressUpdatable {
 
     }
 
-    function getContractNameHashesAndAddresses() external view returns(
-        bytes32[] memory _contractNameHashes,
-        address[] memory _contractAddresses
-    ) {
+    function getContractNameHashesAndAddresses() external view
+        returns(
+            bytes32[] memory _contractNameHashes,
+            address[] memory _contractAddresses
+        )
+    {
         return (contractNameHashes, contractAddresses);
     }
     
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
         address[] memory _contractAddresses
-    ) internal override {
+    ) 
+        internal override
+    {
         contractNameHashes = _contractNameHashes;
         contractAddresses = _contractAddresses;
     }
