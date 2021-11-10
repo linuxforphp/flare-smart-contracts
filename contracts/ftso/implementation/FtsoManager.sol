@@ -48,13 +48,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_REVEAL_PRICE_EPOCH_TOO_LONG = "Reveal price epoch too long";
     string internal constant ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized";
     string internal constant ERR_GOV_PARAMS_INVALID = "Gov. params invalid";
-    string internal constant ERR_EPOCH_PARAMS_INVALID = "Epoch params invalid";
     string internal constant ERR_ASSET_FTSO_NOT_MANAGED = "Asset FTSO not managed";
     string internal constant ERR_NOT_FOUND = "Not found";
     string internal constant ERR_ALREADY_ADDED = "Already added";
     string internal constant ERR_ALREADY_ACTIVATED = "Already activated";
-    string internal constant ERR_ALREADY_SWITCHED = "Already switched";
-    string internal constant ERR_NEW_FTSO_MANAGER_ZERO = "New ftso manager 0";
     string internal constant ERR_FTSO_ASSET_FTSO_ZERO = "Asset ftsos list empty";
     string internal constant ERR_FTSO_EQUALS_ASSET_FTSO = "ftso equals asset ftso";
     string internal constant ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL = "err close expired";
@@ -664,7 +661,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         uint256 ftsosLen = contracts.length;
         for (uint256 i = 0; i < ftsosLen; i++) {
             IIFtso ftso = contracts[i];
-            if (ftso == ftsoToRemove) {
+            if (ftso.ftsoManager() != address(this)) { // it cannot be updated and will be replaced
                 continue;
             }
             IIFtso[] memory assetFtsos = ftso.getAssetFtsos();
@@ -688,17 +685,19 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     function _cleanFtso(IIFtso _ftso) internal {
-        // may fail if not managed by current ftso manager (can happen in redeploy)
-        try _ftso.deactivateFtso() {
-        } catch {
-            // do nothing, old ftso not deactivated, but actually it is not a problem, just emit an event
-            emit FtsoDeactivationFailed(_ftso);
-        }
         // Since this is as mapping, we can also just delete it, as false is default value for non-existing keys
         delete ftsoInFallbackMode[_ftso];
         delete notInitializedFtsos[_ftso];
         delete managedFtsos[_ftso];
-        _checkMultiAssetFtsosAreManaged(_getFtsos());
+
+        // may fail if not managed by current ftso manager (can happen in redeploy)
+        if (_ftso.ftsoManager() == address(this)) {
+            _ftso.deactivateFtso();
+            _checkMultiAssetFtsosAreManaged(_getFtsos());
+        } else {
+            // do nothing, old ftso not deactivated, but actually it is not a problem, just emit an event
+            emit FtsoDeactivationFailed(_ftso);
+        }
         emit FtsoAdded(_ftso, false);
     }
 

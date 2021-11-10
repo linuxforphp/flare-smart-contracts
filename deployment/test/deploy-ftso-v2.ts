@@ -6,11 +6,13 @@ import {
   AssetTokenContract, AssetTokenInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance,
-  FtsoV2SwitcherContract,
-  FtsoV2SwitcherInstance
+  FtsoV2UpgraderContract,
+  FtsoV2UpgraderInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso } from '../scripts/deploy-utils';
+
+const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`);
 
 
 /**
@@ -19,12 +21,12 @@ import { findAssetFtso } from '../scripts/deploy-utils';
  */
 contract(`deploy-ftso-v2.ts system tests`, async accounts => {
   let contracts: Contracts;
-  let parameters: any;
+  let governancePublicKey: string;
 
   before(async () => {
     contracts = new Contracts();
     await contracts.deserialize(process.stdin);
-    parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
+    governancePublicKey = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG).governancePublicKey;
   });
 
   describe(Contracts.FTSO_MANAGER, async () => {
@@ -40,7 +42,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       // Act
       const governance = await ftsoManager.governance();
       // Assert
-      assert.equal(governance, contracts.getContractAddress(Contracts.FTSO_V2_SWITCHER));
+      assert.equal(governance, contracts.getContractAddress(Contracts.FTSO_V2_UPGRADER));
     });
 
     it("Should know about PriceSubmitter", async () => {
@@ -177,7 +179,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     });
   }
 
-  for (let asset of [...parameters.assets]) {
+  for (let asset of parameters.assets) {
     describe(pascalCase(`FTSO ${asset.assetSymbol}`), async () => {
       let FtsoAsset: FtsoContract;
       let ftsoAsset: FtsoInstance;
@@ -268,7 +270,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       // Act
       const governance = await addressUpdater.governance();
       // Assert
-      assert.equal(governance, parameters.governancePublicKey);
+      assert.equal(governance, governancePublicKey);
     });
 
     it("Should know about all contracts", async () => {
@@ -294,20 +296,20 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
 
   });
 
-  describe(Contracts.FTSO_V2_SWITCHER, async () => {
-    let FtsoV2Switcher: FtsoV2SwitcherContract;
-    let ftsoV2Switcher: FtsoV2SwitcherInstance;
+  describe(Contracts.FTSO_V2_UPGRADER, async () => {
+    let FtsoV2Upgrader: FtsoV2UpgraderContract;
+    let ftsoV2Upgrader: FtsoV2UpgraderInstance;
 
     before(async () => {
-      FtsoV2Switcher = artifacts.require("FtsoV2Switcher");
-      ftsoV2Switcher = await FtsoV2Switcher.at(contracts.getContractAddress(Contracts.FTSO_V2_SWITCHER));
+      FtsoV2Upgrader = artifacts.require("FtsoV2Upgrader");
+      ftsoV2Upgrader = await FtsoV2Upgrader.at(contracts.getContractAddress(Contracts.FTSO_V2_UPGRADER));
     });
 
     for (let asset of parameters.assets) {
       it(`Should know about the ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act
-        const found = await findFtso(ftsoV2Switcher, contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
+        const found = await findFtso(ftsoV2Upgrader, contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
         // Assert
         assert(found);
       });
@@ -317,7 +319,7 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
       it("Should know about WNAT FTSO", async () => {
         // Assemble
         // Act
-        const found = await findFtso(ftsoV2Switcher, contracts.getContractAddress(Contracts.FTSO_WNAT));
+        const found = await findFtso(ftsoV2Upgrader, contracts.getContractAddress(Contracts.FTSO_WNAT));
         // Assert
         assert(found);
       });
@@ -326,18 +328,18 @@ contract(`deploy-ftso-v2.ts system tests`, async accounts => {
     it("Should know about flare daemon registrants", async () => {
       // Assemble
       // Act
-      const registrations = await ftsoV2Switcher.getFlareDaemonRegistrations();
+      const registrations = await ftsoV2Upgrader.getFlareDaemonRegistrations();
       // Assert
       assert.equal(registrations[0].daemonizedContract, contracts.getContractAddress(Contracts.INFLATION));
       assert.equal(registrations[0].gasLimit, parameters.inflationGasLimit);
       assert.equal(registrations[1].daemonizedContract, contracts.getContractAddress(Contracts.FTSO_MANAGER));
-      assert.equal(registrations[2].gasLimit, parameters.ftsoManagerGasLimit);
+      assert.equal(registrations[1].gasLimit, parameters.ftsoManagerGasLimit);
     });
   });
 });
 
-async function findFtso(ftsoV2Switcher: FtsoV2SwitcherInstance, address: string): Promise<boolean> {
-  let ftsos = await ftsoV2Switcher.getFtsosToReplace();
+async function findFtso(ftsoV2Upgrader: FtsoV2UpgraderInstance, address: string): Promise<boolean> {
+  let ftsos = await ftsoV2Upgrader.getFtsosToReplace();
   let found = false;
   ftsos.forEach((ftso) => {
     if (ftso == address) found = true;

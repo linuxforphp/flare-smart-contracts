@@ -26,6 +26,7 @@ import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-wor
 import { transferGovernance } from "./deployment/scripts/transfer-governance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
 import "./type-extensions";
+import { deployFtsoBlockHeight } from "./deployment/scripts/deploy-ftso-block-height";
 
 
 dotenv.config();
@@ -246,6 +247,20 @@ task("deploy-ftso-v2", "Deploy AddressUpdater, FtsoManager and all FTSO contract
     const contracts = new Contracts();
     await contracts.deserialize(process.stdin);
     await deployFtsoV2(hre, contracts, parameters, args.quiet);
+  } else {
+    throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+  }
+});
+
+// Deploy ftso block height
+task("deploy-ftso-block-height", "Deploy FTSO block height contracts")
+.addFlag("quiet", "Suppress console output")
+.setAction(async (args, hre, runSuper) => {
+  const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+  if (parameters) {
+    const contracts = new Contracts();
+    await contracts.deserialize(process.stdin);
+    await deployFtsoBlockHeight(hre, contracts, parameters, args.quiet);
   } else {
     throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
   }

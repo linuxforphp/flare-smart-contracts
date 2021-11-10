@@ -145,6 +145,10 @@ contract MockNpmFtso is IIFtso {
         return 0;
     }
 
+    function ftsoManager() external pure override returns (address) {
+        // TODO
+    }
+
     /**
      * @notice Returns current epoch data
      * @return _epochId                 Current epoch id

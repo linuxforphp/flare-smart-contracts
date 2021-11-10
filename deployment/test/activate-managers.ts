@@ -1,7 +1,5 @@
 import { Contracts } from "../scripts/Contracts";
 
-const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
-
 /**
  * This test assumes a local chain is running with Flare allocated in accounts
  * listed in `./hardhat.config.ts`

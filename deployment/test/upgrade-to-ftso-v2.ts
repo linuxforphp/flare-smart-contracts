@@ -12,21 +12,22 @@ import {
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
 
+const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`);
 
 /**
  * This test assumes a local chain is running with Flare allocated in accounts
  * listed in `./hardhat.config.ts`
  */
-contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
+contract(`upgrade-to-ftso-v2.ts system tests`, async accounts => {
   let contracts: Contracts;
-  let parameters: any;
   let GovernedBase: GovernedBaseContract;
+  let governancePublicKey: string;
   const SHOULD_HAVE_TRANSERED_GOVERNANCE = "Should have transfered governance";
 
   before(async () => {
     contracts = new Contracts();
     await contracts.deserialize(process.stdin);
-    parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
+    governancePublicKey = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG).governancePublicKey;
     GovernedBase = artifacts.require("GovernedBase");
   });
 
@@ -36,7 +37,7 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
     // Act
     const governance = await governedBase.governance();
     // Assert
-    assert.equal(governance, parameters.governancePublicKey);
+    assert.equal(governance, governancePublicKey);
   }
 
   describe(Contracts.FLARE_DAEMON, async () => {
@@ -88,7 +89,7 @@ contract(`switch-to-ftso-v2.ts system tests`, async accounts => {
       // Act
       const startBlock = (await ftsoManager.getRewardEpochData(0)).votepowerBlock;
       // Assert
-      assert(startBlock.toNumber() != 0);
+      assert.notEqual(startBlock.toString(), "0");
     });
 
     it("Should know about PriceSubmitter", async () => {

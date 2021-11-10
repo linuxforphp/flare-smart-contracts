@@ -14,7 +14,7 @@ import "../../utils/implementation/FtsoRegistry.sol";
 import "../../utils/implementation/VoterWhitelister.sol";
 
 
-contract FtsoV2Switcher is Governed {
+contract FtsoV2Upgrader is Governed {
 
     AddressUpdater public immutable addressUpdater;
 
@@ -26,14 +26,14 @@ contract FtsoV2Switcher is Governed {
     }
 
     /**
-     * @notice Set ftsos to be replaced in switchToFtsoV2 call
+     * @notice Set ftsos to be replaced in upgradeToFtsoV2 call
      */
     function setFtsosToReplace(IIFtso[] memory _ftsosToReplace) external onlyGovernance {
         ftsosToReplace = _ftsosToReplace;
     }
 
     /**
-     * @notice Set flare daemon registrations to be registered in switchToFtsoV2 call
+     * @notice Set flare daemon registrations to be registered in upgradeToFtsoV2 call
      */
     function setFlareDaemonRegistrations(FlareDaemon.Registration[] memory _registrations) external onlyGovernance {
         // UnimplementedFeatureError: Copying of type struct ... memory to storage not yet supported.
@@ -44,7 +44,7 @@ contract FtsoV2Switcher is Governed {
     }
 
     /**
-     * @notice Used to do batch update of ftso manager and all connected contracts - Ftsos V2
+     * @notice Used to do batch upgrade of ftso manager and all connected contracts - Ftsos V2
      * - updates contracts with new ftso manager contract address,
      * - updates new ftso manager with current reward states,
      * - activates new ftso manager,
@@ -52,7 +52,7 @@ contract FtsoV2Switcher is Governed {
      * - registers contracts at flare daemon,
      * - transfers governance back to multisig governance
      */
-    function switchToFtsoV2(IIFtsoManagerV1 _oldFtsoManager) external onlyGovernance {
+    function upgradeToFtsoV2(IIFtsoManagerV1 _oldFtsoManager) external onlyGovernance {
         require(ftsosToReplace.length > 0, "ftsos not set");
         require(registrations.length > 0, "registrations not set");
 
@@ -119,7 +119,7 @@ contract FtsoV2Switcher is Governed {
     }
 
     /**
-     * @notice Transfers governance back from switcher contract to current governance
+     * @notice Transfers governance back from upgrader contract to current governance
      */
     function transferGovernanceBack(GovernedBase[] memory _contracts) external onlyGovernance {
         for (uint256 i = 0; i < _contracts.length; i++) {
@@ -128,14 +128,14 @@ contract FtsoV2Switcher is Governed {
     }
 
     /**
-     * @notice Returns ftsos to replace in switchToFtsoV2 call
+     * @notice Returns ftsos to replace in upgradeToFtsoV2 call
      */
     function getFtsosToReplace() external view returns(IIFtso[] memory _ftsosToReplace) {
         return ftsosToReplace;
     }
 
     /**
-     * @notice Returns flare daemon registrations to be registered in switchToFtsoV2 call
+     * @notice Returns flare daemon registrations to be registered in upgradeToFtsoV2 call
      */
     function getFlareDaemonRegistrations() external view returns(FlareDaemon.Registration[] memory _registrations) {
         return registrations;
