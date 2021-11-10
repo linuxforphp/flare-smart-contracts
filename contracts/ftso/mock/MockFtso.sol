@@ -23,9 +23,9 @@ contract MockFtso is SimpleMockFtso {
     constructor(
         string memory _symbol,
         uint256 _decimals,
-        IPriceSubmitter _priceSubmitter,
+        address _priceSubmitter,
         IIVPToken _wNat,
-        IIFtsoManager _ftsoManager,
+        address _ftsoManager,
         uint256 _firstEpochStartTs,
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds,

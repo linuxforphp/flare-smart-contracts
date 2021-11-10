@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../token/interface/IIVPToken.sol";
 import "../interface/IIFtso.sol";
-import "../interface/IIFtsoManager.sol";
 import "../lib/FtsoEpoch.sol";
 import "../lib/FtsoVote.sol";
 import "../lib/FtsoMedian.sol";
@@ -60,8 +58,8 @@ contract Ftso is IIFtso {
 
     // external contracts
     IIVPToken public immutable override wNat;       // wrapped native token
-    IIFtsoManager immutable public ftsoManager;     // FTSO manager contract
-    IPriceSubmitter public immutable priceSubmitter;// Price submitter contract
+    address immutable public override ftsoManager;  // FTSO manager contract
+    address public immutable priceSubmitter;        // Price submitter contract
 
     IIVPToken[] public assets;                      // array of assets
     IIFtso[] public assetFtsos;                     // FTSOs for assets (for a multi-asset FTSO)
@@ -76,14 +74,14 @@ contract Ftso is IIFtso {
     }
 
     modifier onlyFtsoManager {
-        if (msg.sender != address(ftsoManager)) {
+        if (msg.sender != ftsoManager) {
             revertNoAccess();
         }
         _;
     }
 
     modifier onlyPriceSubmitter {
-        if (msg.sender != address(priceSubmitter)) {
+        if (msg.sender != priceSubmitter) {
             revertNoAccess();
         }
         _;
@@ -92,9 +90,9 @@ contract Ftso is IIFtso {
     constructor(
         string memory _symbol,
         uint256 _decimals,
-        IPriceSubmitter _priceSubmitter,
+        address _priceSubmitter,
         IIVPToken _wNat,
-        IIFtsoManager _ftsoManager,
+        address _ftsoManager,
         uint256 _firstEpochStartTs,
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds,

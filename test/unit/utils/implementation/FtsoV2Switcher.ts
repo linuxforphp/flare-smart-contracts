@@ -1,6 +1,6 @@
 import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import {
-    AddressUpdaterInstance, FtsoManagerInstance, FtsoManagerV1MockInstance, FtsoRewardManagerInstance, FtsoV2SwitcherInstance
+    AddressUpdaterInstance, FtsoManagerInstance, FtsoManagerV1MockInstance, FtsoRewardManagerInstance, FtsoV2UpgraderInstance
 } from "../../../../typechain-truffle";
 import { getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 import { compareArrays } from '../../../utils/test-helpers';
@@ -16,19 +16,19 @@ const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const OldFtsoManager = artifacts.require("FtsoManagerV1Mock");
 const FtsoManager = artifacts.require("FtsoManager");
-const FtsoV2Switcher = artifacts.require("FtsoV2Switcher");
+const FtsoV2Upgrader = artifacts.require("FtsoV2Upgrader");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
 
-contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit tests`, async accounts => {
+contract(`FtsoV2Upgrader.sol; ${ getTestFile(__filename) }; FtsoV2Upgrader unit tests`, async accounts => {
 
     const governance = GOVERNANCE_GENESIS_ADDRESS;
     let startTs: BN;
     let addressUpdater: AddressUpdaterInstance;
-    let ftsoV2Switcher: FtsoV2SwitcherInstance;
+    let ftsoV2Upgrader: FtsoV2UpgraderInstance;
     
     let ftsoManagerInterface: FtsoManagerInstance;
     let oldFtsoManagerInterface: FtsoManagerV1MockInstance;
@@ -36,7 +36,7 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
 
     beforeEach(async () => {
         addressUpdater = await AddressUpdater.new(governance);
-        ftsoV2Switcher = await FtsoV2Switcher.new(governance, addressUpdater.address);
+        ftsoV2Upgrader = await FtsoV2Upgrader.new(governance, addressUpdater.address);
 
         // Get the timestamp for the just mined block
         startTs = await time.latest();
@@ -77,7 +77,7 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
         // Assemble
         // Act
         // Assert
-        assert.equal(await ftsoV2Switcher.governance(), governance);
+        assert.equal(await ftsoV2Upgrader.governance(), governance);
     });
 
     it("Should set registrations", async() => {
@@ -87,10 +87,10 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
             { daemonizedContract: accounts[2], gasLimit: 40000000 }
         ];
         // Act
-        await ftsoV2Switcher.setFlareDaemonRegistrations(registrations, { from: governance });
+        await ftsoV2Upgrader.setFlareDaemonRegistrations(registrations, { from: governance });
         // Assert
 
-        const reg = await ftsoV2Switcher.getFlareDaemonRegistrations();
+        const reg = await ftsoV2Upgrader.getFlareDaemonRegistrations();
         assert.equal(reg.length, registrations.length);
         assert.equal(reg[0].daemonizedContract, registrations[0].daemonizedContract);
         assert.equal(reg[0].gasLimit.toString(), registrations[0].gasLimit.toString());
@@ -101,7 +101,7 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
     it("Should revert setting registrations if not from governance", async() => {
         // Assemble
         // Act
-        const setPromise = ftsoV2Switcher.setFlareDaemonRegistrations([], { from: accounts[0] });
+        const setPromise = ftsoV2Upgrader.setFlareDaemonRegistrations([], { from: accounts[0] });
         // Assert
         await expectRevert(setPromise, "only governance")
     });
@@ -110,24 +110,24 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
         // Assemble
         const ftsos = [accounts[1], accounts[2]];
         // Act
-        await ftsoV2Switcher.setFtsosToReplace(ftsos, { from: governance });
+        await ftsoV2Upgrader.setFtsosToReplace(ftsos, { from: governance });
         // Assert
-        compareArrays(await ftsoV2Switcher.getFtsosToReplace(), ftsos);
+        compareArrays(await ftsoV2Upgrader.getFtsosToReplace(), ftsos);
     });
 
     it("Should revert setting ftsos if not from governance", async() => {
         // Assemble
         // Act
-        const setPromise = ftsoV2Switcher.setFtsosToReplace([], { from: accounts[0] });
+        const setPromise = ftsoV2Upgrader.setFtsosToReplace([], { from: accounts[0] });
         // Assert
         await expectRevert(setPromise, "only governance")
     });
 
     it("Should transfer governance back", async() => {
         // Assemble
-        const governedContract = await Governed.new(ftsoV2Switcher.address);
+        const governedContract = await Governed.new(ftsoV2Upgrader.address);
         // Act
-        await ftsoV2Switcher.transferGovernanceBack([governedContract.address], { from: governance });
+        await ftsoV2Upgrader.transferGovernanceBack([governedContract.address], { from: governance });
         // Assert
         assert.equal(await governedContract.governance(), governance)
     });
@@ -135,53 +135,53 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
     it("Should revert calling transfer governance back if not from governance", async() => {
         // Assemble
         // Act
-        const transferPromise = ftsoV2Switcher.transferGovernanceBack([], { from: accounts[0] });
+        const transferPromise = ftsoV2Upgrader.transferGovernanceBack([], { from: accounts[0] });
         // Assert
         await expectRevert(transferPromise, "only governance")
     });
 
-    it("Should revert calling switch if not from governance", async() => {
+    it("Should revert calling upgrade if not from governance", async() => {
         // Assemble
         // Act
-        const switchPromise = ftsoV2Switcher.switchToFtsoV2(constants.ZERO_ADDRESS, { from: accounts[0] });
+        const upgradePromise = ftsoV2Upgrader.upgradeToFtsoV2(constants.ZERO_ADDRESS, { from: accounts[0] });
         // Assert
-        await expectRevert(switchPromise, "only governance")
+        await expectRevert(upgradePromise, "only governance")
     });
 
-    it("Should revert calling switch if ftsos are not set", async() => {
+    it("Should revert calling upgrade if ftsos are not set", async() => {
         // Assemble
         // Act
-        const switchPromise = ftsoV2Switcher.switchToFtsoV2(constants.ZERO_ADDRESS, { from: governance });
+        const upgradePromise = ftsoV2Upgrader.upgradeToFtsoV2(constants.ZERO_ADDRESS, { from: governance });
         // Assert
-        await expectRevert(switchPromise, "ftsos not set")
+        await expectRevert(upgradePromise, "ftsos not set")
     });
 
-    it("Should revert calling switch if registrants are not set", async() => {
+    it("Should revert calling upgrade if registrants are not set", async() => {
         // Assemble
         const ftsos = [accounts[1], accounts[2]];
-        await ftsoV2Switcher.setFtsosToReplace(ftsos, { from: governance });
+        await ftsoV2Upgrader.setFtsosToReplace(ftsos, { from: governance });
         // Act
-        const switchPromise = ftsoV2Switcher.switchToFtsoV2(constants.ZERO_ADDRESS, { from: governance });
+        const upgradePromise = ftsoV2Upgrader.upgradeToFtsoV2(constants.ZERO_ADDRESS, { from: governance });
         // Assert
-        await expectRevert(switchPromise, "registrations not set")
+        await expectRevert(upgradePromise, "registrations not set")
     });
 
-    it("Should revert calling switch if contracts on address updater are not set", async() => {
+    it("Should revert calling upgrade if contracts on address updater are not set", async() => {
         // Assemble
         const ftsos = [accounts[1], accounts[2]];
-        await ftsoV2Switcher.setFtsosToReplace(ftsos, { from: governance });
+        await ftsoV2Upgrader.setFtsosToReplace(ftsos, { from: governance });
         const registrations = [
             { daemonizedContract: accounts[1], gasLimit: 2000000 },
             { daemonizedContract: accounts[2], gasLimit: 40000000 }
         ];
-        await ftsoV2Switcher.setFlareDaemonRegistrations(registrations, { from: governance });
+        await ftsoV2Upgrader.setFlareDaemonRegistrations(registrations, { from: governance });
         // Act
-        const switchPromise = ftsoV2Switcher.switchToFtsoV2(constants.ZERO_ADDRESS, { from: governance });
+        const upgradePromise = ftsoV2Upgrader.upgradeToFtsoV2(constants.ZERO_ADDRESS, { from: governance });
         // Assert
-        await expectRevert(switchPromise, "address zero")
+        await expectRevert(upgradePromise, "address zero")
     });
 
-    it("Should revert calling switch if reward epoch start does not match", async() => {
+    it("Should revert calling upgrade if reward epoch start does not match", async() => {
         // Assemble
         const oldFtsoManagerMock = await MockContract.new();
         const ftsoManagerMock = await MockContract.new();
@@ -196,19 +196,19 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
 
         await addressUpdater.addOrUpdateContractNamesAndAddresses(["FtsoManager"], [ftsoManagerMock.address], { from: governance });
         const ftsos = [accounts[1], accounts[2]];
-        await ftsoV2Switcher.setFtsosToReplace(ftsos, { from: governance });
+        await ftsoV2Upgrader.setFtsosToReplace(ftsos, { from: governance });
         const registrations = [
             { daemonizedContract: accounts[1], gasLimit: 2000000 },
             { daemonizedContract: accounts[2], gasLimit: 40000000 }
         ];
-        await ftsoV2Switcher.setFlareDaemonRegistrations(registrations, { from: governance });
+        await ftsoV2Upgrader.setFlareDaemonRegistrations(registrations, { from: governance });
         // Act
-        const switchPromise = ftsoV2Switcher.switchToFtsoV2(oldFtsoManagerMock.address, { from: governance });
+        const upgradePromise = ftsoV2Upgrader.upgradeToFtsoV2(oldFtsoManagerMock.address, { from: governance });
         // Assert
-        await expectRevert(switchPromise, "reward epoch start does not match")
+        await expectRevert(upgradePromise, "reward epoch start does not match")
     });
 
-    it("Should switch successfully", async() => {
+    it("Should upgrade successfully", async() => {
         // Assemble
         const priceSubmitterInterface = await PriceSubmitter.new();
         const voterWhitelisterInterface = await VoterWhitelister.new(governance, priceSubmitterInterface.address, 100);
@@ -248,17 +248,17 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
             [ftsoManagerMock.address, priceSubmitterMock.address, ftsoRewardManagerMock.address, ftsoRegistryMock.address, voterWhitelisterMock.address, cleanupBlockNumberManagerMock.address, flareDaemonMock.address, inflationMock.address, wNatMock.address], 
             { from: governance });
 
-        // set switcher data
+        // set upgrader data
         const ftsos = [accounts[1], accounts[2]];
-        await ftsoV2Switcher.setFtsosToReplace(ftsos, { from: governance });
+        await ftsoV2Upgrader.setFtsosToReplace(ftsos, { from: governance });
         const registrations = [
             { daemonizedContract: accounts[1], gasLimit: 2000000 },
             { daemonizedContract: accounts[2], gasLimit: 40000000 }
         ];
-        await ftsoV2Switcher.setFlareDaemonRegistrations(registrations, { from: governance });
+        await ftsoV2Upgrader.setFlareDaemonRegistrations(registrations, { from: governance });
 
         // Act
-        await ftsoV2Switcher.switchToFtsoV2(oldFtsoManagerMock.address, { from: governance });
+        await ftsoV2Upgrader.upgradeToFtsoV2(oldFtsoManagerMock.address, { from: governance });
 
         // Assert
         // set new addresses
@@ -294,7 +294,7 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher unit 
         assert.equal((await flareDaemonMock.invocationCountForCalldata.call(registerToDaemonize)).toNumber(), 1);
 
         // transfer governance back
-        const transferGovernance = ftsoV2Switcher.contract.methods.transferGovernance(governance).encodeABI(); // all encoded calls are the same
+        const transferGovernance = ftsoV2Upgrader.contract.methods.transferGovernance(governance).encodeABI(); // all encoded calls are the same
         assert.equal((await ftsoManagerMock.invocationCountForCalldata.call(transferGovernance)).toNumber(), 1);
         assert.equal((await priceSubmitterMock.invocationCountForCalldata.call(transferGovernance)).toNumber(), 1);
         assert.equal((await ftsoRewardManagerMock.invocationCountForCalldata.call(transferGovernance)).toNumber(), 1);

@@ -605,6 +605,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let tx = await ftsoManager.addFtso(mockFtso.address);
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso.address, add: true });
       assert.equal(mockFtso.address, (await ftsoManager.getFtsos())[0]);
+      const ftsoManagerFunction = web3.utils.sha3("ftsoManager()")!.slice(0, 10); // first 4 bytes is function selector
+      mockFtso.givenMethodReturnAddress(ftsoManagerFunction, ftsoManager.address);
 
       // Act
       let tx2 = await ftsoManager.removeFtso(mockFtso.address);

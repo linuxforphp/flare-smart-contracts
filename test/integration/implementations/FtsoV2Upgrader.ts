@@ -32,7 +32,7 @@ const FtsoManager = artifacts.require("FtsoManager");
 const Ftso = artifacts.require("Ftso");
 const WNAT = artifacts.require("WNat");
 const InflationMock = artifacts.require("InflationMock");
-const FtsoV2Switcher = artifacts.require("FtsoV2Switcher");
+const FtsoV2Upgrader = artifacts.require("FtsoV2Upgrader");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -40,7 +40,7 @@ const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
 const FTSO_SYMBOL = "NAT";
 
-contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher integration tests`, async accounts => {
+contract(`FtsoV2Upgrader.sol; ${ getTestFile(__filename) }; FtsoV2Upgrader integration tests`, async accounts => {
 
     const governance = GOVERNANCE_GENESIS_ADDRESS;
 
@@ -127,7 +127,7 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher integ
         await flareDaemon.registerToDaemonize(registrations, {from: governance});
     });
 
-    it("Should switch to ftso V2", async () => {
+    it("Should upgrade to ftso V2", async () => {
         // Assemble
         // add ftso to old ftso manager
         let oldFtso = await createFtso(oldFtsoManager.address);
@@ -201,30 +201,30 @@ contract(`FtsoV2Switcher.sol; ${ getTestFile(__filename) }; FtsoV2Switcher integ
 
         // create new ftso
         const newFtso = await createFtso(ftsoManager.address);
-        // create switcher, set governance to depoyer account and set switcher data
-        const ftsoV2Switcher = await FtsoV2Switcher.new(deployerAccount, addressUpdater.address);
-        await ftsoV2Switcher.setFtsosToReplace([newFtso.address], {from: deployerAccount});
+        // create upgrader, set governance to depoyer account and set upgrader data
+        const ftsoV2Upgrader = await FtsoV2Upgrader.new(deployerAccount, addressUpdater.address);
+        await ftsoV2Upgrader.setFtsosToReplace([newFtso.address], {from: deployerAccount});
         const registrations = [
             { daemonizedContract: mockInflation.address, gasLimit: 2000000 },
             { daemonizedContract: ftsoManager.address, gasLimit: 40000000 }
         ];
-        await ftsoV2Switcher.setFlareDaemonRegistrations(registrations, {from: deployerAccount});
+        await ftsoV2Upgrader.setFlareDaemonRegistrations(registrations, {from: deployerAccount});
 
-        // transfer governance of contracts to switcher
-        await ftsoManager.transferGovernance(ftsoV2Switcher.address, {from: deployerAccount});
-        await cleanupBlockNumberManager.transferGovernance(ftsoV2Switcher.address, {from: governance});
-        await priceSubmitter.transferGovernance(ftsoV2Switcher.address, {from: governance});
-        await flareDaemon.transferGovernance(ftsoV2Switcher.address, {from: governance});
-        await ftsoRewardManager.transferGovernance(ftsoV2Switcher.address, {from: governance});
-        await voterWhitelister.transferGovernance(ftsoV2Switcher.address, {from: governance});
-        await ftsoRegistry.transferGovernance(ftsoV2Switcher.address, {from: governance});
+        // transfer governance of contracts to upgrader
+        await ftsoManager.transferGovernance(ftsoV2Upgrader.address, {from: deployerAccount});
+        await cleanupBlockNumberManager.transferGovernance(ftsoV2Upgrader.address, {from: governance});
+        await priceSubmitter.transferGovernance(ftsoV2Upgrader.address, {from: governance});
+        await flareDaemon.transferGovernance(ftsoV2Upgrader.address, {from: governance});
+        await ftsoRewardManager.transferGovernance(ftsoV2Upgrader.address, {from: governance});
+        await voterWhitelister.transferGovernance(ftsoV2Upgrader.address, {from: governance});
+        await ftsoRegistry.transferGovernance(ftsoV2Upgrader.address, {from: governance});
 
         // transfer governance
         await addressUpdater.transferGovernance(governance, {from: deployerAccount});
-        await ftsoV2Switcher.transferGovernance(governance, {from: deployerAccount});
+        await ftsoV2Upgrader.transferGovernance(governance, {from: deployerAccount});
 
-        // call switch method
-        await ftsoV2Switcher.switchToFtsoV2(oldFtsoManager.address, {from: governance});
+        // call upgrade method
+        await ftsoV2Upgrader.upgradeToFtsoV2(oldFtsoManager.address, {from: governance});
 
         // Assert
         expect(await ftsoManager.governance()).to.equals(governance);

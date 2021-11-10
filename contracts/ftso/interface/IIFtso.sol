@@ -61,6 +61,11 @@ interface IIFtso is IFtso, IFtsoGenesis {
     function initializeCurrentEpochStateForReveal(uint256 _circulatingSupplyNat, bool _fallbackMode) external;
   
     /**
+     * @notice Returns ftso manager address
+     */
+    function ftsoManager() external view returns (address);
+
+    /**
      * @notice Returns the FTSO asset
      * @dev Asset is null in case of multi-asset FTSO
      */
