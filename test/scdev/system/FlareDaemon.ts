@@ -1,3 +1,4 @@
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { FlareDaemonInstance, MockContractInstance } from "../../../typechain-truffle";
 import { FLARE_DAEMON_ADDRESS } from "../../utils/constants";
 
@@ -66,6 +67,11 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon system tests`
             // Assert
             const endInvocationCount = await contractToDaemonize.invocationCountForMethod.call(daemonize);
             assert(endInvocationCount.sub(startInvocationCount).eq(BN(blocks)));
+        });
+
+        it("Should revert if user triggers function trigger", async() => {
+          await expectRevert.unspecified(flareDaemon.trigger());
+          await expectRevert.unspecified(flareDaemon.trigger({from: accounts[1]}));
         });
     });
 });
