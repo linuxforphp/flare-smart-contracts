@@ -5,5 +5,7 @@ declare module "hardhat/types/runtime" {
   // This new field will be available in tasks' actions, scripts, and tests.
   export interface HardhatRuntimeEnvironment {
     getChainConfigParameters(chainConfig: string | undefined): any;
+    getContractsMap(filePath?: string): any;
+    c: {}; // contracts
   }
 }

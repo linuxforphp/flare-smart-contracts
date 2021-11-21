@@ -33,7 +33,8 @@ dotenv.config();
 
 function getChainConfigParameters(chainConfig: string | undefined): any {
   if (chainConfig) {
-    const parameters = require(`./deployment/chain-config/${process.env.CHAIN_CONFIG}.json`)
+    const fs = require("fs");
+    const parameters = JSON.parse(fs.readFileSync(`deployment/chain-config/${chainConfig}.json`));
 
     // inject private keys from .env, if they exist
     if (process.env.DEPLOYER_PRIVATE_KEY) {
@@ -56,8 +57,29 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
   }
 }
 
-extendEnvironment((hre) => {
+function readContracts(network: string, filePath?: string): Contracts {
+  const contracts = new Contracts();
+  contracts.deserializeFile(filePath || (`deployment/deploys/${network}.json`));
+  return contracts;
+}
+
+function injectModule(hre: any, mod: any) {
+  // eslint-disable-next-line guard-for-in
+  for (let key in mod) {
+    hre[key] = mod[key];
+  }
+}
+
+extendEnvironment(async (hre) => {
+  injectModule(hre, require('./scripts/console-scripts/console-helpers'));
   hre.getChainConfigParameters = getChainConfigParameters;
+  hre.getContractsMap = (filePath?: string) => readContracts(hre.network.name, filePath).getContractsMap(hre);
+  // use try catch as hardhat.json has wrong addresses when used in unit tests
+  try {
+    hre.c = await hre.getContractsMap();
+  } catch (error) {
+    // do nothing
+  }
 });
 
 // Rig up deployment tasks
