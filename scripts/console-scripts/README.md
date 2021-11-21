@@ -18,8 +18,19 @@ To run the hardhat console type (example for `scdev` network):
 ```
 yarn hardhat console --network scdev
 ```
-An interactive command line will get started. If network is not provider internal `hardhat` network is assumed.
+An interactive command line will get started. If network is not provided internal `hardhat` network is assumed.
+
+Additional field called `c` (contracts) is injected into hardhat environment (`hre.c = await hre.getContractsMap()`). It contains contracts from `deployment/deploys/<network>.json`.
+
+To connect to contracts defined in some other file (e.g. `deployment/deploys/songbird_fix.json`) use
+```
+let contracts = await getContractsMap("deployment/deploys/songbird_fix.json");
+```
+
+All functions defined in `scripts/console-scripts/console-helpers.ts` are also injected into hardhat environment and can be used in console directly.
 
 ## Examples
 
-See [`console-helpers.js`](./console-helper.js)
+To get current XRP price from FTSO contract use `await hre.c.ftsoXrp.getCurrentPrice()`.
+
+For more examples see [`console-examples.js`](./console-examples.js)
