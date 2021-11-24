@@ -46,6 +46,8 @@ workflow:
 
 # only run jobs automatically for master barnch push-es
 .pipeline-settings: &pipeline-settings
+    tags:
+        - flarenetworks
     rules:
         - if: '$CI_BRANCH_NAME == "master"'
           when: on_success
@@ -154,8 +156,6 @@ test-contract-end-to-end:
         - yarn $TEST_END_TO_END
 
 test-contract-end-to-end_2:
-    tags:
-        - flarenetworks
     stage: test
     <<: *yarn-setup
     script:
