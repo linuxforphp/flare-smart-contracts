@@ -115,6 +115,14 @@ const config = {
         version: "0.6.12",
         settings: { }
       },
+      "contracts/genesis/mock/FlareDaemonMock1.sol": {
+        version: "0.6.12",
+        settings: {}
+      },
+      "contracts/genesis/mock/FlareDaemonMock2.sol": {
+        version: "0.6.12",
+        settings: {}
+      },
       "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
         version: "0.6.12",
         settings: { }
