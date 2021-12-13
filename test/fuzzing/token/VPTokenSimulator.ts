@@ -1,6 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { WNatInstance } from "../../../typechain-truffle";
-import { loadJson, MAX_BIPS, MAX_BIPS_DELEGATIONS, saveJson, toBN } from "../FuzzingUtils";
+import { loadJson, MAX_BIPS, MAX_BIPS_DELEGATIONS, saveJson } from "../../utils/fuzzing-utils";
+import { toBN } from "../../utils/test-helpers";
 import { DelegationMode, VPTokenState } from "./VPTokenState";
 
 

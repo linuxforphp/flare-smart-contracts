@@ -1,40 +1,10 @@
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync } from "fs";
+import { readFileSync } from "fs";
 import hre from 'hardhat';
-import { dirname } from "path";
 import { activateManagers } from "../../../deployment/scripts/activate-managers";
 import { daemonizeContracts } from "../../../deployment/scripts/daemonize-contracts";
 import { deployContracts } from "../../../deployment/scripts/deploy-contracts";
 import { verifyParameters } from "../../../deployment/scripts/deploy-utils";
 import { transferGovernance } from "../../../deployment/scripts/transfer-governance";
-
-export class LogFile {
-    public readonly fd;
-
-    constructor(
-        public readonly path: string
-    ) {
-        this.fd = LogFile.openNewFile(path);
-    }
-
-    static openNewFile(path: string) {
-        const dir = dirname(path);
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-        if (existsSync(path)) {
-            const backup = path + '.1';
-            if (existsSync(backup)) unlinkSync(backup);
-            renameSync(path, backup);
-        }
-        return openSync(path, 'as+');
-    }
-
-    log(text: string) {
-        appendFileSync(this.fd, text + '\n');
-    }
-
-    close() {
-        closeSync(this.fd);
-    }
-}
 
 export function getChainConfigParameters(configFile: string): any {
     const parameters = JSON.parse(readFileSync(configFile).toString());
@@ -81,14 +51,4 @@ export function expectErrors(e: any, expectedMessages: string[]) {
         if (message.includes(msg)) return;
     }
     throw e;    // unexpected error
-}
-
-export async function foreachAsyncParallel<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
-    await Promise.all(array.map(func));
-}
-
-export async function foreachAsyncSerial<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
-    for (let i = 0; i < array.length; i++) {
-        await func(array[i], i);
-    }
 }

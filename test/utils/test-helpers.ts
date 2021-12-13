@@ -2,6 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 // This sometimes break tests
 // @ts-ignore
 import { time } from '@openzeppelin/test-helpers';
+import BN from "bn.js";
 import { BigNumber, ContractReceipt, ContractTransaction, Signer } from "ethers";
 import { ethers } from "hardhat";
 
@@ -152,11 +153,24 @@ export async function advanceBlock(): Promise<FlareBlock> {
 
 /**
  * Helper wrapper to convert number to BN 
- * @param n 
- * @returns 
+ * @param x number expressed in any reasonable type
+ * @returns same number as BN
  */
-export function toBN(n: number | string) {
-    return web3.utils.toBN(n);
+export function toBN(x: BN | BigNumber | number | string): BN {
+    if (x instanceof BN) return x;
+    if (x instanceof BigNumber) return new BN(x.toHexString().slice(2), 16)
+    return web3.utils.toBN(x);
+}
+
+/**
+ * Helper wrapper to convert number to Ethers' BigNumber 
+ * @param x number expressed in any reasonable type
+ * @returns same number as BigNumber
+ */
+export function toBigNumber(x: BN | BigNumber | number | string): BigNumber {
+    if (x instanceof BigNumber) return x;
+    if (x instanceof BN) return BigNumber.from(`0x${x.toString(16)}`);
+    return BigNumber.from(x);
 }
 
 export function numberedKeyedObjectToList<T>(obj: any) {
@@ -296,4 +310,24 @@ export function toBNFixedPrecision(x: number, exponent: number): BN {
 // return BigNumber(x * 10^exponent)
 export function toBigNumberFixedPrecision(x: number, exponent: number): BigNumber {
     return BigNumber.from(toStringFixedPrecision(x, exponent));
+}
+
+/**
+ * Run an async task on every element of an array. Start tasks for all elements immediately (in parallel) and complete when all are completed.
+ * @param array array of arguments
+ * @param func the task to run for every element of the array
+ */
+export async function foreachAsyncParallel<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
+    await Promise.all(array.map(func));
+}
+
+/**
+ * Run an async task on every element of an array. Start tasks for every element when the previous completes (serial). Complete when all are completed.
+ * @param array array of arguments
+ * @param func the task to run for every element of the array
+ */
+export async function foreachAsyncSerial<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
+    for (let i = 0; i < array.length; i++) {
+        await func(array[i], i);
+    }
 }

@@ -8,7 +8,7 @@
       "typeRoots": [
         "test/types",
         "node_modules/@types",
-        "airdrop/utils/airdropTypes.tss"
+        "airdrop/utils/airdropTypes.ts"
       ]
     },
     "include": [

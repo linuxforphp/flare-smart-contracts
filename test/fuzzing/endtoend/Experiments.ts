@@ -10,9 +10,9 @@ import { VPContract__factory, VPToken, WNat, WNat__factory } from "../../../type
 import { WNatInstance } from "../../../typechain-truffle";
 import { getTestFile } from "../../utils/constants";
 import { EthersEventDecoder, formatBN } from "../../utils/EventDecoder";
-import { sleep, toBNFixedPrecision, toStringFixedPrecision } from "../../utils/test-helpers";
+import { sleep, toBN, toBNFixedPrecision, toStringFixedPrecision } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { currentRealTime, toBN } from "../FuzzingUtils";
+import { currentRealTime } from "../../utils/fuzzing-utils";
 
 const WNAT = artifacts.require("WNat");
 

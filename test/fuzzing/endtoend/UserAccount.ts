@@ -1,7 +1,7 @@
 import { BigNumber } from "ethers";
 import { AssetToken, DummyAssetMinter, FlareDaemon, Ftso, FtsoManager, FtsoRegistry, FtsoRewardManager, PriceSubmitter, VoterWhitelister, WNat } from "../../../typechain";
 import { BaseEvent, ethersFilterEvents, formatBN } from "../../utils/EventDecoder";
-import { BIG_NUMBER_ZERO, coinFlip, MAX_BIPS, MAX_BIPS_DELEGATIONS, randomChoice, randomInt } from "../FuzzingUtils";
+import { BIG_NUMBER_ZERO, coinFlip, MAX_BIPS, MAX_BIPS_DELEGATIONS, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { expectErrors, reportError } from "./EndToEndFuzzingUtils";
 import { EthersTransactionRunner, SignerWithAddress } from "./TransactionRunner";
 

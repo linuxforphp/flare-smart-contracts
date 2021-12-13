@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import { WNatInstance } from "../../../typechain-truffle";
 import { getTestFile } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "../FuzzingUtils";
+import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { VPTokenChecker } from "./VPTokenChecker";
 import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator";
 

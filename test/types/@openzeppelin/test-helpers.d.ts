@@ -1,3 +1,5 @@
+/// <reference types="../../../typechain-truffle/types" /> 
+
 declare module "@openzeppelin/test-helpers" {
     import BN from "bn.js";
 
