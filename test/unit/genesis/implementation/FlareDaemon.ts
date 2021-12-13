@@ -2,6 +2,7 @@ import {
   EndlessLoopMockInstance,
   FlareDaemonInstance, 
   InflationMockInstance, 
+  InflationMock1Instance,
   MockContractInstance } from "../../../../typechain-truffle";
 
 import {expectRevert, expectEvent, time, constants} from '@openzeppelin/test-helpers';
@@ -14,6 +15,7 @@ const TestableFlareDaemon = artifacts.require("TestableFlareDaemon");
 const MockContract = artifacts.require("MockContract");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const InflationMock = artifacts.require("InflationMock");
+const InflationMock1 = artifacts.require("InflationMock1");
 const EndlessLoopMock = artifacts.require("EndlessLoopMock");
 const RealFlareDaemon = artifacts.require("FlareDaemon");
 
@@ -42,6 +44,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
   // contains a fresh contract for each test
   let flareDaemon: TestableFlareDaemonInstance;
   let mockInflation: InflationMockInstance;
+  let mockInflation1: InflationMock1Instance;
   let mockContractToDaemonize: MockContractInstance;
   let endlessLoop: EndlessLoopMockInstance;
   const daemonize = web3.utils.sha3("daemonize()")!.slice(0,10); // first 4 bytes is function selector
@@ -51,6 +54,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     await flareDaemon.initialiseFixedAddress();
     mockContractToDaemonize = await MockContract.new();
     mockInflation = await InflationMock.new();
+    mockInflation1 = await InflationMock1.new();
     endlessLoop = await EndlessLoopMock.new(false, false);
   });
 
@@ -412,6 +416,13 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       // Assert
       await expectRevert(realFlareDaemon.trigger(), "a");
     })
+
+    it("Should return governance address ", async () => {
+      let initialise = await flareDaemon.contract.methods.initialiseFixedAddress().call({ from: accounts[0] });
+      await flareDaemon.initialiseFixedAddress();
+      expect(initialise).to.equals("0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7");
+    });
+    
   });
 
   describe("minting", async() => {
@@ -678,6 +689,39 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { from: GOVERNANCE_GENESIS_ADDRESS }),
         "max mint is zero");
     });
+
+    it("Should return max minting frequency sec ", async() => {
+      let getNextMintReq = await flareDaemon.contract.methods.getNextMintRequestAllowedTs().call({ from: accounts[0] });
+      await flareDaemon.getNextMintRequestAllowedTs();
+      expect(parseInt(getNextMintReq, 10)).to.equals(MAX_MINTING_FREQUENCY_SEC);
+    });
+
+    it("Should log error if transfer of requested minting fails without a message", async() => {
+      await flareDaemon.setInflation(mockInflation1.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await mockInflation1.setFlareDaemon(flareDaemon.address);
+
+      await mockInflation1.requestMinting(90);
+      await web3.eth.sendTransaction({from: accounts[0], to: flareDaemon.address, value: 100});
+      await flareDaemon.trigger();
+      
+      await web3.eth.sendTransaction({from: accounts[0], to: flareDaemon.address, value: 90});
+      let tx = await flareDaemon.trigger();
+      expectEvent(tx, "ContractDaemonizeErrored", { theMessage: "unknown error. receiveMinting", gasConsumed: toBN(0) } )
+    });
+
+    it("Should log error if receiving of requested minting fails without a message", async() => {
+      await flareDaemon.setInflation(mockInflation1.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+      await mockInflation1.setFlareDaemon(flareDaemon.address);
+
+      await mockInflation1.requestMinting(90);
+      await web3.eth.sendTransaction({from: accounts[0], to: flareDaemon.address, value: 100});
+      await flareDaemon.trigger();
+      
+      await web3.eth.sendTransaction({from: accounts[0], to: flareDaemon.address, value: 190});
+      let tx = await flareDaemon.trigger();
+      expectEvent(tx, "ContractDaemonizeErrored", { theMessage: "unknown error. receiveMinting", gasConsumed: toBN(0) } )
+    });
+
   });
 
   describe("gas limit", async() => {

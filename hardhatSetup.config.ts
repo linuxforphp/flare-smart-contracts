@@ -141,6 +141,10 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: {}
       },
+      "contracts/inflation/mock/InflationMock1.sol": {
+        version: "0.6.12",
+        settings: {}
+      },
       "contracts/genesis/mock/FlareDaemonMock.sol": {
         version: "0.6.12",
         settings: {}
