@@ -1,4 +1,4 @@
-import { BN_ZERO } from "./FuzzingUtils";
+import { BN_ZERO } from "./fuzzing-utils";
 
 export class SparseArray {
     constructor(

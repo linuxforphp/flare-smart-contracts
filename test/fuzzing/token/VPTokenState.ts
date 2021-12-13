@@ -1,5 +1,5 @@
-import { BN_ZERO, MAX_BIPS, saveJson } from "../FuzzingUtils";
-import { SparseArray, SparseMatrix } from "../SparseMatrix";
+import { BN_ZERO, MAX_BIPS, saveJson } from "../../utils/fuzzing-utils";
+import { SparseArray, SparseMatrix } from "../../utils/SparseMatrix";
 
 export enum DelegationMode {
     NOTSET = 0,

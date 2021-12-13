@@ -1,8 +1,8 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Ftso, FtsoRewardManager, PriceSubmitter } from "../../../typechain";
 import { BaseEvent, ethersEventIs } from "../../utils/EventDecoder";
-import { submitPriceHash, toBigNumberFixedPrecision } from "../../utils/test-helpers";
-import { coinFlip, randomChoice, randomInt, randomNum, toBigNumber, toNumber } from "../FuzzingUtils";
+import { submitPriceHash, toBigNumber, toBigNumberFixedPrecision } from "../../utils/test-helpers";
+import { coinFlip, randomChoice, randomInt, randomNum, toNumber } from "../../utils/fuzzing-utils";
 import { expectErrors } from "./EndToEndFuzzingUtils";
 import { latestBlockTimestamp } from "./EpochTimes";
 import { ethersExpectEvent, EthersTransactionRunner, SignerWithAddress } from "./TransactionRunner";

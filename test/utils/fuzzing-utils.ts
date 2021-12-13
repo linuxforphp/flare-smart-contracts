@@ -1,6 +1,7 @@
-import { writeFileSync, readFileSync } from "fs";
 import BN from "bn.js";
 import { BigNumber } from "ethers";
+import { readFileSync, writeFileSync } from "fs";
+import { toBN } from "./test-helpers";
 
 export type Nullable<T> = T | null | undefined;
 
@@ -38,18 +39,6 @@ export class Statistics {
         const avg = this.average?.toFixed(decimals) ?? '---';
         return `n: ${this.count}  min: ${min}  avg: ${avg}  max: ${max}`;
     }
-}
-
-export function toBN(x: BN | BigNumber | number | string): BN {
-    if (x instanceof BN) return x;
-    if (x instanceof BigNumber) return new BN(x.toHexString().slice(2), 16)
-    return web3.utils.toBN(x);
-}
-
-export function toBigNumber(x: BN | BigNumber | number | string): BigNumber {
-    if (x instanceof BigNumber) return x;
-    if (x instanceof BN) return BigNumber.from(`0x${x.toString(16)}`);
-    return BigNumber.from(x);
 }
 
 export function toNumber(x: BN | BigNumber | number | string) {

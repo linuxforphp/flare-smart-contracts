@@ -5,9 +5,10 @@ import { network } from "hardhat";
 import { FlareDaemon } from "../../../typechain";
 import { FlareDaemonInstance } from "../../../typechain-truffle";
 import { BaseEvent, EthersEventDecoder, ethersFindEvent, findEvent, TruffleEvent, Web3EventDecoder } from "../../utils/EventDecoder";
-import { increaseTimeTo, sleep, waitFinalize3 } from "../../utils/test-helpers";
-import { currentRealTime, Statistics, toBN } from "../FuzzingUtils";
-import { foreachAsyncParallel, foreachAsyncSerial, LogFile, reportError } from "./EndToEndFuzzingUtils";
+import { currentRealTime, Statistics } from "../../utils/fuzzing-utils";
+import { LogFile } from "../../utils/LogFile";
+import { foreachAsyncParallel, foreachAsyncSerial, increaseTimeTo, sleep, toBN, waitFinalize3 } from "../../utils/test-helpers";
+import { reportError } from "./EndToEndFuzzingUtils";
 
 export enum NetworkType { HARDHAT, SCDEV };
 

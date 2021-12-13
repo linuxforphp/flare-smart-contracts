@@ -2,11 +2,12 @@ import { assert } from "chai";
 import { BigNumber } from "ethers";
 import { Ftso, FtsoManager, FtsoRewardManager, PriceSubmitter } from "../../../typechain";
 import { BaseEvent, EthersEventDecoder, EthersEventKeys, EthersEventArgs, formatBN, ethersEventIs } from "../../utils/EventDecoder";
-import { BN_ZERO, MAX_BIPS, toBN } from "../FuzzingUtils";
-import { SparseArray } from "../SparseMatrix";
-import { LogFile } from "./EndToEndFuzzingUtils";
+import { BN_ZERO, MAX_BIPS } from "../../utils/fuzzing-utils";
+import { SparseArray } from "../../utils/SparseMatrix";
+import { LogFile } from "../../utils/LogFile";
 import { TransactionRunnerBase } from "./TransactionRunner";
 import { UserEnvironment } from "./UserAccount";
+import { toBN } from "../../utils/test-helpers";
 
 const MAX_PRICE = BigNumber.from(2).pow(128);
 
