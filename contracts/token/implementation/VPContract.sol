@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../governance/implementation/GovernedBase.sol";
 import "./Delegatable.sol";
 import "../interface/IIVPContract.sol";
-import "../interface/IIVPContract.sol";
 import "../interface/IIVPToken.sol";
 import "../../userInterfaces/IVPToken.sol";
 
