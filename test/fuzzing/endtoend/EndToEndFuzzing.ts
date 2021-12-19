@@ -7,14 +7,15 @@ import hardhatConfig from "../../../hardhat.config";
 import { FlareDaemon, FlareDaemon__factory, Ftso, FtsoManager, FtsoManager__factory, FtsoRegistry, FtsoRegistry__factory, FtsoRewardManager, FtsoRewardManager__factory, Ftso__factory, Inflation, Inflation__factory, PriceSubmitter, PriceSubmitter__factory, VoterWhitelister, VoterWhitelister__factory, VPContract__factory, WNat, WNat__factory } from "../../../typechain";
 import { getTestFile } from "../../utils/constants";
 import { BaseEvent, EthersEventDecoder, ethersEventIs, formatBN } from "../../utils/EventDecoder";
-import { BIG_NUMBER_ZERO, currentRealTime, randomShuffled, toNumber } from "../../utils/fuzzing-utils";
 import { toBigNumberFixedPrecision } from "../../utils/test-helpers";
+import { BIG_NUMBER_ZERO, currentRealTime, randomShuffled, toNumber } from "../../utils/fuzzing-utils";
 import { getChainConfigParameters, internalFullDeploy, reportError } from "./EndToEndFuzzingUtils";
 import { latestBlockTimestamp, PriceEpochTimes, RewardEpochTimes } from "./EpochTimes";
 import { FtsoList, PriceProvider, PriceSimulator } from "./PriceProvider";
 import { EventStateChecker, PriceAndRewardChecker } from "./StateChecker";
 import { EthersTransactionRunner, NetworkType, SignerWithAddress } from "./TransactionRunner";
 import { DelegatorAccount, UserAccount, UserEnvironment } from "./UserAccount";
+const fs = require("fs");
 
 contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     let env = process.env;
@@ -257,9 +258,35 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         }
     });
 
+    let is_passing = true
+    afterEach(function() {
+      const status = this.currentTest?.state
+      if(status === "failed"){
+        is_passing = false;
+      }
+    })
+
     after(() => {
         transactionRunner.logGasUsage();
         transactionRunner.closeLog();
+        let badge_data;
+        if(!is_passing){
+            badge_data = {
+                "schemaVersion": 1,
+                "label": "E2E Fuzzer",
+                "color": "red",
+                "message": "Fail"
+            }
+        } else {
+            badge_data = {
+                "schemaVersion": 1,
+                "label": "E2E Fuzzer",
+                "color": "green",
+                "message": "Pass"
+            }
+        }
+        const end_to_end_fuzzer_badge = "e2e_fuzzer_badge.json";
+        fs.writeFileSync(end_to_end_fuzzer_badge,JSON.stringify(badge_data));
     });
 
     it("(almost) realtime fuzzing test", async () => {
