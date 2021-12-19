@@ -5,7 +5,7 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { VPTokenChecker } from "./VPTokenChecker";
 import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator";
-
+const fs = require("fs");
 
 const VPToken = artifacts.require("WNat");
 
@@ -74,6 +74,36 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         history = new VPTokenHistory(vpToken);
         simulator = new VPTokenSimulator(history);
     });
+
+    let is_passing = true
+    afterEach(function() {
+      const status = this.currentTest?.state
+      if(status === "failed"){
+        is_passing = false;
+      }
+    })
+
+    after(() => {
+        let badge_data;
+        if(!is_passing){
+            badge_data = {
+                "schemaVersion": 1,
+                "label": "Fuzzer token",
+                "color": "red",
+                "message": "Fail"
+            }
+        } else {
+            badge_data = {
+                "schemaVersion": 1,
+                "label": "Fuzzer token",
+                "color": "green",
+                "message": "Pass"
+            }
+        }
+        const end_to_end_fuzzer_badge = "fuzzer_token_badge.json";
+        fs.writeFileSync(end_to_end_fuzzer_badge,JSON.stringify(badge_data));
+    });
+
 
     // utility functions
     it("run randomized tests", async () => {

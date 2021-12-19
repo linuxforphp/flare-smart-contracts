@@ -68,6 +68,12 @@ deployment/deploys/*
 
 ## Slither working files
 slither.json
+slither_badge.json
+
+## linter working files
+solhint_badge.json
+e2e_fuzzer_badge.json
+fuzzer_token_badge.json
 
 ## Tenderly 
 deployments

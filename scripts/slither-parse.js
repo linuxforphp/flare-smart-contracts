@@ -91,7 +91,24 @@ const data = JSON.parse(json);
 
 if (!data.success) {
     console.error("Problem running Slither.");
+    const badge_data = {
+        "schemaVersion": 1,
+        "label": "Slither",
+        "color": "red",
+        "message": "Fail"
+    }
+    fs.writeFileSync(process.argv[3],JSON.stringify(badge_data))
     process.exit(1);
+}
+
+if (data.success) {
+    const badge_data = {
+        "schemaVersion": 1,
+        "label": "Slither",
+        "color": "green",
+        "message": "Pass"
+    }
+    fs.writeFileSync(process.argv[3],JSON.stringify(badge_data))
 }
 
 let detectors = (data.results && data.results.detectors) || [];

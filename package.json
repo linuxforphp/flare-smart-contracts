@@ -158,8 +158,8 @@
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\" 1> nul",
     "size": "yarn run hardhat size-contracts",
     "flatten": "yarn hardhat flatten",
-    "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json",
-    "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node scripts/slither-parse.js ./slither.json",
+    "slither": "pip3 install slither-analyzer && rm -f ./slither.json && rm -f ./slither_badge.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json ./slither_badge.json",
+    "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json && rm -f ./slither_badge.json 2> /dev/null; slither . --json=./slither.json || true; node scripts/slither-parse.js ./slither.json ./slither_badge.json",
     "gas-report-check": "./scripts/gas-report-check.sh",
 
     "---------INFO---SCRIPTS": "",
@@ -170,6 +170,9 @@
     "---------HELPER---SCRIPTS": "",
     "accounts": "ts-node scripts/generate-accounts.ts",
     "go-accounts": "ts-node ./scripts/generate-addresses-for-go.ts",
+
+    "---------BADGES---SCRIPTS": "",
+    "poslint": "yarn ts-node scripts/solhint_badge.ts",
 
     "---------VM-(MULTIPASS)-MANGEMENT--SCRIPTS": "",
     "vm_launch": "./scripts/local-flare-chain-vm/launch.sh",
