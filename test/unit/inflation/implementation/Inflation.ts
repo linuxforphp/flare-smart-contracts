@@ -718,6 +718,13 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         rewardServicesState.rewardServices[1].authorizedInflationWei
       );
     });
+
+    it("Should revert if topup factor is less than 100 and topup type is FACTOROFDAILYAUTHORIZED", async() => {
+      const receiver = await MockContract.new();
+      const tx = inflation.setTopupConfiguration(receiver.address, TopupType.FACTOROFDAILYAUTHORIZED, 10);
+      await expectRevert(tx, ERR_TOPUP_LOW);
+    });
+
   });
 
   describe("minting", async () => {
@@ -977,7 +984,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
       // Assert
       assert.equal((await inflation.inflationPercentageProvider()), newMockInflationPercentageProvider.address);
-
     });
 
     it("Should reject InflationPercentageProvider change if not from governed", async () => {
@@ -1152,6 +1158,11 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       assert.equal(t3Result3.topupType, BN(TopupType.FACTOROFDAILYAUTHORIZED));
       assert.equal(t3Result3.topupFactorX100, BN(DEFAULT_TOPUP_FACTOR_X100));
 
+    });
+
+    it("Should revert if provider of the annual inflation percentage is zero-account", async () => {
+      let tx = inflation.setInflationPercentageProvider(constants.ZERO_ADDRESS);
+      await expectRevert(tx, ERR_IS_ZERO);
     });
 
   });
