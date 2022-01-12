@@ -10,7 +10,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DataAvailabilityRewardManagerContract, DataAvailabilityRewardManagerInstance, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
-import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapBlockHeightParams, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
+import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
 
 export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters: any, quiet: boolean = false) {
@@ -340,35 +340,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     });
   }
 
-  for (let blockHeight of parameters.blockHeights) {
-    if (!quiet) {
-      console.error(`Rigging ${blockHeight.assetSymbol}`);
-    }
-
-    let blockHeightContracts = await deployNewAsset(
-      hre,
-      contracts,
-      deployerAccount.address,
-      ftsoManager,
-      priceSubmitter.address,
-      wNat.address,
-      cleanupBlockNumberManager,
-      startTs, 
-      parameters.priceEpochDurationSeconds,
-      parameters.revealEpochDurationSeconds,
-      rewrapBlockHeightParams(blockHeight),
-      parameters.priceDeviationThresholdBIPS,
-      parameters.priceEpochCyclicBufferSize,
-      parameters.minimalFtsoRandom,
-      false,
-      quiet,
-    );
-    assetToContracts.set(blockHeight.assetSymbol, {
-      assetSymbol: blockHeight.assetSymbol,
-      ...blockHeightContracts
-    });
-  }
-
   // Setup governance parameters for the ftso manager
   if (!quiet) {
     console.error("Setting FTSO manager governance parameters...");
@@ -390,8 +361,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   let assetList = [
     ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : []), 
-    ...parameters.assets,
-    ...parameters.blockHeights
+    ...parameters.assets
   ]
 
   for (let asset of assetList) {
@@ -404,14 +374,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     let multiAssets = parameters.NATMultiAssets;
     let multiAssetFtsos = multiAssets.map((asset: any) => assetToContracts.get(asset)!.ftso!.address)
     await ftsoManager.setFtsoAssetFtsos(ftsoWnat!.address, multiAssetFtsos);
-  }
-
-  for (let blockHeight of parameters.blockHeights) {
-    if (blockHeight.ftsoSymbol) {
-      let blockHeightFtsoContract = (assetToContracts.get(blockHeight.assetSymbol) as AssetContracts).ftso;
-      let assetFtsoContract = (assetToContracts.get(blockHeight.ftsoSymbol) as AssetContracts).ftso;
-      await ftsoManager.setFtsoAssetFtsos(blockHeightFtsoContract.address, [assetFtsoContract.address]);
-    }
   }
 
   if (!quiet) {
