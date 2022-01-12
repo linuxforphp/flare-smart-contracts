@@ -388,7 +388,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
   }
 
-  for (let asset of [...parameters.assets, ...parameters.blockHeights]) {
+  for (let asset of parameters.assets) {
     describe(pascalCase(`FTSO ${asset.assetSymbol}`), async () => {
       let FtsoAsset: FtsoContract;
       let ftsoAsset: FtsoInstance;
@@ -397,40 +397,18 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         FtsoAsset = artifacts.require("Ftso");
         ftsoAsset = await FtsoAsset.at(contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
       });
-
-      if (parameters.blockHeights.includes(asset)) {
-        if (asset.ftsoSymbol) {
-          it(`Should know about ${asset.ftsoSymbol} Asset FTSO`, async () => {
-            // Assemble
-            // Act
-            const found = await findAssetFtso(ftsoAsset, contracts.getContractAddress(`Ftso${pascalCase(asset.ftsoSymbol)}`));
-            // Assert
-
-            assert(found);
-          });
+      
+      it(`Should be on oracle for ${asset.assetSymbol}`, async () => {
+        // Assemble
+        // Act
+        const address = await ftsoAsset.getAsset();
+        // Assert
+        if (parameters.deployDummyXAssetTokensAndMinters) {
+          assert.equal(address, contracts.getContractAddress(asset.xAssetSymbol));
         } else {
-          it(`Should have no Asset FTSO`, async () => {
-            // Assemble
-            // Act
-            const ftsos = await ftsoAsset.getAssetFtsos();
-            // Assert
-
-            assert(ftsos.length == 0);
-          });
+          assert.equal(address, constants.ZERO_ADDRESS);
         }
-      } else {
-        it(`Should be on oracle for ${asset.assetSymbol}`, async () => {
-          // Assemble
-          // Act
-          const address = await ftsoAsset.getAsset();
-          // Assert
-          if (parameters.deployDummyXAssetTokensAndMinters) {
-            assert.equal(address, contracts.getContractAddress(asset.xAssetSymbol));
-          } else {
-            assert.equal(address, constants.ZERO_ADDRESS);
-          }
-        });
-      }
+      });
 
       it("Should be managed", async () => {
         // Assemble
@@ -497,7 +475,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
     });
 
-    for (let asset of [...parameters.assets, ...parameters.blockHeights]) {
+    for (let asset of parameters.assets) {
       it(`Should be managing an ${asset.assetSymbol} FTSO`, async () => {
         // Assemble
         // Act

@@ -136,14 +136,6 @@ export function rewrapXassetParams(data: any): AssetDefinition {
     initialPriceUSDDec5: data.initialPriceUSDDec5
   }
 }
-	
-export function rewrapBlockHeightParams(data: any): AssetDefinition {
-  return {
-    symbol: data.assetSymbol,
-    ftsoDecimals: data.ftsoDecimals,
-    initialPriceUSDDec5: data.initialBlockHeight
-  }
-}
 
 export async function deployNewAsset(
   hre: HardhatRuntimeEnvironment,

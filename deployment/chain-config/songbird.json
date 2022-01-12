@@ -150,49 +150,5 @@
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSDDec5": 0
         }
-    ],
-    "blockHeights": [
-        {
-            "ftsoSymbol": "XRP",
-            "assetSymbol": "XRP_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        },
-        {
-            "ftsoSymbol": "LTC",
-            "assetSymbol": "LTC_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        },
-        {
-            "ftsoSymbol": "XLM",
-            "assetSymbol": "XLM_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        },
-        {
-            "ftsoSymbol": "DOGE",
-            "assetSymbol": "DOGE_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        },
-        {
-            "ftsoSymbol": "ALGO",
-            "assetSymbol": "ALGO_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        },
-        {
-            "ftsoSymbol": "BTC",
-            "assetSymbol": "BTC_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        },
-        {
-            "ftsoSymbol": "",
-            "assetSymbol": "HNS_BLOCK_HEIGHT",
-            "ftsoDecimals": 0,
-            "initialBlockHeight": 0
-        }
     ]
 }
