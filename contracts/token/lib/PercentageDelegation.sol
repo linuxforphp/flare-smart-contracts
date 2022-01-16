@@ -158,6 +158,24 @@ library PercentageDelegation {
     }
     
     /**
+     * Get all percentage delegations active now.
+     * @param _self A CheckPointHistoryState instance to manage.
+     * @return _length The number of delegations. 
+     * @return _delegations . 
+     **/
+    function getDelegationsRaw(
+        DelegationState storage _self
+    )
+        internal view
+        returns (
+            uint256 _length, 
+            mapping(uint256 => DelegationHistory.Delegation) storage _delegations
+        )
+    {
+        return _self.delegation.delegationsAtNowRaw();
+    }
+    
+    /**
      * Get the number of delegations.
      * @param _self A DelegationState instance to manage.
      * @param _blockNumber The block number to query. 

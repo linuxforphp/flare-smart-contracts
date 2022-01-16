@@ -517,6 +517,7 @@ contract VPContract is IIVPContract, Delegatable {
      */
     function _initializeVotePower(address _owner, uint256 _balance) internal {
         if (!isReplacement) return;
+        if (_owner == address(0)) return;    // 0 address is special (usually marks no source/dest - no init needed)
         if (votePowerInitializationBlock[_owner] == 0) {
             // consistency check - no delegations should be made from or to owner before vote power is initialized
             // (that would be dangerous, because vote power would have been delegated incorrectly)

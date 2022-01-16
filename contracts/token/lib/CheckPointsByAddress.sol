@@ -84,7 +84,10 @@ library CheckPointsByAddress {
      * @return The value of `_owner` at the current block.
      **/
     function valueOfAtNow(CheckPointsByAddressState storage _self, address _owner) internal view returns (uint256) {
-        return valueOfAt(_self, _owner, block.number);
+        // Get history for _owner
+        CheckPointHistory.CheckPointHistoryState storage history = _self.historyByAddress[_owner];
+        // Return value at now
+        return history.valueAtNow();
     }
 
     /**

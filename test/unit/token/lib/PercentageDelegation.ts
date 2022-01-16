@@ -57,6 +57,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     assert.equal(total.toNumber(), 10000);
     const { 0: delegates } = await delegation.getDelegations();
     assert.equal(delegates.length, 2);
+    const delegations = await delegation.getDelegationsRaw();
+    assert(delegations.length === 2);
   });
 
   it("Should not find a wrong delegate", async () => {
@@ -89,7 +91,9 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     const { 0: delegates, 1: values } = await delegation.getDelegations();
     compareArrays(delegates, [a, c]);
     compareArrays(values.map(x => x.toNumber()), [3000, 500]);
-  });
+    const delegations = await delegation.getDelegationsRaw();
+    assert.deepEqual(delegations as any, [[a, '3000'], [c, '500']]);
+});
 
   it("Should add, update and remove multiple delegates in the same block and do it again", async () => {
     // Assemble
@@ -104,6 +108,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     const { 0: delegates, 1: values } = await delegation.getDelegations();
     compareArrays(delegates, [d, b]);
     compareArrays(values.map(x => x.toNumber()), [1500, 800]);
+    const delegations = await delegation.getDelegationsRaw();
+    assert.deepEqual(delegations as any, [[d, '1500'], [b, '800']]);
   });
 
   it("Should see delegate from the past", async () => {
@@ -159,6 +165,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assert
     const { 0: delegates } = await delegation.getDelegations();
     assert.equal(delegates.length, 2);
+    const delegations = await delegation.getDelegationsRaw();
+    assert(delegations.length === 2);
     const { 0: delegatesBlk1 } = await delegation.getDelegationsAt(blk1);
     assert.equal(delegatesBlk1.length, 1);
     const value1 = await delegation.getDelegatedValue(accounts[1]);
@@ -191,6 +199,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assert
     const { 0: delegates } = await delegation.getDelegations();
     assert(delegates.length === 0);
+    const delegations = await delegation.getDelegationsRaw();
+    assert(delegations.length === 0);
     const total = await delegation.getDelegatedTotal();
     assert(total.toNumber() === 0);
   });
@@ -202,6 +212,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assert
     const { 0: delegates } = await delegation.getDelegations();
     assert(delegates.length === 0);
+    const delegations = await delegation.getDelegationsRaw();
+    assert(delegations.length === 0);
     const total = await delegation.getDelegatedTotal();
     assert(total.toNumber() === 0);
   });
@@ -213,6 +225,8 @@ contract(`PercentageDelegation.sol; ${ getTestFile(__filename) }; PercentageDele
     // Assert
     const { 0: delegates } = await delegation.getDelegations();
     assert(delegates.length === 0);
+    const delegations = await delegation.getDelegationsRaw();
+    assert(delegations.length === 0);
     const total = await delegation.getDelegatedTotal();
     assert(total.toNumber() === 0);
   });

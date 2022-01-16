@@ -127,6 +127,43 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
     assert.equal(address1Value as any, 10);
     assert.equal(address2Value as any, 20);
   });
+
+  it("Should not transmit zero value between addresses", async () => {
+    // Assemble
+    await checkPointsByAddressMock.writeValue(accounts[1], 10);
+    await checkPointsByAddressMock.writeValue(accounts[2], 20);
+    // Act
+    await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 0);
+    // Assert
+    let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+    let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+    assert.equal(address1Value as any, 10);
+    assert.equal(address2Value as any, 20);
+  });
+
+  it("Should mint for transmit from zero address", async () => {
+    // Assemble
+    await checkPointsByAddressMock.writeValue(accounts[1], 20);
+    // Act
+    await checkPointsByAddressMock.transmit(constants.ZERO_ADDRESS, accounts[1], 10);
+    // Assert
+    let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+    assert.equal(address1Value.toNumber(), 30);
+    let address0Value = await checkPointsByAddressMock.valueOfAtNow(constants.ZERO_ADDRESS);
+    assert.equal(address0Value.toNumber(), 0);
+  });
+
+  it("Should burn for transmit to zero address", async () => {
+    // Assemble
+    await checkPointsByAddressMock.writeValue(accounts[1], 20);
+    // Act
+    await checkPointsByAddressMock.transmit(accounts[1], constants.ZERO_ADDRESS, 5);
+    // Assert
+    let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+    assert.equal(address1Value.toNumber(), 15);
+    let address0Value = await checkPointsByAddressMock.valueOfAtNow(constants.ZERO_ADDRESS);
+    assert.equal(address0Value.toNumber(), 0);
+  });
   
   it("Should delete old checkpoints", async () => {
     // Assemble
