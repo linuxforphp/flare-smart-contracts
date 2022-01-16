@@ -54,6 +54,21 @@ contract PercentageDelegationMock {
     function getDelegations() public view returns (address[] memory _delegates, uint256[] memory _values) {
         return self.getDelegations();
     }
+
+    struct Delegation {
+        address delegate;
+        uint16 value;
+    }
+
+    function getDelegationsRaw() public view returns (Delegation[] memory _delegations) {
+        (uint256 length, mapping(uint256 => DelegationHistory.Delegation) storage delegations) = 
+            self.getDelegationsRaw();
+        _delegations = new Delegation[](length);
+        for (uint256 i = 0; i < length; i++) {
+            DelegationHistory.Delegation storage dlg = delegations[i];
+            _delegations[i] = Delegation({ delegate: dlg.delegate, value: dlg.value });
+        }
+    }
     
     function getCountAt(uint256 _blockNumber) public view returns (uint256) {
         return self.getCountAt(_blockNumber);

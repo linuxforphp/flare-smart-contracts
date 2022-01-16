@@ -1033,4 +1033,21 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
       "a");
   });
 
+  it("Cannot mint more than 2^128", async () => {
+    const maxuint192 = toBN(2).pow(toBN(192)).subn(1);
+    // can mint 2^128-1
+    await vpToken.mint(accounts[1], maxuint192);
+    // cannot mint total supply of 2^128
+    await expectRevert(vpToken.mint(accounts[2], 1), 
+      "value doesn't fit in 192 bits");
+    // after burn, can mint again
+    await vpToken.burn(1000, { from: accounts[1] });
+    await vpToken.mint(accounts[2], 1000);
+    // can transfer any minted amount
+    await expectRevert(vpToken.transfer(accounts[2], maxuint192, { from: accounts[1] }), 
+      "ERC20: transfer amount exceeds balance");
+    const maxTransferValue = maxuint192.subn(1000);
+    await vpToken.transfer(accounts[2], maxTransferValue, { from: accounts[1] });
+  });
+
 });

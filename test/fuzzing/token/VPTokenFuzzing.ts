@@ -247,7 +247,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     async function testDelegate() {
         const from = randomChoice(coinFlip(0.9) ? percentageAccounts : otherAccounts);
         const to = randomChoice(accounts);
-        const bips = randomIntDist(0, MAX_BIPS, linearFallingRandom);
+        const currentDelegation = history.state.bipsDelegations.row(from).total().toNumber();
+        const bips = currentDelegation !== 0 && currentDelegation !== MAX_BIPS && coinFlip(0.8)
+            ? MAX_BIPS - currentDelegation                          // delegate all should be common
+            : randomIntDist(0, MAX_BIPS, linearFallingRandom);      // delegate any
         await simulator.delegate(from, to, bips);
     }
 

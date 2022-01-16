@@ -98,6 +98,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; VPToken with replaced VPContr
             assertNumberEqual(await vpToken.votePowerOf(accounts[3]), 10);
         });
 
+        it("Errors for zero delegation should not come from _initializeVotePower", async () => {
+            // Assert
+            await expectRevert(vpToken.delegate(constants.ZERO_ADDRESS, 4000, { from: accounts[1] }),
+                "Cannot delegate to zero");
+        });
+        
         it("Batch vote power should work after delegate", async () => {
             // Assemble
             // Act

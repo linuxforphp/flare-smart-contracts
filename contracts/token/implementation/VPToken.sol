@@ -378,8 +378,8 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     {
         require(_from != _to, "Cannot transfer to self");
         
-        uint256 fromBalance = balanceOf(_from);
-        uint256 toBalance = balanceOf(_to);
+        uint256 fromBalance = _from != address(0) ? balanceOf(_from) : 0;
+        uint256 toBalance = _to != address(0) ? balanceOf(_to) : 0;
         
         // update vote powers
         IIVPContract vpc = writeVpContract;

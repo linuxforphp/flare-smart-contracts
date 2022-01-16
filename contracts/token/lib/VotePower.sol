@@ -37,30 +37,6 @@ library VotePower {
         _;
     }
 
-    /**
-     * @notice Burn vote power.
-     * @param _self A VotePowerState instance to manage.
-     * @param _owner The address of the vote power to be burned.
-     * @param _amount The amount of vote power to burn.
-     */
-    function _burn(
-        VotePowerState storage _self, 
-        address _owner, 
-        uint256 _amount
-    )
-        internal
-    {
-        // Shortcut
-        if (_amount == 0) {
-            return;
-        }
-
-        // Cannot burn the zero address
-        assert(_owner != address(0));
-
-        // Burn vote power for address
-        _self.votePowerByAddress.transmit(_owner, address(0), _amount);
-    }
 
     /**
      * @notice Delegate vote power `_amount` to `_delegatee` address from `_delegator` address.
@@ -88,48 +64,26 @@ library VotePower {
     }
 
     /**
-     * @notice Mint vote power.
-     * @param _self A VotePowerState instance to manage.
-     * @param _owner The address owning the new vote power.
-     * @param _amount The amount of vote power to mint.
+     * @notice Change the current vote power value.
+     * @param _owner Address of vote power owner.
+     * @param _add The amount to add to the vote power.
+     * @param _sub The amount to subtract from the vote power.
      */
-    function _mint(
+    function changeValue(
         VotePowerState storage _self, 
-        address _owner, 
-        uint256 _amount
+        address _owner,
+        uint256 _add,
+        uint256 _sub
     )
         internal
     {
-        // Shortcut
-        if (_amount == 0) {
-            return;
-        }
-
-        // Cannot mint the zero address
         assert(_owner != address(0));
-
-        // Mint vote power for address
-        _self.votePowerByAddress.transmit(address(0), _owner, _amount);
+        if (_add == _sub) return;
+        uint256 value = _self.votePowerByAddress.valueOfAtNow(_owner);
+        value = value.add(_add).sub(_sub);
+        _self.votePowerByAddress.writeValue(_owner, value);
     }
-
-    /**
-     * @notice Transmit current vote power `_amount` from `_delegator` to `_delegatee`.
-     * @param _delegator Address of delegator.
-     * @param _delegatee Address of delegatee.
-     * @param _amount Amount of vote power to transmit.
-     */
-    function transmit(
-        VotePowerState storage _self, 
-        address _delegator, 
-        address _delegatee,
-        uint256 _amount
-    )
-        internal
-        addressesNotZero(_delegator, _delegatee)
-    {
-        _self.votePowerByAddress.transmit(_delegator, _delegatee, _amount);
-    }
-
+    
     /**
      * @notice Undelegate vote power `_amount` from `_delegatee` address 
      *  to `_delegator` address
@@ -203,6 +157,6 @@ library VotePower {
         internal view
         returns(uint256 _votePower)
     {
-        return votePowerOfAt(_self, _who, block.number);
+        return _self.votePowerByAddress.valueOfAtNow(_who);
     }
 }
