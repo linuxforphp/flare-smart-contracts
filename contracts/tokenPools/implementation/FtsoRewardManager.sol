@@ -8,6 +8,8 @@ import "../../governance/implementation/Governed.sol";
 import "../../inflation/interface/IIInflationReceiver.sol";
 import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
+import "../../inflation/implementation/Supply.sol";
+import "./UnearnedRewardBurner.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -42,6 +44,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     string internal constant ERR_FTSO_MANAGER_ONLY = "ftso manager only";
     string internal constant ERR_INFLATION_ONLY = "inflation only";
     string internal constant ERR_INFLATION_ZERO = "inflation zero";
+    string internal constant ERR_SUPPLY_ZERO = "supply zero";
     string internal constant ERR_FTSO_MANAGER_ZERO = "no ftso manager";
     string internal constant ERR_WNAT_ZERO = "no wNat";
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
@@ -54,6 +57,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     
     uint256 constant internal MAX_BIPS = 1e4;
     uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
+    uint256 constant internal MAX_BURNABLE_PCT = 20;
 
     bool public override active;
 
@@ -75,9 +79,11 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     mapping(address => FeePercentage[]) private dataProviderFeePercentages;
 
     // Totals
-    uint256 public totalAwardedWei;
-    uint256 public totalClaimedWei;
-    uint256 public totalExpiredWei; // rewards that were not claimed
+    uint256 public totalAwardedWei;     // rewards that were distributed
+    uint256 public totalClaimedWei;     // rewards that were claimed in time
+    uint256 public totalExpiredWei;     // rewards that were not claimed in time and expired
+    uint256 public totalUnearnedWei;    // rewards that were unearned (ftso fallback) and thus not distributed
+    uint256 public totalBurnedWei;      // rewards that were unearned or expired and thus burned
     uint256 public totalInflationAuthorizedWei;
     uint256 public totalInflationReceivedWei;
     uint256 public totalSelfDestructReceivedWei;
@@ -89,7 +95,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     /// addresses
     IIFtsoManager public ftsoManager;
     address private inflation;
-    WNat public wNat; 
+    WNat public wNat;
+    Supply public supply;
 
     modifier mustBalance {
         _;
@@ -219,13 +226,14 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     }
    
     /**
-     * @notice Sets inflation, ftsoManager and wNat addresses.
+     * @notice Sets inflation, ftsoManager, wNat, and supply addresses.
      * Only governance can call this method.
      */
     function setContractAddresses(
         address _inflation,
         IIFtsoManager _ftsoManager,
-        WNat _wNat
+        WNat _wNat,
+        Supply _supply
     ) 
         external
         onlyGovernance
@@ -233,9 +241,11 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         require(_inflation != address(0), ERR_INFLATION_ZERO);
         require(address(_ftsoManager) != address(0), ERR_FTSO_MANAGER_ZERO);
         require(address(_wNat) != address(0), ERR_WNAT_ZERO);
+        require(address(_supply) != address(0), ERR_SUPPLY_ZERO);
         inflation = _inflation;
         ftsoManager = _ftsoManager;
         wNat = _wNat;
+        supply = _supply;
     }
 
     function setDailyAuthorizedInflation(uint256 _toAuthorizeWei) external override onlyInflation {
@@ -250,8 +260,31 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         (uint256 currentBalance, ) = _handleSelfDestructProceeds();
         totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
         lastBalance = currentBalance;
+        // If there are accrued rewards pending to burn, do so...
+        _burnUnearnedRewards();
 
         emit InflationReceived(msg.value);
+    }
+
+    /**
+     * @notice Accrue unearned rewards for price epoch.
+     * @dev Typically done when ftso in fallback or because of insufficient vote power.
+     *      Simply accrue them so they will not distribute and burn them later.
+     */
+    function accrueUnearnedRewards(
+        uint256 _epochId,
+        uint256 _priceEpochDurationSeconds,
+        uint256 _priceEpochEndTime // end time included in epoch
+    )
+        external override
+        onlyFtsoManager
+    {
+        uint256 totalPriceEpochReward = 
+            _getTotalPriceEpochRewardWei(_priceEpochDurationSeconds, _priceEpochEndTime);
+
+        totalUnearnedWei = totalUnearnedWei.add(totalPriceEpochReward);
+
+        emit UnearnedRewardsAccrued(_epochId, totalPriceEpochReward);
     }
 
     /**
@@ -276,8 +309,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         assert (_totalWeight != 0 && _addresses.length != 0);
 
         uint256 totalPriceEpochReward = 
-            _getDistributableFtsoInflationBalance()
-            .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSeconds));
+            _getTotalPriceEpochRewardWei(_priceEpochDurationSeconds, _priceEpochEndTime);
 
         uint256[] memory rewards = new uint256[](_addresses.length);
         rewards[0] = totalPriceEpochReward;
@@ -599,7 +631,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
             uint256 _totalClaimedWei
         )
     {
-        return (0, totalInflationAuthorizedWei, totalClaimedWei);
+        return (0, totalInflationAuthorizedWei, totalClaimedWei.add(totalBurnedWei));
     }
 
     function _handleSelfDestructProceeds() internal returns (uint256 _currentBalance, uint256 _expectedBalance) {
@@ -611,6 +643,52 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         } else if (_currentBalance < _expectedBalance) {
             // This is a coding error
             assert(false);
+        }
+    }
+
+    /**
+     * @notice Burn rewards if there are any pending to burn, up to the maximum allowable.
+     * @dev This is meant to be called once per day, right after inflation is received.
+     *      There is a max allowable pct to burn so that the contract does not run out
+     *      of funds for rewarding.
+     */
+    function _burnUnearnedRewards() internal {
+        // Are there any rewards to burn?
+        uint256 rewardsToBurnWei = totalUnearnedWei.add(totalExpiredWei).sub(totalBurnedWei);
+
+        if (rewardsToBurnWei > 0) {
+            // Calculate max rewards that can be burned
+            uint256 maxToBurnWei = address(this).balance.mulDiv(MAX_BURNABLE_PCT, 100);
+
+            uint256 toBurnWei = 0;
+            // Calculate what we will burn
+            if (rewardsToBurnWei > maxToBurnWei) {
+                toBurnWei = maxToBurnWei;
+            } else {
+                toBurnWei = rewardsToBurnWei;
+            }
+
+            // Any to burn?
+            if (toBurnWei > 0) {
+                // Get the burn address; make it payable
+                address payable burnAddress = payable(supply.burnAddress());
+
+                // Accumulate what we are about to burn
+                totalBurnedWei = totalBurnedWei.add(toBurnWei);
+
+                // Update lastBalance before transfer, to avoid reentrancy warning 
+                // (though there can not be any reentrancy dut to transfer(0 or die() on known contract)
+                lastBalance = lastBalance.sub(toBurnWei);
+
+                // Burn baby burn
+                UnearnedRewardBurner unearnedRewardBurner = new UnearnedRewardBurner(burnAddress);
+                //slither-disable-next-line arbitrary-send
+                address(unearnedRewardBurner).transfer(toBurnWei);
+                unearnedRewardBurner.die();
+
+                // Emit event to signal what we did
+                emit RewardsBurned(toBurnWei);
+            }
         }
     }
 
@@ -685,7 +763,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
 
     function _getDistributableFtsoInflationBalance() internal view returns (uint256) {
         return totalInflationAuthorizedWei
-            .sub(totalAwardedWei.sub(totalExpiredWei));
+            .sub(totalAwardedWei)
+            .sub(totalUnearnedWei);
     }
 
     function _getRemainingPriceEpochCount(
@@ -700,7 +779,26 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         require(_fromThisTs <= dailyPeriodEndTs, ERR_AFTER_DAILY_CYCLE);
         return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSeconds) + 1;
     }
-    
+
+    /**
+     * @notice Returns the reward to distribute for a given price epoch.
+     * @param _priceEpochDurationSeconds    Number of seconds for a price epoch.
+     * @param _priceEpochEndTime            Datetime stamp of the end of the price epoch
+     * @return                              Price epoch reward in wei
+     * @dev Based on a daily distribution and period.
+     */
+    function _getTotalPriceEpochRewardWei(
+        uint256 _priceEpochDurationSeconds,
+        uint256 _priceEpochEndTime // end time included in epoch
+    )
+        internal view 
+        returns (uint256)
+    {
+        return 
+            _getDistributableFtsoInflationBalance()
+            .div(_getRemainingPriceEpochCount(_priceEpochEndTime, _priceEpochDurationSeconds));
+    }
+
     /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`.
      * @dev Internal function
@@ -1029,6 +1127,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
         return totalInflationReceivedWei
             .add(totalSelfDestructReceivedWei)
-            .sub(totalClaimedWei);
+            .sub(totalClaimedWei)
+            .sub(totalBurnedWei);
     }
 }

@@ -10,7 +10,12 @@ interface IFtsoRewardManager {
         uint256 rewardEpoch, 
         uint256 amount
     );
-    
+
+    event UnearnedRewardsAccrued(
+        uint256 epochId,
+        uint256 reward
+    );
+
     event RewardsDistributed(
         address indexed ftso,
         uint256 epochId,

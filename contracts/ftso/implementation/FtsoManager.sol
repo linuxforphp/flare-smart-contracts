@@ -58,6 +58,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_SET_CLEANUP_BLOCK_FAIL = "err set cleanup block";
     string internal constant ERR_PRICE_EPOCH_FINALIZE_FAIL = "err finalize price epoch";
     string internal constant ERR_DISTRIBUTE_REWARD_FAIL = "err distribute rewards";
+    string internal constant ERR_ACCRUE_UNEARNED_REWARD_FAIL = "err accrue unearned rewards";
     string internal constant ERR_FALLBACK_FINALIZE_FAIL = "err fallback finalize price epoch";
     string internal constant ERR_INIT_EPOCH_REVEAL_FAIL = "err init epoch for reveal";
     string internal constant ERR_FALLBACK_INIT_EPOCH_REVEAL_FAIL = "err fallback init epoch for reveal";
@@ -927,6 +928,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
                     addRevertError(address(ftsoRewardManager), ERR_DISTRIBUTE_REWARD_FAIL);
                 }
+            } else {
+                // If here, it means that no FTSO was initialized, or no FTSO had a recipient
+                // eligible to receive rewards. And if so, burn rewards for this price epoch.
+                _accrueUnearnedRewards();
             }
 
             lastRewardedFtsoAddress = rewardedFtsoAddress;
@@ -943,11 +948,28 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                 _fallbackFinalizePriceEpoch(ftso);
             }
 
+            // Because FTSO manager in fallback, burn rewards for this price epoch.
+            _accrueUnearnedRewards();
+
             lastRewardedFtsoAddress = address(0);
             emit PriceEpochFinalized(address(0), _getCurrentRewardEpochId());
         }
         
         lastUnprocessedPriceEpochInitialized = false;
+    }
+
+    function _accrueUnearnedRewards() internal {
+        try ftsoRewardManager.accrueUnearnedRewards(
+            lastUnprocessedPriceEpoch,
+            priceEpochDurationSeconds,
+            _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1) { // actual end time (included)
+        } catch Error(string memory message) {
+            emit AccruingUnearnedRewardsFailed(lastUnprocessedPriceEpoch);
+            addRevertError(address(ftsoRewardManager), message);
+        } catch {
+            emit AccruingUnearnedRewardsFailed(lastUnprocessedPriceEpoch);
+            addRevertError(address(ftsoRewardManager), ERR_ACCRUE_UNEARNED_REWARD_FAIL);
+        }
     }
 
     function _fallbackFinalizePriceEpochFailed(IIFtso _ftso, string memory message) internal {

@@ -284,7 +284,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   await wNat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address)
 
   // Tell reward manager about contracts
-  await ftsoRewardManager.setContractAddresses(inflation.address, ftsoManager.address, wNat.address);
+  await ftsoRewardManager.setContractAddresses(inflation.address, ftsoManager.address, wNat.address, supply.address);
 
   // Tell address updater about all contracts
   await addressUpdater.addOrUpdateContractNamesAndAddresses(

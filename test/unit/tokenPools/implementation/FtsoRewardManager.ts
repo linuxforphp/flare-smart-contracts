@@ -1,30 +1,30 @@
 import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import BN from "bn.js";
-import { DeployedFlareContracts } from '../../../../deployment/scripts/deploy-utils';
 import {
     FtsoManagerContract,
     FtsoManagerInstance,
     FtsoManagerMockContract,
     FtsoManagerMockInstance,
-    FtsoRegistryInstance,
     FtsoRewardManagerContract,
     FtsoRewardManagerInstance,
     InflationMockInstance,
+    MockContractInstance,
     SuicidalMockInstance, WNatContract,
     WNatInstance
 } from "../../../../typechain-truffle";
-import { compareArrays, compareNumberArrays, toBN } from "../../../utils/test-helpers";
+import { settingWithOneFTSO_1 } from '../../../utils/FtsoManager-test-utils';
+import { compareArrays, compareNumberArrays, getAddressWithZeroBalance, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 
-const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const WNAT = artifacts.require("WNat") as WNatContract;
 const InflationMock = artifacts.require("InflationMock");
 const SuicidalMock = artifacts.require("SuicidalMock");
+const SupplyMock = artifacts.require("MockContract");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -41,6 +41,7 @@ let startTs: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let wNat: WNatInstance;
 let mockInflation: InflationMockInstance;
+let mockSupply: MockContractInstance;
 
 
 export async function distributeRewards(
@@ -93,9 +94,9 @@ export async function distributeRewards(
 
 export async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
     let currentFtsoManagerAddress = await ftsoRewardManager.ftsoManager();
-    await ftsoRewardManager.setContractAddresses(mockInflation.address, deployer, wNat.address);
+    await ftsoRewardManager.setContractAddresses(mockInflation.address, deployer, wNat.address, mockSupply.address);
     await ftsoRewardManager.closeExpiredRewardEpoch(rewardEpoch);
-    await ftsoRewardManager.setContractAddresses(mockInflation.address, currentFtsoManagerAddress, wNat.address);
+    await ftsoRewardManager.setContractAddresses(mockInflation.address, currentFtsoManagerAddress, wNat.address, mockSupply.address);
 }
 
 export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string, closeAsYouGo = false) {
@@ -135,34 +136,11 @@ export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, start
 contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager unit tests`, async accounts => {
 
     let mockSuicidal: SuicidalMockInstance;
-    let ftsoRegistry: FtsoRegistryInstance;
-    let allDeployedContractsFixture: () => Promise<DeployedFlareContracts>;
-    let deploymentParameters: any;
-
-    before(async function () {
-        // TODO: create full deployment fixture (scdev config)
-        deploymentParameters = require('../../../../deployment/chain-config/scdev.json');
-        // inject private keys from .env, if they exist
-
-        if (process.env.DEPLOYER_PRIVATE_KEY) {
-            deploymentParameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
-        }
-        if (process.env.GENESIS_GOVERNANCE_PRIVATE_KEY) {
-            deploymentParameters.genesisGovernancePrivateKey = process.env.GENESIS_GOVERNANCE_PRIVATE_KEY
-        }
-        if (process.env.GOVERNANCE_PRIVATE_KEY) {
-            deploymentParameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
-        }
-
-        // allDeployedContractsFixture = deployments.createFixture(async (env, options) => {
-        //     let contracts = await fullDeploy(deploymentParameters, true);
-        //     return contracts;
-        // });
-    });
 
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
         mockInflation = await InflationMock.new();
+        mockSupply = await SupplyMock.new();
 
         ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
@@ -174,8 +152,6 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         // Get the timestamp for the just mined block
         startTs = await time.latest();
-
-        ftsoRegistry = await FtsoRegistry.new(accounts[0]);
 
         ftsoManagerInterface = await FtsoManager.new(
             accounts[0],
@@ -194,7 +170,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
         await setDefaultVPContract(wNat, accounts[0]);
 
-        await ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, wNat.address);
+        await ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address);
         
         // set the daily authorized inflation...this proxies call to ftso reward manager
         await mockInflation.setDailyAuthorizedInflation(1000000);
@@ -233,32 +209,32 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         });
         
         it("Should revert calling setContractAddresses if not from governance", async () => {
-            await expectRevert(ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, wNat.address, { from: accounts[1] }), "only governance");
+            await expectRevert(ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address, { from: accounts[1] }), "only governance");
         });
 
         it("Should update ftso manager", async () => {
             expect(await ftsoRewardManager.ftsoManager()).to.equals(mockFtsoManager.address);
-            await ftsoRewardManager.setContractAddresses(mockInflation.address, accounts[8], wNat.address);
+            await ftsoRewardManager.setContractAddresses(mockInflation.address, accounts[8], wNat.address, mockSupply.address);
             expect(await ftsoRewardManager.ftsoManager()).to.equals(accounts[8]);
         });
 
         it("Should revert calling setFtsoManager if setting to address(0)", async () => {
-            await expectRevert(ftsoRewardManager.setContractAddresses(mockInflation.address, constants.ZERO_ADDRESS, wNat.address), "no ftso manager");
+            await expectRevert(ftsoRewardManager.setContractAddresses(mockInflation.address, constants.ZERO_ADDRESS, wNat.address, mockSupply.address), "no ftso manager");
         });
 
         it("Should update WNAT", async () => {
             expect(await ftsoRewardManager.wNat()).to.equals(wNat.address);
-            await ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, accounts[8]);
+            await ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, accounts[8], mockSupply.address);
             expect(await ftsoRewardManager.wNat()).to.equals(accounts[8]);
         });
 
         it("Should revert calling setContractAddresses if setting to address(0)", async () => {
-            await expectRevert(ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, constants.ZERO_ADDRESS), "no wNat");
+            await expectRevert(ftsoRewardManager.setContractAddresses(mockInflation.address, mockFtsoManager.address, constants.ZERO_ADDRESS, mockSupply.address), "no wNat");
         });
 
         it("Should update inflation", async () => {
             expect(await ftsoRewardManager.getInflationAddress()).to.equals(mockInflation.address);
-            await ftsoRewardManager.setContractAddresses(accounts[8], mockFtsoManager.address, wNat.address);
+            await ftsoRewardManager.setContractAddresses(accounts[8], mockFtsoManager.address, wNat.address, mockSupply.address);
             expect(await ftsoRewardManager.getInflationAddress()).to.equals(accounts[8]);
         });
 
@@ -272,7 +248,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         });
 
         it("Should revert calling setContractAddresses if setting to address(0)", async () => {
-            await expectRevert(ftsoRewardManager.setContractAddresses(constants.ZERO_ADDRESS, mockFtsoManager.address, wNat.address), "inflation zero");
+            await expectRevert(ftsoRewardManager.setContractAddresses(constants.ZERO_ADDRESS, mockFtsoManager.address, wNat.address, mockSupply.address), "inflation zero");
         });
 
         it("Should get epoch to expire next", async () => {
@@ -355,6 +331,121 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
                 0
             ), "ftso manager only");
         });
+    });
+
+    describe("Price epochs, finalization in fallback", async() => {
+      it("Should only be called from ftso manager", async () => {
+        await expectRevert(ftsoRewardManager.accrueUnearnedRewards(
+            0,
+            REVEAL_EPOCH_DURATION_S,
+            startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+        ), "ftso manager only");
+      });
+
+      it("Should accrue unearned rewards", async() => {
+        // Act
+        await mockFtsoManager.accrueUnearnedRewardsCall(
+          0,
+          PRICE_EPOCH_DURATION_S,
+          startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+        );
+        // Assert
+        // 2 minute price epochs yield 720 price epochs per day
+        // 1000000 / 720 = 1388.8 repeating, unearned rewards to burn. Decimal will get truncated.
+        const totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
+        assert.equal(totalUnearnedWei.toNumber(), 1388);
+      });
+
+      it("Should evenly distribute rewards once unearned rewards have accrued", async() => {
+        // Assemble
+        // Simulate ftso in fallback by accruing unearned rewards for first price epoch
+        await mockFtsoManager.accrueUnearnedRewardsCall(
+          0,
+          PRICE_EPOCH_DURATION_S,
+          startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+        );
+
+        // Act
+        // Total awardable should now be 1000000 - 1388
+        // Distribute rewards for next price epoch 
+        await mockFtsoManager.distributeRewardsCall(
+          [accounts[1]],
+          [100],
+          100,
+          0,
+          accounts[6],
+          PRICE_EPOCH_DURATION_S,
+          0,
+          startTs.addn((PRICE_EPOCH_DURATION_S * 2) - 1),
+          0
+        );
+
+        // Assert
+        // 2 minute price epochs yield 720 price epochs per day
+        // (1000000 - 1388 unearned) / (720 - 1) = 1388.89ish, rewards awarded. Decimal will get truncated.
+        // Total "awarded" should now be 1388 for actual rewards distributed.
+        const totalAwardedWei = await ftsoRewardManager.totalAwardedWei();
+        const totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
+        assert.equal(totalAwardedWei.toNumber(), 1388);
+        assert.equal(totalUnearnedWei.toNumber(), 1388);
+      });
+
+      it("Should burn unearned rewards when inflation received", async() => {
+        // Assemble
+        const burnAddress = await getAddressWithZeroBalance();
+        const burnAddressCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'burnAddress', inputs: [] }, []);
+        await mockSupply.givenMethodReturnAddress(burnAddressCall, burnAddress);
+        // Simulate ftso in fallback by accruing unearned rewards for first price epoch
+        await mockFtsoManager.accrueUnearnedRewardsCall(
+          0,
+          PRICE_EPOCH_DURATION_S,
+          startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+        );
+
+        // Act
+        // Receive inflation. 
+        // Inflation must call ftso reward manager during funding, and this proxy does it.
+        const txReceipt = await mockInflation.receiveInflation({ value: "1000000" });
+
+        // Assert
+        let ftsoRewardManagerBalance = web3.utils.toBN(await web3.eth.getBalance(ftsoRewardManager.address));
+        assert.equal(ftsoRewardManagerBalance.toNumber(), 998612);
+        // Since supply is stubbed out, the burn address will default to 0x0.
+        let burnAddressBalance = web3.utils.toBN(await web3.eth.getBalance(burnAddress));
+        assert.equal(burnAddressBalance.toNumber(), 1388);
+        // Check total unearned accural
+        let totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
+        assert.equal(totalUnearnedWei.toNumber(), 1388);
+      });
+
+      it("Should limit the unearned rewards burned on any given receive inflation event", async() => {
+        // Assemble
+        const burnAddress = await getAddressWithZeroBalance();
+        const burnAddressCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'burnAddress', inputs: [] }, []);
+        await mockSupply.givenMethodReturnAddress(burnAddressCall, burnAddress);
+
+        // Simulate ftso in fallback by accruing unearned rewards for many price epochs
+        // Should be 1388 * 200 = 277,600
+        for(var p = 1; p < 200; p++) {
+          await mockFtsoManager.accrueUnearnedRewardsCall(
+            0,
+            PRICE_EPOCH_DURATION_S,
+            startTs.addn((PRICE_EPOCH_DURATION_S * p) - 1)
+          );  
+        }
+
+        // Act
+        // Receive inflation. 
+        // Inflation must call ftso reward manager during funding, and this proxy does it.
+        const txReceipt = await mockInflation.receiveInflation({ value: "1000000" });
+
+        // Amount burned should be limited to 20% of received inflation;
+        let burnAddressBalance = web3.utils.toBN(await web3.eth.getBalance(burnAddress));
+        assert.equal(burnAddressBalance.toNumber(), 200000, "Burn address does not contain correct balance");
+        // Check totalBurnedWei()
+        let totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+        assert.equal(totalBurnedWei.toNumber(), 200000, "FtsoRewardManager.totalBurnedWei does not contain correct balance");
+      });
     });
 
     describe("getters and setters", async () => {
@@ -459,6 +550,47 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             expect(data[1].length).to.equals(0);
             expect(data[2].length).to.equals(0);
         });
+
+        it("Should get epoch reward and claimed reward info", async () => {
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+
+            let data = await ftsoRewardManager.getTokenPoolSupplyData();
+            expect(data[0].toNumber()).to.equals(0);
+            expect(data[1].toNumber()).to.equals(1000000);
+            expect(data[2].toNumber()).to.equals(0);
+
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0], false);
+
+            // Assert
+            // 2 minute price epochs yield 720 price epochs per day
+            // 1000000 / 720 = 1388.8 repeating, rewards to award. Decimal will get truncated.
+            // a1 should be (1000000 / 720) * 0.25 = 347.2 repeating
+            // a2 should be = (1000000 / 720) * 0.75 = 1041.6 repeating
+            // in distributeRewards this is done 2x
+            let rewardEpochBeforeClaim = await ftsoRewardManager.getEpochReward(0);
+            assert.equal(rewardEpochBeforeClaim[0].toNumber(), 1388 * 2);
+            assert.equal(rewardEpochBeforeClaim[1].toNumber(), 0);
+
+            let claimedRewardBeforeClaim = await ftsoRewardManager.getClaimedReward(0, accounts[1], accounts[1]);
+            assert.equal(claimedRewardBeforeClaim[0], false);
+            assert.equal(claimedRewardBeforeClaim[1].toNumber(), 0);
+
+            let claimedRewardBeforeClaim2 = await ftsoRewardManager.getClaimedReward(0, accounts[1], accounts[2]);
+            assert.equal(claimedRewardBeforeClaim2[0], false);
+            assert.equal(claimedRewardBeforeClaim2[1].toNumber(), 0);
+
+            await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
+
+            let rewardEpochAfterClaim = await ftsoRewardManager.getEpochReward(0);
+            assert.equal(rewardEpochAfterClaim[0].toNumber(), 1388 * 2);
+            assert.equal(rewardEpochAfterClaim[1].toNumber(), 347 * 2);
+
+            let claimedRewardAfterClaim = await ftsoRewardManager.getClaimedReward(0, accounts[1], accounts[1]);
+            assert.equal(claimedRewardAfterClaim[0], true);
+            assert.equal(claimedRewardAfterClaim[1].toNumber(), 347 * 2);
+          });
 
         it("Should revert if fee percentage > max bips", async () => {
             await expectRevert(ftsoRewardManager.setDataProviderFeePercentage(15000, { from: accounts[1] }), "invalid fee percentage value");
@@ -1659,19 +1791,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should only expire correct reward epoch and proceed", async () => {
             // update ftso manager to accounts[0] to be able to call closeExpiredRewardEpoch
-            await ftsoRewardManager.setContractAddresses(mockInflation.address, accounts[0], wNat.address);
+            await ftsoRewardManager.setContractAddresses(mockInflation.address, accounts[0], wNat.address, mockSupply.address);
             
             await ftsoRewardManager.closeExpiredRewardEpoch(0); // should work
             await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0), "wrong reward epoch id");
             await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(2), "wrong reward epoch id");
             await ftsoRewardManager.closeExpiredRewardEpoch(1); // should work
         });
-
-        // it("Should expire rewards after set time in days", async () => {
-
-        //     let fixture = await allDeployedContractsFixture();
-        //     let expiryDays = deploymentParameters.ftsoRewardExpiryOffsetDays;            
-        // });
-
     });
 });

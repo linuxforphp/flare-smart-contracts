@@ -113,7 +113,7 @@ contract(`FtsoV2Upgrader.sol; ${ getTestFile(__filename) }; FtsoV2Upgrader integ
         await ftsoRegistry.setFtsoManagerAddress(oldFtsoManager.address, {from: governance});
         await voterWhitelister.setContractAddresses(ftsoRegistry.address, oldFtsoManager.address, {from: governance});
         await priceSubmitter.setContractAddresses(ftsoRegistry.address, voterWhitelister.address, oldFtsoManager.address, {from: governance});
-        await ftsoRewardManager.setContractAddresses(mockInflation.address, oldFtsoManager.address, wNat.address, {from: governance});
+        await ftsoRewardManager.setContractAddresses(mockInflation.address, oldFtsoManager.address, wNat.address, mockSupply.address, {from: governance});
         await cleanupBlockNumberManager.setTriggerContractAddress(oldFtsoManager.address, {from: governance});
 
         await mockInflation.setDailyAuthorizedInflation(BN(1000000));
