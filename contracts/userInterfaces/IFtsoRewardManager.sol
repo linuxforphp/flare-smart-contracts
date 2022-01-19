@@ -45,7 +45,18 @@ interface IFtsoRewardManager {
         external returns (uint256 _rewardAmount);
 
     /**
-     * @notice Allows the sender to claim the rewards from specified data providers.
+     * @notice Allows a percentage delegator to claim and wrap rewards.
+     * @notice This function is intended to be used to claim and wrap rewards in case of delegation by percentage.
+     * @param _recipient            address to transfer funds to
+     * @param _rewardEpochs         array of reward epoch numbers to claim for
+     * @return _rewardAmount        amount of total claimed rewards
+     * @dev Reverts if `msg.sender` is delegating by amount
+     */
+    function claimAndWrapReward(address payable _recipient, uint256[] memory _rewardEpochs)
+        external returns (uint256 _rewardAmount);
+
+    /**
+     * @notice Allows the sender to claim rewards from specified data providers.
      * @notice This function is intended to be used to claim rewards in case of delegation by amount.
      * @param _recipient            address to transfer funds to
      * @param _rewardEpochs         array of reward epoch numbers to claim for
@@ -54,6 +65,23 @@ interface IFtsoRewardManager {
      * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
      */
     function claimRewardFromDataProviders(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs,
+        address[] memory _dataProviders
+    )
+        external
+        returns (uint256 _rewardAmount);
+
+    /**
+     * @notice Allows the sender to claim and wrap rewards from specified data providers.
+     * @notice This function is intended to be used to claim and wrap rewards in case of delegation by amount.
+     * @param _recipient            address to transfer funds to
+     * @param _rewardEpochs         array of reward epoch numbers to claim for
+     * @param _dataProviders        array of addresses representing data providers to claim the reward from
+     * @return _rewardAmount        amount of total claimed rewards
+     * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
+     */
+    function claimAndWrapRewardFromDataProviders(
         address payable _recipient,
         uint256[] memory _rewardEpochs,
         address[] memory _dataProviders

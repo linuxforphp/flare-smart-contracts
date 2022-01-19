@@ -147,28 +147,32 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         nonReentrant 
         returns (uint256 _rewardAmount)
     {
-        _handleSelfDestructProceeds();
-
-        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
-                
-        for (uint256 i = 0; i < _rewardEpochs.length; i++) {
-            if (!_isRewardClaimable(_rewardEpochs[i], currentRewardEpoch)) {
-                continue;
-            }
-            RewardState memory rewardState = _getStateOfRewards(msg.sender, _rewardEpochs[i], true);
-            uint256 amount = _claimReward(_recipient, _rewardEpochs[i], rewardState);
-            claimedRewardEpochRewards[_rewardEpochs[i]] += amount;
-            _rewardAmount += amount;
-        }
-
-        _transferReward(_recipient, _rewardAmount);
-
-        //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant
-        lastBalance = address(this).balance;
+        _rewardAmount = _claimOrWrapReward(_recipient, _rewardEpochs, false);
     }
 
     /**
-     * @notice Allows the sender to claim the rewards from specified data providers.
+     * @notice Allows a percentage delegator to claim and wrap rewards.
+     * @notice This function is intended to be used to claim and wrap rewards in case of delegation by percentage.
+     * @param _recipient            address to transfer funds to
+     * @param _rewardEpochs         array of reward epoch numbers to claim for
+     * @return _rewardAmount        amount of total claimed rewards
+     * @dev Reverts if `msg.sender` is delegating by amount
+     */
+    function claimAndWrapReward(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs
+    ) 
+        external override
+        onlyIfActive
+        mustBalance
+        nonReentrant 
+        returns (uint256 _rewardAmount)
+    {
+        _rewardAmount = _claimOrWrapReward(_recipient, _rewardEpochs, true);
+    }
+
+    /**
+     * @notice Allows the sender to claim rewards from specified data providers.
      * @notice This function is intended to be used to claim rewards in case of delegation by amount.
      * @param _recipient            address to transfer funds to
      * @param _rewardEpochs         array of reward epoch numbers to claim for
@@ -187,26 +191,30 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
         nonReentrant 
         returns (uint256 _rewardAmount)
     {
-        _handleSelfDestructProceeds();
+        _rewardAmount = _claimOrWrapRewardFromDataProviders(_recipient, _rewardEpochs, _dataProviders, false);
+    }
 
-        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
-
-        for (uint256 i = 0; i < _rewardEpochs.length; i++) {
-            if (!_isRewardClaimable(_rewardEpochs[i], currentRewardEpoch)) {
-                continue;
-            }
-            RewardState memory rewardState;
-            rewardState = _getStateOfRewardsFromDataProviders(msg.sender, _rewardEpochs[i], _dataProviders, true);
-
-            uint256 amount = _claimReward(_recipient, _rewardEpochs[i], rewardState);
-            claimedRewardEpochRewards[_rewardEpochs[i]] += amount;
-            _rewardAmount += amount;
-        }
-
-        _transferReward(_recipient, _rewardAmount);
-        
-        //slither-disable-next-line reentrancy-eth      // guarded by nonReentrant
-        lastBalance = address(this).balance;
+    /**
+     * @notice Allows the sender to claim and wrap rewards from specified data providers.
+     * @notice This function is intended to be used to claim and wrap rewards in case of delegation by amount.
+     * @param _recipient            address to transfer funds to
+     * @param _rewardEpochs         array of reward epoch numbers to claim for
+     * @param _dataProviders        array of addresses representing data providers to claim the reward from
+     * @return _rewardAmount        amount of total claimed rewards
+     * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
+     */
+    function claimAndWrapRewardFromDataProviders(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs,
+        address[] memory _dataProviders
+    )
+        external override
+        onlyIfActive
+        mustBalance
+        nonReentrant 
+        returns (uint256 _rewardAmount)
+    {
+        _rewardAmount = _claimOrWrapRewardFromDataProviders(_recipient, _rewardEpochs, _dataProviders, true);
     }
 
     /**
@@ -677,7 +685,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
                 totalBurnedWei = totalBurnedWei.add(toBurnWei);
 
                 // Update lastBalance before transfer, to avoid reentrancy warning 
-                // (though there can not be any reentrancy dut to transfer(0 or die() on known contract)
+                // (though there can not be any reentrancy due to transfer(0) or die() on known contract)
                 lastBalance = lastBalance.sub(toBurnWei);
 
                 // Burn baby burn
@@ -690,6 +698,91 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
                 emit RewardsBurned(toBurnWei);
             }
         }
+    }
+
+    /**
+     * @notice Allows a percentage delegator to claim rewards.
+     * @notice This function is intended to be used to claim rewards in case of delegation by percentage.
+     * @param _recipient            address to transfer funds to
+     * @param _rewardEpochs         array of reward epoch numbers to claim for
+     * @return _rewardAmount        amount of total claimed rewards
+     * @dev Reverts if `msg.sender` is delegating by amount
+     */
+    function _claimOrWrapReward(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs,
+        bool _wrap
+    ) 
+        internal
+        returns (uint256 _rewardAmount)
+    {
+        _handleSelfDestructProceeds();
+
+        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
+                
+        for (uint256 i = 0; i < _rewardEpochs.length; i++) {
+            if (!_isRewardClaimable(_rewardEpochs[i], currentRewardEpoch)) {
+                continue;
+            }
+            RewardState memory rewardState = _getStateOfRewards(msg.sender, _rewardEpochs[i], true);
+            uint256 amount = _claimReward(_recipient, _rewardEpochs[i], rewardState);
+            claimedRewardEpochRewards[_rewardEpochs[i]] += amount;
+            _rewardAmount += amount;
+        }
+
+        if (_wrap) {
+            _sendWrappedRewardTo(_recipient, _rewardAmount);
+        } else {
+            _transferReward(_recipient, _rewardAmount);
+        }
+
+        //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant
+        lastBalance = address(this).balance;
+    }
+
+    /**
+     * @notice Allows the sender to claim the rewards from specified data providers.
+     * @notice This function is intended to be used to claim rewards in case of delegation by amount.
+     * @param _recipient            address to transfer funds to
+     * @param _rewardEpochs         array of reward epoch numbers to claim for
+     * @param _dataProviders        array of addresses representing data providers to claim the reward from
+     * @param _wrap                 should reward be wrapped immediatelly
+     * @return _rewardAmount        amount of total claimed rewards
+     * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
+     */
+    function _claimOrWrapRewardFromDataProviders(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs,
+        address[] memory _dataProviders,
+        bool _wrap
+    )
+        internal
+        returns (uint256 _rewardAmount)
+    {
+        _handleSelfDestructProceeds();
+
+        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
+
+        for (uint256 i = 0; i < _rewardEpochs.length; i++) {
+            if (!_isRewardClaimable(_rewardEpochs[i], currentRewardEpoch)) {
+                continue;
+            }
+            RewardState memory rewardState;
+            rewardState = _getStateOfRewardsFromDataProviders(msg.sender, _rewardEpochs[i], _dataProviders, true);
+
+            uint256 amount = _claimReward(_recipient, _rewardEpochs[i], rewardState);
+            claimedRewardEpochRewards[_rewardEpochs[i]] += amount;
+            _rewardAmount += amount;
+        }
+
+        if (_wrap) {
+            _sendWrappedRewardTo(_recipient, _rewardAmount);
+        } else {
+            _transferReward(_recipient, _rewardAmount);
+        }
+        
+        //slither-disable-next-line reentrancy-eth      // guarded by nonReentrant
+        lastBalance = address(this).balance;
     }
 
     /**
@@ -758,6 +851,19 @@ contract FtsoRewardManager is IIFtsoRewardManager, IIInflationReceiver, IITokenP
             (bool success, ) = _recipient.call{value: _rewardAmount}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, ERR_CLAIM_FAILED);
+        }
+    }
+
+    /**
+     * @notice Wrap (deposit) `_rewardAmount` to `_recipient` on WNat.
+     * @param _recipient            address representing the reward recipient
+     * @param _rewardAmount         number representing the amount to transfer
+     */
+    function _sendWrappedRewardTo(address payable _recipient, uint256 _rewardAmount) internal {
+        if (_rewardAmount > 0) {
+            // transfer total amount (state is updated and events are emitted in _claimReward)
+            //slither-disable-next-line arbitrary-send          // amount always calculated by _claimReward
+            wNat.depositTo{value: _rewardAmount}(_recipient);
         }
     }
 
