@@ -133,7 +133,7 @@ export async function inflationContractsFix(hre: HardhatRuntimeEnvironment, oldC
   await inflation.setSupply(supply.address);
 
   // Tell reward manager about contracts
-  await ftsoRewardManager.setContractAddresses(inflation.address, ftsoManager.address, wnat.address);
+  await ftsoRewardManager.setContractAddresses(inflation.address, ftsoManager.address, wnat.address, supply.address);
 
   if (!quiet) {
     console.error("Contracts in JSON:");

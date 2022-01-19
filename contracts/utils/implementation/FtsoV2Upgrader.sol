@@ -8,6 +8,7 @@ import "../../ftso/interface/IIFtsoManager.sol";
 import "../../ftso/interface/IIFtsoManagerV1.sol";
 import "../../genesis/implementation/FlareDaemon.sol";
 import "../../genesis/implementation/PriceSubmitter.sol";
+import "../../inflation/implementation/Supply.sol";
 import "../../tokenPools/implementation/FtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
 import "../../utils/implementation/FtsoRegistry.sol";
@@ -76,7 +77,8 @@ contract FtsoV2Upgrader is Governed {
         FtsoRewardManager(ftsoRewardManagerAddress).setContractAddresses(
             addressUpdater.getContractAddress("Inflation"),
             IIFtsoManager(ftsoManagerAddress),
-            WNat(payable(addressUpdater.getContractAddress("WNat"))));
+            WNat(payable(addressUpdater.getContractAddress("WNat"))),
+            Supply(addressUpdater.getContractAddress("Supply")));
 
         FtsoRegistry(ftsoRegistryAddress).setFtsoManagerAddress(IIFtsoManager(ftsoManagerAddress));
 

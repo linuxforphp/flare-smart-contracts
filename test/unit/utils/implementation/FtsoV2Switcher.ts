@@ -226,6 +226,7 @@ contract(`FtsoV2Upgrader.sol; ${ getTestFile(__filename) }; FtsoV2Upgrader unit 
         const flareDaemonMock = await MockContract.new();
         const inflationMock = await MockContract.new();
         const wNatMock = await MockContract.new();
+        const supplyMock = await MockContract.new();
 
         // Rig the expected return using web3 abi encoder
         const rewardEpochsStartTs = oldFtsoManagerInterface.contract.methods.rewardEpochsStartTs().encodeABI();
@@ -244,8 +245,8 @@ contract(`FtsoV2Upgrader.sol; ${ getTestFile(__filename) }; FtsoV2Upgrader unit 
 
         // set address updater data
         await addressUpdater.addOrUpdateContractNamesAndAddresses(
-            ["FtsoManager", "PriceSubmitter", "FtsoRewardManager", "FtsoRegistry", "VoterWhitelister", "CleanupBlockNumberManager", "FlareDaemon", "Inflation", "WNat"],
-            [ftsoManagerMock.address, priceSubmitterMock.address, ftsoRewardManagerMock.address, ftsoRegistryMock.address, voterWhitelisterMock.address, cleanupBlockNumberManagerMock.address, flareDaemonMock.address, inflationMock.address, wNatMock.address], 
+            ["FtsoManager", "PriceSubmitter", "FtsoRewardManager", "FtsoRegistry", "VoterWhitelister", "CleanupBlockNumberManager", "FlareDaemon", "Inflation", "WNat", "Supply"],
+            [ftsoManagerMock.address, priceSubmitterMock.address, ftsoRewardManagerMock.address, ftsoRegistryMock.address, voterWhitelisterMock.address, cleanupBlockNumberManagerMock.address, flareDaemonMock.address, inflationMock.address, wNatMock.address, supplyMock.address], 
             { from: governance });
 
         // set upgrader data
@@ -265,7 +266,7 @@ contract(`FtsoV2Upgrader.sol; ${ getTestFile(__filename) }; FtsoV2Upgrader unit 
         let setAddresses = priceSubmitterInterface.contract.methods.setContractAddresses(ftsoRegistryMock.address, voterWhitelisterMock.address, ftsoManagerMock.address).encodeABI();
         assert.equal((await priceSubmitterMock.invocationCountForCalldata.call(setAddresses)).toNumber(), 1);
 
-        setAddresses = ftsoRewardManagerInterface.contract.methods.setContractAddresses(inflationMock.address, ftsoManagerMock.address, wNatMock.address).encodeABI();
+        setAddresses = ftsoRewardManagerInterface.contract.methods.setContractAddresses(inflationMock.address, ftsoManagerMock.address, wNatMock.address, supplyMock.address).encodeABI();
         assert.equal((await ftsoRewardManagerMock.invocationCountForCalldata.call(setAddresses)).toNumber(), 1);
         
         setAddresses = ftsoRegistryInterface.contract.methods.setFtsoManagerAddress(ftsoManagerMock.address).encodeABI();

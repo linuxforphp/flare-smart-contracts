@@ -1601,6 +1601,61 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expectEvent(tx, "DistributingRewardsFailed", { ftso: mockFtso.address, epochId: toBN(0) })
     });
 
+    it("Should emit event for a accrue unearned rewards catch statement with a message if ftso manager in fallback mode ", async () => {
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[accounts[1], accounts[2]], [25, 75], 100]);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(mockFtso.address);
+
+      await ftsoManager.activate();
+      await ftsoManager.setFallbackMode(true);
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize(); // initialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+
+      const accrueUnearnedRewards = ftsoRewardManagerInterface.contract.methods.accrueUnearnedRewards(
+        0,
+        120,
+        startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+      ).encodeABI();
+      await mockRewardManager.givenMethodRevertWithMessage(accrueUnearnedRewards, "I am broken");
+
+      let tx = await ftsoManager.daemonize();
+      expectEvent(tx, "AccruingUnearnedRewardsFailed", { epochId: toBN(0) });
+    });
+
+    it("Should emit event for a accrue unearned rewards catch statement with a message if no ftso could get rewards", async () => {
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[], [], '0']);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(mockFtso.address);
+
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize(); // initialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+
+      const accrueUnearnedRewards = ftsoRewardManagerInterface.contract.methods.accrueUnearnedRewards(
+        0,
+        120,
+        startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+      ).encodeABI();
+      await mockRewardManager.givenMethodRevertWithMessage(accrueUnearnedRewards, "I am broken");
+
+      let tx = await ftsoManager.daemonize();
+      expectEvent(tx, "AccruingUnearnedRewardsFailed", { epochId: toBN(0) });
+    });
+
     it("Should finalize price epoch and declare non-winning but next eligible ftso the winner", async () => {
       // Assemble
       // Force the first FTSO random number generator to yield FTSO 0 as reward FTSO
@@ -2274,7 +2329,62 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await mockRewardManager.givenMethodRunOutOfGas(distributeRewards);
 
       let tx = await ftsoManager.daemonize();
-      expectEvent(tx, "DistributingRewardsFailed");
+      expectEvent(tx, "DistributingRewardsFailed", { ftso: mockFtso.address, epochId: toBN(0) });
+    });
+
+    it("Should emit event for a accrue unearned rewards catch statement without a message if ftso manager in fallback mode ", async () => {
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[accounts[1], accounts[2]], [25, 75], 100]);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(mockFtso.address);
+
+      await ftsoManager.activate();
+      await ftsoManager.setFallbackMode(true);
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize(); // initialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+
+      const accrueUnearnedRewards = ftsoRewardManagerInterface.contract.methods.accrueUnearnedRewards(
+        0,
+        120,
+        startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+      ).encodeABI();
+      await mockRewardManager.givenMethodRunOutOfGas(accrueUnearnedRewards);
+
+      let tx = await ftsoManager.daemonize();
+      expectEvent(tx, "AccruingUnearnedRewardsFailed", { epochId: toBN(0) });
+    });
+
+    it("Should emit event for a accrue unearned rewards catch statement without a message if no ftso could get rewards", async () => {
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[], [], '0']);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(mockFtso.address);
+
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize(); // initialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + PRICE_EPOCH_DURATION_S);
+
+      const accrueUnearnedRewards = ftsoRewardManagerInterface.contract.methods.accrueUnearnedRewards(
+        0,
+        120,
+        startTs.addn(PRICE_EPOCH_DURATION_S - 1)
+      ).encodeABI();
+      await mockRewardManager.givenMethodRunOutOfGas(accrueUnearnedRewards);
+
+      let tx = await ftsoManager.daemonize();
+      expectEvent(tx, "AccruingUnearnedRewardsFailed", { epochId: toBN(0) });
     });
 
     it("Should emit event for a initialize current epoch for reveal catch statement without a message", async () => {
@@ -2440,6 +2550,67 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.setFtsoFallbackMode(ftso1.address, false, { from: accounts[0] });
       assert.equal(ftso1.address, (await ftsoManager.getFallbackMode())[1][0]);
       assert(!(await ftsoManager.getFallbackMode())[2][0]);
+    });
+
+    
+    it("Should accrue unearned rewards when in fallback mode", async () => {
+      // Assemble
+      await settingWithOneFTSO_1(accounts, ftsoInterface, mockFtso, ftsoManager);
+      await ftsoManager.setFallbackMode(true, { from: accounts[0] });
+      // Initialize
+      await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+      await ftsoManager.daemonize(); // intialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+      // Act
+      // Time travel 120 seconds
+      await time.increaseTo(startTs.addn(120 + 30));
+      // Simulate the daemon tickling reward manager
+      await ftsoManager.daemonize();
+
+      // Assert
+      // uint256 epochId,
+      // uint256 priceEpochDurationSeconds,
+      // uint256 priceEpochEndTime, // end time included in epoch
+      const accrueUnearnedRewards = ftsoRewardManagerInterface.contract.methods.accrueUnearnedRewards(
+        0,
+        120,
+        startTs.addn(120 - 1)
+      ).encodeABI();
+      const invocationCountWithData = await mockRewardManager.invocationCountForCalldata.call(accrueUnearnedRewards);
+      assert.equal(invocationCountWithData.toNumber(), 1);
+    });
+
+    it("Should accrue unearned rewards if no FTSOs have a declared winner", async () => {
+      // Assemble
+      let [ftso1, ftso2] = await settingWithTwoFTSOs(accounts, ftsoManager);
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+      await ftsoManager.setFtsoFallbackMode(ftso1.address, true, { from: accounts[0] });
+      await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
+      await ftsoManager.setFtsoFallbackMode(ftso2.address, true, { from: accounts[0] });
+      await ftsoManager.activate();
+
+      // Initialize
+      await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+      await ftsoManager.daemonize(); // intialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+      // Act
+      // Time travel 120 seconds
+      await time.increaseTo(startTs.addn(120 + 30));
+      // Simulate the daemon tickling reward manager
+      await ftsoManager.daemonize();
+
+      // Assert
+      // uint256 epochId,
+      // uint256 priceEpochDurationSeconds,
+      // uint256 priceEpochEndTime, // end time included in epoch
+      const accrueUnearnedRewards = ftsoRewardManagerInterface.contract.methods.accrueUnearnedRewards(
+        0,
+        120,
+        startTs.addn(120 - 1)
+      ).encodeABI();
+      const invocationCountWithData = await mockRewardManager.invocationCountForCalldata.call(accrueUnearnedRewards);
+      assert.equal(invocationCountWithData.toNumber(), 1);
     });
 
     it("Should not set fallback mode for ftso if not managed", async () => {

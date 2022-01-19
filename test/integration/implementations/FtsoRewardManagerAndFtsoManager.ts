@@ -117,7 +117,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
         await setDefaultVPContract(wNat, accounts[0]);
 
-        await ftsoRewardManager.setContractAddresses(mockInflation.address, ftsoManager.address, wNat.address);
+        await ftsoRewardManager.setContractAddresses(mockInflation.address, ftsoManager.address, wNat.address, mockSupply.address);
         await mockInflation.setDailyAuthorizedInflation(BN(1000000));
 
         await ftsoRewardManager.activate();

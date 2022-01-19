@@ -287,7 +287,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, { from: governance });
       await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager.address, { from: governance });
       await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager.address, { from: governance });
-      await ftsoRewardManager.setContractAddresses(inflation, ftsoManager.address, wNat.address, { from: governance });
+      await ftsoRewardManager.setContractAddresses(inflation, ftsoManager.address, wNat.address, supplyInterface.address, { from: governance });
       await ftsoRewardManager.activate({ from: governance });
 
       // set the daily authorized inflation...this proxies call to ftso reward manager

@@ -40,6 +40,24 @@ contract FtsoManagerMock is MockContract {
         require(success);
     }
 
+    function accrueUnearnedRewardsCall(
+        uint256 epochId,
+        uint256 priceEpochDurationSeconds,
+        uint256 priceEpochEndTime
+    ) 
+        public
+    {
+        // This low level call is being done because of mixed Solidity version requirements between
+        // this project and the MockContract component.
+        bytes memory payload = abi.encodeWithSignature(
+            "accrueUnearnedRewards(uint256,uint256,uint256)",
+            epochId, priceEpochDurationSeconds, priceEpochEndTime
+        );
+        //solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = _rewardManager.call(payload);
+        require(success);
+    }
+
     function closeExpiredRewardEpochCall(uint256 rewardEpoch, uint256 currentRewardEpoch) public {
         bytes memory payload = abi.encodeWithSignature("closeExpiredRewardEpoch(uint256,uint256)", 
         rewardEpoch, currentRewardEpoch);

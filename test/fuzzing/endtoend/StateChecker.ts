@@ -183,7 +183,8 @@ export class PriceAndRewardChecker implements EventStateChecker {
     rewardEpochFinalized(args: FtsoManagerEvents<'RewardEpochFinalized'>) {
         if (this.rewardEpochId && this.hasRewardEpoch(this.rewardEpochId)) {
             const rewardEpoch = this.getRewardEpoch(this.rewardEpochId, 'RewardEpochFinalized');
-            assert(rewardEpoch.status === 'open', `RewardEpochFinalized: reward epoch ${this.rewardEpochId} already ${rewardEpoch.status}`)
+            assert(rewardEpoch.status === 'open' || rewardEpoch.status === 'finalized', 
+                `RewardEpochFinalized: reward epoch ${this.rewardEpochId} already ${rewardEpoch.status}`)
             rewardEpoch.status = 'finalized';
         }
     }

@@ -6,6 +6,8 @@ import BN from "bn.js";
 import { BigNumber, ContractReceipt, ContractTransaction, Signer } from "ethers";
 import { ethers } from "hardhat";
 
+const Wallet = require('ethereumjs-wallet').default;
+
 /**
  * Helper function for instantiating and deploying a contract by using factory.
  * @param name Name of the contract
@@ -330,4 +332,13 @@ export async function foreachAsyncSerial<T>(array: T[], func: (x: T, index: numb
     for (let i = 0; i < array.length; i++) {
         await func(array[i], i);
     }
+}
+
+
+export async function getAddressWithZeroBalance() {
+    let wallet = Wallet.generate();
+    while(toBN(await web3.eth.getBalance(wallet.getChecksumAddressString())).gtn(0)) {
+        wallet = Wallet.generate();
+    }
+    return wallet.getChecksumAddressString();
 }

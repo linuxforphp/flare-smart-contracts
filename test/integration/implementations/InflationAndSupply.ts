@@ -78,7 +78,8 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
     await ftsoRewardManager.setContractAddresses(
       inflation.address, 
       (await MockContract.new()).address, 
-      (await MockContract.new()).address);
+      (await MockContract.new()).address,
+      supply.address);
   });
 
   describe("daily roll", async() => {
