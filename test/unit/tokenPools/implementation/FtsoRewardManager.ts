@@ -1761,6 +1761,50 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2776);
         });
+
+        it("Should enable rewards to be claimed and wrapped once reward epoch finalized - percentage", async () => {
+
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+
+            // Act
+            // Claim reward to a3 - test both 3rd party claim and avoid
+            // having to calc gas fees            
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[3]);
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            await ftsoRewardManager.claimAndWrapReward(accounts[3], [0], { from: accounts[1] });
+            // Assert
+            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[3]);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 694);
+            assert(natOpeningBalance.eq(natClosingBalance));
+        });
+
+        it("Should enable rewards to be claimed and wrapped once reward epoch finalized - explicit", async () => {
+
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+
+            // Act
+            // Claim reward to a3 - test both 3rd party claim and avoid
+            // having to calc gas fees            
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[3]);
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            await ftsoRewardManager.claimAndWrapRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[1] });
+            // Assert
+            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[3]);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 694);
+            assert(natOpeningBalance.eq(natClosingBalance));
+        });
     });
 
     describe("close expired reward epochs", async () => {
