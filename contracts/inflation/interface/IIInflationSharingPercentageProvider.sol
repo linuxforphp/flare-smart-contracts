@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "../interface/IIInflationReceiver.sol";
+import "./IIInflationReceiver.sol";
 
 struct SharingPercentage {
     IIInflationReceiver inflationReceiver;

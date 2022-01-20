@@ -12,7 +12,8 @@ const GasConsumer6 = artifacts.require("GasConsumer6");
 const BN = web3.utils.toBN;
 const getTestFile = require('../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
-import { advanceBlock } from '../../utils/test-helpers';
+import { advanceBlock, encodeContractNames } from '../../utils/test-helpers';
+import { Contracts } from "../../../deployment/scripts/Contracts";
 
 /**
  * This test assumes a local chain is running with Flare allocated in accounts
@@ -21,6 +22,7 @@ import { advanceBlock } from '../../utils/test-helpers';
  * already be loaded in the genesis block.
  */
 contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon system tests`, async accounts => {
+  const ADDRESS_UPDATER = accounts[16];
   // Static address of the daemon on a local network
   let flareDaemon: FlareDaemonInstance;
   // contains a fresh contract for each test
@@ -39,7 +41,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon system tests`
     try {
       await flareDaemon.initialiseFixedAddress();
       let governanceAddress = await flareDaemon.governance();
-      await flareDaemon.setInflation(inflationMock.address, { from: governanceAddress });
+      await flareDaemon.setAddressUpdater(ADDRESS_UPDATER, { from: governanceAddress });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, inflationMock.address], {from: ADDRESS_UPDATER});
     } catch (e) {
       console.log("err");
       const governanceAddress = await flareDaemon.governance();

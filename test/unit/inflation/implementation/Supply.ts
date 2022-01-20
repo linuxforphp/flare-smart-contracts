@@ -1,6 +1,7 @@
 import { FtsoRewardManagerInstance, MockContractInstance, SupplyInstance } from "../../../../typechain-truffle";
-import { getAddressWithZeroBalance, increaseTimeTo, toBN } from "../../../utils/test-helpers";
+import { encodeContractNames, getAddressWithZeroBalance, increaseTimeTo, toBN } from "../../../utils/test-helpers";
 import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Supply = artifacts.require("Supply");
@@ -35,7 +36,7 @@ async function updateTokenPoolReturnData(tokenPool: MockContractInstance, totalS
 }
 
 contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async accounts => {
-
+    const ADDRESS_UPDATER = accounts[16];
     const governanceAddress = accounts[10];
     const inflationAddress = accounts[9];
     // contains a fresh contract for each test 
@@ -44,15 +45,14 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     beforeEach(async() => {
         burnAddress = await getAddressWithZeroBalance();
-        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
-    });
-
-    it("Should revert deploying supply - inflation zero", async() => {
-        await expectRevert(Supply.new(governanceAddress, burnAddress, constants.ZERO_ADDRESS, initialGenesisAmountWei, totalFoundationSupplyWei, []), "inflation zero");
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        await supply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
     });
 
     it("Should revert deploying supply - initial genesis amount zero", async() => {
-        await expectRevert(Supply.new(governanceAddress, burnAddress, inflationAddress, 0, totalFoundationSupplyWei, []), "initial genesis amount zero");
+        await expectRevert(Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, 0, totalFoundationSupplyWei, []), "initial genesis amount zero");
     });
 
     it("Should know about inflation", async() => {
@@ -69,13 +69,17 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     it("Should change inflation", async() => {
         expect(await supply.inflation()).to.equals(inflationAddress);
-        await supply.setInflation(accounts[8], { from: governanceAddress});
+        await supply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, accounts[8]], {from: ADDRESS_UPDATER});
         expect(await supply.inflation()).to.not.equals(inflationAddress);
         expect(await supply.inflation()).to.equals(accounts[8]);
     });
 
-    it("Should revert changing inflation if not from governance", async() => {
-        await expectRevert(supply.setInflation(accounts[8], { from: accounts[1]}), "only governance");
+    it("Should revert changing inflation if not from address updater", async() => {
+        await expectRevert(supply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, accounts[8]], {from: accounts[1]}), "only address updater");
     });
 
     it("Should get circulating supply", async() => {
@@ -184,13 +188,13 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     it("Should deploy supply with token pools", async() => {
         await createTokenPools([500, 1000], [0, 0], [200, 50]);
-        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 500 - 1000 + 200 + 50);
     });
 
     it("Should deploy supply with some burn address balance", async() => {
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
-        supply = await Supply.new(governanceAddress, burnAddress, inflationAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
     });
     

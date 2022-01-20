@@ -5,18 +5,6 @@ import "../../userInterfaces/IPriceSubmitter.sol";
 interface IIPriceSubmitter is IPriceSubmitter {
 
     /**
-     * Sets ftso registry, voter whitelist and ftso manager contracts.
-     * Only governance can call this method.
-     * If replacing the registry or the whitelist and the old one is not empty, make sure to replicate the state,
-     * otherwise internal whitelist bitmaps won't match.
-     */
-    function setContractAddresses(
-        IFtsoRegistryGenesis _ftsoRegistry,
-        address _voterWhitelister,
-        address _ftsoManager
-    ) external;
-
-    /**
      * Set trusted addresses that are always allowed to submit and reveal.
      * Only ftso manager can call this method.
      */

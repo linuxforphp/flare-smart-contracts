@@ -1,7 +1,8 @@
 import { constants, time } from "@openzeppelin/test-helpers";
+import { Contracts } from "../../../deployment/scripts/Contracts";
 import { FtsoRegistryInstance, SimpleMockFtsoInstance, MockContractInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, GOVERNANCE_GENESIS_ADDRESS, getTestFile } from "../../utils/constants";
-import { compareArrays, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { compareArrays, encodeContractNames, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
@@ -10,7 +11,6 @@ const VPToken = artifacts.require("VPTokenMock");
 const Ftso = artifacts.require("SimpleMockFtso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
-const Supply = artifacts.require("Supply");
 const MockContract = artifacts.require("MockContract");
 
 function toBNFixed(x: number, decimals: number) {
@@ -36,6 +36,7 @@ function fmtNum(x: BN) {
 
 contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption tests`, async accounts => {
     const governance = GOVERNANCE_GENESIS_ADDRESS;
+    const ADDRESS_UPDATER = accounts[16];
     const ftsoManager = accounts[33];
     
     const epochDurationSec = 120;
@@ -49,7 +50,6 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
 
     let ftsoRegistry: FtsoRegistryInstance;
 
-    let supplyInterface: SupplyInstance;
     let supplyMock: MockContractInstance;
 
     let vpBlockNumber: number;
@@ -119,13 +119,20 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
             // create price submitter
             priceSubmitter = await PriceSubmitter.new();
             await priceSubmitter.initialiseFixedAddress();
+            await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, { from: governance });
             // create registry
-            ftsoRegistry = await FtsoRegistry.new(governance);
-            await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
+            ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
+            await ftsoRegistry.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
             // create whitelister
-            whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 200);
-            await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
-            await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
+            whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 200);
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
+            await priceSubmitter.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoRegistry.address, whitelist.address, ftsoManager], {from: ADDRESS_UPDATER});
             // create assets
             wnat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wnat, governance);
@@ -136,7 +143,6 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
                 assets.push(asset);
             }
             // create supply
-            supplyInterface = await Supply.new(governance, constants.ZERO_ADDRESS, governance, 10_000, 0, []);
             supplyMock = await MockContract.new();
             // create ftsos
             natFtso = await createFtso("NAT", usd(1));

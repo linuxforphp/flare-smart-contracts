@@ -10,13 +10,14 @@ import {
 } from "../../../../typechain-truffle";
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
-import { toBN } from "../../../utils/test-helpers";
+import { encodeContractNames, toBN } from "../../../utils/test-helpers";
 import { boolean } from "hardhat/internal/core/params/argumentTypes";
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Inflation = artifacts.require("Inflation");
 const MockContract = artifacts.require("MockContract");
-const SharingPercentageProviderMock = artifacts.require("SharingPercentageProviderMock");
+const PercentageProviderMock = artifacts.require("PercentageProviderMock");
 const InflationReceiverMock = artifacts.require("InflationReceiverMock");
 const FlareDaemonMock = artifacts.require("FlareDaemonMock");
 const FlareDaemonMock1 = artifacts.require("FlareDaemonMock1");
@@ -49,10 +50,10 @@ const DEFAULT_TOPUP_FACTOR_X100 = 120;
 const BN = web3.utils.toBN;
 
 contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, async accounts => {
+  const ADDRESS_UPDATER = accounts[16];
   // contains a fresh contract for each test
-  let mockInflationPercentageProvider: MockContractInstance;
   let mockSupply: MockContractInstance;
-  let mockInflationSharingPercentageProvider: MockContractInstance;
+  let mockInflationPercentageProvider: MockContractInstance;
   let inflation: InflationInstance;
   let inflation1: InflationInstance;
   let inflation2: InflationInstance;
@@ -72,7 +73,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
   beforeEach(async () => {
     mockSupply = await MockContract.new();
     mockInflationPercentageProvider = await MockContract.new();
-    mockInflationSharingPercentageProvider = await MockContract.new();
     mockInflationReceiverInterface = await InflationReceiverMock.new();
     mockFlareDaemon = await FlareDaemonMock.new();
     mockFlareDaemon1 = await FlareDaemonMock1.new();
@@ -92,35 +92,42 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     inflation = await Inflation.new(
       accounts[0],
       mockFlareDaemon.address,
-      mockInflationPercentageProvider.address,
-      mockInflationSharingPercentageProvider.address,
+      ADDRESS_UPDATER,
       0
     );
 
     inflation1 = await Inflation.new(
       accounts[0],
       mockFlareDaemon1.address,
-      mockInflationPercentageProvider.address,
-      mockInflationSharingPercentageProvider.address,
+      ADDRESS_UPDATER,
       0
     );
 
     inflation2 = await Inflation.new(
       accounts[0],
       mockFlareDaemon2.address,
-      mockInflationPercentageProvider.address,
-      mockInflationSharingPercentageProvider.address,
+      ADDRESS_UPDATER,
       0
     );
 
     inflationAllocation = await InflationAllocation.new(
       accounts[0],
-      inflation.address,
+      ADDRESS_UPDATER,
       [3, 2, 1]
     );
-    await inflation.setSupply(mockSupply.address);
-    await inflation1.setSupply(mockSupply.address);
-    await inflation2.setSupply(mockSupply.address);
+    await inflationAllocation.updateContractAddresses(
+			encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+			[ADDRESS_UPDATER, inflation.address], {from: ADDRESS_UPDATER});
+      
+    await inflation.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+      [ADDRESS_UPDATER, mockSupply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
+    await inflation1.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+      [ADDRESS_UPDATER, mockSupply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
+    await inflation2.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+      [ADDRESS_UPDATER, mockSupply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
     await mockFlareDaemon.registerToDaemonize(inflation.address);
   });
 
@@ -370,8 +377,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       const inflationReceiver = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: inflationReceiver.address, percentBips: 10000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Act
       const response = await mockFlareDaemon.trigger();
       // Assert
@@ -388,8 +397,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       sharingPercentages[0] = { inflationReceiver: (await MockContract.new()).address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: (await MockContract.new()).address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Act
       await mockFlareDaemon.trigger();
       // Assert
@@ -414,8 +425,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       sharingPercentages[0] = { inflationReceiver: (await MockContract.new()).address, percentBips: 3333 };
       sharingPercentages[1] = { inflationReceiver: (await MockContract.new()).address, percentBips: 3334 };
       sharingPercentages[2] = { inflationReceiver: (await MockContract.new()).address, percentBips: 3333 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Act
       await mockFlareDaemon.trigger();
       // Assert
@@ -441,8 +454,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       sharingPercentages[0] = { inflationReceiver: (await MockContract.new()).address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: (await MockContract.new()).address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       await mockFlareDaemon.trigger();
       const nowTs = await time.latest() as BN;
       // A day passes...
@@ -479,8 +494,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       const rewardingServiceContract = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: rewardingServiceContract.address, percentBips: 10000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Act
       await mockFlareDaemon.trigger();
       // Assert
@@ -570,8 +587,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const inflationReceiver1 = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: inflationReceiver0.address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: inflationReceiver1.address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Act
       const response = await mockFlareDaemon.trigger();
       // Assert
@@ -596,8 +615,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       sharingPercentages[0] = { inflationReceiver: (await MockContract.new()).address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: (await MockContract.new()).address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       await mockFlareDaemon.trigger();
       const nowTs = await time.latest() as BN;
       // A day passes...
@@ -627,8 +648,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const receiver2 = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: receiver1.address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: receiver2.address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       await inflation.setTopupConfiguration(receiver1.address, TopupType.FACTOROFDAILYAUTHORIZED, 120);
       await inflation.setTopupConfiguration(receiver2.address, TopupType.FACTOROFDAILYAUTHORIZED, 110);
       await mockFlareDaemon.trigger();
@@ -661,8 +684,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const receiver2 = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: receiver1.address, percentBips: 2000 };
       sharingPercentages[1] = { inflationReceiver: receiver2.address, percentBips: 8000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       await inflation.setTopupConfiguration(receiver1.address, TopupType.ALLAUTHORIZED, 0);
       await inflation.setTopupConfiguration(receiver2.address, TopupType.FACTOROFDAILYAUTHORIZED, 140);
       await mockFlareDaemon.trigger();
@@ -694,8 +719,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const serviceReceiver2 = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: serviceReceiver1.address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: serviceReceiver2.address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       await inflation.setTopupConfiguration(serviceReceiver1.address, TopupType.ALLAUTHORIZED, 0);
       await inflation.setTopupConfiguration(serviceReceiver2.address, TopupType.ALLAUTHORIZED, 0);
       await mockFlareDaemon.trigger();
@@ -734,8 +761,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       const rewardingServiceContract = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: rewardingServiceContract.address, percentBips: 10000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Act
       await mockFlareDaemon.trigger();
       // Assert
@@ -753,8 +782,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const inflationReceiver1 = await MockContract.new();
       sharingPercentages[0] = { inflationReceiver: inflationReceiver0.address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: inflationReceiver1.address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Prime topup request buckets
       await mockFlareDaemon.trigger();
       const { 1: toMint } = await inflation.getTotals();
@@ -787,7 +818,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // We must create non default inflation, since default has rewardEpoch at 0
       mockSupply = await MockContract.new();
       mockInflationPercentageProvider = await MockContract.new();
-      mockInflationSharingPercentageProvider = await MockContract.new();
       mockFlareDaemon = await FlareDaemonMock.new();
 
       const getInflatableBalance = web3.utils.sha3("getInflatableBalance()")!.slice(0, 10); // first 4 bytes is function selector
@@ -801,12 +831,13 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       inflation = await Inflation.new(
         accounts[0],
         mockFlareDaemon.address,
-        mockInflationPercentageProvider.address,
-        mockInflationSharingPercentageProvider.address,
+        ADDRESS_UPDATER,
         latest.toNumber() + 2 * 86400 // Set time sometime after now, but at least two days to trigger new inflation if not exiting preemptively
       );
 
-      const tx = await inflation.setSupply(mockSupply.address);
+      const tx = await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
       await mockFlareDaemon.registerToDaemonize(inflation.address);
 
       // Act
@@ -826,8 +857,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const rewardingServiceContract1 = await InflationReceiverMock.new();
       sharingPercentages[0] = { inflationReceiver: rewardingServiceContract0.address, percentBips: 3000 };
       sharingPercentages[1] = { inflationReceiver: rewardingServiceContract1.address, percentBips: 7000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Prime topup request buckets
       await mockFlareDaemon.trigger();
       const { 1: toMint } = await inflation.getTotals();
@@ -858,8 +891,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       const rewardingServiceContract0 = await InflationReceiverMock.new();
       sharingPercentages[0] = { inflationReceiver: rewardingServiceContract0.address, percentBips: 10000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Prime topup request buckets
       await mockFlareDaemon.trigger();
       const { 1: toMint } = await inflation.getTotals();
@@ -879,8 +914,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       const rewardingServiceContract0 = await InflationReceiverMock.new();
       sharingPercentages[0] = { inflationReceiver: rewardingServiceContract0.address, percentBips: 10000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Prime topup request buckets
       await mockFlareDaemon.trigger();
       const { 1: toMint } = await inflation.getTotals();
@@ -907,8 +944,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const sharingPercentages = [];
       const rewardingServiceContract0 = await InflationReceiverMock.new();
       sharingPercentages[0] = { inflationReceiver: rewardingServiceContract0.address, percentBips: 10000 };
-      const sharingPercentageProviderMock = await SharingPercentageProviderMock.new(sharingPercentages);
-      await inflation.setInflationSharingPercentageProvider(sharingPercentageProviderMock.address);
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
       // Prime topup request buckets
       await mockFlareDaemon.trigger();
       const { 1: toMint } = await inflation.getTotals();
@@ -933,7 +972,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Assemble
       mockSupply = await MockContract.new();
       mockInflationPercentageProvider = await MockContract.new();
-      mockInflationSharingPercentageProvider = await MockContract.new();
       mockFlareDaemon = await FlareDaemonMock.new();
 
       const getInflatableBalance = web3.utils.sha3("getInflatableBalance()")!.slice(0, 10); // first 4 bytes is function selector
@@ -946,12 +984,13 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       inflation = await Inflation.new(
         accounts[0],
         mockFlareDaemon.address,
-        mockInflationPercentageProvider.address,
-        mockInflationSharingPercentageProvider.address,
+        ADDRESS_UPDATER,
         latest // Set time to now
       );
 
-      await inflation.setSupply(mockSupply.address);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
       await mockFlareDaemon.registerToDaemonize(inflation.address);
       const rewardTime = (await time.latest()).addn(86400); // Initiate daemonize some time after the reward start time
       await time.increaseTo(rewardTime);
@@ -975,85 +1014,58 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       assert.equal(recognizedInflationWei, BN(inflationForAnnum));
     });
 
-    it("Should set InflationPercentageProvider", async () => {
+    it("Should set InflationAllocation", async () => {
       // Assemble
       const newMockInflationPercentageProvider = await MockContract.new();
 
       // Act
-      await inflation.setInflationPercentageProvider(newMockInflationPercentageProvider.address);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, newMockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
 
       // Assert
-      assert.equal((await inflation.inflationPercentageProvider()), newMockInflationPercentageProvider.address);
+      assert.equal((await inflation.inflationAllocation()), newMockInflationPercentageProvider.address);
     });
 
-    it("Should reject InflationPercentageProvider change if not from governed", async () => {
+    it("Should reject InflationAllocation change if not from address updater", async () => {
       // Assemble
       const newMockInflationPercentageProvider = await MockContract.new();
 
       // Act
-      const changePromise = inflation.setInflationPercentageProvider(newMockInflationPercentageProvider.address, { from: accounts[2] });
+      const changePromise = inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, newMockInflationPercentageProvider.address], {from: accounts[2]});
 
       // Assert
-      await expectRevert(changePromise, ONLY_GOVERNANCE_MSG);
-      assert.equal((await inflation.inflationPercentageProvider()), mockInflationPercentageProvider.address);
+      await expectRevert(changePromise, "only address updater");
+      assert.equal((await inflation.inflationAllocation()), mockInflationPercentageProvider.address);
     });
 
     it("Should reject InflationPercentageProvider change with 0 address", async () => {
       // Assemble
 
       // Act
-      const changePromise = inflation.setInflationPercentageProvider(constants.ZERO_ADDRESS);
+      const changePromise = inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, constants.ZERO_ADDRESS], {from: ADDRESS_UPDATER});
 
       // Assert
-      await expectRevert(changePromise, ERR_IS_ZERO);
-      assert.equal((await inflation.inflationPercentageProvider()), mockInflationPercentageProvider.address);
-    });
-
-    it("Should set InflationSharingPercentageProvider", async () => {
-      // Assemble
-      const newMockInflationSharingPercentageProvider = await MockContract.new();
-
-      // Act
-      await inflation.setInflationSharingPercentageProvider(newMockInflationSharingPercentageProvider.address);
-
-      // Assert
-      assert.equal((await inflation.inflationSharingPercentageProvider()), newMockInflationSharingPercentageProvider.address);
-
-    });
-
-    it("Should reject InflationSharingPercentageProvider change if not from governed", async () => {
-      // Assemble
-      const newMockInflationSharingPercentageProvider = await MockContract.new();
-
-      // Act
-      const changePromise = inflation.setInflationSharingPercentageProvider(newMockInflationSharingPercentageProvider.address, { from: accounts[2] });
-
-      // Assert
-      await expectRevert(changePromise, ONLY_GOVERNANCE_MSG);
-      assert.equal((await inflation.inflationSharingPercentageProvider()), mockInflationSharingPercentageProvider.address);
-    });
-
-    it("Should reject InflationSharingPercentageProvider change with 0 address", async () => {
-      // Assemble
-
-      // Act
-      const changePromise = inflation.setInflationSharingPercentageProvider(constants.ZERO_ADDRESS);
-
-      // Assert
-      await expectRevert(changePromise, ERR_IS_ZERO);
-      assert.equal((await inflation.inflationSharingPercentageProvider()), mockInflationSharingPercentageProvider.address);
+      await expectRevert(changePromise, "address zero");
+      assert.equal((await inflation.inflationAllocation()), mockInflationPercentageProvider.address);
     });
 
     it("Should set new supply", async () => {
       // Assemble
 
-      const newMocksupply = await MockContract.new();
+      const newMockSupply = await MockContract.new();
 
       // Act
-      await inflation.setSupply(newMocksupply.address);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, newMockSupply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
 
       // Assert
-      assert.equal((await inflation.supply()), newMocksupply.address);
+      assert.equal((await inflation.supply()), newMockSupply.address);
 
     });
 
@@ -1062,10 +1074,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const newMockSupply = await MockContract.new();
 
       // Act
-      const changePromise = inflation.setSupply(newMockSupply.address, { from: accounts[2] });
+      const changePromise = inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY]),
+        [ADDRESS_UPDATER, newMockSupply.address], {from: accounts[2]});
 
       // Assert
-      await expectRevert(changePromise, ONLY_GOVERNANCE_MSG);
+      await expectRevert(changePromise, "only address updater");
       assert.equal((await inflation.supply()), mockSupply.address);
     });
 
@@ -1073,10 +1087,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Assemble
 
       // Act
-      const changePromise = inflation.setSupply(constants.ZERO_ADDRESS);
+      const changePromise = inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY]),
+        [ADDRESS_UPDATER, constants.ZERO_ADDRESS], {from: ADDRESS_UPDATER});
 
       // Assert
-      await expectRevert(changePromise, ERR_IS_ZERO);
+      await expectRevert(changePromise, "address zero");
       assert.equal((await inflation.supply()), mockSupply.address);
     });
 
@@ -1158,11 +1174,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       assert.equal(t3Result3.topupType, BN(TopupType.FACTOROFDAILYAUTHORIZED));
       assert.equal(t3Result3.topupFactorX100, BN(DEFAULT_TOPUP_FACTOR_X100));
 
-    });
-
-    it("Should revert if provider of the annual inflation percentage is zero-account", async () => {
-      let tx = inflation.setInflationPercentageProvider(constants.ZERO_ADDRESS);
-      await expectRevert(tx, ERR_IS_ZERO);
     });
 
   });

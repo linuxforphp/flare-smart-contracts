@@ -63,22 +63,6 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
       await checkGovernance(Contracts.FTSO_REWARD_MANAGER);
     });
-  });  
-
-  describe(Contracts.DATA_AVAILABILITY_REWARD_MANAGER, async () => {    
-    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async function () {
-      if (!parameters.dataAvailabilityRewardManagerDeployed) return this.skip();
-      await checkGovernance(Contracts.DATA_AVAILABILITY_REWARD_MANAGER);
-    });
-    it("Should not have deployed", async function () {
-      if (parameters.dataAvailabilityRewardManagerDeployed) return this.skip();
-      try {
-        await checkGovernance(Contracts.DATA_AVAILABILITY_REWARD_MANAGER);
-        assert.fail('The expected Error was not thrown.');
-      } catch (err: any) {
-        assert.include(err.message, `${Contracts.DATA_AVAILABILITY_REWARD_MANAGER} not found`);
-      }
-    });
   });    
 
   describe(Contracts.PRICE_SUBMITTER, async () => {

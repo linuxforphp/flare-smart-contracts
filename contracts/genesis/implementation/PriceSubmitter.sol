@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../../governance/implementation/GovernedAtGenesis.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../interface/IIPriceSubmitter.sol";
 
 
@@ -9,7 +10,7 @@ import "../interface/IIPriceSubmitter.sol";
  * @title Price submitter
  * @notice A contract used to submit/reveal prices to multiple Flare Time Series Oracles in one transaction
  */
-contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
+contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable {
 
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
     string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
@@ -43,27 +44,17 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
      * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
      *   The super constructor is called for testing convenience.
      */
-    constructor() GovernedAtGenesis(address(0)) {
+    constructor() GovernedAtGenesis(address(0)) AddressUpdatable(address(0)) {
         /* empty block */
     }
 
+    
     /**
-     * Sets ftso registry, voter whitelist and ftso manager contracts.
-     * Only governance can call this method.
-     * If replacing the registry or the whitelist and the old one is not empty, make sure to replicate the state,
-     * otherwise internal whitelist bitmaps won't match.
+     * @notice Sets the address udpater contract.
+     * @param _addressUpdater   The address updater contract.
      */
-    function setContractAddresses(
-        IFtsoRegistryGenesis _ftsoRegistry,
-        address _voterWhitelister,
-        address _ftsoManager
-    ) 
-        external override 
-        onlyGovernance
-    {
-        ftsoRegistry = _ftsoRegistry;
-        voterWhitelister = _voterWhitelister;
-        ftsoManager = _ftsoManager;
+    function setAddressUpdater(address _addressUpdater) external onlyGovernance {
+        addressUpdater = _addressUpdater;
     }
     
     /**
@@ -209,5 +200,22 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis {
     
     function getFtsoManager() external view override returns (address) {
         return ftsoManager;
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     * @dev If replacing the registry or the whitelist and the old one is not empty, make sure to replicate the state,
+     * otherwise internal whitelist bitmaps won't match.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoRegistry = IFtsoRegistryGenesis(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
+        voterWhitelister = _getContractAddress(_contractNameHashes, _contractAddresses, "VoterWhitelister");
+        ftsoManager = _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager");
     }
 }

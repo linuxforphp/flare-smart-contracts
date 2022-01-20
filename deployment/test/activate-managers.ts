@@ -38,16 +38,4 @@ contract(`activate-managers.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.DATA_AVAILABILITY_REWARD_MANAGER, async () => {
-    it("Should be activated", async function() {
-      if (!parameters.dataAvailabilityRewardManagerDeployed) return this.skip();
-      // Assemble
-      const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
-      const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.at(contracts.getContractAddress(Contracts.DATA_AVAILABILITY_REWARD_MANAGER));
-      // Act
-      const active = await dataAvailabilityRewardManager.active();
-      // Assert
-      assert(active);
-    });
-  });
 });

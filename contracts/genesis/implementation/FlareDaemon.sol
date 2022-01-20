@@ -7,6 +7,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "../../governance/implementation/GovernedAtGenesis.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../interface/IInflationGenesis.sol";
 import "../interface/IFlareDaemonize.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -19,7 +20,7 @@ import "../../utils/implementation/SafePct.sol";
  *   that are registered to receive said polling. The trigger method is called by the 
  *   validator right at the end of block state transition.
  */
-contract FlareDaemon is GovernedAtGenesis {
+contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
     using SafeMath for uint256;
     using SafePct for uint256;
 
@@ -61,8 +62,8 @@ contract FlareDaemon is GovernedAtGenesis {
     string internal constant ERR_INFLATION_MINT_RECEIVE_FAIL = "unknown error. receiveMinting";
 
     uint256 internal constant MAX_DAEMONIZE_CONTRACTS = 10;
-    // Initial max mint request - 50 million native token
-    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
+    // Initial max mint request - 90 million native token
+    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 90000000 ether;
     // How often can inflation request minting from the validator - 23 hours constant
     uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours;
     // How often can the maximal mint request amount be updated
@@ -161,7 +162,7 @@ contract FlareDaemon is GovernedAtGenesis {
      * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
      *   The super constructor is called for testing convenience.
      */
-    constructor() GovernedAtGenesis(address(0)) {
+    constructor() GovernedAtGenesis(address(0)) AddressUpdatable(address(0)) {
         /* empty block */
     }
 
@@ -178,35 +179,8 @@ contract FlareDaemon is GovernedAtGenesis {
      * @dev If any registrations already exist, they will be unregistered.
      * @dev Contracts will be daemonized in the order in which presented via the _registrations array.
      */
-    function registerToDaemonize(Registration[] calldata _registrations) external onlyGovernance {
-        // Make sure there are not too many contracts to register.
-        uint256 registrationsLength = _registrations.length;
-        require(registrationsLength <= MAX_DAEMONIZE_CONTRACTS, ERR_TOO_MANY);
-
-        // Unregister everything first
-        _unregisterAll();
-
-        // Loop over all contracts to register
-        for (uint256 registrationIndex = 0; registrationIndex < registrationsLength; registrationIndex++) {
-            // Address cannot be zero
-            require(address(_registrations[registrationIndex].daemonizedContract) != address(0), ERR_ADDRESS_ZERO);
-
-            uint256 daemonizeContractsLength = daemonizeContracts.length;
-            // Make sure no dups...yes, inefficient. Registration should not be done often.
-            for (uint256 i = 0; i < daemonizeContractsLength; i++) {
-                require(_registrations[registrationIndex].daemonizedContract != daemonizeContracts[i], 
-                    ERR_DUPLICATE_ADDRESS); // already registered
-            }
-            // Store off the registered contract to daemonize, in the order presented.
-            daemonizeContracts.push(_registrations[registrationIndex].daemonizedContract);
-            // Record the gas limit for the contract.
-            gasLimits[_registrations[registrationIndex].daemonizedContract] = 
-                _registrations[registrationIndex].gasLimit;
-            // Clear any blocks being held off for the given contract, if any. Contracts may be re-presented
-            // if only order is being modified, for example.
-            blockHoldoffsRemaining[_registrations[registrationIndex].daemonizedContract] = 0;
-            emit RegistrationUpdated (_registrations[registrationIndex].daemonizedContract, true);
-        }
+    function registerToDaemonize(Registration[] memory _registrations) external onlyGovernance {
+        _registerToDaemonize(_registrations);
     }
 
     /**
@@ -255,17 +229,11 @@ contract FlareDaemon is GovernedAtGenesis {
     }
 
     /**
-     * @notice Sets the inflation contract, which will receive minted inflation funds for funding to
-     *   rewarding contracts.
-     * @param _inflation   The inflation contract.
+     * @notice Sets the address udpater contract.
+     * @param _addressUpdater   The address updater contract.
      */
-    function setInflation(IInflationGenesis _inflation) external onlyGovernance {
-        require(address(_inflation) != address(0), ERR_INFLATION_ZERO);
-        emit InflationSet(_inflation, inflation);
-        inflation = _inflation;
-        if (maxMintingRequestWei == 0) {
-            maxMintingRequestWei = MAX_MINTING_REQUEST_DEFAULT;
-        }
+    function setAddressUpdater(address _addressUpdater) external onlyGovernance {
+        addressUpdater = _addressUpdater;
     }
 
     /**
@@ -376,6 +344,40 @@ contract FlareDaemon is GovernedAtGenesis {
             _erroringContract[i] = daemonizedErrors[hash].fromContract;
         }
         _totalDaemonizedErrors = errorData.totalDaemonizedErrors;
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method - updates Inflation and daemonized contracts.
+     * @dev It also sets `maxMintingRequestWei` if it was not set before.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        IInflationGenesis _inflation = IInflationGenesis(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "Inflation"));
+        emit InflationSet(_inflation, inflation);
+        inflation = _inflation;
+        if (maxMintingRequestWei == 0) {
+            maxMintingRequestWei = MAX_MINTING_REQUEST_DEFAULT;
+        }
+
+        uint256 len = daemonizeContracts.length;
+        if (len == 0) {
+            return;
+        }
+
+        Registration[] memory registrations = new Registration[](len);
+        for (uint256 i = 0; i < len; i++) {
+            IFlareDaemonize daemonizeContract = daemonizeContracts[i];
+            registrations[i].daemonizedContract = IFlareDaemonize(
+                _getContractAddress(_contractNameHashes, _contractAddresses, daemonizeContract.getContractName()));
+            registrations[i].gasLimit = gasLimits[daemonizeContract];
+        }
+
+        _registerToDaemonize(registrations);
     }
 
     /**
@@ -519,6 +521,46 @@ contract FlareDaemon is GovernedAtGenesis {
 
         errorData.totalDaemonizedErrors += 1;
         errorData.lastErrorTypeIndex = daemonizedError.errorTypeIndex;        
+    }
+
+    /**
+     * @notice Register contracts to be polled by the daemon process.
+     * @param _registrations    An array of Registration structures of IFlareDaemonize contracts to daemonize
+     *                          and gas limits for each contract.
+     * @dev A gas limit of zero will set no limit for the contract but the validator has an overall
+     *   limit for the trigger() method.
+     * @dev If any registrations already exist, they will be unregistered.
+     * @dev Contracts will be daemonized in the order in which presented via the _registrations array.
+     */
+    function _registerToDaemonize(Registration[] memory _registrations) internal {
+        // Make sure there are not too many contracts to register.
+        uint256 registrationsLength = _registrations.length;
+        require(registrationsLength <= MAX_DAEMONIZE_CONTRACTS, ERR_TOO_MANY);
+
+        // Unregister everything first
+        _unregisterAll();
+
+        // Loop over all contracts to register
+        for (uint256 registrationIndex = 0; registrationIndex < registrationsLength; registrationIndex++) {
+            // Address cannot be zero
+            require(address(_registrations[registrationIndex].daemonizedContract) != address(0), ERR_ADDRESS_ZERO);
+
+            uint256 daemonizeContractsLength = daemonizeContracts.length;
+            // Make sure no dups...yes, inefficient. Registration should not be done often.
+            for (uint256 i = 0; i < daemonizeContractsLength; i++) {
+                require(_registrations[registrationIndex].daemonizedContract != daemonizeContracts[i], 
+                    ERR_DUPLICATE_ADDRESS); // already registered
+            }
+            // Store off the registered contract to daemonize, in the order presented.
+            daemonizeContracts.push(_registrations[registrationIndex].daemonizedContract);
+            // Record the gas limit for the contract.
+            gasLimits[_registrations[registrationIndex].daemonizedContract] = 
+                _registrations[registrationIndex].gasLimit;
+            // Clear any blocks being held off for the given contract, if any. Contracts may be re-presented
+            // if only order is being modified, for example.
+            blockHoldoffsRemaining[_registrations[registrationIndex].daemonizedContract] = 0;
+            emit RegistrationUpdated (_registrations[registrationIndex].daemonizedContract, true);
+        }
     }
 
     /**

@@ -29,14 +29,6 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
     assert.equal(ADDRESS_UPDATER_ADDRESS, addressUpdaterAddress);
   });
 
-  it("Should revert creating address updatable if address updater contract is zero", async() => {
-    // Assemble
-    // Act
-    const addressUpdatablePromise = AddressUpdatableMock.new(constants.ZERO_ADDRESS);
-    // Assert
-    await expectRevert(addressUpdatablePromise, "address updater zero");
-  });
-
   it("Should update addresses on addressUpdatable contract", async() => {
     // Assemble
     const newAddressUpdaterAddress = accounts[12];

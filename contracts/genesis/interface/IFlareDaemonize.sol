@@ -16,4 +16,8 @@ interface IFlareDaemonize {
     /// This function may be called due to low-gas error, so it shouldn't use more than ~30.000 gas.
     /// @return true if switched to fallback mode, false if already in fallback mode or if falback not supported
     function switchToFallbackMode() external returns (bool);
+
+    
+    /// Implement this function for updating daemonized contracts through AddressUpdater.
+    function getContractName() external view returns (string memory);
 }

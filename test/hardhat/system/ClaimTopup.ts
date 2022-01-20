@@ -922,7 +922,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     console.log('\x1b[32m%s\x1b[0m', "Day 6 topup balance is correct");
   });
 
-
   it("Wait a year", async () => {
     // After some requests, wait until a year passes
     await time.advanceBlock();
@@ -959,7 +958,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Check that the next daily authorized amount set on reward manager, after the year-end roll, contains the correct amount.
     assert.equal(
       (await ftsoRewardManager.dailyAuthorizedInflation()).toString(),
-      firstDayYear2InflationAuthorized.muln(80).divn(100).toString() // only 80 percent is shared to reward manager
+      firstDayYear2InflationAuthorized.toString() // 100 percent is shared to reward manager
     )
 
   });

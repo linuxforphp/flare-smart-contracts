@@ -29,6 +29,8 @@ const MockContract = artifacts.require("MockContract");
     let flareDaemon: FlareDaemonInstance;
     let priceSubmitter: PriceSubmitterInstance;
 
+    const ADDRESS_UPDATER = accounts[16];
+
     // fresh contracts for each test
     let rewardManagerMock: MockContractInstance;
     let voterWhitelisterMock: MockContractInstance;
@@ -48,7 +50,10 @@ const MockContract = artifacts.require("MockContract");
         // Make sure daemon is initialized with a governance address...if may revert if already done.
         try {
             await flareDaemon.initialiseFixedAddress();
-            await flareDaemon.setInflation(inflationMock.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+            await flareDaemon.setAddressUpdater(ADDRESS_UPDATER, {from: GOVERNANCE_GENESIS_ADDRESS});
+            await flareDaemon.updateContractAddresses(
+              encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+              [ADDRESS_UPDATER, inflationMock.address], {from: ADDRESS_UPDATER});
         } catch (e) {
             const governanceAddress = await flareDaemon.governance();
             if (GOVERNANCE_GENESIS_ADDRESS != governanceAddress) {
@@ -58,6 +63,7 @@ const MockContract = artifacts.require("MockContract");
         }
         try {
             await priceSubmitter.initialiseFixedAddress();
+            await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: GOVERNANCE_GENESIS_ADDRESS})
         } catch (e) {
             const governanceAddress = await priceSubmitter.governance();
             if (GOVERNANCE_GENESIS_ADDRESS != governanceAddress) {
@@ -81,7 +87,6 @@ const MockContract = artifacts.require("MockContract");
     describe("daemonize", async() => {
         it("Should be daemonized by daemon", async() => {
             // Assemble
-            const ADDRESS_UPDATER = accounts[16];
             const ftsoManager = await FtsoManager.new(
               GOVERNANCE_GENESIS_ADDRESS,
               flareDaemon.address,
@@ -103,12 +108,9 @@ const MockContract = artifacts.require("MockContract");
 
             await ftsoManager.setGovernanceParameters(10, 10, 500, 100000, 5000, 300, 50000, [], {from: GOVERNANCE_GENESIS_ADDRESS});
 
-            await priceSubmitter.setContractAddresses(
-              ftsoRegistryMock.address, 
-              constants.ZERO_ADDRESS, 
-              ftsoManager.address, 
-              {from: GOVERNANCE_GENESIS_ADDRESS}
-            );
+            await priceSubmitter.updateContractAddresses(
+              encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
+              [ADDRESS_UPDATER, ftsoRegistryMock.address, voterWhitelisterMock.address, ftsoManager.address], {from: ADDRESS_UPDATER});
 
             await flareDaemon.registerToDaemonize([{daemonizedContract: ftsoManager.address, gasLimit: 0}], {from: GOVERNANCE_GENESIS_ADDRESS});
             // Act

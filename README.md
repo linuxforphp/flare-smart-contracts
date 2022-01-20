@@ -18,10 +18,9 @@ Contracts cover the following *Flare network* building blocks:
 - [FTSO Manager](contracts/ftso/implementation/FtsoManager.sol).
 - Token pools for reward and distribution.
    - [FTSO Reward manager](contracts/tokenPools/implementation/FtsoRewardManager.sol).
-   - [Data availability reward manager](contracts/tokenPools/DataAvailabilityRewardManager.sol)
    - [Distribution contract](contracts/tokenPools/Distribution.sol)
 - [Flare Daemon](contracts/genesis/implementation/FlareDaemon.sol), a special system trigger contract.
-- [Flare Inflation](contracts/inflation/implementation/Inflation.sol) tracking and [allocation](contracts/governance/implementation/InflationAllocation.sol).
+- [Flare Inflation](contracts/inflation/implementation/Inflation.sol) tracking and [allocation](contracts/inflation/implementation/InflationAllocation.sol).
 - [Supply accounting system](contracts/inflation/implementation/Supply.sol) of FLR tokens.
 
 ## Token contracts 

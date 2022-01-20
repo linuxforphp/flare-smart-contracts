@@ -1,15 +1,15 @@
 
 import { constants } from '@openzeppelin/test-helpers';
+import { Contracts } from '../../../../deployment/scripts/Contracts';
 import { Ftso__factory } from '../../../../typechain';
 import { FtsoRegistryInstance, MockContractInstance, PriceReaderInstance, AddressUpdaterInstance, MockFtsoInstance, FtsoInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
-import { zipi, zip } from '../../../utils/test-helpers';
+import { zipi, zip, encodeContractNames } from '../../../utils/test-helpers';
 const { ethers } = require('hardhat');
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 const MockFtso = artifacts.require("MockFtso");
 const FtsoRegistryContract = artifacts.require("FtsoRegistry");
-const AddressUpdaterContract = artifacts.require("AddressUpdater");
 const MockContract = artifacts.require("MockContract");
 
 const PriceReaderContract = artifacts.require("PriceReader");
@@ -19,22 +19,25 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
   let ftsoRegistryContract: FtsoRegistryInstance;
   let mockFtsoContract: MockContractInstance;
   let priceReader: PriceReaderInstance;
-  let addressUpdater: AddressUpdaterInstance;
   const GOVERNANCE_ADDRESS = accounts[0];
+  const ADDRESS_UPDATER = accounts[16];
   let ftsos: MockContractInstance[] = [];
   let dummyFtso: FtsoInstance;
 
   beforeEach(async() => {
 
-    addressUpdater = await AddressUpdaterContract.new(GOVERNANCE_ADDRESS);
+    ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
 
-    ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS);
-
-    await ftsoRegistryContract.setFtsoManagerAddress(GOVERNANCE_ADDRESS, {from: GOVERNANCE_ADDRESS});
+    await ftsoRegistryContract.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+      [ADDRESS_UPDATER, GOVERNANCE_ADDRESS], {from: ADDRESS_UPDATER});
 
     mockFtsoContract = await MockContract.new();
 
-    priceReader = await PriceReaderContract.new(GOVERNANCE_ADDRESS, ftsoRegistryContract.address);
+    priceReader = await PriceReaderContract.new(ADDRESS_UPDATER);
+    await priceReader.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY]),
+			[ADDRESS_UPDATER, ftsoRegistryContract.address], {from: ADDRESS_UPDATER});
 
     dummyFtso = await MockFtso.new(
       "",
@@ -160,10 +163,12 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
   });
 
   it("Should set FtsoRegistry address", async() => {
-    const newFtsoRegistry = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS);
+    const newFtsoRegistry = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
     assert(newFtsoRegistry.address !== ftsoRegistryContract.address);
 
-    await priceReader.setFtsoRegistry(newFtsoRegistry.address, {from: GOVERNANCE_ADDRESS});
+    await priceReader.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY]),
+			[ADDRESS_UPDATER, newFtsoRegistry.address], {from: ADDRESS_UPDATER});
 
     const newFtsoRegistryAddress = await priceReader.ftsoRegistry();
 

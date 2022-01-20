@@ -18,9 +18,7 @@ import { claimGovernance } from "./deployment/scripts/claim-governance";
 import { Contracts } from "./deployment/scripts/Contracts";
 import { daemonizeContracts } from "./deployment/scripts/daemonize-contracts";
 import { deployContracts } from "./deployment/scripts/deploy-contracts";
-import { deployFtsoV2 } from "./deployment/scripts/deploy-ftso-v2";
 import { verifyParameters } from "./deployment/scripts/deploy-utils";
-import { inflationContractsFix } from "./deployment/scripts/inflation-contracts-fix";
 import { proposeGovernance } from "./deployment/scripts/propose-governance";
 import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-working-balance";
 import { transferGovernance } from "./deployment/scripts/transfer-governance";
@@ -48,7 +46,6 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
     if (process.env.GOVERNANCE_PUBLIC_KEY) {
       parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
     }
-    parameters.dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
     verifyParameters(parameters);
     return parameters;
   } else {
@@ -124,7 +121,6 @@ task("activate-managers", "Activate all manager contracts.")
         hre,
         contracts, 
         parameters.deployerPrivateKey, 
-        parameters.dataAvailabilityRewardManagerDeployed,
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
@@ -144,7 +140,6 @@ task("propose-governance", "Propose governance change for all governed contracts
         parameters.deployerPrivateKey, 
         parameters.genesisGovernancePrivateKey, 
         parameters.governancePublicKey, 
-        parameters.dataAvailabilityRewardManagerDeployed,
         parameters.deployDistributionContract,
         args.quiet);
     } else {
@@ -165,7 +160,6 @@ task("transfer-governance", "Transfer governance directly for all governed contr
         parameters.deployerPrivateKey, 
         parameters.genesisGovernancePrivateKey, 
         parameters.governancePublicKey, 
-        parameters.dataAvailabilityRewardManagerDeployed,
         parameters.deployDistributionContract,
         args.quiet);
     } else {
@@ -195,12 +189,10 @@ task("claim-governance", "Claim governance change for all governed contracts.")
     if (parameters) {
       const contracts = new Contracts();
       await contracts.deserialize(process.stdin);
-      const dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
       await claimGovernance(
         hre,
         contracts, 
         parameters.governancePrivateKey, 
-        dataAvailabilityRewardManagerDeployed,
         parameters.deployDistributionContract,
         args.quiet);
     } else {
@@ -244,33 +236,5 @@ task("undaemonize-contracts", "Remove daemonized contracts from the FlareDaemon.
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
     }
   });
-
-// Fix inflation deployment task
-task("inflation-contracts-fix", "Deploy Inflation, InflationAllocation, Supply and FtsoRewardManager contracts")
-.addFlag("quiet", "Suppress console output")
-.setAction(async (args, hre, runSuper) => {
-  const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
-  if (parameters) {
-    const contracts = new Contracts();
-    await contracts.deserialize(process.stdin);
-    await inflationContractsFix(hre, contracts, parameters, args.quiet);
-  } else {
-    throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
-  }
-});
-
-// Deploy ftso v2
-task("deploy-ftso-v2", "Deploy AddressUpdater, FtsoManager and all FTSO contracts")
-.addFlag("quiet", "Suppress console output")
-.setAction(async (args, hre, runSuper) => {
-  const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
-  if (parameters) {
-    const contracts = new Contracts();
-    await contracts.deserialize(process.stdin);
-    await deployFtsoV2(hre, contracts, parameters, args.quiet);
-  } else {
-    throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
-  }
-});
 
 export default config;

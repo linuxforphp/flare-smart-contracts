@@ -7,7 +7,6 @@ export async function transferGovernance(
   deployerPrivateKey: string, 
   genesisGovernancePrivateKey: string,
   newGovernanceAccountAddress: string,
-  dataAvailabilityRewardManagerDeployed: boolean,
   distributionDeployed: boolean,
   quiet: boolean = false) {
 
@@ -44,7 +43,6 @@ export async function transferGovernance(
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
-  const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
   const PriceSubmitter = artifacts.require("PriceSubmitter");
   const Supply = artifacts.require("Supply");
   const VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -74,10 +72,6 @@ export async function transferGovernance(
   await inflationAllocation.transferGovernance(newGovernanceAccountAddress);
   await flareDaemon.transferGovernance(newGovernanceAccountAddress);
   await ftsoRewardManager.transferGovernance(newGovernanceAccountAddress);
-  if (dataAvailabilityRewardManagerDeployed) {
-    const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.at(contracts.getContractAddress(Contracts.DATA_AVAILABILITY_REWARD_MANAGER));
-    await dataAvailabilityRewardManager.transferGovernance(newGovernanceAccountAddress);
-  }
   if (distributionDeployed) {
     const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
     await distribution.transferGovernance(newGovernanceAccountAddress);

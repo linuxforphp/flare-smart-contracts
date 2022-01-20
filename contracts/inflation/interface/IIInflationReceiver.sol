@@ -17,4 +17,9 @@ interface IIInflationReceiver {
      * Inflation receivers have a reference to the Inflation contract.
      */
     function getInflationAddress() external returns(address);
+    
+    /**
+     * Implement this function for updating inflation receiver contracts through AddressUpdater.
+     */
+    function getContractName() external view returns (string memory);
 }

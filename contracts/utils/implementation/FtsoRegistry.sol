@@ -4,14 +4,14 @@ pragma abicoder v2;
 
 
 import "../interface/IIFtsoRegistry.sol";
-import "../../ftso/interface/IIFtso.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/Governed.sol";
 
 /**
  * @title A contract for FTSO registry
  */
-contract FtsoRegistry is Governed, IIFtsoRegistry {
+contract FtsoRegistry is IIFtsoRegistry, Governed, AddressUpdatable { 
 
     // constants
     uint256 internal constant MAX_HISTORY_LENGTH = 5;
@@ -32,10 +32,13 @@ contract FtsoRegistry is Governed, IIFtsoRegistry {
         _;
     }
 
-    constructor(address _governance) Governed(_governance) { }
-
-    function setFtsoManagerAddress(IIFtsoManager _ftsoManager) external override onlyGovernance {
-        ftsoManager = _ftsoManager;
+    constructor(
+        address _governance,
+        address _addressUpdater
+    )
+        Governed(_governance) AddressUpdatable(_addressUpdater)
+    {
+        /* empty block */
     }
 
     /**
@@ -298,6 +301,18 @@ contract FtsoRegistry is Governed, IIFtsoRegistry {
 
     function getFtsoSymbol(uint256 _assetIndex) external view override returns (string memory _symbol) {
         return _getFtso(_assetIndex).symbol();
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoManager = IIFtsoManager(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
     }
 
     /**

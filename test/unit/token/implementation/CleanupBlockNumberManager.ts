@@ -1,7 +1,8 @@
 import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { Contracts } from '../../../../deployment/scripts/Contracts';
 import { CleanupBlockNumberManagerInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/constants";
-import { assertNumberEqual, toBN } from "../../../utils/test-helpers";
+import { assertNumberEqual, encodeContractNames, toBN } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const VPToken = artifacts.require("VPTokenMock");
@@ -10,28 +11,36 @@ const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager")
 
 contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBlockNumberManager unit tests`, async accounts => {
     const governance = accounts[0];
+    const ADDRESS_UPDATER = accounts[16];
+    const TRIGGER_CONTRACT_NAME = "TRIGGER";
     const trigger = accounts[10];
     let cbnManager: CleanupBlockNumberManagerInstance;
 
     beforeEach(async () => {
-        cbnManager = await CleanupBlockNumberManager.new(governance);
-        await cbnManager.setTriggerContractAddress(trigger);
+        cbnManager = await CleanupBlockNumberManager.new(governance, ADDRESS_UPDATER, TRIGGER_CONTRACT_NAME);
+        await cbnManager.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, TRIGGER_CONTRACT_NAME]),
+            [ADDRESS_UPDATER, trigger], {from: ADDRESS_UPDATER});
     });
 
     it("Can set trigger", async () => {
         // Assemble
         // Act
-        await cbnManager.setTriggerContractAddress(accounts[5], { from: governance });
+        await cbnManager.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, TRIGGER_CONTRACT_NAME]),
+            [ADDRESS_UPDATER, accounts[5]], {from: ADDRESS_UPDATER});
         // Assert
         assert.equal(await cbnManager.triggerContract(), accounts[5]);
     });
 
-    it("Only governance can set trigger", async () => {
+    it("Only address updater can set trigger", async () => {
         // Assemble
         // Act
         // Assert
-        await expectRevert(cbnManager.setTriggerContractAddress(accounts[5], { from: accounts[1] }),
-            "only governance");
+        await expectRevert(cbnManager.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, TRIGGER_CONTRACT_NAME]),
+            [ADDRESS_UPDATER, accounts[5]], { from: accounts[1] }),
+            "only address updater");
     });
 
     async function createVPToken(name: string, symbol: string) {

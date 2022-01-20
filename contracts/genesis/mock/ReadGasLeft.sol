@@ -18,4 +18,8 @@ contract ReadGasLeft is IFlareDaemonize {
     function switchToFallbackMode() external pure override returns (bool) {
         return false;
     }
+
+    function getContractName() external pure override returns (string memory) {
+        return "ReadGasLeft";
+    }
 }

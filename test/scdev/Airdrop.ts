@@ -90,8 +90,7 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
 
     // Contract artifact definitions
     Distribution = artifacts.require("Distribution");
-    distribution = await Distribution.new();
-    await distribution.initialiseFixedAddress();
+    distribution = await Distribution.new(genesisGovernanceAccount);
 
     parsedAirdrop = parseAndProcessData("../../airdrop/data/export.csv");
   });

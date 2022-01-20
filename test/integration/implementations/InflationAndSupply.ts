@@ -1,18 +1,20 @@
 import { constants, time } from "@openzeppelin/test-helpers";
+import { Contracts } from "../../../deployment/scripts/Contracts";
 import { 
   FlareDaemonMockInstance,
   InflationInstance,
   MockContractInstance, 
   SupplyInstance, 
   FtsoRewardManagerInstance, 
-  SharingPercentageProviderMockInstance } from "../../../typechain-truffle";
+  PercentageProviderMockInstance } from "../../../typechain-truffle";
+import { encodeContractNames } from "../../utils/test-helpers";
 
 const getTestFile = require('../../utils/constants').getTestFile;
 const cliProgress = require('cli-progress');
 
 const Inflation = artifacts.require("Inflation");
 const MockContract = artifacts.require("MockContract");
-const SharingPercentageProviderMock = artifacts.require("SharingPercentageProviderMock");
+const PercentageProviderMock = artifacts.require("PercentageProviderMock");
 const FlareDaemonMock = artifacts.require("FlareDaemonMock");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const Supply = artifacts.require("Supply");
@@ -21,8 +23,7 @@ const BN = web3.utils.toBN;
 
 contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation and Supply integration tests`, async accounts => {
   // contains a fresh contract set for each test
-  let mockInflationPercentageProvider: MockContractInstance;
-  let mockInflationSharingPercentageProvider: SharingPercentageProviderMockInstance;
+  let mockInflationPercentageProvider: PercentageProviderMockInstance;
   let inflation: InflationInstance;
   let mockFlareDaemon: FlareDaemonMockInstance;
   let supply: SupplyInstance;
@@ -32,54 +33,56 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
   const inflationBips = 1000;
 
   beforeEach(async() => {
-    mockInflationPercentageProvider = await MockContract.new();
+    const ADDRESS_UPDATER = accounts[16];
     mockFlareDaemon = await FlareDaemonMock.new();
 
     // Set up the ftsoRewardManager
     ftsoRewardManager = await FtsoRewardManager.new(
       accounts[0],
+      ADDRESS_UPDATER,
+      constants.ZERO_ADDRESS,
       3,
       0
     );
 
     // Set up mock inflation percentage provider
-    const getAnnualPercentageBips = web3.utils.sha3("getAnnualPercentageBips()")!.slice(0,10);
-    await mockInflationPercentageProvider.givenMethodReturnUint(getAnnualPercentageBips, inflationBips);
-
     // Set up mock one sharing percentage provider for 100%
     const sharingPercentages = [];
     sharingPercentages[0] = {inflationReceiver: ftsoRewardManager.address, percentBips: 10000};
-    mockInflationSharingPercentageProvider = await SharingPercentageProviderMock.new(sharingPercentages);
+    mockInflationPercentageProvider = await PercentageProviderMock.new(sharingPercentages, inflationBips);
     
     // Set up inflation...inflation sharing percentage provider will be reset.
     inflation = await Inflation.new(
       accounts[0],
       mockFlareDaemon.address,
-      mockInflationPercentageProvider.address,
-      mockInflationSharingPercentageProvider.address,
+      ADDRESS_UPDATER,
       0
     );
 
     // Wire up supply contract
     supply = await Supply.new(
       accounts[0],
+      ADDRESS_UPDATER,
       constants.ZERO_ADDRESS,
-      inflation.address,
       initialGenesisAmountWei,
       foundationSupplyWei,
       [ftsoRewardManager.address]
     );
 
+    // Tell supply about inflation
+    await supply.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+      [ADDRESS_UPDATER, inflation.address], {from: ADDRESS_UPDATER});
     // Tell inflation about supply
-    await inflation.setSupply(supply.address);
+    await inflation.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+      [ADDRESS_UPDATER, supply.address, mockInflationPercentageProvider.address], {from: ADDRESS_UPDATER});
     // Register inflation to mock daemon contract so we can trigger inflation
     await mockFlareDaemon.registerToDaemonize(inflation.address);
     // Tell ftso reward manager about inflation
-    await ftsoRewardManager.setContractAddresses(
-      inflation.address, 
-      (await MockContract.new()).address, 
-      (await MockContract.new()).address,
-      supply.address);
+    await ftsoRewardManager.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+      [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
   });
 
   describe("daily roll", async() => {
