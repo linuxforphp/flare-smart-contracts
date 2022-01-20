@@ -7,8 +7,9 @@ import {
 } from "../../../../typechain-truffle";
 
 import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
-import { toBN } from "../../../utils/test-helpers";
+import { encodeContractNames, toBN } from "../../../utils/test-helpers";
 import { TestableFlareDaemonInstance } from "../../../../typechain-truffle/TestableFlareDaemon";
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 const getTestFile = require('../../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
@@ -42,6 +43,7 @@ const ERR_OUT_OF_GAS = "out of gas";
 const MAX_MINTING_FREQUENCY_SEC = 23 * 60 * 60; // Limit from FlareDaemon
 
 contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, async accounts => {
+  const ADDRESS_UPDATER = accounts[16];
   // contains a fresh contract for each test
   let flareDaemon: TestableFlareDaemonInstance;
   let mockInflation: InflationMockInstance;
@@ -53,6 +55,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
   beforeEach(async () => {
     flareDaemon = await TestableFlareDaemon.new();
     await flareDaemon.initialiseFixedAddress();
+    await flareDaemon.setAddressUpdater(ADDRESS_UPDATER, { from: GOVERNANCE_GENESIS_ADDRESS });
     mockContractToDaemonize = await MockContract.new();
     mockInflation = await InflationMock.new();
     mockInflation1 = await InflationMock1.new();
@@ -169,8 +172,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await mockContractToDaemonize.givenMethodReturnBool(daemonize, true);
       // Register mock
       const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       await flareDaemon.trigger();
       // Assert
@@ -181,7 +186,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should advance last triggered block", async () => {
       // Assemble
       const oldLastTriggeredBlock = await flareDaemon.systemLastTriggeredAt();
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       // Act
       await flareDaemon.trigger();
       // Assert
@@ -200,7 +207,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should return amount to mint when triggered with a pending mint request", async () => {
       // Assemble
-      await flareDaemon.setInflation(accounts[0], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
       await flareDaemon.requestMinting(BN(100), { from: accounts[0] });
       // Act
       const toMint = await flareDaemon.trigger.call();
@@ -210,7 +219,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should emit event when triggered with a pending mint request", async () => {
       // Assemble
-      await flareDaemon.setInflation(accounts[0], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
       // Act
       const txReq = await flareDaemon.requestMinting(BN(100), { from: accounts[0] });
       const txTrigger = await flareDaemon.trigger();
@@ -231,7 +242,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should advance daemonize error counter if daemonized contract reverts", async () => {
       // Assemble
       await mockContractToDaemonize.givenMethodRevertWithMessage(daemonize, "I am broken");
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
 
@@ -253,7 +266,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should create new entry for new error type, correct contract address, not create new entry for repeating error type", async () => {
       // Assemble
       await mockContractToDaemonize.givenMethodRevertWithMessage(daemonize, "I am broken");
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
 
@@ -276,7 +291,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should create new entry for new error type, correct string and correct error numbers", async () => {
       // Assemble
       await mockContractToDaemonize.givenMethodRevertWithMessage(daemonize, "I am broken");
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
 
@@ -310,7 +327,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should show last daemonized error data", async () => {
       // Assemble
       await mockContractToDaemonize.givenMethodRevertWithMessage(daemonize, "I am broken");
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
 
@@ -352,7 +371,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should shorten error to 64 chars to make gas usage predictable", async () => {
       // Assemble
       await mockContractToDaemonize.givenMethodRevertWithMessage(daemonize, "This is a very long error message that should be shortened to fit into 64 character limit");
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }];
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
 
@@ -370,7 +391,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       const mockDaemonizedContract2 = await MockContract.new();
       await mockDaemonizedContract.givenMethodRevertWithMessage(daemonize, "I am broken");
       await mockDaemonizedContract2.givenMethodRevertWithMessage(daemonize, "Me tooooo");
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [
         { daemonizedContract: mockDaemonizedContract.address, gasLimit: 0 },
         { daemonizedContract: mockDaemonizedContract2.address, gasLimit: 0 }
@@ -398,13 +421,42 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     });
 
     it("Should revert if trying to register zero-account", async () => {
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       const registrations = [
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 },
         { daemonizedContract: "0x0000000000000000000000000000000000000000", gasLimit: 0 }
       ];
       let register = flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
       await expectRevert(register, "address zero");
+    });
+
+    it("Should update a daemonized contract", async () => {
+      // Assemble
+      // Shim up mock
+      const newMockContractToDaemonize = await MockContract.new();
+      await mockContractToDaemonize.givenMethodReturnBool(daemonize, true);
+      await newMockContractToDaemonize.givenMethodReturnBool(daemonize, true);
+      const getContractName = web3.utils.sha3("getContractName()")!.slice(0, 10); // first 4 bytes is function selector
+      const getContractNameReturn = web3.eth.abi.encodeParameter('string', 'SOME_CONTRACT_NAME');
+      await mockContractToDaemonize.givenMethodReturn(getContractName, getContractNameReturn);
+      // Register mock
+      const registrations = [{ daemonizedContract: mockContractToDaemonize.address, gasLimit: 500000 }];
+      await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, "SOME_CONTRACT_NAME"]),
+        [ADDRESS_UPDATER, mockInflation.address, newMockContractToDaemonize.address], {from: ADDRESS_UPDATER});
+      // Act
+      await flareDaemon.trigger();
+      // Assert
+      const invocationCountOld = await mockContractToDaemonize.invocationCountForMethod.call(daemonize);
+      assert.equal(invocationCountOld.toNumber(), 0);
+      const invocationCountNew = await newMockContractToDaemonize.invocationCountForMethod.call(daemonize);
+      assert.equal(invocationCountNew.toNumber(), 1);
+      assert.equal((await flareDaemon.getDaemonizedContractsData())[0].length, 1);
+      assert.equal((await flareDaemon.getDaemonizedContractsData())[0][0], newMockContractToDaemonize.address);
+      assert.equal((await flareDaemon.getDaemonizedContractsData())[1][0].toNumber(), 500000);
     });
 
   });
@@ -441,7 +493,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should set inflation", async () => {
       // Assemble
       // Act
-      const receipt = await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      const receipt = await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       // Assert
       assert.equal(await flareDaemon.inflation(), mockInflation.address);
       expectEvent(receipt, INFLATIONSET_EVENT, {
@@ -451,21 +505,20 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       );
     });
 
-    it("Should not set inflation if not from governance", async () => {
-      // Assemble
-      // Act
-      // const promise = flareDaemon.setInflation(mockInflation.address, {from: accounts[0]});
-      // // Assert
-      // await expectRevert(promise, "only governance");
+    it("Should not set inflation if not from address updater", async () => {
       await expectRevert(
-        flareDaemon.setInflation(mockInflation.address, { from: accounts[0] }),
-        "only governance"
+        flareDaemon.updateContractAddresses(
+          encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+          [ADDRESS_UPDATER, mockInflation.address], {from: accounts[0]}),
+        "only address updater"
       )
     });
 
     it("Should request and transfer minted amount to inflation", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       await mockInflation.setDoNotReceiveNoMoreThan(1000);
       await mockInflation.requestMinting(BN(100));
@@ -488,7 +541,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should post received native token to self-destruct bucket if minting not expected", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       // Request more that we are going to receive
       await mockInflation.requestMinting(110);
@@ -510,7 +565,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should receive scheduled minting and any received self-destructed balance", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       await mockInflation.setDoNotReceiveNoMoreThan(1000);
       await mockInflation.requestMinting(BN(100));
@@ -539,7 +596,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     // Working version
     it("Should self destruct when minting more than available", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       await mockInflation.requestMinting(BN(100));
 
@@ -567,7 +626,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should log error if transfer of requested minting fails", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       await mockInflation.setDoNotReceiveNoMoreThan(BN(90));
       await mockInflation.requestMinting(BN(100));
@@ -588,7 +649,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should log error if transfer of requested minting fails when additional self-destruct received", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       await mockInflation.setDoNotReceiveNoMoreThan(90);
       await mockInflation.requestMinting(BN(100));
@@ -609,7 +672,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should not allow mint request before timelock expires", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       await mockInflation.requestMinting(BN(100));
       // Act
@@ -621,7 +686,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should allow mint request exactly after timelock expires", async () => {
       // This test currently waits 23h on a real network so run it with caution
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       // Advance block to ensure that daemon has current time
       await time.advanceBlock();
@@ -640,7 +707,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should have cap on excessive minting", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
       // Act
       const requestPromise = mockInflation.requestMinting(web3.utils.toWei(BN(100000000)));
@@ -650,7 +719,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should make sure setMaxMintRequest changes are time locked", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
       // first request should succeed.
@@ -664,37 +735,45 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should make sure setMaxMintRequest changes are not too large", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
       // the request should fail as we can only increase the maximum by 10%
-      await expectRevert(flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(60000000)),
+      await expectRevert(flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(100000000)),
         { from: GOVERNANCE_GENESIS_ADDRESS }),
         "max mint too high");
     });
 
     it("Should make sure setMaxMintRequest changes just below allowed maximum go through", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
-      await flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(55000000)), { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(99000000)), { from: GOVERNANCE_GENESIS_ADDRESS });
     });
 
     it("Should make sure setMaxMintRequest changes are not too large", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
       // the request should fail as we can only increase the maximum by 10%
-      await expectRevert(flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(55000001)),
+      await expectRevert(flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(99000001)),
         { from: GOVERNANCE_GENESIS_ADDRESS }),
         "max mint too high");
     });
 
     it("Should make sure setMaxMintRequest cannot be set to zero", async () => {
       // Assemble
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
       // the request should fail as we cannot set the maximum to 0
@@ -710,7 +789,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     });
 
     it("Should log error if transfer of requested minting fails without a message", async () => {
-      await flareDaemon.setInflation(mockInflation1.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation1.address], {from: ADDRESS_UPDATER});
       await mockInflation1.setFlareDaemon(flareDaemon.address);
 
       await mockInflation1.requestMinting(90);
@@ -723,7 +804,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     });
 
     it("Should log error if receiving of requested minting fails without a message", async () => {
-      await flareDaemon.setInflation(mockInflation1.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation1.address], {from: ADDRESS_UPDATER});
       await mockInflation1.setFlareDaemon(flareDaemon.address);
 
       await mockInflation1.requestMinting(90);
@@ -736,26 +819,36 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     });
 
     it("Should revert if minted from wrong contract ", async () => {
-      await flareDaemon.setInflation(accounts[0], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
       const tx = flareDaemon.requestMinting(BN(100), { from: accounts[1] });
       await expectRevert(tx, "not inflation");
     });
 
     it("Should not emit MintingRequestReceived event ", async () => {
-      await flareDaemon.setInflation(accounts[0], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
       const tx = await flareDaemon.requestMinting(BN(0), { from: accounts[0] });
       expectEvent.notEmitted(tx, "MintingRequestReceived")
     });
 
     it("Should revert if inflation contract is zero-account", async () => {
-      let tx = flareDaemon.setInflation("0x0000000000000000000000000000000000000000", { from: GOVERNANCE_GENESIS_ADDRESS });
-      await expectRevert(tx, "inflation zero");
+      let tx = flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, constants.ZERO_ADDRESS], {from: ADDRESS_UPDATER});
+      await expectRevert(tx, "address zero");
     });
 
     it("Should set max minting request to 1000 and not to MAX_MINTING_REQUEST_DEFAULT", async () => {
-      await flareDaemon.setInflation(accounts[0], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
       await flareDaemon.setMaxMintingRequest(BN(1000), { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(accounts[0], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
       let maxMinting = await flareDaemon.maxMintingRequestWei();
       assert.equal(maxMinting.toNumber(), 1000);
       let requestDefault = 50000000 * 10 ** 18
@@ -763,7 +856,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     })
 
     it("Should revert if start index is too high", async () => {
-      await flareDaemon.setInflation(mockInflation1.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation1.address], {from: ADDRESS_UPDATER});
       await mockInflation1.setFlareDaemon(flareDaemon.address);
 
       await mockInflation1.requestMinting(90);
@@ -793,8 +888,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
 
     it("Should not exceed gas limit of runaway contract", async () => {
       const registrations = [{ daemonizedContract: endlessLoop.address, gasLimit: 1000000 }];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       await flareDaemon.trigger();
       // Assert
@@ -812,8 +909,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { daemonizedContract: endlessLoop.address, gasLimit: 1000000 },
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       await flareDaemon.trigger();
       // Assert
@@ -828,8 +927,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { daemonizedContract: endlessLoop.address, gasLimit: 0 },
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       const receipt = await flareDaemon.trigger({ gas: 1_000_000 });
       // Assert
@@ -844,8 +945,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       const registrations = [
         { daemonizedContract: endlessLoop.address, gasLimit: 1000000 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       await flareDaemon.trigger();
       // Assert
@@ -864,8 +967,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { daemonizedContract: endlessLoop.address, gasLimit: 1000000 },
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       await flareDaemon.setBlockHoldoff(10, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       await flareDaemon.trigger();
@@ -883,8 +988,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { daemonizedContract: endlessLoop.address, gasLimit: 1000000 },
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       await flareDaemon.setBlockHoldoff(1, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       await flareDaemon.trigger();
@@ -903,8 +1010,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { daemonizedContract: fallbackEndlessLoop.address, gasLimit: 1000000 },
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       await flareDaemon.setBlockHoldoff(5, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       const receipt1 = await flareDaemon.trigger(); // endlessLoop fails and goes to fallback
@@ -925,8 +1034,10 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         { daemonizedContract: fallbackEndlessLoop.address, gasLimit: 1000000 },
         { daemonizedContract: mockContractToDaemonize.address, gasLimit: 0 }
       ];
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await flareDaemon.registerToDaemonize(registrations, { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.setInflation(mockInflation.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       await flareDaemon.setBlockHoldoff(5, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Act
       const receipt1 = await flareDaemon.trigger(); // endlessLoop fails and goes to fallback

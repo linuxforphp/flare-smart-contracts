@@ -1,8 +1,9 @@
 import { time } from "@openzeppelin/test-helpers";
 import fs from "fs";
+import { Contracts } from "../../../deployment/scripts/Contracts";
 import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, PriceSubmitterInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
-import { increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { encodeContractNames, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -37,6 +38,7 @@ const gasReport: object[] = [];
 
 contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, async accounts => {
   const governance = GOVERNANCE_GENESIS_ADDRESS;
+  const ADDRESS_UPDATER = accounts[16];
   const ftsoManager = accounts[33];
 
   const epochDurationSec = 1000;
@@ -240,16 +242,23 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // create price submitter
       priceSubmitter = await PriceSubmitter.new();
       await priceSubmitter.initialiseFixedAddress();
+      await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, { from: governance });
 
       startTs = await time.latest();
 
       // create registry
-      ftsoRegistry = await FtsoRegistry.new(governance);
-      await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
+      ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
+      await ftsoRegistry.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
       // create whitelister
-      whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 500);
-      await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
-      await priceSubmitter.setContractAddresses(ftsoRegistry.address, whitelist.address, ftsoManager, { from: governance });
+      whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 500);
+      await whitelist.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
+      await priceSubmitter.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoRegistry.address, whitelist.address, ftsoManager], {from: ADDRESS_UPDATER});
       // create assets
       wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);

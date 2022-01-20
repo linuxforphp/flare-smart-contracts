@@ -106,6 +106,10 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
         return inflation;
     }
 
+    function getContractName() external pure override returns (string memory) {
+        return "InflationReceiverAndTokenPoolMock";
+    }
+
     function _transferReward(address payable _recipient, uint256 _rewardAmount) internal {
         if (_rewardAmount > 0) {
             // transfer total amount (state is updated and events are emitted in _claimReward)

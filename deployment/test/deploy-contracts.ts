@@ -2,10 +2,11 @@ import { constants, time } from '@openzeppelin/test-helpers';
 import { pascalCase } from 'pascal-case';
 import { waitFinalize3 } from "../../test/utils/test-helpers";
 import {
+  AddressUpdatableContract,
   AddressUpdaterContract,
   AddressUpdaterInstance,
-  AssetTokenContract, AssetTokenInstance, DataAvailabilityRewardManagerContract,
-  DataAvailabilityRewardManagerInstance, DummyAssetMinterContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract,
+  AssetTokenContract, AssetTokenInstance, DummyAssetMinterContract,
+  FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
   FtsoRewardManagerInstance, InflationAllocationContract,
@@ -55,8 +56,6 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     let inflationAllocation: InflationAllocationInstance;
     let FtsoRewardManager: FtsoRewardManagerContract;
     let ftsoRewardManager: FtsoRewardManagerInstance;
-    let DataAvailabilityRewardManager: DataAvailabilityRewardManagerContract;
-    let dataAvailabilityRewardManager: DataAvailabilityRewardManagerInstance;
 
     beforeEach(async () => {
       InflationAllocation = artifacts.require("InflationAllocation");
@@ -64,10 +63,6 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       if (parameters.inflationReceivers.indexOf("FtsoRewardManager") >= 0) {
         FtsoRewardManager = artifacts.require("FtsoRewardManager");
         ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
-      }
-      if (parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0) {
-        DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
-        dataAvailabilityRewardManager = await DataAvailabilityRewardManager.at(contracts.getContractAddress(Contracts.DATA_AVAILABILITY_REWARD_MANAGER));
       }
     });
 
@@ -84,9 +79,6 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         switch (receiverName) {
           case "FtsoRewardManager":
             receiverAddress = ftsoRewardManager.address
-            break;
-          case "DataAvailabilityRewardManager":
-            receiverAddress = dataAvailabilityRewardManager.address
             break;
           default:
             throw Error(`Unknown inflation receiver name ${receiverName}`)
@@ -518,9 +510,11 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
   describe(Contracts.ADDRESS_UPDATER, async () => {
     let AddressUpdater: AddressUpdaterContract;
     let addressUpdater: AddressUpdaterInstance;
+    let AddressUpdatable: AddressUpdatableContract;
 
     beforeEach(async () => {
       AddressUpdater = artifacts.require("AddressUpdater");
+      AddressUpdatable = artifacts.require("AddressUpdatable");
       addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
     });
 
@@ -529,10 +523,6 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER];
 
-      if (parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0) {
-        contractNames.push(Contracts.DATA_AVAILABILITY_REWARD_MANAGER);
-      }
-    
       if (parameters.deployDistributionContract) {
         contractNames.push(Contracts.DISTRIBUTION);
       }
@@ -542,6 +532,18 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         const address = await addressUpdater.getContractAddress(name);
         // Assert
         assert.equal(address, contracts.getContractAddress(name));
+      }
+    });
+
+    it("Address updatable contracts should know about address updater", async () => {
+      let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
+        Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER];
+
+      for (let name of contractNames) {
+        // Act
+        let addressUpdatable = await AddressUpdatable.at(contracts.getContractAddress(name));
+        // Assert
+        assert.equal(await addressUpdatable.addressUpdater(), addressUpdater.address);
       }
     });
   });

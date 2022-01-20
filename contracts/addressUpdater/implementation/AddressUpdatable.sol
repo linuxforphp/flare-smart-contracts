@@ -9,12 +9,11 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
     address public addressUpdater;
 
     modifier onlyAddressUpdater() {
-        require (msg.sender == address(addressUpdater), "only address updater");
+        require (msg.sender == addressUpdater, "only address updater");
         _;
     }
 
     constructor(address _addressUpdater)  {
-        require(address(_addressUpdater) != address(0), "address updater zero");
         addressUpdater = _addressUpdater;
     }
     

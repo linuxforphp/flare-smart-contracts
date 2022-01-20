@@ -18,7 +18,7 @@ abstract contract GovernedBase {
     event GovernanceUpdated (address oldGovernance, address newGoveranance);
 
     modifier onlyGovernance () {
-        require(msg.sender == governance, "only governance");
+        _checkOnlyGovernance();
         _;
     }
 
@@ -69,5 +69,9 @@ abstract contract GovernedBase {
         emit GovernanceUpdated(governance, _governance);
         governance = _governance;
         proposedGovernance = address(0);
+    }
+
+    function _checkOnlyGovernance() internal view {
+        require(msg.sender == governance, "only governance");
     }
 }

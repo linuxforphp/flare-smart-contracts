@@ -65,21 +65,4 @@ contract(`final-verification.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.DATA_AVAILABILITY_REWARD_MANAGER, async () => {
-    it("Should have correct authorized inflation and balance", async function() {
-      if (!parameters.dataAvailabilityRewardManagerDeployed) return this.skip();
-      // Assemble
-      const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
-      const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.at(contracts.getContractAddress(Contracts.DATA_AVAILABILITY_REWARD_MANAGER));
-      // Act
-      const authorizedInflationWei = await dataAvailabilityRewardManager.totalInflationAuthorizedWei();
-      const balanceWei = await web3.eth.getBalance(dataAvailabilityRewardManager.address);
-      const inflationAnnum = await inflation.getCurrentAnnum();
-      const dailyInflationWei = BN(inflationAnnum.recognizedInflationWei.toString()).div(BN(inflationAnnum.daysInAnnum.toString()));
-      const calculatedAuthorizedInflationWei = calculateAuthorizedInflationWei(parameters, dailyInflationWei, Contracts.DATA_AVAILABILITY_REWARD_MANAGER);
-      // Assert
-      assert(authorizedInflationWei.eq(calculatedAuthorizedInflationWei));
-      assert.equal(authorizedInflationWei.toString(), balanceWei);
-    });
-  });
 });

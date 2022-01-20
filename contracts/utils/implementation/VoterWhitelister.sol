@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "../interface/IIVoterWhitelister.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/interface/IIVPToken.sol";
@@ -10,7 +11,7 @@ import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
-contract VoterWhitelister is IIVoterWhitelister, Governed {
+contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     using SafeMath for uint256;
     using SafePct for uint256;
 
@@ -40,11 +41,12 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     }
     
     constructor(
-        address _governance, 
-        IIPriceSubmitter _priceSubmitter, 
+        address _governance,
+        address _addressUpdater,
+        IIPriceSubmitter _priceSubmitter,
         uint256 _defaultMaxVotersForFtso
     )
-        Governed(_governance)
+        Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         priceSubmitter = _priceSubmitter;
         defaultMaxVotersForFtso = _defaultMaxVotersForFtso;
@@ -125,15 +127,6 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
     function setDefaultMaxVotersForFtso(uint256 _defaultMaxVotersForFtso) external override onlyGovernance {
         defaultMaxVotersForFtso = _defaultMaxVotersForFtso;
     }
-
-    /**
-     * Sets ftsoRegistry and ftsoManager addresses.
-     * Only governance can call this method.
-     */
-    function setContractAddresses(IFtsoRegistry _ftsoRegistry, address _ftsoManager) external onlyGovernance {
-        ftsoRegistry = _ftsoRegistry;
-        ftsoManager = _ftsoManager;
-    }
     
     /**
      * Create whitelist with default size for ftso.
@@ -202,6 +195,19 @@ contract VoterWhitelister is IIVoterWhitelister, Governed {
         uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
         require(maxVoters > 0, "FTSO index not supported");
         return whitelist[_ftsoIndex];
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoRegistry = IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
+        ftsoManager = _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager");
     }
 
     /**

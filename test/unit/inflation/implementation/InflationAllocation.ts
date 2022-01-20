@@ -1,6 +1,8 @@
 import { InflationAllocationInstance } from "../../../../typechain-truffle";
 
 import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import { encodeContractNames } from "../../../utils/test-helpers";
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const InflationAllocation = artifacts.require("InflationAllocation");
@@ -18,6 +20,7 @@ const ERR_ZERO_ADDRESS = "address is 0";
 const ERR_LENGTH_MISMATCH = "length mismatch";
 
 contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocation unit tests`, async accounts => {
+  const ADDRESS_UPDATER = accounts[16];
   // contains a fresh contract for each test
   let inflationAllocation: InflationAllocationInstance;
 
@@ -25,7 +28,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should require initial percentage greater than 0", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], accounts[0], [0]);
+      const promise = InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [0]);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
@@ -33,7 +36,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should cap initial percentage at 10%", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], accounts[0], [1001]);
+      const promise = InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [1001]);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
@@ -41,7 +44,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should revert if initial schedule is empty", async() => {
       // Assemble
       // Act
-      const promise = InflationAllocation.new(accounts[0], accounts[0], []);
+      const promise = InflationAllocation.new(accounts[0], ADDRESS_UPDATER, []);
       // Assert
       await expectRevert(promise, ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY);
     });
@@ -50,7 +53,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       // Assemble
       const schedule: BN[] = [BN(1000), BN(900), BN(800)];
       // Act
-      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], schedule);
+      inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, schedule);
       // Assert
       const percentage0 = await inflationAllocation.annualInflationPercentagesBips(0);
       const percentage1 = await inflationAllocation.annualInflationPercentagesBips(1);
@@ -63,7 +66,10 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
 
   describe("annual inflation percentage schedule", async() => {
     beforeEach(async() => {
-      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], [1000]);
+      inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [1000]);
+      await inflationAllocation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
     });
     
     it("Should get the initial annual percentage if no schedule", async() => {
@@ -176,7 +182,10 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
 
   describe("sharing percentages", async() => {
     beforeEach(async() => {
-      inflationAllocation = await InflationAllocation.new(accounts[0], accounts[0], [1000]);
+      inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [1000]);
+      await inflationAllocation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
     });
 
     it("Should require sharing percentages to sum to 100%", async() => {

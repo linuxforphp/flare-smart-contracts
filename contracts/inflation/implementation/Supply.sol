@@ -6,6 +6,7 @@ import "../../tokenPools/interface/IITokenPool.sol";
 import "../../token/lib/CheckPointHistory.sol";
 import "../../token/lib/CheckPointHistoryCache.sol";
 import "../../governance/implementation/Governed.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @notice This contract maintains and computes various native token supply totals.
  **/
 
-contract Supply is Governed, IISupply {
+contract Supply is IISupply, Governed, AddressUpdatable {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointHistoryCache for CheckPointHistoryCache.CacheState;
     using SafeMath for uint256;
@@ -26,7 +27,6 @@ contract Supply is Governed, IISupply {
     }
 
     string internal constant ERR_INFLATION_ONLY = "inflation only";
-    string internal constant ERR_INFLATION_ZERO = "inflation zero";
     string internal constant ERR_TOKEN_POOL_ALREADY_ADDED = "token pool already added";
     string internal constant ERR_INITIAL_GENESIS_AMOUNT_ZERO = "initial genesis amount zero";
 
@@ -56,18 +56,16 @@ contract Supply is Governed, IISupply {
 
     constructor(
         address _governance,
+        address _addressUpdater,
         address _burnAddress,
-        address _inflation,
         uint256 _initialGenesisAmountWei,
         uint256 _totalFoundationSupplyWei,
         IITokenPool[] memory _tokenPools
     )
-        Governed(_governance)
+        Governed(_governance) AddressUpdatable(_addressUpdater)
     {
-        require(_inflation != address(0), ERR_INFLATION_ZERO);
         require(_initialGenesisAmountWei > 0, ERR_INITIAL_GENESIS_AMOUNT_ZERO);
         burnAddress = _burnAddress;
-        inflation = _inflation;
         initialGenesisAmountWei = _initialGenesisAmountWei;
         totalFoundationSupplyWei = _totalFoundationSupplyWei;
 
@@ -101,14 +99,6 @@ contract Supply is Governed, IISupply {
             emit AuthorizedInflationUpdateError(totalInflationAuthorizedWei - oldTotalInflationAuthorizedWei,
                 _inflationAuthorizedWei);
         }
-    }
-
-    /**
-     * @notice Sets inflation contract. Only governance can call this method.
-     */
-    function setInflation(address _inflation) external override onlyGovernance {
-        require(_inflation != address(0), ERR_INFLATION_ZERO);
-        inflation = _inflation;
     }
 
     /**
@@ -187,6 +177,18 @@ contract Supply is Governed, IISupply {
     */
     function getInflatableBalance() external view override returns(uint256 _inflatableBalanceWei) {
         return initialGenesisAmountWei.add(totalInflationAuthorizedWei);
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        inflation = _getContractAddress(_contractNameHashes, _contractAddresses, "Inflation");
     }
 
     function _increaseCirculatingSupply(uint256 _increaseBy) internal {

@@ -2,17 +2,16 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "./Governed.sol";
-import "../../inflation/implementation/Inflation.sol";
-import "../../inflation/interface/IIInflationReceiver.sol";
-import "../../inflation/interface/IIInflationPercentageProvider.sol";
-import "../../inflation/interface/IIInflationSharingPercentageProvider.sol";
+import "../../governance/implementation/Governed.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
+import "./Inflation.sol";
+import "../interface/IIInflationAllocation.sol";
 
 /**
  * @title Inflation allocation contract
  * @notice This contract implements Inflation settings agreed upon by Flare Foundation governance.
  **/
-contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInflationSharingPercentageProvider {
+contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatable {
 
     struct InflationReceiver {
         IIInflationReceiver receiverContract;
@@ -63,26 +62,16 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
      */
     constructor(
         address _governance,
-        Inflation _inflation,
+        address _addressUpdater,
         uint256[] memory _annualInflationScheduleBips
     ) 
-        Governed(_governance)
+        Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         require(_annualInflationScheduleBips.length > 0, ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY);
-        inflation = _inflation;
 
         // validity is checked in _setAnnualInflationSchedule
         lastAnnualInflationPercentageBips = _annualInflationScheduleBips[0];
         _setAnnualInflationSchedule(_annualInflationScheduleBips);
-    }
-
-    /**
-     * @notice Sets the inflation contract.
-     * @param _inflation   The inflation contract.
-     */
-    function setInflation(Inflation _inflation) external onlyGovernance notZero(address(_inflation)) {
-        emit InflationSet(address(inflation), address(_inflation));
-        inflation = _inflation;
     }
 
     /**
@@ -98,30 +87,7 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
         external
         onlyGovernance 
     {
-        require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
-        require (_inflationRecievers.length <= MAX_INFLATION_RECEIVERS, ERR_TOO_MANY);
-
-        uint256 sumSharingPercentage;
-
-        uint256 len = inflationReceivers.length;
-        for (uint256 i = 0; i < len; i++) {
-            inflationReceivers.pop();
-        }
-
-        for (uint256 i = 0; i < _inflationRecievers.length; i++) {
-            require (_percentagePerReceiverBips[i] <= BIPS100, ERR_HIGH_SHARING_PERCENTAGE);
-            require (_inflationRecievers[i] != IIInflationReceiver(0), ERR_IS_ZERO);
-
-            sumSharingPercentage += _percentagePerReceiverBips[i];
-
-            inflationReceivers.push( InflationReceiver({
-                receiverContract: _inflationRecievers[i],
-                percentageBips: uint32(_percentagePerReceiverBips[i])
-            }));
-        }
-
-        require (sumSharingPercentage == BIPS100, ERR_SUM_SHARING_PERCENTAGE);
-        emit InflationSharingPercentagesSet(_inflationRecievers, _percentagePerReceiverBips);
+        _setSharingPercentages(_inflationRecievers, _percentagePerReceiverBips);
     }
 
     /**
@@ -181,6 +147,76 @@ contract InflationAllocation is Governed, IIInflationPercentageProvider, IIInfla
             _sharingPercentages[i].percentBips = inflationReceivers[i].percentageBips;
             _sharingPercentages[i].inflationReceiver = inflationReceivers[i].receiverContract;
         }
+    }
+
+    /**
+     * @notice Set the sharing percentages between inflation receiver contracts. Percentages must sum
+     *   to 100%.
+     * @param _inflationRecievers   An array of contracts to receive inflation rewards for distribution.
+     * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
+     */
+    function _setSharingPercentages(
+        IIInflationReceiver[] memory _inflationRecievers, 
+        uint256[] memory _percentagePerReceiverBips
+    )
+        internal
+    {
+        require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
+        require (_inflationRecievers.length <= MAX_INFLATION_RECEIVERS, ERR_TOO_MANY);
+
+        uint256 sumSharingPercentage;
+
+        uint256 len = inflationReceivers.length;
+        for (uint256 i = 0; i < len; i++) {
+            inflationReceivers.pop();
+        }
+
+        for (uint256 i = 0; i < _inflationRecievers.length; i++) {
+            require (_percentagePerReceiverBips[i] <= BIPS100, ERR_HIGH_SHARING_PERCENTAGE);
+            require (_inflationRecievers[i] != IIInflationReceiver(0), ERR_IS_ZERO);
+
+            sumSharingPercentage += _percentagePerReceiverBips[i];
+
+            inflationReceivers.push( InflationReceiver({
+                receiverContract: _inflationRecievers[i],
+                percentageBips: uint32(_percentagePerReceiverBips[i])
+            }));
+        }
+
+        require (sumSharingPercentage == BIPS100, ERR_SUM_SHARING_PERCENTAGE);
+        emit InflationSharingPercentagesSet(_inflationRecievers, _percentagePerReceiverBips);
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method - updates Inflation 
+     * and inflation receivers contracts.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        Inflation _inflation = Inflation(_getContractAddress(_contractNameHashes, _contractAddresses, "Inflation"));
+        emit InflationSet(address(inflation), address(_inflation));
+        inflation = _inflation;
+
+        uint256 len = inflationReceivers.length;
+        if (len == 0) {
+            return;
+        }
+
+        IIInflationReceiver[] memory receivers = new IIInflationReceiver[](len);
+        uint256[] memory percentages = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            InflationReceiver memory inflationReceiver = inflationReceivers[i];
+            receivers[i] = IIInflationReceiver(
+                _getContractAddress(_contractNameHashes, _contractAddresses, 
+                inflationReceiver.receiverContract.getContractName()));
+            percentages[i] = inflationReceiver.percentageBips;
+        }
+
+        _setSharingPercentages(receivers, percentages);
     }
 
      /**

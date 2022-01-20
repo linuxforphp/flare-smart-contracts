@@ -22,8 +22,6 @@ export function getChainConfigParameters(configFile: string): any {
     if (process.env.GOVERNANCE_PUBLIC_KEY) {
         parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
     }
-    parameters.dataAvailabilityRewardManagerDeployed = parameters.inflationReceivers.indexOf("DataAvailabilityRewardManager") >= 0;
-
     verifyParameters(parameters);
 
     return parameters;
@@ -34,10 +32,9 @@ export async function internalFullDeploy(parameters: any, quiet: boolean) {
     const contracts = deployed.contracts!;
     await daemonizeContracts(hre, contracts, parameters.deployerPrivateKey, parameters.inflationReceivers,
         parameters.inflationGasLimit, parameters.ftsoManagerGasLimit, quiet);
-    await activateManagers(hre, contracts, parameters.deployerPrivateKey,
-        parameters.dataAvailabilityRewardManagerDeployed, quiet);
+    await activateManagers(hre, contracts, parameters.deployerPrivateKey, quiet);
     await transferGovernance(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey,
-        parameters.governancePublicKey, parameters.dataAvailabilityRewardManagerDeployed, parameters.deployDistributionContract, quiet);
+        parameters.governancePublicKey, parameters.deployDistributionContract, quiet);
     return deployed;
 }
 

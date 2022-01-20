@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "../interface/IIFtsoManagerV1.sol";
 import "../interface/IIFtso.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../utils/interface/IIFtsoRegistry.sol";
 import "../../utils/interface/IIVoterWhitelister.sol";
@@ -114,5 +115,9 @@ contract FtsoManagerV1Mock is IIFtsoManagerV1, GovernedAndFlareDaemonized, IFlar
         
     function switchToFallbackMode() external view override onlyFlareDaemon returns (bool) {
         return false;
+    }
+
+    function getContractName() external pure override returns (string memory) {
+        return "FtsoManagerV1Mock";
     }
 }

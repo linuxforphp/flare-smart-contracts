@@ -8,4 +8,8 @@ contract InflationReceiverMock is IIInflationReceiver {
     function setDailyAuthorizedInflation(uint256 toAuthorizeWei) external override {}
     function receiveInflation() external payable override {}
     function getInflationAddress() external override returns(address) {}
+
+    function getContractName() external pure override returns (string memory) {
+        return "InflationReceiverMock";
+    }
 }

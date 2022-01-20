@@ -35,6 +35,10 @@ contract FiniteLoopMock is IFlareDaemonize {
         return false;
     }
 
+    function getContractName() external pure override returns (string memory) {
+        return "FiniteLoopMock";
+    }
+
     function length() public view returns (uint256) {
         return arr.length;
     }

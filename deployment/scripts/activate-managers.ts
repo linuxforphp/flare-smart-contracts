@@ -12,7 +12,6 @@ export async function activateManagers(
   hre: HardhatRuntimeEnvironment,
   contracts: Contracts,
   deployerPrivateKey: string, 
-  dataAvailabilityRewardManagerDeployed: boolean,
   quiet: boolean = false) {
 
   const web3 = hre.web3;
@@ -39,7 +38,6 @@ export async function activateManagers(
   // Get needed contract definitions
   const FtsoManager = artifacts.require("FtsoManager");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
-  const DataAvailabilityRewardManager = artifacts.require("DataAvailabilityRewardManager");
 
   // Fetch already deployed contracts
   const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
@@ -49,11 +47,6 @@ export async function activateManagers(
   await ftsoManager.activate();
   await ftsoRewardManager.activate();
 
-  // Conditionally activate data availability reward manager
-  if (dataAvailabilityRewardManagerDeployed) {
-    const dataAvailabilityRewardManager = await DataAvailabilityRewardManager.at(contracts.getContractAddress(Contracts.DATA_AVAILABILITY_REWARD_MANAGER));
-    await dataAvailabilityRewardManager.activate();
-  }
   if (!quiet) {
     console.error("Managers activated.");
   }

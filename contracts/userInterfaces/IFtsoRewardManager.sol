@@ -110,6 +110,18 @@ interface IFtsoRewardManager {
         external view returns (uint256 _feePercentageBIPS);
 
     /**
+     * @notice Returns the fee percentage of `_dataProvider` at `_rewardEpoch`
+     * @param _dataProvider         address representing data provider
+     * @param _rewardEpoch          reward epoch number
+     */
+    function getDataProviderFeePercentage(
+        address _dataProvider,
+        uint256 _rewardEpoch
+    )
+        external view
+        returns (uint256 _feePercentageBIPS);
+
+    /**
      * @notice Returns the scheduled fee percentage changes of `_dataProvider`
      * @param _dataProvider         address representing data provider
      * @return _feePercentageBIPS   positional array of fee percentages in BIPS
@@ -220,4 +232,20 @@ interface IFtsoRewardManager {
      * @return Reward epoch id that will expire next
      */
     function getRewardEpochToExpireNext() external view returns (uint256);
+
+    /**
+     * @notice Return reward epoch vote power block
+     * @param _rewardEpoch          reward epoch number
+     */
+    function getRewardEpochVotePowerBlock(uint256 _rewardEpoch) external view returns (uint256);
+
+    /**
+     * @notice Return current reward epoch number
+     */
+    function getCurrentRewardEpoch() external view returns (uint256);
+
+    /**
+     * @notice Return initial reward epoch number
+     */
+    function getInitialRewardEpoch() external view returns (uint256);
 }

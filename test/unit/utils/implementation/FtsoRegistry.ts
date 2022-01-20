@@ -1,7 +1,9 @@
 
 import { constants, expectRevert } from '@openzeppelin/test-helpers';
+import { Contracts } from '../../../../deployment/scripts/Contracts';
 import { FtsoRegistryInstance, MockContractInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
+import { encodeContractNames } from '../../../utils/test-helpers';
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 const MockFtso = artifacts.require("MockFtso");
@@ -9,7 +11,7 @@ const FtsoRegistryContract = artifacts.require("FtsoRegistry");
 const MockContract = artifacts.require("MockContract");
 
 
-const ONLY_GOVERNANCE_MSG = "only governance";
+const ONLY_ADDRESS_UPDATER_MSG = "only address updater";
 const ONLY_FTSO_MANAGER_MSG = "FTSO manager only";
 const ERR_TOKEN_NOT_SUPPORTED = "FTSO index not supported";
 
@@ -23,12 +25,15 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
   let ftsoRegistryContract: FtsoRegistryInstance;
   let mockFtsoContract: MockContractInstance;
   const GOVERNANCE_ADDRESS = accounts[0];
-  const MOCK_FTSO_ADDRESS = accounts[123]
+  const ADDRESS_UPDATER = accounts[16];
+  const MOCK_FTSO_ADDRESS = accounts[123];
 
   beforeEach(async() => {
-    ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS);
+    ftsoRegistryContract = await FtsoRegistryContract.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
     
-    await ftsoRegistryContract.setFtsoManagerAddress(MOCK_FTSO_ADDRESS, {from: GOVERNANCE_ADDRESS});
+    await ftsoRegistryContract.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+      [ADDRESS_UPDATER, MOCK_FTSO_ADDRESS], {from: ADDRESS_UPDATER});
 
     mockFtsoContract = await MockContract.new();
 
@@ -201,9 +206,11 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     // Assemble
     const mockFtsoManager = await MockContract.new();
     // Act
-    let promise = ftsoRegistryContract.setFtsoManagerAddress(mockFtsoManager.address, {from: accounts[1]});
+    let promise = ftsoRegistryContract.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+      [ADDRESS_UPDATER, MOCK_FTSO_ADDRESS], {from: accounts[1]});
     // Assert
-    await expectRevert(promise, ONLY_GOVERNANCE_MSG);
+    await expectRevert(promise, ONLY_ADDRESS_UPDATER_MSG);
 
   });
 
@@ -211,7 +218,9 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     // Assemble
 
     // Act
-    await ftsoRegistryContract.setFtsoManagerAddress(accounts[15], {from: accounts[0]});
+    await ftsoRegistryContract.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+      [ADDRESS_UPDATER, accounts[15]], {from: ADDRESS_UPDATER});
     // Use different address
     const promise = ftsoRegistryContract.addFtso(accounts[15], {from: accounts[14]});
     // Assert

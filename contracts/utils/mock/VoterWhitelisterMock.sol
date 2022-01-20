@@ -6,10 +6,11 @@ import "../implementation/VoterWhitelister.sol";
 contract VoterWhitelisterMock is VoterWhitelister {
     constructor(
         address _governance,
+        address _addressUpdater,
         IIPriceSubmitter _priceSubmitter, 
         uint256 _defaultMaxVotersForFtso
     )
-        VoterWhitelister(_governance, _priceSubmitter, _defaultMaxVotersForFtso)
+        VoterWhitelister(_governance, _addressUpdater, _priceSubmitter, _defaultMaxVotersForFtso)
     {
     }
     

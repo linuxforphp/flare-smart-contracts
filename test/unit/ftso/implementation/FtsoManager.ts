@@ -105,11 +105,13 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     mockRewardManager = await MockContract.new();
     ftsoRewardManagerInterface = await FtsoRewardManager.new(
       accounts[0],
+      ADDRESS_UPDATER,
+      constants.ZERO_ADDRESS,
       3,
       0
     );
 
-    ftsoRegistry = await FtsoRegistry.new(accounts[0]);
+    ftsoRegistry = await FtsoRegistry.new(accounts[0], ADDRESS_UPDATER);
 
     mockPriceSubmitter = await MockContract.new();
     await mockPriceSubmitter.givenMethodReturnUint(
@@ -138,13 +140,15 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       VOTE_POWER_BOUNDARY_FRACTION
     );
 
-    cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0]);
+    cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0], ADDRESS_UPDATER, "FtsoManager");
 
     await ftsoManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
       [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-    await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, { from: accounts[0] });
+      await ftsoRegistry.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
   });
 
@@ -527,7 +531,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
         [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-      await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, { from: accounts[0] });
+        await ftsoRegistry.updateContractAddresses(
+          encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+          [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
       const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
       await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
@@ -1349,7 +1355,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
       // set new ftso manager
-      await ftsoRegistry.setFtsoManagerAddress(ftsoManager2.address, { from: accounts[0] });
+      await ftsoRegistry.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager2.address], {from: ADDRESS_UPDATER});
 
       let [ftso3, ftso4] = await settingWithTwoFTSOs(accounts, ftsoManager2);
       await setDefaultGovernanceParameters(ftsoManager2);
@@ -1391,7 +1399,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
       // set new ftso manager
-      await ftsoRegistry.setFtsoManagerAddress(ftsoManager2.address, { from: accounts[0] });
+      await ftsoRegistry.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager2.address], {from: ADDRESS_UPDATER});
 
       let [ftso3, ftso4] = await settingWithTwoFTSOs(accounts, ftsoManager2);
       await setDefaultGovernanceParameters(ftsoManager2);
@@ -1988,7 +1998,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should set cleanup block after finalization", async () => {
       // Assemble
-      await cleanupBlockNumberManager.setTriggerContractAddress(ftsoManager.address);
+      await cleanupBlockNumberManager.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
       const mockVpToken = await MockContract.new();
       await cleanupBlockNumberManager.registerToken(mockVpToken.address);
       await ftsoManager.activate();
@@ -2161,7 +2173,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
         [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-      await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, { from: accounts[0] });
+        await ftsoRegistry.updateContractAddresses(
+          encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+          [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
       // stub ftso randomizer
       const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();

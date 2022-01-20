@@ -48,8 +48,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockCleanupBlockNumberManager: MockContractInstance;
 
     beforeEach(async () => {
+        const ADDRESS_UPDATER = accounts[16];
         mockFtso = await MockContract.new();
-        ftsoRegistry = await FtsoRegistry.new(accounts[0]);
+        ftsoRegistry = await FtsoRegistry.new(accounts[0], ADDRESS_UPDATER);
         ftsoInterface = await Ftso.new(
             "NAT",
             5,
@@ -67,6 +68,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         
         ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
+            ADDRESS_UPDATER,
+            constants.ZERO_ADDRESS,
             3,
             0
             );
@@ -89,8 +92,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         mockSupply = await createMockSupplyContract(accounts[0], 10000);
         mockCleanupBlockNumberManager = await MockContract.new();
 
-        const ADDRESS_UPDATER = accounts[16];
-
         ftsoManager = await FtsoManager.new(
             accounts[0],
             accounts[0],
@@ -112,12 +113,17 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
             [ADDRESS_UPDATER, ftsoRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, mockCleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
         
-        await ftsoRegistry.setFtsoManagerAddress(ftsoManager.address, {from: accounts[0]});
-
+        await ftsoRegistry.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+            [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
+        
         wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
         await setDefaultVPContract(wNat, accounts[0]);
 
-        await ftsoRewardManager.setContractAddresses(mockInflation.address, ftsoManager.address, wNat.address, mockSupply.address);
+        await ftsoRewardManager.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+            [ADDRESS_UPDATER, mockInflation.address, ftsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+        
         await mockInflation.setDailyAuthorizedInflation(BN(1000000));
 
         await ftsoRewardManager.activate();

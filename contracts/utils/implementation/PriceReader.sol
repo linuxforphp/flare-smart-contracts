@@ -3,12 +3,12 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 
-import "../../governance/implementation/Governed.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../userInterfaces/IFtsoRegistry.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 
 
-contract PriceReader is Governed {
+contract PriceReader is AddressUpdatable {
     
     struct PriceInfo {
         string symbol;
@@ -20,15 +20,7 @@ contract PriceReader is Governed {
 
     IFtsoRegistry public ftsoRegistry;
 
-    constructor(address _governance, IFtsoRegistry _ftsoRegistry)
-        Governed(_governance)
-    {
-            ftsoRegistry = _ftsoRegistry;
-    }
-
-    function setFtsoRegistry(IFtsoRegistry _ftsoRegistry) external onlyGovernance {
-        ftsoRegistry = _ftsoRegistry;
-    }
+    constructor(address _addressUpdater) AddressUpdatable(_addressUpdater) { }
 
     function getAllCurrentPrices() external view returns (PriceInfo[] memory) {
         // Get one valid ftso
@@ -78,6 +70,18 @@ contract PriceReader is Governed {
             prices[i] = ftsoRegistry.getFtsoBySymbol(_symbols[i]).getEpochPrice(currentEpochId);
         }
         return prices;
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoRegistry = IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
     }
 
     function _getAllPrices(uint256 epochId) internal view returns (PriceInfo[] memory) {

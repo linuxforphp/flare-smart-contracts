@@ -12,7 +12,7 @@ import "../../governance/implementation/Governed.sol";
 import "../../inflation/interface/IISupply.sol";
 import "../../tokenPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/CleanupBlockNumberManager.sol";
-import "../../utils/implementation/AddressUpdatable.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../utils/implementation/RevertErrorTracking.sol";
 import "../../utils/interface/IIFtsoRegistry.sol";
@@ -564,6 +564,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         require(rewardEpochsLength != 0, ERR_REWARD_EPOCH_NOT_INITIALIZED);
         return _getCurrentRewardEpochId();
     }
+    
+    /**
+     * @notice Implement this function for updating daemonized contracts through AddressUpdater.
+     */
+    function getContractName() external pure override returns (string memory) {
+        return "FtsoManager";
+    }
 
     /**
      * @notice Returns reward epoch data
@@ -1068,6 +1075,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         }
     }
 
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
         address[] memory _contractAddresses

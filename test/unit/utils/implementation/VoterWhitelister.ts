@@ -1,7 +1,8 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 import { FtsoRegistryInstance, MockContractInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
-import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, toBN, toBNFixedPrecision } from "../../../utils/test-helpers";
+import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, encodeContractNames, toBN, toBNFixedPrecision } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelisterMock");
@@ -30,6 +31,7 @@ function fmtNum(x: BN) {
 
 contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit tests`, async accounts => {
     const governance = accounts[32];
+    const ADDRESS_UPDATER = accounts[16];
     const ftsoManager = accounts[33];
 
     let whitelist: VoterWhitelisterMockInstance;
@@ -76,8 +78,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         beforeEach(async () => {
             priceSubmitter = await MockContract.new();
             // create registry
-            ftsoRegistry = await FtsoRegistry.new(governance);
-            await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
+            ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
+            await ftsoRegistry.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
             // create assets
             wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wNat, governance);
@@ -93,8 +97,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await btcFtso.setAsset(fbtc.address, { from: ftsoManager });
             await natFtso.setAssetFtsos([xrpFtso.address, btcFtso.address], { from: ftsoManager });
             // create whitelist
-            whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 5);
-            await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
+            whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 5);
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
             await whitelist.addFtso(0, { from: ftsoManager });
             await whitelist.addFtso(1, { from: ftsoManager });
             await whitelist.addFtso(2, { from: ftsoManager });
@@ -508,10 +514,12 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
                 "only ftso manager");
         });
 
-        it("only governance can set ftso registry and ftso manager", async () => {
+        it("only address updater can set ftso registry and ftso manager", async () => {
             // Assert
-            await expectRevert(whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager,  { from: accounts[1] }),
-                "only governance");
+            await expectRevert(whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: accounts[1]}),
+                "only address updater");
         });
 
         it("Should not add ftso twice", async () => {
@@ -697,8 +705,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         beforeEach(async () => {
             priceSubmitter = await MockContract.new();
             // create registry
-            ftsoRegistry = await FtsoRegistry.new(governance);
-            await ftsoRegistry.setFtsoManagerAddress(ftsoManager, { from: governance });
+            ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
+            await ftsoRegistry.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
             // create assets
             wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
             await setDefaultVPContract(wNat, governance);
@@ -720,8 +730,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             }
             await natFtso.setAssetFtsos(ftsos.map(f => f.address), { from: ftsoManager });
             // create whitelist
-            whitelist = await VoterWhitelister.new(governance, priceSubmitter.address, 10);
-            await whitelist.setContractAddresses(ftsoRegistry.address, ftsoManager, { from: governance });
+            whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 10);
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
         });
 
         async function addAccountsToWhitelist(ftsoIndex: number, maxWhitelistLength: number, votePowers: number[]) {
