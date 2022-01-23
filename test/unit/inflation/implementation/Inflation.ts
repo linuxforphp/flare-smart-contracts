@@ -42,6 +42,7 @@ const REWARDSERVICEDAILYAUTHORIZEDINFLATIONCOMPUTED_EVENT = "RewardServiceDailyA
 const SUPPLYSET_EVENT = "SupplySet";
 const MINTINGRECEIVED_EVENT = "MintingReceived";
 const REWARDSERVICETOPUPREQUESTRECEIVED_EVENT = "RewardServiceTopupRequestReceived";
+const DAY = 60 * 60 * 24;
 
 enum TopupType { FACTOROFDAILYAUTHORIZED, ALLAUTHORIZED }
 
@@ -750,6 +751,29 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       const receiver = await MockContract.new();
       const tx = inflation.setTopupConfiguration(receiver.address, TopupType.FACTOROFDAILYAUTHORIZED, 10);
       await expectRevert(tx, ERR_TOPUP_LOW);
+    });
+
+    it("Should return next expected inflation topup timestamp", async() => {
+      // Inflation was not yet authorized
+      let nextExpectedTopup0 = await inflation.contract.methods.getNextExpectedTopupTs().call({ from: accounts[0] });
+      await inflation.getNextExpectedTopupTs();
+      expect(nextExpectedTopup0).to.equals(DAY.toString());
+
+      // Authorize inflation
+      await mockFlareDaemon.trigger();
+      let block = await web3.eth.getBlockNumber();
+      let blockTs = (await web3.eth.getBlock(block)).timestamp as number;
+      let nextExpectedTopup = await inflation.contract.methods.getNextExpectedTopupTs().call({ from: accounts[0] });
+      await inflation.getNextExpectedTopupTs();
+      expect(nextExpectedTopup).to.equals((blockTs + DAY).toString());
+
+      // Only half a day passed. It is not yet a time to authorize new inflation.
+      const nowTs = await time.latest() as BN;
+      await time.increaseTo(nowTs.addn(0.5 * DAY));
+      await mockFlareDaemon.trigger();
+      let nextExpectedTopup1 = await inflation.contract.methods.getNextExpectedTopupTs().call({ from: accounts[0] });
+      await inflation.getNextExpectedTopupTs();
+      expect(nextExpectedTopup1).to.equals((blockTs + DAY).toString());
     });
 
   });

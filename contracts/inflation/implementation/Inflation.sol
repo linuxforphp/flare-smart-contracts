@@ -300,12 +300,22 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
         // do nothing - there is no fallback mode in Inflation
         return false;
     }
-        
+
     /**
      * @notice Implement this function for updating daemonized contracts through AddressUpdater.
      */
     function getContractName() external pure override returns (string memory) {
         return "Inflation";
+    }
+
+    /**
+     * @notice Returns next expected inflation topup time stamp which is also inflation authorization time. 
+     *     The returned time from this API is actually the time of the block in which the topup is requested. 
+     *     The Actual topup will take place in the next block. 
+     *     Expected diff is up to a few seconds (max is less then a minute).
+     */
+    function getNextExpectedTopupTs () external view returns (uint256 _nextTopupTs) {
+        _nextTopupTs = lastAuthorizationTs.add(AUTHORIZE_TIME_FRAME_SEC);
     }
 
     /**
