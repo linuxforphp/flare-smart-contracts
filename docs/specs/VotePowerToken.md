@@ -1,5 +1,6 @@
 # Vote power token specification
 #### Vote power and delegation on flare
+Please see the online docs for a version which is better adopted for external users. in specific this [Delegtion details](https://docs.flare.network/en/tutorials/delegation/delegation-in-details).
 ## Background
 
 The vote power token will be the base contract for [WNAT] (wrapped native token) and later for xAssets (wrapped assets) on flare.
