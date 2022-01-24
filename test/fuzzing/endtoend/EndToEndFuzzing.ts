@@ -9,7 +9,7 @@ import { getTestFile } from "../../utils/constants";
 import { BaseEvent, EthersEventDecoder, ethersEventIs, formatBN } from "../../utils/EventDecoder";
 import { toBigNumberFixedPrecision } from "../../utils/test-helpers";
 import { BIG_NUMBER_ZERO, currentRealTime, randomShuffled, toNumber } from "../../utils/fuzzing-utils";
-import { getChainConfigParameters, internalFullDeploy, reportError } from "./EndToEndFuzzingUtils";
+import { messageIncluded, getChainConfigParameters, internalFullDeploy, reportError } from "./EndToEndFuzzingUtils";
 import { latestBlockTimestamp, PriceEpochTimes, RewardEpochTimes } from "./EpochTimes";
 import { FtsoList, PriceProvider, PriceSimulator } from "./PriceProvider";
 import { EventStateChecker, PriceAndRewardChecker } from "./StateChecker";
@@ -157,7 +157,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         }
         return false;
     }
-    
+
     function getProviders(): JsonRpcProvider[] {
         if (networkType === NetworkType.HARDHAT) {
             return [ethers.provider];
@@ -189,10 +189,10 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             await transactionRunner.runMethod(flareDaemon, f => f.setMaxMintingRequest(newMaxMintingRequestWei, { gasLimit: 1_000_000 }),
                 { signer: governance, method: "flareDaemon.setMaxMintingRequest()", comment: `Increasing maxMintingRequest to ${formatBN(newMaxMintingRequestWei)}` });
         } catch (e) {
-            reportError(e);
+            transactionRunner.logUnexpectedError(e);
         }
     }
-    
+
     async function handleSystemEvents(events: BaseEvent[], start: number, end: number) {
         for (let i = start; i < end; i++) {
             const event = events[i];
@@ -210,7 +210,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             }
         }
     }
-    
+
     function getConfigParameters(filename: string, updates: any) {
         const parameters = getChainConfigParameters(filename);
         if (updates != null) {
@@ -236,7 +236,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             await setTestContracts(deployed.contracts!);
         } else {
             const contracts = new Contracts();
-            await contracts.deserializeFile('deployment/deploys/scdev.json');
+            contracts.deserializeFile('deployment/deploys/scdev.json');
             await setTestContracts(contracts);
         }
         // create event decoder for all contracts
@@ -258,19 +258,20 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         }
     });
 
-    let is_passing = true
-    afterEach(function() {
-      const status = this.currentTest?.state
-      if(status === "failed"){
-        is_passing = false;
-      }
+    let is_passing = true;
+    
+    afterEach(function () {
+        const status = this.currentTest?.state
+        if (status === "failed") {
+            is_passing = false;
+        }
     })
 
     after(() => {
         transactionRunner.logGasUsage();
         transactionRunner.closeLog();
         let badge_data;
-        if(!is_passing){
+        if (!is_passing) {
             badge_data = {
                 "schemaVersion": 1,
                 "label": "E2E Fuzzer",
@@ -286,9 +287,27 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             }
         }
         const end_to_end_fuzzer_badge = "e2e_fuzzer_badge.json";
-        fs.writeFileSync(end_to_end_fuzzer_badge,JSON.stringify(badge_data));
+        fs.writeFileSync(end_to_end_fuzzer_badge, JSON.stringify(badge_data));
     });
 
+    function checkForbiddenErrors() {
+        // in AVOID_ERRORS mode, we have strict error checking - all errors are forbidden,
+        // except for those that cannot be avoided (due to timing issues)
+        const allowedErrors = ['Wrong epoch id'];
+        // if AVOID_ERRORS=false, then all errors, expected by methods, are allowed, but assertion failures are forbidden (in solidity and ts)
+        const forbiddenErrors = ['Transaction reverted without a reason', 'invalid opcode', 'AssertionError'];
+        // count unexpectd / forbidden errors
+        let unexpectedErrors = transactionRunner.unexpectedErrorCount;
+        for (const [key, count] of transactionRunner.errorCounts.entries()) {
+            const forbidden = AVOID_ERRORS ? !messageIncluded(key, allowedErrors) : messageIncluded(key, forbiddenErrors);
+            if (forbidden) {
+                console.error(`Unexpected error: ${key} (${count})`);
+                unexpectedErrors += count;
+            }
+        }
+        assert(unexpectedErrors === 0, `There were ${unexpectedErrors} unexpected errors`);
+    }
+    
     it("(almost) realtime fuzzing test", async () => {
         const startTimestamp = await latestBlockTimestamp();
         const startRealTime = currentRealTime();
@@ -321,7 +340,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             users, avoidErrors: AVOID_ERRORS,
             flareDaemon, ftsoManager, ftsoRewardManager, wNat, ftsoWnat, priceSubmiter, registry, voterWhitelister,
         };
-        
+
         // Mint some WNAT for each delegator and price provider
         const someNAT = toBigNumberFixedPrecision(3_000_000_000, 18);
         transactionRunner.comment(`Depositing ${formatBN(someNAT)} NAT to ${users.length} users`);
@@ -345,12 +364,14 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
 
         // start simulation
         let currentPriceEpoch = toNumber(await ftsoWnat.getCurrentEpochId());
+        let currentRevealEpoch = currentPriceEpoch - 1;    // this one will not be used
         events.push({ address: 'fake', event: 'SubmitEpochStarted', args: { epochId: currentPriceEpoch } });
         transactionRunner.comment(`PRICE EPOCH START:  submitEpoch=${currentPriceEpoch}`);
 
         // run very long loop
         let startEvent = 0;
         let bigJumpTime = false;
+        let bigJumpOccured = false;
 
         try {
             for (let loop = 1; loop <= LOOPS; loop++) {
@@ -364,19 +385,28 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
                     bigJumpTime = true;
                 }
 
-                // add fake events (e.g. event for starting price epoch does not exist in the system)
-                const priceEpoch = toNumber(await ftsoWnat.getCurrentEpochId());
-                if (priceEpoch !== currentPriceEpoch) {
-                    currentPriceEpoch = priceEpoch;
-                    events.push({ address: 'fake', event: 'SubmitEpochStarted', args: { epochId: currentPriceEpoch } });
-                    events.push({ address: 'fake', event: 'RevealEpochStarted', args: { epochId: currentPriceEpoch - 1 } });
-                    transactionRunner.comment(`PRICE EPOCH START:  submitEpoch=${currentPriceEpoch}  revealEpoch=${currentPriceEpoch - 1}`);
-                }
                 // allow flare daemon to do its work and possibly add events
                 for (let i = 0; i < 3; i++) {
                     const tx = await transactionRunner.triggerFlareDaemon(true);
                     if (tx && !containsInterestingEvents(tx.allEvents, 0, tx.allEvents.length)) break;
                 }
+
+                // add fake events for start of price/reveal epoch
+                const priceEpoch = toNumber(await ftsoWnat.getCurrentEpochId());
+                const lastUnprocessedEpochData = await ftsoManager.getLastUnprocessedPriceEpochData();
+                const lastUnprocessedPriceEpoch = toNumber(lastUnprocessedEpochData._lastUnprocessedPriceEpoch);
+                const lastUnprocessedPriceEpochInitialized = lastUnprocessedEpochData._lastUnprocessedPriceEpochInitialized;
+                if (priceEpoch > currentPriceEpoch && lastUnprocessedPriceEpoch >= priceEpoch - 1 && lastUnprocessedPriceEpochInitialized) {
+                    currentPriceEpoch = priceEpoch;
+                    events.push({ address: 'fake', event: 'SubmitEpochStarted', args: { epochId: currentPriceEpoch } });
+                    transactionRunner.comment(`PRICE EPOCH START:  submitEpoch=${currentPriceEpoch}  revealEpoch=${currentRevealEpoch}`);
+                    if (lastUnprocessedPriceEpoch === priceEpoch - 1) {
+                        currentRevealEpoch = lastUnprocessedPriceEpoch;
+                        events.push({ address: 'fake', event: 'RevealEpochStarted', args: { epochId: currentRevealEpoch } });
+                        transactionRunner.comment(`REVEAL EPOCH START:  submitEpoch=${currentPriceEpoch}  revealEpoch=${currentRevealEpoch}`);
+                    }
+                }
+
                 // proces intervals in [startEvent, endEvent)
                 const endEvent = events.length;
                 const interestingEvents = containsInterestingEvents(events, startEvent, endEvent);
@@ -389,11 +419,14 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
                     });
                     // hacks and fixes
                     await handleSystemEvents(events, startEvent, endEvent);
+                    //
+                    bigJumpOccured = false;
                 } else {
                     // skip some time
                     const timestamp = await latestBlockTimestamp();
                     const timeskip = bigJumpTime ? BIG_JUMP_SECONDS : Math.round(priceEpochs.revealEpochDurationSeconds / 2);
                     await transactionRunner.skipToTime(timestamp + timeskip);
+                    bigJumpOccured = bigJumpTime;
                     bigJumpTime = false;
                 }
                 // run all checkers
@@ -406,10 +439,13 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
                 startEvent = endEvent;
             }
         } catch (e) {
-            reportError(e);
+            transactionRunner.logUnexpectedError(e);
         }
 
         const endTimestamp = await latestBlockTimestamp();
         transactionRunner.comment(`Total network time ${endTimestamp - startTimestamp}s`);
+        
+        // check errors
+        checkForbiddenErrors();
     });
 });
