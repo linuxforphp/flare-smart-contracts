@@ -60,6 +60,7 @@ export abstract class TransactionRunnerBase {
     gasUsage: Map<string, Statistics> = new Map();
     errorCounts: Map<String, number> = new Map();
     eventCounts: Map<String, number> = new Map();
+    unexpectedErrorCount: number = 0;
 
     // parameters - may be changed
     autoRunTrigger: number | null = null;             // if non-null, trigger is run every `autoRunTrigger` transactions (on Hardhat)
@@ -85,10 +86,16 @@ export abstract class TransactionRunnerBase {
         }
     }
 
-    protected log(text: string) {
+    log(text: string) {
         if (this.logFile) {
             this.logFile.log(text);
         }
+    }
+    
+    logUnexpectedError(e: any) {
+        reportError(e);
+        this.log(`    !!! UNEXPECTED ${('' + e.stack)?.replace(/\n/g, '\n        ') || e}`);
+        this.unexpectedErrorCount += 1;
     }
 
     comment(comment: string) {

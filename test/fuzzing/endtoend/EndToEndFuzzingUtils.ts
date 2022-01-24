@@ -42,10 +42,16 @@ export function reportError(e: any) {
     console.error(e.stack || e);
 }
 
-export function expectErrors(e: any, expectedMessages: string[]) {
-    const message: string = e?.message ?? '';
+export function messageIncluded(message: unknown, expectedMessages: string[]) {
+    const messageStr = message == null ? '' : '' + message;
     for (const msg of expectedMessages) {
-        if (message.includes(msg)) return;
+        if (messageStr.includes(msg)) return true;
     }
-    throw e;    // unexpected error
+    return false;
+}
+
+export function expectErrors(e: any, expectedMessages: string[]) {
+    if (!messageIncluded(e?.message, expectedMessages)) {
+        throw e;    // unexpected error
+    }
 }
