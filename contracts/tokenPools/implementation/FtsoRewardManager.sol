@@ -51,7 +51,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     string internal constant ERR_NO_CLAIMABLE_EPOCH = "no epoch with claimable rewards";
     
     uint256 constant internal MAX_BIPS = 1e4;
-    uint256 constant internal ALMOST_FULL_DAY_SEC = 86399;
+    uint256 constant internal ALMOST_SEVEN_FULL_DAYS_SEC = 7 days - 1;
     uint256 constant internal MAX_BURNABLE_PCT = 20;
 
     bool public override active;
@@ -952,7 +952,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         returns (uint256)
     {
         // Get the end of the daily period
-        uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_FULL_DAY_SEC);
+        uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_SEVEN_FULL_DAYS_SEC);
         require(_fromThisTs <= dailyPeriodEndTs, ERR_AFTER_DAILY_CYCLE);
         return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSeconds) + 1;
     }

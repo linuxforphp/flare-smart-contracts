@@ -29,10 +29,7 @@ const SupplyMock = artifacts.require("MockContract");
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
-const REWARD_EPOCH_DURATION_EXPIRY_DAYS = 30;
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
-
-const ERR_CLOSE_MANAGER_ONLY = "close manager only";
 
 // contains a fresh contract for each test
 let ftsoRewardManager: FtsoRewardManagerInstance;
@@ -55,10 +52,10 @@ export async function distributeRewards(
     // Assemble
     if (sendNats) {
         // give reward manager some nat to distribute...proxied through mock inflation
-        await mockInflation.receiveInflation({ value: "1000000" });
+        await mockInflation.receiveInflation({ value: "2000000" });
     }
 
-    // Price epochs remaining is 720 (a days worth at 2 minute price epochs)
+    // Price epochs remaining is 5040 (7 days worth at 2 minute price epochs)
 
     // Trigger price epoch finalization
     await mockFtsoManager.distributeRewardsCall(
@@ -113,7 +110,7 @@ export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, start
         for (let dailyCycle = 0; dailyCycle < (REWARD_EPOCH_DURATION_S / 86400); dailyCycle++) {
             try {
                 await time.increaseTo(startTs.addn((rewardEpoch * REWARD_EPOCH_DURATION_S) + (dailyCycle * 86400)));
-                await mockInflation.setDailyAuthorizedInflation(1000000);
+                await mockInflation.setDailyAuthorizedInflation(2000000);
             } catch (e) {
                 if (e instanceof Error && e.message.includes("to a moment in the past")) {
                     // Assume that if this is being done in the past, then it does not need to be done again.
@@ -129,7 +126,7 @@ export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, start
         if (closeAsYouGo) {
             await expireRewardEpoch(rewardEpoch, ftsoRewardManager, deployer);            
         }
-        await mockInflation.setDailyAuthorizedInflation(1000000);
+        await mockInflation.setDailyAuthorizedInflation(2000000);
     }
     // Fake Trigger reward epoch finalization
     const getCurrentRewardEpoch = ftsoManagerInterface.contract.methods.getCurrentRewardEpoch().encodeABI();
@@ -184,7 +181,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
         
         // set the daily authorized inflation...this proxies call to ftso reward manager
-        await mockInflation.setDailyAuthorizedInflation(1000000);
+        await mockInflation.setDailyAuthorizedInflation(2000000);
         
         mockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
 
@@ -264,11 +261,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         });
 
         it("Should issue event when daily authorized inflation is set", async () => {
-            const txReceipt = await mockInflation.setDailyAuthorizedInflation(1000000);
+            const txReceipt = await mockInflation.setDailyAuthorizedInflation(2000000);
             await expectEvent.inTransaction(
                 txReceipt.tx,
                 ftsoRewardManager,
-                "DailyAuthorizedInflationSet", {authorizedAmountWei: toBN(1000000)}
+                "DailyAuthorizedInflationSet", {authorizedAmountWei: toBN(2000000)}
             );
         });
 
@@ -319,26 +316,26 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             );
 
             // Assert
-            // 2 minute price epochs yield 720 price epochs per day
-            // 1000000 / 720 = 1388.8 repeating, rewards to award. Decimal will get truncated.
-            // a1 should be (1000000 / 720) * 0.25 = 347.2 repeating
-            // a2 should be = (1000000 / 720) * 0.75 = 1041.6 repeating
+            // 2 minute price epochs yield 720 price epochs per day, 5040 per week
+            // 2000000 / 5040 = 396.8, rewards to award. Decimal will get truncated.
+            // a1 should be (2000000 / 5040) * 0.25 = 99.2 
+            // a2 should be = (2000000 / 5040) * 0.75 = 297.6
             // Price epoch awarding should be accumulated and used in double declining balance
             // allocation such that rounding at the end of a daily cycle is not an issue.
             // Not tested here, but decimal truncation for this particular test is valid.
             let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
-            assert.equal(a1UnclaimedReward[0].toNumber(), 347);
-            assert.equal(a2UnclaimedReward[0].toNumber(), 1041);
+            assert.equal(a1UnclaimedReward[0].toNumber(), 99);
+            assert.equal(a2UnclaimedReward[0].toNumber(), 297);
         });
 
-        it("Should finalize price epoch and distribute all authorized rewards for daily cycle", async () => {
+        it("Should finalize price epoch and distribute all authorized rewards for 7 daily cycle", async () => {
             const dailyStartTs = await time.latest();
 
-            // Time travel to the end of the daily cycle, distributing rewards along the way.
+            // Time travel to the end of the 7 daily cycle, distributing rewards along the way.
             // Make longer price epochs here so this test does not take as long to run.
             const MY_LONGER_PRICE_EPOCH_SEC = 3600;
-            for (let i = 1; i <= (86400 / MY_LONGER_PRICE_EPOCH_SEC); i++) {
+            for (let i = 1; i <= (7 * 86400 / MY_LONGER_PRICE_EPOCH_SEC); i++) {
                 await mockFtsoManager.distributeRewardsCall(
                     [accounts[1], accounts[2]],
                     [25, 75],
@@ -356,7 +353,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Assert
             let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
-            assert.equal(a1UnclaimedReward[0].toNumber() + a2UnclaimedReward[0].toNumber(), 1000000);
+            assert.equal(a1UnclaimedReward[0].toNumber() + a2UnclaimedReward[0].toNumber(), 2000000);
         });
 
         it("Should only be called from ftso manager", async () => {
@@ -391,10 +388,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
           startTs.addn(PRICE_EPOCH_DURATION_S - 1)
         );
         // Assert
-        // 2 minute price epochs yield 720 price epochs per day
-        // 1000000 / 720 = 1388.8 repeating, unearned rewards to burn. Decimal will get truncated.
+        // 2 minute price epochs yield 720 price epochs per day, 5040 per week
+        // 2000000 / 5040 = 396.8, unearned rewards to burn. Decimal will get truncated.
         const totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
-        assert.equal(totalUnearnedWei.toNumber(), 1388);
+        assert.equal(totalUnearnedWei.toNumber(), 396);
       });
 
       it("Should evenly distribute rewards once unearned rewards have accrued", async() => {
@@ -407,7 +404,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         );
 
         // Act
-        // Total awardable should now be 1000000 - 1388
+        // Total awardable should now be 2000000 - 396
         // Distribute rewards for next price epoch 
         await mockFtsoManager.distributeRewardsCall(
           [accounts[1]],
@@ -422,13 +419,13 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         );
 
         // Assert
-        // 2 minute price epochs yield 720 price epochs per day
-        // (1000000 - 1388 unearned) / (720 - 1) = 1388.89ish, rewards awarded. Decimal will get truncated.
-        // Total "awarded" should now be 1388 for actual rewards distributed.
+        // 2 minute price epochs yield 720 price epochs per day, 5040 per week
+        // (2000000 - 396 unearned) / (5040 - 1) = 396.8, rewards awarded. Decimal will get truncated.
+        // Total "awarded" should now be 396 for actual rewards distributed.
         const totalAwardedWei = await ftsoRewardManager.totalAwardedWei();
         const totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
-        assert.equal(totalAwardedWei.toNumber(), 1388);
-        assert.equal(totalUnearnedWei.toNumber(), 1388);
+        assert.equal(totalAwardedWei.toNumber(), 396);
+        assert.equal(totalUnearnedWei.toNumber(), 396);
       });
 
       it("Should burn unearned rewards when inflation received", async() => {
@@ -446,17 +443,17 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         // Act
         // Receive inflation. 
         // Inflation must call ftso reward manager during funding, and this proxy does it.
-        const txReceipt = await mockInflation.receiveInflation({ value: "1000000" });
+        const txReceipt = await mockInflation.receiveInflation({ value: "2000000" });
 
         // Assert
         let ftsoRewardManagerBalance = web3.utils.toBN(await web3.eth.getBalance(ftsoRewardManager.address));
-        assert.equal(ftsoRewardManagerBalance.toNumber(), 998612);
+        assert.equal(ftsoRewardManagerBalance.toNumber(), 1999604);
         // Since supply is stubbed out, the burn address will default to 0x0.
         let burnAddressBalance = web3.utils.toBN(await web3.eth.getBalance(burnAddress));
-        assert.equal(burnAddressBalance.toNumber(), 1388);
+        assert.equal(burnAddressBalance.toNumber(), 396);
         // Check total unearned accural
         let totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
-        assert.equal(totalUnearnedWei.toNumber(), 1388);
+        assert.equal(totalUnearnedWei.toNumber(), 396);
       });
 
       it("Should limit the unearned rewards burned on any given receive inflation event", async() => {
@@ -466,8 +463,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         await mockSupply.givenMethodReturnAddress(burnAddressCall, burnAddress);
 
         // Simulate ftso in fallback by accruing unearned rewards for many price epochs
-        // Should be 1388 * 200 = 277,600
-        for(var p = 1; p < 200; p++) {
+        // Should be 396 * 1100 = 435600
+        for(var p = 1; p < 1100; p++) {
           await mockFtsoManager.accrueUnearnedRewardsCall(
             0,
             PRICE_EPOCH_DURATION_S,
@@ -478,14 +475,14 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         // Act
         // Receive inflation. 
         // Inflation must call ftso reward manager during funding, and this proxy does it.
-        const txReceipt = await mockInflation.receiveInflation({ value: "1000000" });
+        const txReceipt = await mockInflation.receiveInflation({ value: "2000000" });
 
         // Amount burned should be limited to 20% of received inflation;
         let burnAddressBalance = web3.utils.toBN(await web3.eth.getBalance(burnAddress));
-        assert.equal(burnAddressBalance.toNumber(), 200000, "Burn address does not contain correct balance");
+        assert.equal(burnAddressBalance.toNumber(), 400000, "Burn address does not contain correct balance");
         // Check totalBurnedWei()
         let totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
-        assert.equal(totalBurnedWei.toNumber(), 200000, "FtsoRewardManager.totalBurnedWei does not contain correct balance");
+        assert.equal(totalBurnedWei.toNumber(), 400000, "FtsoRewardManager.totalBurnedWei does not contain correct balance");
       });
     });
 
@@ -496,7 +493,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             let data = await ftsoRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
-            expect(data[1].toNumber()).to.equals(1000000);
+            expect(data[1].toNumber()).to.equals(2000000);
             expect(data[2].toNumber()).to.equals(0);
 
             await distributeRewards(accounts, startTs);
@@ -506,8 +503,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             data = await ftsoRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
-            expect(data[1].toNumber()).to.equals(3000000);
-            expect(data[2].toNumber()).to.equals(694);
+            expect(data[1].toNumber()).to.equals(6000000);
+            expect(data[2].toNumber()).to.equals(198);
         });
 
         it("Should set and update data provider fee percentage", async () => {
@@ -598,20 +595,20 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             let data = await ftsoRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
-            expect(data[1].toNumber()).to.equals(1000000);
+            expect(data[1].toNumber()).to.equals(2000000);
             expect(data[2].toNumber()).to.equals(0);
 
             await distributeRewards(accounts, startTs);
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0], false);
 
             // Assert
-            // 2 minute price epochs yield 720 price epochs per day
-            // 1000000 / 720 = 1388.8 repeating, rewards to award. Decimal will get truncated.
-            // a1 should be (1000000 / 720) * 0.25 = 347.2 repeating
-            // a2 should be = (1000000 / 720) * 0.75 = 1041.6 repeating
+            // 2 minute price epochs yield 720 price epochs per day, 5040 per week
+            // 2000000 / 5040 = 396.8, rewards to award. Decimal will get truncated.
+            // a1 should be (2000000 / 5040) * 0.25 = 99.2 repeating
+            // a2 should be = (2000000 / 5040) * 0.75 = 297.6 repeating
             // in distributeRewards this is done 2x
             let rewardEpochBeforeClaim = await ftsoRewardManager.getEpochReward(0);
-            assert.equal(rewardEpochBeforeClaim[0].toNumber(), 1388 * 2);
+            assert.equal(rewardEpochBeforeClaim[0].toNumber(), 396 * 2);
             assert.equal(rewardEpochBeforeClaim[1].toNumber(), 0);
 
             let claimedRewardBeforeClaim = await ftsoRewardManager.getClaimedReward(0, accounts[1], accounts[1]);
@@ -625,12 +622,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
 
             let rewardEpochAfterClaim = await ftsoRewardManager.getEpochReward(0);
-            assert.equal(rewardEpochAfterClaim[0].toNumber(), 1388 * 2);
-            assert.equal(rewardEpochAfterClaim[1].toNumber(), 347 * 2);
+            assert.equal(rewardEpochAfterClaim[0].toNumber(), 396 * 2);
+            assert.equal(rewardEpochAfterClaim[1].toNumber(), 99 * 2);
 
             let claimedRewardAfterClaim = await ftsoRewardManager.getClaimedReward(0, accounts[1], accounts[1]);
             assert.equal(claimedRewardAfterClaim[0], true);
-            assert.equal(claimedRewardAfterClaim[1].toNumber(), 347 * 2);
+            assert.equal(claimedRewardAfterClaim[1].toNumber(), 99 * 2);
           });
 
         it("Should revert if fee percentage > max bips", async () => {
@@ -653,21 +650,21 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [694]);
+            compareNumberArrays(data[1], [198]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(false);
 
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0], false);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [694]);
+            compareNumberArrays(data[1], [198]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [694]);
+            compareNumberArrays(data[1], [198]);
             compareArrays(data[2], [true]);
             expect(data[3]).to.equals(true);
 
@@ -708,39 +705,39 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[4], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(false);
 
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[4], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [true]);
             expect(data[3]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[4], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
@@ -748,7 +745,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[4], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [true]);
             expect(data[3]).to.equals(true);
 
@@ -795,40 +792,40 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[2], 0);
             compareArrays(data[0], [accounts[2], accounts[1]]);
-            compareNumberArrays(data[1], [2082, 347]);
+            compareNumberArrays(data[1], [594, 99]);
             compareArrays(data[2], [false, false]);
             expect(data[3]).to.equals(false);
 
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[2], 0);
             compareArrays(data[0], [accounts[2], accounts[1]]);
-            compareNumberArrays(data[1], [2082, 347]);
+            compareNumberArrays(data[1], [594, 99]);
             compareArrays(data[2], [false, false]);
             expect(data[3]).to.equals(true);
 
             expectEvent(await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] }), "RewardClaimed",
-                { dataProvider: accounts[1], whoClaimed: accounts[1], sentTo: accounts[5], rewardEpoch: toBN(0), amount: toBN(347) });
+                { dataProvider: accounts[1], whoClaimed: accounts[1], sentTo: accounts[5], rewardEpoch: toBN(0), amount: toBN(99) });
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [true]);
             expect(data[3]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[2], 0);
             compareArrays(data[0], [accounts[2], accounts[1]]);
-            compareNumberArrays(data[1], [2082, 347]);
+            compareNumberArrays(data[1], [594, 99]);
             compareArrays(data[2], [false, false]);
             expect(data[3]).to.equals(true);
 
@@ -838,7 +835,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             data = await ftsoRewardManager.getStateOfRewards(accounts[2], 0);
             compareArrays(data[0], [accounts[2], accounts[1]]);
-            compareNumberArrays(data[1], [2082, 347]);
+            compareNumberArrays(data[1], [594, 99]);
             compareArrays(data[2], [true, true]);
             expect(data[3]).to.equals(true);
 
@@ -906,63 +903,63 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await distributeRewards(accounts, startTs);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[1], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 0]);
+            compareNumberArrays(data[0], [99, 0]);
             compareArrays(data[1], [false, false]);
             expect(data[2]).to.equals(false);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[2], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 2082]);
+            compareNumberArrays(data[0], [99, 594]);
             compareArrays(data[1], [false, false]);
             expect(data[2]).to.equals(false);
 
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[1], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 0]);
+            compareNumberArrays(data[0], [99, 0]);
             compareArrays(data[1], [false, false]);
             expect(data[2]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[2], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 2082]);
+            compareNumberArrays(data[0], [99, 594]);
             compareArrays(data[1], [false, false]);
             expect(data[2]).to.equals(true);
 
             expectEvent(await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] }), "RewardClaimed",
-                { dataProvider: accounts[1], whoClaimed: accounts[1], sentTo: accounts[5], rewardEpoch: toBN(0), amount: toBN(347) });
+                { dataProvider: accounts[1], whoClaimed: accounts[1], sentTo: accounts[5], rewardEpoch: toBN(0), amount: toBN(99) });
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
-            compareNumberArrays(data[1], [347]);
+            compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [true]);
             expect(data[3]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[1], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 0]);
+            compareNumberArrays(data[0], [99, 0]);
             compareArrays(data[1], [true, false]);
             expect(data[2]).to.equals(true);
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[2], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 2082]);
+            compareNumberArrays(data[0], [99, 594]);
             compareArrays(data[1], [false, false]);
             expect(data[2]).to.equals(true);
 
             expectEvent(await ftsoRewardManager.claimRewardFromDataProviders(accounts[2], [0], [accounts[1]], { from: accounts[2] }), "RewardClaimed",
-                { dataProvider: accounts[1], whoClaimed: accounts[2], sentTo: accounts[2], rewardEpoch: toBN(0), amount: toBN(347) });
+                { dataProvider: accounts[1], whoClaimed: accounts[2], sentTo: accounts[2], rewardEpoch: toBN(0), amount: toBN(99) });
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[2], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 2082]);
+            compareNumberArrays(data[0], [99, 594]);
             compareArrays(data[1], [true, false]);
             expect(data[2]).to.equals(true);
 
             expectEvent(await ftsoRewardManager.claimRewardFromDataProviders(accounts[2], [0], [accounts[2]], { from: accounts[2] }), "RewardClaimed",
-                { dataProvider: accounts[2], whoClaimed: accounts[2], sentTo: accounts[2], rewardEpoch: toBN(0), amount: toBN(2082) });
+                { dataProvider: accounts[2], whoClaimed: accounts[2], sentTo: accounts[2], rewardEpoch: toBN(0), amount: toBN(594) });
 
             data = await ftsoRewardManager.getStateOfRewardsFromDataProviders(accounts[2], 0, [accounts[1], accounts[2]]);
-            compareNumberArrays(data[0], [347, 2082]);
+            compareNumberArrays(data[0], [99, 594]);
             compareArrays(data[1], [true, true]);
             expect(data[2]).to.equals(true);
 
@@ -1055,100 +1052,100 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             expect(data[2]).to.equals(false);
         });
 
-    });
+        it("Should get epochs with claimable / unclaimed rewards", async () => {
+            let data;
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await wNat.deposit({ from: accounts[3], value: "300" });
+            await wNat.deposit({ from: accounts[4], value: "200" });
 
-    it("Should get epochs with claimable / unclaimed rewards", async () => {
-        let data;
-        // deposit some wnats
-        await wNat.deposit({ from: accounts[1], value: "100" });
-        await wNat.deposit({ from: accounts[3], value: "300" });
-        await wNat.deposit({ from: accounts[4], value: "200" });
+            // delegate some wnats
+            await wNat.delegate(accounts[1], 5000, { from: accounts[3] });
+            await wNat.delegate(accounts[1], 5000, { from: accounts[4] });
+            
+            await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]), "no epoch with claimable rewards");
 
-        // delegate some wnats
-        await wNat.delegate(accounts[1], 5000, { from: accounts[3] });
-        await wNat.delegate(accounts[1], 5000, { from: accounts[4] });
+            // get some rewards
+            await distributeRewards(accounts, startTs);
+
+            await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]), "no epoch with claimable rewards");
+            await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]), "no epoch with claimable rewards");
+
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+            
+            data = await ftsoRewardManager.getEpochsWithClaimableRewards();
+            expect(data[0].toNumber()).to.equals(0);
+            expect(data[1].toNumber()).to.equals(0);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+            compareNumberArrays(data, [0]);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+            compareNumberArrays(data, [0]);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+            compareNumberArrays(data, [0]);
+
+            await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
+            
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+            compareNumberArrays(data, [0]);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+            compareNumberArrays(data, [0]);
+
+            await ftsoRewardManager.claimReward(accounts[4], [0], { from: accounts[4] });
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+            compareNumberArrays(data, [0]);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+            compareNumberArrays(data, []);
+
+            // expire reward epoch 0
+            await expireRewardEpoch(0, ftsoRewardManager, accounts[0]);
+            // advance, but not expire epoch 1            
+            await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
+            
+            data = await ftsoRewardManager.getEpochsWithClaimableRewards();
+            expect(data[0].toNumber()).to.equals(1);
+            expect(data[1].toNumber()).to.equals(1);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
+            compareNumberArrays(data, []);
+
+            data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
+            compareNumberArrays(data, []);
+        });
         
-        await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]), "no epoch with claimable rewards");
-
-        // get some rewards
-        await distributeRewards(accounts, startTs);
-
-        await expectRevert(ftsoRewardManager.getEpochsWithClaimableRewards(), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]), "no epoch with claimable rewards");
-        await expectRevert(ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]), "no epoch with claimable rewards");
-
-        await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
-        
-        data = await ftsoRewardManager.getEpochsWithClaimableRewards();
-        expect(data[0].toNumber()).to.equals(0);
-        expect(data[1].toNumber()).to.equals(0);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
-        compareNumberArrays(data, [0]);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
-        compareNumberArrays(data, [0]);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
-        compareNumberArrays(data, [0]);
-
-        await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
-        
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
-        compareNumberArrays(data, [0]);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
-        compareNumberArrays(data, [0]);
-
-        await ftsoRewardManager.claimReward(accounts[4], [0], { from: accounts[4] });
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
-        compareNumberArrays(data, [0]);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
-        compareNumberArrays(data, []);
-
-        // expire reward epoch 0
-        await expireRewardEpoch(0, ftsoRewardManager, accounts[0]);
-        // advance, but not expire epoch 1            
-        await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
-        
-        data = await ftsoRewardManager.getEpochsWithClaimableRewards();
-        expect(data[0].toNumber()).to.equals(1);
-        expect(data[1].toNumber()).to.equals(1);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[1]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[2]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[3]);
-        compareNumberArrays(data, []);
-
-        data = await ftsoRewardManager.getEpochsWithUnclaimedRewards(accounts[4]);
-        compareNumberArrays(data, []);
     });
 
     describe("reward claiming", async () => {
@@ -1156,15 +1153,15 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Assemble
             // Act
             // Inflation must call ftso reward manager during funding, and this proxy does it.
-            const txReceipt = await mockInflation.receiveInflation({ value: "1000000" });
+            const txReceipt = await mockInflation.receiveInflation({ value: "2000000" });
             await expectEvent.inTransaction( txReceipt.tx,
                 ftsoRewardManager,
-                "InflationReceived", {amountReceivedWei: toBN(1000000)}
+                "InflationReceived", {amountReceivedWei: toBN(2000000)}
             );
 
             // Assert
             let balance = web3.utils.toBN(await web3.eth.getBalance(ftsoRewardManager.address));
-            assert.equal(balance.toNumber(), 1000000);
+            assert.equal(balance.toNumber(), 2000000);
         });
 
         it("Should gracefully receive self-destruct proceeds", async () => {
@@ -1203,7 +1200,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         it("Should not accept NAT unless from inflation", async () => {
             // Assemble
             // Act
-            const receivePromise = ftsoRewardManager.receiveInflation({ value: "1000000" });
+            const receivePromise = ftsoRewardManager.receiveInflation({ value: "2000000" });
             // Assert
             await expectRevert(receivePromise, "inflation only");
         });
@@ -1222,9 +1219,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
             // Assert
-            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
+            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
         });
 
         it("Should enable rewards to be claimed by delegator once reward epoch finalized - percentage", async () => {
@@ -1244,9 +1241,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs = 694
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage", async () => {
@@ -1267,18 +1264,18 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - with self-destruct proceeds", async () => {
@@ -1303,9 +1300,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
             let selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 1);
 
@@ -1321,9 +1318,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
             selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 2);
         });
@@ -1346,9 +1343,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
 
             // if claiming again, get 0
             let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
@@ -1361,9 +1358,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
 
             // if claiming again, get 0
             let natOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
@@ -1432,10 +1429,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
-            // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
-            // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 0.95 (fee) = 2309
+            // So, 14000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
+            // a4 -> a3 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 0.95 (fee) + 1 (dust) = 660
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2309);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 660);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
@@ -1444,9 +1441,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
-            // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 1.05 (fee) + 1 (dust) = 2553
+            // a1 -> a5 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 1.05 (fee) = 730
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 2553);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 730);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider (fee 5%) once reward epoch finalized 2 - percentage", async () => {
@@ -1474,10 +1471,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
-            // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
-            // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1 / 1001) * 0.95 (fee) = 4
+            // So, 14000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
+            // a4 -> a3 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs * (1 / 1001) * 0.95 (fee) = 1
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 4);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 1);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
@@ -1486,9 +1483,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
-            // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1000/1001 + 1/1001 * 0.05) (fee) + 1 (dust) = 4858
+            // a1 -> a5 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs * (1000/1001 + 1/1001 * 0.05) (fee) = 1389
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 4858);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 1389);
         });
 
         it("Should enable rewards to be claimed once reward epoch finalized - explicit", async () => {
@@ -1505,9 +1502,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[1] });
             // Assert
-            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
+            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
         });
 
         it("Should revert at claiming rewards (not using claimRewardFromDataProviders) once reward epoch finalized - explicit", async () => {
@@ -1541,9 +1538,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs = 694
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
         });
 
         it("Should enable rewards to be claimed by delegator once reward epoch finalized - with self-destruct proceeds", async () => {
@@ -1568,9 +1565,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs = 694
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 694);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
             const selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
             assert.equal(selfDestructProceeds.toNumber(), 1);
         });
@@ -1593,18 +1590,18 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - explicit - should not claim twice", async () => {
@@ -1625,9 +1622,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[4] });
             // Assert
-            // a4 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 347);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
 
             // if claiming again, get 0
             let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
@@ -1640,14 +1637,14 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 347);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
 
             // if claiming again, get 0
             let natOpeningBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             await ftsoRewardManager.claimReward(accounts[5], [0], { from: accounts[1] });
-            // a1 -> a5 claimed should be (1000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 347
+            // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance3 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             assert.equal(natClosingBalance3.sub(natOpeningBalance3).toNumber(), 0);
         });
@@ -1710,10 +1707,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
-            // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
-            // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 0.95 (fee) = 2309
+            // So, 14000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
+            // a4 -> a3 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 0.95 (fee) + 1 (dust) = 660
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2309);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 660);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
@@ -1722,9 +1719,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
-            // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 1.05 (fee) + 1 (dust) = 2553
+            // a1 -> a5 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) * 1.05 (fee) = 730
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 2553);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 730);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider (fee 5%) once reward epoch finalized 2 - explicit", async () => {
@@ -1752,10 +1749,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             // Assert
             // Note: 3 reward epochs passed (starting epoch 0), no rewards allocated, then 1 more daily allocation.
-            // So, 7000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
-            // a4 -> a3 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1 / 1001) * 0.95 (fee) = 4
+            // So, 14000000 rewards to distribute starting in epoch 3 (two dailies in a reward epoch).
+            // a4 -> a3 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs * (1 / 1001) * 0.95 (fee) = 1
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 4);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 1);
 
             // Act
             // Claim reward to a5 - test both 3rd party claim and avoid
@@ -1764,9 +1761,9 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[5], [3], { from: accounts[1] });
 
             // Assert
-            // a1 -> a5 claimed should be (7000000 / 720) * 0.25 * 2 price epochs * (1000/1001 + 1/1001 * 0.05) (fee) + 1 (dust) = 4858
+            // a1 -> a5 claimed should be (14000000 / 5040) * 0.25 * 2 price epochs * (1000/1001 + 1/1001 * 0.05) (fee) = 1389
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 4858);
+            assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 1389);
         });
 
         it("Should claim from multiple reward epochs - get nothing for reward epochs not finalized", async () => {
@@ -1778,12 +1775,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             await distributeRewards(accounts, startTs, 2, false);
 
-            // can claim Math.floor(1000000 / 720) + Math.floor((1000000 - 1388) / 719) = 2776
+            // can claim Math.ceil(2000000 / 5040) + Math.ceil((2000000 - 397) / (5040 - 1)) = 794
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimReward(accounts[3], [0, 1, 2, 3], { from: accounts[1] });
 
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2776);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 794);
         });
 
         it("Should claim from multiple reward epochs - get nothing for reward epochs not finalized - explicit", async () => {
@@ -1795,12 +1792,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             await distributeRewards(accounts, startTs, 2, false);
 
-            // can claim Math.floor(1000000 / 720) + Math.floor((1000000 - 1388) / 719) = 2776
+            // can claim Math.ceil(2000000 / 5040) + Math.ceil((2000000 - 396) / (5040 - 1)) = 794
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimRewardFromDataProviders(accounts[3], [0, 1, 2, 3], [accounts[1], accounts[2]], { from: accounts[1] });
 
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 2776);
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 794);
         });
 
         it("Should enable rewards to be claimed and wrapped once reward epoch finalized - percentage", async () => {
@@ -1818,10 +1815,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimAndWrapReward(accounts[3], [0], { from: accounts[1] });
             // Assert
-            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
+            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let wNatClosingBalance = await wNat.votePowerOf(accounts[3]);
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 694);
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 198);
             assert(natOpeningBalance.eq(natClosingBalance));
         });
 
@@ -1840,10 +1837,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             await ftsoRewardManager.claimAndWrapRewardFromDataProviders(accounts[3], [0], [accounts[1]], { from: accounts[1] });
             // Assert
-            // a1 -> a3 claimed should be (1000000 / (86400 / 120)) * 0.25 * 2 price epochs = 694
+            // a1 -> a3 claimed should be (2000000 / (86400 / 120)) * 0.25 * 2 price epochs = 198
             let wNatClosingBalance = await wNat.votePowerOf(accounts[3]);
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 694);
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 198);
             assert(natOpeningBalance.eq(natClosingBalance));
         });
     });
@@ -1867,7 +1864,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
             rewardExpired = await ftsoRewardManager.totalExpiredWei();
-            assert.equal(rewardExpired.toNumber(), 2082);
+            assert.equal(rewardExpired.toNumber(), 594);
         });
 
         it("Should only be called from ftso manager or new ftso reward manager", async () => {
