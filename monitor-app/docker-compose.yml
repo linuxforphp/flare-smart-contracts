@@ -37,11 +37,11 @@ services:
     image: flarenetwork/monitor-app
     container_name: monitor-app
     volumes:
-      -${DEPLOYMENT_DIRECTORY}:${DEPLOYMENT_DIRECTORY}
+      - ${DEPLOYMENT_DIRECTORY}:${DEPLOYMENT_DIRECTORY}
     environment: 
       - ENDPOINT=${ENDPOINT}
       - CHAINID=${CHAINID}
-      - CONTRACTS="${DEPLOYMENT_DIRECTORY}/${SMARTCONTRACTS_FILE}"
+      - CONTRACTS=${DEPLOYMENT_DIRECTORY}/${SMARTCONTRACTS_FILE}
     ports:
       - 4000:4000
     expose:
