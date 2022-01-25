@@ -572,14 +572,14 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
         .add(gasCost);
 
     // Compute what we should have distributed for one price epoch
-    const almostFullDaySec = BN(3600 * 24 - 1);
+    const almost7FullDaysSec = BN(7 * 3600 * 24 - 1);
     // Get the daily inflation authorized on ftso reward manager
     day1_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
     day1_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
     const authorizedInflationTimestamp = await ftsoRewardManager.lastInflationAuthorizationReceivedTs();
 
     // use the same formula as in ftso reward manager to calculate claimable value
-    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almostFullDaySec);
+    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almost7FullDaysSec);
     const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (firstPriceEpoch + 1) * priceEpochDurationSeconds.toNumber() - 1);
     const shouldClaimed = day1_dailyAuthorizedInflation.div(
       (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSeconds).add(BN(1))
@@ -807,82 +807,81 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     console.log('\x1b[32m%s\x1b[0m', "Day 5 claims and balances match");
 
     // We now start claiming and reporting left and right (we wanna exhaust the reward manager)
-    const RewardEpochsToExhaust = 23  // number of reward epoch we wanna do full reporting - must be less than a day to claim before new topup happens
-    let ExhaustRewardEpochs = []
-    for (let hours = 0; hours < RewardEpochsToExhaust; hours++) {
-      ExhaustRewardEpochs.push((await ftsoManager.getCurrentRewardEpoch()).toNumber());
-      await submitRevealMultipleRewardAndFinalizeEpoch(submitters, ftsos, ftsoIndices, priceSeries, 2);
-    }
-
-    // Prepare some variables to save claiming results to 
-    const allAccounts = [p1, p2, p3, d2, d1]
-    let awarded_rewards = [BN(0), BN(0), BN(0), BN(0), BN(0)];
-    let txCosts = [BN(0), BN(0), BN(0), BN(0), BN(0)];
-    let txGasUsed = [BN(0), BN(0), BN(0), BN(0), BN(0)];
-
-    // Get the opening balances
-    const accountsOpeningBalances = [
-      BN(await web3.eth.getBalance(p1)),
-      BN(await web3.eth.getBalance(p2)),
-      BN(await web3.eth.getBalance(p3)),
-      BN(await web3.eth.getBalance(d2)),
-      BN(await web3.eth.getBalance(d1))]
-
-    // Claim for all price providers
-    console.log(`Claiming rewards for reward epoch ${ExhaustRewardEpochs}`);
-
-    for (let acc_index = 0; acc_index < allAccounts.length; acc_index++) {
-      console.log(`Claiming reward for acc ${acc_index}`);
-      let rwMnBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
-      console.log(`rewardManager Balance: ${rwMnBalance.toString(10)}`);
-      let TempReward = BN(0);
-      try {
-        for (let tempEpoch of ExhaustRewardEpochs) {
-          let partReward = (await ftsoRewardManager.getStateOfRewards(allAccounts[acc_index], tempEpoch));
-          for (let rew of partReward[1]) {
-            TempReward = TempReward.add(rew);
-          }
-        }
-        console.log(`Account can claim:     ${TempReward.toString(10)}`);
-      } catch (e: unknown) {
-        console.log("Manager Exhausted");
-        console.log(e);
+    for (let i = 1; i <= 4; i++) {
+      const RewardEpochsToExhaust = i == 4 ? 23 : 24;  // number of reward epoch we wanna do full reporting
+      let ExhaustRewardEpochs = []
+      for (let hours = 0; hours < RewardEpochsToExhaust; hours++) {
+        ExhaustRewardEpochs.push((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+        await submitRevealMultipleRewardAndFinalizeEpoch(submitters, ftsos, ftsoIndices, priceSeries, 2);
       }
 
-      try {
-        if (true && acc_index < 5) {
-          const tx = await ftsoRewardManager.claimReward(allAccounts[acc_index], ExhaustRewardEpochs, { from: allAccounts[acc_index] });
-          txGasUsed[acc_index] = tx.receipt.cumulativeGasUsedok;
-          txCosts[acc_index] = await calcGasCost(tx);
-          console.log("CLAIMED")
-        } else {
-          console.log("Skip claim")
+      // Prepare some variables to save claiming results to 
+      const allAccounts = [p1, p2, p3, d2, d1]
+      let awarded_rewards = [BN(0), BN(0), BN(0), BN(0), BN(0)];
+      let txCosts = [BN(0), BN(0), BN(0), BN(0), BN(0)];
+      let txGasUsed = [BN(0), BN(0), BN(0), BN(0), BN(0)];
+
+      // Get the opening balances
+      const accountsOpeningBalances = [
+        BN(await web3.eth.getBalance(p1)),
+        BN(await web3.eth.getBalance(p2)),
+        BN(await web3.eth.getBalance(p3)),
+        BN(await web3.eth.getBalance(d2)),
+        BN(await web3.eth.getBalance(d1))]
+
+      // Claim for all price providers
+      console.log(`Claiming rewards for reward epoch ${ExhaustRewardEpochs}`);
+
+      for (let acc_index = 0; acc_index < allAccounts.length; acc_index++) {
+        console.log(`Claiming reward for acc ${acc_index}`);
+        let rwMnBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
+        console.log(`rewardManager Balance: ${rwMnBalance.toString(10)}`);
+        let TempReward = BN(0);
+        try {
+          for (let tempEpoch of ExhaustRewardEpochs) {
+            let partReward = (await ftsoRewardManager.getStateOfRewards(allAccounts[acc_index], tempEpoch));
+            for (let rew of partReward[1]) {
+              TempReward = TempReward.add(rew);
+            }
+          }
+          console.log(`Account can claim:     ${TempReward.toString(10)}`);
+        } catch (e: unknown) {
+          console.log("Manager Exhausted");
+          console.log(e);
         }
-      } catch (e: unknown) { console.log("Claim failed for acc " + acc_index) }
-      let endRwMnBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
-      awarded_rewards[acc_index] = rwMnBalance.sub(endRwMnBalance);
-      console.log(`Account got claim:     ${awarded_rewards[acc_index].toString(10)}`);
+
+        try {
+          if (true && acc_index < 5) {
+            const tx = await ftsoRewardManager.claimReward(allAccounts[acc_index], ExhaustRewardEpochs, { from: allAccounts[acc_index] });
+            txGasUsed[acc_index] = tx.receipt.cumulativeGasUsedok;
+            txCosts[acc_index] = await calcGasCost(tx);
+            console.log("CLAIMED")
+          } else {
+            console.log("Skip claim")
+          }
+        } catch (e: unknown) { console.log("Claim failed for acc " + acc_index) }
+        let endRwMnBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
+        awarded_rewards[acc_index] = rwMnBalance.sub(endRwMnBalance);
+        console.log(`Account got claim:     ${awarded_rewards[acc_index].toString(10)}`);
+      }
+      let rwMnBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
+      console.log(`rewardManager Balance: ${rwMnBalance.toString(10)}`);
+
+      const accountsClosingBalances = [
+        BN(await web3.eth.getBalance(p1)),
+        BN(await web3.eth.getBalance(p2)),
+        BN(await web3.eth.getBalance(p3)),
+        BN(await web3.eth.getBalance(d2)),
+        BN(await web3.eth.getBalance(d1))]
+
+      // TEST 7 asserts
+      // Make sure that all accounts claimed some rewards
+      assert.equal((accountsClosingBalances[0].sub(accountsOpeningBalances[0]).add(txCosts[0])).toString(10), awarded_rewards[0].toString(10));
+      assert.equal((accountsClosingBalances[1].sub(accountsOpeningBalances[1]).add(txCosts[1])).toString(10), awarded_rewards[1].toString(10));
+      assert.equal((accountsClosingBalances[2].sub(accountsOpeningBalances[2]).add(txCosts[2])).toString(10), awarded_rewards[2].toString(10));
+      assert.equal((accountsClosingBalances[3].sub(accountsOpeningBalances[3]).add(txCosts[3])).toString(10), awarded_rewards[3].toString(10));
+      assert.equal((accountsClosingBalances[4].sub(accountsOpeningBalances[4]).add(txCosts[4])).toString(10), awarded_rewards[4].toString(10));
     }
-    let rwMnBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
-    console.log(`rewardManager Balance: ${rwMnBalance.toString(10)}`);
-
-
-    const accountsClosingBalances = [
-      BN(await web3.eth.getBalance(p1)),
-      BN(await web3.eth.getBalance(p2)),
-      BN(await web3.eth.getBalance(p3)),
-      BN(await web3.eth.getBalance(d2)),
-      BN(await web3.eth.getBalance(d1))]
-
-    // TEST 7 asserts
-    // Make sure that first 4 accounts claimed some rewards
-    assert.equal((accountsClosingBalances[0].sub(accountsOpeningBalances[0]).add(txCosts[0])).toString(10), awarded_rewards[0].toString(10));
-    assert.equal((accountsClosingBalances[1].sub(accountsOpeningBalances[1]).add(txCosts[1])).toString(10), awarded_rewards[1].toString(10));
-    assert.equal((accountsClosingBalances[2].sub(accountsOpeningBalances[2]).add(txCosts[2])).toString(10), awarded_rewards[2].toString(10));
-    assert.equal((accountsClosingBalances[3].sub(accountsOpeningBalances[3]).add(txCosts[3])).toString(10), awarded_rewards[3].toString(10));
-
-    // Make sure that last account did not claim any rewards
-    assert.equal(accountsClosingBalances[4].toString(10), accountsOpeningBalances[4].toString(10));
 
     console.log('\x1b[32m%s\x1b[0m', "Exhausting reward manager balances match");
   });

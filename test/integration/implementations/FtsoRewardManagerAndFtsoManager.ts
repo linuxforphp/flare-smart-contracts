@@ -124,7 +124,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
             [ADDRESS_UPDATER, mockInflation.address, ftsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
         
-        await mockInflation.setDailyAuthorizedInflation(BN(1000000));
+        await mockInflation.setDailyAuthorizedInflation(BN(2000000));
 
         await ftsoRewardManager.activate();
     });
@@ -144,7 +144,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
 
             // give reward manager some nat to distribute
-            await mockInflation.receiveInflation({ value: "1000000" } );
+            await mockInflation.receiveInflation({ value: "2000000" } );
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -166,14 +166,14 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await ftsoManager.daemonize();
 
             // Assert
-            // a1 should be (1000000 / 720) * 0.25 = 347
-            // a2 should be = (1000000 / 720) * 0.75 = 1041
+            // a1 should be (2000000 / 5040) * 0.25 = 99
+            // a2 should be = (2000000 / 5040) * 0.75 = 297
             // There is a remainder. It is not being allocated. It should get progressively
             // smaller using a double declining balance allocation.
             let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
-            assert.equal(a1UnclaimedReward[0].toString(), "347");
-            assert.equal(a2UnclaimedReward[0].toString(), "1041");
+            assert.equal(a1UnclaimedReward[0].toString(), "99");
+            assert.equal(a2UnclaimedReward[0].toString(), "297");
         });
     });
 
@@ -195,7 +195,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Stub accounting system to make it balance with RM contract
 
             // give reward manager some nat to distribute
-            await mockInflation.receiveInflation({ value: "1000000" } );
+            await mockInflation.receiveInflation({ value: "2000000" } );
 
             await setDefaultGovernanceParameters(ftsoManager);
             // add fakey ftso
@@ -226,9 +226,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
 
             // Assert
-            // a1 -> a3 claimed should be (1000000 / 720) * 0.25 * 2 finalizations = 694
+            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 finalizations = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), Math.floor(1000000 / 720 * 0.25 * 2));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), Math.floor(2000000 / 5040 * 0.25 * 2));
         });
     });
 });
