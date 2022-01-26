@@ -23,6 +23,7 @@ import { proposeGovernance } from "./deployment/scripts/propose-governance";
 import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-working-balance";
 import { transferGovernance } from "./deployment/scripts/transfer-governance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
+import { TASK_CONSOLE } from "hardhat/builtin-tasks/task-names";
 import "./type-extensions";
 
 
@@ -66,17 +67,22 @@ function injectModule(hre: any, mod: any) {
   }
 }
 
-extendEnvironment(async (hre) => {
+extendEnvironment((hre) => {
   injectModule(hre, require('./scripts/console-scripts/console-helpers'));
   hre.getChainConfigParameters = getChainConfigParameters;
   hre.getContractsMap = (filePath?: string) => readContracts(hre.network.name, filePath).getContractsMap(hre);
-  // use try catch as hardhat.json has wrong addresses when used in unit tests
-  try {
-    hre.c = await hre.getContractsMap();
-  } catch (error) {
-    // do nothing
-  }
 });
+
+task(TASK_CONSOLE, "Opens a hardhat console")
+  .setAction(async (args, hre, runSuper) => {
+    // use try catch as hardhat.json has wrong addresses when used in unit tests
+    try {
+      hre.c = await hre.getContractsMap();
+    } catch (error) {
+      // do nothing
+    }
+    return runSuper(args);
+  });
 
 // Rig up deployment tasks
 task("deploy-contracts", "Deploy all contracts")
