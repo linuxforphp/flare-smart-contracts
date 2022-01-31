@@ -17,13 +17,8 @@ interface IFtso {
         PREVIOUS_PRICE_COPIED_EXCEPTION
     }
 
-    // events
-    event PriceHashSubmitted(
-        address indexed submitter, uint256 indexed epochId, bytes32 hash, uint256 timestamp
-    );
-
     event PriceRevealed(
-        address indexed voter, uint256 indexed epochId, uint256 price, uint256 random, uint256 timestamp,
+        address indexed voter, uint256 indexed epochId, uint256 price, uint256 timestamp,
         uint256 votePowerNat, uint256 votePowerAsset
     );
 
@@ -64,13 +59,13 @@ interface IFtso {
      * @param _timestamp            Timestamp as seconds from unix epoch
      */
     function getEpochId(uint256 _timestamp) external view returns (uint256);
-
+    
     /**
      * @notice Returns random number of the specified epoch
      * @param _epochId              Id of the epoch
      */
     function getRandom(uint256 _epochId) external view returns (uint256);
-    
+
     /**
      * @notice Returns asset price consented in specific epoch
      * @param _epochId              Id of the epoch

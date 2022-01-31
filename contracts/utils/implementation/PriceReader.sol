@@ -13,7 +13,6 @@ contract PriceReader is AddressUpdatable {
     struct PriceInfo {
         string symbol;
         uint256 price;
-        uint256 random;
         IFtso ftsoAddress;
         uint256 ftsoIndex;
     }
@@ -94,8 +93,6 @@ contract PriceReader is AddressUpdatable {
         for(uint256 j = 0; j < length; ++j){
             result[j].symbol = ftsos[j].symbol();
             result[j].price = ftsos[j].getEpochPrice(epochId);
-            // Randoms are shifted by one
-            result[j].random = ftsos[j].getRandom(epochId - 1);
             result[j].ftsoAddress = ftsos[j];
             result[j].ftsoIndex = indices[j];
         }

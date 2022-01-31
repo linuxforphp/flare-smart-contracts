@@ -19,8 +19,8 @@ async function getTime(): Promise<number>{
     return timestamp
 }
 
-export function submitPriceHash(price: number, random: number, address: string,): string {
-    return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint256", "uint256", "address" ], [ price.toString(), random.toString(), address]))
+export function submitHash(ftsoIndices: number[], prices: number[], random: BN, address: string): string {
+    return ethers.utils.keccak256(web3.eth.abi.encodeParameters([ "uint256[]", "uint256[]", "uint256", "address" ], [ ftsoIndices, prices, random, address ]));
 }
 
 // TODO: Implement this to read prices from interesting places
@@ -29,8 +29,8 @@ function getPrice(epochId: number, asset: string): number{
 }
 
 // TODO: Maybe change random generation
-function getRandom(epochId: number, asset: string): number{
-    return Math.floor(Math.random() * 1000);
+function getRandom(epochId: number): BN {
+    return toBN(2).pow(toBN(128)).addn(Math.floor(Math.random() * 1000));
 }
 
 const MockPriceSubmitter = artifacts.require("MockPriceSubmitter");
@@ -106,21 +106,18 @@ async function main() {
         // Force hardhat to mine a new block which will have an updated timestamp. if we don't hardhat timestamp will not update.
         time.advanceBlock();
         console.log("Start submit for epoch: ", currentEpoch); 
-        // Prepare prices and randoms
-        const randoms = symbols.map(sym => getRandom(currentEpoch, sym)); 
+        // Prepare prices and random
+        const random = getRandom(currentEpoch); 
         // Just a mock here, real price should not be random
         const prices = symbols.map(sym => getPrice(currentEpoch, sym)); 
-        const hashes = prices.map((p, i) => 
-            submitPriceHash(p, randoms[i], priceProviderAccount.address)
-        );
+        const hash = submitHash(ftsoIndices, prices, random, priceProviderAccount.address);
+
         console.log("Prices: ", prices);
-        console.log("Randoms: ", randoms);
+        console.log("Random: ", random);
         // Submit price, on everything
-        const submission = await priceSubmitter.submitPriceHashes(currentEpoch, 
-            ftsoIndices, hashes, {from: priceProviderAccount.address}
+        const submission = await priceSubmitter.submitHash(currentEpoch, hash, {from: priceProviderAccount.address}
         );
-        expectEvent(submission, "PriceHashesSubmitted", { ftsos: ftsoAddresses, 
-            epochId: currentEpoch.toString(), hashes: hashes});
+        expectEvent(submission, "HashSubmitted", { epochId: currentEpoch.toString(), hash: hash});
 
         currentEpoch = currentEpoch + 1;
 
@@ -132,7 +129,7 @@ async function main() {
         
         // Reval prices
         time.advanceBlock();
-        const reveal = await priceSubmitter.revealPrices(currentEpoch - 1, ftsoIndices, prices, randoms, {from: priceProviderAccount.address});
+        const reveal = await priceSubmitter.revealPrices(currentEpoch - 1, ftsoIndices, prices, random, {from: priceProviderAccount.address});
         await expectEvent(reveal, "PricesRevealed", { ftsos: ftsoAddresses,
             epochId: (currentEpoch - 1).toString(), prices: prices.map(x => toBN(x)) });
 

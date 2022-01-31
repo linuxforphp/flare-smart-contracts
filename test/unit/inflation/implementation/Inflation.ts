@@ -1200,6 +1200,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
     });
 
+    it("Should return contract name", async () => {
+      expect(await inflation.getContractName()).to.equals(Contracts.INFLATION);
+    });
+
   });
 
   // there is no fallback mode in Inflation

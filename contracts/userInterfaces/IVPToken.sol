@@ -111,6 +111,13 @@ interface IVPToken is IERC20 {
     */
     function votePowerOfAt(address _owner, uint256 _blockNumber) external view returns(uint256);
 
+    /**
+    * @notice Get the vote power of `_owner` at block `_blockNumber`, ignoring revocation information (and cache).
+    * @param _owner The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_owner` at `_blockNumber`. Result doesn't change if vote power is revoked.
+    */
+    function votePowerOfAtIgnoringRevocation(address _owner, uint256 _blockNumber) external view returns(uint256);
 
     /**
      * @notice Get the delegation mode for '_who'. This mode determines whether vote power is

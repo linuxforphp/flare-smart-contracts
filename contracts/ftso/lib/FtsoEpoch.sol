@@ -49,7 +49,6 @@ library FtsoEpoch {
         uint256 accumulatedVotePowerNat;        // total native token vote power accumulated from votes in epoch
         // base weight ratio between asset and native token used to combine weights
         uint256 baseWeightRatio;
-        uint256 random;                         // random number associated with the epoch
         IIVPToken[] assets;                     // list of assets
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         uint256 nextVoteIndex;
@@ -106,15 +105,13 @@ library FtsoEpoch {
      * @param _votePowerNat         Vote power for native token
      * @param _votePowerAsset       Vote power for asset
      * @param _price                Price in USD submitted in a vote
-     * @param _random               Random number associated with the vote
      */
     function _addVote(
         Instance storage _instance,
         address _voter,
         uint256 _votePowerNat,
         uint256 _votePowerAsset,
-        uint256 _price,
-        uint256 _random
+        uint256 _price
     )
         internal
     {
@@ -132,7 +129,6 @@ library FtsoEpoch {
         _instance.votes[index] = vote;
         _instance.nextVoteIndex = index + 1;
         _instance.accumulatedVotePowerNat = _instance.accumulatedVotePowerNat.add(_votePowerNat);
-        _instance.random += _random;
     }
     
     /**

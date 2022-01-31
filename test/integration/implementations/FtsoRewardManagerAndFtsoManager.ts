@@ -62,8 +62,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             60,
             0,
             1e10,
-            defaultPriceEpochCyclicBufferSize,
-            1
+            defaultPriceEpochCyclicBufferSize
         );
         
         ftsoRewardManager = await FtsoRewardManager.new(
@@ -133,9 +132,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         it("Should finalize price epoch and distribute unclaimed rewards", async () => {
             // Assemble
-            // stub ftso randomizer
-            const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-            await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
             // stub ftso finalizer
             const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
             const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -183,9 +179,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // deposit some wNats
             await wNat.deposit({ from: accounts[1], value: "100" });
             // Assemble
-            // stub ftso randomizer
-            const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-            await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
             // stub ftso finalizer
             const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
             const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(

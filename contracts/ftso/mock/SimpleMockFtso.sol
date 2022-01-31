@@ -7,10 +7,22 @@ import "../implementation/Ftso.sol";
 contract SimpleMockFtso is Ftso {
     using FtsoEpoch for FtsoEpoch.State;
     
+    string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
+    string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
+    string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
+
+    mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
+    mapping(uint256 => uint256) internal randoms;
+    
+    // events
+    event PriceHashSubmitted(
+        address indexed submitter, uint256 indexed epochId, bytes32 hash, uint256 timestamp
+    );
+    
     constructor(
         string memory _symbol,
         uint256 _decimals,
-        address _priceSubmitter,
+        IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         address _ftsoManager,
         uint256 _firstEpochStartTs,
@@ -18,8 +30,7 @@ contract SimpleMockFtso is Ftso {
         uint256 _revealPeriodSeconds,
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
-        uint256 _cyclicBufferSize,
-        uint256 _minimalRandom
+        uint256 _cyclicBufferSize
     ) 
         Ftso(
             _symbol,
@@ -32,8 +43,7 @@ contract SimpleMockFtso is Ftso {
             _revealPeriodSeconds,
             _initialPrice,
             _priceDeviationThresholdBIPS,
-            _cyclicBufferSize,
-            _minimalRandom
+            _cyclicBufferSize
         )
     {}
 
@@ -44,7 +54,10 @@ contract SimpleMockFtso is Ftso {
      * @notice Emits PriceHashSubmitted event
      */
     function submitPriceHash(uint256 _epochId, bytes32 _hash) external whenActive {
-        _submitPriceHash(msg.sender, _epochId, _hash);
+        require(_epochId == getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
+        require(epochVoterHash[_epochId][msg.sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
+        epochVoterHash[_epochId][msg.sender] = _hash;
+        emit PriceHashSubmitted(msg.sender, _epochId, _hash, block.timestamp);
     }
 
     /**
@@ -56,7 +69,14 @@ contract SimpleMockFtso is Ftso {
      * @notice Emits PriceRevealed event
      */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
-        _revealPrice(msg.sender, _epochId, _price, _random, wNatVotePowerCached(msg.sender, _epochId));
+        require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encode(_price, _random, msg.sender)), 
+            ERR_PRICE_INVALID);
+        _revealPrice(msg.sender, _epochId, _price, wNatVotePowerCached(msg.sender, _epochId));
+        
+        randoms[_epochId] += uint256(keccak256(abi.encode(_random, [_price])));
+
+        // prevent price submission from being revealed twice
+        delete epochVoterHash[_epochId][msg.sender];
     }
     
     function readVotes(uint256 _epochId) external view 
@@ -106,7 +126,7 @@ contract SimpleMockFtso is Ftso {
                 epoch.fallbackMode,
                 uint256(epoch.votePowerBlock)
             );
-            FtsoEpoch._addVote(epoch, _owners[i], votePowerNat, votePowerAsset, 0, 0);
+            FtsoEpoch._addVote(epoch, _owners[i], votePowerNat, votePowerAsset, 0);
             FtsoVote.Instance memory vote = epoch.votes[epoch.nextVoteIndex - 1];
             weightsNat[i] = vote.weightNat;
             weightsAsset[i] = vote.weightAsset;
@@ -137,5 +157,12 @@ contract SimpleMockFtso is Ftso {
             return currentEpochId;
         }
         return currentEpochId - 1;
+    }
+
+        /**
+     * @notice Returns random for given epoch id
+     */
+    function _getRandom(uint256 _epochId) internal view override returns (uint256) {
+        return randoms[_epochId];
     }
 }

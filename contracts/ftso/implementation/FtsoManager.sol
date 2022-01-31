@@ -431,16 +431,20 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         return cleanupBlockNumberManager;
     }
 
+    function getCurrentPriceEpochId() external view override returns (uint256 _priceEpochId) {
+        return _getCurrentPriceEpochId();
+    }
+
     /**
      * @dev half-closed intervals - end time not included
      */
     function getCurrentPriceEpochData() external view override 
         returns (
-            uint256 priceEpochId,
-            uint256 priceEpochStartTimestamp,
-            uint256 priceEpochEndTimestamp,
-            uint256 priceEpochRevealEndTimestamp,
-            uint256 currentTimestamp
+            uint256 _priceEpochId,
+            uint256 _priceEpochStartTimestamp,
+            uint256 _priceEpochEndTimestamp,
+            uint256 _priceEpochRevealEndTimestamp,
+            uint256 _currentTimestamp
         )
     {
         uint256 epochId = _getCurrentPriceEpochId();
@@ -743,9 +747,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         uint256 numFtsos = ftsos.length;
 
         uint256 lastRandom = block.timestamp;
-        for (uint256 i = 0; i < numFtsos; ++i) {
-            lastRandom += ftsos[i].getCurrentRandom();
-        }
+        lastRandom += priceSubmitter.getCurrentRandom();
 
         lastRandom = uint256(keccak256(abi.encode(lastRandom)));
         // @dev when considering block boundary for vote power block:
@@ -868,13 +870,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                     ))) % numFtsos;
             } else {
                 // at least one finalize with real FTSO
-                uint256 currentRandomSum = 0;
-                for (uint256 i = 0; i < numFtsos; i++) {
-                    currentRandomSum += ftsos[i].getCurrentRandom(); // may overflow but it is still ok
-                }
-                //slither-disable-next-line weak-prng           // ftso random calculated safely from inputs
+                uint256 currentRandom = priceSubmitter.getCurrentRandom();
+                //slither-disable-next-line weak-prng           // random calculated safely from inputs
                 chosenFtsoId = uint256(keccak256(abi.encode(
-                        currentRandomSum, block.timestamp
+                        currentRandom, block.timestamp
                     ))) % numFtsos;
             }
             address[] memory addresses;

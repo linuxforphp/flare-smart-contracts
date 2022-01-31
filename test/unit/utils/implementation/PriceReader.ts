@@ -2,7 +2,7 @@
 import { constants } from '@openzeppelin/test-helpers';
 import { Contracts } from '../../../../deployment/scripts/Contracts';
 import { Ftso__factory } from '../../../../typechain';
-import { FtsoRegistryInstance, MockContractInstance, PriceReaderInstance, AddressUpdaterInstance, MockFtsoInstance, FtsoInstance } from "../../../../typechain-truffle";
+import { FtsoRegistryInstance, MockContractInstance, PriceReaderInstance, MockFtsoInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 import { zipi, zip, encodeContractNames } from '../../../utils/test-helpers';
 const { ethers } = require('hardhat');
@@ -22,7 +22,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
   const GOVERNANCE_ADDRESS = accounts[0];
   const ADDRESS_UPDATER = accounts[16];
   let ftsos: MockContractInstance[] = [];
-  let dummyFtso: FtsoInstance;
+  let dummyFtso: MockFtsoInstance;
 
   beforeEach(async() => {
 
@@ -49,8 +49,7 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
       1, // initial token price 0.00001$
       1e10,
       defaultPriceEpochCyclicBufferSize,
-      false,
-      1
+      false
     );
 
     const ftsoCreadedInstance = Ftso__factory.createInterface();
@@ -58,8 +57,6 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
     const getPriceMethod2021 = dummyFtso.contract.methods.getEpochPrice(2021).encodeABI();
     const getPriceMethod2022 = dummyFtso.contract.methods.getEpochPrice(2022).encodeABI();
-    const getRandomMethod2021 = dummyFtso.contract.methods.getRandom(2020).encodeABI();
-    const getRandomMethod2022 = dummyFtso.contract.methods.getRandom(2021).encodeABI();
     const getCurrentEpochId = dummyFtso.contract.methods.getCurrentEpochId().encodeABI();
 
     let promises: Promise<any>[] = [];
@@ -70,8 +67,6 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
         ftso.givenMethodReturn(shash, ethers.utils.defaultAbiCoder.encode(["string"], [`ATOK-${i}`])),
         ftso.givenCalldataReturnUint(getPriceMethod2021, 100 + i),
         ftso.givenCalldataReturnUint(getPriceMethod2022, 200 + i*2),
-        ftso.givenCalldataReturnUint(getRandomMethod2021, 300 + i),
-        ftso.givenCalldataReturnUint(getRandomMethod2022, 400 + i*2),
         ftso.givenCalldataReturnUint(getCurrentEpochId, 2022),
   
         ftsoRegistryContract.addFtso(ftso.address, {from: GOVERNANCE_ADDRESS}),
@@ -89,8 +84,6 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     for(let [ind, ftso, [priceData, currentPriceData ]] of zipi(ftsos, zip(allPrices2022, allPricesCurrent))){
       assert.equal(priceData.price.toString(), `${200 + ind*2}`);
       assert.equal(currentPriceData.price.toString(), `${200 + ind*2}`);
-      assert.equal(priceData.random.toString(), `${400 + ind*2}`);
-      assert.equal(currentPriceData.random.toString(), `${400 + ind*2}`);
       assert.equal(priceData.ftsoAddress, ftso.address);
       assert.equal(currentPriceData.ftsoAddress, ftso.address);
       assert.equal(priceData.symbol, `ATOK-${ind}`);
@@ -106,7 +99,6 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
 
     for(let [ind, ftso, priceData] of zipi(ftsos, allPrices2021)){
       assert.equal(priceData.price.toString(), `${100 + ind}`);
-      assert.equal(priceData.random.toString(), `${300 + ind}`);
       assert.equal(priceData.ftsoAddress, ftso.address);
       assert.equal(priceData.symbol, `ATOK-${ind}`);
       assert.equal(priceData.ftsoIndex.toString(), `${ind}`);

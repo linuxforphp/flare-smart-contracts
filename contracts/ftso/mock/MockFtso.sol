@@ -23,7 +23,7 @@ contract MockFtso is SimpleMockFtso {
     constructor(
         string memory _symbol,
         uint256 _decimals,
-        address _priceSubmitter,
+        IPriceSubmitter _priceSubmitter,
         IIVPToken _wNat,
         address _ftsoManager,
         uint256 _firstEpochStartTs,
@@ -32,8 +32,7 @@ contract MockFtso is SimpleMockFtso {
         uint256 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize,
-        bool activate,
-        uint256 _minimalRandom
+        bool activate
     )
         SimpleMockFtso(
             _symbol,
@@ -46,8 +45,7 @@ contract MockFtso is SimpleMockFtso {
             _revealPeriodSeconds,
             _initialPrice,
             _priceDeviationThresholdBIPS,
-            _cyclicBufferSize,
-            _minimalRandom
+            _cyclicBufferSize
         )
     {
         // Init only when sensible settings. Otherwise use mock similarly like Ftso.sol

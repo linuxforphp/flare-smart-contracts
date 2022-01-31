@@ -1,7 +1,7 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Ftso, FtsoRewardManager, PriceSubmitter } from "../../../typechain";
 import { BaseEvent, ethersEventIs } from "../../utils/EventDecoder";
-import { submitPriceHash, toBigNumber, toBigNumberFixedPrecision } from "../../utils/test-helpers";
+import { getRandom, submitHash, toBigNumber, toBigNumberFixedPrecision } from "../../utils/test-helpers";
 import { coinFlip, randomChoice, randomInt, randomNum, toNumber } from "../../utils/fuzzing-utils";
 import { expectErrors } from "./EndToEndFuzzingUtils";
 import { latestBlockTimestamp } from "./EpochTimes";
@@ -84,7 +84,7 @@ interface PriceSubmission {
     epochId: number;
     ftsoIndices: BigNumber[];
     prices: (number | BigNumber)[];
-    randoms: number[];
+    random: BN;
     revealed: boolean;
 }
 
@@ -120,14 +120,14 @@ export class PriceProvider extends UserAccount {
             }
         })
         if (ftsoIndices.length === 0) return;
-        const randoms = ftsoIndices.map(_ => randomInt(1e9));  // not crypto safe, but it's just a simulation
-        const hashes = prices.map((price, ind) => submitPriceHash(price, randoms[ind], this.address));
+        const random = getRandom();  // not crypto safe, but it's just a simulation
+        const hash = submitHash(ftsoIndices, prices, random, this.address);
         try {
             const tx = await this.transactionRunner.runMethod(
-                this.priceSubmitter, (p) => p.submitPriceHashes(epochId, ftsoIndices, hashes, { gasLimit: 5_000_000 }),
-                { signer: this.signer, method: 'PriceSubmitter.submitPriceHashes', comment: `Submitting prices ${prices} by ${this.name} for epoch ${epochId}` });
-            this.submitted.set(epochId, { epochId, ftsoIndices, prices, randoms, revealed: false });
-            ethersExpectEvent(tx, "PriceHashesSubmitted");
+                this.priceSubmitter, (p) => p.submitHash(epochId, hash, { gasLimit: 5_000_000 }),
+                { signer: this.signer, method: 'PriceSubmitter.submitHash', comment: `Submitting prices ${prices} by ${this.name} for epoch ${epochId}` });
+            this.submitted.set(epochId, { epochId, ftsoIndices, prices, random, revealed: false });
+            ethersExpectEvent(tx, "HashSubmitted");
         } catch (e) {
             expectErrors(e, ['Wrong epoch id', 'Not whitelisted']);
         }
@@ -141,7 +141,7 @@ export class PriceProvider extends UserAccount {
         }
         try {
             const tx = await this.transactionRunner.runMethod(
-                this.priceSubmitter, (p) => p.revealPrices(epochId, submitted.ftsoIndices, submitted.prices, submitted.randoms, { gasLimit: 5_000_000 }),
+                this.priceSubmitter, (p) => p.revealPrices(epochId, submitted.ftsoIndices, submitted.prices, submitted.random.toString(), { gasLimit: 5_000_000 }),
                 { signer: this.signer, method: 'PriceSubmitter.revealPrices', comment: `Revealing prices ${submitted.prices} by ${this.name} for epoch ${epochId}` });
             ethersExpectEvent(tx, "PricesRevealed");
         } catch (e) {

@@ -30,8 +30,6 @@ export function toNumberify(rewardEpochData: RewardEpochData): RewardEpochData {
  * @param rewardManager 
  */
 export async function settingWithOneFTSO_1(accounts: Truffle.Accounts, ftsoInterface: FtsoInstance, mockFtso: MockContractInstance, ftsoManager: FtsoManagerInstance) {
-    const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-    await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
     // stub ftso finalizer
     const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
     const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -68,8 +66,7 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false, // do not init/activate
-        1
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
 
@@ -81,8 +78,7 @@ export async function settingWithTwoFTSOs(accounts: Truffle.Accounts, ftsoManage
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false, // do not init/activate
-        1
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
@@ -115,8 +111,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false, // do not init/activate
-        1
+        false // do not init/activate
     ) as MockFtsoInstance;
     if (!natContract) {
         await ftsoManager.setFtsoAsset(ftso1.address, xasset1Token.address);
@@ -130,8 +125,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false, // do not init/activate
-        1
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso2.address, xasset2Token.address);
 
@@ -143,8 +137,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false, // do not init/activate
-        1
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso3.address, xasset3Token.address);
 
@@ -156,8 +149,7 @@ export async function settingWithFourFTSOs(accounts: Truffle.Accounts, ftsoManag
         0, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        false, // do not init/activate
-        1
+        false // do not init/activate
     ) as MockFtsoInstance;
     await ftsoManager.setFtsoAsset(ftso4.address, xasset4Token.address);
 

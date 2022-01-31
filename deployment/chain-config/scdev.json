@@ -46,7 +46,6 @@
     "inflationTopUpFactorsx100": [300],
     "inflationGasLimit": 2000000,
     "ftsoManagerGasLimit": 40000000,
-    "minimalFtsoRandom": 0,
     "deployDistributionContract": false,
     "deployDummyXAssetTokensAndMinters": false,
     "deployNATFtso": true,

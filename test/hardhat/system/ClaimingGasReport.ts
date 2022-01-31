@@ -2,39 +2,31 @@
  * End-to-end system test running on hardhat. Assumes hardhat is running in node mode, that the deploy
  * has already been done, and that contract json file has been feed into stdin.
  */
- import {
+ import { expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { Contracts } from "../../../deployment/scripts/Contracts";
+import {
   FlareDaemonContract,
   FlareDaemonInstance,
   FtsoContract,
   FtsoInstance,
   FtsoManagerContract,
-  FtsoManagerInstance,
-  FtsoRewardManagerContract,
+  FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract,
   FtsoRewardManagerInstance,
   PriceSubmitterContract,
   PriceSubmitterInstance,
   SuicidalMockContract,
   SuicidalMockInstance,
   SupplyContract,
-  SupplyInstance,
-  WNatContract,
-  WNatInstance,
-  FtsoRegistryInstance,
-  VoterWhitelisterInstance,
-  VoterWhitelisterContract,
+  SupplyInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract,
+  WNatInstance
 } from "../../../typechain-truffle";
-
-import { Contracts } from "../../../deployment/scripts/Contracts";
+import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
 import { PriceInfo } from '../../utils/PriceInfo';
-import { moveFromCurrentToNextEpochStart, moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils"
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
-import { increaseTimeTo, submitPriceHash } from '../../utils/test-helpers';
-import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
-import { submit } from "ripple-lib/dist/npm/common/validate";
-import { Address } from "cluster";
+import { getRandom, submitHash } from '../../utils/test-helpers';
+
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
-let randomNumber = require("random-number-csprng");
 const calcGasCost = require('../../utils/eth').calcGasCost;
 
 let contracts: Contracts;
@@ -57,23 +49,16 @@ let ftsoFxrp: FtsoInstance;
 let ftsoWnat: FtsoInstance;
 let ftsoFdgb: FtsoInstance;
 let ftsoFada: FtsoInstance;
-let ftsoFalgo: FtsoInstance;
-let ftsoFbch: FtsoInstance;
 let firstPriceEpochStartTs: BN;
 let priceEpochDurationSeconds: BN;
 let revealEpochDurationSeconds: BN;
 let rewardEpochDurationSeconds: BN;
-let pricePerRewardEpoch: number;
 let rewardEpochsStartTs: BN;
 let SuicidalMock: SuicidalMockContract;
 let suicidalMock: SuicidalMockInstance;
 let registry: FtsoRegistryInstance;
 let VoterWhitelister: VoterWhitelisterContract;
 let voterWhitelister: VoterWhitelisterInstance;
-
-async function getRandom() {
-  return await randomNumber(0, 10 ** 5);
-};
 
 function preparePrice(price: number) {
   // Assume 5 decimals
@@ -83,25 +68,21 @@ function preparePrice(price: number) {
 async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[], priceSubmitter: PriceSubmitterInstance, prices: number[], by: string): Promise<PriceInfo[] | undefined> {
   if (!ftsos || !prices || ftsos.length != prices.length) throw Error("Lists of ftsos and prices illegal or do not match")
   let epochId = ((await ftsos[0].getCurrentEpochId()) as BN).toString();
-  let hashes: string[] = [];
   let preparedPrices: number[] = [];
   let priceInfos: PriceInfo[] = [];
-  let randoms: any[] = [];
   for (let i = 0; i < ftsos.length; i++) {
     let price = prices[i]
     let preparedPrice = preparePrice(price);
-    let random = await getRandom();
-    randoms.push(random);
-    let hash = submitPriceHash(preparedPrice, random, by);
     preparedPrices.push(preparedPrice);
-    hashes.push(hash);
   }
-
+  
   // console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
-  await priceSubmitter.submitPriceHashes(epochId, ftsoIndices, hashes, { from: by })
+  const random = await getRandom();
+  const hash = submitHash(ftsoIndices, preparedPrices, random, by);
+  await priceSubmitter.submitHash(epochId, hash, { from: by })
   for (let i = 0; i < ftsos.length; i++) {
-    const priceInfo = new PriceInfo(epochId, preparedPrices[i], randoms[i]);
+    const priceInfo = new PriceInfo(epochId, preparedPrices[i], random);
     priceInfo.moveToNextStatus();
     priceInfos.push(priceInfo);
   }
@@ -123,7 +104,7 @@ async function revealPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndices: BN[
     epochId,
     ftsoIndices,
     priceInfos.map(priceInfo => priceInfo.priceSubmitted),
-    priceInfos.map(priceInfo => priceInfo.random),
+    priceInfos[0].random,
     { from: by }
   )
   expectEvent(tx, "PricesRevealed");
@@ -262,7 +243,6 @@ async function topupRewardMannager(amount:BN, account: string) {
  */
 contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submission, and claiming system tests`, async accounts => {
 
-
   before(async () => {
     // Get contract addresses of deployed contracts
     contracts = new Contracts();
@@ -285,14 +265,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     Supply = artifacts.require("Supply");
     supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     Ftso = artifacts.require("Ftso");
+    ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
+    ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_XRP));
     ftsoFltc = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_LTC));
     ftsoFxdg = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_DOGE));
-    ftsoFxrp = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_XRP));
-    ftsoWnat = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_WNAT));
-    ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_DGB));
     ftsoFada = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_ADA));
-    ftsoFalgo = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_ALGO));
-    ftsoFbch = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_BCH));
+    ftsoFdgb = await Ftso.at(contracts.getContractAddress(Contracts.FTSO_DGB));
 
     // Set the ftso epoch configuration parameters (from a random ftso) so we can time travel
     firstPriceEpochStartTs = (await ftsoWnat.getPriceEpochConfiguration())[0];
@@ -315,8 +293,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     const FtsoRegistry = artifacts.require("FtsoRegistry");
     registry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
-
-    pricePerRewardEpoch = rewardEpochDurationSeconds.toNumber()/priceEpochDurationSeconds.toNumber()
 
   });
 
@@ -420,16 +396,16 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let xrpPrices = [1.40, 1.50, 1.40, 1.60];  // 0 and 2
     let ltcPrices = [330, 320, 340, 330];      // 0 and 3
     let xdgPrices = [0.40, 0.45, 0.45, 0.50];  // 1 and 2
-    let dgbPrices = [0.05, 0.10, 0.15, 0.10];  // 1 and 3
-    let adaPrices = [1.70, 1.90, 1.80, 1.80];  // 2 and 3
-    let ftsos = [ftsoWnat, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFdgb, ftsoFada];
+    let adaPrices = [1.70, 1.90, 1.80, 1.80];  // 1 and 3
+    let dgbPrices = [0.05, 0.10, 0.15, 0.10];  // 2 and 3
+    let ftsos = [ftsoWnat, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFada, ftsoFdgb];
     let ftsoIndices = [];
 
     for(let ftso of ftsos){
       ftsoIndices.push(await registry.getFtsoIndex( await ftso.symbol()));
     }
 
-    let pricesMatrix = [natPrices, xrpPrices, ltcPrices, xdgPrices, dgbPrices, adaPrices];
+    let pricesMatrix = [natPrices, xrpPrices, ltcPrices, xdgPrices, adaPrices, dgbPrices];
     // transpose
     let priceSeries = pricesMatrix[0].map((_, colIndex) => pricesMatrix.map(row => row[colIndex]));
     let submitters = [p1, p2, p3, p4];

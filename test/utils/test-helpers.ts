@@ -5,6 +5,7 @@ import { time } from '@openzeppelin/test-helpers';
 import BN from "bn.js";
 import { BigNumber, ContractReceipt, ContractTransaction, Signer } from "ethers";
 import { ethers } from "hardhat";
+import { MIN_RANDOM } from "./constants";
 
 const Wallet = require('ethereumjs-wallet').default;
 
@@ -248,12 +249,16 @@ export function assertNumberEqual(a: BN, b: number, message?: string) {
     return assert.equal(a.toNumber(), b, message);
 }
 
-export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber, address: string,): string {
+export function submitPriceHash(price: number | BN | BigNumber, random: number | BN | BigNumber, address: string): string {
     return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint256", "uint256", "address" ], [ price.toString(), random.toString(), address]))
 }
 
+export function submitHash(ftsoIndices: (number | BN | BigNumber)[], prices: (number | BN | BigNumber)[], random: number | BN | BigNumber, address: string): string {
+    return ethers.utils.keccak256(web3.eth.abi.encodeParameters([ "uint256[]", "uint256[]", "uint256", "address" ], [ ftsoIndices, prices, random, address ]));
+}
+
 function computeOneVoteRandom(price: number | BN | BigNumber, random: number | BN | BigNumber): BN {
-    return  web3.utils.toBN(ethers.utils.solidityKeccak256([ "uint256", "uint256" ], [ random.toString(), price.toString() ]));
+    return  web3.utils.toBN(ethers.utils.solidityKeccak256([ "uint256", "uint256[]" ], [ random.toString(), [price.toString()] ]));
 }
 
 // price_random is an array of pairs [price, random] that are being submitted
@@ -261,6 +266,19 @@ export function computeVoteRandom(price_random: number[][] | BN[][] | BigNumber[
     let sum = toBN(0);
     for (let i = 0; i < price_random.length; i++) {
         sum = sum.add(computeOneVoteRandom(price_random[i][0], price_random[i][1]));
+    }
+    return  sum.mod(toBN(2).pow(toBN(256))).toString();
+}
+
+function computeOneVoteRandom2(prices: (number | BN | BigNumber)[], random: number | BN | BigNumber): BN {
+    return  web3.utils.toBN(ethers.utils.keccak256(web3.eth.abi.encodeParameters([ "uint256", "uint256[]" ], [ random, prices ])));
+}
+
+// price_random is an array of pairs [[prices], random] that are being submitted
+export function computeVoteRandom2(prices_random: any): string {
+    let sum = toBN(0);
+    for (let i = 0; i < prices_random.length; i++) {
+        sum = sum.add(computeOneVoteRandom2(prices_random[i][0], prices_random[i][1]));
     }
     return  sum.mod(toBN(2).pow(toBN(256))).toString();
 }
@@ -341,4 +359,8 @@ export async function getAddressWithZeroBalance() {
         wallet = Wallet.generate();
     }
     return wallet.getChecksumAddressString();
+}
+
+export function getRandom(): BN {
+    return MIN_RANDOM.addn(Math.floor(Math.random() * 1000));
 }

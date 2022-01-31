@@ -291,6 +291,19 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
 
     /**
+    * @notice Get the vote power of `_owner` at block `_blockNumber`, ignoring revocation information (and cache).
+    * @param _owner The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_owner` at `_blockNumber`. Result doesn't change if vote power is revoked.
+    */
+    function votePowerOfAtIgnoringRevocation(address _owner, uint256 _blockNumber)
+        external view override
+        returns(uint256) 
+    {
+        return _checkReadVpContract().votePowerOfAtIgnoringRevocation(_owner, _blockNumber);
+    }
+
+    /**
      * Return vote powers for several addresses in a batch.
      * @param _owners The list of addresses to fetch vote power of.
      * @param _blockNumber The block number at which to fetch.

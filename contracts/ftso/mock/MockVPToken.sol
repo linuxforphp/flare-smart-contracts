@@ -139,6 +139,12 @@ contract MockVPToken is IIVPToken {
         return addressWeight[who];
     }
 
+    function votePowerOfAtIgnoringRevocation(address who, uint256 blockNumber) public view override 
+        returns (uint256)
+    {
+        return votePowerOfAt(who, blockNumber);
+    }
+
     function totalVotePowerAtCached(uint256 _blockNumber) public view override returns(uint256) {
         return totalVotePowerAt(_blockNumber);
     }
