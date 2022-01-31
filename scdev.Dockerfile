@@ -13,7 +13,7 @@
 
 FROM golang:1.15.14-buster AS builder
 
-# The default genesis file is genesis_local.go
+# The default genesis file is genesis_scdev.go
 ARG GENESIS=scdev
 
 # Update apt and get dependencies, then remove apt cruft
@@ -29,7 +29,8 @@ RUN apt-get update && apt-get install -y \
 # Copy source code into the container
 RUN git clone https://gitlab.com/flarenetwork/flare.git flare
 WORKDIR flare
-RUN git checkout 64-dockerize-for-automated-system-testing
+RUN git pull
+RUN git checkout docker-scdev-25-1-2022
 
 # Do the build
 RUN ./compile.sh $GENESIS
