@@ -331,6 +331,23 @@ contract VPContract is IIVPContract, Delegatable {
             return ownerToken.balanceOfAt(_who, _blockNumber);
         }
     }
+
+    /**
+    * @notice Get the vote power of `_who` at block `_blockNumber`, ignoring revocation information (and cache).
+    * @param _who The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_who` at `_blockNumber`. Result doesn't change if vote power is revoked.
+    */
+    function votePowerOfAtIgnoringRevocation(address _who, uint256 _blockNumber) 
+        external view override 
+        returns(uint256) 
+    {
+        if (!isReplacement || _votePowerInitializedAt(_who, _blockNumber)) {
+            return _votePowerOfAtIgnoringRevocation(_who, _blockNumber);
+        } else {
+            return ownerToken.balanceOfAt(_who, _blockNumber);
+        }
+    }
     
     /**
      * Return vote powers for several addresses in a batch.

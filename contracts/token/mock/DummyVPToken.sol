@@ -113,4 +113,10 @@ contract DummyVPToken is ERC20, IIVPToken {
         _blockNumber;
         return balanceOf(_who) / 1e18;
     }
+    
+    function votePowerOfAtIgnoringRevocation(address who, uint256 blockNumber) public view override 
+        returns (uint256)
+    {
+        return votePowerOfAt(who, blockNumber);
+    }
 }

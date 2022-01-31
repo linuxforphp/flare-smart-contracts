@@ -69,7 +69,7 @@ The Price Submitter contracts is the main point of contact for price providers a
 Mock implementation `MockPriceSubmitter` deploys all needed mock contracts for price provider example and a list of 10 FTSOs for testing purposes.
 Deployed mock contracts are accessible through methods in user interface.
 
-Mock implementation implements `submitPriceHashes` and `revealPrices` as faithfully as possible compared to production network, namely:
+Mock implementation implements `submitHash` and `revealPrices` as faithfully as possible compared to production network, namely:
   
 - It checks that price provider is allowed to submit price hash to provided FTSO indices and reverts in the same way as a production version would.
 - It checks that price provider is allowed to participate in price reveal period.

@@ -30,9 +30,7 @@ main() {
  
         let providerVotePower;
         let validFtsoIndexList[];
-        let ftsoPriceHashes[];
         let ftsoPrices[];
-        let ftsoRandoms[];
 
         let voterMap = priceSubmitter.voterWhitelistBitmap();
 
@@ -56,26 +54,21 @@ main() {
     
             validFtsoIndexList.push(FtsoIndexList[i]);
     
-            // create a new random
-            ftsoRandoms.push(rand());
-    
             // read token symbol
             let symbol = ftso.symbol();
     
             // read price from any chosen price source provider wishes to use
             ftsoPrices.push(priceSource.getPrice(symbol));
-    
-            uint currentFtso = ftsoPrices.length - 1;
-            // create hash of above values and submit
-            ftsoPriceHashes[currentFtso] = solidityKeccak256(
-                ["uint256", "uint256", "address"],
-                [ftsoPrices[currentFtso], ftsoRandoms[currentFtso], providerAddress]
-            );
         }
+
+        let random = rand();
+        let hash = solidityKeccak256(
+                ["uint256[]", "uint256[]", "uint256", "address"],
+                [validFtsoIndexList, ftsoPrices, random, providerAddress]
  
         // submit hashes in batch
         if (validFtsoIndexList.length > 0) {
-            priceSubmitter.submitPriceHashes(epochId, validFtsoIndexList, ftsoPriceHashes);
+            priceSubmitter.submitHash(epochId, hash);
         }
  
         // wait for this commit period to end
@@ -87,7 +80,7 @@ main() {
                 epochId,
                 validFtsoIndexList,
                 ftsoPrices,
-                ftsoRandoms
+                random
             );
         }
 

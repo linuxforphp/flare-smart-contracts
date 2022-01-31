@@ -522,7 +522,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], natS
         medianPrice = Math.floor((medianPrice + votes[medianIndex + 1].price) / 2);
     }
     let random = toBN(computeVoteRandom(price_random));
-    logger.log(`Computed FTSO random: ${ random.toString() }`);
+    logger.log(`Computed random: ${ random.toString() }`);
     let rewardedVotes: RewardedVoteInfo[] = [];
     logger.log("Start filtering the reward addresses")
     for (let i = truncatedFirstQuartileIndex; i <= truncatedLastQuartileIndex; i++) {
@@ -847,8 +847,7 @@ export async function testFTSOInitContracts(epochStartTimestamp: number, signers
         1, //uint256 _initialPrice
         1e10,
         defaultPriceEpochCyclicBufferSize,
-        true,
-        0
+        true
     );
     await ftso.setAsset(assetToken.address);
 
@@ -896,9 +895,6 @@ export async function testFTSOMedian2(epochStartTimestamp: number, epochPeriod: 
     logger.log(`EPOCH 2: ${ (await ftso.getCurrentEpochId()).toNumber() }`);
     logger.log(`REVEAL PRICE ${ len }`)
     await revealPrice(signers, ftso, testExample.prices, epochId);
-
-    let random = await ftso.getCurrentRandom();
-    logger.log(`AFTER REVEAL, test RANDOM = ${ random }`);
 
     // Finalize
     await moveToFinalizeStart(epochStartTimestamp, epochPeriod, revealPeriod, epochId);

@@ -80,19 +80,20 @@ As soon as the reveal period ends, the weighted median algorithm will process al
 A Price submitter contract will enable each provider to send the above Txs batched together. One Tx can be used to submitPrice to all FTSO contracts and later to revealPrice in all FTSO contracts. Each asset is assigned an unique asset index that is managed by the `ftsoRegistry`.  Contract interface is [here](../../contracts/userInterfaces/IPriceSubmitter.sol)
 
 ```
-   function submitPriceHashes(
+   function submitHash(
        uint256 _epochId,
-       uint256[] memory _assetIndices,
-       bytes32[] memory _hashes
+       bytes32 _hash
    ) external;
 
    function revealPrices(
        uint256 _epochId,
        uint256[] memory _assetIndices,
        uint256[] memory _prices,
-       uint256[] memory _randoms
+       uint256 _random
    ) external;
 ```
+
+The _hash should be keccak256(abi.encode(assetIndices, prices, random, senders_address)) where assetIndices are strictly increasing.
 
 With batched transactions the price provider sends a list of FTSO addresses and the relevant data according to the operation type (submit or reveal). One can use this contract to interact with all FTSOs or a partial list.
 

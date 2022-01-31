@@ -2,7 +2,7 @@ import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-h
 import { Contracts } from "../../../deployment/scripts/Contracts";
 import { AssetTokenInstance, CleanupBlockNumberManagerInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
-import { encodeContractNames, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { encodeContractNames, getRandom, increaseTimeTo, submitHash, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -57,7 +57,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let cleanupBlockNumberManager: CleanupBlockNumberManagerInstance;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize, 1);
+    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
     await ftsoManager.addFtso(ftso.address, { from: governance });
     return ftso;
   }
@@ -177,17 +177,17 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       console.log(`daemonize call with no work to do: ${normalDaemonizeCallTx.receipt.gasUsed}`);
 
       const voterPrices = new Map<string, BN[]>();
-      const voterRandoms = new Map<string, BN[]>();
+      const voterRandom = new Map<string, BN>();
 
       // submit hashes (worst case - all users submits equal prices)
       const equalPrices = allFtsos.map(_ => toBN(Math.round(Math.random() * 2e5)));
       for (const voter of [...trustedVoters, ...voters]) {
-        const randoms = allFtsos.map(_ => toBN(Math.round(Math.random() * 1e9)));
+        const random = getRandom();
         const prices = randomPrices ? allFtsos.map(_ => toBN(Math.round(Math.random() * 2e5))) : equalPrices;
         voterPrices.set(voter, prices);
-        voterRandoms.set(voter, randoms);
-        const hashes = allFtsos.map((_, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
+        voterRandom.set(voter, random);
+        const hash = submitHash(indices, prices, random, voter);
+        await priceSubmitter.submitHash(epochId, hash, { from: voter });
       }
 
       normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });
@@ -197,7 +197,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       // reveal prices
       await increaseTimeTo(startTs.toNumber() + (epochId + 1) * epochDurationSec, 'web3'); // reveal period start
       for (const voter of [...trustedVoters, ...voters]) {
-        await priceSubmitter.revealPrices(epochId, indices, voterPrices.get(voter)!, voterRandoms.get(voter)!, { from: voter });
+        await priceSubmitter.revealPrices(epochId, indices, voterPrices.get(voter)!, voterRandom.get(voter)!, { from: voter });
       }
 
       normalDaemonizeCallTx = await ftsoManager.daemonize({ from: flareDaemon });

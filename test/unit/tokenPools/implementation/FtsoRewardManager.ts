@@ -24,7 +24,7 @@ const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockC
 const WNAT = artifacts.require("WNat") as WNatContract;
 const InflationMock = artifacts.require("InflationMock");
 const SuicidalMock = artifacts.require("SuicidalMock");
-const SupplyMock = artifacts.require("MockContract");
+const MockContract = artifacts.require("MockContract");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -144,7 +144,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
         mockInflation = await InflationMock.new();
-        mockSupply = await SupplyMock.new();
+        mockSupply = await MockContract.new();
 
         ftsoRewardManager = await FtsoRewardManager.new(
             accounts[0],
@@ -218,7 +218,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expectRevert(ftsoRewardManager.deactivate({ from: accounts[1] }), "only governance");
         });
         
-        it("Should revert calling setContractAddresses if not from address updater", async () => {
+        it("Should revert calling updateContractAddresses if not from address updater", async () => {
             await expectRevert(ftsoRewardManager.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
                 [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: accounts[1]}), "only address updater");
@@ -298,6 +298,88 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
             expect((await ftsoRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(1);
+        });
+
+        it("Should set initial reward data", async () => {
+            ftsoRewardManager = await FtsoRewardManager.new(
+                accounts[0],
+                ADDRESS_UPDATER,
+                accounts[8],
+                3,
+                0
+            );
+
+            const getRewardEpochToExpireNext = web3.utils.sha3("getRewardEpochToExpireNext()")!.slice(0, 10); // first 4 bytes is function selector
+            const getCurrentRewardEpoch = web3.utils.sha3("getCurrentRewardEpoch()")!.slice(0, 10); // first 4 bytes is function selector
+            await mockFtsoManager.givenMethodReturnUint(getRewardEpochToExpireNext, 5);
+            await mockFtsoManager.givenMethodReturnUint(getCurrentRewardEpoch, 20);
+
+            await ftsoRewardManager.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+                [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+
+            expect((await ftsoRewardManager.getInitialRewardEpoch()).toNumber()).to.equals(0);
+
+            await ftsoRewardManager.setInitialRewardData();
+
+            expect((await ftsoRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(5);
+            expect((await ftsoRewardManager.getInitialRewardEpoch()).toNumber()).to.equals(20);
+        });
+
+        it("Should revert calling setInitialRewardData twice", async () => {
+            ftsoRewardManager = await FtsoRewardManager.new(
+                accounts[0],
+                ADDRESS_UPDATER,
+                accounts[8],
+                3,
+                0
+            );
+
+            await ftsoRewardManager.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+                [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+
+            await ftsoRewardManager.setInitialRewardData();
+
+            await expectRevert(ftsoRewardManager.setInitialRewardData(), "not initial state");
+        });
+
+        it("Should revert calling setInitialRewardData if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.setInitialRewardData({ from: accounts[1] }), "only governance");
+        });
+
+        it("Should revert calling setInitialRewardData if already activated", async () => {
+            await expectRevert(ftsoRewardManager.setInitialRewardData(), "not initial state");
+        });
+
+        it("Should revert calling setInitialRewardData if old ftso reward manager is not set", async () => {
+            ftsoRewardManager = await FtsoRewardManager.new(
+                accounts[0],
+                ADDRESS_UPDATER,
+                constants.ZERO_ADDRESS,
+                3,
+                0
+            );
+            await expectRevert(ftsoRewardManager.setInitialRewardData(), "not initial state");
+        });
+
+        it("Should set new ftso reward manager", async () => {
+            expect(await ftsoRewardManager.newFtsoRewardManager()).to.equals(constants.ZERO_ADDRESS);
+            await ftsoRewardManager.setNewFtsoRewardManager(accounts[2]);
+            expect(await ftsoRewardManager.newFtsoRewardManager()).to.equals(accounts[2]);
+        });
+
+        it("Should revert calling setNewFtsoRewardManager if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.setNewFtsoRewardManager(accounts[2], { from: accounts[1] }), "only governance");
+        });
+
+        it("Should revert calling setNewFtsoRewardManager twice", async () => {
+            await ftsoRewardManager.setNewFtsoRewardManager(accounts[2]);
+            await expectRevert(ftsoRewardManager.setNewFtsoRewardManager(accounts[2]), "new ftso reward manager already set");
+        });
+
+        it("Should return contract name", async () => {
+            expect(await ftsoRewardManager.getContractName()).to.equals(Contracts.FTSO_REWARD_MANAGER);
         });
     });
 
@@ -534,6 +616,85 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await travelToAndSetNewRewardEpoch(5, startTs, ftsoRewardManager, accounts[0]);
             expect((await ftsoRewardManager.getDataProviderCurrentFeePercentage(accounts[1])).toNumber()).to.equals(0);
             expect((await ftsoRewardManager.getDataProviderCurrentFeePercentage(accounts[2])).toNumber()).to.equals(15);
+        });
+
+        it("Should get data provider fee percentage", async () => {
+            await ftsoRewardManager.setDataProviderFeePercentage(5, { from: accounts[2] });
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 0)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 0)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 1)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 1)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 3)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 3)).toNumber()).to.equals(5);
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 4), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 4), "invalid reward epoch");
+
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+            await ftsoRewardManager.setDataProviderFeePercentage(10, { from: accounts[2] });
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 0)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 0)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 1)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 1)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 3)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 3)).toNumber()).to.equals(5);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 4)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 4)).toNumber()).to.equals(10);
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 5), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 5), "invalid reward epoch");
+
+            await ftsoRewardManager.setDataProviderFeePercentage(8, { from: accounts[2] });
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 0)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 0)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 1)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 1)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 3)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 3)).toNumber()).to.equals(5);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 4)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 4)).toNumber()).to.equals(8);
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 5), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 5), "invalid reward epoch");
+        });
+
+        it("Should not get data provider fee percentage from old ftso reward manager", async () => {
+            ftsoRewardManager = await FtsoRewardManager.new(
+                accounts[0],
+                ADDRESS_UPDATER,
+                accounts[8],
+                3,
+                0
+            );
+
+            const getRewardEpochToExpireNext = web3.utils.sha3("getRewardEpochToExpireNext()")!.slice(0, 10); // first 4 bytes is function selector
+            const getCurrentRewardEpoch = web3.utils.sha3("getCurrentRewardEpoch()")!.slice(0, 10); // first 4 bytes is function selector
+            await mockFtsoManager.givenMethodReturnUint(getRewardEpochToExpireNext, 0);
+            await mockFtsoManager.givenMethodReturnUint(getCurrentRewardEpoch, 2);
+
+            await ftsoRewardManager.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+                [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+
+            await ftsoRewardManager.setInitialRewardData();
+            await ftsoRewardManager.setDataProviderFeePercentage(5, { from: accounts[2] });
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 0), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 0), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 1), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 1), "invalid reward epoch");
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 2)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 3)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 3)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 4)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 4)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 5)).toNumber()).to.equals(0);
+            expect((await ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 5)).toNumber()).to.equals(5);
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[1], 6), "invalid reward epoch");
+            await expectRevert(ftsoRewardManager.getDataProviderFeePercentage(accounts[2], 6), "invalid reward epoch");
         });
 
         it("Should get scheduled fee percentage", async () => {
@@ -1871,7 +2032,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0), "only ftso manager or new ftso reward manager");
         });
 
-        it("Should only expire correct reward epoch and proceed", async () => {
+        it("Should only expire correct reward epoch and proceed - ftso manager", async () => {
             // update ftso manager to accounts[0] to be able to call closeExpiredRewardEpoch
             await ftsoRewardManager.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
@@ -1881,6 +2042,44 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0), "wrong reward epoch id");
             await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(2), "wrong reward epoch id");
             await ftsoRewardManager.closeExpiredRewardEpoch(1); // should work
+        });
+
+        it("Should only expire correct reward epoch and proceed - new ftso reward manager", async () => {
+            await ftsoRewardManager.setNewFtsoRewardManager(accounts[2]);
+            
+            await ftsoRewardManager.closeExpiredRewardEpoch(0, { from: accounts[2] }); // should work
+            await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(0, { from: accounts[2] }), "wrong reward epoch id");
+            await expectRevert(ftsoRewardManager.closeExpiredRewardEpoch(2, { from: accounts[2] }), "wrong reward epoch id");
+            await ftsoRewardManager.closeExpiredRewardEpoch(1, { from: accounts[2] }); // should work
+        });
+
+        it("Should forward closeExpiredRewardEpoch to old ftso reward manager", async () => {
+            let oldFtsoRewardManager = await MockContract.new();
+            ftsoRewardManager = await FtsoRewardManager.new(
+                accounts[0],
+                ADDRESS_UPDATER,
+                oldFtsoRewardManager.address,
+                3,
+                0
+            );
+
+            await ftsoRewardManager.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+                [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+
+            await ftsoRewardManager.setInitialRewardData();
+            await ftsoRewardManager.setNewFtsoRewardManager(accounts[2]);
+
+            await ftsoRewardManager.closeExpiredRewardEpoch(0, { from: accounts[2] }); // should work
+            await ftsoRewardManager.closeExpiredRewardEpoch(1, { from: accounts[2] }); // should work
+
+            const closeExpiredRewardEpoch = ftsoRewardManager.contract.methods.closeExpiredRewardEpoch(0).encodeABI();
+
+            const invocationCountForCalldata = await oldFtsoRewardManager.invocationCountForCalldata.call(closeExpiredRewardEpoch);
+            assert.equal(invocationCountForCalldata.toNumber(), 1);
+
+            const invocationCountForMethod = await oldFtsoRewardManager.invocationCountForMethod.call(closeExpiredRewardEpoch);
+            assert.equal(invocationCountForMethod.toNumber(), 1);
         });
     });
 });

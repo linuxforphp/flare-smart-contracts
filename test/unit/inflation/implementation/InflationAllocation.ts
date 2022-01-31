@@ -18,6 +18,7 @@ const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_ONLY_INFLATION = "only inflation";
 const ERR_ZERO_ADDRESS = "address is 0";
 const ERR_LENGTH_MISMATCH = "length mismatch";
+const ERR_HIGH_SHARING_PERCENTAGE = "high sharing percentage";
 
 contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocation unit tests`, async accounts => {
   const ADDRESS_UPDATER = accounts[16];
@@ -230,6 +231,70 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       assert.equal(sharingPercentages[0].percentBips as any, percentages[0].toString());
       assert.equal(sharingPercentages[1].inflationReceiver, inflationReceivers[1]);
       assert.equal(sharingPercentages[1].percentBips as any, percentages[1].toString());
+    });
+
+    it("Should update sharing percentages", async() => {
+      // Assemble
+      const inflationReceivers: string[] = [(await MockContract.new()).address, (await MockContract.new()).address, (await MockContract.new()).address];
+      const percentages: BN[] = [BN(6000), BN(2000), BN(2000)];
+      // Act
+      await inflationAllocation.setSharingPercentages(inflationReceivers, percentages);
+      // Assert
+      const sharingPercentages = await inflationAllocation.getSharingPercentages();
+      assert.equal(sharingPercentages.length, 3);
+      assert.equal(sharingPercentages[0].inflationReceiver, inflationReceivers[0]);
+      assert.equal(sharingPercentages[0].percentBips as any, percentages[0].toString());
+      assert.equal(sharingPercentages[1].inflationReceiver, inflationReceivers[1]);
+      assert.equal(sharingPercentages[1].percentBips as any, percentages[1].toString());
+      assert.equal(sharingPercentages[2].inflationReceiver, inflationReceivers[2]);
+      assert.equal(sharingPercentages[2].percentBips as any, percentages[2].toString());
+
+      const inflationReceivers2: string[] = [(await MockContract.new()).address, (await MockContract.new()).address];
+      const percentages2: BN[] = [BN(5000), BN(5000)];
+      // Act
+      await inflationAllocation.setSharingPercentages(inflationReceivers2, percentages2);
+      // Assert
+      const sharingPercentages2 = await inflationAllocation.getSharingPercentages();
+      assert.equal(sharingPercentages2.length, 2);
+      assert.equal(sharingPercentages2[0].inflationReceiver, inflationReceivers2[0]);
+      assert.equal(sharingPercentages2[0].percentBips as any, percentages2[0].toString());
+      assert.equal(sharingPercentages2[1].inflationReceiver, inflationReceivers2[1]);
+      assert.equal(sharingPercentages2[1].percentBips as any, percentages2[1].toString());
+    });
+
+    it("Should update a inflation receiver contract", async () => {
+      // Assemble
+      // Shim up mock
+      const mockContractToReceiveInflation = await MockContract.new();
+      const newMockContractToReceiveInflation = await MockContract.new();
+      const getContractName = web3.utils.sha3("getContractName()")!.slice(0, 10); // first 4 bytes is function selector
+      const getContractNameReturn = web3.eth.abi.encodeParameter('string', 'SOME_CONTRACT_NAME');
+      await mockContractToReceiveInflation.givenMethodReturn(getContractName, getContractNameReturn);
+
+      // Register mock
+      const inflationReceivers: string[] = [mockContractToReceiveInflation.address];
+      const percentages: BN[] = [BN(10000)];
+      await inflationAllocation.setSharingPercentages(inflationReceivers, percentages);
+      
+      // Act
+      await inflationAllocation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, "SOME_CONTRACT_NAME"]),
+        [ADDRESS_UPDATER, accounts[0], newMockContractToReceiveInflation.address], {from: ADDRESS_UPDATER});
+      // Assert
+      const sharingPercentages = await inflationAllocation.getSharingPercentages();
+      assert.equal(sharingPercentages.length, 1);
+      assert.equal(sharingPercentages[0].inflationReceiver, newMockContractToReceiveInflation.address);
+      assert.equal(sharingPercentages[0].percentBips as any, percentages[0].toString());
+    });
+
+    it("Should not set sharing percentages if any sharing percentage > 100%", async() => {
+      // Assemble
+      const inflationReceivers: string[] = [(await MockContract.new()).address, (await MockContract.new()).address];
+      const percentages: BN[] = [BN(1000), BN(11000)];
+      // Act
+      const promise = inflationAllocation.setSharingPercentages(inflationReceivers, percentages);
+      // Assert
+      await expectRevert(promise, ERR_HIGH_SHARING_PERCENTAGE);
     });
 
     it("Should not set sharing percentages if array lengths do not match", async() => {

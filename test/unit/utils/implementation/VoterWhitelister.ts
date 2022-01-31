@@ -45,7 +45,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     let vpBlockNumber: number;
 
     async function createFtso(symbol: string, initialPriceUSDDec5: BN) {
-        const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, 120, 60, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize, 1);
+        const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, 120, 60, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize);
         await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });
@@ -303,7 +303,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
                 }
             }
             // Assert
-            const wl = await whitelist.getFtsoWhitelistedPriceProviders(ftsoIndex);
+            const wl = await whitelist.getFtsoWhitelistedPriceProvidersBySymbol(await xyzFtso.symbol());
             const wlind = wl.map(x => voters.indexOf(x));
             // console.log(wlind);
             compareArrays(wlind, [6, 1, 8, 9, 4]);
@@ -397,6 +397,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             // Assemble
             const ftsoIndex = 0;    // nat
             const voters = await init10Voters();
+            await whitelist.requestWhitelistingVoter(voters[3], ftsoIndex);
             await whitelist.requestWhitelistingVoter(voters[0], ftsoIndex);
 
             let priceSubmitterInterface = await PriceSubmitter.new();
@@ -406,20 +407,20 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
             let wl = await whitelist.getFtsoWhitelistedPriceProviders(ftsoIndex);
             let wlind = wl.map(x => voters.indexOf(x));
-            compareArrays(wlind, [0]); // Should not be added twice
+            compareArrays(wlind, [3, 0]);
 
             // Act
-            let tx = whitelist.removeTrustedAddressFromWhitelist(voters[1], ftsoIndex);
-            let tx2 = whitelist.removeTrustedAddressFromWhitelist(voters[0], 1);
-            let tx3 = await whitelist.removeTrustedAddressFromWhitelist(voters[0], ftsoIndex);
-
             // Assert
+            let tx = whitelist.removeTrustedAddressFromWhitelist(voters[1], ftsoIndex);
             await expectRevert(tx, "not trusted address");
+            let tx2 = whitelist.removeTrustedAddressFromWhitelist(voters[0], 1);
             await expectRevert(tx2, "trusted address not whitelisted");
+            let tx3 = await whitelist.removeTrustedAddressFromWhitelist(voters[0], ftsoIndex);
             expectEvent(tx3, "VoterRemovedFromWhitelist", { voter: voters[0], ftsoIndex: eth(ftsoIndex) });
 
             wl = await whitelist.getFtsoWhitelistedPriceProviders(ftsoIndex);
-            expect(wl).to.be.empty;
+            wlind = wl.map(x => voters.indexOf(x));
+            compareArrays(wlind, [3]);
         });
 
         it("change whitelist size", async () => {

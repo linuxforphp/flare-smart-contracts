@@ -708,6 +708,23 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
+    * @notice Get the vote power of `_who` at block `_blockNumber`, ignoring revocation information (and cache).
+    * @param _who The address to get voting power.
+    * @param _blockNumber The block number at which to fetch.
+    * @return Vote power of `_who` at `_blockNumber`. Result doesn't change if vote power is revoked.
+    */
+    function _votePowerOfAtIgnoringRevocation(
+        address _who, 
+        uint256 _blockNumber
+    )
+        internal view 
+        notBeforeCleanupBlock(_blockNumber) 
+        returns(uint256)
+    {
+        return votePower.votePowerOfAt(_who, _blockNumber);
+    }
+
+    /**
      * Return vote powers for several addresses in a batch.
      * Only works for past blocks.
      * @param _owners The list of addresses to fetch vote power of.

@@ -7,7 +7,7 @@ const getTestFile = require('../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 import { advanceBlock, encodeContractNames, waitFinalize, waitFinalize3 } from '../../utils/test-helpers';
 import { spewDaemonErrors } from "../../utils/FlareDaemonTestUtils";
-import { FLARE_DAEMON_ADDRESS, PRICE_SUBMITTER_ADDRESS } from "../../utils/constants";
+import { defaultPriceEpochCyclicBufferSize, FLARE_DAEMON_ADDRESS, PRICE_SUBMITTER_ADDRESS } from "../../utils/constants";
 import { Contracts } from "../../../deployment/scripts/Contracts";
 
 const BN = web3.utils.toBN;
@@ -63,7 +63,7 @@ const MockContract = artifacts.require("MockContract");
         }
         try {
             await priceSubmitter.initialiseFixedAddress();
-            await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: GOVERNANCE_GENESIS_ADDRESS})
+            await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: GOVERNANCE_GENESIS_ADDRESS});
         } catch (e) {
             const governanceAddress = await priceSubmitter.governance();
             if (GOVERNANCE_GENESIS_ADDRESS != governanceAddress) {

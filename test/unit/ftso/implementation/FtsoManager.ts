@@ -91,8 +91,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       60,
       0,
       1e10,
-      defaultPriceEpochCyclicBufferSize,
-      0
+      defaultPriceEpochCyclicBufferSize
     );
 
     await mockFtsoSymbol("ATOK", mockFtso, ftsoInterface);
@@ -154,6 +153,20 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
   describe("basic", async () => {
     it("Should revert at deploy if setting invalid parameters", async () => {
+      await expectRevert(FtsoManager.new(
+        accounts[0],
+        constants.ZERO_ADDRESS,
+        ADDRESS_UPDATER,
+        accounts[7],
+        constants.ZERO_ADDRESS,
+        startTs,
+        PRICE_EPOCH_DURATION_S,
+        REVEAL_EPOCH_DURATION_S,
+        startTs.addn(REVEAL_EPOCH_DURATION_S),
+        REWARD_EPOCH_DURATION_S,
+        VOTE_POWER_BOUNDARY_FRACTION
+      ), "flare daemon zero");
+
       await expectRevert(FtsoManager.new(
         accounts[0],
         accounts[0],
@@ -279,6 +292,17 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         REWARD_EPOCH_DURATION_S,
         0
       ), "Vote power interval fraction 0");
+    });
+
+    it("Should return contract name", async () => {
+      expect(await ftsoManager.getContractName()).to.equals(Contracts.FTSO_MANAGER);
+    });
+
+    it("Should return current price epoch id", async () => {
+      expect((await ftsoManager.getCurrentPriceEpochId()).toNumber()).to.equals(0);
+
+      await increaseTimeTo(startTs, PRICE_EPOCH_DURATION_S);
+      expect((await ftsoManager.getCurrentPriceEpochId()).toNumber()).to.equals(1);
     });
 
     it("Should return price submitter address", async () => {
@@ -535,8 +559,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
           encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
           [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -813,7 +835,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       // Assemble
       await setDefaultGovernanceParameters(ftsoManager);
       let multiFtso = await Ftso.new('NAT', 5, mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address,
-        startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize, 0);
+        startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize);
       await ftsoManager.addFtso(multiFtso.address);
       await ftsoManager.addFtso(mockFtso.address);
       await ftsoManager.setFtsoAssetFtsos(multiFtso.address, [mockFtso.address]);
@@ -1420,7 +1442,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     it("Should not set an array of FTSOs for FTSO", async () => {
       await setDefaultGovernanceParameters(ftsoManager);
       let multiFtso = await Ftso.new('NAT', 5, mockPriceSubmitter.address, constants.ZERO_ADDRESS, ftsoManager.address,
-        startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize, 0);
+        startTs, PRICE_EPOCH_DURATION_S, REVEAL_EPOCH_DURATION_S, 0, 1e10, defaultPriceEpochCyclicBufferSize);
       
       await ftsoManager.addFtso(multiFtso.address);
       await ftsoManager.addFtso(mockFtso.address);
@@ -1478,9 +1500,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should finalize price epoch for winning ftso with no reward recipients", async () => {
       // Assemble
-      // stub randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -1509,9 +1528,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should finalize price epoch and distribute unclaimed rewards", async () => {
       // Assemble
-      // stub ftso randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub ftso finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -1561,9 +1577,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should finalize price epoch and emit event if distribute rewards fails", async () => {
       // Assemble
-      // stub ftso randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub ftso finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -1670,8 +1683,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       // Assemble
       // Force the first FTSO random number generator to yield FTSO 0 as reward FTSO
       const mockFtsoNoAccounts = await MockFtso.new();
-      // const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      // await mockFtsoNoAccounts.givenMethodReturnUint(getCurrentRandom, 0);
       // Rig FTSO0 to yield no accounts
       const finalizePriceEpochFtso0 = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturnFtso0 = web3.eth.abi.encodeParameters(
@@ -1771,9 +1782,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should emit event if finalize price epoch fails due to WEIGHTED_MEDIAN", async () => {
       // Assemble
-      // stub ftso randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub ftso finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const fallbackFinalizePriceEpoch = ftsoInterface.contract.methods.fallbackFinalizePriceEpoch(0).encodeABI();
@@ -1820,9 +1828,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should emit event if finalize price epoch fails due to TRUSTED_ADDRESSES", async () => {
       // Assemble
-      // stub ftso randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub ftso finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const fallbackFinalizePriceEpoch = ftsoInterface.contract.methods.fallbackFinalizePriceEpoch(0).encodeABI();
@@ -1869,9 +1874,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should revert if finalize price epoch fails due to PREVIOUS_PRICE_COPIED", async () => {
       // Assemble
-      // stub ftso randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub ftso finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const fallbackFinalizePriceEpoch = ftsoInterface.contract.methods.fallbackFinalizePriceEpoch(0).encodeABI();
@@ -2091,9 +2093,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should finalize a reward epoch and designate a new vote power block, setting FTSOs to new block", async () => {
       // Assemble
-      // stub randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
@@ -2177,9 +2176,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
           encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
           [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
-      // stub ftso randomizer
-      const getCurrentRandom = ftsoInterface.contract.methods.getCurrentRandom().encodeABI();
-      await mockFtso.givenMethodReturnUint(getCurrentRandom, 0);
       // stub ftso finalizer
       const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
       const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(

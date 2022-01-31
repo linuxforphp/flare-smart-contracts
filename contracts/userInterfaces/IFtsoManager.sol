@@ -2,8 +2,9 @@
 pragma solidity 0.7.6;
 
 import "../ftso/interface/IIFtso.sol";
+import "../genesis/interface/IFtsoManagerGenesis.sol";
 
-interface IFtsoManager {
+interface IFtsoManager is IFtsoManagerGenesis {
 
     event FtsoAdded(IIFtso ftso, bool add);
     event FallbackMode(bool fallbackMode);

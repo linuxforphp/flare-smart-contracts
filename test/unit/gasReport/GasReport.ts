@@ -1,9 +1,9 @@
-import { time } from "@openzeppelin/test-helpers";
+import { constants, time } from "@openzeppelin/test-helpers";
 import fs from "fs";
 import { Contracts } from "../../../deployment/scripts/Contracts";
-import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoRegistryInstance, FtsoRewardManagerContract, PriceSubmitterInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, PriceSubmitterInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
-import { encodeContractNames, increaseTimeTo, submitPriceHash, toBN } from "../../utils/test-helpers";
+import { encodeContractNames, getRandom, increaseTimeTo, submitHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const VoterWhitelister = artifacts.require("VoterWhitelister");
@@ -11,7 +11,7 @@ const WNat = artifacts.require("WNat");
 const Ftso = artifacts.require("Ftso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
-const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
+const FtsoManager = artifacts.require("FtsoManager");
 const AssetToken = artifacts.require("AssetToken") as AssetTokenContract;
 
 function toBNFixed(x: number, decimals: number) {
@@ -40,13 +40,16 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   const governance = GOVERNANCE_GENESIS_ADDRESS;
   const ADDRESS_UPDATER = accounts[16];
   const ftsoManager = accounts[33];
+  let mockFtsoManager: FtsoManagerInstance;
 
   const epochDurationSec = 1000;
   const revealDurationSec = 500;
+  const rewardDurationSec = 1000000;
 
   let whitelist: VoterWhitelisterInstance;
   let priceSubmitter: PriceSubmitterInstance;
   let startTs: BN;
+  let rewardStartTs: BN;
 
   let wNat: WNatInstance;
   let natFtso: FtsoInstance;
@@ -57,7 +60,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   let epochId: number;
 
   async function createFtso(symbol: string, initialPrice: BN) {
-    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize, 1);
+    const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, startTs, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
     await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
@@ -65,7 +68,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
     // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
     const trustedVoters = accounts.slice(101, 101 + 10);
     await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
-    await ftso.activateFtso(0, epochDurationSec, revealDurationSec, { from: ftsoManager });
+    await ftso.activateFtso(startTs, epochDurationSec, revealDurationSec, { from: ftsoManager });
     return ftso;
   }
 
@@ -85,15 +88,15 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   async function advanceTimeTo(target: number) {
     await time.advanceBlock();
     let timestamp = await time.latest();
-    if (timestamp.toNumber() >= target) return;
-    await increaseTimeTo(target, 'web3');
+    if (timestamp.toNumber() >= startTs.toNumber() + target) return;
+    await increaseTimeTo(startTs.toNumber() + target, 'web3');
   }
 
   async function startNewPriceEpoch() {
     await time.advanceBlock();
     let timestamp = await time.latest();
-    epochId = Math.floor(timestamp.toNumber() / epochDurationSec) + 1;
-    await increaseTimeTo(epochId * epochDurationSec, 'web3');
+    epochId = Math.floor(timestamp.sub(startTs).toNumber() / epochDurationSec) + 1;
+    await increaseTimeTo(startTs.toNumber() + epochId * epochDurationSec, 'web3');
   }
 
   async function initializeForReveal() {
@@ -244,7 +247,22 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await priceSubmitter.initialiseFixedAddress();
       await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, { from: governance });
 
+      // create ftso manager
       startTs = await time.latest();
+      rewardStartTs = startTs.addn(2 * epochDurationSec + revealDurationSec);
+      mockFtsoManager = await FtsoManager.new(
+        governance,
+        governance,
+        ADDRESS_UPDATER,
+        priceSubmitter.address,
+        constants.ZERO_ADDRESS,
+        startTs,
+        epochDurationSec,
+        revealDurationSec,
+        rewardStartTs,
+        rewardDurationSec,
+        7
+      );
 
       // create registry
       ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
@@ -258,7 +276,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
         [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
       await priceSubmitter.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
-        [ADDRESS_UPDATER, ftsoRegistry.address, whitelist.address, ftsoManager], {from: ADDRESS_UPDATER});
+        [ADDRESS_UPDATER, ftsoRegistry.address, whitelist.address, mockFtsoManager.address], {from: ADDRESS_UPDATER});
       // create assets
       wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
@@ -328,7 +346,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // Act
       const allFtsos = [ftsos[0]];
       const prices = [usd(2.1)];
-      const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
+      const random = getRandom();
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
@@ -342,15 +360,15 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // submit hashes
       await startNewPriceEpoch();
       for (const voter of voters) {
-        const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        let submitTx = await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
+        const hash = submitHash(indices, prices, random, voter);
+        let submitTx = await priceSubmitter.submitHash(epochId, hash, { from: voter });
         console.log(`submit price for single ftso: ${submitTx.receipt.gasUsed}`);
         gasReport.push({ "function": "submit price for single ftso", "gasUsed": submitTx.receipt.gasUsed });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
-        let revealTx = await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
+        let revealTx = await priceSubmitter.revealPrices(epochId, indices, prices, random, { from: voter });
         console.log(`reveal price for single ftso: ${revealTx.receipt.gasUsed}`);
         gasReport.push({ "function": "reveal price for single ftso", "gasUsed": revealTx.receipt.gasUsed });
       }
@@ -402,7 +420,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // Act
       const allFtsos = [natFtso, ...ftsos];
       const prices = [usd(2.58), usd(0.6), usd(5.5), usd(1.9), usd(0.23), usd(1.4), usd(0.5), usd(1.2), usd(19.7)];
-      const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
+      const random = getRandom();
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
@@ -416,15 +434,15 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // submit hashes
       await startNewPriceEpoch();
       for (const voter of voters) {
-        const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        let submitTx = await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
+        const hash = submitHash(indices, prices, random, voter);
+        let submitTx = await priceSubmitter.submitHash(epochId, hash, { from: voter });
         console.log(`submit prices for wNat ftso with 4 assets + 8 ftsos: ${submitTx.receipt.gasUsed}`);
         gasReport.push({ "function": "submit prices for wNat ftso with 4 assets + 8 ftsos", "gasUsed": submitTx.receipt.gasUsed });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
-        let revealTx = await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
+        let revealTx = await priceSubmitter.revealPrices(epochId, indices, prices, random, { from: voter });
         console.log(`reveal prices for wNat ftso with 4 assets + 8 ftsos: ${revealTx.receipt.gasUsed}`);
         gasReport.push({ "function": "reveal prices for wNat ftso with 4 assets + 8 ftsos", "gasUsed": revealTx.receipt.gasUsed });
       }
@@ -453,7 +471,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // Act
       const allFtsos = [ftsos[0]];
       const prices = [usd(2.1)];
-      const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
+      const random = getRandom();
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
@@ -467,13 +485,13 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // submit hashes
       await startNewPriceEpoch();
       for (const voter of voters) {
-        const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
+        const hash = submitHash(indices, prices, random, voter);
+        await priceSubmitter.submitHash(epochId, hash, { from: voter });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
-        await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
+        await priceSubmitter.revealPrices(epochId, indices, prices, random, { from: voter });
       }
       // finalize
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end
@@ -505,7 +523,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // Act
       const allFtsos = [ftsos[0]];
       const prices = [usd(2.1)];
-      const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
+      const random = getRandom();
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
@@ -519,13 +537,13 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // submit hashes
       await startNewPriceEpoch();
       for (const voter of voters) {
-        const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
+        const hash = submitHash(indices, prices, random, voter);
+        await priceSubmitter.submitHash(epochId, hash, { from: voter });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
-        await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
+        await priceSubmitter.revealPrices(epochId, indices, prices, random, { from: voter });
       }
       // finalize
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end
@@ -560,7 +578,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // Act
       const allFtsos = [ftsos[0]];
       const prices = [usd(2.1)];
-      const randoms = prices.map(_ => toBN(Math.round(Math.random() * 1e9)));
+      const random = getRandom();
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
@@ -574,13 +592,13 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       // submit hashes
       await startNewPriceEpoch();
       for (const voter of voters) {
-        const hashes = allFtsos.map((ftso, i) => submitPriceHash(prices[i], randoms[i], voter));
-        await priceSubmitter.submitPriceHashes(epochId, indices, hashes, { from: voter });
+        const hash = submitHash(indices, prices, random, voter);
+        await priceSubmitter.submitHash(epochId, hash, { from: voter });
       }
       // reveal prices
       await initializeForReveal();
       for (const voter of voters) {
-        await priceSubmitter.revealPrices(epochId, indices, prices, randoms, { from: voter });
+        await priceSubmitter.revealPrices(epochId, indices, prices, random, { from: voter });
       }
       // finalize
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end

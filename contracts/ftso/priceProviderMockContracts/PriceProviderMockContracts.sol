@@ -548,6 +548,14 @@ contract MockPriceSubmitter is IPriceSubmitter {
     string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
     string internal constant ERR_INVALID_INDEX = "Invalid index";
     string internal constant ERR_WHITELISTER_ONLY = "Voter whitelister only";
+    string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
+    string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
+    string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
+    string internal constant ERR_RANDOM_TOO_SMALL = "Too small random number";
+    string internal constant ERR_FTSO_INDICES_NOT_INCREASING = "FTSO indices not increasing";
+
+    uint256 public constant MINIMAL_RANDOM = 2**128;    // minimal random value for price submission
+    uint256 public constant RANDOM_EPOCH_CYCLIC_BUFFER_SIZE = 100;
 
     MockFtsoRegistry internal ftsoRegistry; 
     
@@ -555,6 +563,9 @@ contract MockPriceSubmitter is IPriceSubmitter {
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
     mapping(address => uint256) private whitelistedFtsoBitmap;
+    mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
+
+    uint256[RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] internal randoms;
 
     modifier onlyWhitelister {
         require(msg.sender == address(voterWhitelister), ERR_WHITELISTER_ONLY);
@@ -607,62 +618,62 @@ contract MockPriceSubmitter is IPriceSubmitter {
     }
     
     /**
-     * @notice Submits price hashes for current epoch
-     * @param _ftsoIndices          List of ftso indices
-     * @param _hashes               List of hashed price and random number
-     * @notice Emits PriceHashesSubmitted event
+     * @notice Submits hash for current epoch
+     * @param _hash                 Hash of ftso indices, prices, random number and voter address
+     * @notice Emits HashesSubmitted event
      */
-    function submitPriceHashes(
+    function submitHash(
         uint256 _epochId, 
-        uint256[] memory _ftsoIndices, 
-        bytes32[] memory _hashes
-    ) external override {
-        // Submit the prices
-        uint256 length = _ftsoIndices.length;
-        require(length == _hashes.length, ERR_ARRAY_LENGTHS);
-
-        IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
-        uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
-
-        for (uint256 i = 0; i < length; i++) {
-            uint256 ind = _ftsoIndices[i];
-            if (allowedBitmask & (1 << ind) == 0) {
-                revert(ERR_NOT_WHITELISTED);
-            }
-            ftsos[i].submitPriceHashSubmitter(msg.sender, _epochId, _hashes[i]);
-        }
-        emit PriceHashesSubmitted(msg.sender, _epochId, ftsos, _hashes, block.timestamp);
+        bytes32 _hash
+    )
+        external override
+    {
+        IIFtso ftso = ftsoRegistry.getFtso(0); // use first ftso instead of ftso manager as not used in mock
+        require(_epochId == ftso.getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
+        require(epochVoterHash[_epochId][msg.sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
+        require(whitelistedFtsoBitmap[msg.sender] != 0, ERR_NOT_WHITELISTED);
+        
+        epochVoterHash[_epochId][msg.sender] = _hash;
+        emit HashSubmitted(msg.sender, _epochId, _hash, block.timestamp);
     }
 
     /**
      * @notice Reveals submitted prices during epoch reveal period
      * @param _epochId              Id of the epoch in which the price hashes was submitted
-     * @param _ftsoIndices          List of ftso indices
+     * @param _ftsoIndices          List of increasing ftso indices
      * @param _prices               List of submitted prices in USD
-     * @param _randoms              List of submitted random numbers
-     * @notice The hash of _price and _random must be equal to the submitted hash
+     * @param _random               Submitted random number
+     * @notice The hash of ftso indices, prices, random number and voter address must be equal to the submitted hash
      * @notice Emits PricesRevealed event
      */
     function revealPrices(
         uint256 _epochId,
         uint256[] memory _ftsoIndices,
         uint256[] memory _prices,
-        uint256[] memory _randoms
+        uint256 _random
     )
         external override
     {
         uint256 length  = _ftsoIndices.length;
         require(length == _prices.length, ERR_ARRAY_LENGTHS);
-        require(length == _randoms.length, ERR_ARRAY_LENGTHS);
+        require(_random >= MINIMAL_RANDOM, ERR_RANDOM_TOO_SMALL);
+        require(epochVoterHash[_epochId][msg.sender] == 
+            keccak256(abi.encode(_ftsoIndices, _prices, _random, msg.sender)), 
+            ERR_PRICE_INVALID);
 
         IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
         uint256 wNatVP = uint256(-1);
+        uint256 currentIndex;
 
         for (uint256 i = 0; i < length; i++) {
-            uint256 ind = _ftsoIndices[i];
-            if (allowedBitmask & (1 << ind) == 0) {
+            if (wNatVP != uint256(-1) && currentIndex >= _ftsoIndices[i]) {
+                revert(ERR_FTSO_INDICES_NOT_INCREASING);
+            }
+
+            currentIndex = _ftsoIndices[i];
+            if (allowedBitmask & (1 << currentIndex) == 0) {
                 revert(ERR_NOT_WHITELISTED);
             }
             // read native VP only once
@@ -670,9 +681,13 @@ contract MockPriceSubmitter is IPriceSubmitter {
                 wNatVP = ftsos[i].wNatVotePowerCached(msg.sender, _epochId);
             }
             // call reveal price on ftso
-            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], _randoms[i], wNatVP);
+            ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], wNatVP);
         }
-        emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _randoms, block.timestamp);
+        //slither-disable-next-line weak-prng // not used for random
+        randoms[_epochId % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] += uint256(keccak256(abi.encode(_random, _prices)));
+        delete epochVoterHash[_epochId][msg.sender];
+
+        emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _random, block.timestamp);
     }
     
     /**
@@ -684,6 +699,31 @@ contract MockPriceSubmitter is IPriceSubmitter {
         return whitelistedFtsoBitmap[_voter];
     }
 
+    /**
+     * @notice Returns current random number
+     * @return Random number
+     * @dev Should never revert
+     */
+    function getCurrentRandom() external view override returns (uint256) {
+        IIFtso ftso = ftsoRegistry.getFtso(0); // use first ftso instead of ftso manager as not used in mock 
+        uint256 currentEpochId = ftso.getCurrentEpochId();
+        if (currentEpochId == 0) {
+            return 0;
+        }
+        //slither-disable-next-line weak-prng // not used for random
+        return randoms[(currentEpochId - 1) % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE];
+    }
+
+    /**
+     * @notice Returns random number of the specified epoch
+     * @param _epochId Id of the epoch
+     * @return Random number
+     */
+    function getRandom(uint256 _epochId) external view override returns (uint256) {
+        //slither-disable-next-line weak-prng // not used for random
+        return randoms[_epochId % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE];
+    }
+
     function getVoterWhitelister() public view override returns (address) {
         return address(voterWhitelister);
     }
@@ -692,7 +732,7 @@ contract MockPriceSubmitter is IPriceSubmitter {
         return ftsoRegistry;
     }
 
-    function getFtsoManager() public pure override returns (address) {
+    function getFtsoManager() public pure override returns (IFtsoManagerGenesis) {
         revert("Not in dummy contract");
     }
 }
