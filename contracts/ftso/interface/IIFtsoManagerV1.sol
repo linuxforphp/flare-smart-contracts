@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity >=0.7.6 <0.9;
 
 
 // interface for the first version of ftso manger (V1 = oldest version) - last version is always without any Vx
