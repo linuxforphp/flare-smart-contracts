@@ -788,7 +788,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             
             assert.equal(
                 ADDRESS_UPDATER, 
-                await priceSubmitter.addressUpdater()
+                await priceSubmitter.getAddressUpdater()
             )
 
             assert.equal(
