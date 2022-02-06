@@ -24,7 +24,7 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
   it("Should know about address updater contract", async() => {
     // Assemble
     // Act
-    const addressUpdaterAddress = await addressUpdatable.addressUpdater();
+    const addressUpdaterAddress = await addressUpdatable.getAddressUpdater();
     // Assert
     assert.equal(ADDRESS_UPDATER_ADDRESS, addressUpdaterAddress);
   });
@@ -43,7 +43,7 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
     assert.equal(nameHashes[1], encodeContractNames([ADDRESS_UPDATER_NAME])[0]);
     assert.equal(addresses[0], FTSO_MANAGER_ADDRESS);
     assert.equal(addresses[1], newAddressUpdaterAddress);
-    assert.equal(await addressUpdatable.addressUpdater(), newAddressUpdaterAddress);
+    assert.equal(await addressUpdatable.getAddressUpdater(), newAddressUpdaterAddress);
   });
 
   it("Should revert updating addresses if not from address updater", async() => {

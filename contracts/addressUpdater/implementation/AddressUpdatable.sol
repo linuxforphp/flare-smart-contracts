@@ -6,17 +6,29 @@ import "../interface/IIAddressUpdatable.sol";
 
 abstract contract AddressUpdatable is IIAddressUpdatable {
 
-    address public addressUpdater;
+    // https://docs.soliditylang.org/en/v0.8.7/contracts.html#constant-and-immutable-state-variables
+    // No storage slot is allocated
+    bytes32 internal constant ADDRESS_STORAGE_POSITION = 
+        keccak256("flare.diamond.AddressUpdatable.ADDRESS_STORAGE_POSITION");
 
     modifier onlyAddressUpdater() {
-        require (msg.sender == addressUpdater, "only address updater");
+        require (msg.sender == getAddressUpdater(), "only address updater");
         _;
     }
 
-    constructor(address _addressUpdater)  {
-        addressUpdater = _addressUpdater;
+    constructor(address _addressUpdater) {
+        setAddressUpdaterValue(_addressUpdater);
     }
-    
+
+    function getAddressUpdater() public view returns (address _addressUpdater) {
+        // Only direct constants are allowed in inline assembly, so we assign it here
+        bytes32 position = ADDRESS_STORAGE_POSITION;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _addressUpdater := sload(position)
+        }
+    }
+
     /**
      * @notice external method called from AddressUpdater only
      */
@@ -28,7 +40,7 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
         onlyAddressUpdater
     {
         // update addressUpdater address
-        addressUpdater = _getContractAddress(_contractNameHashes, _contractAddresses, "AddressUpdater");
+        setAddressUpdaterValue(_getContractAddress(_contractNameHashes, _contractAddresses, "AddressUpdater"));
         // update all other addresses
         _updateContractAddresses(_contractNameHashes, _contractAddresses);
     }
@@ -63,5 +75,14 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
         }
         require(a != address(0), "address zero");
         return a;
+    }
+
+    function setAddressUpdaterValue(address _addressUpdater) internal {
+        // Only direct constants are allowed in inline assembly, so we assign it here
+        bytes32 position = ADDRESS_STORAGE_POSITION;
+        // solhint-disable-next-line no-inline-assembly  
+        assembly {
+            sstore(position, _addressUpdater)
+        }
     }
 }

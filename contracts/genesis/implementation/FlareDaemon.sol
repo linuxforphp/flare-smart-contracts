@@ -233,7 +233,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
      * @param _addressUpdater   The address updater contract.
      */
     function setAddressUpdater(address _addressUpdater) external onlyGovernance {
-        addressUpdater = _addressUpdater;
+        setAddressUpdaterValue(_addressUpdater);
     }
 
     /**

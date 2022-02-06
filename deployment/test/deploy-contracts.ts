@@ -203,7 +203,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about AddressUpdater", async () => {
       // Assemble
       // Act
-      const address = await ftsoManager.addressUpdater();
+      const address = await ftsoManager.getAddressUpdater();
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
     });
@@ -543,7 +543,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         // Act
         let addressUpdatable = await AddressUpdatable.at(contracts.getContractAddress(name));
         // Assert
-        assert.equal(await addressUpdatable.addressUpdater(), addressUpdater.address);
+        assert.equal(await addressUpdatable.getAddressUpdater(), addressUpdater.address);
       }
     });
   });
