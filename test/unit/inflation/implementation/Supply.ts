@@ -197,36 +197,6 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
     });
-    
-    it("Should change burn address", async() => {
-        const burnAddress2 = await getAddressWithZeroBalance();
-        await supply.changeBurnAddress(burnAddress2, {from: governanceAddress});
-        expect((await supply.burnAddress())).to.equals(burnAddress2);
-    });
-
-    it("Should revert changing burn address if not from governance", async() => {
-        const burnAddress2 = await getAddressWithZeroBalance();
-        await expectRevert(supply.changeBurnAddress(burnAddress2, {from: accounts[0]}), "only governance");
-    });
-
-    it("Should change burn address and update circulating balance", async() => {
-        await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
-        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply);
-        const newBurnAddress = await getAddressWithZeroBalance();
-        await supply.changeBurnAddress(newBurnAddress, {from: governanceAddress});
-
-        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
-    });
-
-    it("Should change burn address and update circulating balance 2", async() => {
-        await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
-        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply);
-        const newBurnAddress = await getAddressWithZeroBalance();
-        await web3.eth.sendTransaction({ to: newBurnAddress, value: toBN(200), from: accounts[1] });
-        await supply.changeBurnAddress(newBurnAddress, {from: governanceAddress});
-
-        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100 - 200);
-    });
 
     it("Should decrease foundation supply", async() => {
         await supply.decreaseFoundationSupply(500, {from: governanceAddress});
