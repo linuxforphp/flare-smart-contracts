@@ -67,4 +67,3 @@ If the burn address ever needs to be changed, get the last data from the current
     - Set token pool address
     - Set the balance to be reduced from foundation supply.
 - Foundation reports some tokens were unlocked (team members tokens were released, for example). Done through the API call: decreaseFoundationSupply()
-- Change burn address. Done through the API call: changeBurnAddress()
