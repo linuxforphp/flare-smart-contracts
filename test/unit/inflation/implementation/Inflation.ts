@@ -71,6 +71,49 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
   const inflationForAnnum = supply * inflationFactor;
   let inflationAllocation: InflationAllocationInstance;
 
+  function isLeapYear(year: number) {
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  }
+
+  async function timestampToDate(timestamp: BN): Promise<[year: number, month: number, day: number]> {
+    const { 0: year, 1: month, 2: day } = await dateTimeContract.timestampToDate(timestamp);
+    return [year.toNumber(), month.toNumber(), day.toNumber()];
+  }
+
+  /**
+   * Return first timestamp after `timestamp` that has the given month and day
+   * and for which the year is of type `yearType`.
+   * @returns a timestamp for calculated date
+   */
+  async function firstDateLike(timestamp: BN, yearType: 'leap' | 'before_leap' | 'ordinary' | null, month: number, day: number): Promise<BN> {
+    let [year, cmonth, cday] = await timestampToDate(timestamp);
+    // advance year if month,day is before or equal to current date
+    if (cmonth > month || (cmonth === month && cday >= day)) ++year;
+    // adjust for leap year
+    if (yearType !== null) {
+      const yearsToLeapYearDict = { leap: 0, before_leap: 1, ordinary: 2 };
+      const yearsToLeapYear = yearsToLeapYearDict[yearType];
+      while (!isLeapYear(year + yearsToLeapYear)) ++year;
+    }
+    // convert back to timestamp
+    // console.log(`Test date: ${year}-${month}-${day}`);
+    return await dateTimeContract.timestampFromDate(year, month, day);
+  }
+
+  before(async () => {
+    dateTimeContract = await DateTimeContract.new();
+    // Assemble
+    await time.advanceBlock();
+    const nowTs = await time.latest() as BN;
+    // a year yyyy-01-01 in the the future, that is not leap year
+    const timestampTest = await firstDateLike(nowTs, 'ordinary', 1, 1);
+    // Make sure the current blockchain time is before timestampTest
+    // this should always pass
+    assert.isAtLeast(timestampTest.toNumber(), nowTs.toNumber(), "Too many tests before this test, increase the starting time");
+    // Act
+    await time.increaseTo(timestampTest);
+  });
+
   beforeEach(async () => {
     mockSupply = await MockContract.new();
     mockInflationPercentageProvider = await MockContract.new();
@@ -79,7 +122,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
     mockFlareDaemon1 = await FlareDaemonMock1.new();
     mockFlareDaemon2 = await FlareDaemonMock2.new();
     mockFlareDaemonInterface = await FlareDaemon.new();
-    dateTimeContract = await DateTimeContract.new()
     // Force a block in order to get most up to date time
     await time.advanceBlock();
     // Get the timestamp for the just mined block
@@ -144,7 +186,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
     it("Should initialize the annum", async () => {
       // Assemble
-      // Assume blockchain start time is 1/1/2021 - not a leap year
+      // Assume blockchain start time is 1/1 (not a leap year)
       // Act
       const response = await mockFlareDaemon.trigger();
       const nowTs = await time.latest() as BN;
@@ -178,8 +220,8 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
   describe("recognize", async () => {
     it("Should recognize new annum when year rolls over", async () => {
-      // Assume blockchain start time is 1/1/2021 - not a leap year
-      // 2022 is also not a leap year...
+      // Assume blockchain start time is 1/1 (not a leap year)
+      // next year is also not a leap year...
       // Assemble
       await mockFlareDaemon.trigger();
       const nowTs = await time.latest() as BN;
@@ -209,35 +251,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
   });
 
   describe("annums lengths", async () => {
-    function isLeapYear(year: number) {
-      return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-    }
-
-    async function timestampToDate(timestamp: BN): Promise<[year: number, month: number, day: number]> {
-      const { 0: year, 1: month, 2: day } = await dateTimeContract.timestampToDate(timestamp);
-      return [year.toNumber(), month.toNumber(), day.toNumber()];
-    }
-
-    /**
-     * Return first timestamp after `timestamp` that has the given month and day
-     * and for which the year is of type `yearType`.
-     * @returns a timestamp for calculated date
-     */
-    async function firstDateLike(timestamp: BN, yearType: 'leap' | 'before_leap' | 'ordinary' | null, month: number, day: number): Promise<BN> {
-      let [year, cmonth, cday] = await timestampToDate(timestamp);
-      // advance year if month,day is before or equal to current date
-      if (cmonth > month || (cmonth === month && cday >= day)) ++year;
-      // adjust for leap year
-      if (yearType !== null) {
-        const yearsToLeapYearDict = { leap: 0, before_leap: 1, ordinary: 2 };
-        const yearsToLeapYear = yearsToLeapYearDict[yearType];
-        while (!isLeapYear(year + yearsToLeapYear)) ++year;
-      }
-      // convert back to timestamp
-      // console.log(`Test date: ${year}-${month}-${day}`);
-      return await dateTimeContract.timestampFromDate(year, month, day);
-    }
-
     it("Test firstDateLike calculation", async () => {
       async function equalDate(timestamp: BN, [year, month, day]: [number, number, number]) {
         const datets = await dateTimeContract.timestampFromDate(year, month, day);
