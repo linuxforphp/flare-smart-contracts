@@ -41,6 +41,9 @@ contract Ftso is IIFtso {
 
     uint256 internal assetPriceUSD;                 // current asset USD price
     uint256 internal assetPriceTimestamp;           // time when price was updated
+    PriceFinalizationType internal assetPriceFinalizationType;      // price finalization type (uint8)
+    uint240 internal lastPriceEpochFinalizationTimestamp;           // last price epoch finalization timestamp
+    PriceFinalizationType internal lastPriceEpochFinalizationType;  // last price epoch finalization type (uint8)
     FtsoEpoch.State internal epochs;                // epoch storage
 
     // immutable settings
@@ -197,6 +200,9 @@ contract Ftso is IIFtso {
         // update price
         assetPriceUSD = data.finalMedianPrice;
         assetPriceTimestamp = block.timestamp;
+        assetPriceFinalizationType = PriceFinalizationType.WEIGHTED_MEDIAN;
+        lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
+        lastPriceEpochFinalizationType = PriceFinalizationType.WEIGHTED_MEDIAN;
         
         // return reward data if requested
         bool rewardedFtso = false;
@@ -479,6 +485,32 @@ contract Ftso is IIFtso {
     }
 
     /**
+     * @notice Returns current asset price details
+     * @return _price                                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _priceTimestamp                          Time when price was updated for the last time
+     * @return _priceFinalizationType                   Finalization type when price was updated for the last time
+     * @return _lastPriceEpochFinalizationTimestamp     Time when last price epoch was finalized
+     * @return _lastPriceEpochFinalizationType          Finalization type of last finalized price epoch
+     */
+    function getCurrentPriceDetails() external view override 
+        returns (
+            uint256 _price,
+            uint256 _priceTimestamp,
+            PriceFinalizationType _priceFinalizationType,
+            uint256 _lastPriceEpochFinalizationTimestamp,
+            PriceFinalizationType _lastPriceEpochFinalizationType
+        )
+    {
+        return (
+            assetPriceUSD,
+            assetPriceTimestamp,
+            assetPriceFinalizationType,
+            lastPriceEpochFinalizationTimestamp,
+            lastPriceEpochFinalizationType
+        );
+    }
+
+    /**
      * @notice Returns asset price consented in specific epoch
      * @param _epochId              Id of the epoch
      * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
@@ -735,6 +767,9 @@ contract Ftso is IIFtso {
             // update price
             assetPriceUSD = _epoch.price;
             assetPriceTimestamp = block.timestamp;
+            assetPriceFinalizationType = _epoch.finalizationType;
+            lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
+            lastPriceEpochFinalizationType = _epoch.finalizationType;
             
             _writeFallbackEpochPriceData(_epochId);
 
@@ -769,6 +804,9 @@ contract Ftso is IIFtso {
         
         _epoch.finalizationType = _exception ? 
             PriceFinalizationType.PREVIOUS_PRICE_COPIED_EXCEPTION : PriceFinalizationType.PREVIOUS_PRICE_COPIED;
+
+        lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
+        lastPriceEpochFinalizationType = _epoch.finalizationType;
 
         _writeFallbackEpochPriceData(_epochId);
 

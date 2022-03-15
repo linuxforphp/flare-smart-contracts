@@ -118,6 +118,22 @@ interface IFtso {
     function getCurrentPrice() external view returns (uint256 _price, uint256 _timestamp);
 
     /**
+     * @notice Returns current asset price details
+     * @return _price                                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _priceTimestamp                          Time when price was updated for the last time
+     * @return _priceFinalizationType                   Finalization type when price was updated for the last time
+     * @return _lastPriceEpochFinalizationTimestamp     Time when last price epoch was finalized
+     * @return _lastPriceEpochFinalizationType          Finalization type of last finalized price epoch
+     */
+    function getCurrentPriceDetails() external view returns (
+        uint256 _price,
+        uint256 _priceTimestamp,
+        PriceFinalizationType _priceFinalizationType,
+        uint256 _lastPriceEpochFinalizationTimestamp,
+        PriceFinalizationType _lastPriceEpochFinalizationType
+    );
+
+    /**
      * @notice Returns current random number
      */
     function getCurrentRandom() external view returns (uint256);
