@@ -1424,12 +1424,27 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId), price: toBN(250), rewardedFtso: false, lowRewardPrice: toBN(250), highRewardPrice: toBN(250), finalizationType: toBN(1) });
 
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(250);
+      expect(priceDetails[1].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
+      expect(priceDetails[2].toNumber()).to.equals(1);
+      expect(priceDetails[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
+      expect(priceDetails[4].toNumber()).to.equals(1);
+
       await ftso.initializeCurrentEpochStateForReveal(50000, false, { from: accounts[10] });
 
       // round 2 - current asset price = 250
       await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
       expectEvent(await ftso.finalizePriceEpoch(epochId + 1, false, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId + 1), price: toBN(250), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(3) });
+
+      let priceDetails2 = await ftso.getCurrentPriceDetails();
+      expect(priceDetails2[0].toNumber()).to.equals(250);
+      expect(priceDetails2[1].toNumber()).to.equals(priceDetails[1].toNumber())
+      expect(priceDetails2[2].toNumber()).to.equals(1);
+      expect(priceDetails2[3].toNumber()).to.be.gt((epochId + 2) * 120 + 60);
+      expect(priceDetails2[3].toNumber()).not.to.equal(priceDetails[1].toNumber());
+      expect(priceDetails2[4].toNumber()).to.equals(3);
     });
 
     it("Should finalize price epoch and return rewarded addresses", async () => {
@@ -1979,6 +1994,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
       expectEvent(await ftso.finalizePriceEpoch(epochId, true, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(450), finalizationType: toBN(2) });
 
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(450);
+      expect(priceDetails[1].toNumber()).to.be.gt((epochId + 1) * 120 + 60 + 1);
+      expect(priceDetails[2].toNumber()).to.equals(2);
+      expect(priceDetails[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60 + 1);
+      expect(priceDetails[4].toNumber()).to.equals(2);
+
       // after price finalization
       let epochData = await ftso.getFullEpochReport(epochId);
       expect(epochData[0].toNumber()).to.equals(epochId * 120);
@@ -2024,6 +2046,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(data._natWeightsSum).to.equals('0');
 
       expectEvent(await ftso.finalizePriceEpoch(epochId, true, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(450), finalizationType: toBN(2) });
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(450);
+      expect(priceDetails[1].toNumber()).to.be.gt((epochId + 1) * 120 + 60 + 1);
+      expect(priceDetails[2].toNumber()).to.equals(2);
+      expect(priceDetails[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60 + 1);
+      expect(priceDetails[4].toNumber()).to.equals(2);
 
       // after price finalization
       let epochData = await ftso.getFullEpochReport(epochId);
@@ -2076,6 +2104,13 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expectEvent(await ftso.fallbackFinalizePriceEpoch(epochId, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(450), finalizationType: toBN(4) });
       let priceData2 = await ftso.getCurrentPrice();
 
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(450);
+      expect(priceDetails[1].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
+      expect(priceDetails[2].toNumber()).to.equals(4);
+      expect(priceDetails[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
+      expect(priceDetails[4].toNumber()).to.equals(4);
+
       // after price finalization
       let epochData = await ftso.getFullEpochReport(epochId);
       expect(epochData[0].toNumber()).to.equals(epochId * 120);
@@ -2117,6 +2152,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(data._natWeightsSum).to.equals('0');
 
       expectEvent(await ftso.finalizePriceEpoch(epochId, true, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(1), finalizationType: toBN(3) });
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(1);
+      expect(priceDetails[1].toNumber()).to.be.lt((epochId + 1) * 120 + 60);
+      expect(priceDetails[2].toNumber()).to.equals(0);
+      expect(priceDetails[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60 + 1);
+      expect(priceDetails[4].toNumber()).to.equals(3);
 
       // after price finalization
       let epochData = await ftso.getFullEpochReport(epochId);
@@ -2152,6 +2193,12 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
 
       expectEvent(await ftso.fallbackFinalizePriceEpoch(epochId, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(1), finalizationType: toBN(5) });
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(1);
+      expect(priceDetails[1].toNumber()).to.be.lt((epochId + 1) * 120 + 60);
+      expect(priceDetails[2].toNumber()).to.equals(0);
+      expect(priceDetails[3].toNumber()).to.be.gt((epochId + 1) * 120 + 60);
+      expect(priceDetails[4].toNumber()).to.equals(5);
 
       // after price finalization
       let epochData = await ftso.getFullEpochReport(epochId);
@@ -2380,6 +2427,37 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       let price2 = await ftso.getCurrentPrice();
       expect(price2[0].toNumber()).to.equals(250);
       expect(price2[1].toNumber()).to.be.gt(price[1].toNumber());
+    });
+
+    it("Should get current price details", async () => {
+      let priceDetails = await ftso.getCurrentPriceDetails();
+      expect(priceDetails[0].toNumber()).to.equals(1);
+
+      await ftso.submitPriceHash(epochId, submitPriceHash(500, 123, accounts[1]), { from: accounts[1] });
+      await ftso.submitPriceHash(epochId, submitPriceHash(250, 124, accounts[2]), { from: accounts[2] });
+      await ftso.submitPriceHash(epochId, submitPriceHash(400, 125, accounts[3]), { from: accounts[3] });
+
+      await setMockVotePowerAt(10, 50000, 1000000);
+      await ftso.initializeCurrentEpochStateForReveal(50000, false, { from: accounts[10] });
+      await ftso.setVotePowerBlock(12, { from: accounts[10] });
+
+      await increaseTimeTo((epochId + 1) * 120); // reveal period start
+      await setMockVotePowerOfAt(10, 1000, 100, accounts[1]);
+      await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] });
+      await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
+      await ftso.revealPrice(epochId, 250, 124, { from: accounts[2] });
+      await setMockVotePowerOfAt(10, 1, 500, accounts[3]);
+      await ftso.revealPrice(epochId, 400, 125, { from: accounts[3] });
+
+      await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+      await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }); // finalize price -> new current price = 250
+
+      let priceDetails2 = await ftso.getCurrentPriceDetails();
+      expect(priceDetails2[0].toNumber()).to.equals(250);
+      expect(priceDetails2[1].toNumber()).to.be.gt(priceDetails[1].toNumber());
+      expect(priceDetails2[2].toNumber()).to.equals(1);
+      expect(priceDetails2[3].toNumber()).to.be.gt(priceDetails[1].toNumber()); // initial timestamp
+      expect(priceDetails2[4].toNumber()).to.equals(1);
     });
 
     it("Should get epoch price", async () => {
