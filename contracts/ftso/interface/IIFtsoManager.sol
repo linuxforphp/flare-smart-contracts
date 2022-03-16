@@ -77,4 +77,15 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
             uint256 _lastUnprocessedPriceEpochRevealEnds,
             bool _lastUnprocessedPriceEpochInitialized
         );
+
+    function rewardEpochsStartTs() external view returns(uint256);
+
+    function rewardEpochDurationSeconds() external view returns(uint256);
+
+    function rewardEpochs(uint256 _rewardEpochId) external view 
+        returns (
+            uint256 _votepowerBlock,
+            uint256 _startBlock,
+            uint256 _startTimestamp
+        );
 }

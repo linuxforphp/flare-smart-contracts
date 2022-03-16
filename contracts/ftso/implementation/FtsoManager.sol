@@ -69,7 +69,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     uint256 internal rewardEpochsLength;
     uint256 public override currentRewardEpochEnds;
 
-    FtsoManagerSettings.State internal settings;
+    FtsoManagerSettings.State public settings;
 
     // price epoch data
     uint256 internal immutable firstPriceEpochStartTs;
@@ -82,8 +82,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     bool internal lastUnprocessedPriceEpochInitialized;
 
     // reward Epoch data
-    uint256 internal immutable firstRewardEpochStartTs;
-    uint256 internal rewardEpochDurationSeconds;
+    uint256 public immutable override rewardEpochsStartTs;
+    uint256 public override rewardEpochDurationSeconds;
     uint256 internal votePowerIntervalFraction;
     uint256 internal nextRewardEpochToExpire;
 
@@ -91,11 +91,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     mapping(IIFtso => bool) public override notInitializedFtsos;
 
     IIPriceSubmitter public immutable priceSubmitter;
-    IIFtsoRewardManager internal ftsoRewardManager;
-    IIFtsoRegistry internal ftsoRegistry;
-    IIVoterWhitelister internal voterWhitelister;
-    IISupply internal supply;
-    CleanupBlockNumberManager internal cleanupBlockNumberManager;
+    IIFtsoRewardManager public rewardManager;
+    IIFtsoRegistry public ftsoRegistry;
+    IIVoterWhitelister public voterWhitelister;
+    IISupply public supply;
+    CleanupBlockNumberManager public cleanupBlockNumberManager;
 
     // fallback mode
     bool internal fallbackMode; // all ftsos in fallback mode
@@ -134,7 +134,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             ERR_REWARD_EPOCH_DURATION_CONDITION_INVALID);
 
         // reward epoch
-        firstRewardEpochStartTs = _firstRewardEpochStartTs;
+        rewardEpochsStartTs = _firstRewardEpochStartTs;
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
         votePowerIntervalFraction = _votePowerIntervalFraction;
 
@@ -411,24 +411,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         return votePowerIntervalFraction;
     }
 
-    function getFtsoRewardManager() external view returns (IIFtsoRewardManager) {
-        return ftsoRewardManager;
-    }
-
-    function getFtsoRegistry() external view returns (IIFtsoRegistry) {
-        return ftsoRegistry;
-    }
-
-    function getVoterWhitelister() external view returns (IIVoterWhitelister) {
-        return voterWhitelister;
-    }
-
-    function getSupply() external view returns (IISupply) {
-        return supply;
-    }
-
-    function getCleanupBlockNumberManager() external view returns (CleanupBlockNumberManager) {
-        return cleanupBlockNumberManager;
+    function getPriceSubmitter() external view returns (IIPriceSubmitter) {
+        return priceSubmitter;
     }
 
     function getCurrentPriceEpochId() external view override returns (uint256 _priceEpochId) {
@@ -500,7 +484,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             uint256 _rewardEpochDurationSeconds
         )
     {
-        return (firstRewardEpochStartTs, rewardEpochDurationSeconds);
+        return (rewardEpochsStartTs, rewardEpochDurationSeconds);
     }
 
     function getFallbackMode() external view override
@@ -567,6 +551,19 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     function getCurrentRewardEpoch() external view override returns (uint256) {
         require(rewardEpochsLength != 0, ERR_REWARD_EPOCH_NOT_INITIALIZED);
         return _getCurrentRewardEpochId();
+    }
+
+    function rewardEpochs(uint256 _rewardEpochId) external view override
+        returns (
+            uint256 _votepowerBlock,
+            uint256 _startBlock,
+            uint256 _startTimestamp
+        )
+    {
+        RewardEpochData memory rewardEpochData = getRewardEpochData(_rewardEpochId);
+        _votepowerBlock = rewardEpochData.votepowerBlock;
+        _startBlock = rewardEpochData.startBlock;
+        _startTimestamp = rewardEpochData.startTimestamp;
     }
     
     /**
@@ -718,7 +715,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
      */
     function _initializeFirstRewardEpoch() internal {
 
-        if (block.timestamp >= firstRewardEpochStartTs) {
+        if (block.timestamp >= rewardEpochsStartTs) {
             IIFtso[] memory ftsos = _getFtsos();
             uint256 numFtsos = ftsos.length;
             // Prime the reward epoch array with a new reward epoch
@@ -735,7 +732,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                 ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
             
-            currentRewardEpochEnds = firstRewardEpochStartTs + rewardEpochDurationSeconds;
+            currentRewardEpochEnds = rewardEpochsStartTs + rewardEpochDurationSeconds;
         }
     }
 
@@ -802,18 +799,18 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             _getRewardEpoch(nextRewardEpochToExpire + 1).startTimestamp <= expiryThreshold) 
         {   // Note: Since nextRewardEpochToExpire + 1 starts at that time
             // nextRewardEpochToExpire ends strictly before expiryThreshold, 
-            try ftsoRewardManager.closeExpiredRewardEpoch(nextRewardEpochToExpire) {
+            try rewardManager.closeExpiredRewardEpoch(nextRewardEpochToExpire) {
                 nextRewardEpochToExpire++;
             } catch Error(string memory message) {
                 // closing of expired failed, which is not critical
                 // just emit event for diagnostics
                 emit ClosingExpiredRewardEpochFailed(nextRewardEpochToExpire);
-                addRevertError(address(ftsoRewardManager), message);
+                addRevertError(address(rewardManager), message);
                 // Do not proceed with the loop.
                 break;
             } catch {
                 emit ClosingExpiredRewardEpochFailed(nextRewardEpochToExpire);
-                addRevertError(address(ftsoRewardManager), ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL);
+                addRevertError(address(rewardManager), ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL);
                 // Do not proceed with the loop.
                 break;
             }
@@ -917,7 +914,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             uint256 currentRewardEpoch = _getCurrentRewardEpochId();
 
             if (wasDistributed) {
-                try ftsoRewardManager.distributeRewards(
+                try rewardManager.distributeRewards(
                     addresses,
                     weights,
                     totalWeight,
@@ -929,10 +926,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                     _getRewardEpoch(currentRewardEpoch).votepowerBlock) {
                 } catch Error(string memory message) {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
-                    addRevertError(address(ftsoRewardManager), message);
+                    addRevertError(address(rewardManager), message);
                 } catch {
                     emit DistributingRewardsFailed(rewardedFtsoAddress, lastUnprocessedPriceEpoch);
-                    addRevertError(address(ftsoRewardManager), ERR_DISTRIBUTE_REWARD_FAIL);
+                    addRevertError(address(rewardManager), ERR_DISTRIBUTE_REWARD_FAIL);
                 }
             } else {
                 // If here, it means that no FTSO was initialized, or no FTSO had a recipient
@@ -965,16 +962,16 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     function _accrueUnearnedRewards() internal {
-        try ftsoRewardManager.accrueUnearnedRewards(
+        try rewardManager.accrueUnearnedRewards(
             lastUnprocessedPriceEpoch,
             priceEpochDurationSeconds,
             _getPriceEpochEndTime(lastUnprocessedPriceEpoch) - 1) { // actual end time (included)
         } catch Error(string memory message) {
             emit AccruingUnearnedRewardsFailed(lastUnprocessedPriceEpoch);
-            addRevertError(address(ftsoRewardManager), message);
+            addRevertError(address(rewardManager), message);
         } catch {
             emit AccruingUnearnedRewardsFailed(lastUnprocessedPriceEpoch);
-            addRevertError(address(ftsoRewardManager), ERR_ACCRUE_UNEARNED_REWARD_FAIL);
+            addRevertError(address(rewardManager), ERR_ACCRUE_UNEARNED_REWARD_FAIL);
         }
     }
 
@@ -1083,7 +1080,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     )
         internal override
     {
-        ftsoRewardManager = IIFtsoRewardManager(
+        rewardManager = IIFtsoRewardManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRewardManager"));
         ftsoRegistry = IIFtsoRegistry(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));

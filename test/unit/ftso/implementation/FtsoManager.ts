@@ -307,6 +307,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should return price submitter address", async () => {
       expect(await ftsoManager.priceSubmitter()).to.equals(mockPriceSubmitter.address);
+      expect(await ftsoManager.getPriceSubmitter()).to.equals(mockPriceSubmitter.address);
     });
 
     it("Should return vote power interval fraction", async () => {
@@ -363,6 +364,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should get reward epoch data", async () => {
       await expectRevert(ftsoManager.getRewardEpochData(0), "Reward epoch not initialized yet");
+      await expectRevert(ftsoManager.rewardEpochs(0), "Reward epoch not initialized yet");
 
       await ftsoManager.activate();
       await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
@@ -374,6 +376,11 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expect(rewardEpochData.votepowerBlock.toString()).to.equals((block - 1).toString());
       expect(rewardEpochData.startBlock.toString()).to.equals(block.toString());
       expect(rewardEpochData.startTimestamp.toString()).to.equals((await web3.eth.getBlock(block)).timestamp.toString());
+
+      const rewardEpochs = await ftsoManager.rewardEpochs(0);
+      expect(rewardEpochs[0].toString()).to.equals((block - 1).toString());
+      expect(rewardEpochs[1].toString()).to.equals(block.toString());
+      expect(rewardEpochs[2].toString()).to.equals((await web3.eth.getBlock(block)).timestamp.toString());
     });
 
     it("Should get reward epoch vote power block", async () => {
@@ -1303,28 +1310,28 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     });
 
     it("Should get correct reward manager", async () => {
-      let contract = await ftsoManager.getFtsoRewardManager();
+      let contract = await ftsoManager.rewardManager();
       expect(contract).to.equals(mockRewardManager.address);
     });
 
     it("Should get correct registry", async () => {
-      let contract = await ftsoManager.getFtsoRegistry();
+      let contract = await ftsoManager.ftsoRegistry();
       expect(contract).to.equals(ftsoRegistry.address);
       assert.equal(contract, ftsoRegistry.address)
     });
 
     it("Should get correct voter whitelister", async () => {
-      let contract = await ftsoManager.getVoterWhitelister();
+      let contract = await ftsoManager.voterWhitelister();
       expect(contract).to.equals(mockVoterWhitelister.address);
     });
 
     it("Should get correct supply", async () => {
-      let contract = await ftsoManager.getSupply();
+      let contract = await ftsoManager.supply();
       expect(contract).to.equals(mockSupply.address);
     });
 
     it("Should get correct cleanup block number manager", async () => {
-      let contract = await ftsoManager.getCleanupBlockNumberManager();
+      let contract = await ftsoManager.cleanupBlockNumberManager();
       expect(contract).to.equals(cleanupBlockNumberManager.address);
     });
 
@@ -2253,6 +2260,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let rewardEpochConfig = await ftsoManager.getRewardEpochConfiguration();
       assert(rewardEpochConfig[0].eq(startTs.addn(REVEAL_EPOCH_DURATION_S)));
       expect(rewardEpochConfig[1].toNumber()).to.equals(REWARD_EPOCH_DURATION_S);
+      assert((await ftsoManager.rewardEpochsStartTs()).eq(startTs.addn(REVEAL_EPOCH_DURATION_S)));
+      expect((await ftsoManager.rewardEpochDurationSeconds()).toNumber()).to.equals(REWARD_EPOCH_DURATION_S);
     });
 
     it("Should get reward epoch that expires next", async () => {
