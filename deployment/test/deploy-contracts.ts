@@ -171,7 +171,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about FtsoRegistry", async () => {
       // Assemble
       // Act
-      const address = await ftsoManager.getFtsoRegistry();
+      const address = await ftsoManager.ftsoRegistry();
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.FTSO_REGISTRY));
     });
@@ -179,7 +179,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about FtsoRewardManager", async () => {
       // Assemble
       // Act
-      const address = await ftsoManager.getFtsoRewardManager();
+      const address = await ftsoManager.rewardManager();
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
     });
@@ -187,7 +187,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about CleanupBlockNumberManager", async () => {
       // Assemble
       // Act
-      const address = await ftsoManager.getCleanupBlockNumberManager();
+      const address = await ftsoManager.cleanupBlockNumberManager();
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER));
     });
@@ -195,7 +195,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about VoterWhitelister", async () => {
       // Assemble
       // Act
-      const address = await ftsoManager.getVoterWhitelister();
+      const address = await ftsoManager.voterWhitelister();
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
     });
@@ -211,7 +211,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about Supply", async () => {
       // Assemble
       // Act
-      const address = await ftsoManager.getSupply();
+      const address = await ftsoManager.supply();
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.SUPPLY));
     });
