@@ -12,3 +12,9 @@ export { makeCurrentAnnumEndTimeStampGauge } from "./Inflation/CurrentAnnumEndTi
 export { makeTotalUnclaimedAwardsOutstandingNatGauge } from "./FtsoRewardManager/TotalUnclaimedAwardsOutstandingWei"
 export { makeMetricResponseTimeHistogram } from "./MetricResponseTimeHistogram"; 
 export { makeTransactionCountGauge } from "./TransactionCountGauge";
+export { makeTotalVotePowerToBalanceDifferenceGauge } from "./WNat/TotalVotePowerToBalanceDifferenceGauge";
+export { makeRewardEpochToExpireNextBlockGauge } from "./FtsoRewardManager/RewardEpochToExpireNextBlockGauge";
+export { makeCleanupBlockNumberGauge } from "./WNat/CleanupBlockNumberGauge";
+export { makeTotalRevertedErrorsGauge } from "./FtsoManager/TotalRevertedErrorsGauge";
+export { makeTrustedPriceProviderBalanceGauge } from "./PriceSubmitter/TrustedPriceProviderBalanceGauge";
+export { makeTrustedPriceProviderAvailabilityGauge } from "./PriceProvider/TrustedPriceProviderAvailability";
