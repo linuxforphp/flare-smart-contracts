@@ -33,6 +33,15 @@ if (process.env.MONITOR_PRIVATE_KEY !== undefined ) {
   process.exit(1);
 }
 
+// Get the Ftso Monitor api url for external calls
+let ftsoMonitorApiUrl: string;
+if (process.env.FTSO_MONITOR_API_URL !== undefined ) {
+  ftsoMonitorApiUrl = process.env.FTSO_MONITOR_API_URL;
+} else {
+  console.error(`Environment variable FTSO_MONITOR_API_URL not defined.`);
+  process.exit(1);
+}
+
 // Make an express server reference
 const server = express();
 
@@ -43,7 +52,7 @@ const contractsStream = createReadStream(args.c);
 const contracts = new Contracts();
 contracts.deserialize(contractsStream).then(() => {
   // Add the metrics to collect
-  addMetrics(provider, contracts, signer);
+  addMetrics(provider, contracts, signer, ftsoMonitorApiUrl);
 
   // Add a top level metric to monitor node get requests
   const responseTimeHistogram = new Histogram({

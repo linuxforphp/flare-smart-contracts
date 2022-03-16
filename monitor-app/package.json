@@ -4,6 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "axios": "^0.25.0",
     "camelcase": "^6.2.0",
     "cluster": "^0.7.7",
     "dotenv": "^10.0.0",
