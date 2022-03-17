@@ -28,18 +28,18 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
     IFtsoRegistryGenesis internal ftsoRegistry; 
     IFtsoManagerGenesis internal ftsoManager;
     address internal voterWhitelister;
-    
-    mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
-    uint256[RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] internal randoms;
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
     mapping(address => uint256) internal whitelistedFtsoBitmap;
-    
+
     address[] internal trustedAddresses;
     // for checking addresses at submit/reveal
     mapping(address => bool) internal trustedAddressesMapping;
 
-    
+    mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
+    uint256[RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] internal randoms;
+
+
     modifier onlyFtsoManager {
         require(msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
         _;

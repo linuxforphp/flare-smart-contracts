@@ -90,8 +90,8 @@ const MockContract = artifacts.require("MockContract");
             const ftsoManager = await FtsoManager.new(
               GOVERNANCE_GENESIS_ADDRESS,
               flareDaemon.address,
-              priceSubmitter.address,
               ADDRESS_UPDATER,
+              priceSubmitter.address,
               constants.ZERO_ADDRESS,
               startTs,
               60,

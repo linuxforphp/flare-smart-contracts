@@ -17,8 +17,8 @@ FROM golang:1.15.14-buster AS builder
 ARG GENESIS=scdev
 
 # Update apt and get dependencies, then remove apt cruft
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+RUN curl -sS http://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - &&\
+    echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 RUN apt-get update && apt-get install -y \
   jq \
   sudo \
@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y \
 RUN git clone https://gitlab.com/flarenetwork/flare.git flare
 WORKDIR flare
 RUN git pull
-RUN git checkout docker-scdev-25-1-2022
+RUN git checkout docker-scdev-14-03-2022
 
 # Do the build
 RUN ./compile.sh $GENESIS
@@ -43,8 +43,8 @@ RUN apt-get update && apt-get install -y \
   curl \
   gnupg
 
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+RUN curl -sS http://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - &&\
+    echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 RUN apt-get update && apt-get install -y \
   jq \
   sudo \

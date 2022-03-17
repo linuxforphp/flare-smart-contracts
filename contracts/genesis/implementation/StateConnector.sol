@@ -45,13 +45,14 @@ contract StateConnector {
 // Events
 //====================================================================
 
-    // 'instructions' and 'id' are purposefully generalised so that the attestation request
-    // can pertain to any number of deterministic oracle use-cases in the future.
     event AttestationRequest(
         uint256 timestamp,
-        uint256 instructions, 
-        bytes32 id,
-        bytes32 dataAvailabilityProof
+        bytes data
+    );
+
+    event RoundFinalised(
+        uint256 bufferNumber,
+        bytes32 merkleHash
     );
 
 //====================================================================
@@ -66,17 +67,9 @@ contract StateConnector {
 //====================================================================  
 
     function requestAttestations(
-        uint256 instructions,
-        bytes32 id,
-        bytes32 dataAvailabilityProof
+        bytes calldata data
     ) external {
-        // Check for empty inputs
-        require(instructions > 0);
-        require(id > 0x0);
-        require(dataAvailabilityProof > 0x0);
-        // Emit an event containing the details of the request, these details are not stored in 
-        // contract storage so they must be retrieved using event filtering.
-        emit AttestationRequest(block.timestamp, instructions, id, dataAvailabilityProof); 
+        emit AttestationRequest(block.timestamp, data); 
     }
 
     function submitAttestation(
@@ -128,6 +121,7 @@ contract StateConnector {
         if (msg.sender == block.coinbase && block.coinbase == SIGNAL_COINBASE) {
             totalBuffers = bufferNumber;
             merkleRoots[(bufferNumber-1) % TOTAL_STORED_PROOFS] = merkleHash;
+            emit RoundFinalised(bufferNumber, merkleHash);
         }
     }
 
