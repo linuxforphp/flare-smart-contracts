@@ -215,7 +215,7 @@ contract MockNpmFtso is IIFtso {
         if (currentEpochId == 0) {
             return 0;
         }
-        return _getRandom(currentEpochId);
+        return _getRandom(currentEpochId - 1);
     }
 
     /**

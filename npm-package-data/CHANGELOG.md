@@ -1,3 +1,9 @@
+# 0.2.0 (2022-02-20)
+
+### PriceSubmitter:
+
+- Updated the reveal commit scheme to use a single random number.
+
 # 0.0.23 (2021-08-31)
 
 ### FTSO:

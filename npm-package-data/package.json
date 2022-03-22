@@ -1,6 +1,6 @@
 {
   "name": "@flarenetwork/ftso_price_provider_kick_off_package",
-  "version": "0.0.23",
+  "version": "0.2.0",
   "description": "Kick of package for FTSO price providers. Includes user facing interfaces and mock contracts to test price provider pipeline.",
   "main": "demo_package_main.js",
   "repository": {
@@ -14,6 +14,7 @@
   "files": [
 
     "hardhat.config.ts",
+    "hardhatSetup.config.ts",
     "tsconfig.json",
     "yarn.lock",
     "test-1020-accounts.json",
@@ -31,6 +32,7 @@
     "_temp_fix test/types/@openzeppelin/test-helpers.d.ts",
     "_temp_fix test/types/@openzeppelin/index.d.ts",
     "test/utils/test-helpers.ts",
+    "test/utils/constants.ts",
     "test/unit/ftso/priceProviderMockContracts/priceProviderMockContracts.ts",
 
     "docs/specs/PriceProviderPseudoCode.txt",
@@ -42,6 +44,7 @@
     "contracts/ftso/priceProviderMockContracts/priceProviderMockFtso.sol",
 
     "contracts/genesis/interface/IFtsoGenesis.sol",
+    "contracts/genesis/interface/IFtsoManagerGenesis.sol",
     "contracts/genesis/interface/IFtsoRegistryGenesis.sol",
     
     "contracts/userInterfaces/IFtso.sol",
@@ -58,7 +61,9 @@
     "contracts/userInterfaces/IPriceSubmitter.sol",
     "contracts/userInterfaces/IFtsoManager.sol",
     "contracts/governance/implementation/GovernedBase.sol",
-    "contracts/governance/implementation/Governed.sol"
+    "contracts/governance/implementation/Governed.sol",
+    "contracts/addressUpdater/implementation/AddressUpdatable.sol",
+    "contracts/addressUpdater/interface/IIAddressUpdatable.sol"
   ],
   "scripts": {
     "---------TEST---SCRIPTS": "",
@@ -80,12 +85,14 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
+    "@tenderly/hardhat-tenderly": "1.0.12",
     "@typescript-eslint/eslint-plugin": "4.28.3",
     "@typescript-eslint/parser": "4.28.3",
     "cli-progress": "3.9.0",
     "csv": "5.5.0",
     "dotenv": "8.2.0",
     "eslint": "7.30.0",
+    "ethereum-tx-decoder": "3.0.0",
     "got": "11.8.2",
     "hardhat": "2.3.0",
     "solhint": "3.3.2",
@@ -115,6 +122,7 @@
     "hardhat-deploy": "0.7.10",
     "hardhat-gas-reporter": "1.0.4",
     "intercept-stdout": "0.1.2",
+    "openpgp": "5.0.0",
     "pascal-case": "3.1.2",
     "random-number-csprng": "1.0.2",
     "ripple-lib": "1.9.7",

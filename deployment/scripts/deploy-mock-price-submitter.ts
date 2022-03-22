@@ -12,7 +12,7 @@
  
  async function main() {
   const PriceSubmitter = artifacts.require("MockPriceSubmitter");
-  const priceSubmitter: MockPriceSubmitterInstance = await PriceSubmitter.new() 
+  const priceSubmitter: MockPriceSubmitterInstance = await PriceSubmitter.new("0x0000000000000000000000000000000000000000"); 
   console.log("PriceSubmitter address:", priceSubmitter.address);
  }
  
