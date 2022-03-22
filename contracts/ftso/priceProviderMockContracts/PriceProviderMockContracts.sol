@@ -7,7 +7,7 @@ import "../../userInterfaces/IPriceSubmitter.sol";
 import "../../userInterfaces/IFtsoRegistry.sol";
 import "../../userInterfaces/IVoterWhitelister.sol";
 import "../../governance/implementation/Governed.sol";
-
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 
 /*
  * This file and ./priceProviderMockFtso.sol contains core contracts needed for Flare price providers.
@@ -542,7 +542,7 @@ contract MockVoterWhitelister is IVoterWhitelister {
  * @title Price submitter
  * @notice A contract used to submit/reveal prices to multiple Flare Time Series Oracles in one transaction
  */
-contract MockPriceSubmitter is IPriceSubmitter {
+contract MockPriceSubmitter is IPriceSubmitter, AddressUpdatable {
 
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
     string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
@@ -559,7 +559,7 @@ contract MockPriceSubmitter is IPriceSubmitter {
 
     MockFtsoRegistry internal ftsoRegistry; 
     
-    MockVoterWhitelister internal voterWhitelister;
+    address internal voterWhitelister;
 
     // Bit at index `i` corresponds to being whitelisted for vote on ftso at index `i`
     mapping(address => uint256) private whitelistedFtsoBitmap;
@@ -575,11 +575,11 @@ contract MockPriceSubmitter is IPriceSubmitter {
     /**
      * Deploy all needed contracts for testing
      */
-    constructor() {
+    constructor(address _addressUpdater) AddressUpdatable(_addressUpdater) {
 
         ftsoRegistry = new MockFtsoRegistry(address(this));
-        voterWhitelister = new MockVoterWhitelister(this);
-        voterWhitelister.setFtsoRegistry(ftsoRegistry);
+        voterWhitelister = address(new MockVoterWhitelister(this));
+        MockVoterWhitelister(voterWhitelister).setFtsoRegistry(ftsoRegistry);
         // Initialize all mock ftsos for pacakge
         string[10] memory symbols = ["SGB", "XRP", "LTC", "XLM", "XDG", "ADA", "ALGO", "BCH", "DGB", "BTC"];
         for (uint256 i = 0; i < symbols.length; ++i) {
@@ -587,30 +587,31 @@ contract MockPriceSubmitter is IPriceSubmitter {
             MockNpmFtso ftso = new MockNpmFtso(symbol, this, block.timestamp - 120, 120, 30);
             ftsoRegistry.addFtso(ftso);
             uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(symbol);
-            voterWhitelister.addFtso(ftsoIndex);
+            MockVoterWhitelister(voterWhitelister).addFtso(ftsoIndex);
         }
     }
     
     /**
+     * @notice Sets the address udpater contract.
+     * @param _addressUpdater   The address updater contract.
+     */
+    function setAddressUpdater(address _addressUpdater) external {
+        setAddressUpdaterValue(_addressUpdater);
+    }
+
+    /**
      * Called from whitelister when new voter has been whitelisted.
      */
-    function voterWhitelisted(
-        address _voter, 
-        uint256 _ftsoIndex
-    )
-        external onlyWhitelister
-    {
+    function voterWhitelisted(address _voter, uint256 _ftsoIndex) external onlyWhitelister {
         whitelistedFtsoBitmap[_voter] |= 1 << _ftsoIndex;
     }
     
     /**
      * Called from whitelister when one or more voters have been removed.
      */
-    function votersRemovedFromWhitelist(
-        address[] memory _removedVoters, 
-        uint256 _ftsoIndex
-    )
-        external onlyWhitelister
+    function votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex) 
+        external 
+        onlyWhitelister
     {
         for (uint256 i = 0; i < _removedVoters.length; i++) {
             whitelistedFtsoBitmap[_removedVoters[i]]  &= ~(1 << _ftsoIndex);
@@ -619,8 +620,9 @@ contract MockPriceSubmitter is IPriceSubmitter {
     
     /**
      * @notice Submits hash for current epoch
+     * @param _epochId              Target epoch id to which hash is submitted
      * @param _hash                 Hash of ftso indices, prices, random number and voter address
-     * @notice Emits HashesSubmitted event
+     * @notice Emits HashSubmitted event
      */
     function submitHash(
         uint256 _epochId, 
@@ -664,39 +666,29 @@ contract MockPriceSubmitter is IPriceSubmitter {
         IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
         uint256 allowedBitmask = whitelistedFtsoBitmap[msg.sender];
 
-        uint256 wNatVP = uint256(-1);
+        // read native VP only once
+        uint256 wNatVP = length > 0 ? ftsos[0].wNatVotePowerCached(msg.sender, _epochId) : 0;
         uint256 currentIndex;
 
         for (uint256 i = 0; i < length; i++) {
-            if (wNatVP != uint256(-1) && currentIndex >= _ftsoIndices[i]) {
+            if (i != 0 && currentIndex >= _ftsoIndices[i]) {
                 revert(ERR_FTSO_INDICES_NOT_INCREASING);
             }
-
             currentIndex = _ftsoIndices[i];
             if (allowedBitmask & (1 << currentIndex) == 0) {
                 revert(ERR_NOT_WHITELISTED);
             }
-            // read native VP only once
-            if (wNatVP == uint256(-1)) {
-                wNatVP = ftsos[i].wNatVotePowerCached(msg.sender, _epochId);
-            }
             // call reveal price on ftso
             ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], wNatVP);
         }
-        //slither-disable-next-line weak-prng // not used for random
-        randoms[_epochId % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] += uint256(keccak256(abi.encode(_random, _prices)));
+        // prevent price submission from being revealed twice
         delete epochVoterHash[_epochId][msg.sender];
 
+        // random can overflow but still ok
+        //slither-disable-next-line weak-prng // not used for random
+        randoms[_epochId % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] += uint256(keccak256(abi.encode(_random, _prices)));
+
         emit PricesRevealed(msg.sender, _epochId, ftsos, _prices, _random, block.timestamp);
-    }
-    
-    /**
-     * Returns bitmap of all ftso's for which `_voter` is allowed to submit prices/hashes.
-     * If voter is allowed to vote for ftso at index (see *_FTSO_INDEX), the corrsponding
-     * bit in the result will be 1.
-     */    
-    function voterWhitelistBitmap(address _voter) external view override returns (uint256) {
-        return whitelistedFtsoBitmap[_voter];
     }
 
     /**
@@ -724,6 +716,15 @@ contract MockPriceSubmitter is IPriceSubmitter {
         return randoms[_epochId % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE];
     }
 
+    /**
+     * Returns bitmap of all ftso's for which `_voter` is allowed to submit prices/hashes.
+     * If voter is allowed to vote for ftso at index (see *_FTSO_INDEX), the corrsponding
+     * bit in the result will be 1.
+     */    
+    function voterWhitelistBitmap(address _voter) external view override returns (uint256) {
+        return whitelistedFtsoBitmap[_voter];
+    }
+
     function getVoterWhitelister() public view override returns (address) {
         return address(voterWhitelister);
     }
@@ -735,4 +736,21 @@ contract MockPriceSubmitter is IPriceSubmitter {
     function getFtsoManager() public pure override returns (IFtsoManagerGenesis) {
         revert("Not in dummy contract");
     }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     * @dev If replacing the registry or the whitelist and the old one is not empty, make sure to replicate the state,
+     * otherwise internal whitelist bitmaps won't match.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoRegistry = MockFtsoRegistry(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
+        voterWhitelister = _getContractAddress(_contractNameHashes, _contractAddresses, "VoterWhitelister");
+    }
+
 }

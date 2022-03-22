@@ -20,7 +20,7 @@ contract(`MockPriceSubmitter.sol; MockPriceSubmitter unit tests`, async accounts
     let voterWhitelister: IVoterWhitelisterInstance;
 
     beforeEach(async() => {
-        const MockPriceSubmitterInstance = await MockPriceSubmitter.new();
+        const MockPriceSubmitterInstance = await MockPriceSubmitter.new("0x0000000000000000000000000000000000000000");
         priceSubmitter = MockPriceSubmitterInstance;
         ftsoRegistry = await MockFtsoRegistry.at(await priceSubmitter.getFtsoRegistry());
         voterWhitelister = await MockVoterWhitelister.at(await priceSubmitter.getVoterWhitelister());
