@@ -5,6 +5,7 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { VPTokenChecker } from "./VPTokenChecker";
 import { Checkpoint, VPTokenHistory, VPTokenSimulator } from "./VPTokenSimulator";
+import axios from "axios";
 const fs = require("fs");
 
 const VPToken = artifacts.require("WNat");
@@ -83,10 +84,21 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
       }
     })
 
-    after(() => {
+    after(async () => {
+        let BadgeStorageURL = ""
+        if (process.env.BADGE_URL) {
+          BadgeStorageURL = process.env.BADGE_URL
+        }
+      
+        let fromMaster = false
+        if (process.env.FROM_MASTER) {
+            fromMaster = process.env.FROM_MASTER === 'true'
+        }
+        
         let badge_data;
         if(!is_passing){
             badge_data = {
+                "name": "FlareSCFuzzerToken",
                 "schemaVersion": 1,
                 "label": "Fuzzer token",
                 "color": "red",
@@ -94,14 +106,19 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
             }
         } else {
             badge_data = {
+                "name": "FlareSCFuzzerToken",
                 "schemaVersion": 1,
                 "label": "Fuzzer token",
                 "color": "green",
                 "message": "Pass"
             }
         }
-        const end_to_end_fuzzer_badge = "fuzzer_token_badge.json";
-        fs.writeFileSync(end_to_end_fuzzer_badge,JSON.stringify(badge_data));
+        if(fromMaster){
+            await axios.post(
+                BadgeStorageURL+"api/0/badges",
+                badge_data
+              )
+        }
     });
 
 
