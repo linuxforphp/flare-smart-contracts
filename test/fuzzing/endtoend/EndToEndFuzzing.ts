@@ -15,6 +15,7 @@ import { FtsoList, PriceProvider, PriceSimulator } from "./PriceProvider";
 import { EventStateChecker, PriceAndRewardChecker } from "./StateChecker";
 import { EthersTransactionRunner, NetworkType, SignerWithAddress } from "./TransactionRunner";
 import { DelegatorAccount, UserAccount, UserEnvironment } from "./UserAccount";
+import axios from "axios";
 const fs = require("fs");
 
 contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
@@ -267,12 +268,21 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         }
     })
 
-    after(() => {
+    after(async () => {
         transactionRunner.logGasUsage();
         transactionRunner.closeLog();
+        let BadgeStorageURL = ""
+        if (process.env.BADGE_URL) {
+          BadgeStorageURL = process.env.BADGE_URL
+        }
+        let fromMaster = true
+        // if (process.env.FROM_MASTER) {
+        //     fromMaster = process.env.FROM_MASTER
+        // }
         let badge_data;
         if (!is_passing) {
             badge_data = {
+                "name": "FlareSCE2EFuzzer",
                 "schemaVersion": 1,
                 "label": "E2E Fuzzer",
                 "color": "red",
@@ -280,14 +290,19 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             }
         } else {
             badge_data = {
+                "name": "FlareSCE2EFuzzer",
                 "schemaVersion": 1,
                 "label": "E2E Fuzzer",
                 "color": "green",
                 "message": "Pass"
             }
         }
-        const end_to_end_fuzzer_badge = "e2e_fuzzer_badge.json";
-        fs.writeFileSync(end_to_end_fuzzer_badge, JSON.stringify(badge_data));
+        if(fromMaster){
+            await axios.post(
+                BadgeStorageURL+"api/0/badges",
+                badge_data
+              )
+        }
     });
 
     function checkForbiddenErrors() {
