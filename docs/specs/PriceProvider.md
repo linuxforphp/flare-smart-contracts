@@ -60,31 +60,23 @@ Following files expose all relevant functions and events:
 
 see more details below.
 
-#### Submit price hash
-```
-   function submitPriceHash(uint256 _epochId, bytes32 _hash) external;
-```
-The _hash should be keccak256(price, random, senders_address)
-
-#### Reveal price
-```
-   function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external;
-```
-Epoch ID should match the epoch in which the hash was submitted. For daemonize track of epoch IDs, see the next section.
-
-Price and random should be the same ones that were used to create the hash in the relevant price epoch period. If they don’t match, the transaction will be reverted and the committed price will not be included in the price determination algorithm.
-
-As soon as the reveal period ends, the weighted median algorithm will process all revealed prices, and publish the median as the current price of the asset.
-
 ## Price submitter contract
 A Price submitter contract will enable each provider to send the above Txs batched together. One Tx can be used to submitPrice to all FTSO contracts and later to revealPrice in all FTSO contracts. Each asset is assigned an unique asset index that is managed by the `ftsoRegistry`.  Contract interface is [here](../../contracts/userInterfaces/IPriceSubmitter.sol)
+
+#### Submit price hash
 
 ```
    function submitHash(
        uint256 _epochId,
        bytes32 _hash
    ) external;
+```
 
+The _hash should be keccak256(abi.encode(assetIndices, prices, random, senders_address)) where assetIndices are strictly increasing.
+
+#### Reveal price
+
+```
    function revealPrices(
        uint256 _epochId,
        uint256[] memory _assetIndices,
@@ -92,8 +84,11 @@ A Price submitter contract will enable each provider to send the above Txs batch
        uint256 _random
    ) external;
 ```
+Epoch ID should match the epoch in which the hash was submitted.
 
-The _hash should be keccak256(abi.encode(assetIndices, prices, random, senders_address)) where assetIndices are strictly increasing.
+Prices, ftsoIndices and random should be the same ones that were used to create the hash in the relevant price epoch period. If they don’t match, the transaction will be reverted and the committed price will not be included in the price determination algorithm.
+
+As soon as the reveal period ends, the weighted median algorithm will process all revealed prices, and publish the median as the current price of the asset.
 
 With batched transactions the price provider sends a list of FTSO addresses and the relevant data according to the operation type (submit or reveal). One can use this contract to interact with all FTSOs or a partial list.
 
