@@ -140,10 +140,12 @@
     "vm_start": "multipass start flare",
     "vm_stop": "multipass stop flare",
     "vm_purge": "multipass delete flare; multipass purge",
-    "---------GENESIS-FILE-GENERATION--SCRIPTS": "",
+    "---------OLD-GENESIS-FILE-GENERATION--SCRIPTS": "",
     "generate_genesis_songbird": "yarn ts-node deployment/genesis/songbird/songbird-genesis-generate.ts",
     "test_genesis_accounts_scdev": "env TEST_PATH=./deployment/genesis/songbird yarn hardhat test --network scdev deployment/genesis/songbird/songbird-genesis-accounts-test.ts",
-    "test_genesis_accounts_songbird": "env TEST_PATH=./deployment/genesis/songbird yarn hardhat test --network songbird deployment/genesis/songbird/songbird-genesis-accounts-test.ts"
+    "test_genesis_accounts_songbird": "env TEST_PATH=./deployment/genesis/songbird yarn hardhat test --network songbird deployment/genesis/songbird/songbird-genesis-accounts-test.ts",
+    "---------GENESIS-FILE-GENERATION--SCRIPTS": "",
+    "genesis_json": "yarn ts-node deployment/genesis_gen/prepare-genesis-json.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
@@ -176,6 +178,7 @@
     "@types/chai": "4.2.18",
     "@types/mocha": "8.2.2",
     "@types/node": "15.12.1",
+    "@types/yargs": "17.0.8",
     "chai": "4.3.4",
     "concurrently": "6.2.0",
     "ethereum-waffle": "3.3.0",
@@ -195,6 +198,7 @@
     "typechain": "5.0.0",
     "typescript": "4.3.2",
     "wait-on": "5.3.0",
+    "yargs": "17.3.1",
     "yarn-audit-fix": "6.2.2"
   }
 }
