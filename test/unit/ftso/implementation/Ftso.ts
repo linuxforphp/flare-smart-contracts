@@ -856,8 +856,15 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
       // round 2 - current asset price = 250
       await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
+      let priceData = await ftso.getCurrentPrice();
       expectEvent(await ftso.finalizePriceEpoch(epochId + 1, false, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId + 1), price: toBN(250), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(3) });
+      let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData2[1].toNumber()).to.equals(priceData[1].toNumber());
+      expect(priceDataFromTP[0].toNumber()).to.equals(0);
+      expect(priceDataFromTP[1].toNumber()).to.equals(0);
     });
 
     it("Should finalize price epoch and return rewarded addresses", async () => {
@@ -962,15 +969,23 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(data._natWeights.length).to.equals(0);
       expect(data._natWeightsSum).to.equals('0');
 
+      let priceData = await ftso.getCurrentPrice();
       expectEvent(await ftso.finalizePriceEpoch(epochId, true, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId), price: toBN(450), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(2) });
+      let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData2[1].toNumber()).to.be.gt(priceData[1].toNumber());
+      expect(priceDataFromTP[0].toNumber()).to.equals(450);
+      expect(priceData2[0].toNumber()).to.equals(priceDataFromTP[0].toNumber());
+      expect(priceData2[1].toNumber()).to.equals(priceDataFromTP[1].toNumber());
     });
 
     it("Should finalize price epoch using trusted addresses votes if epoch has large price deviation", async () => {
       // round 1 - current asset price = 0
       await ftso.submitPriceHash(epochId, submitPriceHash(5000, 123, accounts[1]), { from: accounts[1] });
-      await ftso.submitPriceHash(epochId, submitPriceHash(2500, 124, accounts[2]), { from: accounts[2] });
-      await ftso.submitPriceHash(epochId, submitPriceHash(4000, 125, accounts[3]), { from: accounts[3] });
+      await ftso.submitPriceHash(epochId, submitPriceHash(2500, 124, accounts[6]), { from: accounts[6] });
+      await ftso.submitPriceHash(epochId, submitPriceHash(4000, 125, accounts[7]), { from: accounts[7] });
 
       await setMockVotePowerAt(10, 50000, 1000000);
       await ftso.initializeCurrentEpochStateForReveal(50000, false, { from: accounts[10] });
@@ -978,14 +993,22 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       await increaseTimeTo((epochId + 1) * 120); // reveal period start
       await setMockVotePowerOfAt(10, 1000, 100, accounts[1]);
       await ftso.revealPrice(epochId, 5000, 123, { from: accounts[1] });
-      await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
-      await ftso.revealPrice(epochId, 2500, 124, { from: accounts[2] });
-      await setMockVotePowerOfAt(10, 0, 500, accounts[3]);
-      await ftso.revealPrice(epochId, 4000, 125, { from: accounts[3] });
+      await setMockVotePowerOfAt(10, 5000, 0, accounts[6]);
+      await ftso.revealPrice(epochId, 2500, 124, { from: accounts[6] });
+      await setMockVotePowerOfAt(10, 0, 500, accounts[7]);
+      await ftso.revealPrice(epochId, 4000, 125, { from: accounts[7] });
 
       await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+      let priceData1 = await ftso.getCurrentPrice();
       expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId), price: toBN(2500), rewardedFtso: false, lowRewardPrice: toBN(2500), highRewardPrice: toBN(2500), finalizationType: toBN(1) });
+      let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP1 = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData2[1].toNumber()).to.be.gt(priceData1[1].toNumber());
+      expect(priceDataFromTP1[0].toNumber()).to.equals(3250);
+      expect(priceData2[0].toNumber()).to.equals(2500);
+      expect(priceData2[1].toNumber()).to.equals(priceDataFromTP1[1].toNumber());
 
       // round 2 - current asset price = 2500
       await ftso.submitPriceHash(epochId + 1, submitPriceHash(300, 123, accounts[1]), { from: accounts[1] });
@@ -1004,8 +1027,74 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       await ftso.revealPrice(epochId + 1, 500, 125, { from: accounts[7] });
 
       await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
+      let priceData3 = await ftso.getCurrentPrice();
       expectEvent(await ftso.finalizePriceEpoch(epochId + 1, false, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId + 1), price: toBN(450), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(2) });
+      let priceData4 = await ftso.getCurrentPrice();
+      let priceDataFromTP2 = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData4[1].toNumber()).to.be.gt(priceData3[1].toNumber());
+      expect(priceDataFromTP2[0].toNumber()).to.equals(450);
+      expect(priceData4[0].toNumber()).to.equals(priceDataFromTP2[0].toNumber());
+      expect(priceData4[1].toNumber()).to.equals(priceDataFromTP2[1].toNumber());
+    });
+
+    it("Should finalize price epoch and not update price from trusted providers if no votes from trusted addresses", async () => {
+      // round 1 - current asset price = 0
+      await ftso.submitPriceHash(epochId, submitPriceHash(5000, 123, accounts[1]), { from: accounts[1] });
+      await ftso.submitPriceHash(epochId, submitPriceHash(2500, 124, accounts[6]), { from: accounts[6] });
+      await ftso.submitPriceHash(epochId, submitPriceHash(4000, 125, accounts[7]), { from: accounts[7] });
+
+      await setMockVotePowerAt(10, 50000, 1000000);
+      await ftso.initializeCurrentEpochStateForReveal(50000, false, { from: accounts[10] });
+
+      await increaseTimeTo((epochId + 1) * 120); // reveal period start
+      await setMockVotePowerOfAt(10, 1000, 100, accounts[1]);
+      await ftso.revealPrice(epochId, 5000, 123, { from: accounts[1] });
+      await setMockVotePowerOfAt(10, 5000, 0, accounts[6]);
+      await ftso.revealPrice(epochId, 2500, 124, { from: accounts[6] });
+      await setMockVotePowerOfAt(10, 0, 500, accounts[7]);
+      await ftso.revealPrice(epochId, 4000, 125, { from: accounts[7] });
+
+      await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
+      let priceData1 = await ftso.getCurrentPrice();
+      expectEvent(await ftso.finalizePriceEpoch(epochId, false, { from: accounts[10] }), "PriceFinalized",
+        { epochId: toBN(epochId), price: toBN(2500), rewardedFtso: false, lowRewardPrice: toBN(2500), highRewardPrice: toBN(2500), finalizationType: toBN(1) });
+      let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP1 = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData2[1].toNumber()).to.be.gt(priceData1[1].toNumber());
+      expect(priceDataFromTP1[0].toNumber()).to.equals(3250);
+      expect(priceData2[0].toNumber()).to.equals(2500);
+      expect(priceData2[1].toNumber()).to.equals(priceDataFromTP1[1].toNumber());
+
+      // round 2 - current asset price = 2500
+      await ftso.submitPriceHash(epochId + 1, submitPriceHash(3000, 123, accounts[1]), { from: accounts[1] });
+      await ftso.submitPriceHash(epochId + 1, submitPriceHash(4000, 124, accounts[2]), { from: accounts[2] });
+      await ftso.submitPriceHash(epochId + 1, submitPriceHash(2000, 125, accounts[3]), { from: accounts[3] });
+
+      await setMockVotePowerAt(10, 50000, 1000000);
+      await ftso.initializeCurrentEpochStateForReveal(50000, false, { from: accounts[10] });
+
+      await increaseTimeTo((epochId + 2) * 120); // reveal period start
+      await setMockVotePowerOfAt(10, 1000, 10000, accounts[1]);
+      await ftso.revealPrice(epochId + 1, 3000, 123, { from: accounts[1] });
+      await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
+      await ftso.revealPrice(epochId + 1, 4000, 124, { from: accounts[2] });
+      await setMockVotePowerOfAt(10, 1, 50000, accounts[3]);
+      await ftso.revealPrice(epochId + 1, 2000, 125, { from: accounts[3] });
+
+      await increaseTimeTo((epochId + 2) * 120 + 60); // reveal period end
+      let priceData3 = await ftso.getCurrentPrice();
+      expectEvent(await ftso.finalizePriceEpoch(epochId + 1, false, { from: accounts[10] }), "PriceFinalized",
+        { epochId: toBN(epochId + 1), price: toBN(3000), rewardedFtso: false, lowRewardPrice: toBN(2000), highRewardPrice: toBN(4000), finalizationType: toBN(1) });
+      let priceData4 = await ftso.getCurrentPrice();
+      let priceDataFromTP2 = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData4[1].toNumber()).to.be.gt(priceData3[1].toNumber());
+      expect(priceData4[0].toNumber()).to.equals(3000);
+      expect(priceDataFromTP1[0].toNumber()).to.equals(priceDataFromTP2[0].toNumber());
+      expect(priceDataFromTP1[1].toNumber()).to.equals(priceDataFromTP2[1].toNumber());
     });
 
     it("Should finalize price epoch using force finalization if epoch has low nat turnout and trusted addresses are not set", async () => {
@@ -1053,8 +1142,15 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(data._natWeights.length).to.equals(0);
       expect(data._natWeightsSum).to.equals('0');
 
+      let priceData = await ftso.getCurrentPrice();
       expectEvent(await ftso.finalizePriceEpoch(epochId, true, { from: accounts[10] }), "PriceFinalized",
         { epochId: toBN(epochId), price: toBN(1), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(3) });
+      let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP = await ftso.getCurrentPriceFromTrustedProviders();
+      
+      expect(priceData2[1].toNumber()).to.equals(priceData[1].toNumber());
+      expect(priceDataFromTP[0].toNumber()).to.equals(0);
+      expect(priceDataFromTP[1].toNumber()).to.equals(0);
     });
 
     it("Should not finalize price epoch for epoch in submit price period", async () => {
@@ -2103,6 +2199,7 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       let priceData = await ftso.getCurrentPrice();
       expectEvent(await ftso.fallbackFinalizePriceEpoch(epochId, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(450), finalizationType: toBN(4) });
       let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP = await ftso.getCurrentPriceFromTrustedProviders();
 
       let priceDetails = await ftso.getCurrentPriceDetails();
       expect(priceDetails[0].toNumber()).to.equals(450);
@@ -2129,6 +2226,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(epochData[12]).to.equals(false);
 
       expect(priceData2[1].toNumber()).to.be.gt(priceData[1].toNumber());
+      expect(priceDataFromTP[0].toNumber()).to.equals(450);
+      expect(priceData2[0].toNumber()).to.equals(priceDataFromTP[0].toNumber());
+      expect(priceData2[1].toNumber()).to.equals(priceDataFromTP[1].toNumber());
     });
 
     it("Should get epoch info after finalizing price epoch using force finalization when epoch has low flr turnout and no votes from trusted addresses", async () => {
@@ -2192,7 +2292,11 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
 
       await increaseTimeTo((epochId + 1) * 120 + 60); // reveal period end
 
+      let priceData = await ftso.getCurrentPrice();
       expectEvent(await ftso.fallbackFinalizePriceEpoch(epochId, { from: accounts[10] }), "PriceFinalized", { epochId: toBN(epochId), price: toBN(1), finalizationType: toBN(5) });
+      let priceData2 = await ftso.getCurrentPrice();
+      let priceDataFromTP = await ftso.getCurrentPriceFromTrustedProviders();
+
       let priceDetails = await ftso.getCurrentPriceDetails();
       expect(priceDetails[0].toNumber()).to.equals(1);
       expect(priceDetails[1].toNumber()).to.be.lt((epochId + 1) * 120 + 60);
@@ -2216,6 +2320,11 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(epochData[10]).to.eqls([accounts[5], accounts[6], accounts[7]]);
       expect(epochData[11]).to.equals(false);
       expect(epochData[12]).to.equals(false);
+
+      expect(priceData2[0].toNumber()).to.be.gt(0);
+      expect(priceData2[1].toNumber()).to.equals(priceData[1].toNumber());
+      expect(priceDataFromTP[0].toNumber()).to.equals(0);
+      expect(priceDataFromTP[1].toNumber()).to.equals(0);
     });
 
     it("Should not get epoch info for epoch in future", async () => {

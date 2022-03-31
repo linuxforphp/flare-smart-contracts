@@ -28,7 +28,7 @@ contract SimpleMockFtso is Ftso {
         uint256 _firstEpochStartTs,
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds,
-        uint256 _initialPrice,
+        uint128 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize
     ) 
@@ -114,7 +114,7 @@ contract SimpleMockFtso is Ftso {
     }
 
     // Simplified version of vote power weight calculation (no vote commit/reveal, but result should be equal)
-    function getVotePowerWeights(address[] memory _owners) public returns (uint256[] memory _weights) {
+    function getVotePowerWeights(address[] memory _owners) public virtual returns (uint256[] memory _weights) {
         FtsoEpoch.Instance storage epoch = _getEpochInstance(_getLastRevealEpochId());
         uint256[] memory weightsNat = new uint256[](_owners.length);
         uint256[] memory weightsAsset = new uint256[](_owners.length);
@@ -126,7 +126,7 @@ contract SimpleMockFtso is Ftso {
                 epoch.fallbackMode,
                 uint256(epoch.votePowerBlock)
             );
-            FtsoEpoch._addVote(epoch, _owners[i], votePowerNat, votePowerAsset, 0);
+            epochs._addVote(epoch, _owners[i], votePowerNat, votePowerAsset, 0);
             FtsoVote.Instance memory vote = epoch.votes[epoch.nextVoteIndex - 1];
             weightsNat[i] = vote.weightNat;
             weightsAsset[i] = vote.weightAsset;

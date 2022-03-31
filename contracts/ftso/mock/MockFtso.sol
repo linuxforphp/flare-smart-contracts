@@ -29,7 +29,7 @@ contract MockFtso is SimpleMockFtso {
         uint256 _firstEpochStartTs,
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds,
-        uint256 _initialPrice,
+        uint128 _initialPrice,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize,
         bool activate
@@ -243,5 +243,9 @@ contract MockFtso is SimpleMockFtso {
         )
     { 
         // not needed in mock - removed to reduce contract size  
+    }
+
+    function getVotePowerWeights(address[] memory _owners) public override returns (uint256[] memory _weights) {
+        // not needed in mock - removed to reduce contract size
     }
 }

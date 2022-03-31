@@ -66,7 +66,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
     const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
     await whitelist.addFtso(ftsoIndex, { from: ftsoManager });
     // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
-    const trustedVoters = accounts.slice(101, 101 + 10);
+    const trustedVoters = accounts.slice(201, 201 + 5);
     await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
     await ftso.activateFtso(startTs, epochDurationSec, revealDurationSec, { from: ftsoManager });
     return ftso;
@@ -502,8 +502,8 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       }
     });
 
-    it("Should test gas for finalizing price epoch for 100 submissions", async () => {
-      const voters = accounts.slice(101, 101 + 100);
+    it("Should test gas for finalizing price epoch for 100 submissions + 5 trusted providers", async () => {
+      const voters = accounts.slice(101, 101 + 105);
       const vp = eth(1.5);
       // Assemble
       for (const voter of voters) {
@@ -549,8 +549,8 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       await advanceTimeTo((epochId + 1) * epochDurationSec + revealDurationSec); // reveal period end
       for (const ftso of allFtsos) {
         let finalizeTx = await ftso.finalizePriceEpoch(epochId, false, { from: ftsoManager });
-        console.log(`finalize price epoch for 100 submissions: ${finalizeTx.receipt.gasUsed}`);
-        gasReport.push({ "function": "finalize price epoch for 100 submissions", "gasUsed": finalizeTx.receipt.gasUsed });
+        console.log(`finalize price epoch for 100 submissions + 5 trusted providers: ${finalizeTx.receipt.gasUsed}`);
+        gasReport.push({ "function": "finalize price epoch for 100 submissions + 5 trusted providers", "gasUsed": finalizeTx.receipt.gasUsed });
       }
       fs.unlinkSync('gas-report.json');
       fs.writeFile('gas-report.json', JSON.stringify(gasReport, null, 2) + '\n', { flag: 'a+' }, err => { return err })

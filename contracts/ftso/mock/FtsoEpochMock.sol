@@ -7,8 +7,8 @@ import "../../token/interface/IIVPToken.sol";
 
 
 /**
- * @title Ftso Vote mock contract
- * @notice A contract to expose the FtsoVote library for unit testing.
+ * @title Ftso Epoch mock contract
+ * @notice A contract to expose the FtsoEpoch library for unit testing.
  **/
 contract FtsoEpochMock {
     using FtsoEpoch for FtsoEpoch.State;
@@ -25,6 +25,7 @@ contract FtsoEpochMock {
         uint256 accumulatedVotePowerNat;        // total native token vote power accumulated from votes in epoch
         // base weight ratio between asset and native token used to combine weights
         uint256 baseWeightRatio;
+        uint256[] trustedVotes;                 // array of all votes from trusted providers in epoch
         uint256 price;                          // consented epoch asset price
         IFtso.PriceFinalizationType finalizationType; // finalization type
         uint256 voteCount;                      // number of votes in epoch
@@ -70,7 +71,7 @@ contract FtsoEpochMock {
         public
     {
         FtsoEpoch.Instance storage epoch = state.instance[_epochId];
-        FtsoEpoch._addVote(epoch, _voter, _votePowerNat, _votePowerAsset, _price);
+        state._addVote(epoch, _voter, _votePowerNat, _votePowerAsset, _price);
     }
 
     function configureEpochs(
@@ -90,6 +91,17 @@ contract FtsoEpochMock {
         state.highAssetUSDThreshold = _highAssetUSDThreshold;
         state.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
         state.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
+        
+        // remove old addresses mapping
+        uint256 len = state.trustedAddresses.length;
+        for (uint256 i = 0; i < len; i++) {
+            state.trustedAddressesMapping[state.trustedAddresses[i]] = false;
+        }
+        // set new addresses mapping
+        len = _trustedAddresses.length;
+        for (uint256 i = 0; i < len; i++) {
+            state.trustedAddressesMapping[_trustedAddresses[i]] = true;
+        }
         state.trustedAddresses = _trustedAddresses;
     }
     
@@ -119,6 +131,7 @@ contract FtsoEpochMock {
         result.maxVotePowerAsset = epoch.maxVotePowerAsset;
         result.accumulatedVotePowerNat = epoch.accumulatedVotePowerNat;
         result.baseWeightRatio = epoch.baseWeightRatio;
+        result.trustedVotes = epoch.trustedVotes;
         result.price = epoch.price;
         result.finalizationType = epoch.finalizationType;
         result.voteCount = epoch.nextVoteIndex;
