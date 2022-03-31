@@ -104,6 +104,20 @@ contract MockNpmFtso is IIFtso {
     }
 
     /**
+     * @notice Returns current asset price calculated from trusted providers
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp           Time when price was updated for the last time
+     */
+    function getCurrentPriceFromTrustedProviders() external view override 
+        returns (
+            uint256 _price,
+            uint256 _timestamp
+        )
+    {
+        // TODO
+    }
+
+    /**
      * @notice Returns current asset price details
      * @return _price                                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _priceTimestamp                          Time when price was updated for the last time

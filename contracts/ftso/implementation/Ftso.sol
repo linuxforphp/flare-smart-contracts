@@ -14,6 +14,7 @@ import "../../userInterfaces/IPriceSubmitter.sol";
  */
 contract Ftso is IIFtso {
     using FtsoEpoch for FtsoEpoch.State;
+    using SafeCast for uint256;
 
     // errors
     string internal constant ERR_NOT_ACTIVE = "FTSO not active";
@@ -39,12 +40,14 @@ contract Ftso is IIFtso {
     // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable ASSET_PRICE_USD_DECIMALS;
 
-    uint256 internal assetPriceUSD;                 // current asset USD price
-    uint256 internal assetPriceTimestamp;           // time when price was updated
-    PriceFinalizationType internal assetPriceFinalizationType;      // price finalization type (uint8)
-    uint240 internal lastPriceEpochFinalizationTimestamp;           // last price epoch finalization timestamp
+    uint128 internal assetPriceUSD;                             // current asset USD price
+    uint128 internal assetPriceTimestamp;                       // time when price was updated
+    uint128 internal assetTrustedProvidersPriceUSD;             // current asset USD price from trusted providers
+    uint128 internal assetTrustedProvidersPriceTimestamp;       // time when price from trusted providers was updated
+    PriceFinalizationType internal assetPriceFinalizationType;  // price finalization type (uint8)
+    uint240 internal lastPriceEpochFinalizationTimestamp;       // last price epoch finalization timestamp
     PriceFinalizationType internal lastPriceEpochFinalizationType;  // last price epoch finalization type (uint8)
-    FtsoEpoch.State internal epochs;                // epoch storage
+    FtsoEpoch.State internal epochs;                            // epoch storage
 
     // immutable settings
     uint256 private immutable firstEpochStartTs;    // start timestamp of the first epoch instance
@@ -91,7 +94,7 @@ contract Ftso is IIFtso {
         uint256 _firstEpochStartTs,
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds,
-        uint256 _initialPriceUSD,
+        uint128 _initialPriceUSD,
         uint256 _priceDeviationThresholdBIPS,
         uint256 _cyclicBufferSize
     )
@@ -105,7 +108,7 @@ contract Ftso is IIFtso {
         submitPeriodSeconds = _submitPeriodSeconds;
         revealPeriodSeconds = _revealPeriodSeconds;
         assetPriceUSD = _initialPriceUSD;
-        assetPriceTimestamp = block.timestamp;
+        assetPriceTimestamp = uint128(block.timestamp); // no overflow
         priceDeviationThresholdBIPS = _priceDeviationThresholdBIPS;
         priceEpochCyclicBufferSize = _cyclicBufferSize;
     }
@@ -198,11 +201,17 @@ contract Ftso is IIFtso {
         epoch.price = data.finalMedianPrice; 
         
         // update price
-        assetPriceUSD = data.finalMedianPrice;
-        assetPriceTimestamp = block.timestamp;
+        assetPriceUSD = uint128(data.finalMedianPrice); // no overflow
+        assetPriceTimestamp = uint128(block.timestamp); // no overflow
         assetPriceFinalizationType = PriceFinalizationType.WEIGHTED_MEDIAN;
         lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
         lastPriceEpochFinalizationType = PriceFinalizationType.WEIGHTED_MEDIAN;
+
+        // update trusted providers price
+        if (epoch.trustedVotes.length > 0) {
+            assetTrustedProvidersPriceUSD = uint128(FtsoMedian._computeSimple(epoch.trustedVotes)); // no overflow
+            assetTrustedProvidersPriceTimestamp = uint128(block.timestamp); // no overflow
+        }
         
         // return reward data if requested
         bool rewardedFtso = false;
@@ -287,8 +296,8 @@ contract Ftso is IIFtso {
         onlyFtsoManager
     {
         require(!active, ERR_ALREADY_ACTIVATED);
-        assetPriceUSD = _initialPriceUSD;
-        assetPriceTimestamp = _initialPriceTimestamp;
+        assetPriceUSD = _initialPriceUSD.toUint128();
+        assetPriceTimestamp = _initialPriceTimestamp.toUint128();
     }
 
     /**
@@ -391,6 +400,7 @@ contract Ftso is IIFtso {
         epoch.votePowerBlock = epochs.votePowerBlock;
         epoch.fallbackMode = _fallbackMode;
         epoch.epochId = epochId;
+        delete epoch.trustedVotes;
 
         if (_fallbackMode) {
             return;
@@ -482,6 +492,20 @@ contract Ftso is IIFtso {
      */
     function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
         return (assetPriceUSD, assetPriceTimestamp);
+    }
+
+    /**
+     * @notice Returns current asset price calculated from trusted providers
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp           Time when price was updated for the last time
+     */
+    function getCurrentPriceFromTrustedProviders() external view override 
+        returns (
+            uint256 _price,
+            uint256 _timestamp
+        )
+    {
+        return (assetTrustedProvidersPriceUSD, assetTrustedProvidersPriceTimestamp);
     }
 
     /**
@@ -681,7 +705,7 @@ contract Ftso is IIFtso {
             votePowerBlock
         );
 
-        FtsoEpoch._addVote(
+        epochs._addVote(
             epoch,
             _voter,
             votePowerNat,
@@ -753,23 +777,22 @@ contract Ftso is IIFtso {
     ) 
         internal
     {
-        uint256[] memory _prices;
-        uint256 _count;
-        
-        // extract data from epoch trusted votes to memory
-        (_prices, _count) = _readTrustedVotes(_epoch, epochs.trustedAddresses);
-        if (_count > 0) {
+        if (_epoch.trustedVotes.length > 0) {
             // finalizationType = PriceFinalizationType.TRUSTED_ADDRESSES
-            _epoch.price = FtsoMedian._computeSimple(_prices, _count);
+            _epoch.price = FtsoMedian._computeSimple(_epoch.trustedVotes);
             _epoch.finalizationType = _exception ?
                 PriceFinalizationType.TRUSTED_ADDRESSES_EXCEPTION : PriceFinalizationType.TRUSTED_ADDRESSES;
 
             // update price
-            assetPriceUSD = _epoch.price;
-            assetPriceTimestamp = block.timestamp;
+            assetPriceUSD = uint128(_epoch.price); // no overflow
+            assetPriceTimestamp = uint128(block.timestamp); // no overflow
             assetPriceFinalizationType = _epoch.finalizationType;
             lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
             lastPriceEpochFinalizationType = _epoch.finalizationType;
+            
+            // update trusted providers price
+            assetTrustedProvidersPriceUSD = uint128(_epoch.price); // no overflow
+            assetTrustedProvidersPriceTimestamp = uint128(block.timestamp); // no overflow
             
             _writeFallbackEpochPriceData(_epochId);
 
@@ -950,33 +973,6 @@ contract Ftso is IIFtso {
         }
 
         _weight = FtsoEpoch._computeWeights(_epoch, _weightNat, weightAsset);
-    }
-
-    /**
-     * @notice Extract trusted vote data from epoch
-     * @param _epoch                Epoch instance
-     * @param _trustedAddresses     List of trusted addresses
-     * @return _prices              All prices submitted by trusted addresses
-     * @return _count               Number of prices submitted by trusted addresses
-     */
-    function _readTrustedVotes(FtsoEpoch.Instance storage _epoch, address[] memory _trustedAddresses) internal view 
-        returns (
-            uint256[] memory _prices,
-            uint256 _count
-        )
-    {
-        uint256 length = _epoch.nextVoteIndex;
-        uint256 trustedAddressesLength = _trustedAddresses.length;
-        _prices = new uint256[](trustedAddressesLength);
-        for (uint256 i = 0; i < length; i++) {
-            address voter = _epoch.votes[i].voter;
-            for (uint256 j = 0; j < trustedAddressesLength; j++) {
-                if (voter == _trustedAddresses[j]) {
-                    _prices[_count] = uint256(_epoch.votes[i].price);
-                    _count++;
-                }
-            }
-        }
     }
 
     /**

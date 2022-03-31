@@ -257,31 +257,28 @@ contract(`FtsoMedian.sol; ${getTestFile(__filename)};  Ftso median unit tests`, 
 
     it(`Should compute simple median correctly`, async () => {
         let prices: number[] = [50,20,40,10,30];
-        const {0: finalMedianPrice, 1: sortedPrices, 2: count} = await ftsoMedian.computeSimple(prices, prices.length);
+        const {0: finalMedianPrice, 1: sortedPrices} = await ftsoMedian.computeSimple(prices);
 
         prices = prices.sort();
         compareNumberArrays(sortedPrices, prices);
         expect(finalMedianPrice.toString()).to.equals('30');
-        expect(count.toString()).to.equals('5');
     });
 
     it(`Should compute simple median correctly - middle price`, async () => {
         let prices: number[] = [50,20,40,10];
-        const {0: finalMedianPrice, 1: sortedPrices, 2: count} = await ftsoMedian.computeSimple(prices, prices.length);
+        const {0: finalMedianPrice, 1: sortedPrices} = await ftsoMedian.computeSimple(prices);
 
         prices = prices.sort();
         compareNumberArrays(sortedPrices, prices);
         expect(finalMedianPrice.toString()).to.equals('30');
-        expect(count.toString()).to.equals('4');
     });
 
     it(`Should show that a single hacked key can't skew the fall back price result`, async () => {
         let prices: number[] = [50000,20,40,10];
-        const {0: finalMedianPrice, 1: sortedPrices, 2: count} = await ftsoMedian.computeSimple(prices, prices.length);
+        const {0: finalMedianPrice, 1: sortedPrices} = await ftsoMedian.computeSimple(prices);
 
         prices = prices.sort();
         compareNumberArrays(sortedPrices, prices);
         expect(finalMedianPrice.toString()).to.equals('30');
-        expect(count.toString()).to.equals('4');
     });
 });

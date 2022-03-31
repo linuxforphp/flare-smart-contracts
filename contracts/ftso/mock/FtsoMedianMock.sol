@@ -6,8 +6,8 @@ import {FtsoMedian} from "../lib/FtsoMedian.sol";
 
 
 /**
- * @title Ftso Vote mock contract
- * @notice A contract to expose the FtsoVote library for unit testing.
+ * @title Ftso Median mock contract
+ * @notice A contract to expose the FtsoMedian library for unit testing.
  **/
 contract FtsoMedianMock {
     using FtsoMedian for FtsoMedian.Data;
@@ -93,16 +93,14 @@ contract FtsoMedianMock {
     }
 
     function computeSimple(
-        uint256[] memory _prices,
-        uint256 _count
+        uint256[] memory _prices
     )
         public pure 
         returns (
             uint256 _finalMedianPrice, 
-            uint256[] memory,
-            uint256
+            uint256[] memory
         )
     {
-        return (FtsoMedian._computeSimple(_prices, _count), _prices, _count);
+        return (FtsoMedian._computeSimple(_prices), _prices);
     }
 }

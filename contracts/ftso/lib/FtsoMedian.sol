@@ -340,21 +340,20 @@ library FtsoMedian {
     /**
      * @notice Computes the simple median price (using insertion sort) - sorts original array
      * @param _prices               positional array of prices to be sorted
-     * @param _count                number of valid prices in array (array may be longer)
      * @return _finalMedianPrice    median price
      */
     function _computeSimple(
-        uint256[] memory _prices,
-        uint256 _count
+        uint256[] memory _prices
     ) 
         internal pure 
         returns (
             uint256 _finalMedianPrice
         )
     {
-        assert(_count > 0 && _prices.length >= _count);
+        uint256 length = _prices.length;
+        assert(length > 0);
 
-        for (uint256 i = 1; i < _count; i++) {
+        for (uint256 i = 1; i < length; i++) {
             // price to sort next
             uint256 currentPrice = _prices[i];
 
@@ -368,8 +367,8 @@ library FtsoMedian {
             _prices[j] = currentPrice;
         }
 
-        uint256 middleIndex = _count / 2;
-        if (_count % 2 == 1) {
+        uint256 middleIndex = length / 2;
+        if (length % 2 == 1) {
             return _prices[middleIndex];
         } else {
             // if median is "in the middle", take the average price of the two consecutive prices

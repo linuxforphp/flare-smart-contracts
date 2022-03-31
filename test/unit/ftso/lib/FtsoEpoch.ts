@@ -277,4 +277,15 @@ contract(`FtsoEpoch.sol; ${getTestFile(__filename)};  Ftso epoch unit tests`, as
         expect(epoch.baseWeightRatio).to.equals('3850');
         expect((await ftsoEpoch.getWeightRatio(1, 0, weightAssetSum)).toNumber()).to.equals(10000);
     });
+
+    it("Should get trusted addresses votes correctly", async () => {
+        await ftsoEpoch.configureEpochs(1, 2, 1000, 10000, 50, 1500, [accounts[1]]);
+        await ftsoEpoch.initializeInstanceForReveal(1, 500, 400, [mockVpToken.address], [700000], [11]);
+        await ftsoEpoch.addVote(1, accounts[0], 50, 400000, 85);
+        await ftsoEpoch.addVote(1, accounts[1], 70, 200000, 86);
+
+        let epoch = await ftsoEpoch.getEpochInstance(1);
+        expect(epoch.trustedVotes.length).to.equals(1);
+        expect(epoch.trustedVotes[0]).to.equals('86');
+    });
 });

@@ -53,6 +53,7 @@ library FtsoEpoch {
         uint256[] assetWeightedPrices;          // prices that determine the contributions of assets to vote power
         uint256 nextVoteIndex;
         mapping(uint256 => FtsoVote.Instance) votes; // array of all votes in epoch
+        uint256[] trustedVotes;                 // array of all votes from trusted providers in epoch
         uint256 price;                          // consented epoch asset price
         IFtso.PriceFinalizationType finalizationType; // finalization type
     }
@@ -101,12 +102,15 @@ library FtsoEpoch {
 
     /**
      * @notice Adds a vote to the vote array of an epoch instance
+     * @param _state                Epoch state
      * @param _instance             Epoch instance
+     * @param _voter                Voter address
      * @param _votePowerNat         Vote power for native token
      * @param _votePowerAsset       Vote power for asset
      * @param _price                Price in USD submitted in a vote
      */
     function _addVote(
+        State storage _state,
         Instance storage _instance,
         address _voter,
         uint256 _votePowerNat,
@@ -129,6 +133,9 @@ library FtsoEpoch {
         _instance.votes[index] = vote;
         _instance.nextVoteIndex = index + 1;
         _instance.accumulatedVotePowerNat = _instance.accumulatedVotePowerNat.add(_votePowerNat);
+        if (_state.trustedAddressesMapping[_voter]) {
+            _instance.trustedVotes.push(_price);
+        }
     }
     
     /**
