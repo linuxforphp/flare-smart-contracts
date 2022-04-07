@@ -10,6 +10,8 @@ contract StateConnector {
 // Data Structures
 //====================================================================
 
+    uint256[16] private gap; // unused old storage slots (genesis contract upgrade)
+
     address public constant SIGNAL_COINBASE = address(0x000000000000000000000000000000000000dEaD); // Signalling block.coinbase value
     uint256 public constant BUFFER_TIMESTAMP_OFFSET = 1636070400 seconds; // November 5th, 2021
     uint256 public constant BUFFER_WINDOW = 90 seconds; // Amount of time a buffer is active before cycling to the next one
