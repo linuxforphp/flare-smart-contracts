@@ -11,6 +11,7 @@ async function copyData(){
     await fse.copy(path.join(dir, "scripts"), "./scripts", {overwrite: true});
     await fse.copy(path.join(dir, "tsconfig.json"), "tsconfig.json", {overwrite: true});
     await fse.copy(path.join(dir, "hardhat.config.ts"), "hardhat.config.ts", {overwrite: true});
+    await fse.copy(path.join(dir, "hardhatSetup.config.ts"), "hardhatSetup.config.ts", {overwrite: true});
     await fse.copy(path.join(dir, "package.json"), "package.json", {overwrite: true});
     await fse.copy(path.join(dir, "test-1020-accounts.json"), "test-1020-accounts.json", {overwrite: true});
     await fse.copy(path.join(dir, "yarn.lock"), "yarn.lock", {overwrite: true});
