@@ -105,6 +105,7 @@
     "activate_managers_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost activate-managers && yarn test_activate_managers_hardhat",
     "daemonize_contracts_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost daemonize-contracts && yarn test_daemonize_hardhat",
     "deploy_contracts_local_hardhat": "env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json && yarn test_deploy_hardhat",
+
     "---------FAST---SCRIPTS---SKIP---DEPLOY---TESTS": "",
     "deploy_local_hardhat_commands_fast": "yarn deploy_contracts_local_hardhat_fast && yarn daemonize_contracts_local_hardhat_fast && yarn activate_managers_local_hardhat_fast",
     "activate_managers_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost activate-managers",

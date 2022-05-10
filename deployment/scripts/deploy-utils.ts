@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { pascalCase } from "pascal-case";
-import { AssetTokenContract, AssetTokenInstance, CleanupBlockNumberManagerInstance, DummyAssetMinterContract, DummyAssetMinterInstance, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance, StateConnectorInstance, SupplyInstance, TestableFlareDaemonInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetTokenContract, AssetTokenInstance, CleanupBlockNumberManagerInstance, DummyAssetMinterContract, DummyAssetMinterInstance, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance, StateConnectorInstance, SupplyInstance, TestableFlareDaemonInstance, WNatInstance, GovernanceVotePowerInstance, GovernorRejectInstance,  } from "../../typechain-truffle";
 import { Contract, Contracts } from "./Contracts";
 
 export interface AssetDefinition {
@@ -32,6 +32,12 @@ export interface DeployedFlareContracts {
   stateConnector?: StateConnectorInstance,
   ftsoRegistry?: FtsoRegistryInstance,
   ftsoContracts?: AssetContracts[],
+  contracts?: Contracts,
+}
+
+export interface DeployedFlareGovernanceContracts {
+  governanceVP?: GovernanceVotePowerInstance,
+  governorReject?: GovernorRejectInstance,
   contracts?: Contracts,
 }
 

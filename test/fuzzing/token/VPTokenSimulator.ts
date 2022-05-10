@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { WNatInstance } from "../../../typechain-truffle";
+import { WNatInstance, GovernanceVotePowerInstance } from "../../../typechain-truffle";
 import { loadJson, MAX_BIPS, MAX_BIPS_DELEGATIONS, saveJson } from "../../utils/fuzzing-utils";
 import { toBN } from "../../utils/test-helpers";
 import { DelegationMode, VPTokenState } from "./VPTokenState";
@@ -31,6 +31,8 @@ export type VPTokenAction = { context: any, sender: string, allowedErrors: Condi
         | { name: 'setCleanupBlock', checkpointId: string }
         | { name: 'replaceWriteVpContract' }
         | { name: 'replaceReadVpContract' }
+        | { name: 'delegateGovernance', to: string, bips: BN }
+        | { name: 'undelegateGovernance' }
     );
 
 export interface Checkpoint {
@@ -46,7 +48,8 @@ export class VPTokenHistory {
     public errorCounts: Map<string, number> = new Map();
 
     constructor(
-        private vpToken: WNatInstance
+        private vpToken: WNatInstance,
+        private governanceVP: GovernanceVotePowerInstance
     ) { }
 
     async run(action: VPTokenAction) {
@@ -185,6 +188,17 @@ export class VPTokenHistory {
                 case "replaceReadVpContract": {
                     const writeVpContract = await this.vpToken.writeVotePowerContract();
                     return await this.vpToken.setReadVpContract(writeVpContract, { from: method.sender });
+                }
+                case "delegateGovernance": {
+                    const result = await this.governanceVP.delegate(method.to, { from: method.sender });
+                    this.state.undelegateGovernance(method.sender);
+                    this.state.governanceBipsDelegations.set(method.sender, method.to, method.bips);
+                    return result;
+                }
+                case "undelegateGovernance": {
+                    const result = await this.governanceVP.undelegate({ from: method.sender });
+                    this.state.undelegateGovernance(method.sender);
+                    return result;
                 }
             }
         } catch (e) {
@@ -335,5 +349,18 @@ export class VPTokenSimulator {
     replaceReadVpContract(sender: string) {
         const allowedErrors = { };
         return this.history.run({ context: this.context, name: "replaceReadVpContract", sender, allowedErrors });
+    }
+
+    delegateGovernance(sender: string, to: string, bips: BNArg) {
+        const allowedErrors = {
+            "revert can't delegate to yourself": sender === to
+        };
+        return this.history.run({ context: this.context, name: "delegateGovernance", sender, to, bips: toBN(bips), allowedErrors });
+    }
+
+    undelegateGovernance(sender: string) {
+        const allowedErrors = {
+        };
+        return this.history.run({ context: this.context, name: "undelegateGovernance", sender, allowedErrors });
     }
 }
