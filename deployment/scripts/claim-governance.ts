@@ -44,6 +44,7 @@ export async function claimGovernance(
   const Supply = artifacts.require("Supply");
   const VoterWhitelister = artifacts.require("VoterWhitelister");
   const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
+  const DistributionTreasury = artifacts.require("DistributionTreasury");
   const Distribution = artifacts.require("Distribution");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const WNat = artifacts.require("WNat");
@@ -59,6 +60,7 @@ export async function claimGovernance(
   const priceSubmitter = await PriceSubmitter.at(contracts.getContractAddress(Contracts.PRICE_SUBMITTER));
   const voterWhitelister = await VoterWhitelister.at(contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.at(contracts.getContractAddress(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER));
+  const distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
 
@@ -77,6 +79,7 @@ export async function claimGovernance(
   await priceSubmitter.claimGovernance({from: claimantAccount.address});
   await voterWhitelister.claimGovernance({from: claimantAccount.address});
   await cleanupBlockNumberManager.claimGovernance({from: claimantAccount.address});
+  await distributionTreasury.claimGovernance({from: claimantAccount.address});
   await ftsoRegistry.claimGovernance({from: claimantAccount.address});
   await wNat.claimGovernance({from: claimantAccount.address});
 }

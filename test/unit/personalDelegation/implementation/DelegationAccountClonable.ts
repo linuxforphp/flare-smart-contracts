@@ -11,12 +11,14 @@ import {
   FtsoManagerInstance,
   FtsoManagerMockContract,
   FtsoRewardManagerContract,
-  FtsoManagerContract
+  FtsoManagerContract,
+  DistributionTreasuryInstance
 } from "../../../../typechain-truffle";
 import { toBN, encodeContractNames } from '../../../utils/test-helpers';
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
 import { Contracts } from '../../../../deployment/scripts/Contracts';
+import { GOVERNANCE_GENESIS_ADDRESS } from '../../../utils/constants';
 
 let wNat: WNatInstance;
 let governanceVP: MockContractInstance;
@@ -27,6 +29,7 @@ let libraryContract: DelegationAccountClonableInstance;
 let delAcc2Address: Address;
 let delegationAccountClonable2: DelegationAccountClonableInstance;
 let distribution: DistributionInstance;
+let distributionTreasury: DistributionTreasuryInstance;
 
 let ftsoRewardManager: FtsoRewardManagerInstance;
 let ftsoManagerInterface: FtsoManagerInstance;
@@ -42,6 +45,7 @@ const WNat = artifacts.require("WNat");
 const MockContract = artifacts.require("MockContract");
 const DelegationAccountManager = artifacts.require("DelegationAccountManager");
 const DelegationAccountClonable = artifacts.require("DelegationAccountClonable");
+const DistributionTreasury = artifacts.require("DistributionTreasury");
 const Distribution = artifacts.require("Distribution");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
@@ -156,7 +160,9 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await setDefaultVPContract(wNat, accounts[0]);
 
     governanceVP = await MockContract.new();
-    distribution = await Distribution.new(accounts[0]);
+    distributionTreasury = await DistributionTreasury.new();
+    await distributionTreasury.initialiseFixedAddress();
+    distribution = await Distribution.new(accounts[0], distributionTreasury.address);
 
     // ftso reward manager
     mockFtsoManager = await MockFtsoManager.new();
@@ -273,9 +279,10 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   it("Should claim airdrop, set executor and claim again", async() => {
     await distribution.setClaimBalance([delAcc1Address, delAcc2Address], [1000, 1000]);
 
-    const suicidalMock = await SuicidalMock.new(distribution.address);
+    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
     await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: 2000 });
     await suicidalMock.die();
+    await distributionTreasury.setDistributionContract(distribution.address, 2000, {from: GOVERNANCE_GENESIS_ADDRESS});
     
     let now = await time.latest();
     await distribution.setEntitlementStart(now);

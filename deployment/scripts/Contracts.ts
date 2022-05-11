@@ -22,6 +22,7 @@ export class Contracts {
   public static readonly CLEANUP_BLOCK_NUMBER_MANAGER = "CleanupBlockNumberManager";
   public static readonly FTSO_REGISTRY = "FtsoRegistry";
   public static readonly DISTRIBUTION = "Distribution";
+  public static readonly DISTRIBUTION_TREASURY = "DistributionTreasury";
   public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";
