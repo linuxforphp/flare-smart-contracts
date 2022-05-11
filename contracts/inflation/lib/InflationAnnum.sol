@@ -26,7 +26,6 @@ library InflationAnnum {
      */
     struct InflationAnnumState {
         uint256 recognizedInflationWei;
-        uint16 daysInAnnum;
         uint256 startTimeStamp;
         uint256 endTimeStamp;
         RewardServices.RewardServicesState rewardServices;
@@ -49,17 +48,7 @@ library InflationAnnum {
     {
         return _inflatableBalance.mulDiv(
             _annualInflationPercentageBips, 
-            BIPS100);
-    }
-
-    /**
-     * @notice Helper function to compute the number of days in an annum.
-     * @param _startTimeStamp   The start time of the annum in question.
-     * @return  The number of days in the annum.
-     */
-    function _computeDaysInAnnum(uint256 _startTimeStamp, uint256 _endTimeStamp) internal pure returns(uint16) { 
-        uint256 daysInAnnum = _startTimeStamp.diffDays(_endTimeStamp.add(1));
-        return daysInAnnum.toUint16();
+            12 * BIPS100); // monthly inflation
     }
 
     /**
@@ -90,7 +79,7 @@ library InflationAnnum {
      */
     function _getAnnumEndsTs(uint256 _startTimeStamp) internal pure returns (uint256) {
         // This should cover passing through Feb 29
-        return _startTimeStamp.addYears(1).subSeconds(1);
+        return _startTimeStamp.addDays(30).subSeconds(1);
     }
 
     /**
@@ -131,6 +120,5 @@ library InflationAnnum {
             _inflatableBalanceWei, 
             _annualInflationPercentageBips);
         _self.endTimeStamp = _getAnnumEndsTs(_startTimeStamp);
-        _self.daysInAnnum = _computeDaysInAnnum(_startTimeStamp, _self.endTimeStamp);
     }
 }

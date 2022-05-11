@@ -9,6 +9,7 @@ import "../../governance/implementation/Governed.sol";
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+
 /**
  * @title Supply contract
  * @notice This contract maintains and computes various native token supply totals.
@@ -21,7 +22,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
 
     struct SupplyData {
         IITokenPool tokenPool;
-        uint256 foundationAllocatedFundsWei;
+        uint256 lockedFundsWei;
         uint256 totalInflationAuthorizedWei;
         uint256 totalClaimedWei;
     }
@@ -36,6 +37,8 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     uint256 immutable public initialGenesisAmountWei;
     uint256 public totalInflationAuthorizedWei;
     uint256 public totalFoundationSupplyWei;
+    // Amounts temporary locked and not considered in the inflatable supply
+    uint256 public totalLockedWei;
     uint256 public distributedFoundationSupplyWei;
 
     SupplyData[] public tokenPools;
@@ -76,6 +79,14 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         }
 
         _updateCirculatingSupply(_burnAddress);
+    }
+
+    /**
+     * @notice Updates circulating supply
+     * @dev Also updates the burn address amount
+    */
+    function updateCirculatingSupply() external override onlyInflation {
+        _updateCirculatingSupply(burnAddress);
     }
 
     /**
@@ -160,11 +171,15 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     }
 
     /**
-     * @notice Get total inflatable balance (initial genesis amount + total authorized inflation)
+     * @notice Get total inflatable balance (initial genesis amount + total authorized inflation - total locked amount)
      * @return _inflatableBalanceWei Return inflatable balance
     */
     function getInflatableBalance() external view override returns(uint256 _inflatableBalanceWei) {
-        return initialGenesisAmountWei.add(totalInflationAuthorizedWei);
+        return initialGenesisAmountWei
+            .add(totalInflationAuthorizedWei)
+            .add(distributedFoundationSupplyWei)
+            .sub(totalFoundationSupplyWei)
+            .sub(totalLockedWei);
     }
 
     /**
@@ -192,24 +207,27 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         for (uint256 i = 0; i < len; i++) {
             SupplyData storage data = tokenPools[i];
 
-            uint256 newFoundationAllocatedFundsWei;
+            uint256 lockedFundsWei;
             uint256 newTotalInflationAuthorizedWei;
             uint256 newTotalClaimedWei;
             
-            (newFoundationAllocatedFundsWei, newTotalInflationAuthorizedWei, newTotalClaimedWei) = 
+            (lockedFundsWei, newTotalInflationAuthorizedWei, newTotalClaimedWei) = 
                 data.tokenPool.getTokenPoolSupplyData();
-            assert(newFoundationAllocatedFundsWei.add(newTotalInflationAuthorizedWei) >= newTotalClaimedWei);
+            assert(lockedFundsWei.add(newTotalInflationAuthorizedWei) >= newTotalClaimedWei);
             
             // updates total inflation authorized with daily authorized inflation
             uint256 dailyInflationAuthorizedWei = newTotalInflationAuthorizedWei.sub(data.totalInflationAuthorizedWei);
             totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(dailyInflationAuthorizedWei);
 
             // updates circulating supply
-            _decreaseCirculatingSupply(newFoundationAllocatedFundsWei.sub(data.foundationAllocatedFundsWei));
-            _increaseCirculatingSupply(newTotalClaimedWei.sub(data.totalClaimedWei));
+            uint256 lockChange = lockedFundsWei.sub(data.lockedFundsWei);
+            _decreaseCirculatingSupply(lockChange);
+            uint256 claimChange = newTotalClaimedWei.sub(data.totalClaimedWei);
+            _increaseCirculatingSupply(claimChange);
+            totalLockedWei = totalLockedWei.add(dailyInflationAuthorizedWei).add(lockChange).sub(claimChange);
 
             // update data
-            data.foundationAllocatedFundsWei = newFoundationAllocatedFundsWei;
+            data.lockedFundsWei = lockedFundsWei;
             data.totalInflationAuthorizedWei = newTotalInflationAuthorizedWei;
             data.totalClaimedWei = newTotalClaimedWei;
         }
