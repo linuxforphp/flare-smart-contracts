@@ -12,7 +12,7 @@ import "../interface/IITokenPool.sol";
 /**
  * @title Distribution
  * @notice A contract to manage the ongoing airdrop distribution after the initial airdrop allocation. 
- * The remaining ammount is distributed by this contract, with a set rate every 30 days
+ * The remaining amount is distributed by this contract, with a set rate every 30 days
  * @notice The balance that will be added to this contract must initially be a part of circulating supply 
  **/
 contract Distribution is Governed, IDistribution, IITokenPool {
@@ -242,8 +242,8 @@ contract Distribution is Governed, IDistribution, IITokenPool {
     }
 
     /**
-     * @notice Get current claimable ammount for users account
-     * @dev Every 30 days from initial day 3% of the revard is released
+     * @notice Get current claimable amount for users account
+     * @dev Every 30 days from initial day 3% of the reward is released
      */
     function _getCurrentClaimableWei(address _owner) internal view entitlementStarted accountCanClaim(_owner) 
         returns(uint256 claimableWei)

@@ -741,13 +741,13 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
 
     /**
      * @notice Return token pool supply data
-     * @return _foundationAllocatedFundsWei     Foundation allocated funds (wei)
+     * @return _lockedFundsWei                  Foundation locked funds (wei)
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
     function getTokenPoolSupplyData() external view override 
         returns (
-            uint256 _foundationAllocatedFundsWei,
+            uint256 _lockedFundsWei,
             uint256 _totalInflationAuthorizedWei,
             uint256 _totalClaimedWei
         )

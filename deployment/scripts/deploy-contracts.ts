@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
@@ -64,6 +64,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const VoterWhitelister: VoterWhitelisterContract = artifacts.require("VoterWhitelister");
   const WNat: WNatContract = artifacts.require("WNat");
   const Distribution: DistributionContract = artifacts.require("Distribution");
+  const TeamEscrow: TeamEscrowContract = artifacts.require("TeamEscrow");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -197,6 +198,9 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
+  // Team escrow contract
+  const teamEscrow = await TeamEscrow.new(deployerAccount.address, 0);
+
   // Inflation allocation needs to know about reward managers
   let receiversAddresses = []
   for (let a of parameters.inflationReceivers) {
@@ -206,6 +210,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Supply contract needs to know about reward managers
   await supply.addTokenPool(ftsoRewardManager.address, 0);
+  await supply.addTokenPool(teamEscrow.address, 0);
 
   // setup topup factors on inflation receivers
   for (let i = 0; i < receiversAddresses.length; i++) {

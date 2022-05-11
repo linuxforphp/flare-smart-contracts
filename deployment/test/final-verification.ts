@@ -56,7 +56,7 @@ contract(`final-verification.ts system tests`, async accounts => {
       const authorizedInflationWei = await ftsoRewardManager.totalInflationAuthorizedWei();
       const balanceWei = await web3.eth.getBalance(ftsoRewardManager.address);
       const inflationAnnum = await inflation.getCurrentAnnum();
-      const dailyInflationWei = BN(inflationAnnum.recognizedInflationWei.toString()).div(BN(inflationAnnum.daysInAnnum.toString()));
+      const dailyInflationWei = BN(inflationAnnum.recognizedInflationWei.toString()).div(BN(30));
       const calculatedAuthorizedInflationWei = calculateAuthorizedInflationWei(parameters, dailyInflationWei, Contracts.FTSO_REWARD_MANAGER);
 
       // Assert

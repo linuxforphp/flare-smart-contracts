@@ -21,9 +21,10 @@ import {
   WNatInstance
 } from "../../../typechain-truffle";
 import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
+import { BN_ZERO } from '../../utils/fuzzing-utils';
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
-import { getRandom, submitHash } from '../../utils/test-helpers';
+import { getRandom, submitHash, toBN } from '../../utils/test-helpers';
 
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
@@ -288,33 +289,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
   let day4_expectedRewardBalance: BN;
 
-  let firstInflationAnnum: {
-    recognizedInflationWei: string;
-    daysInAnnum: string;
-    startTimeStamp: string;
-    endTimeStamp: string;
-    rewardServices: {
-      rewardServices: {
-        inflationReceiver: string;
-        authorizedInflationWei: string;
-        lastDailyAuthorizedInflationWei: string;
-        inflationTopupRequestedWei: string;
-        inflationTopupReceivedWei: string;
-        inflationTopupWithdrawnWei: string;
-      }[];
-      totalAuthorizedInflationWei: string;
-      totalInflationTopupRequestedWei: string;
-      totalInflationTopupReceivedWei: string;
-      totalInflationTopupWithdrawnWei: string;
-    };
-  };
-
-  const inflationBipsY1 = 1000;
-  const inflationBipsY2 = 800;
-
+  const inflationBips = 500;
   let initialGenesisAmountWei: BN;
-  let firstDayYear2InflationAuthorized: BN;
-  let totalInflationAuthorizedWei: BN;
+  let totalFoundationSupplyWei: BN;
+  let totalClaimedWei: BN;
 
   before(async () => {
     // Get contract addresses of deployed contracts
@@ -395,11 +373,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Prime the daemon to establish vote power block.
     await flareDaemon.trigger({ gas: 40_000_000 });
 
-    // Supply contract - inflatable balance should be updated
-    const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
-    const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(inflatableBalanceWei.gt(initialGenesisAmountWei), "Authorized inflation not distributed...");
-
     // A minting request should be pending...
     day1_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
     console.log("total minting requested wei: " + day1_totalMintingRequestedWei.toString());
@@ -447,27 +420,23 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       await voterWhitelister.requestFullVoterWhitelisting(submitters[i]);
     }
 
-
   });
 
 
   it("Should initialize inflation testing", async () => {
 
-    // Supply contract - inflatable balance should be updated
+    // Supply contract - inflatable balance should not be updated ()
     initialGenesisAmountWei = await supply.initialGenesisAmountWei();
+    totalFoundationSupplyWei = await supply.totalFoundationSupplyWei();
+    const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(inflatableBalanceWei.gt(initialGenesisAmountWei), "Authorized inflation not distributed...");
+    assert(inflatableBalanceWei.eq(initialGenesisAmountWei.sub(totalFoundationSupplyWei)) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
 
-    // Prepare inflation details
-    firstInflationAnnum = await inflation.getCurrentAnnum() as any;
-
-    // Assemble
-    const firstYearAnnualInflationAuthorized = initialGenesisAmountWei.mul(BN(inflationBipsY1)).div(BN(10000));
-    firstDayYear2InflationAuthorized = initialGenesisAmountWei.add(firstYearAnnualInflationAuthorized).mul(BN(inflationBipsY2)).div(BN(10000)).div(BN(365));
-    // Total inflation authorized over 1 year + 1 day
-    totalInflationAuthorizedWei = firstYearAnnualInflationAuthorized.add(firstDayYear2InflationAuthorized);
-
-
+    // Assert
+    // Recognized inflation should be correct
+    const firstInflationAnnum = await inflation.getAnnum(0);
+    const firstAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    assert.equal(firstInflationAnnum.recognizedInflationWei.toString(), firstAnnumInflationWei.toString());
   });
 
   it("Test claiming from reward manager on first day ", async function () {
@@ -573,6 +542,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // asserts 
     assert(shouldClaimed.eq(day1_computedRewardClaimed), `should have claimed ${shouldClaimed} but actually claimed ${day1_computedRewardClaimed}`);
     console.log('\x1b[32m%s\x1b[0m', 'Reward claiming works');
+    totalClaimedWei = day1_computedRewardClaimed;
   });
 
   it("Test balance on reward manager on first day ", async function () {
@@ -751,6 +721,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Make sure reward manager balance was reduced exactly as much as it should be
     assert(expectedNewRMBalance.eq(actualNewRMBalance), `Reward manager balance is expected to be ${expectedNewRMBalance.toString(10)} but it is ${actualNewRMBalance.toString(10)}`)
     console.log('\x1b[32m%s\x1b[0m', "Day 4 Reward manager balance is correct after claiming");
+    totalClaimedWei = totalClaimedWei.add(day4_computedRewardClaimed);
   });
 
   it("Exhaust reward manager with price submitting, revealing and claiming on day 5 onward  ", async () => {
@@ -866,6 +837,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       assert.equal((accountsClosingBalances[2].sub(accountsOpeningBalances[2]).add(txCosts[2])).toString(10), awarded_rewards[2].toString(10));
       assert.equal((accountsClosingBalances[3].sub(accountsOpeningBalances[3]).add(txCosts[3])).toString(10), awarded_rewards[3].toString(10));
       assert.equal((accountsClosingBalances[4].sub(accountsOpeningBalances[4]).add(txCosts[4])).toString(10), awarded_rewards[4].toString(10));
+
+      for (let i = 0; i < 5; i++) {
+        totalClaimedWei = totalClaimedWei.add(awarded_rewards[i]);
+      }
     }
 
     console.log('\x1b[32m%s\x1b[0m', "Exhausting reward manager balances match");
@@ -906,18 +881,19 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     console.log('\x1b[32m%s\x1b[0m', "Day 6 topup balance is correct");
   });
 
-  it("Wait a year", async () => {
-    // After some requests, wait until a year passes
+  it("Wait a month", async () => {
+    // After some requests, wait until a month passes
     await time.advanceBlock();
 
-    // Inflation is at least a year
+    // Inflation is 30 days long
+    const firstInflationAnnum = await inflation.getAnnum(0);
     console.log(firstInflationAnnum.startTimeStamp);
-    const firstAnnumStart = BN(firstInflationAnnum.startTimeStamp);
-    assert(firstAnnumStart.add(BN(356 * 24 * 60 * 60 - 2)).lte(BN(firstInflationAnnum.endTimeStamp)));
+    const firstAnnumStart = toBN(firstInflationAnnum.startTimeStamp);
+    assert(firstAnnumStart.add(BN(30 * 24 * 60 * 60 - 1)).eq(toBN(firstInflationAnnum.endTimeStamp)));
 
-    const target = BN(firstInflationAnnum.endTimeStamp)
+    const target = toBN(firstInflationAnnum.endTimeStamp)
 
-    // Wait for a year
+    // Wait for a month
     const difference = BN(24 * 60 * 60)
 
     while ((await time.latest()).lt(target)) {
@@ -926,23 +902,25 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       await time.increase(difference);
       await flareDaemon.trigger({ gas: 40_000_000 });
       await time.advanceBlock();
-      console.log((await time.latest()).toString(), (await supply.getInflatableBalance()).toString());
+      console.log((await time.latest()).toString(), (await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toString());
     }
 
     const secondAnnum = await inflation.getCurrentAnnum();
     // Should create a new annum
     // Second annum should start later then the first
     assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
-
+    
     // Recognized inflation should be updated
-    assert.equal(
-      secondAnnum.recognizedInflationWei.toString(),
-      initialGenesisAmountWei.muln(110).divn(100).divn(100).muln(inflationBipsY2 / 100).toString()) // 8 percent of 110% percent of initial
+    const totalBurnedWei = await ftsoRewardManager.totalBurnedWei(); // burned amount is part of inflatable balance
+    const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    assert.isTrue(totalClaimedWei.eq(await ftsoRewardManager.totalClaimedWei()));
+    assert.equal(secondAnnum.recognizedInflationWei.toString(), secondAnnumInflationWei.toString());
+      
 
-    // Check that the next daily authorized amount set on reward manager, after the year-end roll, contains the correct amount.
+    // Check that the next daily authorized amount set on reward manager, after the month-end roll, contains the correct amount.
     assert.equal(
       (await ftsoRewardManager.dailyAuthorizedInflation()).toString(),
-      firstDayYear2InflationAuthorized.toString() // 100 percent is shared to reward manager
+      secondAnnumInflationWei.divn(30).toString() // 100 percent is shared to reward manager
     )
 
   });
