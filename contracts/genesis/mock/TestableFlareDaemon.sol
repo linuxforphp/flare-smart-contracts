@@ -13,7 +13,7 @@ contract TestableFlareDaemon is FlareDaemon {
     /**
      * Testable version of trigger - no check for message origin.
      */
-    function trigger() external override inflationSet mustBalance returns (uint256 _toMintWei) {
+    function trigger() external override inflationSet returns (uint256 _toMintWei) {
         return triggerInternal();
     }
 }
