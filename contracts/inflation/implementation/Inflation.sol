@@ -65,7 +65,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     event SupplySet(IISupply oldSupply, IISupply newSupply);
     event TopupConfigurationSet(TopupConfiguration topupConfiguration);
     event NewAnnumInitialized(
-        uint16 daysInAnnum,
         uint256 startTimeStamp,
         uint256 endTimeStamp,
         uint256 inflatableSupplyWei,
@@ -343,6 +342,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     function _initNewAnnum(uint256 startTs) internal {
+        supply.updateCirculatingSupply();
         uint256 inflatableSupply = supply.getInflatableBalance();
 
         try inflationAllocation.getAnnualPercentageBips() returns(uint256 annualPercentBips) {
@@ -356,7 +356,6 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
         InflationAnnum.InflationAnnumState memory inflationAnnum = inflationAnnums.getCurrentAnnum();
 
         emit NewAnnumInitialized(
-            inflationAnnum.daysInAnnum, 
             inflationAnnum.startTimeStamp,
             inflationAnnum.endTimeStamp,
             inflatableSupply,
