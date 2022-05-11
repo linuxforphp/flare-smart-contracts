@@ -164,7 +164,12 @@ contract Distribution is Governed, IDistribution, IITokenPool {
         // Emit the claim event
         emit AccountClaimed(msg.sender);
         // Send
-        msg.sender.transfer(_amountWei);
+        // msg.sender.transfer(_amountWei);
+        /* solhint-disable avoid-low-level-calls */
+        //slither-disable-next-line arbitrary-send   
+        (bool success, ) = msg.sender.call{value: _amountWei}("");
+        /* solhint-enable avoid-low-level-calls */
+        require(success, "error");
     }
 
     /**
