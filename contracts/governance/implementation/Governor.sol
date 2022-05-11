@@ -13,9 +13,11 @@ import "@openzeppelin/contracts/drafts/EIP712.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "../../ftso/implementation/FtsoManager.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 
 abstract contract Governor is
-    IIGovernor, EIP712, Random, GovernorSettings, GovernorVotePower, GovernorProposals, GovernorVotes {
+    IIGovernor, EIP712, Random, GovernorSettings, GovernorVotePower, GovernorProposals,
+    GovernorVotes, AddressUpdatable {
     
     using SafePct for uint256;
 
@@ -28,9 +30,11 @@ abstract contract Governor is
 
     /**
      * @notice Initializes the contract with default parameters
-     * @param _governance                   Address identifying the governance address
-     * @param _ftsoRegistry                 Address identifying the ftso registry contract
-     * @param _votePowerContract            Address identifying the vote power contract
+     * @param _addresses                    Array of contract addresses in the following order
+     *          governance                  Address identifying the governance address
+     *          ftsoRegistry                Address identifying the ftso registry contract
+     *          votePowerContract           Address identifying the vote power contract
+     *          addressUpdater              Address identifying the address updater contract
      * @param _proposalSettings             Array of proposal settings in the following order
      *          proposalThresholdBIPS       Percentage in BIPS of the total vote power required to submit a proposal
      *          votingDelaySeconds          Voting delay in seconds
@@ -41,19 +45,15 @@ abstract contract Governor is
      *          _votePowerLifeTimeDays      Number of days after which checkpoint can be deleted
      *          _vpBlockPeriodSeconds       Minimal length of the period (in seconds) from which the
      vote power block is randomly chosen
-     * @param _ftsoManager                  Address identifying the ftso managet contract          
      */
     constructor(
-        address _governance,
-        address _ftsoRegistry,
-        address _votePowerContract,
         uint256[] memory _proposalSettings,
-        address _ftsoManager
+        address[] memory _addresses
         )
         EIP712(_name(), _version())
-        Random(_ftsoRegistry)
+        Random(_addresses[1])
         GovernorSettings(
-            _governance, 
+            _addresses[0], 
             _proposalSettings[0], 
             _proposalSettings[1],
             _proposalSettings[2],
@@ -63,12 +63,11 @@ abstract contract Governor is
             _proposalSettings[6],
             _proposalSettings[7]
         )
-        GovernorVotePower(_votePowerContract)
+        GovernorVotePower(_addresses[2])
         GovernorProposals()
         GovernorVotes()
-    {
-        ftsoManager = IIFtsoManager(_ftsoManager);
-    }
+        AddressUpdatable(_addresses[3])
+    {}
 
     /**
      * @notice Returns information of the specified proposal
@@ -368,9 +367,10 @@ abstract contract Governor is
         uint256 nowBlockNumber = block.number;
         uint256 diffSeconds = nowTimestamp - epochTimestamp;
         uint256 vpBlockPeriodSeconds = getVpBlockPeriodSeconds();
+        uint256 cleanupBlock = votePower.getCleanupBlockNumber();
         
         while (diffSeconds < vpBlockPeriodSeconds) {
-            if (rewardEpochId == 0 || rewardEpochData.startBlock < votePower.getCleanupBlockNumber()) {
+            if (rewardEpochId == 0 || rewardEpochData.startBlock - 1 < cleanupBlock) {
                 break;
             }
             rewardEpochId -= 1;
@@ -527,5 +527,19 @@ abstract contract Governor is
      * @return String representing the version
      */
     function _version() internal pure virtual returns (string memory);
+
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoManager = IIFtsoManager(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
+    }
 
 }

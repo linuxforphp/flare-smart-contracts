@@ -1,7 +1,6 @@
 import {
   WNatInstance,
   GovernanceVotePowerInstance,
-  VPContractInstance,
   FtsoRegistryInstance,
   GovernorRejectInstance,
   ExecuteMockInstance,
@@ -177,15 +176,24 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
 
     beforeEach(async () => {
       governorReject = await GovernorReject.new(
-        accounts[0], ftsoRegistry.address,
-        governanceVotePower.address,
         [1000, 3600, 7200, 1500, 2000, 5000, 30, 259200],
+        [
+          accounts[0],
+          ftsoRegistry.address,
+          governanceVotePower.address,
+          ADDRESS_UPDATER
+        ],
         7500,
-        [accounts[2],
-        accounts[3],
-        accounts[6]],
-        ftsoManager.address
+        [
+          accounts[2],
+          accounts[3],
+          accounts[6]
+        ]
       );
+
+      await governorReject.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager.address], { from: ADDRESS_UPDATER });
     });
 
     it("Should check deployment parameters", async () => {
