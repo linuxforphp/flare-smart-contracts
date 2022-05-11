@@ -10,7 +10,7 @@ interface IITokenPool {
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getTokenPoolSupplyData() external view returns (
+    function getTokenPoolSupplyData() external returns (
         uint256 _lockedFundsWei,
         uint256 _totalInflationAuthorizedWei,
         uint256 _totalClaimedWei

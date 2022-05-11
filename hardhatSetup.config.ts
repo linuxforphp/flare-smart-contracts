@@ -24,7 +24,7 @@ task(TASK_COMPILE)
         /Warning: Function state mutability can be restricted to pure/.test(text)) return '';
       if ((/DelegatableMock.sol/.test(text) || /DummyAssetMinter.sol/.test(text) || /GovernedAtGenesis.sol/.test(text)) && 
         /Warning: Unused function parameter/.test(text)) return '';
-      if ((/Ownable.sol/.test(text) || /ERC20.sol/.test(text)) &&
+      if ((/Ownable.sol/.test(text) || /ERC20.sol/.test(text) || /EIP712.sol/.test(text)) &&
         /Warning: Visibility for constructor is ignored/.test(text)) return '';
       if (text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
       if ((/DelegatableMock.sol/.test(text)) &&
