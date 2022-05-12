@@ -93,20 +93,20 @@ contract DelegationAccountClonable is IDelegationAccount {
     }
 
     function claimAirdropDistribution(uint256 _month) external override onlyOwnerOrExecutor returns(uint256) {
-        uint256 amount;
-        IDistributionToDelegators[] memory distributions = manager.getDistributions();
-        for(uint256 i=0; i < distributions.length; i++) {
-            try distributions[i].claim(payable(address(this)), _month) returns (uint256 _amount) {
-                amount += _amount;
-                emit ClaimAirdrop(address(this), _amount,
-                 IDistributionToDelegators(address(distributions[i])));
-            } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
-            } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
-            }
-        }
-        return amount;
+        // uint256 amount;
+        // IDistributionToDelegators[] memory distributions = manager.getDistributions();
+        // for(uint256 i=0; i < distributions.length; i++) {
+        //     try distributions[i].claim(payable(address(this)), _month) returns (uint256 _amount) {
+        //         amount += _amount;
+        //         emit ClaimAirdrop(address(this), _amount,
+        //          IDistributionToDelegators(address(distributions[i])));
+        //     } catch Error(string memory _err) {
+        //         emit ClaimingFailure(_err);
+        //     } catch {
+        //         emit ClaimingFailure(CLAIM_FAILURE);
+        //     }
+        // }
+        // return amount;
     }
 
     function delegate(address _to, uint256 _bips) external override onlyOwner { 

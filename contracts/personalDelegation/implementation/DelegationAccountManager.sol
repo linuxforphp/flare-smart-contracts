@@ -43,20 +43,20 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
             payable(createClone(libraryAddress))
         );
 
-        delegationAccount.initialize(msg.sender, this);
+        delegationAccount.initialize(msg.sender, DelegationAccountManager(address(this)));
             
         accountToDelegationAccount[msg.sender] = address(delegationAccount);
 
         emit CreateDelegationAccount(address(delegationAccount), msg.sender);
     }
 
-    function addFtsoRewardManager(IIFtsoRewardManager _ftsoRewardManager) external override onlyGovernance {
-        ftsoRewardManagers.push(_ftsoRewardManager);
-    }
+    // function addFtsoRewardManager(IIFtsoRewardManager _ftsoRewardManager) external override onlyGovernance {
+    //     ftsoRewardManagers.push(_ftsoRewardManager);
+    // }
 
-    function addDistribution(IDistributionToDelegators _distribution) external override onlyGovernance {
-        distributions.push(_distribution);
-    }
+    // function addDistribution(IDistributionToDelegators _distribution) external override onlyGovernance {
+    //     distributions.push(_distribution);
+    // }
 
     function getFtsoRewardManagers() external view override returns(IIFtsoRewardManager[] memory) {
         return ftsoRewardManagers;
@@ -76,12 +76,12 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         internal override
     {
         wNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
+
         governanceVP = wNat.governanceVotePower();
 
         IIFtsoRewardManager ftsoRewardManager = 
             IIFtsoRewardManager(_getContractAddress(
                 _contractNameHashes, _contractAddresses, "FtsoRewardManager"));
-
         bool rewardManagersContain = false;
         for (uint256 i=0; i < ftsoRewardManagers.length; i++) {
             if (ftsoRewardManagers[i] == ftsoRewardManager) {
@@ -93,19 +93,18 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
             ftsoRewardManagers.push(ftsoRewardManager);
         }
 
-        IDistributionToDelegators distribution = 
-            IDistributionToDelegators(_getContractAddress(
-                _contractNameHashes, _contractAddresses, "DistributionsToDelegator"));
-
-        bool distributionsContain = false;
-        for (uint256 i=0; i < distributions.length; i++) {
-            if (distributions[i] == distribution) {
-                distributionsContain == true;
-                break;
-            }
-        }
-        if (distributionsContain == false) {
-            distributions.push(distribution);
-        }
+        // IDistributionToDelegators distribution = 
+        //     IDistributionToDelegators(_getContractAddress(
+        //         _contractNameHashes, _contractAddresses, "DistributionsToDelegator"));
+        // bool distributionsContain = false;
+        // for (uint256 i=0; i < distributions.length; i++) {
+        //     if (distributions[i] == distribution) {
+        //         distributionsContain == true;
+        //         break;
+        //     }
+        // }
+        // if (distributionsContain == false) {
+        //     distributions.push(distribution);
+        // }
     }
 }

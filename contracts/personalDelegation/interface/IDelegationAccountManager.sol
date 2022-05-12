@@ -13,9 +13,9 @@ interface IDelegationAccountManager {
 
     function createDelegationAccount() external;
 
-    function addFtsoRewardManager(IIFtsoRewardManager _ftsoRewardManager) external;
+    // function addFtsoRewardManager(IIFtsoRewardManager _ftsoRewardManager) external;
 
-    function addDistribution(IDistributionToDelegators _distribution) external;
+    // function addDistribution(IDistributionToDelegators _distribution) external;
 
     function getFtsoRewardManagers() external view returns(IIFtsoRewardManager[] memory);
 

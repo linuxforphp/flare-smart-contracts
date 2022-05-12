@@ -12,7 +12,8 @@ import {
   FtsoManagerMockContract,
   FtsoRewardManagerContract,
   FtsoManagerContract,
-  DistributionTreasuryInstance
+  DistributionTreasuryInstance,
+  GovernanceVotePowerInstance
 } from "../../../../typechain-truffle";
 import { toBN, encodeContractNames } from '../../../utils/test-helpers';
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
@@ -21,7 +22,7 @@ import { Contracts } from '../../../../deployment/scripts/Contracts';
 import { GOVERNANCE_GENESIS_ADDRESS } from '../../../utils/constants';
 
 let wNat: WNatInstance;
-let governanceVP: MockContractInstance;
+let governanceVP: GovernanceVotePowerInstance;
 let delegationAccountManager: DelegationAccountManagerInstance;
 let delegationAccountClonable1: DelegationAccountClonableInstance;
 let delAcc1Address: Address;
@@ -52,6 +53,7 @@ const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockC
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const InflationMock = artifacts.require("InflationMock");
+const GovernanceVotePower = artifacts.require("GovernanceVotePower");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -159,7 +161,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
     await setDefaultVPContract(wNat, accounts[0]);
 
-    governanceVP = await MockContract.new();
+    governanceVP = await GovernanceVotePower.new(wNat.address);
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
     distribution = await Distribution.new(accounts[0], distributionTreasury.address);
@@ -214,21 +216,16 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     // deploy clone factory
     delegationAccountManager = await DelegationAccountManager.new(
       accounts[0],
-      wNat.address,
-      ftsoRewardManager.address,
-      distribution.address,
-      governanceVP.address
+      ADDRESS_UPDATER
     )
+
+    await delegationAccountManager.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER]),
+        [ADDRESS_UPDATER, wNat.address, ftsoRewardManager.address], {from: ADDRESS_UPDATER});
 
     // deploy library contract
     libraryContract = await DelegationAccountClonable.new();
-    // await libraryContract.initialize(
-    //   accounts[0],
-    //   wNat.address,
-    //   ftsoRewardManager.address,
-    //   distribution.address,
-    //   governanceVP.address
-    // );
+
 
     let create = delegationAccountManager.createDelegationAccount({ from: accounts[1] }) as any;
     await expectRevert(create, "library address is not set yet");
@@ -276,36 +273,36 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     expectEvent(tx, "WidthrawToOwner", { delegationAccount: delAcc1Address, amount: toBN(80) })
   });
 
-  it.skip("Should claim airdrop, set executor and claim again", async() => {
-    await distribution.setClaimBalance([delAcc1Address, delAcc2Address], [1000, 1000]);
+  // it.skip("Should claim airdrop, set executor and claim again", async() => {
+  //   await distribution.setClaimBalance([delAcc1Address, delAcc2Address], [1000, 1000]);
 
-    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
-    await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: 2000 });
-    await suicidalMock.die();
-    await distributionTreasury.setDistributionContract(distribution.address, 2000, {from: GOVERNANCE_GENESIS_ADDRESS});
+  //   const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
+  //   await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: 2000 });
+  //   await suicidalMock.die();
+  //   await distributionTreasury.setDistributionContract(distribution.address, 2000, {from: GOVERNANCE_GENESIS_ADDRESS});
     
-    let now = await time.latest();
-    await distribution.setEntitlementStart(now);
+  //   let now = await time.latest();
+  //   await distribution.setEntitlementStart(now);
 
-    // Time travel to next month
-    await time.increaseTo(now.addn(86400 * 31));
-    let claim = await delegationAccountClonable1.claimAirdropDistribution({ from: accounts[1] }) as any;
-    await delegationAccountClonable2.claimAirdropDistribution({ from: accounts[2] });
+  //   // Time travel to next month
+  //   await time.increaseTo(now.addn(86400 * 31));
+  //   let claim = await delegationAccountClonable1.claimAirdropDistribution({ from: accounts[1] }) as any;
+  //   await delegationAccountClonable2.claimAirdropDistribution({ from: accounts[2] });
 
-    expect((await web3.eth.getBalance(delAcc1Address)).toString()).to.equals("0");
-    expect((await wNat.balanceOf(delAcc1Address)).toString()).to.equals((1000 * 3 / 100).toString());
-    expect((await wNat.balanceOf(delAcc2Address)).toString()).to.equals((1000 * 3 / 100).toString());
-    expectEvent(claim, "ClaimAirdrop", { delegationAccount: delAcc1Address, amount: toBN(30)});
+  //   expect((await web3.eth.getBalance(delAcc1Address)).toString()).to.equals("0");
+  //   expect((await wNat.balanceOf(delAcc1Address)).toString()).to.equals((1000 * 3 / 100).toString());
+  //   expect((await wNat.balanceOf(delAcc2Address)).toString()).to.equals((1000 * 3 / 100).toString());
+  //   expectEvent(claim, "ClaimAirdrop", { delegationAccount: delAcc1Address, amount: toBN(30)});
 
-    // Time travel to next month
-    await delegationAccountClonable1.setExecutor(accounts[10], { from: accounts[1] });
-    expect(await delegationAccountClonable1.isExecutor(accounts[10])).to.equals(true);
+  //   // Time travel to next month
+  //   await delegationAccountClonable1.setExecutor(accounts[10], { from: accounts[1] });
+  //   expect(await delegationAccountClonable1.isExecutor(accounts[10])).to.equals(true);
 
-    now = await time.latest();
-    await time.increaseTo(now.addn(86400 * 31));
-    await delegationAccountClonable1.claimAirdropDistribution({ from: accounts[10] });
-    expect((await wNat.balanceOf(delAcc1Address)).toString()).to.equals((2 * 1000 * 3 / 100).toString());
-  });
+  //   now = await time.latest();
+  //   await time.increaseTo(now.addn(86400 * 31));
+  //   await delegationAccountClonable1.claimAirdropDistribution({ from: accounts[10] });
+  //   expect((await wNat.balanceOf(delAcc1Address)).toString()).to.equals((2 * 1000 * 3 / 100).toString());
+  // });
 
   it("Should set and remove executors", async() => {
     let tx = await delegationAccountClonable1.setExecutor(accounts[10], { from: accounts[1] }) as any;
@@ -369,7 +366,11 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
     // await test.activate();
-    await delegationAccountManager.addFtsoRewardManager(ftsoRewardManager2.address);
+    // await delegationAccountManager.addFtsoRewardManager(ftsoRewardManager2.address);
+
+    await delegationAccountManager.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER]),
+      [ADDRESS_UPDATER, wNat.address, ftsoRewardManager2.address], {from: ADDRESS_UPDATER});
 
     // cam claim only for reward epochs 0 and 1, reward epoch 2 is not yet finalized
     let claim = await delegationAccountClonable1.claimAllFtsoRewards( { from: accounts[1] }) as any;
