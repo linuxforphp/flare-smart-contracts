@@ -191,7 +191,7 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
         ]
       );
 
-      await governorReject.updateContractAddresses(
+    await governorReject.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
         [ADDRESS_UPDATER, ftsoManager.address], { from: ADDRESS_UPDATER });
     });
