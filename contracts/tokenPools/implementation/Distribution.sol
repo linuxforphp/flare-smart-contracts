@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../userInterfaces/IDistribution.sol";
 import "../interface/IITokenPool.sol";
+import "./DistributionTreasury.sol";
 
 /**
  * @title Distribution
@@ -48,7 +49,11 @@ contract Distribution is Governed, IDistribution, IITokenPool {
     uint256 public withdrawnOptOutWei;    // Amount of opt-out Wei that was withdrawn by governance
     uint256 public entitlementStartTs;    // Day 0 when contract starts
 
+    // contracts
+    DistributionTreasury public immutable treasury;
+
     // Errors
+    string internal constant ERR_ADDRESS_ZERO = "address zero";
     string internal constant ERR_OUT_OF_BALANCE = "balance too low";
     string internal constant ERR_TOO_MANY = "too many";
     string internal constant ERR_NOT_ZERO = "not zero";
@@ -86,7 +91,20 @@ contract Distribution is Governed, IDistribution, IITokenPool {
         _;
     }
 
-    constructor(address _governance) Governed(_governance) {
+    constructor(
+        address _governance,
+        DistributionTreasury _treasury
+    )
+        Governed(_governance)
+    {
+        require(address(_treasury) != address(0), ERR_ADDRESS_ZERO);
+        treasury = _treasury;
+    }
+
+    /**
+     * @notice Needed in order to receive funds from DistributionTreasury
+     */
+    receive() external payable {
         /* empty block */
     }
 
@@ -125,6 +143,7 @@ contract Distribution is Governed, IDistribution, IITokenPool {
     function setEntitlementStart(uint256 _entitlementStartTs) external onlyGovernance mustBalance {
         require(entitlementStartTs == 0, ERR_NOT_ZERO);
         entitlementStartTs = _entitlementStartTs;
+        treasury.pullFunds(totalEntitlementWei);
         emit EntitlementStarted();
     }
 
@@ -192,10 +211,10 @@ contract Distribution is Governed, IDistribution, IITokenPool {
     }
 
     function getTokenPoolSupplyData() external override view 
-        returns (uint256 _foundationAllocatedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
+        returns (uint256 _lockedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
     {
         // This is the total amount of tokens that are actually already in circulating supply
-        _foundationAllocatedFundsWei = totalEntitlementWei;
+        _lockedFundsWei = totalEntitlementWei;
         // We will never increase this balance since distribution funds are taken from genesis 
         /// amounts and not from inflation.
         _totalInflationAuthorizedWei = 0;

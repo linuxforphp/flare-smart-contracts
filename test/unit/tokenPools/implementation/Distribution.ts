@@ -1,17 +1,19 @@
-import { DistributionInstance } from "../../../../typechain-truffle";
+import { DistributionInstance, DistributionTreasuryInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 const { sumGas, calcGasCost } = require('../../../utils/eth');
 import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 
 const BN = web3.utils.toBN;
 
+const DistributionTreasury = artifacts.require("DistributionTreasury");
 const Distribution = artifacts.require("Distribution");
 const SuicidalMock = artifacts.require("SuicidalMock");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
-const ERR_OUT_OF_BALANCE = "balance too low";
+const ERR_TOO_MUCH = "too much"
 const ERR_NOT_ZERO = "not zero";
 const ERR_OPT_OUT = "already opted out";
 const ERR_NOT_STARTED = "not started";
@@ -28,12 +30,15 @@ const EVENT_OPT_OPT_WITHDRAWN = "OptOutWeiWithdrawn";
 const EVENT_ACCOUNTS_ADDED = "AccountsAdded";
 
 contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`, async accounts => {
+  let distributionTreasury: DistributionTreasuryInstance;
   let distribution: DistributionInstance;
   let claimants: string[] = [];
   const GOVERNANCE_ADDRESS = accounts[0];
 
   beforeEach(async () => {
-    distribution = await Distribution.new(GOVERNANCE_ADDRESS);
+    distributionTreasury = await DistributionTreasury.new();
+    await distributionTreasury.initialiseFixedAddress();
+    distribution = await Distribution.new(GOVERNANCE_ADDRESS, distributionTreasury.address);
     // Build an array of claimant accounts
     for (let i = 0; i < 10; i++) {
       claimants[i] = accounts[i + 1];
@@ -51,11 +56,13 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
   async function bestowClaimableBalance(balance: BN) {
     // Give the distribution contract the native token required to be in balance with entitlements
     // Our subversive attacker will be suiciding some native token into flareDaemon
-    const suicidalMock = await SuicidalMock.new(distribution.address);
+    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
     // Give suicidal some native token
     await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: balance });
     // Attacker dies
     await suicidalMock.die();
+    // set distribution contract and claimable amount
+    await distributionTreasury.setDistributionContract(distribution.address, balance, {from: GOVERNANCE_GENESIS_ADDRESS});
   }
 
   describe("Adding Accounts", async () => {
@@ -309,7 +316,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       let start_promise = distribution.setEntitlementStart(now);
       // Assert
-      await expectRevert(start_promise, ERR_OUT_OF_BALANCE);
+      await expectRevert(start_promise, ERR_TOO_MUCH);
     });
 
     it("Should not start entitlement if not from governance", async () => {
