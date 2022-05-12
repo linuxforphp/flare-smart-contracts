@@ -57,7 +57,7 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
             payable(createClone(libraryAddress))
         );
 
-        delegationAccount.initialize(msg.sender, DelegationAccountManager(address(this)));
+        delegationAccount.initialize(msg.sender, this);
             
         accountToDelegationAccount[msg.sender] = address(delegationAccount);
 

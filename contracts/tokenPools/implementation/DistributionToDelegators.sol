@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../inflation/implementation/Supply.sol";
+import "../../personalDelegation/implementation/DelegationAccountManager.sol";
 import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/math/Math.sol";
@@ -50,6 +51,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_CLAIM_FAILED = "claim failed";
     string internal constant ERR_OPT_OUT = "already opted out";
     string internal constant ERR_NOT_OPT_OUT = "not opted out";
+    string internal constant ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero";
 
     // storage
     uint256 public totalEntitlementWei;     // Total wei to be distributed by this contract (all but initial airdrop)
@@ -78,6 +80,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     DistributionTreasury public immutable treasury;
     WNat public wNat;
     Supply public supply;
+    DelegationAccountManager public delegationAccountManager;
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -162,29 +165,29 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
 
     /**
      * @notice Method for claiming unlocked airdrop amounts for specified month
+     * @param _recipient address representing the recipient of the reward
      * @param _month month of interest
      * @return _amountWei claimed wei
      */
-    function claim(uint256 _month) external override entitlementStarted mustBalance nonReentrant
+    function claim(address payable _recipient, uint256 _month) external override 
+        entitlementStarted mustBalance nonReentrant
         returns(uint256 _amountWei)
     {
-        (uint256 weight, uint256 claimableWei) = _getClaimableWei(msg.sender, _month);
-        // Make sure we are not withdrawing 0 funds
-        require(claimableWei > 0, ERR_NO_BALANCE_CLAIMABLE);
-        claimed[msg.sender][_month] = claimableWei;
-        // Update grand total claimed
-        totalClaimedWei = totalClaimedWei.add(claimableWei);
-        totalUnclaimedAmount[_month] = totalUnclaimedAmount[_month].sub(claimableWei);
-        totalUnclaimedWeight[_month] = totalUnclaimedWeight[_month].sub(weight);
-        // transfer funds
-        /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send          // amount always calculated by _getClaimableWei
-        (bool success, ) = msg.sender.call{value: claimableWei}("");
-        /* solhint-enable avoid-low-level-calls */
-        require(success, ERR_CLAIM_FAILED);
-        // Emit the claim event
-        emit AccountClaimed(msg.sender, _month, claimableWei);
-        return claimableWei;
+        return _claim(msg.sender, _recipient, _month);
+    }
+
+    /**
+     * @notice Method for claiming unlocked airdrop amounts for specified month to personal delegation account
+     * @param _month month of interest
+     * @return _amountWei claimed wei
+     */
+    function claimToPersonalDelegationAccount(uint256 _month) external override 
+        entitlementStarted mustBalance nonReentrant
+        returns(uint256 _amountWei)
+    {
+        address delegationAccount = delegationAccountManager.accountToDelegationAccount(msg.sender);
+        require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
+        return _claim(msg.sender, payable(delegationAccount), _month);
     }
 
     /**
@@ -193,7 +196,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getTokenPoolSupplyData() external override mustBalance
+    function getTokenPoolSupplyData() external override mustBalance nonReentrant
         returns (uint256 _lockedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
     {
         // update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
@@ -298,10 +301,38 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     {
         wNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
         supply = Supply(_getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
+        delegationAccountManager = DelegationAccountManager(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "DelegationAccountManager"));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Helpers
+
+    /**
+     * @notice Method for claiming unlocked airdrop amounts for specified month
+     * @param _rewardOwner address of the owner of airdrop rewards
+     * @param _recipient address representing the recipient of the reward
+     * @param _month month of interest
+     */
+    function _claim(address _rewardOwner, address payable _recipient, uint256 _month) internal returns(uint256) {
+        (uint256 weight, uint256 claimableWei) = _getClaimableWei(_rewardOwner, _month);
+        // Make sure we are not withdrawing 0 funds
+        require(claimableWei > 0, ERR_NO_BALANCE_CLAIMABLE);
+        claimed[_rewardOwner][_month] = claimableWei;
+        // Update grand total claimed
+        totalClaimedWei = totalClaimedWei.add(claimableWei);
+        totalUnclaimedAmount[_month] = totalUnclaimedAmount[_month].sub(claimableWei);
+        totalUnclaimedWeight[_month] = totalUnclaimedWeight[_month].sub(weight);
+        // transfer funds
+        /* solhint-disable avoid-low-level-calls */
+        //slither-disable-next-line arbitrary-send          // amount always calculated by _getClaimableWei
+        (bool success, ) = _recipient.call{value: claimableWei}("");
+        /* solhint-enable avoid-low-level-calls */
+        require(success, ERR_CLAIM_FAILED);
+        // Emit the claim event
+        emit AccountClaimed(_rewardOwner, _recipient, _month, claimableWei);
+        return claimableWei;
+    }
 
     /**
      * @notice Update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
@@ -391,6 +422,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         uint256 random = block.timestamp + priceSubmitter.getCurrentRandom();
         for (uint256 i = 0; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
             random = uint256(keccak256(abi.encode(random, i)));
+            //slither-disable-next-line weak-prng
             uint256 votePowerBlock = startBlock + i * slotSize + random % slotSize;
             votePowerBlocks[i] = votePowerBlock;
         }
