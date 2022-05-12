@@ -24,6 +24,7 @@ export class Contracts {
   public static readonly DISTRIBUTION = "Distribution";
   public static readonly DISTRIBUTION_TREASURY = "DistributionTreasury";
   public static readonly DISTRIBUTION_TO_DELEGATORS = "DistributionToDelegators";
+  public static readonly DELEGATION_ACCOUNT_MANAGER = "DelegationAccountManager";
   public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";

@@ -50,14 +50,6 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         emit CreateDelegationAccount(address(delegationAccount), msg.sender);
     }
 
-    // function addFtsoRewardManager(IIFtsoRewardManager _ftsoRewardManager) external override onlyGovernance {
-    //     ftsoRewardManagers.push(_ftsoRewardManager);
-    // }
-
-    // function addDistribution(IDistributionToDelegators _distribution) external override onlyGovernance {
-    //     distributions.push(_distribution);
-    // }
-
     function getFtsoRewardManagers() external view override returns(IIFtsoRewardManager[] memory) {
         return ftsoRewardManagers;
     }
@@ -79,31 +71,29 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
 
         governanceVP = wNat.governanceVotePower();
 
-        IIFtsoRewardManager ftsoRewardManager = 
-            IIFtsoRewardManager(_getContractAddress(
-                _contractNameHashes, _contractAddresses, "FtsoRewardManager"));
+        IIFtsoRewardManager ftsoRewardManager = IIFtsoRewardManager(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRewardManager"));
         bool rewardManagersContain = false;
-        for (uint256 i=0; i < ftsoRewardManagers.length; i++) {
+        for (uint256 i = 0; i < ftsoRewardManagers.length; i++) {
             if (ftsoRewardManagers[i] == ftsoRewardManager) {
                 rewardManagersContain == true;
                 break;
             }
         }
-        if (rewardManagersContain == false) {
+        if (!rewardManagersContain) {
             ftsoRewardManagers.push(ftsoRewardManager);
         }
 
-        // IDistributionToDelegators distribution = 
-        //     IDistributionToDelegators(_getContractAddress(
-        //         _contractNameHashes, _contractAddresses, "DistributionsToDelegator"));
+        // IDistributionToDelegators distribution = IDistributionToDelegators(
+        //     _getContractAddress(_contractNameHashes, _contractAddresses, "DistributionToDelegators"));
         // bool distributionsContain = false;
-        // for (uint256 i=0; i < distributions.length; i++) {
+        // for (uint256 i = 0; i < distributions.length; i++) {
         //     if (distributions[i] == distribution) {
         //         distributionsContain == true;
         //         break;
         //     }
         // }
-        // if (distributionsContain == false) {
+        // if (!distributionsContain) {
         //     distributions.push(distribution);
         // }
     }
