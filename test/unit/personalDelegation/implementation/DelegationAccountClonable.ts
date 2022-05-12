@@ -207,8 +207,6 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     // set the daily authorized inflation...this proxies call to ftso reward manager
     await mockInflation.setDailyAuthorizedInflation(2000000);
     
-    // mockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
-
     await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
 
     await ftsoRewardManager.activate()
@@ -239,7 +237,8 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     delegationAccountClonable1 = await DelegationAccountClonable.at(delAcc1Address);
     expect(delegationAccountClonable1.address).to.equals(delAcc1Address);
     expectEvent(create1, "CreateDelegationAccount", { delegationAccount: delAcc1Address, owner: accounts[1]} );
-    // await expectEvent.inTransaction(create1.tx,  delegationAccountClonable1, "Initialize", { owner: accounts[1], ftsoRewardManager: ftsoRewardManager.address, distribution: distribution.address, governanceVP: governanceVP.address, wNat: wNat.address });
+    await expectEvent.inTransaction(create1.tx,  delegationAccountClonable1, "Initialize", { owner: accounts[1], 
+      manager: delegationAccountManager.address });
 
     let create2 = await delegationAccountManager.createDelegationAccount({ from: accounts[2] }) as any; 
     delAcc2Address = await delegationAccountManager.accountToDelegationAccount(accounts[2]);

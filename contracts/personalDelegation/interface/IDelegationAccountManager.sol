@@ -21,5 +21,4 @@ interface IDelegationAccountManager {
 
     function getDistributions() external view returns(IDistributionToDelegators[] memory);
 
-    
 }

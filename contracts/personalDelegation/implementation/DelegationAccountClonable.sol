@@ -43,7 +43,7 @@ contract DelegationAccountClonable is IDelegationAccount {
         require(address(_owner) != address(0), "owner address missing");
         owner = _owner;
         manager = _manager;
-        // emit Initialize(owner, ftsoRewardManager, distribution, governanceVP, wNat);
+        emit Initialize(owner, _manager);
     }
     
     /**
@@ -58,8 +58,7 @@ contract DelegationAccountClonable is IDelegationAccount {
             try rewardManagers[i].claimAndWrapReward(payable(address(this)), _epochs)
             returns (uint256 _amount) {
                 amount += _amount;
-                emit ClaimFtsoRewards(address(this), _epochs, _amount,
-                    IIFtsoRewardManager(address(rewardManagers[i])));
+                emit ClaimFtsoRewards(address(this), _epochs, _amount, rewardManagers[i]);
             } catch Error(string memory _err) {
                 emit ClaimingFailure(_err);
             } catch {
@@ -81,8 +80,7 @@ contract DelegationAccountClonable is IDelegationAccount {
             try rewardManagers[i].claimAndWrapReward(payable(address(this)), epochs)
             returns (uint256 _amount) {
                 amount += _amount;
-                emit ClaimFtsoRewards(address(this), epochs, _amount,
-                    IIFtsoRewardManager(address(rewardManagers[i])));
+                emit ClaimFtsoRewards(address(this), epochs, _amount, rewardManagers[i]);
             } catch Error(string memory _err) {
                 emit ClaimingFailure(_err);
             } catch {
@@ -93,20 +91,29 @@ contract DelegationAccountClonable is IDelegationAccount {
     }
 
     function claimAirdropDistribution(uint256 _month) external override onlyOwnerOrExecutor returns(uint256) {
-        // uint256 amount;
-        // IDistributionToDelegators[] memory distributions = manager.getDistributions();
-        // for(uint256 i=0; i < distributions.length; i++) {
-        //     try distributions[i].claim(payable(address(this)), _month) returns (uint256 _amount) {
-        //         amount += _amount;
-        //         emit ClaimAirdrop(address(this), _amount,
-        //          IDistributionToDelegators(address(distributions[i])));
-        //     } catch Error(string memory _err) {
-        //         emit ClaimingFailure(_err);
-        //     } catch {
-        //         emit ClaimingFailure(CLAIM_FAILURE);
-        //     }
-        // }
-        // return amount;
+        uint256 amount;
+        IDistributionToDelegators[] memory distributions = manager.getDistributions();
+        for(uint256 i=0; i < distributions.length; i++) {
+            try distributions[i].claim(payable(address(this)), _month) returns (uint256 _amount) {
+                amount += _amount;
+                emit ClaimAirdrop(address(this), _amount, _month, distributions[i]);
+            } catch Error(string memory _err) {
+                emit ClaimingFailure(_err);
+            } catch {
+                emit ClaimingFailure(CLAIM_FAILURE);
+            }
+        }
+        return amount;
+    }
+
+    function claimAllUnclaimedAirdropDistribution() external onlyOwnerOrExecutor returns(uint256) {
+        uint256 amount;
+        IDistributionToDelegators[] memory distributions = manager.getDistributions();
+        for(uint256 i=0; i < distributions.length; i++) {
+            uint256 _amount = _claimAirdrop(distributions[i]);
+            amount += _amount;
+    }
+        return amount;
     }
 
     function delegate(address _to, uint256 _bips) external override onlyOwner { 
@@ -152,14 +159,29 @@ contract DelegationAccountClonable is IDelegationAccount {
         uint256 _count,
         uint256 _delegationMode
     ) { 
-        return manager.wNat().delegatesOf(address(this)); //only owner???
+        return manager.wNat().delegatesOf(address(this));
     }
 
-    // function getDelegateOfGovernance() external view override returns(address) {
-    //     return governanceVP.getDelegateOfAtNow(address(this));
-    // }
+    function getDelegateOfGovernance() external view override returns(address) {
+        return manager.governanceVP().getDelegateOfAtNow(address(this));
+    }
 
-    //delegatesOfAt??
-
-
+    function _claimAirdrop(IDistributionToDelegators _distribution) internal returns (uint256) {
+        uint maxMonth = Math.min(_distribution.getCurrentMonth(), 36);
+        uint256 amount;
+        for (uint256 month = _distribution.getMonthToExpireNext(); month < maxMonth; month++) {
+            try _distribution.getClaimableAmount(month) returns (uint256 claimableAmount) {
+                if (claimableAmount > 0) {
+                    _distribution.claim(address(this), month);
+                    amount += claimableAmount;
+                    emit ClaimAirdrop(address(this), claimableAmount, month, _distribution);
+                }
+            } catch Error(string memory _err) {
+                emit ClaimingFailure(_err);
+            } catch {
+                emit ClaimingFailure(CLAIM_FAILURE);
+            }
+        }
+        return amount;
+    }
 }
