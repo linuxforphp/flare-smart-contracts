@@ -19,7 +19,6 @@ import { toBN, encodeContractNames } from '../../../utils/test-helpers';
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
 import { Contracts } from '../../../../deployment/scripts/Contracts';
-import { GOVERNANCE_GENESIS_ADDRESS } from '../../../utils/constants';
 
 let wNat: WNatInstance;
 let governanceVP: GovernanceVotePowerInstance;
