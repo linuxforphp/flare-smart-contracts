@@ -6,43 +6,29 @@ import "./CloneFactory.sol";
 import "../interface/IDelegationAccountManager.sol";
 import "../../tokenPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/WNat.sol";
-import "../../userInterfaces/IDistribution.sol";
-import "../../token/interface/IIGovernanceVotePower.sol";
+import "../../userInterfaces/IDistributionToDelegators.sol";
+import "../..//userInterfaces/IGovernanceVotePower.sol";
 import "../../governance/implementation/Governed.sol";
+import "../../addressUpdater/implementation/AddressUpdatable.sol";
 
-contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Governed {
+contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Governed, AddressUpdatable {
 
     WNat public wNat;
     IIFtsoRewardManager[] public ftsoRewardManagers;
-    IIGovernanceVotePower public governanceVP;
-    IDistribution[] public distributions;
+    IGovernanceVotePower public governanceVP;
+    IDistributionToDelegators[] public distributions;
 
     address public libraryAddress;
-    address private factoryOwner;
 
     mapping(address => address) public accountToDelegationAccount;
 
     constructor(
         address _governance,
-        WNat _wNat,
-        IIFtsoRewardManager _ftsoRewardManager,
-        IDistribution _distribution,
-        IIGovernanceVotePower _governanceVP
+        address _addressUpdater
     ) 
         Governed(_governance)
-    {
-        require(address(_governance) != address(0), "governance address should not be zero");
-        require(address(_ftsoRewardManager) != address(0), "ftso reward manager 0");
-        require(address(_distribution) != address(0), "distribution contract 0");
-        require(address(_governanceVP) != address(0), "governance VP 0");
-        require(address(_wNat) != address(0), "wNat 0");
-        ftsoRewardManagers.push(_ftsoRewardManager);
-        distributions.push(_distribution);
-        governanceVP = _governanceVP;
-        wNat = _wNat;
-        factoryOwner = _governance;
-        emit SetLibraryAddress(libraryAddress);
-    }
+        AddressUpdatable(_addressUpdater)
+    {}
 
     function setLibraryAddress(address _libraryAddress) external override onlyGovernance {
         libraryAddress = _libraryAddress;
@@ -68,15 +54,58 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         ftsoRewardManagers.push(_ftsoRewardManager);
     }
 
-    function addDistribution(IDistribution _distribution) external override onlyGovernance {
+    function addDistribution(IDistributionToDelegators _distribution) external override onlyGovernance {
         distributions.push(_distribution);
     }
 
-    function ftsoRewardManagersLength() external view override returns(uint256) {
-        return ftsoRewardManagers.length;
+    function getFtsoRewardManagers() external view override returns(IIFtsoRewardManager[] memory) {
+        return ftsoRewardManagers;
     }
 
-    function distributionsLength() external view override returns(uint256) {
-        return distributions.length;
+    function getDistributions() external view override returns(IDistributionToDelegators[] memory) {
+        return distributions;
+    }
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        wNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
+        governanceVP = wNat.governanceVotePower();
+
+        IIFtsoRewardManager ftsoRewardManager = 
+            IIFtsoRewardManager(_getContractAddress(
+                _contractNameHashes, _contractAddresses, "FtsoRewardManager"));
+
+        bool rewardManagersContain = false;
+        for (uint256 i=0; i < ftsoRewardManagers.length; i++) {
+            if (ftsoRewardManagers[i] == ftsoRewardManager) {
+                rewardManagersContain == true;
+                break;
+            }
+        }
+        if (rewardManagersContain == false) {
+            ftsoRewardManagers.push(ftsoRewardManager);
+        }
+
+        IDistributionToDelegators distribution = 
+            IDistributionToDelegators(_getContractAddress(
+                _contractNameHashes, _contractAddresses, "DistributionsToDelegator"));
+
+        bool distributionsContain = false;
+        for (uint256 i=0; i < distributions.length; i++) {
+            if (distributions[i] == distribution) {
+                distributionsContain == true;
+                break;
+            }
+        }
+        if (distributionsContain == false) {
+            distributions.push(distribution);
+        }
     }
 }

@@ -3,14 +3,14 @@ pragma solidity >=0.7.6 <0.9;
 
 import "../../tokenPools/interface/IIFtsoRewardManager.sol";
 import "../../token/implementation/WNat.sol";
-import "../../userInterfaces/IDistribution.sol";
+import "../../userInterfaces/IDistributionToDelegators.sol";
 import "../../token/interface/IIGovernanceVotePower.sol";
 
 interface IDelegationAccount {
 
     event ClaimFtsoRewards(address delegationAccount, uint256[] rewardEpochs, uint256 amount,
         IIFtsoRewardManager ftsoRewardManager);
-    event ClaimAirdrop(address delegationAccount, uint256 amount);
+    event ClaimAirdrop(address delegationAccount, uint256 amount, IDistributionToDelegators distribution);
     event DelegateFtso(address delegationAccount, address to, uint256 bips);
     event DelegateGovernance(address delegationAccount, address to);
     event UndelegateAllFtso(address delegationAccount);
@@ -21,18 +21,17 @@ interface IDelegationAccount {
     event Initialize(
         address owner,
         IIFtsoRewardManager ftsoRewardManager,
-        IDistribution distribution,
+        IDistributionToDelegators distribution,
         IIGovernanceVotePower governanceVP,
         WNat wNat
     );
-    event StringFailure(string _err);
-    event BytesFailure(bytes _err);
+    event ClaimingFailure(string _err);
 
     function claimFtsoRewards(uint256[] memory _epochs) external returns(uint256);
 
     function claimAllFtsoRewards() external returns(uint256);
 
-    function claimAirdropDistribution() external returns(uint256);
+    function claimAirdropDistribution(uint256 _month) external returns(uint256);
 
     function delegate(address _to, uint256 _bips) external;
 
@@ -55,6 +54,7 @@ interface IDelegationAccount {
         uint256 _count,
         uint256 _delegationMode
     );
+
     
     // function getDelegateOfGovernance() external view  returns(address);
 }

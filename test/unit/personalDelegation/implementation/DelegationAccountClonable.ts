@@ -276,7 +276,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     expectEvent(tx, "WidthrawToOwner", { delegationAccount: delAcc1Address, amount: toBN(80) })
   });
 
-  it("Should claim airdrop, set executor and claim again", async() => {
+  it.skip("Should claim airdrop, set executor and claim again", async() => {
     await distribution.setClaimBalance([delAcc1Address, delAcc2Address], [1000, 1000]);
 
     const suicidalMock = await SuicidalMock.new(distributionTreasury.address);

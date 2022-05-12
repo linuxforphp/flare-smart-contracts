@@ -1,21 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-// import "../../tokenPools/interface/IIFtsoRewardManager.sol";
-// import "../../token/implementation/WNat.sol";
-// import "../../userInterfaces/IDistribution.sol";
-// import "../../token/interface/IIGovernanceVotePower.sol";
 import "../interface/IDelegationAccount.sol";
 import "./DelegationAccountManager.sol";
 
 contract DelegationAccountClonable is IDelegationAccount {
 
+    string internal constant CLAIM_FAILURE = "unknown error when claiming";
+
     address public owner;
-    // WNat private wNat;
-    // IIFtsoRewardManager private ftsoRewardManager;
-    // IIGovernanceVotePower private governanceVP;
-    // IDistribution private distribution;
-    DelegationAccountManager private manager;
+    DelegationAccountManager public manager;
 
     mapping(address => bool) public isExecutor;
 
@@ -59,16 +53,17 @@ contract DelegationAccountClonable is IDelegationAccount {
      */
     function claimFtsoRewards(uint256[] memory _epochs) external override onlyOwnerOrExecutor returns(uint256) {
         uint256 amount;
-        for(uint256 i=0; i < manager.ftsoRewardManagersLength(); i++) {
-            try manager.ftsoRewardManagers(i).claimAndWrapReward(payable(address(this)), _epochs)
+        IIFtsoRewardManager[] memory rewardManagers = manager.getFtsoRewardManagers();
+        for(uint256 i=0; i < rewardManagers.length; i++) {
+            try rewardManagers[i].claimAndWrapReward(payable(address(this)), _epochs)
             returns (uint256 _amount) {
                 amount += _amount;
                 emit ClaimFtsoRewards(address(this), _epochs, _amount,
-                    IIFtsoRewardManager(address(manager.ftsoRewardManagers(i))));
+                    IIFtsoRewardManager(address(rewardManagers[i])));
             } catch Error(string memory _err) {
-                emit StringFailure(_err);
-            } catch (bytes memory _err) {
-                emit BytesFailure(_err);
+                emit ClaimingFailure(_err);
+            } catch {
+                emit ClaimingFailure(CLAIM_FAILURE);
             }
         }
         return amount;
@@ -80,33 +75,35 @@ contract DelegationAccountClonable is IDelegationAccount {
      */
     function claimAllFtsoRewards() external override onlyOwnerOrExecutor returns(uint256) {
         uint256 amount;
-        for(uint256 i=0; i < manager.ftsoRewardManagersLength(); i++) {
-            uint256[] memory epochs = manager.ftsoRewardManagers(i).getEpochsWithUnclaimedRewards(address(this));
-            try manager.ftsoRewardManagers(i).claimAndWrapReward(payable(address(this)), epochs)
+        IIFtsoRewardManager[] memory rewardManagers = manager.getFtsoRewardManagers();
+        for(uint256 i=0; i < rewardManagers.length; i++) {
+            uint256[] memory epochs = rewardManagers[i].getEpochsWithUnclaimedRewards(address(this));
+            try rewardManagers[i].claimAndWrapReward(payable(address(this)), epochs)
             returns (uint256 _amount) {
                 amount += _amount;
                 emit ClaimFtsoRewards(address(this), epochs, _amount,
-                    IIFtsoRewardManager(address(manager.ftsoRewardManagers(i))));
+                    IIFtsoRewardManager(address(rewardManagers[i])));
             } catch Error(string memory _err) {
-                emit StringFailure(_err);
-            } catch (bytes memory _err) {
-                emit BytesFailure(_err);
+                emit ClaimingFailure(_err);
+            } catch {
+                emit ClaimingFailure(CLAIM_FAILURE);
             }
         }
         return amount;
     }
 
-    function claimAirdropDistribution() external override onlyOwnerOrExecutor returns(uint256) {
+    function claimAirdropDistribution(uint256 _month) external override onlyOwnerOrExecutor returns(uint256) {
         uint256 amount;
-        for(uint256 i=0; i < manager.distributionsLength(); i++) {
-            try manager.distributions(i).claim() returns (uint256 _amount) {
-                require(_amount > 0, "claimed amount should not be zero");
+        IDistributionToDelegators[] memory distributions = manager.getDistributions();
+        for(uint256 i=0; i < distributions.length; i++) {
+            try distributions[i].claim(payable(address(this)), _month) returns (uint256 _amount) {
                 amount += _amount;
-                emit ClaimAirdrop(address(this), _amount);
+                emit ClaimAirdrop(address(this), _amount,
+                 IDistributionToDelegators(address(distributions[i])));
             } catch Error(string memory _err) {
-                emit StringFailure(_err);
-            } catch (bytes memory _err) {
-                emit BytesFailure(_err);
+                emit ClaimingFailure(_err);
+            } catch {
+                emit ClaimingFailure(CLAIM_FAILURE);
             }
         }
         return amount;

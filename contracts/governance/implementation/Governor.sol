@@ -23,7 +23,7 @@ abstract contract Governor is
 
     uint256 internal constant BIPS = 1e4;
 
-    IIFtsoManager private ftsoManager;
+    IIFtsoManager public ftsoManager;
 
     /// @notice The EIP-712 typehash for the ballot struct used by the contract
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");

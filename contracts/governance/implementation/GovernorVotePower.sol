@@ -6,11 +6,10 @@ import "../../token/interface/IIGovernanceVotePower.sol";
 
 abstract contract GovernorVotePower {
 
-    IIGovernanceVotePower internal votePower;
+    IIGovernanceVotePower public votePower;
     
     constructor(address _votePowerAddress) {
         votePower = IIGovernanceVotePower(_votePowerAddress);
-        votePower.getCleanupBlockNumber();
     }
 
     function totalVotePowerAt(uint256 _blockNumber) internal view returns (uint256) {

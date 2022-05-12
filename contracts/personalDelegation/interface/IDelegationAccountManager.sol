@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 import "../../tokenPools/interface/IIFtsoRewardManager.sol";
-import "../../userInterfaces/IDistribution.sol";
+import "../../userInterfaces/IDistributionToDelegators.sol";
 
 interface IDelegationAccountManager {
 
@@ -15,10 +15,11 @@ interface IDelegationAccountManager {
 
     function addFtsoRewardManager(IIFtsoRewardManager _ftsoRewardManager) external;
 
-    function addDistribution(IDistribution _distribution) external;
+    function addDistribution(IDistributionToDelegators _distribution) external;
 
-    function ftsoRewardManagersLength() external view returns(uint256);
+    function getFtsoRewardManagers() external view returns(IIFtsoRewardManager[] memory);
 
-    function distributionsLength() external view returns(uint256);
+    function getDistributions() external view returns(IDistributionToDelegators[] memory);
+
     
 }
