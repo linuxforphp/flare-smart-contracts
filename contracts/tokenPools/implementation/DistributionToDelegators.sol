@@ -44,7 +44,6 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_NOT_ZERO = "not zero";
     string internal constant ERR_IN_THE_PAST = "in the past";
     string internal constant ERR_NOT_STARTED = "not started";
-    string internal constant ERR_NO_BALANCE_CLAIMABLE = "no balance currently available";
     string internal constant ERR_MONTH_EXPIRED = "month expired";
     string internal constant ERR_MONTH_NOT_CLAIMABLE = "month not claimable";
     string internal constant ERR_MONTH_NOT_CLAIMABLE_YET = "month not claimable yet";
@@ -317,20 +316,21 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     function _claim(address _rewardOwner, address payable _recipient, uint256 _month) internal returns(uint256) {
         (uint256 weight, uint256 claimableWei) = _getClaimableWei(_rewardOwner, _month);
         // Make sure we are not withdrawing 0 funds
-        require(claimableWei > 0, ERR_NO_BALANCE_CLAIMABLE);
-        claimed[_rewardOwner][_month] = claimableWei;
-        // Update grand total claimed
-        totalClaimedWei = totalClaimedWei.add(claimableWei);
-        totalUnclaimedAmount[_month] = totalUnclaimedAmount[_month].sub(claimableWei);
-        totalUnclaimedWeight[_month] = totalUnclaimedWeight[_month].sub(weight);
-        // transfer funds
-        /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send          // amount always calculated by _getClaimableWei
-        (bool success, ) = _recipient.call{value: claimableWei}("");
-        /* solhint-enable avoid-low-level-calls */
-        require(success, ERR_CLAIM_FAILED);
-        // Emit the claim event
-        emit AccountClaimed(_rewardOwner, _recipient, _month, claimableWei);
+        if (claimableWei > 0) {
+            claimed[_rewardOwner][_month] = claimableWei;
+            // Update grand total claimed
+            totalClaimedWei = totalClaimedWei.add(claimableWei);
+            totalUnclaimedAmount[_month] = totalUnclaimedAmount[_month].sub(claimableWei);
+            totalUnclaimedWeight[_month] = totalUnclaimedWeight[_month].sub(weight);
+            // transfer funds
+            /* solhint-disable avoid-low-level-calls */
+            //slither-disable-next-line arbitrary-send          // amount always calculated by _getClaimableWei
+            (bool success, ) = _recipient.call{value: claimableWei}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, ERR_CLAIM_FAILED);
+            // Emit the claim event
+            emit AccountClaimed(_rewardOwner, _recipient, _month, claimableWei);
+        }
         return claimableWei;
     }
 
