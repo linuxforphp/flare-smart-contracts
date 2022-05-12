@@ -11,7 +11,7 @@ interface IDistribution {
     event AccountsAdded(address[] accountsArray);
 
     // Methods
-    function claim() external returns(uint256 _amountWei);
+    function claim(address payable _recipient) external returns(uint256 _amountWei);
     function optOutOfAirdrop() external;
     function getClaimableAmount() external view returns(uint256 _amountWei);
     function getClaimableAmountOf(address account) external view returns(uint256 _amountWei);

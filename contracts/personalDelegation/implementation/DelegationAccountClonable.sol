@@ -99,7 +99,7 @@ contract DelegationAccountClonable is IDelegationAccount {
     function claimAirdropDistribution() external override onlyOwnerOrExecutor returns(uint256) {
         uint256 amount;
         for(uint256 i=0; i < manager.distributionsLength(); i++) {
-            try manager.distributions(i).claim() returns (uint256 _amount) {
+            try manager.distributions(i).claim(address(this)) returns (uint256 _amount) {
                 require(_amount > 0, "claimed amount should not be zero");
                 amount += _amount;
                 emit ClaimAirdrop(address(this), _amount);

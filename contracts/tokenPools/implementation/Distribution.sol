@@ -167,7 +167,8 @@ contract Distribution is Governed, IDistribution, IITokenPool {
      * @notice Method for claiming unlocked airdrop amounts
      * @return _amountWei claimed wei
      */
-    function claim() external override entitlementStarted mustBalance accountCanClaim(msg.sender) 
+    function claim(address payable _recipient) external override 
+        entitlementStarted mustBalance accountCanClaim(msg.sender) 
         returns(uint256 _amountWei) 
     {
         // Get the account
@@ -183,10 +184,9 @@ contract Distribution is Governed, IDistribution, IITokenPool {
         // Emit the claim event
         emit AccountClaimed(msg.sender);
         // Send
-        // msg.sender.transfer(_amountWei);
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send   
-        (bool success, ) = msg.sender.call{value: _amountWei}("");
+        (bool success, ) = _recipient.call{value: _amountWei}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, "error");
     }
