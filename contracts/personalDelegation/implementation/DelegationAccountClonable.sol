@@ -39,7 +39,7 @@ contract DelegationAccountClonable is IDelegationAccount {
     function initialize(
         address _owner,
         DelegationAccountManager _manager
-    ) external {
+    ) external onlyOwner {
         require(address(_owner) != address(0), "owner address missing");
         owner = _owner;
         manager = _manager;

@@ -14,9 +14,10 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "../../ftso/implementation/FtsoManager.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
+import "../../token/interface/IIGovernanceVotePower.sol";
 
 abstract contract Governor is
-    IIGovernor, EIP712, Random, GovernorSettings, GovernorVotePower, GovernorProposals,
+    IIGovernor, EIP712, GovernorSettings, GovernorVotePower, GovernorProposals,
     GovernorVotes, AddressUpdatable {
     
     using SafePct for uint256;
@@ -24,17 +25,16 @@ abstract contract Governor is
     uint256 internal constant BIPS = 1e4;
 
     IIFtsoManager public ftsoManager;
+    IPriceSubmitter public priceSubmitter;
 
     /// @notice The EIP-712 typehash for the ballot struct used by the contract
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");
 
     /**
      * @notice Initializes the contract with default parameters
-     * @param _addresses                    Array of contract addresses in the following order
-     *          governance                  Address identifying the governance address
-     *          ftsoRegistry                Address identifying the ftso registry contract
-     *          votePowerContract           Address identifying the vote power contract
-     *          addressUpdater              Address identifying the address updater contract
+     * @param _governance                  Address identifying the governance address
+     * @param _priceSubmitter               Address identifying the price submitter contract
+     * @param _addressUpdater               Address identifying the address updater contract
      * @param _proposalSettings             Array of proposal settings in the following order
      *          proposalThresholdBIPS       Percentage in BIPS of the total vote power required to submit a proposal
      *          votingDelaySeconds          Voting delay in seconds
@@ -48,12 +48,13 @@ abstract contract Governor is
      */
     constructor(
         uint256[] memory _proposalSettings,
-        address[] memory _addresses
-        )
+        address _governance,
+        address _priceSubmitter,
+        address _addressUpdater
+    )
         EIP712(_name(), _version())
-        Random(_addresses[1])
         GovernorSettings(
-            _addresses[0], 
+            _governance, 
             _proposalSettings[0], 
             _proposalSettings[1],
             _proposalSettings[2],
@@ -63,11 +64,12 @@ abstract contract Governor is
             _proposalSettings[6],
             _proposalSettings[7]
         )
-        GovernorVotePower(_addresses[2])
         GovernorProposals()
         GovernorVotes()
-        AddressUpdatable(_addresses[3])
-    {}
+        AddressUpdatable(_addressUpdater)
+    {
+        priceSubmitter = IPriceSubmitter(_priceSubmitter);
+    }
 
     /**
      * @notice Returns information of the specified proposal
@@ -380,9 +382,15 @@ abstract contract Governor is
         }
 
         uint256 epochBlockNumber = rewardEpochData.startBlock;
-        
+                
+        uint256 currentTs = block.timestamp;
         //slither-disable-next-line weak-prng
-        uint256 random = _getRandom() % (nowBlockNumber - epochBlockNumber);
+        uint256 ftsoRandom = priceSubmitter.getCurrentRandom();
+        //slither-disable-next-line weak-prng
+        uint256 keccakRandom = uint256(keccak256(abi.encode(currentTs, ftsoRandom)));
+
+        //slither-disable-next-line weak-prng
+        uint256 random = keccakRandom % (nowBlockNumber - epochBlockNumber);
 
         nowBlockNumber -= random;
         
@@ -540,6 +548,11 @@ abstract contract Governor is
     {
         ftsoManager = IIFtsoManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
+
+        IIGovernanceVotePower vpContract = IIGovernanceVotePower(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "GovernanceVotePower"));
+
+        setVotePowerContract(vpContract);
     }
 
 }

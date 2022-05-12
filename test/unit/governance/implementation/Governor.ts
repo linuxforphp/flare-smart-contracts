@@ -177,12 +177,9 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
     beforeEach(async () => {
       governorReject = await GovernorReject.new(
         [1000, 3600, 7200, 1500, 2000, 5000, 30, 259200],
-        [
           accounts[0],
           ftsoRegistry.address,
-          governanceVotePower.address,
-          ADDRESS_UPDATER
-        ],
+          ADDRESS_UPDATER,
         7500,
         [
           accounts[2],
@@ -192,8 +189,8 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
       );
 
     await governorReject.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
-        [ADDRESS_UPDATER, ftsoManager.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER]),
+        [ADDRESS_UPDATER, ftsoManager.address, governanceVotePower.address], { from: ADDRESS_UPDATER });
     });
 
     it("Should check deployment parameters", async () => {
