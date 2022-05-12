@@ -196,7 +196,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getTokenPoolSupplyData() external override mustBalance nonReentrant
+    function getTokenPoolSupplyData() external override
         returns (uint256 _lockedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
     {
         // update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
@@ -338,7 +338,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @notice Update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
      * @dev Only do some updates if distribution already started and not yet expired
      */
-    function _updateMonthlyClaimData() internal {
+    function _updateMonthlyClaimData() internal mustBalance nonReentrant {
         if (entitlementStartTs == 0 || entitlementStartTs > block.timestamp 
             || nextMonthToExpireCandidate >= NUMBER_OF_MONTHS) return;
 
