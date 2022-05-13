@@ -44,6 +44,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_NOT_ZERO = "not zero";
     string internal constant ERR_IN_THE_PAST = "in the past";
     string internal constant ERR_NOT_STARTED = "not started";
+    string internal constant ERR_ALREADY_FINISHED = "already finished";
     string internal constant ERR_MONTH_EXPIRED = "month expired";
     string internal constant ERR_MONTH_NOT_CLAIMABLE = "month not claimable";
     string internal constant ERR_MONTH_NOT_CLAIMABLE_YET = "month not claimable yet";
@@ -107,7 +108,6 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         require(address(_treasury) != address(0), ERR_ADDRESS_ZERO);
-        require(address(_treasury).balance >= _totalEntitlementWei, ERR_BALANCE_TOO_LOW);
         priceSubmitter = _priceSubmitter;
         treasury = _treasury;
         totalEntitlementWei = _totalEntitlementWei;
@@ -130,7 +130,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      */
     function setEntitlementStart(uint256 _entitlementStartTs) external onlyGovernance {
         require(entitlementStartTs == 0, ERR_NOT_ZERO);
-        require(entitlementStartTs >= block.timestamp, ERR_IN_THE_PAST);
+        require(_entitlementStartTs >= block.timestamp, ERR_IN_THE_PAST);
+        require(address(treasury).balance >= totalEntitlementWei, ERR_BALANCE_TOO_LOW);
         entitlementStartTs = _entitlementStartTs;
         emit EntitlementStarted();
     }
@@ -195,11 +196,14 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getTokenPoolSupplyData() external override mustBalance nonReentrant 
+    function getTokenPoolSupplyData() external override mustBalance nonReentrant
         returns (uint256 _lockedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
     {
+        // update only if called from supply
         // update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
-        _updateMonthlyClaimData();
+        if (msg.sender == address(supply)) {
+            _updateMonthlyClaimData();
+        }
 
         // This is the total amount of tokens that are actually already in circulating supply
         _lockedFundsWei = totalEntitlementWei;
@@ -263,6 +267,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     function secondsTillNextClaim() external view override entitlementStarted
         returns(uint256 _timeTill)
     {
+        require(block.timestamp.sub(entitlementStartTs).div(MONTH) < NUMBER_OF_MONTHS, ERR_ALREADY_FINISHED);
         return MONTH.sub(block.timestamp.sub(entitlementStartTs).mod(MONTH));
     }
 
@@ -345,6 +350,10 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
 
         uint256 diffSec = block.timestamp.sub(entitlementStartTs);
         uint256 currentMonth = diffSec.div(MONTH);
+        
+        // can  be called multiple times per block - update only needed once
+        if (endBlockNumber[currentMonth] == block.number) return;
+
         uint256 remainingSec = diffSec - currentMonth * MONTH;
         uint256 currentWeek = remainingSec.div(WEEK);
 
