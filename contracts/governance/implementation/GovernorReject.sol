@@ -14,11 +14,9 @@ contract GovernorReject is Governor, GovernorRejectSettings {
 
     /**
      * @notice Initializes the contract with default parameters
-     * @param _addresses                    Array of contract addresses in the following order
-     *          governance                  Address identifying the governance address
-     *          ftsoRegistry                Address identifying the ftso registry contract
-     *          votePowerContract           Address identifying the vote power contract
-     *          addressUpdater              Address identifying the address updater contract
+     * @param _governance                   Address identifying the governance address
+     * @param _priceSubmitter               Address identifying the price submitter contract
+     * @param _addressUpdater               Address identifying the address updater contract
      * @param _proposalSettings             Array of proposal settings in the following order
      *          proposalThresholdBIPS       Percentage in BIPS of the total vote power required to submit a proposal
      *          votingDelaySeconds          Voting delay in seconds
@@ -33,13 +31,17 @@ contract GovernorReject is Governor, GovernorRejectSettings {
      */
     constructor(
         uint256[] memory _proposalSettings,
-        address[] memory _addresses,
+        address _governance,
+        address _priceSubmitter,
+        address _addressUpdater,
         uint256 _rejectionThresholdBIPS,
         address[] memory _proposers
     )
         Governor(
             _proposalSettings,
-            _addresses
+            _governance,
+            _priceSubmitter,
+            _addressUpdater
         )
         GovernorRejectSettings(
             _rejectionThresholdBIPS,

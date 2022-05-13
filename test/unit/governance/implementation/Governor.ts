@@ -7,7 +7,11 @@ import {
   FtsoManagerInstance,
   MockContractInstance,
   CleanupBlockNumberManagerInstance,
-  FtsoInstance
+  FtsoInstance,
+  PriceSubmitterInstance,
+  MockContractContract,
+  VoterWhitelisterInstance,
+  VoterWhitelisterContract
 } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 import { time, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers';
@@ -21,6 +25,8 @@ import {
 } from "../../../utils/FtsoManager-test-utils";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
+const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
+
 
 const WNat = artifacts.require("WNat");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
@@ -32,6 +38,10 @@ const FtsoManager = artifacts.require("FtsoManager");
 const MockContract = artifacts.require("MockContract");
 const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 const Ftso = artifacts.require("Ftso");
+const PriceSubmitter = artifacts.require("PriceSubmitter");
+const MockRegistry = artifacts.require("MockContract") as MockContractContract;
+const VoterWhitelister = artifacts.require("VoterWhitelister") as VoterWhitelisterContract;
+
 
 let MOCK_FTSO_MANAGER_ADDRESS: string;
 
@@ -69,7 +79,6 @@ async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance
 contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower unit tests`, async accounts => {
   let wNat: WNatInstance;
   let governanceVotePower: GovernanceVotePowerInstance;
-  let ftsoRegistry: FtsoRegistryInstance;
   let governorReject: GovernorRejectInstance;
   let executeMock: ExecuteMockInstance;
   let ftsoManager: FtsoManagerInstance;
@@ -81,6 +90,9 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
   let mockSupply: MockContractInstance;
   let mockFtso: MockContractInstance;
   let ftsoInterface: FtsoInstance;
+  let priceSubmitter: PriceSubmitterInstance;
+  let mockFtsoRegistry: MockContractInstance;
+  let voterWhitelister: VoterWhitelisterInstance;
 
   const GOVERNANCE_ADDRESS = accounts[0];
   const ADDRESS_UPDATER = accounts[16];
@@ -88,7 +100,6 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
 
   beforeEach(async () => {
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
-    ftsoRegistry = await FtsoRegistry.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
     governanceVotePower = await GovernanceVotePower.new(wNat.address);
     await wNat.setGovernanceVotePower(governanceVotePower.address);
 
@@ -97,6 +108,14 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
     mockVoterWhitelister = await MockContract.new();
     cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0], ADDRESS_UPDATER, "FtsoManager");
     mockSupply = await createMockSupplyContract(accounts[0], 10000);
+
+    priceSubmitter = await PriceSubmitter.new();
+    await priceSubmitter.initialiseFixedAddress();
+    await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, { from: GOVERNANCE_GENESIS_ADDRESS});
+
+    voterWhitelister = await VoterWhitelister.new(GOVERNANCE_GENESIS_ADDRESS, ADDRESS_UPDATER, priceSubmitter.address, 10);
+
+    mockFtsoRegistry = await MockRegistry.new();
 
     // Force a block in order to get most up to date time
     await time.advanceBlock();
@@ -108,7 +127,7 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
       accounts[0],
       accounts[0],
       ADDRESS_UPDATER,
-      mockPriceSubmitter.address,
+      priceSubmitter.address,
       constants.ZERO_ADDRESS,
       startTs,
       PRICE_EPOCH_DURATION_S,
@@ -120,12 +139,11 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
 
     await ftsoManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-      [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+      [ADDRESS_UPDATER, mockRewardManager.address, mockFtsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-    await ftsoRegistry.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
-      [ADDRESS_UPDATER, ftsoManager.address], { from: ADDRESS_UPDATER }
-    );
+    await priceSubmitter.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
+      [ADDRESS_UPDATER, mockFtsoRegistry.address, voterWhitelister.address, ftsoManager.address], {from: ADDRESS_UPDATER});
 
     mockFtso = await MockFtso.new();
     ftsoInterface = await Ftso.new(
@@ -177,12 +195,9 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
     beforeEach(async () => {
       governorReject = await GovernorReject.new(
         [1000, 3600, 7200, 1500, 2000, 5000, 30, 259200],
-        [
           accounts[0],
-          ftsoRegistry.address,
-          governanceVotePower.address,
-          ADDRESS_UPDATER
-        ],
+          priceSubmitter.address,
+          ADDRESS_UPDATER,
         7500,
         [
           accounts[2],
@@ -192,8 +207,8 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
       );
 
     await governorReject.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
-        [ADDRESS_UPDATER, ftsoManager.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER]),
+        [ADDRESS_UPDATER, ftsoManager.address, governanceVotePower.address], { from: ADDRESS_UPDATER });
     });
 
     it("Should check deployment parameters", async () => {

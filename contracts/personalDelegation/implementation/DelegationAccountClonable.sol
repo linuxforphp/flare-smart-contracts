@@ -124,7 +124,7 @@ contract DelegationAccountClonable is IDelegationAccount {
 
     function delegateGovernance(address _to) external override onlyOwner { 
         manager.governanceVP().delegate(_to);
-        emit DelegateGovernance(address(this), _to);
+        emit DelegateGovernance(address(this), _to, manager.wNat().balanceOf(address(this)));
     }
 
     function undelegateGovernance() external override onlyOwner {
