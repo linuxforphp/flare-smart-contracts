@@ -35,7 +35,7 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         emit SetLibraryAddress(libraryAddress);
     }
 
-    function createDelegationAccount() external override {
+    function createDelegationAccount() external override returns (DelegationAccountClonable) {
         require(libraryAddress != address(0), "library address is not set yet");
         require(accountToDelegationAccount[msg.sender] == address(0), "account already has delegation account");
 
@@ -48,6 +48,8 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         accountToDelegationAccount[msg.sender] = address(delegationAccount);
 
         emit CreateDelegationAccount(address(delegationAccount), msg.sender);
+
+        return delegationAccount;
     }
 
     function getFtsoRewardManagers() external view override returns(IIFtsoRewardManager[] memory) {
@@ -84,17 +86,17 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
             ftsoRewardManagers.push(ftsoRewardManager);
         }
 
-        // IDistributionToDelegators distribution = IDistributionToDelegators(
-        //     _getContractAddress(_contractNameHashes, _contractAddresses, "DistributionToDelegators"));
-        // bool distributionsContain = false;
-        // for (uint256 i = 0; i < distributions.length; i++) {
-        //     if (distributions[i] == distribution) {
-        //         distributionsContain = true;
-        //         break;
-        //     }
-        // }
-        // if (!distributionsContain) {
-        //     distributions.push(distribution);
-        // }
+        IDistributionToDelegators distribution = IDistributionToDelegators(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "DistributionToDelegators"));
+        bool distributionsContain = false;
+        for (uint256 i = 0; i < distributions.length; i++) {
+            if (distributions[i] == distribution) {
+                distributionsContain = true;
+                break;
+            }
+        }
+        if (!distributionsContain) {
+            distributions.push(distribution);
+        }
     }
 }

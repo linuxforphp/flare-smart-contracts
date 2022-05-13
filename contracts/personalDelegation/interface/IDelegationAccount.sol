@@ -23,6 +23,7 @@ interface IDelegationAccount {
     event Initialize(address owner, DelegationAccountManager manager);
     event ClaimFtsoFailure(string err, IIFtsoRewardManager ftsoRewardManager);
     event ClaimDistributionFailure(string err, IDistributionToDelegators distribution);
+    event EpochsWithUnclaimedRewardsFailure(string err, IIFtsoRewardManager ftsoRewardManager);
 
     function claimFtsoRewards(uint256[] memory _epochs) external returns(uint256);
 
@@ -43,14 +44,4 @@ interface IDelegationAccount {
     function removeExecutor(address _executor) external;
 
     function withdraw(uint256 _amount) external;
-
-    function getDelegatesOf() external view 
-    returns(
-        address[] memory _delegateAddresses, 
-        uint256[] memory _bips,
-        uint256 _count,
-        uint256 _delegationMode
-    );
-
-    function getDelegateOfGovernance() external view returns(address);
 }
