@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 import "../interface/IDelegationAccount.sol";
 import "./DelegationAccountManager.sol";
 
+import "hardhat/console.sol";
+
 contract DelegationAccountClonable is IDelegationAccount {
 
     string internal constant CLAIM_FAILURE = "unknown error when claiming";
@@ -57,9 +59,9 @@ contract DelegationAccountClonable is IDelegationAccount {
                 amount += _amount;
                 emit ClaimFtsoRewards(address(this), _epochs, _amount, rewardManagers[i]);
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimFtsoFailure(_err, rewardManagers[i]);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimFtsoFailure(CLAIM_FAILURE, rewardManagers[i]);
             }
         }
         return amount;
@@ -78,9 +80,9 @@ contract DelegationAccountClonable is IDelegationAccount {
                 amount += _amount;
                 emit ClaimFtsoRewards(address(this), epochs, _amount, rewardManagers[i]);
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimFtsoFailure(_err, rewardManagers[i]);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimFtsoFailure(CLAIM_FAILURE, rewardManagers[i]);
             }
         }
         return amount;
@@ -96,9 +98,9 @@ contract DelegationAccountClonable is IDelegationAccount {
                     emit ClaimAirdrop(address(this), _amount, _month, distributions[i]);
                 }
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimDistributionFailure(_err, distributions[i]);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimDistributionFailure(CLAIM_FAILURE, distributions[i]);
             }
         }
         return amount;
@@ -176,9 +178,9 @@ contract DelegationAccountClonable is IDelegationAccount {
                     emit ClaimAirdrop(address(this), _amount, month, _distribution);
                 }
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimDistributionFailure(_err, _distribution);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimDistributionFailure(CLAIM_FAILURE, _distribution);
             }
         }
         return amount;

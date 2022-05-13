@@ -21,7 +21,8 @@ interface IDelegationAccount {
     event RemoveExecutor(address delegationAccount, address executor);
     event WidthrawToOwner(address delegationAccount, uint256 amount);
     event Initialize(address owner, DelegationAccountManager manager);
-    event ClaimingFailure(string _err);
+    event ClaimFtsoFailure(string err, IIFtsoRewardManager ftsoRewardManager);
+    event ClaimDistributionFailure(string err, IDistributionToDelegators distribution);
 
     function claimFtsoRewards(uint256[] memory _epochs) external returns(uint256);
 

@@ -13,7 +13,8 @@ import {
   FtsoRewardManagerContract,
   FtsoManagerContract,
   DistributionTreasuryInstance,
-  GovernanceVotePowerInstance
+  GovernanceVotePowerInstance,
+  SupplyInstance
 } from "../../../../typechain-truffle";
 import { toBN, encodeContractNames } from '../../../utils/test-helpers';
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
@@ -38,6 +39,8 @@ let mockFtsoManager: FtsoManagerMockInstance;
 let mockInflation: InflationMockInstance;
 let mockSupply: MockContractInstance;
 let ADDRESS_UPDATER: string;
+let priceSubmitterMock: MockContractInstance;
+let supply: SupplyInstance;
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 
@@ -53,11 +56,14 @@ const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardMa
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const InflationMock = artifacts.require("InflationMock");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
+const Supply = artifacts.require("Supply");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
+
+const totalEntitlementWei = toBN(100000);
 
 export async function distributeRewards(
   accounts: Truffle.Accounts,
@@ -165,12 +171,15 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
-    distribution = await Distribution.new(accounts[0], distributionTreasury.address);
+    // distribution = await Distribution.new(accounts[0], distributionTreasury.address);
+
+    priceSubmitterMock = await MockContract.new();
+    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10000000, 9000000, []);
 
     // ftso reward manager
     mockFtsoManager = await MockFtsoManager.new();
     mockInflation = await InflationMock.new();
-    mockSupply = await MockContract.new();
+    // mockSupply = await MockContract.new();
 
     ftsoRewardManager = await FtsoRewardManager.new(
         accounts[0],
@@ -238,7 +247,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     delegationAccountClonable1 = await DelegationAccountClonable.at(delAcc1Address);
     expect(delegationAccountClonable1.address).to.equals(delAcc1Address);
     expectEvent(create1, "CreateDelegationAccount", { delegationAccount: delAcc1Address, owner: accounts[1]} );
-    await expectEvent.inTransaction(create1.tx,  delegationAccountClonable1, "Initialize", { owner: accounts[1], 
+    await expectEvent.inTransaction(create1.tx, delegationAccountClonable1, "Initialize", { owner: accounts[1], 
       manager: delegationAccountManager.address });
 
     let create2 = await delegationAccountManager.createDelegationAccount({ from: accounts[2] }) as any; 
@@ -354,7 +363,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
     await distributeRewards(accounts, startTs, 2, false);
 
-    let ftsoRewardManager2 = ftsoRewardManager = await FtsoRewardManager.new(
+    let ftsoRewardManager2 = await FtsoRewardManager.new(
       accounts[0],
       ADDRESS_UPDATER,
       constants.ZERO_ADDRESS,
@@ -365,18 +374,19 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await ftsoRewardManager2.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
-    // await test.activate();
-    // await delegationAccountManager.addFtsoRewardManager(ftsoRewardManager2.address);
+    // await ftsoRewardManager2.activate();
 
     await delegationAccountManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER]),
-      [ADDRESS_UPDATER, wNat.address, ftsoRewardManager2.address], {from: ADDRESS_UPDATER});
+      [ADDRESS_UPDATER, wNat.address, ftsoRewardManager2.address], {from: ADDRESS_UPDATER}
+    );
 
     // cam claim only for reward epochs 0 and 1, reward epoch 2 is not yet finalized
     let claim = await delegationAccountClonable1.claimAllFtsoRewards( { from: accounts[1] }) as any;
     // can claim Math.ceil(2000000 / 5040) + Math.ceil((2000000 - 397) / (5040 - 1)) = 794
     expect((await wNat.balanceOf(delAcc1Address)).toString()).to.equals((100 + 794).toString());
-    expectEvent(claim, "ClaimFtsoRewards", { delegationAccount: delAcc1Address, rewardEpochs: [toBN(0), toBN(1)], amount: toBN(794)});
+    expectEvent(claim, "ClaimFtsoRewards", { delegationAccount: delAcc1Address, rewardEpochs: [toBN(0), toBN(1)], amount: toBN(794), ftsoRewardManager: ftsoRewardManager.address });
+    expectEvent(claim, "ClaimFtsoFailure", { err: "reward manager deactivated", ftsoRewardManager: ftsoRewardManager2.address });
   });
 
   it("Should delegate and undelegate", async() => {
@@ -438,6 +448,41 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     let undelegate = await delegationAccountClonable1.undelegateGovernance({ from: accounts[1] }) as any;
     expectEvent(undelegate, "UndelegateGovernance", { delegationAccount: delAcc1Address });
+  });
+
+  it("Should not allow to initialize twice", async() => {
+    await expectRevert(delegationAccountClonable1.initialize(accounts[8], delegationAccountManager.address),
+    "owner already set");
+  });
+
+  it.only("Should not add ftso reward manager if it already exists", async() => {
+    let ftsoRewardManager2 = await FtsoRewardManager.new(
+      accounts[0],
+      ADDRESS_UPDATER,
+      constants.ZERO_ADDRESS,
+      3,
+      0
+    );
+
+    await ftsoRewardManager2.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
+      [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER}
+    );
+    expect((await delegationAccountManager.getFtsoRewardManagers()).length).to.equals(1);
+
+    await delegationAccountManager.getFtsoRewardManagers();
+    await delegationAccountManager.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER]),
+      [ADDRESS_UPDATER, wNat.address, ftsoRewardManager2.address], {from: ADDRESS_UPDATER}
+    );
+    expect((await delegationAccountManager.getFtsoRewardManagers()).length).to.equals(2);
+    
+    // try to add ftsoRewardManager2 again
+    await delegationAccountManager.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER]),
+      [ADDRESS_UPDATER, wNat.address, ftsoRewardManager2.address], {from: ADDRESS_UPDATER}
+    );
+    expect((await delegationAccountManager.getFtsoRewardManagers()).length).to.equals(2);
   });
 
 });

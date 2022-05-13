@@ -76,7 +76,7 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         bool rewardManagersContain = false;
         for (uint256 i = 0; i < ftsoRewardManagers.length; i++) {
             if (ftsoRewardManagers[i] == ftsoRewardManager) {
-                rewardManagersContain == true;
+                rewardManagersContain = true;
                 break;
             }
         }
@@ -89,7 +89,7 @@ contract DelegationAccountManager is CloneFactory, IDelegationAccountManager, Go
         // bool distributionsContain = false;
         // for (uint256 i = 0; i < distributions.length; i++) {
         //     if (distributions[i] == distribution) {
-        //         distributionsContain == true;
+        //         distributionsContain = true;
         //         break;
         //     }
         // }
