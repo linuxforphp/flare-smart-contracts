@@ -9,6 +9,7 @@ import { Contracts } from "../../../../deployment/scripts/Contracts";
 
 const BN = web3.utils.toBN;
 
+const DelegationAccountManager = artifacts.require("DelegationAccountManager");
 const DistributionTreasury = artifacts.require("DistributionTreasury");
 const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockContract = artifacts.require("MockContract");
@@ -18,17 +19,16 @@ const Supply = artifacts.require("Supply");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_BALANCE_TOO_LOW = "balance too low";
-const ERR_TOO_MUCH = "too much"
 const ERR_NOT_ZERO = "not zero";
 const ERR_IN_THE_PAST = "in the past";
 const ERR_OPT_OUT = "already opted out";
+const ERR_NOT_OPT_OUT = "not opted out"
 const ERR_NOT_STARTED = "not started";
 const ERR_ALREADY_FINISHED = "already finished";
-const ERR_NO_BALANCE_CLAIMABLE = "no balance currently available";
-const ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
-const ERR_TOO_MANY = "too many";
-const ERR_NOT_REGISTERED = "not registered";
+const ERR_MONTH_EXPIRED = "month expired";
+const ERR_MONTH_NOT_CLAIMABLE = "month not claimable";
 const ERR_MONTH_NOT_CLAIMABLE_YET = "month not claimable yet";
+const ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero"
 
 let priceSubmitterMock: MockContractInstance;
 let wNatMock: MockContractInstance;
@@ -119,6 +119,58 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await bestowClaimableBalance(totalEntitlementWei);
     });
 
+    it("Should only opt out once", async () => {
+      // Assemble
+      const optOutTx = await distribution.optOutOfAirdrop({from: accounts[2]});
+      expectEvent(optOutTx, "AccountOptOut", {theAccount: accounts[2], confirmed: false});
+      const optOutPromise1 = distribution.optOutOfAirdrop({from: accounts[2]});
+      await expectRevert(optOutPromise1, ERR_OPT_OUT);
+      const confirmOptOutTx = await distribution.confirmOptOutOfAirdrop([accounts[2]], {from: GOVERNANCE_ADDRESS});
+      expectEvent(confirmOptOutTx, "AccountOptOut", {theAccount: accounts[2], confirmed: true});
+      const confirmOptOutPromise1 = distribution.confirmOptOutOfAirdrop([accounts[2]], {from: GOVERNANCE_ADDRESS});
+      await expectRevert(confirmOptOutPromise1, ERR_OPT_OUT);
+      const optOutPromise2 = distribution.optOutOfAirdrop({from: accounts[2]});
+      await expectRevert(optOutPromise2, ERR_OPT_OUT);
+    });
+
+    it("Should not confirm opt out if user has not opted out", async () => {
+      // Assemble
+      const confirmOptOutPromise1 = distribution.confirmOptOutOfAirdrop([accounts[2]], {from: GOVERNANCE_ADDRESS});
+      await expectRevert(confirmOptOutPromise1, ERR_NOT_OPT_OUT);
+    });
+
+    it("Should not confirm opt out if not from governance", async () => {
+      // Assemble
+      const confirmOptOutPromise1 = distribution.confirmOptOutOfAirdrop([accounts[2]], {from: accounts[1]});
+      await expectRevert(confirmOptOutPromise1, ERR_ONLY_GOVERNANCE);
+    });
+
+    it("Should not stop distribution if not from governance", async () => {
+      // Assemble
+      const stopPromise = distribution.stop({from: accounts[1]});
+      await expectRevert(stopPromise, ERR_ONLY_GOVERNANCE);
+    });
+  });
+
+  describe("Claiming", async () => {
+    beforeEach(async () => {
+      await bestowClaimableBalance(totalEntitlementWei);
+    });
+
+    it("Should not be able to claim anything from month >= 36", async () => {
+      // Assemble
+      await time.advanceBlock();
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      await time.increase(1);
+      // Act
+      // Assert
+      const claimableTx = distribution.getClaimableAmount(36);
+      await expectRevert(claimableTx, ERR_MONTH_NOT_CLAIMABLE);
+      const claimTx = distribution.claim(accounts[0], 36);
+      await expectRevert(claimTx, ERR_MONTH_NOT_CLAIMABLE);
+    });
+
     it("Should not be able to claim anything on day 0", async () => {
       // Assemble
       await time.advanceBlock();
@@ -147,7 +199,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(claimTx, ERR_MONTH_NOT_CLAIMABLE_YET);
     });
 
-    it("Should be able to claim 2.37% after day 30", async () => {
+    it("Should be able to claim 2.37% after day 30 on private or personal delegation account", async () => {
       // Assemble
       const days = 30;
       const addresses = [accounts[1], accounts[2], accounts[3]];
@@ -160,16 +212,201 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       await createSomeBlocksAndProceed(start, days);
       // Act
+      const claimable1 = await distribution.getClaimableAmount(0, {from: accounts[1]});
+      const startBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
+      const claimTx1 = await distribution.claim(accounts[5], 0, {from: accounts[1]});
+      const endBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
+
+      const claimable2 = await distribution.getClaimableAmount(0, {from: accounts[2]});
+      const startBalance6 = toBN(await web3.eth.getBalance(accounts[6]));
+      const claimTx2 = await distribution.claim(accounts[6], 0, {from: accounts[2]});
+      const endBalance6 = toBN(await web3.eth.getBalance(accounts[6]));
+
+      const claimTx3Promise = distribution.claimToPersonalDelegationAccount(0, {from: accounts[3]});
+      await expectRevert(claimTx3Promise, ERR_DELEGATION_ACCOUNT_ZERO);
+      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
+      const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[3]).encodeABI();
+      await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
+      const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
+      const startBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
+      const claimTx3 = await distribution.claimToPersonalDelegationAccount(0, {from: accounts[3]});
+      const endBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
+      // Assert
+      assert.equal(claimable1.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500).divn(500 + 2000 + 1500).toNumber());
+      expectEvent(claimTx1, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable1});
+      expect(endBalance5.sub(startBalance5).toNumber()).to.equals(claimable1.toNumber());
+      assert.equal(claimable2.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).muln(2000).divn(2000 + 1500).toNumber());
+      expectEvent(claimTx2, "AccountClaimed", {whoClaimed: accounts[2], sentTo: accounts[6], month: toBN(0), amountWei: claimable2});
+      expect(endBalance6.sub(startBalance6).toNumber()).to.equals(claimable2.toNumber());
+      assert.equal(claimable3.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).sub(claimable2).toNumber());
+      expectEvent(claimTx3, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
+      expect(endBalance7.sub(startBalance7).toNumber()).to.equals(claimable3.toNumber());
+      expect((await distribution.startBlockNumber(0)).toNumber()).to.be.gte(startBlockNumber);
+      expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
+      expect((await distribution.totalClaimedWei()).toNumber()).to.equals(claimable1.add(claimable2).add(claimable3).toNumber());
+      expect((await distribution.totalClaimedWei()).toNumber()).to.equals((await distribution.totalAvailableAmount(0)).toNumber());
+      expect((await distribution.totalUnclaimedAmount(0)).toNumber()).to.equals(0);
+      expect((await distribution.totalUnclaimedWeight(0)).toNumber()).to.equals(0);
+    });
+
+    it("Should not be able to claim after opt out - others can still claim 2.37% after day 30", async () => {
+      // Assemble
+      const optOutTx = await distribution.optOutOfAirdrop({from: accounts[2]});
+      expectEvent(optOutTx, "AccountOptOut", {theAccount: accounts[2], confirmed: false});
+      const confirmOptOutTx = await distribution.confirmOptOutOfAirdrop([accounts[2]], {from: GOVERNANCE_ADDRESS});
+      expectEvent(confirmOptOutTx, "AccountOptOut", {theAccount: accounts[2], confirmed: true});
+      const days = 30;
+      const addresses = [accounts[1], accounts[2], accounts[3]];
+      const wNatBalances = [500, 2000, 1500];
+      const numberOfBlocks = 12 * days;
+      const startBlockNumber = (await time.latestBlock()).toNumber() + numberOfBlocks * (addresses.length + 1) + 1;
+      await setMockBalances(startBlockNumber, numberOfBlocks, addresses, wNatBalances);
+      await time.advanceBlock();
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      await createSomeBlocksAndProceed(start, days);
+      // Act
+      const claimable1 = await distribution.getClaimableAmount(0, {from: accounts[1]});
+      const startBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
+      const claimTx1 = await distribution.claim(accounts[5], 0, {from: accounts[1]});
+      const endBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
+
+      const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
+      const startBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
+      const claimTx3 = await distribution.claim(accounts[7], 0, {from: accounts[3]});
+      const endBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
+      // Assert
+      assert.equal(claimable1.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500).divn(500 + 1500).toNumber());
+      expectEvent(claimTx1, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable1});
+      expect(endBalance5.sub(startBalance5).toNumber()).to.equals(claimable1.toNumber());
+      assert.equal(claimable3.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).toNumber());
+      expectEvent(claimTx3, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
+      expect(endBalance7.sub(startBalance7).toNumber()).to.equals(claimable3.toNumber());
+      expect((await distribution.startBlockNumber(0)).toNumber()).to.be.gte(startBlockNumber);
+      expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
+      expect((await distribution.totalClaimedWei()).toNumber()).to.equals(claimable1.add(claimable3).toNumber());
+      expect((await distribution.totalClaimedWei()).toNumber()).to.equals((await distribution.totalAvailableAmount(0)).toNumber());
+      expect((await distribution.totalUnclaimedAmount(0)).toNumber()).to.equals(0);
+      expect((await distribution.totalUnclaimedWeight(0)).toNumber()).to.equals(0);
+
+      const claimRevertPromise = distribution.claim(accounts[6], 0, {from: accounts[2]});
+      await expectRevert(claimRevertPromise, ERR_OPT_OUT);
+    });
+
+    it("Should burn unclaimed rewards after block expiration period", async () => {
+      // Assemble
+      const days = 30;
+      const addresses = [accounts[1], accounts[2], accounts[3]];
+      const wNatBalances = [500, 2000, 1500];
+      const numberOfBlocks = 12 * days;
+      const startBlockNumber = (await time.latestBlock()).toNumber() + numberOfBlocks * (addresses.length + 1) + 1;
+      await setMockBalances(startBlockNumber, numberOfBlocks, addresses, wNatBalances);
+      await time.advanceBlock();
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      await createSomeBlocksAndProceed(start, days);
+
+      const { 0: allocatedWei1, 1: inflationWei1, 2: claimedWei1 } = await distribution.getTokenPoolSupplyData.call();
+      // Assert
+      assert.equal(allocatedWei1.toString(10), totalEntitlementWei.toString());
+      assert.equal(inflationWei1.toString(10), "0");
+      assert.equal(claimedWei1.toString(10), "0");
+
+      // Act
       const claimable = await distribution.getClaimableAmount(0, {from: accounts[1]});
       const startBalance = toBN(await web3.eth.getBalance(accounts[5]));
       const claimTx = await distribution.claim(accounts[5], 0, {from: accounts[1]});
       const endBalance = toBN(await web3.eth.getBalance(accounts[5]));
-      // Assert
       assert.equal(claimable.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500).divn(500 + 2000 + 1500).toNumber());
       expectEvent(claimTx, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable});
       expect(endBalance.sub(startBalance).toNumber()).to.equals(claimable.toNumber());
       expect((await distribution.startBlockNumber(0)).toNumber()).to.be.gte(startBlockNumber);
       expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
+
+      const { 0: allocatedWei2, 1: inflationWei2, 2: claimedWei2 } = await distribution.getTokenPoolSupplyData.call();
+      assert.equal(allocatedWei2.toString(10), totalEntitlementWei.toString());
+      assert.equal(inflationWei2.toString(10), "0");
+      assert.equal(claimedWei2.toString(10), claimable.toString());
+      
+      const monthToExpireNext1 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext1.toNumber()).to.equals(0);
+      await createSomeBlocksAndProceed(await time.latest(), days);
+
+      const monthToExpireNext2 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext2.toNumber()).to.equals(0);
+      await createSomeBlocksAndProceed(await time.latest(), days);
+
+      const cleanupBlockNumber = (await distribution.startBlockNumber(0)).toNumber() + 1;
+      const cleanupBlockNumberWnat = wNatInterface.contract.methods.cleanupBlockNumber().encodeABI();
+      await wNatMock.givenCalldataReturnUint(cleanupBlockNumberWnat, cleanupBlockNumber);
+      const monthToExpireNext3 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext3.toNumber()).to.equals(1);
+      const claimPromise1 = distribution.claim(accounts[6], 0, {from: accounts[2]});
+      await expectRevert(claimPromise1, ERR_MONTH_EXPIRED);
+
+      const burnAddress = await supply.burnAddress();
+      const startBalanceBurn = toBN(await web3.eth.getBalance(burnAddress));
+      await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
+      const endBalanceBurn = toBN(await web3.eth.getBalance(burnAddress));
+      const monthToExpireNext4 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext4.toNumber()).to.equals(1);
+      const claimPromise2 = distribution.claim(accounts[6], 0, {from: accounts[2]});
+      await expectRevert(claimPromise2, ERR_MONTH_EXPIRED);
+
+      const { 0: allocatedWei3, 1: inflationWei3, 2: claimedWei3 } = await distribution.getTokenPoolSupplyData.call();
+      assert.equal(allocatedWei3.toString(10), totalEntitlementWei.toString());
+      assert.equal(inflationWei3.toString(10), "0");
+      assert.equal(claimedWei3.toString(10), totalEntitlementWei.muln(237).divn(8500).toString());
+      expect((await distribution.totalClaimedWei()).toNumber()).to.equals(claimable.toNumber());
+      expect((await distribution.totalBurnedWei()).toNumber()).to.equals(totalEntitlementWei.muln(237).divn(8500).sub(claimable).toNumber());
+      expect((endBalanceBurn.sub(startBalanceBurn)).toNumber()).to.equals(totalEntitlementWei.muln(237).divn(8500).sub(claimable).toNumber());
+      expect((await distribution.totalAvailableAmount(0)).toNumber()).to.equals(totalEntitlementWei.muln(237).divn(8500).toNumber());
+      expect((await distribution.totalDistributableAmount()).toNumber()).to.equals(totalEntitlementWei.muln(237 * 3).divn(8500).toNumber());
+    });
+
+    it("Should not pull funds if stopped, but expiration should still work", async () => {
+      // Assemble
+      const days = 30;
+      await time.advanceBlock();
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      await createSomeBlocksAndProceed(start, days);
+      
+      const monthToExpireNext1 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext1.toNumber()).to.equals(0);
+      await createSomeBlocksAndProceed(await time.latest(), days);
+
+      const monthToExpireNext2 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext2.toNumber()).to.equals(0);
+      await createSomeBlocksAndProceed(await time.latest(), days);
+
+      const cleanupBlockNumber = (await distribution.startBlockNumber(0)).toNumber() + 1;
+      const cleanupBlockNumberWnat = wNatInterface.contract.methods.cleanupBlockNumber().encodeABI();
+      await wNatMock.givenCalldataReturnUint(cleanupBlockNumberWnat, cleanupBlockNumber);
+
+      await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
+      const monthToExpireNext3 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext3.toNumber()).to.equals(1);
+
+      await distribution.stop({from: GOVERNANCE_ADDRESS});
+
+      for (let i = 1; i <= 36; i++) {
+        const currentMonth = await distribution.getCurrentMonth();
+        expect(currentMonth.toNumber()).to.equals(i + 2);
+        const monthToExpireNext = await distribution.getMonthToExpireNext();
+        expect(monthToExpireNext.toNumber()).to.equals(i);
+        await createSomeBlocksAndProceed(await time.latest(), days);
+
+        const cleanupBlockNumber = (await distribution.startBlockNumber(i)).toNumber() + 1;
+        const cleanupBlockNumberWnat = wNatInterface.contract.methods.cleanupBlockNumber().encodeABI();
+        await wNatMock.givenCalldataReturnUint(cleanupBlockNumberWnat, cleanupBlockNumber);
+
+      }
+      await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
+      const monthToExpireNext4 = await distribution.getMonthToExpireNext();
+      expect(monthToExpireNext4.toNumber()).to.equals(36);
+      expect((await distribution.totalBurnedWei()).toNumber()).to.equals(totalEntitlementWei.muln(237 * 3).divn(8500).toNumber());
+      expect((await distribution.totalDistributableAmount()).toNumber()).to.equals(totalEntitlementWei.muln(237 * 3).divn(8500).toNumber());
     });
   });
 
@@ -207,7 +444,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     });
 
     it("Should be 1 second just before end of distribution", async () => {
-      await time.increaseTo(nowTs.add(BN(86400 * 30).muln(29).subn(1)));
+      await time.increaseTo(nowTs.add(BN(86400 * 30).muln(36).subn(1)));
       const timeTillClaim = await distribution.secondsTillNextClaim();
       assert.equal(timeTillClaim.toNumber(), 1);
     });
@@ -288,222 +525,4 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(in_the_past_promise, ERR_IN_THE_PAST);
     });
   });
-
-  // describe("Token Pool tests", async () => {
-
-  //   it("Returns proper token pool numbers to be used by token pool at initial time", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     const { 0: allocatedWei, 1: inflationWei, 2: claimedWei } = await distribution.getTokenPoolSupplyData.call();
-  //     // Assert
-  //     assert.equal(allocatedWei.toString(10), "8500");
-  //     assert.equal(inflationWei.toString(10), "0");
-  //     assert.equal(claimedWei.toString(10), "0");
-  //   });
-
-  //   it("Returns proper token pool numbers after some claiming", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
-  //     for (let i of [0, 1, 2, 3, 4, 5]) {
-  //       await distribution.claim(claimants[i], { from: claimants[i] });
-  //     }
-  //     // Assert
-  //     let { 0: allocatedWei, 1: inflationWei, 2: claimedWei } = await distribution.getTokenPoolSupplyData.call();
-  //     assert.equal(allocatedWei.toString(10), "8500");
-  //     assert.equal(inflationWei.toString(10), "0");
-  //     assert.equal(claimedWei.toString(10), "5100");
-  //   });
-  // });
-
-  // describe("Claiming", async () => {
-  //   beforeEach(async () => {
-  //     await bulkLoad(BN(1000));
-  //   });
-
-  //   it("Should not be able to claim before entitelment start", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     // Act
-  //     const claimPrommise = distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     await expectRevert(claimPrommise, ERR_NOT_STARTED);
-  //   });
-
-  //   it("Should not be able to claim if not registered to distribution", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     const optOutRevert = distribution.claim(accounts[150], { from: accounts[150] });
-  //     // Assert
-  //     await expectRevert(optOutRevert, ERR_NOT_REGISTERED);
-  //   });
-
-  //   it("Should claim claimable entitlement 1 month from start", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Time travel to next month
-  //     await time.increaseTo(now.addn(86400 * 31));
-  //     // Act
-  //     const openingBalance = BN(await web3.eth.getBalance(claimants[0]));
-  //     const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     const closingBalance = BN(await web3.eth.getBalance(claimants[0]));
-  //     let txCost = BN(await calcGasCost(claimResult));
-  //     assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 1000 * 3 / 100);
-  //   });
-
-  //   it("Should emit claiming event", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Time travel to next month
-  //     await time.increaseTo(now.addn(86400 * 31));
-  //     // Act
-  //     const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     expectEvent(claimResult, EVENT_ACCOUNT_CLAIM);
-  //   });
-
-  //   it("Should update variables after claimal", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     await time.increaseTo(now.addn(86400 * 31));
-  //     const openingBalance = BN(await web3.eth.getBalance(claimants[0]));
-  //     const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
-  //     const closingBalance = BN(await web3.eth.getBalance(claimants[0]));
-  //     let txCost = BN(await calcGasCost(claimResult));
-  //     assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 1000 * 3 / 100);
-  //     // Act
-  //     const {
-  //       0: entitlementBalanceWei1,
-  //       1: totalClaimedWei1,
-  //       2: optOutBalance1,
-  //       3: airdroppedWei1
-  //     } = await distribution.airdropAccounts(claimants[0]);
-  //     const {
-  //       0: entitlementBalanceWei2,
-  //       1: totalClaimedWei2,
-  //       2: optOutBalance2,
-  //       3: airdroppedWei2
-  //     } = await distribution.airdropAccounts(claimants[1]);
-  //     const totalEntitlementWei = await distribution.totalEntitlementWei();
-  //     const totalClaimedWei = await distribution.totalClaimedWei();
-  //     // Assert
-  //     assert.equal(entitlementBalanceWei1.toNumber(), 850);
-  //     assert.equal(totalClaimedWei1.toNumber(), 30);
-  //     assert.equal(optOutBalance1.toNumber(), 0);
-  //     assert.equal(airdroppedWei1.toNumber(), 150);
-  //     assert.equal(entitlementBalanceWei2.toNumber(), 850);
-  //     assert.equal(totalClaimedWei2.toNumber(), 0);
-  //     assert.equal(optOutBalance2.toNumber(), 0);
-  //     assert.equal(airdroppedWei2.toNumber(), 150);
-  //     assert.equal(totalEntitlementWei.toNumber(), 8500);
-  //     assert.equal(totalClaimedWei.toNumber(), 30);
-  //   });
-
-  //   it("Should not be able to claim if no funds are claimable at given time", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     await expectRevert(claimResult, ERR_NO_BALANCE_CLAIMABLE);
-  //   });
-
-  //   it("Should not be able to claim if already claimed in this month", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
-  //     await distribution.claim(claimants[0], { from: claimants[0] });
-  //     const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     await expectRevert(claimResult, ERR_NO_BALANCE_CLAIMABLE);
-  //   });
-
-  //   it("Should not be able to claim after opt-out", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     await distribution.optOutOfAirdrop({ from: claimants[0] });
-  //     await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
-  //     const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     await expectRevert(claimResult, ERR_OPT_OUT);
-  //   });
-
-  //   it("Should emit opt-out event", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     const optOutEvent = await distribution.optOutOfAirdrop({ from: claimants[0] });
-  //     // Assert
-  //     expectEvent(optOutEvent, EVENT_ACCOUNT_OPT_OUT);
-  //   });
-
-  //   it("Should not be able to opt-out if not registered to distribution", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     const optOutRevert = distribution.optOutOfAirdrop({ from: accounts[150] });
-  //     // Assert
-  //     await expectRevert(optOutRevert, ERR_NOT_REGISTERED);
-  //   });
-
-  //   it("Should not be able to opt-out after fully claimed", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
-  //     await distribution.claim(claimants[0], { from: claimants[0] });
-  //     const optOutRevert = distribution.optOutOfAirdrop({ from: claimants[0] });
-  //     // Assert
-  //     await expectRevert(optOutRevert, ERR_FULLY_CLAIMED);
-  //   });
-
-  //   it("Should not be able to claim wei after opt-out even if it was allocated", async () => {
-  //     // Assemble
-  //     await bestowClaimableBalance(BN(8500));
-  //     const now = await time.latest();
-  //     await distribution.setEntitlementStart(now);
-  //     // Act
-  //     await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
-  //     await distribution.optOutOfAirdrop({ from: claimants[0] });
-  //     const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
-  //     // Assert
-  //     await expectRevert(claimResult, ERR_OPT_OUT);
-  //     const {
-  //       1: cl0totalClaimed,
-  //       2: cl0totalOptOut,
-  //     } = await distribution.airdropAccounts(claimants[0]);
-  //     assert.equal(cl0totalClaimed.toNumber(), 0);
-  //     assert.equal(cl0totalOptOut.toNumber(), 850);
-  //   });
-  // });
 });
