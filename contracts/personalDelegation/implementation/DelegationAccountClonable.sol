@@ -7,6 +7,7 @@ import "./DelegationAccountManager.sol";
 contract DelegationAccountClonable is IDelegationAccount {
 
     string internal constant CLAIM_FAILURE = "unknown error when claiming";
+    string internal constant UNCLAIMED_EPOCHS_FAILURE = "unknown error when claiming";
 
     address public owner;
     DelegationAccountManager public manager;
@@ -51,13 +52,13 @@ contract DelegationAccountClonable is IDelegationAccount {
         uint256 amount;
         IIFtsoRewardManager[] memory rewardManagers = manager.getFtsoRewardManagers();
         for(uint256 i=0; i < rewardManagers.length; i++) {
-            try rewardManagers[i].claimAndWrapReward(address(this), _epochs) returns (uint256 _amount) {
+            try rewardManagers[i].claimReward(address(this), _epochs) returns (uint256 _amount) {
                 amount += _amount;
                 emit ClaimFtsoRewards(address(this), _epochs, _amount, rewardManagers[i]);
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimFtsoFailure(_err, rewardManagers[i]);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimFtsoFailure(CLAIM_FAILURE, rewardManagers[i]);
             }
         }
         return amount;
@@ -71,14 +72,19 @@ contract DelegationAccountClonable is IDelegationAccount {
         uint256 amount;
         IIFtsoRewardManager[] memory rewardManagers = manager.getFtsoRewardManagers();
         for(uint256 i = 0; i < rewardManagers.length; i++) {
-            uint256[] memory epochs = rewardManagers[i].getEpochsWithUnclaimedRewards(address(this));
-            try rewardManagers[i].claimAndWrapReward(address(this), epochs) returns (uint256 _amount) {
-                amount += _amount;
-                emit ClaimFtsoRewards(address(this), epochs, _amount, rewardManagers[i]);
+            try rewardManagers[i].getEpochsWithUnclaimedRewards(address(this)) returns(uint256[] memory epochs) {
+                try rewardManagers[i].claimReward(address(this), epochs) returns (uint256 _amount) {
+                    amount += _amount;
+                    emit ClaimFtsoRewards(address(this), epochs, _amount, rewardManagers[i]);
+                } catch Error(string memory _err) {
+                    emit ClaimFtsoFailure(_err, rewardManagers[i]);
+                } catch {
+                    emit ClaimFtsoFailure(CLAIM_FAILURE, rewardManagers[i]);
+                }
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                    emit EpochsWithUnclaimedRewardsFailure(_err, rewardManagers[i]);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                    emit EpochsWithUnclaimedRewardsFailure(UNCLAIMED_EPOCHS_FAILURE, rewardManagers[i]);
             }
         }
         return amount;
@@ -94,9 +100,9 @@ contract DelegationAccountClonable is IDelegationAccount {
                     emit ClaimAirdrop(address(this), _amount, _month, distributions[i]);
                 }
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimDistributionFailure(_err, distributions[i]);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimDistributionFailure(CLAIM_FAILURE, distributions[i]);
             }
         }
         return amount;
@@ -132,7 +138,7 @@ contract DelegationAccountClonable is IDelegationAccount {
         emit UndelegateGovernance(address(this));
     }
 
-    function setExecutor(address _executor) external override onlyOwner {
+    function setExecutor(address _executor) external override onlyOwner { // can input be array
         isExecutor[_executor] = true;
         emit SetExecutor(address(this), _executor);
     }
@@ -147,23 +153,7 @@ contract DelegationAccountClonable is IDelegationAccount {
         require(returnValue == true, "transfer failed");
         emit WidthrawToOwner(address(this), _amount);
     }
-
-    function getDelegatesOf()
-        external view override 
-        returns (
-            address[] memory _delegateAddresses, 
-            uint256[] memory _bips,
-            uint256 _count,
-            uint256 _delegationMode
-        )
-    {
-        return manager.wNat().delegatesOf(address(this));
-    }
-
-    function getDelegateOfGovernance() external view override returns(address) {
-        return manager.governanceVP().getDelegateOfAtNow(address(this));
-    }
-
+    
     function _claimAirdrop(IDistributionToDelegators _distribution) internal returns (uint256) {
         uint maxMonth = Math.min(_distribution.getCurrentMonth(), 36);
         uint256 amount;
@@ -174,9 +164,9 @@ contract DelegationAccountClonable is IDelegationAccount {
                     emit ClaimAirdrop(address(this), _amount, month, _distribution);
                 }
             } catch Error(string memory _err) {
-                emit ClaimingFailure(_err);
+                emit ClaimDistributionFailure(_err, _distribution);
             } catch {
-                emit ClaimingFailure(CLAIM_FAILURE);
+                emit ClaimDistributionFailure(CLAIM_FAILURE, _distribution);
             }
         }
         return amount;

@@ -195,9 +195,9 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
     beforeEach(async () => {
       governorReject = await GovernorReject.new(
         [1000, 3600, 7200, 1500, 2000, 5000, 30, 259200],
-          accounts[0],
-          priceSubmitter.address,
-          ADDRESS_UPDATER,
+        accounts[0],
+        priceSubmitter.address,
+        ADDRESS_UPDATER,
         7500,
         [
           accounts[2],
