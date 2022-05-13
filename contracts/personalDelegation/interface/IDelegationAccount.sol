@@ -14,7 +14,7 @@ interface IDelegationAccount {
     event ClaimAirdrop(address delegationAccount, uint256 amount, uint256 month,
         IDistributionToDelegators distribution);
     event DelegateFtso(address delegationAccount, address to, uint256 bips);
-    event DelegateGovernance(address delegationAccount, address to);
+    event DelegateGovernance(address delegationAccount, address to, uint256 balance);
     event UndelegateAllFtso(address delegationAccount);
     event UndelegateGovernance(address delegationAccount);
     event SetExecutor(address delegationAccount, address executor);

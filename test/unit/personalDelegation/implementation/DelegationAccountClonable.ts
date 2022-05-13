@@ -161,6 +161,8 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await setDefaultVPContract(wNat, accounts[0]);
 
     governanceVP = await GovernanceVotePower.new(wNat.address);
+    await wNat.setGovernanceVotePower(governanceVP.address);
+
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
     distribution = await Distribution.new(accounts[0], distributionTreasury.address);
@@ -409,7 +411,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   it("Should revert if delegation account already exists", async() => {
     let tx = delegationAccountManager.createDelegationAccount({ from: accounts[1] });
     await expectRevert(tx, "account already has delegation account");
-  })
+  });
 
   it("Should revert if not owner or executor", async() => {
     let tx = delegationAccountClonable1.claimFtsoRewards([0], { from: accounts[2] });
@@ -417,6 +419,25 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     let tx1 = delegationAccountClonable1.delegate(accounts[40], 5000, { from: accounts[3] });
     await expectRevert(tx1, "only owner account");
-  })
+  });
+
+  it("Should delegate governance vote power", async() => {
+    await web3.eth.sendTransaction({from: accounts[1], to: delAcc1Address, value: 100 });
+    expect((await governanceVP.getVotes(delAcc1Address)).toString()).to.equals("100");
+    await wNat.deposit({ from: accounts[2], value: "20" });
+    expect((await governanceVP.getVotes(accounts[2])).toString()).to.equals("20");
+
+    let delegate = await delegationAccountClonable1.delegateGovernance(accounts[2], { from: accounts[1] }) as any;
+    expectEvent(delegate, "DelegateGovernance",
+     { delegationAccount: delAcc1Address, to: accounts[2], balance: toBN(100) }
+    );
+    expect((await governanceVP.getVotes(delAcc1Address)).toString()).to.equals("0");
+    expect((await governanceVP.getVotes(accounts[2])).toString()).to.equals("120");
+
+    expect(await delegationAccountClonable1.getDelegateOfGovernance()).to.equal(accounts[2]);
+
+    let undelegate = await delegationAccountClonable1.undelegateGovernance({ from: accounts[1] }) as any;
+    expectEvent(undelegate, "UndelegateGovernance", { delegationAccount: delAcc1Address });
+  });
 
 });
