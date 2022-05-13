@@ -28,9 +28,7 @@ contract DelegationAccountClonable is IDelegationAccount {
     or executor account.
      */
     modifier onlyOwnerOrExecutor {
-        require(msg.sender == owner || 
-        isExecutor[msg.sender] == true, 
-        "only owner or executor account");
+        require(msg.sender == owner || isExecutor[msg.sender], "only owner or executor account");
         _;
     }
 
