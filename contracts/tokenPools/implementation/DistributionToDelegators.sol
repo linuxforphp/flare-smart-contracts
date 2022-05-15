@@ -351,7 +351,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         uint256 diffSec = block.timestamp.sub(entitlementStartTs);
         uint256 currentMonth = diffSec.div(MONTH);
         
-        // can  be called multiple times per block - update only needed once
+        // can be called multiple times per block - update only needed once
         if (endBlockNumber[currentMonth] == block.number) return;
 
         uint256 remainingSec = diffSec - currentMonth * MONTH;

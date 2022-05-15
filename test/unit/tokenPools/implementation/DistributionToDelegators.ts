@@ -4,7 +4,7 @@ import { encodeContractNames, toBN } from "../../../utils/test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 const { sumGas, calcGasCost } = require('../../../utils/eth');
 import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
-import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
+import { GOVERNANCE_GENESIS_ADDRESS, PRICE_SUBMITTER_ADDRESS } from "../../../utils/constants";
 import { Contracts } from "../../../../deployment/scripts/Contracts";
 
 const BN = web3.utils.toBN;
@@ -18,6 +18,7 @@ const WNat = artifacts.require("WNat");
 const Supply = artifacts.require("Supply");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
+const ERR_ADDRESS_ZERO = "address zero";
 const ERR_BALANCE_TOO_LOW = "balance too low";
 const ERR_NOT_ZERO = "not zero";
 const ERR_IN_THE_PAST = "in the past";
@@ -119,8 +120,18 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await bestowClaimableBalance(totalEntitlementWei);
     });
 
+    it("Should revert if treasury contract zero", async () => {
+      // Assemble
+      // Act
+      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, PRICE_SUBMITTER_ADDRESS, constants.ZERO_ADDRESS, totalEntitlementWei);
+      // Assert
+      await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
+    });
+
     it("Should only opt out once", async () => {
       // Assemble
+      // Act
+      // Assert
       const optOutTx = await distribution.optOutOfAirdrop({from: accounts[2]});
       expectEvent(optOutTx, "AccountOptOut", {theAccount: accounts[2], confirmed: false});
       const optOutPromise1 = distribution.optOutOfAirdrop({from: accounts[2]});
@@ -135,19 +146,25 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
 
     it("Should not confirm opt out if user has not opted out", async () => {
       // Assemble
+      // Act
       const confirmOptOutPromise1 = distribution.confirmOptOutOfAirdrop([accounts[2]], {from: GOVERNANCE_ADDRESS});
+      // Assert
       await expectRevert(confirmOptOutPromise1, ERR_NOT_OPT_OUT);
     });
 
     it("Should not confirm opt out if not from governance", async () => {
       // Assemble
+      // Act
       const confirmOptOutPromise1 = distribution.confirmOptOutOfAirdrop([accounts[2]], {from: accounts[1]});
+      // Assert
       await expectRevert(confirmOptOutPromise1, ERR_ONLY_GOVERNANCE);
     });
 
     it("Should not stop distribution if not from governance", async () => {
       // Assemble
+      // Act
       const stopPromise = distribution.stop({from: accounts[1]});
+      // Assert
       await expectRevert(stopPromise, ERR_ONLY_GOVERNANCE);
     });
   });
@@ -270,18 +287,33 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       const startBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
       const claimTx1 = await distribution.claim(accounts[5], 0, {from: accounts[1]});
       const endBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
-
+      const claimable1_after = await distribution.getClaimableAmountOf(accounts[1], 0);
+      const claimed1 = await distribution.getClaimedAmountOf(accounts[1], 0, {from: accounts[1]});
+      const claimable4_1 = await distribution.getClaimableAmountOf(accounts[4], 0);
+      const claimTx4 = await distribution.claim(accounts[6], 0, {from: accounts[4]});
       const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
       const startBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
-      const claimTx3 = await distribution.claim(accounts[7], 0, {from: accounts[3]});
+      const claimTx3_1 = await distribution.claim(accounts[7], 0, {from: accounts[3]});
       const endBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
+      const claimable3_after = await distribution.getClaimableAmountOf(accounts[3], 0, {from: accounts[3]});
+      const claimed3 = await distribution.getClaimedAmount(0, {from: accounts[3]});
+      const claimable4_2 = await distribution.getClaimableAmountOf(accounts[4], 0);
+      const claimTx3_2 = await distribution.claim(accounts[7], 0, {from: accounts[3]});
       // Assert
       assert.equal(claimable1.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500).divn(500 + 1500).toNumber());
       expectEvent(claimTx1, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable1});
       expect(endBalance5.sub(startBalance5).toNumber()).to.equals(claimable1.toNumber());
+      assert.equal(claimable1_after.toNumber(), 0);
+      assert.equal(claimable1.toNumber(), claimed1.toNumber());
+      assert.equal(claimable4_1.toNumber(), 0);
+      expectEvent.notEmitted(claimTx4, "AccountClaimed");
       assert.equal(claimable3.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).toNumber());
-      expectEvent(claimTx3, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
+      expectEvent(claimTx3_1, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
       expect(endBalance7.sub(startBalance7).toNumber()).to.equals(claimable3.toNumber());
+      assert.equal(claimable3_after.toNumber(), 0);
+      assert.equal(claimable3.toNumber(), claimed3.toNumber());
+      assert.equal(claimable4_2.toNumber(), 0);
+      expectEvent.notEmitted(claimTx3_2, "AccountClaimed");
       expect((await distribution.startBlockNumber(0)).toNumber()).to.be.gte(startBlockNumber);
       expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
       expect((await distribution.totalClaimedWei()).toNumber()).to.equals(claimable1.add(claimable3).toNumber());

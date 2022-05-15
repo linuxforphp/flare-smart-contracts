@@ -3,7 +3,7 @@ import { toBN } from "../../../utils/test-helpers";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 const { sumGas, calcGasCost } = require('../../../utils/eth');
-import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
 import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 
 const BN = web3.utils.toBN;
@@ -13,6 +13,7 @@ const Distribution = artifacts.require("Distribution");
 const SuicidalMock = artifacts.require("SuicidalMock");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
+const ERR_ADDRESS_ZERO = "address zero";
 const ERR_TOO_MUCH = "too much"
 const ERR_NOT_ZERO = "not zero";
 const ERR_OPT_OUT = "already opted out";
@@ -64,6 +65,16 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     // set distribution contract and claimable amount
     await distributionTreasury.setDistributionContract(distribution.address, balance, {from: GOVERNANCE_GENESIS_ADDRESS});
   }
+
+  describe("Basic", async () => {
+    it("Should revert if treasury contract zero", async () => {
+      // Assemble
+      // Act
+      const distributionPromise = Distribution.new(GOVERNANCE_ADDRESS, constants.ZERO_ADDRESS);
+      // Assert
+      await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
+    });
+  });
 
   describe("Adding Accounts", async () => {
     it("Should add account", async () => {
