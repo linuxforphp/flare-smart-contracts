@@ -254,6 +254,6 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     });
 
     it("Should revert decreasing distributed supply if not enough founds", async() => {
-        await expectRevert.assertion(supply.decreaseDistributedSupply(500, {from: governanceAddress}));
+        await expectRevert(supply.decreaseDistributedSupply(500, {from: governanceAddress}), "SafeMath: subtraction overflow");
     });
 });
