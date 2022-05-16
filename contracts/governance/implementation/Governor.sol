@@ -365,20 +365,19 @@ abstract contract Governor is
             ftsoManager.getRewardEpochData(rewardEpochId);
 
         uint256 epochTimestamp = rewardEpochData.startTimestamp;
-        uint256 nowTimestamp = block.timestamp;
         uint256 nowBlockNumber = block.number;
-        uint256 diffSeconds = nowTimestamp - epochTimestamp;
         uint256 vpBlockPeriodSeconds = getVpBlockPeriodSeconds();
         uint256 cleanupBlock = votePower.getCleanupBlockNumber();
         
-        while (diffSeconds < vpBlockPeriodSeconds) {
-            if (rewardEpochId == 0 || rewardEpochData.startBlock - 1 < cleanupBlock) {
+        while (rewardEpochId > 0) {
+            IIFtsoManager.RewardEpochData memory prevRewardEpochData = 
+                ftsoManager.getRewardEpochData(rewardEpochId - 1);
+            uint256 prevDiffSeconds = block.timestamp - prevRewardEpochData.startTimestamp;
+            if (prevDiffSeconds >= vpBlockPeriodSeconds || prevRewardEpochData.startBlock < cleanupBlock) {
                 break;
             }
             rewardEpochId -= 1;
-            rewardEpochData = ftsoManager.getRewardEpochData(rewardEpochId);
-            epochTimestamp = rewardEpochData.startTimestamp;
-            diffSeconds = nowTimestamp - epochTimestamp;
+            rewardEpochData = prevRewardEpochData;
         }
 
         uint256 epochBlockNumber = rewardEpochData.startBlock;
