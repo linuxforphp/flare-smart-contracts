@@ -114,7 +114,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
       [ADDRESS_UPDATER, INFLATION_ADDRESS], {from: ADDRESS_UPDATER});
     
-    await supply.addTokenPool(distribution.address, 0, {from: GOVERNANCE_ADDRESS});
+    await supply.addTokenPool(distribution.address, totalEntitlementWei, {from: GOVERNANCE_ADDRESS});
   });
 
   describe("Basic", async () => {
@@ -445,8 +445,26 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
       const monthToExpireNext3 = await distribution.getMonthToExpireNext();
       expect(monthToExpireNext3.toNumber()).to.equals(1);
+      await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
 
+      const { 0: allocatedWei, 2: claimedWei } = await distribution.getTokenPoolSupplyData.call();
+      const circulatingSupply = await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber());
+      const inflatableBalance = await supply.getInflatableBalance();
+      assert.equal(allocatedWei.toString(10), totalEntitlementWei.toString());
+      assert.equal(claimedWei.toNumber(), totalEntitlementWei.muln(237).divn(8500).toNumber());
+      assert.equal(await (await supply.distributedExcludedSupplyWei()).toString(10), totalEntitlementWei.toString());
       await distribution.stop({from: GOVERNANCE_ADDRESS});
+      const distributableAmount = totalEntitlementWei.muln(237 * 3).divn(8500);
+      const { 0: allocatedWei2 } = await distribution.getTokenPoolSupplyData.call();
+      assert.equal(allocatedWei2.toString(10), distributableAmount.toString());
+      await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
+      const { 0: allocatedWei3 } = await distribution.getTokenPoolSupplyData.call();
+      const circulatingSupply2 = await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber());
+      const inflatableBalance2 = await supply.getInflatableBalance();
+      assert.equal(allocatedWei3.toString(10), distributableAmount.toString());
+      assert.equal(await (await supply.distributedExcludedSupplyWei()).toString(10), distributableAmount.toString());
+      assert.equal(circulatingSupply2.toNumber(), circulatingSupply.toNumber());
+      assert.equal(inflatableBalance2.toNumber(), inflatableBalance.toNumber());
 
       for (let i = 1; i <= 36; i++) {
         const currentMonth = await distribution.getCurrentMonth();
@@ -458,13 +476,13 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
         const cleanupBlockNumber = (await distribution.startBlockNumber(i)).toNumber() + 1;
         const cleanupBlockNumberWnat = wNatInterface.contract.methods.cleanupBlockNumber().encodeABI();
         await wNatMock.givenCalldataReturnUint(cleanupBlockNumberWnat, cleanupBlockNumber);
-
       }
+
       await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
       const monthToExpireNext4 = await distribution.getMonthToExpireNext();
       expect(monthToExpireNext4.toNumber()).to.equals(36);
-      expect((await distribution.totalBurnedWei()).toNumber()).to.equals(totalEntitlementWei.muln(237 * 3).divn(8500).toNumber());
-      expect((await distribution.totalDistributableAmount()).toNumber()).to.equals(totalEntitlementWei.muln(237 * 3).divn(8500).toNumber());
+      expect((await distribution.totalBurnedWei()).toNumber()).to.equals(distributableAmount.toNumber());
+      expect((await distribution.totalDistributableAmount()).toNumber()).to.equals(distributableAmount.toNumber());
     });
   });
 

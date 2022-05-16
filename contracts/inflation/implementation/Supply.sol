@@ -36,10 +36,9 @@ contract Supply is IISupply, Governed, AddressUpdatable {
 
     uint256 immutable public initialGenesisAmountWei;
     uint256 public totalInflationAuthorizedWei;
-    uint256 public totalFoundationSupplyWei;
-    // Amounts temporary locked and not considered in the inflatable supply
-    uint256 public totalLockedWei;
-    uint256 public distributedFoundationSupplyWei;
+    uint256 immutable public totalExcludedSupplyWei; // Foundation supply, distribution treasury, team escrow
+    uint256 public distributedExcludedSupplyWei;
+    uint256 public totalLockedWei; // Amounts temporary locked and not considered in the inflatable supply
 
     SupplyData[] public tokenPools;
 
@@ -62,7 +61,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         address _addressUpdater,
         address _burnAddress,
         uint256 _initialGenesisAmountWei,
-        uint256 _totalFoundationSupplyWei,
+        uint256 _totalExcludedSupplyWei,
         IITokenPool[] memory _tokenPools
     )
         Governed(_governance) AddressUpdatable(_addressUpdater)
@@ -70,9 +69,9 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         require(_initialGenesisAmountWei > 0, ERR_INITIAL_GENESIS_AMOUNT_ZERO);
         burnAddress = _burnAddress;
         initialGenesisAmountWei = _initialGenesisAmountWei;
-        totalFoundationSupplyWei = _totalFoundationSupplyWei;
+        totalExcludedSupplyWei = _totalExcludedSupplyWei;
 
-        _increaseCirculatingSupply(_initialGenesisAmountWei.sub(_totalFoundationSupplyWei));
+        _increaseCirculatingSupply(_initialGenesisAmountWei.sub(_totalExcludedSupplyWei));
 
         for (uint256 i = 0; i < _tokenPools.length; i++) {
             _addTokenPool(_tokenPools[i]);
@@ -116,27 +115,36 @@ contract Supply is IISupply, Governed, AddressUpdatable {
      * @notice Adds token pool so it can call updateTokenPoolDistributedAmount method when 
         some tokens are distributed
      * @param _tokenPool                            Token pool address
-     * @param _decreaseFoundationSupplyByAmountWei  If token pool was given initial supply from fundation supply, 
-        decrease it's value by this amount
+     * @param _increaseDistributedSupplyByAmountWei If token pool was given initial supply from excluded supply, 
+        increase distributed value by this amount
      */
     function addTokenPool(
         IITokenPool _tokenPool,
-        uint256 _decreaseFoundationSupplyByAmountWei
+        uint256 _increaseDistributedSupplyByAmountWei
     )
         external
         onlyGovernance
     {
-        _decreaseFoundationSupply(_decreaseFoundationSupplyByAmountWei);
+        _increaseDistributedSupply(_increaseDistributedSupplyByAmountWei);
         _addTokenPool(_tokenPool);
         _updateCirculatingSupply(burnAddress);
     }
 
     /**
-     * @notice Decrease foundation supply when foundation funds are released to a token pool or team members
+     * @notice Increase distributed supply when excluded funds are released to a token pool or team members
+     * @param _amountWei                            Amount to increase by
+     */
+    function increaseDistributedSupply(uint256 _amountWei) external onlyGovernance {
+        _increaseDistributedSupply(_amountWei);
+        _updateCirculatingSupply(burnAddress);
+    }
+
+    /**
+     * @notice Descrease distributed supply if excluded funds are no longer locked to a token pool
      * @param _amountWei                            Amount to decrease by
      */
-    function decreaseFoundationSupply(uint256 _amountWei) external onlyGovernance {
-        _decreaseFoundationSupply(_amountWei);
+    function decreaseDistributedSupply(uint256 _amountWei) external onlyGovernance {
+        _decreaseDistributedSupply(_amountWei);
         _updateCirculatingSupply(burnAddress);
     }
     
@@ -177,8 +185,8 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     function getInflatableBalance() external view override returns(uint256 _inflatableBalanceWei) {
         return initialGenesisAmountWei
             .add(totalInflationAuthorizedWei)
-            .add(distributedFoundationSupplyWei)
-            .sub(totalFoundationSupplyWei)
+            .add(distributedExcludedSupplyWei)
+            .sub(totalExcludedSupplyWei)
             .sub(totalLockedWei);
     }
 
@@ -220,11 +228,18 @@ contract Supply is IISupply, Governed, AddressUpdatable {
             totalInflationAuthorizedWei = totalInflationAuthorizedWei.add(dailyInflationAuthorizedWei);
 
             // updates circulating supply
-            uint256 lockChange = lockedFundsWei.sub(data.lockedFundsWei);
-            _decreaseCirculatingSupply(lockChange);
             uint256 claimChange = newTotalClaimedWei.sub(data.totalClaimedWei);
             _increaseCirculatingSupply(claimChange);
-            totalLockedWei = totalLockedWei.add(dailyInflationAuthorizedWei).add(lockChange).sub(claimChange);
+            if (lockedFundsWei >= data.lockedFundsWei) {
+                uint256 lockChange = lockedFundsWei - data.lockedFundsWei;
+                _decreaseCirculatingSupply(lockChange);
+                totalLockedWei = totalLockedWei.add(dailyInflationAuthorizedWei).add(lockChange).sub(claimChange);
+            } else {
+                uint256 lockChange = data.lockedFundsWei - lockedFundsWei;
+                _increaseCirculatingSupply(lockChange);
+                _decreaseDistributedSupply(lockChange);
+                totalLockedWei = totalLockedWei.add(dailyInflationAuthorizedWei).sub(lockChange).sub(claimChange);
+            }
 
             // update data
             data.lockedFundsWei = lockedFundsWei;
@@ -252,9 +267,15 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         tokenPools[len].tokenPool = _tokenPool;
     }
     
-    function _decreaseFoundationSupply(uint256 _amountWei) internal {
-        assert(totalFoundationSupplyWei.sub(distributedFoundationSupplyWei) >= _amountWei);
+    function _increaseDistributedSupply(uint256 _amountWei) internal {
+        assert(totalExcludedSupplyWei.sub(distributedExcludedSupplyWei) >= _amountWei);
         _increaseCirculatingSupply(_amountWei);
-        distributedFoundationSupplyWei = distributedFoundationSupplyWei.add(_amountWei);
+        distributedExcludedSupplyWei = distributedExcludedSupplyWei.add(_amountWei);
+    }
+
+    function _decreaseDistributedSupply(uint256 _amountWei) internal {
+        assert(distributedExcludedSupplyWei >= _amountWei);
+        _decreaseCirculatingSupply(_amountWei);
+        distributedExcludedSupplyWei = distributedExcludedSupplyWei.sub(_amountWei);
     }
 }

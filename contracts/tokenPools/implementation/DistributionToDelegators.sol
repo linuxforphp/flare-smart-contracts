@@ -206,7 +206,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         }
 
         // This is the total amount of tokens that are actually already in circulating supply
-        _lockedFundsWei = totalEntitlementWei;
+        _lockedFundsWei = stopped ? totalDistributableAmount : totalEntitlementWei;
         // We will never increase this balance since distribution funds are taken from genesis
         // amounts and not from inflation.
         _totalInflationAuthorizedWei = 0;

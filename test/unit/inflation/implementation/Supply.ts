@@ -202,31 +202,58 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
     });
 
-    it("Should decrease foundation supply", async() => {
-        await supply.decreaseFoundationSupply(500, {from: governanceAddress});
+    it("Should increase distributed supply", async() => {
+        await supply.increaseDistributedSupply(500, {from: governanceAddress});
         expect((await supply.getInflatableBalance()).toNumber()).to.equals((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber());
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 500);
     });
 
-    it("Should decrease foundation supply 2", async() => {
-        await supply.decreaseFoundationSupply(500, {from: governanceAddress});
+    it("Should increase distributed supply 2", async() => {
+        await supply.increaseDistributedSupply(500, {from: governanceAddress});
         expect((await supply.getInflatableBalance()).toNumber()).to.equals((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber());
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 500);
 
         // round 2
-        await supply.decreaseFoundationSupply(1000, {from: governanceAddress});
+        await supply.increaseDistributedSupply(1000, {from: governanceAddress});
         expect((await supply.getInflatableBalance()).toNumber()).to.equals((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber());
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 500 + 1000);
     });
 
-    it("Should revert decreasing foundation supply if not from governance", async() => {
-        await expectRevert(supply.decreaseFoundationSupply(500, {from: accounts[0]}), "only governance");
+    it("Should revert increasing distributed supply if not from governance", async() => {
+        await expectRevert(supply.increaseDistributedSupply(500, {from: accounts[0]}), "only governance");
     });
 
-    it("Should revert decreasing foundation supply if not enough founds", async() => {
-        await supply.decreaseFoundationSupply(500, {from: governanceAddress});
+    it("Should revert increasing distributed supply if not enough founds", async() => {
+        await supply.increaseDistributedSupply(500, {from: governanceAddress});
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 500);
 
-        await expectRevert.assertion(supply.decreaseFoundationSupply(totalFoundationSupplyWei, {from: governanceAddress}));
+        await expectRevert.assertion(supply.increaseDistributedSupply(totalFoundationSupplyWei, {from: governanceAddress}));
+    });
+
+    it("Should decrease distributed supply", async() => {
+        await supply.increaseDistributedSupply(5000, {from: governanceAddress});
+        await supply.decreaseDistributedSupply(500, {from: governanceAddress});
+        expect((await supply.getInflatableBalance()).toNumber()).to.equals((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber());
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 5000 - 500);
+    });
+
+    it("Should decrease distributed supply 2", async() => {
+        await supply.increaseDistributedSupply(5000, {from: governanceAddress});
+        await supply.decreaseDistributedSupply(500, {from: governanceAddress});
+        expect((await supply.getInflatableBalance()).toNumber()).to.equals((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber());
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 5000 - 500);
+
+        // round 2
+        await supply.decreaseDistributedSupply(1000, {from: governanceAddress});
+        expect((await supply.getInflatableBalance()).toNumber()).to.equals((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber());
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 5000 - 500 - 1000);
+    });
+
+    it("Should revert decreasing distributed supply if not from governance", async() => {
+        await expectRevert(supply.decreaseDistributedSupply(500, {from: accounts[0]}), "only governance");
+    });
+
+    it("Should revert decreasing distributed supply if not enough founds", async() => {
+        await expectRevert.assertion(supply.decreaseDistributedSupply(500, {from: governanceAddress}));
     });
 });

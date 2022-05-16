@@ -427,7 +427,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Supply contract - inflatable balance should not be updated ()
     initialGenesisAmountWei = await supply.initialGenesisAmountWei();
-    totalFoundationSupplyWei = await supply.totalFoundationSupplyWei();
+    totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
     const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
     assert(inflatableBalanceWei.eq(initialGenesisAmountWei.sub(totalFoundationSupplyWei)) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
