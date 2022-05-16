@@ -5,6 +5,7 @@ import "../../governance/implementation/Governed.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../userInterfaces/IDistribution.sol";
 import "../interface/IITokenPool.sol";
@@ -16,7 +17,7 @@ import "./DistributionTreasury.sol";
  * The remaining amount is distributed by this contract, with a set rate every 30 days
  * @notice The balance that will be added to this contract must initially be a part of circulating supply 
  **/
-contract Distribution is Governed, IDistribution, IITokenPool {
+contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     using SafeCast for uint256;
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -168,7 +169,7 @@ contract Distribution is Governed, IDistribution, IITokenPool {
      * @return _amountWei claimed wei
      */
     function claim(address payable _recipient) external override 
-        entitlementStarted mustBalance accountCanClaim(msg.sender) 
+        entitlementStarted mustBalance nonReentrant accountCanClaim(msg.sender) 
         returns(uint256 _amountWei) 
     {
         // Get the account
@@ -196,7 +197,7 @@ contract Distribution is Governed, IDistribution, IITokenPool {
      * @return _amountWei withdrawn opt-out wei
      * @param _targetAddress an address to withdraw funds to
      */
-    function withdrawOptOutWei(address _targetAddress) external onlyGovernance entitlementStarted mustBalance 
+    function withdrawOptOutWei(address payable _targetAddress) external onlyGovernance entitlementStarted mustBalance 
         returns(uint256 _amountWei) 
     {
         require(totalOptOutWei > 0, ERR_NO_BALANCE_CLAIMABLE);
@@ -207,7 +208,7 @@ contract Distribution is Governed, IDistribution, IITokenPool {
         // emit the event
         emit OptOutWeiWithdrawn();
         // Send Wei to address
-        payable(_targetAddress).transfer(_amountWei);
+        _targetAddress.transfer(_amountWei);
     }
 
     function getTokenPoolSupplyData() external override view 
