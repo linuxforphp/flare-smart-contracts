@@ -74,7 +74,6 @@ test-scdev-daemon:
     script:
         - yarn c
         - yarn hardhat test --network scdev test/scdev/system/FlareDaemon.ts
-        - yarn hardhat test --network scdev test/scdev/system/ValidatorRegistry.ts
 
 test-contract-unit-1:
     stage: test

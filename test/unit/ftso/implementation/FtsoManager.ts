@@ -69,6 +69,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
   let mockPriceSubmitter: MockContractInstance;
   let mockVoterWhitelister: MockContractInstance;
   let mockSupply: MockContractInstance;
+  let mockUpdateValidator: MockContractInstance;
 
   async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance) {
     const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
@@ -125,6 +126,12 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     mockSupply = await createMockSupplyContract(accounts[0], 10000);
 
+    mockUpdateValidator = await MockContract.new();
+    await mockUpdateValidator.givenMethodReturnUint(
+      web3.utils.sha3("updateActiveValidatorsTrigger()")!.slice(0,10),
+      0
+    );
+
     ftsoManager = await FtsoManager.new(
       accounts[0],
       accounts[0],
@@ -145,10 +152,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
       [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-      await ftsoRegistry.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
-        [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
-
+    await ftsoRegistry.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+      [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
   });
 
   describe("basic", async () => {
@@ -2539,6 +2545,50 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       assert.equal(tx.votepowerBlock, toBN(100));
       assert.equal(tx.startBlock, toBN(110));
       assert.equal(tx.startTimestamp, toBN(1634819978));
+    });
+
+    it("Should set the updateOnRewardEpochSwitchover iff it is set through governance", async() => {
+      await ftsoManager.setUpdateOnRewardEpochSwitchover(accounts[10], { from: accounts[0] });
+      let value = await ftsoManager.updateOnRewardEpochSwitchover();
+      expect(value).to.equal(accounts[10]);
+      let set = ftsoManager.setUpdateOnRewardEpochSwitchover(accounts[10], { from: accounts[1] });
+      await expectRevert(set, ERR_GOVERNANCE_ONLY);
+    }); 
+
+    it("Should trigger update active validators", async () => {
+      await cleanupBlockNumberManager.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
+
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize();
+      // Time travel 2 days
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + 172800);
+      // Act
+
+      // call updateActiveValidatorsTrigger on a contract without the method
+      await ftsoManager.setUpdateOnRewardEpochSwitchover(ftsoManager.address);
+      let tx1 = await ftsoManager.daemonize();
+      expectEvent(tx1, "UpdatingActiveValidatorsTriggerFailed");
+
+      const {
+        0: lastErrorBlock,
+        1: numErrors,
+        2: errorString,
+        3: errorContract,
+        4: totalDaemonizedErrors
+      } = await ftsoManager.showLastRevertedError();
+
+      assert.equal(lastErrorBlock[0].toNumber(), tx1.logs[0].blockNumber);
+      assert.equal(numErrors[0].toNumber(), 1);
+      assert.equal(errorString[0], "err calling updateActiveValidatorsTrigger");
+      assert.equal(errorContract[0], ftsoManager.address);
+      assert.equal(totalDaemonizedErrors.toNumber(), 1);
+
+      await ftsoManager.setUpdateOnRewardEpochSwitchover(mockUpdateValidator.address);
+      let tx2 = await ftsoManager.daemonize();
+      expectEvent.notEmitted(tx2, "UpdatingActiveValidatorsTriggerFailed");
     });
 
   });
