@@ -62,7 +62,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_FALLBACK_FINALIZE_FAIL = "err fallback finalize price epoch";
     string internal constant ERR_INIT_EPOCH_REVEAL_FAIL = "err init epoch for reveal";
     string internal constant ERR_FALLBACK_INIT_EPOCH_REVEAL_FAIL = "err fallback init epoch for reveal";
-    string internal constant ERR_UPDATE_REWARD_EPOCH_SWITCHOVER_CALL = "err calling updateActiveValidatorsTrigger";
+    string internal constant ERR_UPDATE_REWARD_EPOCH_SWITCHOVER_CALL = "err calling updateActiveValidators";
 
 
     bool public override active;
@@ -593,7 +593,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     function _rewardEpochSwitchoverTrigger() internal {
         if (address(updateOnRewardEpochSwitchover) != address(0)) {
             uint256 currentRewardEpoch = _getCurrentRewardEpochId();
-            try updateOnRewardEpochSwitchover.updateActiveValidatorsTrigger() {
+            try updateOnRewardEpochSwitchover.updateActiveValidators() {
             } catch Error(string memory message) {
                 emit UpdatingActiveValidatorsTriggerFailed(currentRewardEpoch);
                 addRevertError(address(updateOnRewardEpochSwitchover), message);

@@ -128,7 +128,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     mockUpdateValidator = await MockContract.new();
     await mockUpdateValidator.givenMethodReturnUint(
-      web3.utils.sha3("updateActiveValidatorsTrigger()")!.slice(0,10),
+      web3.utils.sha3("updateActiveValidators()")!.slice(0,10),
       0
     );
 
@@ -2567,7 +2567,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + 172800);
       // Act
 
-      // call updateActiveValidatorsTrigger on a contract without the method
+      // call updateActiveValidators on a contract without the method
       await ftsoManager.setUpdateOnRewardEpochSwitchover(ftsoManager.address);
       let tx1 = await ftsoManager.daemonize();
       expectEvent(tx1, "UpdatingActiveValidatorsTriggerFailed");
@@ -2582,7 +2582,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       assert.equal(lastErrorBlock[0].toNumber(), tx1.logs[0].blockNumber);
       assert.equal(numErrors[0].toNumber(), 1);
-      assert.equal(errorString[0], "err calling updateActiveValidatorsTrigger");
+      assert.equal(errorString[0], "err calling updateActiveValidators");
       assert.equal(errorContract[0], ftsoManager.address);
       assert.equal(totalDaemonizedErrors.toNumber(), 1);
 

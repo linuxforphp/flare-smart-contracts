@@ -5,5 +5,5 @@ interface IUpdateValidators {
     /**
     update the validators after reward epoch
      **/
-    function updateActiveValidatorsTrigger() external;
+    function updateActiveValidators() external;
 }

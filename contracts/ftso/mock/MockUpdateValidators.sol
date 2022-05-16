@@ -5,7 +5,7 @@ import "../../utils/interface/IUpdateValidators.sol";
 
 contract UpdateValidators is IUpdateValidators {
 
-    function updateActiveValidatorsTrigger() external override {
+    function updateActiveValidators() external override {
 
     }
 
