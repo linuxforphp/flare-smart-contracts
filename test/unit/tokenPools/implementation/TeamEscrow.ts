@@ -17,7 +17,7 @@ const BN = web3.utils.toBN;
 
 const TeamEscrow = artifacts.require("TeamEscrow");
 
-contract(`TeamEscrow.sol; ${getTestFile(__filename)}; Distribution unit tests`, async accounts => {
+contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, async accounts => {
   let escrow: TeamEscrowInstance;
   let claimants: string[] = [];
   const GOVERNANCE_ADDRESS = accounts[0];
@@ -328,10 +328,11 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; Distribution unit tests`, 
       // Inflatable supply should be increased by claimed amount (237)
       const inflatableSupplyAfterClaim = await supply.getInflatableBalance();
       assert.equal(inflatableSupplyAfterClaim.toNumber(), inflatableSupplyAfterLock2.toNumber() + 237);
-      // Locked amount should be decreased by claimed amount (237)
+      // Locked and claimed amount should be ok
       const calcLocked = await supply.totalLockedWei();
-      assert.equal(calcLocked.toNumber(), locked2.toNumber() + locked1.toNumber() - 237);
-
+      const calcClaimed = await supply.totalClaimedWei();
+      assert.equal(calcLocked.toNumber(), locked2.toNumber() + locked1.toNumber());
+      assert.equal(calcClaimed.toNumber(), 237);
 
       // Increase for another month
       await time.increaseTo(now.addn(86400 * 30 * 2));
