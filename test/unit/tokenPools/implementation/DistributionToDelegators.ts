@@ -6,6 +6,8 @@ const { sumGas, calcGasCost } = require('../../../utils/eth');
 import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
 import { GOVERNANCE_GENESIS_ADDRESS, PRICE_SUBMITTER_ADDRESS } from "../../../utils/constants";
 import { Contracts } from "../../../../deployment/scripts/Contracts";
+import { ethers, network } from "hardhat";
+import { Supply__factory } from "../../../../typechain";
 
 const BN = web3.utils.toBN;
 
@@ -167,6 +169,30 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       // Assert
       await expectRevert(stopPromise, ERR_ONLY_GOVERNANCE);
     });
+
+    it("Should only update once per block", async () => {
+      // signer for ethers (truffle does not work in automining mode)
+      const signer = await ethers.getSigner(INFLATION_ADDRESS);
+      const supplyEth = Supply__factory.connect(supply.address, signer);
+      // Assemble
+      await time.advanceBlock();
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      await time.increaseTo(start.addn(86400 * 8));
+      try {
+        // switch to manual mining
+        await network.provider.send('evm_setAutomine', [false]);
+        await network.provider.send("evm_setIntervalMining", [0]);
+        // Act
+        await supplyEth.updateCirculatingSupply();
+        await supplyEth.updateCirculatingSupply();
+        await network.provider.send('evm_mine');
+        // Assert
+        // cannot test that it was really called only once - check coverage html
+      } finally {
+        await network.provider.send('evm_setAutomine', [true]);
+      }
+    })
   });
 
   describe("Claiming", async () => {

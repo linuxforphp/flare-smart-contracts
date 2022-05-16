@@ -920,7 +920,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       } finally {
         await network.provider.send('evm_setAutomine', [true]);
       }
-    })
+    });
   });
 
   describe("gas limit", async () => {
