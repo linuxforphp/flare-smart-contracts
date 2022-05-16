@@ -22,7 +22,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
 
     struct SupplyData {
         IITokenPool tokenPool;
-        uint256 lockedFundsWei;
+        uint256 totalLockedWei;
         uint256 totalInflationAuthorizedWei;
         uint256 totalClaimedWei;
     }
@@ -35,10 +35,11 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     CheckPointHistoryCache.CacheState private circulatingSupplyWeiCache;
 
     uint256 immutable public initialGenesisAmountWei;
-    uint256 public totalInflationAuthorizedWei;
     uint256 immutable public totalExcludedSupplyWei; // Foundation supply, distribution treasury, team escrow
     uint256 public distributedExcludedSupplyWei;
     uint256 public totalLockedWei; // Amounts temporary locked and not considered in the inflatable supply
+    uint256 public totalInflationAuthorizedWei;
+    uint256 public totalClaimedWei;
 
     SupplyData[] public tokenPools;
 
@@ -144,7 +145,8 @@ contract Supply is IISupply, Governed, AddressUpdatable {
      * @param _amountWei                            Amount to decrease by
      */
     function decreaseDistributedSupply(uint256 _amountWei) external onlyGovernance {
-        _decreaseDistributedSupply(_amountWei);
+        distributedExcludedSupplyWei = distributedExcludedSupplyWei.sub(_amountWei);
+        _decreaseCirculatingSupply(_amountWei);
         _updateCirculatingSupply(burnAddress);
     }
     
@@ -179,14 +181,13 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     }
 
     /**
-     * @notice Get total inflatable balance (initial genesis amount + total authorized inflation - total locked amount)
+     * @notice Get total inflatable balance (initial genesis amount + total claimed - total excluded/locked amount)
      * @return _inflatableBalanceWei Return inflatable balance
     */
     function getInflatableBalance() external view override returns(uint256 _inflatableBalanceWei) {
         return initialGenesisAmountWei
-            .add(totalInflationAuthorizedWei)
-            .add(distributedExcludedSupplyWei)
-            .sub(totalExcludedSupplyWei)
+            .add(totalClaimedWei)
+            .sub(totalExcludedSupplyWei.sub(distributedExcludedSupplyWei))
             .sub(totalLockedWei);
     }
 
@@ -215,13 +216,13 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         for (uint256 i = 0; i < len; i++) {
             SupplyData storage data = tokenPools[i];
 
-            uint256 lockedFundsWei;
+            uint256 newTotalLockedWei;
             uint256 newTotalInflationAuthorizedWei;
             uint256 newTotalClaimedWei;
             
-            (lockedFundsWei, newTotalInflationAuthorizedWei, newTotalClaimedWei) = 
+            (newTotalLockedWei, newTotalInflationAuthorizedWei, newTotalClaimedWei) = 
                 data.tokenPool.getTokenPoolSupplyData();
-            assert(lockedFundsWei.add(newTotalInflationAuthorizedWei) >= newTotalClaimedWei);
+            assert(newTotalLockedWei.add(newTotalInflationAuthorizedWei) >= newTotalClaimedWei);
             
             // updates total inflation authorized with daily authorized inflation
             uint256 dailyInflationAuthorizedWei = newTotalInflationAuthorizedWei.sub(data.totalInflationAuthorizedWei);
@@ -230,19 +231,20 @@ contract Supply is IISupply, Governed, AddressUpdatable {
             // updates circulating supply
             uint256 claimChange = newTotalClaimedWei.sub(data.totalClaimedWei);
             _increaseCirculatingSupply(claimChange);
-            if (lockedFundsWei >= data.lockedFundsWei) {
-                uint256 lockChange = lockedFundsWei - data.lockedFundsWei;
+            totalClaimedWei = totalClaimedWei.add(claimChange);
+            if (newTotalLockedWei >= data.totalLockedWei) {
+                uint256 lockChange = newTotalLockedWei - data.totalLockedWei;
                 _decreaseCirculatingSupply(lockChange);
-                totalLockedWei = totalLockedWei.add(dailyInflationAuthorizedWei).add(lockChange).sub(claimChange);
+                totalLockedWei = totalLockedWei.add(lockChange);
             } else {
-                uint256 lockChange = data.lockedFundsWei - lockedFundsWei;
-                _increaseCirculatingSupply(lockChange);
-                _decreaseDistributedSupply(lockChange);
-                totalLockedWei = totalLockedWei.add(dailyInflationAuthorizedWei).sub(lockChange).sub(claimChange);
+                // if founds are unlocked, they are returned to excluded amount
+                uint256 lockChange = data.totalLockedWei - newTotalLockedWei;
+                distributedExcludedSupplyWei = distributedExcludedSupplyWei.sub(lockChange);
+                totalLockedWei = totalLockedWei.sub(lockChange);
             }
 
             // update data
-            data.lockedFundsWei = lockedFundsWei;
+            data.totalLockedWei = newTotalLockedWei;
             data.totalInflationAuthorizedWei = newTotalInflationAuthorizedWei;
             data.totalClaimedWei = newTotalClaimedWei;
         }
@@ -271,11 +273,5 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         assert(totalExcludedSupplyWei.sub(distributedExcludedSupplyWei) >= _amountWei);
         _increaseCirculatingSupply(_amountWei);
         distributedExcludedSupplyWei = distributedExcludedSupplyWei.add(_amountWei);
-    }
-
-    function _decreaseDistributedSupply(uint256 _amountWei) internal {
-        assert(distributedExcludedSupplyWei >= _amountWei);
-        _decreaseCirculatingSupply(_amountWei);
-        distributedExcludedSupplyWei = distributedExcludedSupplyWei.sub(_amountWei);
     }
 }
