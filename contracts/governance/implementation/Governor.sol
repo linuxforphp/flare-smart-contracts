@@ -7,7 +7,6 @@ import "./GovernorSettings.sol";
 import "./GovernorProposals.sol";
 import "./GovernorVotes.sol";
 import "./GovernorVotePower.sol";
-import "../../utils/implementation/Random.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/drafts/EIP712.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
@@ -25,14 +24,14 @@ abstract contract Governor is
     uint256 internal constant BIPS = 1e4;
 
     IIFtsoManager public ftsoManager;
-    IPriceSubmitter public priceSubmitter;
+    IPriceSubmitter public immutable priceSubmitter;
 
     /// @notice The EIP-712 typehash for the ballot struct used by the contract
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");
 
     /**
      * @notice Initializes the contract with default parameters
-     * @param _governance                  Address identifying the governance address
+     * @param _governance                   Address identifying the governance address
      * @param _priceSubmitter               Address identifying the price submitter contract
      * @param _addressUpdater               Address identifying the address updater contract
      * @param _proposalSettings             Array of proposal settings in the following order
@@ -85,7 +84,7 @@ abstract contract Governor is
     function getProposalInfo(
         uint256 _proposalId
     )
-        external view 
+        external view override
         returns (
             address _proposer,
             uint256 _votePowerBlock,
@@ -118,7 +117,7 @@ abstract contract Governor is
     function getProposalVP(
         uint256 _proposalId
     )
-        external view 
+        external view override
         returns (
             uint256 _totalVP,
             uint256 _for,
@@ -128,7 +127,7 @@ abstract contract Governor is
     {
         ProposalVoting storage voting = proposalVotings[_proposalId];
         Proposal storage proposal = proposals[_proposalId];
-        _totalVP = totalVotePowerAt(proposal.votePowerBlock);
+        _totalVP = proposal.totalVP;
         _for = voting.forVotePower;
         _against = voting.againstVotePower;
         _abstain = voting.abstainVotePower;
@@ -140,7 +139,7 @@ abstract contract Governor is
      * @param _voter                Address of the voter
      * @return True if the voter has cast a vote on the proposal, and false otherwise
      */
-    function hasVoted(uint256 _proposalId, address _voter) external view returns (bool) {
+    function hasVoted(uint256 _proposalId, address _voter) external view override returns (bool) {
         return proposalVotings[_proposalId].hasVoted[_voter];
     }
 
@@ -330,11 +329,8 @@ abstract contract Governor is
             _description,
             votePowerBlock,
             rewardEpochTimestamp,
-            getVotePowerLifeTimeDays(),
-            votingDelay(),
-            votingPeriod(),
-            executionDelay(),
-            executionPeriod()
+            this,
+            totalVotePowerAt(votePowerBlock)
         );
 
         _storeProposalSettings(proposalId);
@@ -364,7 +360,6 @@ abstract contract Governor is
         IIFtsoManager.RewardEpochData memory rewardEpochData = 
             ftsoManager.getRewardEpochData(rewardEpochId);
 
-        uint256 epochTimestamp = rewardEpochData.startTimestamp;
         uint256 nowBlockNumber = block.number;
         uint256 vpBlockPeriodSeconds = getVpBlockPeriodSeconds();
         uint256 cleanupBlock = votePower.getCleanupBlockNumber();
@@ -390,10 +385,8 @@ abstract contract Governor is
 
         //slither-disable-next-line weak-prng
         uint256 random = keccakRandom % (nowBlockNumber - epochBlockNumber);
-
-        nowBlockNumber -= random;
         
-        return (nowBlockNumber, epochTimestamp);
+        return (nowBlockNumber - random, rewardEpochData.startTimestamp);
     }
 
     /**
@@ -410,7 +403,7 @@ abstract contract Governor is
         string memory _reason
     ) internal returns (uint256) {
         Proposal storage proposal = proposals[_proposalId];
-        require(state(_proposalId) == ProposalState.Active, "proposal not active");
+        require(_state(_proposalId, proposal) == ProposalState.Active, "proposal not active");
 
         uint256 votePower = votePowerOfAt(_voter, proposal.votePowerBlock);
         _storeVote(_proposalId, _voter, _support, votePower);
@@ -434,7 +427,7 @@ abstract contract Governor is
         bytes[] memory _calldatas,
         bytes32 _descriptionHash
     ) internal returns (uint256 proposalId) {
-        proposalId = getProposalId(_targets, _values, _calldatas, _descriptionHash);
+        proposalId = _getProposalId(_targets, _values, _calldatas, _descriptionHash);
         Proposal storage proposal = proposals[proposalId];
 
         require(!proposal.executed, "proposal already executed");
@@ -499,7 +492,7 @@ abstract contract Governor is
             return ProposalState.Active;
         }
 
-        if (_proposalSucceeded(_proposalId, _proposal.votePowerBlock)) {
+        if (_proposalSucceeded(_proposalId, _proposal.totalVP)) {
             if (!_proposal.executableOnChain) {
                 return ProposalState.Queued;
             }
@@ -518,10 +511,10 @@ abstract contract Governor is
     /**
      * @notice Determines if a proposal has been successful
      * @param _proposalId           Id of the proposal
-     * @param _votePowerBlock       Proposal vote power block
+     * @param _proposalTotalVP      Total vote power of the proposal
      * @return True if proposal succeeded and false otherwise
      */
-    function _proposalSucceeded(uint256 _proposalId, uint256 _votePowerBlock) internal view virtual returns (bool);
+    function _proposalSucceeded(uint256 _proposalId, uint256 _proposalTotalVP) internal view virtual returns (bool);
 
     /**
      * @notice Returns the name of the governor contract

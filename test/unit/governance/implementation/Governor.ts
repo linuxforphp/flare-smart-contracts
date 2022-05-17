@@ -859,9 +859,9 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
       });
 
       it("Should revert if vote power block and end of voting period are too far apart", async () => {
-        const thirtyDays = 30 * 24 * 60 * 60;
-        // change voting period length to 30 days
-        await governorReject.setVotingPeriod(thirtyDays);
+        const twentyEightDays = 28 * 24 * 60 * 60;
+        // change voting period length to 28 days
+        await governorReject.setVotingPeriod(twentyEightDays);
 
         // propose
         let propose = governorReject.methods["propose(string)"].sendTransaction("Proposal", { from: accounts[2] }) as any;
@@ -930,6 +930,11 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
         // should not be able to execute
         let execute2 = governorReject.methods["execute(string)"].sendTransaction("Proposal2", { from: accounts[2] }) as any;
         await expectRevert(execute2, "proposal not in execution state");
+      });
+
+      it("Should revert if proposal with some proposal id doesn't exists", async() => {
+        let tx = governorReject.state(123);
+        await expectRevert(tx, "unknown proposal id")
       });
 
     });
