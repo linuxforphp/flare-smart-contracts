@@ -2,6 +2,8 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
+import "./GovernorSettings.sol";
+
 abstract contract GovernorProposals {
 
     /**
@@ -16,11 +18,7 @@ abstract contract GovernorProposals {
         uint256 execEndTime;        // end time of execution window (in seconds from epoch)
         bool executableOnChain;     // flag indicating if proposal is executable on chain (via execution parameters)
         bool executed;              // flag indicating if proposal has been executed
-    }
-
-    struct ProposalParams {
-        uint256 proposalId;
-        uint256 diffSeconds;
+        uint256 totalVP;            // total vote power at votePowerBlock
     }
 
     uint256 internal nextExecutionStartTime;            // first available time for next proposal execution
@@ -34,10 +32,9 @@ abstract contract GovernorProposals {
      * @param _calldatas            Array of call data to be invoked
      * @param _description          String description of the proposal
      * @param _votePowerBlock       Block number used for identifying vote power
-     * @param _votingDelay          Duration from proposal submission to voting (in seconds)
-     * @param _votingPeriod         Duration of voting (in seconds)
-     * @param _executionDelay       Duration from end of voting to execution (in seconds)
-     * @param _executionPeriod      Duration of of execution window (in seconds)
+     * @param _minVPBlockTimestamp  Timestamp of a minimal vote power block
+     * @param _settings             Address identifying the governance settings address
+     * @param _totalVP              Total vote power at vote power block
      * @return Proposal id and proposal object
      */
     function _storeProposal(
@@ -47,40 +44,37 @@ abstract contract GovernorProposals {
         bytes[] memory _calldatas,
         string memory _description,
         uint256 _votePowerBlock,
-        uint256 _rewardEpochEndTime,
-        uint256 _votePowerLifeTimeDays,
-        uint256 _votingDelay,
-        uint256 _votingPeriod,
-        uint256 _executionDelay,
-        uint256 _executionPeriod
+        uint256 _minVPBlockTimestamp,
+        GovernorSettings _settings,
+        uint256 _totalVP
     ) internal returns (uint256, Proposal storage) {
-        ProposalParams memory proposalParams;
         require(_targets.length == _values.length, "invalid proposal length");
         require(_targets.length == _calldatas.length, "invalid proposal length");
-        proposalParams.proposalId = _getProposalId(_targets, _values, _calldatas, _getDescriptionHash(_description));
+        uint256 proposalId = _getProposalId(_targets, _values, _calldatas, _getDescriptionHash(_description));
         
-        Proposal storage proposal = proposals[proposalParams.proposalId];
+        Proposal storage proposal = proposals[proposalId];
         require(proposal.voteStartTime == 0, "proposal already exists");
         
         proposal.proposer = _proposer;
         proposal.votePowerBlock = _votePowerBlock;
-        proposal.voteStartTime = block.timestamp + _votingDelay;
-        proposal.voteEndTime = proposal.voteStartTime + _votingPeriod;
-        proposalParams.diffSeconds = proposal.voteEndTime - _rewardEpochEndTime;
-        require(proposalParams.diffSeconds < (_votePowerLifeTimeDays * 60 * 60 * 24),
+        proposal.voteStartTime = block.timestamp + _settings.votingDelay();
+        proposal.voteEndTime = proposal.voteStartTime + _settings.votingPeriod();
+        require(proposal.voteEndTime - _minVPBlockTimestamp < (_settings.getVotePowerLifeTimeDays() * 60 * 60 * 24),
             "vote power block is too far in the past");
 
-        proposal.executableOnChain = _targets.length > 0;
-        if (proposal.executableOnChain) {
-            proposal.execStartTime = proposal.voteEndTime + _executionDelay;
+        if (_targets.length > 0) {
+            proposal.executableOnChain = true;
+            proposal.execStartTime = proposal.voteEndTime + _settings.executionDelay();
             if (proposal.execStartTime < nextExecutionStartTime) {
                 proposal.execStartTime = nextExecutionStartTime;
             }
-            proposal.execEndTime = proposal.execStartTime + _executionPeriod;
+            proposal.execEndTime = proposal.execStartTime + _settings.executionPeriod();
             nextExecutionStartTime = proposal.execEndTime;
         }
 
-        return (proposalParams.proposalId, proposal);
+        proposal.totalVP = _totalVP;
+
+        return (proposalId, proposal);
     }
 
     /**
