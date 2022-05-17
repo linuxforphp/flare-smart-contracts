@@ -10,7 +10,7 @@ contract GovernorAccept is Governor, GovernorAcceptSettings {
 
     using SafePct for uint256;
 
-    mapping(uint256 => ProposalSettings) internal proposalsSettings;
+    mapping(uint256 => ProposalSettings) public proposalsSettings;
 
     /**
      * @notice Initializes the contract with default parameters
@@ -77,22 +77,19 @@ contract GovernorAccept is Governor, GovernorAcceptSettings {
     /**
      * @notice Determines if a proposal has been successful
      * @param _proposalId           Id of the proposal
-     * @param _votePowerBlock       Proposal vote power block
+     * @param _proposalTotalVP      Total vote power of the proposal
      * @return True if proposal succeeded and false otherwise
      */
-    function _proposalSucceeded(uint256 _proposalId, uint256 _votePowerBlock) internal view override returns (bool) {
-        uint256 totalVotePower = totalVotePowerAt(_votePowerBlock);
-
+    function _proposalSucceeded(uint256 _proposalId, uint256 _proposalTotalVP) internal view override returns (bool) {
         ProposalVoting storage voting = proposalVotings[_proposalId];
-
         ProposalSettings storage proposalSettings = proposalsSettings[_proposalId];
 
         if (voting.abstainVotePower + voting.againstVotePower + voting.forVotePower <
-            proposalSettings.quorumThreshold.mulDiv(totalVotePower, BIPS)) {
+            proposalSettings.quorumThreshold.mulDiv(_proposalTotalVP, BIPS)) {
             return false;
         }
 
-        if (voting.forVotePower < proposalSettings.acceptanceThreshold.mulDiv(totalVotePower, BIPS)) {
+        if (voting.forVotePower < proposalSettings.acceptanceThreshold.mulDiv(_proposalTotalVP, BIPS)) {
             return false;
         }
 

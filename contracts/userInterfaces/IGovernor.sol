@@ -167,4 +167,58 @@ interface IGovernor {
      * @dev Required for compatibility with Tally (OpenZeppelin style)
      */
     function quorum(uint256 _blockNumber) external view returns (uint256);
+
+    /**
+     * @notice Returns information if a voter has cast a vote on a specific proposal
+     * @param _proposalId           Id of the proposal
+     * @param _voter                Address of the voter
+     * @return True if the voter has cast a vote on the proposal, and false otherwise
+     */
+    function hasVoted(uint256 _proposalId, address _voter) external view returns (bool);
+
+     /**
+     * @notice Returns information of the specified proposal
+     * @param _proposalId           Id of the proposal
+     * @return _proposer            Address of the proposal submitter
+     * @return _votePowerBlock      Block number used to determine the vote powers in voting process
+     * @return _voteStartTime       Start time (in seconds from epoch) of the proposal voting
+     * @return _voteEndTime         End time (in seconds from epoch) of the proposal voting
+     * @return _execStartTime       Start time (in seconds from epoch) of the proposal execution window
+     * @return _execEndTime         End time (in seconds from epoch) of the proposal exectuion window
+     * @return _executed            Flag indicating if proposal has been executed
+     */
+    function getProposalInfo(
+        uint256 _proposalId
+    )
+        external view 
+        returns (
+            address _proposer,
+            uint256 _votePowerBlock,
+            uint256 _voteStartTime,
+            uint256 _voteEndTime,
+            uint256 _execStartTime,
+            uint256 _execEndTime,
+            bool _executed
+        );
+
+
+    /**
+     * @notice Returns vote power (for, against, abstain) of the specified proposal 
+                and total vote power at the vote power block
+     * @param _proposalId       Id of the proposal
+     * @return _totalVP         Total vote power at the vote power block
+     * @return _for             Accumulated vote power for the proposal
+     * @return _against         Accumulated vote power against the proposal
+     * @return _abstain         Accumulated vote power abstained from voting
+     */
+    function getProposalVP(
+        uint256 _proposalId
+    )
+        external view 
+        returns (
+            uint256 _totalVP,
+            uint256 _for,
+            uint256 _against,
+            uint256 _abstain
+        );
 }
