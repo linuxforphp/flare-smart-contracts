@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
@@ -64,6 +64,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const VoterWhitelister: VoterWhitelisterContract = artifacts.require("VoterWhitelister");
   const WNat: WNatContract = artifacts.require("WNat");
   const Distribution: DistributionContract = artifacts.require("Distribution");
+  const DistributionTreasury: DistributionTreasuryContract = artifacts.require("DistributionTreasury");
+  const TeamEscrow: TeamEscrowContract = artifacts.require("TeamEscrow");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -131,7 +133,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   try {
     await priceSubmitter.initialiseFixedAddress();
   } catch (e) {
-    console.error(`priceSubmitter.initializeChains() failed. Ignore if redeploy. Error = ${e}`);
+    console.error(`priceSubmitter.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
   }
 
   // Assigning governance to deployer
@@ -140,6 +142,30 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   await priceSubmitter.claimGovernance({ from: deployerAccount.address })
 
   spewNewContractInfo(contracts, addressUpdaterContracts, PriceSubmitter.contractName, "PriceSubmitter.sol", priceSubmitter.address, quiet);
+
+  // Initialize the distribution treasury
+  let distributionTreasury: DistributionTreasuryInstance;
+  try {
+    distributionTreasury = await DistributionTreasury.at(parameters.distributionTreasuryAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("DistributionTreasury not in genesis...creating new.")
+    }
+    distributionTreasury = await DistributionTreasury.new();
+  }
+  // This has to be done always
+  try {
+    await distributionTreasury.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`distributionTreasury.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
+  // Assigning governance to deployer
+  let distributionTreasuryGovernance = await distributionTreasury.governance();
+  await distributionTreasury.proposeGovernance(deployerAccount.address, { from: distributionTreasuryGovernance });
+  await distributionTreasury.claimGovernance({ from: deployerAccount.address })
+  
+  spewNewContractInfo(contracts, addressUpdaterContracts, DistributionTreasury.contractName, `DistributionTreasury.sol`, distributionTreasury.address, quiet);
 
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);
@@ -197,6 +223,9 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
+  // Team escrow contract
+  const teamEscrow = await TeamEscrow.new(deployerAccount.address, 0);
+
   // Inflation allocation needs to know about reward managers
   let receiversAddresses = []
   for (let a of parameters.inflationReceivers) {
@@ -206,6 +235,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Supply contract needs to know about reward managers
   await supply.addTokenPool(ftsoRewardManager.address, 0);
+  await supply.addTokenPool(teamEscrow.address, 0);
 
   // setup topup factors on inflation receivers
   for (let i = 0; i < receiversAddresses.length; i++) {
@@ -222,7 +252,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Distribution Contract
   if (parameters.deployDistributionContract) {
-    const distribution = await Distribution.new(deployerAccount.address);
+    const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address);
     spewNewContractInfo(contracts, addressUpdaterContracts, Distribution.contractName, `Distribution.sol`, distribution.address, quiet);
   }
 

@@ -11,7 +11,6 @@ import {
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
 import { encodeContractNames, toBN } from "../../../utils/test-helpers";
-import { boolean } from "hardhat/internal/core/params/argumentTypes";
 import { Contracts } from "../../../../deployment/scripts/Contracts";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
@@ -68,7 +67,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
   const supply = 1000000;
   const inflationBips = 1000;
   const inflationFactor = inflationBips / 10000;
-  const inflationForAnnum = supply * inflationFactor;
+  const inflationForAnnum = Math.floor(supply * inflationFactor / 12);
   let inflationAllocation: InflationAllocationInstance;
 
   function isLeapYear(year: number) {
@@ -195,17 +194,14 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Assert
       const {
         0: recognizedInflationWei,
-        1: daysInAnnum,
-        2: startTimeStamp,
-        3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        1: startTimeStamp,
+        2: endTimeStamp } = await inflation.getCurrentAnnum() as any;
       assert.equal(recognizedInflationWei, inflationForAnnum);
-      assert.equal(daysInAnnum, 365);
       assert.equal(startTimeStamp, nowTs.toNumber());
-      assert.equal(endTimeStamp, nowTs.addn((365 * 86400) - 1).toNumber());
+      assert.equal(endTimeStamp, nowTs.addn((30 * 86400) - 1).toNumber());
 
       //const inflatableBalanceWei = await mockSupply.getInflatableBalance();
       await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, {
-        daysInAnnum: newAnnum.daysInAnnum,
         startTimeStamp: newAnnum.startTimeStamp,
         endTimeStamp: newAnnum.endTimeStamp,
         inflatableSupplyWei: toBN(supply),
@@ -225,8 +221,8 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Assemble
       await mockFlareDaemon.trigger();
       const nowTs = await time.latest() as BN;
-      // A year passes...
-      await time.increaseTo(nowTs.addn((365 * 86400)));
+      // A month passes...
+      await time.increaseTo(nowTs.addn((30 * 86400)));
       // Act
       const response = await mockFlareDaemon.trigger();
       const newAnnum = await inflation.getCurrentAnnum();
@@ -237,7 +233,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
 
       //const inflatableBalanceWei = await mockSupply.getInflatableBalance();
       await expectEvent.inTransaction(response.tx, inflation, ANNUM_INITIALIZED_EVENT, {
-        daysInAnnum: newAnnum.daysInAnnum,
         startTimeStamp: newAnnum.startTimeStamp,
         endTimeStamp: newAnnum.endTimeStamp,
         inflatableSupplyWei: toBN(supply),
@@ -276,7 +271,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       }
     });
 
-    it("Counting annum length in non leap year", async () => {
+    it("Counting annum length", async () => {
       // Assemble
       await time.advanceBlock();
       const nowTs = await time.latest() as BN;
@@ -289,14 +284,11 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       await time.increaseTo(timestampTest);
       await mockFlareDaemon.trigger();
       const {
-        1: daysInAnnum,
-        2: startTimeStamp,
-        3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        1: startTimeStamp,
+        2: endTimeStamp } = await inflation.getCurrentAnnum() as any;
       // Assert
-      // Check that daysInAnnum parameter is working correctly
-      assert.equal(daysInAnnum, 365);
-      // Check that start and end timestamp are actually 365 days appart -1 sec as designed
-      assert.equal(endTimeStamp - startTimeStamp, 365 * 24 * 60 * 60 - 1);
+      // Check that start and end timestamp are actually 30 days appart -1 sec as designed
+      assert.equal(endTimeStamp - startTimeStamp, 30 * 24 * 60 * 60 - 1);
     });
 
     it("Counting annum length starting from date not in leap year " +
@@ -310,12 +302,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await time.increaseTo(timestampTest);
         await mockFlareDaemon.trigger();
         const {
-          1: daysInAnnum,
-          2: startTimeStamp,
-          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+          1: startTimeStamp,
+          2: endTimeStamp } = await inflation.getCurrentAnnum() as any;
         // Assert
-        assert.equal(daysInAnnum, 366);
-        assert.equal(endTimeStamp - startTimeStamp, 366 * 24 * 60 * 60 - 1);
+        assert.equal(endTimeStamp - startTimeStamp, 30 * 24 * 60 * 60 - 1);
       });
 
     it("Counting annum length starting on 28/2 not in leap year " +
@@ -329,12 +319,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await time.increaseTo(timestampTest);
         await mockFlareDaemon.trigger();
         const {
-          1: daysInAnnum,
-          2: startTimeStamp,
-          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+          1: startTimeStamp,
+          2: endTimeStamp } = await inflation.getCurrentAnnum() as any;
         // Assert
-        assert.equal(daysInAnnum, 365);
-        assert.equal(endTimeStamp - startTimeStamp, 365 * 24 * 60 * 60 - 1);
+        assert.equal(endTimeStamp - startTimeStamp, 30 * 24 * 60 * 60 - 1);
       });
 
     it("Counting annum length starting from date in leap year " +
@@ -348,12 +336,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         await time.increaseTo(timestampTest);
         await mockFlareDaemon.trigger();
         const {
-          1: daysInAnnum,
-          2: startTimeStamp,
-          3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+          1: startTimeStamp,
+          2: endTimeStamp } = await inflation.getCurrentAnnum() as any;
         // Assert
-        assert.equal(daysInAnnum, 365);
-        assert.equal(endTimeStamp - startTimeStamp, 365 * 24 * 60 * 60 - 1);
+        assert.equal(endTimeStamp - startTimeStamp, 30 * 24 * 60 * 60 - 1);
       });
 
     it("Counting annum length starting on 29/2 in a leap year", async () => {
@@ -366,12 +352,10 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       await time.increaseTo(timestampTest);
       await mockFlareDaemon.trigger();
       const {
-        1: daysInAnnum,
-        2: startTimeStamp,
-        3: endTimeStamp } = await inflation.getCurrentAnnum() as any;
+        1: startTimeStamp,
+        2: endTimeStamp } = await inflation.getCurrentAnnum() as any;
       // Assert
-      assert.equal(daysInAnnum, 365);
-      assert.equal(endTimeStamp - startTimeStamp, 365 * 24 * 60 * 60 - 1);
+      assert.equal(endTimeStamp - startTimeStamp, 30 * 24 * 60 * 60 - 1);
     });
   });
 
@@ -398,7 +382,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       const response = await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 30);
       const { 0: actualAuthorizedInflation } = await inflation.getTotals();
       assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
       await expectEvent.inTransaction(response.tx, inflation, INFLATIONAUTHORIZED_EVENT, { amountWei: expectedAuthorizedInflation.toString() });
@@ -418,12 +402,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 30);
       const { 0: actualAuthorizedInflation } = await inflation.getTotals();
       // Check authorized inflation across annums (only 1 annum tho)
       assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check authorized inflation total for current annum
       assert.equal(rewardServicesState.totalAuthorizedInflationWei, expectedAuthorizedInflation);
       // Check authorized inflation for first reward service
@@ -446,12 +430,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 30);
       const { 0: actualAuthorizedInflation } = await inflation.getTotals();
       // Check authorized inflation across annums (only 1 annum tho)
       assert.equal(actualAuthorizedInflation.toNumber(), expectedAuthorizedInflation);
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check authorized inflation total for current annum
       assert.equal(rewardServicesState.totalAuthorizedInflationWei, expectedAuthorizedInflation);
       // Check authorized inflation for first reward service
@@ -479,8 +463,8 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
-      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
+      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 30);
+      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 29);
       const expectedAuthorizedInflation = expectedAuthorizedInflationCycle1 + expectedAuthorizedInflationCycle2;
       const { 0: actualAuthorizedInflation } = await inflation.getTotals();
       // Check authorized inflation across annums (only 1 annum tho)
@@ -493,7 +477,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
         expectedAuthorizedInflation -
         expectedAuthorizedInflationCycle2Service1;
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check authorized inflation total for current annum
       assert.equal(rewardServicesState.totalAuthorizedInflationWei, expectedAuthorizedInflation);
       // Check authorized inflation for first reward service
@@ -515,7 +499,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 30);
       const setDailyAuthorizedInflation = mockInflationReceiverInterface.contract.methods.setDailyAuthorizedInflation(expectedAuthorizedInflation).encodeABI();
       const invocationCount = await rewardingServiceContract.invocationCountForCalldata.call(setDailyAuthorizedInflation);
       assert.equal(invocationCount.toNumber(), 1);
@@ -608,12 +592,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       const response = await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 30);
       // This should cap at one days authorization...not the factor
       const expectedTopupService0 = Math.floor(expectedAuthorizedInflation * 0.3);
       const expectedTopupService1 = expectedAuthorizedInflation - expectedTopupService0;
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService0);
       await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICETOPUPCOMPUTED_EVENT, { inflationReceiver: inflationReceiver0.address, amountWei: expectedTopupService0.toString() });
@@ -640,14 +624,14 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
-      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
+      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 30);
+      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 29);
       const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 0.3);
       const expectedAuthorizedInflationCycle2Service2 = expectedAuthorizedInflationCycle2 - expectedAuthorizedInflationCycle2Service1;
       const expectedTopupService1 = Math.floor(expectedAuthorizedInflationCycle2Service1 * 1.2);
       const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 1.2);
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService1);
       // Check topup inflation for the second reward service
@@ -675,14 +659,14 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
-      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
+      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 30);
+      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 29);
       const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 0.3);
       const expectedAuthorizedInflationCycle2Service2 = expectedAuthorizedInflationCycle2 - expectedAuthorizedInflationCycle2Service1;
       const expectedTopupService1 = Math.floor(expectedAuthorizedInflationCycle2Service1 * 1.2);
       const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 1.1);
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService1);
       // Check topup inflation for the second reward service
@@ -711,14 +695,14 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 365);
-      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 364);
-      const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 0.2);
+      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 30);
+      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 29);
+      const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 2000 / 10000);
       const expectedAuthorizedInflationCycle2Service2 = expectedAuthorizedInflationCycle2 - expectedAuthorizedInflationCycle2Service1;
       const expectedTopupService1 = Math.floor(expectedAuthorizedInflationCycle2Service1 * 2);
-      const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 1.4);
+      const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 140 / 100);
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(rewardServicesState.rewardServices[0].inflationTopupRequestedWei, expectedTopupService1);
       // Check topup inflation for the second reward service
@@ -747,7 +731,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       await mockFlareDaemon.trigger();
       // Assert
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(
         rewardServicesState.rewardServices[0].inflationTopupRequestedWei,
@@ -805,7 +789,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.trigger();
       // Assert
-      const expectedRequestedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedRequestedInflation = Math.floor(inflationForAnnum / 30);
       const requestMinting = mockFlareDaemonInterface.contract.methods.requestMinting(expectedRequestedInflation).encodeABI();
       const invocationCount = await mockFlareDaemon.invocationCountForCalldata.call(requestMinting);
       assert.equal(invocationCount.toNumber(), 1);
@@ -829,11 +813,11 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       const response = await mockFlareDaemon.callReceiveMinting(inflation.address, { value: toMint });
       // Assert
-      const expectedReceivedInflation = Math.floor(inflationForAnnum / 365);
+      const expectedReceivedInflation = Math.floor(inflationForAnnum / 30);
       // This should cap at one days authorization...not the factor
       const expectedTopupService0 = Math.floor(expectedReceivedInflation * 0.3);
       const expectedTopupService1 = expectedReceivedInflation - expectedTopupService0;
-      const { 4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+      const { 3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(rewardServicesState.rewardServices[0].inflationTopupReceivedWei, expectedTopupService0);
       await expectEvent.inTransaction(response.tx, inflation, REWARDSERVICETOPUPREQUESTRECEIVED_EVENT, { inflationReceiver: inflationReceiver0.address, amountWei: expectedTopupService0.toString() });
@@ -904,12 +888,12 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       // Act
       await mockFlareDaemon.callReceiveMinting(inflation.address, { value: toMint });
       // Assert
-      const expectedInflationFunded = Math.floor(inflationForAnnum / 365);
+      const expectedInflationFunded = Math.floor(inflationForAnnum / 30);
       // This should cap at one days authorization...not the factor
       const expectedTopupService0 = Math.floor(expectedInflationFunded * 0.3);
       const expectedTopupService1 = expectedInflationFunded - expectedTopupService0;
       const {
-        4: rewardServicesState } = await inflation.getCurrentAnnum() as any;
+        3: rewardServicesState } = await inflation.getCurrentAnnum() as any;
       // Check topup inflation for first reward service
       assert.equal(rewardServicesState.rewardServices[0].inflationTopupWithdrawnWei, expectedTopupService0);
       // Check topup inflation for the second reward service

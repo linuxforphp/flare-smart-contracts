@@ -17,7 +17,7 @@ import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../utils/implementation/RevertErrorTracking.sol";
 import "../../utils/interface/IIFtsoRegistry.sol";
 import "../../utils/interface/IIVoterWhitelister.sol";
-
+import "../../utils/interface/IUpdateValidators.sol";
 
 
 /**
@@ -62,6 +62,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_FALLBACK_FINALIZE_FAIL = "err fallback finalize price epoch";
     string internal constant ERR_INIT_EPOCH_REVEAL_FAIL = "err init epoch for reveal";
     string internal constant ERR_FALLBACK_INIT_EPOCH_REVEAL_FAIL = "err fallback init epoch for reveal";
+    string internal constant ERR_UPDATE_REWARD_EPOCH_SWITCHOVER_CALL = "err calling updateActiveValidators";
+
 
     bool public override active;
     mapping(uint256 => RewardEpochData) internal rewardEpochsMapping;
@@ -96,6 +98,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     IIVoterWhitelister public voterWhitelister;
     IISupply public supply;
     CleanupBlockNumberManager public cleanupBlockNumberManager;
+    IUpdateValidators public updateOnRewardEpochSwitchover;
 
     // fallback mode
     bool internal fallbackMode; // all ftsos in fallback mode
@@ -200,6 +203,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                 _finalizeRewardEpoch();
                 _closeExpiredRewardEpochs();
                 _cleanupOnRewardEpochFinalization();
+                _rewardEpochSwitchoverTrigger();
             } else if (lastUnprocessedPriceEpochRevealEnds <= block.timestamp) {
                 // new price epoch can be initialized after previous was finalized 
                 // and after new reward epoch was started (if needed)
@@ -402,6 +406,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
     }
 
+    function setUpdateOnRewardEpochSwitchover(IUpdateValidators _updateValidators) external onlyGovernance {
+        updateOnRewardEpochSwitchover = _updateValidators;
+    }
+
     function setVotePowerIntervalFraction(uint256 _votePowerIntervalFraction) external onlyGovernance {
         require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
         votePowerIntervalFraction = _votePowerIntervalFraction;
@@ -580,6 +588,20 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     function getRewardEpochData(uint256 _rewardEpochId) public view override returns (RewardEpochData memory) {
         require(_rewardEpochId < rewardEpochsLength, ERR_REWARD_EPOCH_NOT_INITIALIZED);
         return _getRewardEpoch(_rewardEpochId);
+    }
+
+    function _rewardEpochSwitchoverTrigger() internal {
+        if (address(updateOnRewardEpochSwitchover) != address(0)) {
+            uint256 currentRewardEpoch = _getCurrentRewardEpochId();
+            try updateOnRewardEpochSwitchover.updateActiveValidators() {
+            } catch Error(string memory message) {
+                emit UpdatingActiveValidatorsTriggerFailed(currentRewardEpoch);
+                addRevertError(address(updateOnRewardEpochSwitchover), message);
+            } catch {
+                emit UpdatingActiveValidatorsTriggerFailed(currentRewardEpoch);
+                addRevertError(address(updateOnRewardEpochSwitchover), ERR_UPDATE_REWARD_EPOCH_SWITCHOVER_CALL);
+            }
+        }
     }
 
     function _addFtso(IIFtso _ftso, bool _addNewFtso) internal {

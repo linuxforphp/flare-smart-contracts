@@ -1,3 +1,4 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { BN_ZERO, MAX_BIPS, saveJson } from "../../utils/fuzzing-utils";
 import { SparseArray, SparseMatrix } from "../../utils/SparseMatrix";
 
@@ -13,6 +14,7 @@ export class VPTokenState {
         public readonly bipsDelegations = new SparseMatrix(),
         public readonly amountDelegations = new SparseMatrix(),
         public readonly revocations = new SparseArray(),
+        public readonly governanceBipsDelegations = new SparseMatrix() // can be only 0% or 100%
     ) { }
 
     votePower(account: string) {
@@ -28,6 +30,18 @@ export class VPTokenState {
     
     revokedVotePower(account: string) {
         return this.revocations.get(account);
+    }
+
+    governanceVotePower(account: string) {
+        if (Array.from(this.governanceBipsDelegations.rowMap(account).keys())[0] == constants.ZERO_ADDRESS) {
+            return this.balances.get(account)
+            .add(this.delegatedGovernanceVPTo(account))
+        }
+        else {
+            return this.balances.get(account)
+            .add(this.delegatedGovernanceVPTo(account))
+            .sub(this.delegatedGovernanceVPFrom(account));
+        }
     }
 
     private delegatedVPFrom(account: string) {
@@ -58,6 +72,23 @@ export class VPTokenState {
         return res;
     }
 
+    private delegatedGovernanceVPFrom(account: string) {
+        let res = BN_ZERO;
+        const balance = this.balances.get(account);
+        for (const bips of this.governanceBipsDelegations.rowMap(account).values()) { // should be only one element
+            res = res.add(bips.mul(balance).divn(MAX_BIPS)); // delegations from account
+        }
+        return res;
+    }
+
+    private delegatedGovernanceVPTo(account: string) {
+        let res = BN_ZERO;
+        for (const [from, bips] of this.governanceBipsDelegations.colMap(account)) {
+            res = res.add(bips.mul(this.balances.get(from)).divn(MAX_BIPS)); // delegations to account
+        }
+        return res;
+    }
+
     undelegateAll(from: string) {
         const list = Array.from(this.bipsDelegations.rowMap(from).keys());
         for (const to of list) {
@@ -68,6 +99,13 @@ export class VPTokenState {
     undelegateAllExplicit(from: string, toList: string[]) {
         for (const to of toList) {
             this.amountDelegations.set(from, to, BN_ZERO);
+        }
+    }
+
+    undelegateGovernance(from: string) {
+        const list = Array.from(this.governanceBipsDelegations.rowMap(from).keys()); 
+        for (const to of list) { // should be only one element
+            this.governanceBipsDelegations.set(from, to, BN_ZERO);
         }
     }
     
@@ -92,6 +130,14 @@ export class VPTokenState {
         }
         return this.amountDelegations.get(from, to);    // if missing, zero will be returned anyway
     }
+
+    governanceVotePowerFromTo(from: string, to: string) {
+        const bips = this.governanceBipsDelegations.get(from, to);
+        if (!bips.isZero()) {
+            return bips.mul(this.balances.get(from)).divn(MAX_BIPS);
+        }
+        return this.governanceBipsDelegations.get(from, to);    // if missing, zero will be returned anyway
+    }
     
     // to simulate vpcontract replacement
     clearAllDelegations() {
@@ -106,6 +152,7 @@ export class VPTokenState {
             bipsDelegations: this.bipsDelegations.toObject(),
             amountDelegations: this.amountDelegations.toObject(),
             revocations: this.revocations.toObject(),
+            governanceDelegations: this.governanceBipsDelegations.toObject(),
         };
         saveJson(file, obj, indent);
     }
@@ -138,6 +185,7 @@ export class VPTokenState {
             this.balances.clone(),
             this.bipsDelegations.clone(),
             this.amountDelegations.clone(),
-            this.revocations.clone());
+            this.revocations.clone(),
+            this.governanceBipsDelegations.clone());
     }
 }

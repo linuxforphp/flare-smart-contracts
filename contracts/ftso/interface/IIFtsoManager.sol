@@ -18,6 +18,7 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
 
     event ClosingExpiredRewardEpochFailed(uint256 rewardEpoch);
     event CleanupBlockNumberManagerFailedForBlock(uint256 blockNumber);
+    event UpdatingActiveValidatorsTriggerFailed(uint256 rewardEpoch);
     event FtsoDeactivationFailed(IIFtso ftso);
 
     function activate() external;

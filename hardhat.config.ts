@@ -25,6 +25,7 @@ import { transferGovernance } from "./deployment/scripts/transfer-governance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
 import { TASK_CONSOLE } from "hardhat/builtin-tasks/task-names";
 import "./type-extensions";
+import { deployContractsGovernance } from "./deployment/scripts/deploy-contracts-governance";
 
 
 dotenv.config();
@@ -91,6 +92,22 @@ task("deploy-contracts", "Deploy all contracts")
     const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
     if (parameters) {
       await deployContracts(hre, parameters, args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
+task("deploy-contracts-governance", "Deploy governance contracts")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const fs = require("fs");
+    const parameters = JSON.parse(fs.readFileSync(`deployment/chain-config/${process.env.CHAIN_CONFIG}.json`));
+    // inject private keys from .env, if they exist
+    if (process.env.DEPLOYER_PRIVATE_KEY) {
+      parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
+    }
+    if (parameters) {
+      await deployContractsGovernance(hre, parameters, args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
     }

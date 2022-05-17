@@ -30,6 +30,7 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
   let ftsoRewardManager: FtsoRewardManagerInstance;
   const initialGenesisAmountWei = BN(15000000000).mul(BN(10).pow(BN(18)));
   const foundationSupplyWei = BN(2250000000).mul(BN(10).pow(BN(18)));
+  const circulatingSupply = initialGenesisAmountWei.sub(foundationSupplyWei);
   const inflationBips = 1000;
 
   beforeEach(async() => {
@@ -86,27 +87,28 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
   });
 
   describe("daily roll", async() => {
-    it("Should authorize first day inflation and update inflatable balance on supply", async() => {
+    it("Should authorize first day inflation and not update inflatable balance on supply", async() => {
       // Assemble
-      const totalInflationAuthorizedWei = initialGenesisAmountWei.mul(BN(inflationBips)).div(BN(10000)).div(BN(365));
+      const expectedInflationAuthorizedWei = circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).div(BN(30));
 
       // Act
       await mockFlareDaemon.trigger();
 
       // Assert
-      // Supply should have a new inflatable balance
-      const expectedInflatableBalance = initialGenesisAmountWei.add(totalInflationAuthorizedWei);
+      // Supply should have a new authorized inflation and the same inflatable balance (nothing was claimed yet)
       const inflatableBalance = await supply.getInflatableBalance();
-      assert.equal(inflatableBalance.toString(), expectedInflatableBalance.toString());      
+      const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
+      assert.equal(inflatableBalance.toString(), circulatingSupply.toString());
+      assert.equal(totalInflationAuthorizedWei.toString(), expectedInflationAuthorizedWei.toString());
     });
 
-    it("Should authorize first and second day inflation and update inflatable balance on supply", async() => {
+    it("Should authorize first and second day inflation and not update inflatable balance on supply", async() => {
       // Assemble
-      const totalInflationAuthorizedWei1 = initialGenesisAmountWei.mul(BN(inflationBips)).div(BN(10000)).div(BN(365));
+      const totalInflationAuthorizedWei1 = circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).div(BN(30));
       // Double declining balance calculation
-      const totalInflationAuthorizedWei2 = initialGenesisAmountWei.mul(BN(inflationBips)).div(BN(10000)).sub(totalInflationAuthorizedWei1).div(BN(364));
+      const totalInflationAuthorizedWei2 = circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).sub(totalInflationAuthorizedWei1).div(BN(29));
       // Total inflation authorized over two periods
-      const totalInflationAuthorizedWei = totalInflationAuthorizedWei1.add(totalInflationAuthorizedWei2);
+      const expectedInflationAuthorizedWei = totalInflationAuthorizedWei1.add(totalInflationAuthorizedWei2);
       // Force a block in order to get most up to date time
       await time.advanceBlock();
       // Get the timestamp for the just mined block
@@ -120,20 +122,21 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
       await time.advanceBlock();
       await mockFlareDaemon.trigger();
       // Assert
-      // Supply should have a new inflatable balance for original supply plus two authorization periods
-      const expectedInflatableBalance = initialGenesisAmountWei.add(totalInflationAuthorizedWei);
+      // Supply should have a new authorized inflation and the same inflatable balance (nothing was claimed yet)
       const inflatableBalance = await supply.getInflatableBalance();
-      assert.equal(inflatableBalance.toString(), expectedInflatableBalance.toString());      
+      const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
+      assert.equal(inflatableBalance.toString(), circulatingSupply.toString());
+      assert.equal(totalInflationAuthorizedWei.toString(), expectedInflationAuthorizedWei.toString());
     });
   });
 
-  describe("annual roll", async() => {
-    it("Should recognize 2nd year annual inflation, update inflatable balance on supply, and issue new daily authorized", async() => {
+  describe("monthly roll", async() => {
+    it("Should recognize inflation in 2nd month, not update inflatable balance on supply, and issue new daily authorized", async() => {
       // Assemble
-      const firstYearAnnualInflationAuthorized = initialGenesisAmountWei.mul(BN(inflationBips)).div(BN(10000));
-      const firstDayYear2InflationAuthorized = initialGenesisAmountWei.add(firstYearAnnualInflationAuthorized).mul(BN(inflationBips)).div(BN(10000)).div(BN(365));
-      // Total inflation authorized over 1 year + 1 day
-      const totalInflationAuthorizedWei = firstYearAnnualInflationAuthorized.add(firstDayYear2InflationAuthorized);
+      const firstMonthInflationAuthorized = circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12);
+      const firstDayMonth2InflationAuthorized = circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).div(BN(30));
+      // Total inflation authorized over 1 month + 1 day
+      const expectedInflationAuthorizedWei = firstMonthInflationAuthorized.add(firstDayMonth2InflationAuthorized);
 
       let firstAnnumStart: BN = BN(0);
       let firstAnnum: any = null;
@@ -143,8 +146,8 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
       await time.advanceBlock();
       // Entertain ourselves...
       const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-      progressBar.start(366, 0);
-      for (let i = 0; i < 366; i++) {
+      progressBar.start(30, 0);
+      for (let i = 0; i < 31; i++) {
         // Advance time to next day if not day 0
         if (i != 0) {
           await time.increase(86400);
@@ -152,11 +155,12 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
         // Pulse inflation for that day by calling daemon
         await mockFlareDaemon.trigger();
         progressBar.update(i);
-        if(i == 1){
+        if(i == 0){
           firstAnnum = await inflation.getCurrentAnnum();
           firstAnnumStart = BN(firstAnnum.startTimeStamp.toString());
         }
       }
+      progressBar.stop();
 
       const secondAnnum = await inflation.getCurrentAnnum();
 
@@ -165,18 +169,19 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
       // Should recognize more inflation
       assert.equal(
         secondAnnum.recognizedInflationWei.toString(), 
-        initialGenesisAmountWei.muln(110).divn(100).divn(10).toString()) // 10 percent of 110% percent of initial
+        circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()) // 10 percent of initial
 
       assert.equal(
         (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
-        firstDayYear2InflationAuthorized.toString()) 
+        firstDayMonth2InflationAuthorized.toString()) 
 
 
       // Assert
-      // Supply should have a new inflatable balance for original supply, plus 1 year of inflation, plus 1 day
-      const expectedInflatableBalance = initialGenesisAmountWei.add(totalInflationAuthorizedWei);
+      // Supply should have a new authorized inflation and the same inflatable balance (nothing was claimed yet)
       const inflatableBalance = await supply.getInflatableBalance();
-      assert.equal(inflatableBalance.toString(), expectedInflatableBalance.toString());      
+      const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
+      assert.equal(inflatableBalance.toString(), circulatingSupply.toString());
+      assert.equal(totalInflationAuthorizedWei.toString(), expectedInflationAuthorizedWei.toString());   
     });
   });
 });

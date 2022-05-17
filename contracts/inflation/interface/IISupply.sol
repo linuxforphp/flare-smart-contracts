@@ -5,6 +5,12 @@ pragma solidity >=0.7.6 <0.9;
 interface IISupply {
 
     /**
+     * @notice Updates circulating supply
+     * @dev Also updates the burn address amount
+    */
+    function updateCirculatingSupply() external;
+
+    /**
      * @notice Updates authorized inflation and circulating supply - emits event if error
      * @param _inflationAuthorizedWei               Authorized inflation
      * @dev Also updates the burn address amount

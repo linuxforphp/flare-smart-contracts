@@ -125,18 +125,6 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
     }
 
     /**
-     * @dev This modifier ensures that this contract's balance matches the expected balance.
-     */
-    modifier mustBalance {
-        _;
-        // We should be in balance - don't revert, just report...
-        uint256 contractBalanceExpected = getExpectedBalance();
-        if (contractBalanceExpected != address(this).balance) {
-            addDaemonizeError(address(this), ERR_OUT_OF_BALANCE, 0);
-        }
-    }
-
-    /**
      * @dev Access control to protect methods to allow only minters to call select methods
      *   (like transferring balance out).
      */
@@ -247,7 +235,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
      *   it happen for some reason.
      */
     //slither-disable-next-line reentrancy-eth      // method protected by reentrancy guard (see comment below)
-    function trigger() external virtual inflationSet mustBalance onlySystemTrigger returns (uint256 _toMintWei) {
+    function trigger() external virtual inflationSet onlySystemTrigger returns (uint256 _toMintWei) {
         return triggerInternal();
     }
     
@@ -500,7 +488,14 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
             expectedMintRequest = 0;            
         }
 
+        // Update balance
         lastBalance = address(this).balance;
+        
+        // We should be in balance - don't revert, just report...
+        uint256 contractBalanceExpected = getExpectedBalance();
+        if (contractBalanceExpected != address(this).balance) {
+            addDaemonizeError(address(this), ERR_OUT_OF_BALANCE, 0);
+        }
     }
 
     function addDaemonizeError(address daemonizedContract, string memory message, uint256 gasConsumed) internal {

@@ -1,17 +1,20 @@
-import { DistributionInstance } from "../../../../typechain-truffle";
+import { DistributionInstance, DistributionTreasuryInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 const { sumGas, calcGasCost } = require('../../../utils/eth');
-import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
+import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 
 const BN = web3.utils.toBN;
 
+const DistributionTreasury = artifacts.require("DistributionTreasury");
 const Distribution = artifacts.require("Distribution");
 const SuicidalMock = artifacts.require("SuicidalMock");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
-const ERR_OUT_OF_BALANCE = "balance too low";
+const ERR_ADDRESS_ZERO = "address zero";
+const ERR_TOO_MUCH = "too much"
 const ERR_NOT_ZERO = "not zero";
 const ERR_OPT_OUT = "already opted out";
 const ERR_NOT_STARTED = "not started";
@@ -28,12 +31,15 @@ const EVENT_OPT_OPT_WITHDRAWN = "OptOutWeiWithdrawn";
 const EVENT_ACCOUNTS_ADDED = "AccountsAdded";
 
 contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`, async accounts => {
+  let distributionTreasury: DistributionTreasuryInstance;
   let distribution: DistributionInstance;
   let claimants: string[] = [];
   const GOVERNANCE_ADDRESS = accounts[0];
 
   beforeEach(async () => {
-    distribution = await Distribution.new(GOVERNANCE_ADDRESS);
+    distributionTreasury = await DistributionTreasury.new();
+    await distributionTreasury.initialiseFixedAddress();
+    distribution = await Distribution.new(GOVERNANCE_ADDRESS, distributionTreasury.address);
     // Build an array of claimant accounts
     for (let i = 0; i < 10; i++) {
       claimants[i] = accounts[i + 1];
@@ -51,12 +57,24 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
   async function bestowClaimableBalance(balance: BN) {
     // Give the distribution contract the native token required to be in balance with entitlements
     // Our subversive attacker will be suiciding some native token into flareDaemon
-    const suicidalMock = await SuicidalMock.new(distribution.address);
+    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
     // Give suicidal some native token
     await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: balance });
     // Attacker dies
     await suicidalMock.die();
+    // set distribution contract and claimable amount
+    await distributionTreasury.setDistributionContract(distribution.address, balance, {from: GOVERNANCE_GENESIS_ADDRESS});
   }
+
+  describe("Basic", async () => {
+    it("Should revert if treasury contract zero", async () => {
+      // Assemble
+      // Act
+      const distributionPromise = Distribution.new(GOVERNANCE_ADDRESS, constants.ZERO_ADDRESS);
+      // Assert
+      await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
+    });
+  });
 
   describe("Adding Accounts", async () => {
     it("Should add account", async () => {
@@ -309,7 +327,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       let start_promise = distribution.setEntitlementStart(now);
       // Assert
-      await expectRevert(start_promise, ERR_OUT_OF_BALANCE);
+      await expectRevert(start_promise, ERR_TOO_MUCH);
     });
 
     it("Should not start entitlement if not from governance", async () => {
@@ -363,7 +381,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
       for (let i of [0, 1, 2, 3, 4, 5]) {
-        await distribution.claim({ from: claimants[i] });
+        await distribution.claim(claimants[i], { from: claimants[i] });
       }
       // Assert
       let { 0: allocatedWei, 1: inflationWei, 2: claimedWei } = await distribution.getTokenPoolSupplyData()
@@ -382,7 +400,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       await bestowClaimableBalance(BN(8500));
       // Act
-      const claimPrommise = distribution.claim({ from: claimants[0] });
+      const claimPrommise = distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       await expectRevert(claimPrommise, ERR_NOT_STARTED);
     });
@@ -393,7 +411,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       await distribution.setEntitlementStart(now);
       // Act
-      const optOutRevert = distribution.claim({ from: accounts[150] });
+      const optOutRevert = distribution.claim(accounts[150], { from: accounts[150] });
       // Assert
       await expectRevert(optOutRevert, ERR_NOT_REGISTERED);
     });
@@ -407,7 +425,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await time.increaseTo(now.addn(86400 * 31));
       // Act
       const openingBalance = BN(await web3.eth.getBalance(claimants[0]));
-      const claimResult = await distribution.claim({ from: claimants[0] });
+      const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       const closingBalance = BN(await web3.eth.getBalance(claimants[0]));
       let txCost = BN(await calcGasCost(claimResult));
@@ -422,7 +440,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Time travel to next month
       await time.increaseTo(now.addn(86400 * 31));
       // Act
-      const claimResult = await distribution.claim({ from: claimants[0] });
+      const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       expectEvent(claimResult, EVENT_ACCOUNT_CLAIM);
     });
@@ -434,7 +452,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await distribution.setEntitlementStart(now);
       await time.increaseTo(now.addn(86400 * 31));
       const openingBalance = BN(await web3.eth.getBalance(claimants[0]));
-      const claimResult = await distribution.claim({ from: claimants[0] });
+      const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
       const closingBalance = BN(await web3.eth.getBalance(claimants[0]));
       let txCost = BN(await calcGasCost(claimResult));
       assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 1000 * 3 / 100);
@@ -472,7 +490,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       await distribution.setEntitlementStart(now);
       // Act
-      const claimResult = distribution.claim({ from: claimants[0] });
+      const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       await expectRevert(claimResult, ERR_NO_BALANCE_CLAIMABLE);
     });
@@ -484,8 +502,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await distribution.setEntitlementStart(now);
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
-      await distribution.claim({ from: claimants[0] });
-      const claimResult = distribution.claim({ from: claimants[0] });
+      await distribution.claim(claimants[0], { from: claimants[0] });
+      const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       await expectRevert(claimResult, ERR_NO_BALANCE_CLAIMABLE);
     });
@@ -498,7 +516,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       await distribution.optOutOfAirdrop({ from: claimants[0] });
       await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
-      const claimResult = distribution.claim({ from: claimants[0] });
+      const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       await expectRevert(claimResult, ERR_OPT_OUT);
     });
@@ -532,7 +550,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await distribution.setEntitlementStart(now);
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
-      await distribution.claim({ from: claimants[0] });
+      await distribution.claim(claimants[0], { from: claimants[0] });
       const optOutRevert = distribution.optOutOfAirdrop({ from: claimants[0] });
       // Assert
       await expectRevert(optOutRevert, ERR_FULLY_CLAIMED);
@@ -546,7 +564,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Act
       await time.increaseTo(now.add(BN(86400 * 30).muln(2).addn(150)));
       await distribution.optOutOfAirdrop({ from: claimants[0] });
-      const claimResult = distribution.claim({ from: claimants[0] });
+      const claimResult = distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       await expectRevert(claimResult, ERR_OPT_OUT);
       const {
@@ -689,16 +707,16 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const openingBalance6 = BN(await web3.eth.getBalance(claimants[6]));
       // Time travel to next month
       await time.increaseTo(now.addn(86400 * 30 + 150));
-      const claimResult0 = await distribution.claim({ from: claimants[0] });
-      const claimResult5 = await distribution.claim({ from: claimants[5] });
+      const claimResult0 = await distribution.claim(claimants[0], { from: claimants[0] });
+      const claimResult5 = await distribution.claim(claimants[5], { from: claimants[5] });
       const midBalance0 = BN(await web3.eth.getBalance(claimants[0]));
       const midBalance1 = BN(await web3.eth.getBalance(claimants[1]));
       const midBalance5 = BN(await web3.eth.getBalance(claimants[5]));
       const midBalance6 = BN(await web3.eth.getBalance(claimants[6]));
       // Time travel another month
       await time.increaseTo(now.addn(86400 * 60 + 150));
-      const claimResult0_1 = await distribution.claim({ from: claimants[0] });
-      const claimResult1 = await distribution.claim({ from: claimants[1] });
+      const claimResult0_1 = await distribution.claim(claimants[0], { from: claimants[0] });
+      const claimResult1 = await distribution.claim(claimants[1], { from: claimants[1] });
       const endBalance0 = BN(await web3.eth.getBalance(claimants[0]));
       const endBalance1 = BN(await web3.eth.getBalance(claimants[1]));
       const endBalance5 = BN(await web3.eth.getBalance(claimants[5]));

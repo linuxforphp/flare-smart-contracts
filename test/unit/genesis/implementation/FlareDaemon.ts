@@ -1,6 +1,5 @@
 import {
   EndlessLoopMockInstance,
-  FlareDaemonInstance,
   InflationMockInstance,
   InflationMock1Instance,
   MockContractInstance
@@ -10,6 +9,9 @@ import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-h
 import { encodeContractNames, toBN } from "../../../utils/test-helpers";
 import { TestableFlareDaemonInstance } from "../../../../typechain-truffle/TestableFlareDaemon";
 import { Contracts } from "../../../../deployment/scripts/Contracts";
+import { expectEthersEvent, expectEthersEventNotEmitted } from "../../../utils/EventDecoder";
+import { InflationMock__factory, TestableFlareDaemon__factory } from "../../../../typechain";
+import { ethers, network } from "hardhat";
 const getTestFile = require('../../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
@@ -872,6 +874,53 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await expectRevert(err, "start index high");
     });
 
+    it("Should not error for double inflation with second execution in a block", async () => {
+      // signer for ethers (truffle does not work in automining mode)
+      const signer = await ethers.getSigner(accounts[0]);
+      const flareDaemonEth = TestableFlareDaemon__factory.connect(flareDaemon.address, signer);
+      const mockInflationEth = InflationMock__factory.connect(mockInflation.address, signer);
+      // Assemble
+      await flareDaemon.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+        [ADDRESS_UPDATER, mockInflation.address], { from: ADDRESS_UPDATER });
+      await mockInflation.setFlareDaemon(flareDaemon.address);
+      await mockInflation.setDoNotReceiveNoMoreThan(1000);
+      try {
+        // switch to manual mining
+        await network.provider.send('evm_setAutomine', [false]);
+        await network.provider.send("evm_setIntervalMining", [0]);
+        // Act
+        let tx0 = await mockInflationEth.requestMinting(100);
+        let tx1 = await flareDaemonEth.trigger();
+        await signer.sendTransaction({ to: flareDaemonEth.address, value: 100 });
+        let tx2 = await flareDaemonEth.trigger();
+        await network.provider.send('evm_mine');
+        // Assert
+        let receipt0 = await tx0.wait();
+        expectEthersEvent(receipt0, flareDaemonEth, 'MintingRequestReceived', { amountWei: 100 });
+        let receipt1 = await tx1.wait();
+        expectEthersEvent(receipt1, flareDaemonEth, 'MintingRequestTriggered', { amountWei: 100 });
+        expectEthersEventNotEmitted(receipt1, flareDaemonEth, 'ContractDaemonizeErrored');
+        let receipt2 = await tx2.wait();
+        // expectEthersEvent(receipt2, flareDaemonEth, 'ContractDaemonizeErrored', { theContract: flareDaemonEth.address, theMessage: 'out of balance' });
+        expectEthersEventNotEmitted(receipt2, flareDaemonEth, 'ContractDaemonizeErrored');
+        // only trigger in the next block sends the minting to inflation
+        const inflationBalance1 = BN(await web3.eth.getBalance(mockInflation.address));
+        assert.equal(inflationBalance1.toNumber(), 0);
+        // second block trigger...
+        let tx3 = await flareDaemonEth.trigger();
+        await network.provider.send('evm_mine');
+        let receipt3 = await tx3.wait();
+        expectEthersEvent(receipt3, flareDaemonEth, 'MintingReceived', { amountWei: 100 });
+        expectEthersEvent(receipt3, flareDaemonEth, 'MintingWithdrawn', { amountWei: 100 });
+        expectEthersEventNotEmitted(receipt3, flareDaemonEth, 'ContractDaemonizeErrored');
+        // now the inflation has 100 minted
+        const inflationBalance2 = BN(await web3.eth.getBalance(mockInflation.address));
+        assert.equal(inflationBalance2.toNumber(), 100);
+      } finally {
+        await network.provider.send('evm_setAutomine', [true]);
+      }
+    });
   });
 
   describe("gas limit", async () => {
@@ -1068,5 +1117,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       // Assert
       await expectRevert(receipt, ONLY_GOVERNANCE_MSG);
     });
+    
+    
   });
 });

@@ -6,7 +6,6 @@ import "./VPContract.sol";
 import "../../userInterfaces/IWNat.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Wrapped Native token
  * @notice Accept native token deposits and mint ERC20 WNAT (wrapped native) tokens 1-1.

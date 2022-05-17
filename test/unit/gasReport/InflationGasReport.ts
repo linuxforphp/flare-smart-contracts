@@ -28,7 +28,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
   const ADDRESS_UPDATER = accounts[16];
 
   const dayDurationSec = 24 * 60 * 60;
-  const yearDurationSec = 365 * dayDurationSec;
+  const monthDurationSec = 30 * dayDurationSec;
 
   let inflation: InflationInstance;
   let inflationAllocation: InflationAllocationInstance;
@@ -131,7 +131,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
     }
 
     // finalize first annum
-    await increaseTimeTo(startTs.toNumber() + yearDurationSec, 'web3');
+    await increaseTimeTo(startTs.toNumber() + monthDurationSec, 'web3');
     oldMintingRequest = await flareDaemon.totalMintingRequestedWei();
     let finalizeAnnumTx = await flareDaemon.triggerDaemonize();
     console.log(`finalize annum: ${finalizeAnnumTx.receipt.gasUsed}`);

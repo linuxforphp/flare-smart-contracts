@@ -1,7 +1,9 @@
 import { timeStamp } from "console";
 import {
   DistributionContract,
-  DistributionInstance
+  DistributionInstance,
+  DistributionTreasuryContract,
+  DistributionTreasuryInstance
 } from "../../typechain-truffle";
 import { LineItem, ProcessedLineItem } from "./airdropUtils/utils";
 const parse = require('csv-parse/lib/sync');
@@ -73,6 +75,8 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
   let governanceAccount: any;
   let genesisGovernanceAccount: any;
 
+  let DistributionTreasury: DistributionTreasuryContract;
+  let distributionTreasury: DistributionTreasuryInstance;
   let Distribution: DistributionContract;
   let distribution: DistributionInstance;
 
@@ -89,8 +93,11 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     web3.eth.defaultAccount = deployerAccount.address;
 
     // Contract artifact definitions
+    DistributionTreasury = artifacts.require("DistributionTreasury");
     Distribution = artifacts.require("Distribution");
-    distribution = await Distribution.new(genesisGovernanceAccount);
+    distributionTreasury = await DistributionTreasury.new();
+    await distributionTreasury.initialiseFixedAddress();
+    distribution = await Distribution.new(genesisGovernanceAccount, distributionTreasury.address);
 
     parsedAirdrop = parseAndProcessData("../../airdrop/data/export.csv");
   });
@@ -133,19 +140,23 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     }
     bar1.stop();
 
-    console.log("Send required funds to Distribution contract");
+    console.log("Send required funds to DistributionTreasury contract");
     // Hacky way of doing this
-    const suicidalMock = await SuicidalMock.new(distribution.address);
+    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
     await web3.eth.sendTransaction({from: accounts[0], to: suicidalMock.address, value: totalNative});
     await suicidalMock.die();
+    assert.equal((await distribution.totalEntitlementWei()).toString(),(await GetBalance(distributionTreasury.address)).toString());
 
-    console.log("Balance accounting");
-    assert.equal((await distribution.totalEntitlementWei()).toString(),(await GetBalance(distribution.address)).toString());
+    console.log("Set distribution contract on distribution treasury");
+    await distributionTreasury.setDistributionContract(distribution.address, totalNative, {from: genesisGovernanceAccount.address});
     
     console.log("Start entitlement process in the past (to simulate the future)");
     let now = await time.latest();
     let backInTime = now.sub(BN(30*24*60*60).muln(29));
     await distribution.setEntitlementStart(backInTime, {from: genesisGovernanceAccount.address});
+
+    console.log("Balance accounting");
+    assert.equal((await distribution.totalEntitlementWei()).toString(),(await GetBalance(distribution.address)).toString());
 
     console.log("Do the accounting for distribution contract");
     const bar2 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);

@@ -5,12 +5,13 @@ interface IITokenPool {
 
     /**
      * @notice Return token pool supply data
-     * @return _foundationAllocatedFundsWei     Foundation allocated funds (wei)
+     * @return _lockedFundsWei                  Funds that are intentionally locked in the token pool 
+     * and not part of circulating supply
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getTokenPoolSupplyData() external view returns (
-        uint256 _foundationAllocatedFundsWei,
+    function getTokenPoolSupplyData() external returns (
+        uint256 _lockedFundsWei,
         uint256 _totalInflationAuthorizedWei,
         uint256 _totalClaimedWei
     );

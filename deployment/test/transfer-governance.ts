@@ -89,6 +89,12 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.DISTRIBUTION_TREASURY, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.DISTRIBUTION_TREASURY);
+    });
+  });
+
   describe(Contracts.DISTRIBUTION, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async function() {
       if (!parameters.deployDistributionContract) return this.skip();

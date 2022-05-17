@@ -335,10 +335,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
   it("Should establish vote power and mint ", async () => {
 
-    // Supply contract - inflatable balance should be updated
+    // Supply contract - inflatable balance should not be updated (nothing was claimed yet)
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
+    const totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(inflatableBalanceWei.gt(initialGenesisAmountWei), "Authorized inflation not distributed...");
+    assert(initialGenesisAmountWei.sub(totalFoundationSupplyWei).eq(inflatableBalanceWei) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
 
     // A minting request should be pending...
     const mintingRequestWei = await flareDaemon.totalMintingRequestedWei();
