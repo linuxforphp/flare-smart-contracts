@@ -81,6 +81,15 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       assert.equal(percentage.toNumber(), 1000);
     });
 
+    it("Should not get the initial annual percentage if inflation not set", async() => {
+      // Assemble
+      inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [1000]);
+      // Act
+      const promise = inflationAllocation.getAnnualPercentageBips({from: accounts[1]});
+      // Assert
+      await expectRevert(promise, ERR_ZERO_ADDRESS);
+    });
+
     it("Should not get the initial annual percentage if not from inflation", async() => {
       // Assemble
       // Act

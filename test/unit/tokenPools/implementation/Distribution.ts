@@ -11,6 +11,7 @@ const BN = web3.utils.toBN;
 const DistributionTreasury = artifacts.require("DistributionTreasury");
 const Distribution = artifacts.require("Distribution");
 const SuicidalMock = artifacts.require("SuicidalMock");
+const GasConsumer = artifacts.require("GasConsumer2");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_ADDRESS_ZERO = "address zero";
@@ -443,6 +444,20 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
       // Assert
       expectEvent(claimResult, EVENT_ACCOUNT_CLAIM);
+    });
+
+    it("Should revert while claiming", async () => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const now = await time.latest();
+      await distribution.setEntitlementStart(now);
+      // Time travel to next month
+      await time.increaseTo(now.addn(86400 * 31));
+      // Act
+      let gasConsumer = await GasConsumer.new(3)
+      const claim = distribution.claim(gasConsumer.address, { from: claimants[0] });
+      // should revert because contract gasConsumer cannot receive tokens
+      await expectRevert(claim, "error");
     });
 
     it("Should update variables after claimal", async () => {

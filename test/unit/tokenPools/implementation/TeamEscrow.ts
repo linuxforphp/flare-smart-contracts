@@ -1,13 +1,12 @@
-import { TeamEscrowInstance } from "../../../../typechain-truffle";
-import { FtsoRewardManagerInstance, MockContractInstance, SupplyInstance } from "../../../../typechain-truffle";
-import { encodeContractNames, getAddressWithZeroBalance, increaseTimeTo, toBN } from "../../../utils/test-helpers";
+import { expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../../deployment/scripts/Contracts";
+import { SupplyInstance, TeamEscrowInstance } from "../../../../typechain-truffle";
+import { encodeContractNames, getAddressWithZeroBalance } from "../../../utils/test-helpers";
 
 const Supply = artifacts.require("Supply");
 
 const getTestFile = require('../../../utils/constants').getTestFile;
-const { sumGas, calcGasCost } = require('../../../utils/eth');
-import { expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
+const { calcGasCost } = require('../../../utils/eth');
 
 const initialGenesisAmountWei = 10 ** 10;
 const totalFoundationSupplyWei =  10 ** 5;
@@ -16,6 +15,7 @@ const initialCirculatingSupply = initialGenesisAmountWei - totalFoundationSupply
 const BN = web3.utils.toBN;
 
 const TeamEscrow = artifacts.require("TeamEscrow");
+const MockClaim = artifacts.require("GasConsumer2");
 
 contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, async accounts => {
   let escrow: TeamEscrowInstance;
@@ -31,6 +31,11 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
   });
 
   describe("Locking", async() => {
+    it("Should not be able to get claimbale bips", async() => {
+      const now = await time.latest();
+      await expectRevert(escrow.getCurrentClaimablePercentBips(now), "Claiming not started");
+    });
+
     it("Should enable locking", async() => {
       const locked = BN(await web3.eth.getBalance(claimants[0])).divn(10);
       await escrow.lock({from: claimants[0], value: locked});
@@ -54,6 +59,39 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
   })
 
   describe("Collection", async() => {
+
+    it("Should not collect before start is set", async() => {
+      const locked = BN(8500)
+      await escrow.lock({from: claimants[0], value: locked});
+      const now = await time.latest();
+
+      const tx = escrow.claim({from: claimants[0]});
+      await expectRevert(tx, "Claiming not started");
+      await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
+      // Nothing to claim
+      const tx2 = escrow.claim({from: claimants[0]});
+      await expectRevert(tx2, "No claimable funds");
+
+      await time.increaseTo(now.addn(86400 * 31));
+      // Should go ok
+      await escrow.claim({from: claimants[0]});
+    
+    });
+
+    it("Should not collect before start timestamp", async() => {
+      const locked = BN(8500)
+      await escrow.lock({from: claimants[0], value: locked});
+      const now = await time.latest();
+
+      const tx = escrow.claim({from: claimants[0]});
+      await escrow.setClaimingStartTs(now.addn(200), {from: GOVERNANCE_ADDRESS});
+      await expectRevert(tx, "Claiming not started");
+      await time.increaseTo(now.addn(86400 * 31));
+      // Should go ok
+      await escrow.claim({from: claimants[0]});
+    
+    });
+
     it("Should collect funds", async() => {
       // Lock some funds
       const locked = BN(8500)
@@ -254,6 +292,21 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       txCost = BN(await calcGasCost(claimResult));
       assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 8500 - 237 - 237);
     });
+
+    it("Should fail to claim", async() => {
+       // Lock some funds
+       const locked = BN(8500)
+       await escrow.lock({from: claimants[0], value: locked});
+       const now = await time.latest();
+       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
+ 
+       await time.increaseTo(now.addn(86400 * 31));
+      
+       let mockClaim = await MockClaim.new(5);
+       let claimResult = escrow.claimTo(mockClaim.address, { from: claimants[0] });
+       await expectRevert(claimResult, "Failed to call claiming contract");
+    });
+
   });
 
   describe("Integrates with supply", async () => {

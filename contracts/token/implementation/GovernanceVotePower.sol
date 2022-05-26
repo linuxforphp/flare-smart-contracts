@@ -249,7 +249,7 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     * @return Delegate of `_who` at the current block number.
     */    
     function getDelegateOfAtNow(address _who) public override view returns (address) {
-        return getDelegateOfAt(_who, block.number);
+        return delegatesHistory.delegateAddressOfAtNow(_who);
     }
        
     function addVP(address /* _from */, address _to, uint256 _amount) internal {

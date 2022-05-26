@@ -1,4 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { MockContract } from '../../../../typechain';
 import { MockContractContract, MockContractInstance, MockFtsoInstance, VPTokenContract, VPTokenInstance, WNatContract, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
 import { moveFromCurrentToNextEpochStart } from "../../../utils/FTSO-test-utils";
@@ -13,6 +14,7 @@ const MockVpToken = artifacts.require("MockContract") as MockContractContract;
 const MockPriceSubmitter = artifacts.require("MockContract") as MockContractContract;
 const MockFtsoFull = artifacts.require("MockFtso");
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
+const Mock = artifacts.require("MockContract");
 
 const getRandom = web3.utils.sha3("getRandom(uint256)")!.slice(0, 10); // first 4 bytes is function selector
 
@@ -227,7 +229,22 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       await expectRevert.unspecified(tx);
     });
 
-
+    it("Should return current random 0", async() => {
+      let now = (await time.latest()).toNumber();
+      let ftso1 = await MockFtsoFull.new(
+        "ATOK",
+        5,
+        accounts[4],
+        mockWnat.address,
+        accounts[10],
+        now + 10000, 120, 60,
+        1, // initial token price 0.00001$
+        1e10,
+        defaultPriceEpochCyclicBufferSize,
+        false
+      );
+      expect((await ftso1.getCurrentRandom()).toString()).to.equals("0");
+    });
 
   });
 
@@ -439,6 +456,41 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       let timestamp = await time.latest();
       epochId = Math.floor(timestamp.toNumber() / 120) + 1;
       await increaseTimeTo(epochId * 120);
+    });
+
+    it("Should have asset with zero address", async() => {
+      let ftso2 = await MockFtsoFull.new(
+        "BTOK",
+        5,
+        accounts[4],
+        mockWnat.address,
+        accounts[10],
+        5, 120, 60,
+        1, // initial token price 0.00001$
+        1e10,
+        defaultPriceEpochCyclicBufferSize,
+        false
+      );
+
+      await ftso2.setAsset(mockVpToken.address, { from: accounts[10] });
+      await ftso.setAssetFtsos([ftso2.address], { from: accounts[10] });
+
+      let ftso3 = await MockFtsoFull.new(
+        "CTOK",
+        5,
+        accounts[4],
+        mockWnat.address,
+        accounts[10],
+        5, 120, 60,
+        1, // initial token price 0.00001$
+        1e10,
+        defaultPriceEpochCyclicBufferSize,
+        false
+      );
+
+      await ftso2.setAssetFtsos([ftso3.address], { from: accounts[10] });
+
+      await ftso.initializeCurrentEpochStateForReveal(100000, false, { from: accounts[10] });   
     });
 
     it("Should submit price", async () => {
@@ -2848,8 +2900,9 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       compareArrays<boolean>([data[5][id1], data[5][id2], data[5][id3]], [true, true, true]);
     });
   });
-
+  
   describe("multi asset ftsos", async () => {
+
     beforeEach(async () => {
       wnatInterface = await Wnat.new(accounts[0], "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wnatInterface, accounts[0]);

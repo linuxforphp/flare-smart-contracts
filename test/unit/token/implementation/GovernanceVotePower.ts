@@ -5,6 +5,10 @@ import {
 } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 import { time, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers';
+import { ethers, network } from "hardhat";
+import { GovernanceVotePower__factory } from "../../../../typechain";
+import { expectEthersEvent } from "../../../utils/EventDecoder";
+
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 
@@ -452,6 +456,45 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
     it("Should revert if updateAtTokenTransfer is not called fot owner token", async() => {
       let tx = governanceVotePower.updateAtTokenTransfer(accounts[1], accounts[2], 600, 0, 100);
       await expectRevert(tx, "only owner token");
+    });
+
+    it("Should delegate twice in the same block", async() => {
+      const signer = await ethers.getSigner(accounts[1]);
+      const governanceVPEth = GovernanceVotePower__factory.connect(governanceVotePower.address, signer);
+      try {
+        // switch to manual mining
+        await network.provider.send('evm_setAutomine', [false]);
+        await network.provider.send("evm_setIntervalMining", [0]);
+        
+        let tx0 = await governanceVPEth.delegate(accounts[2], { from:accounts[1] });
+        let tx1 = await governanceVPEth.delegate(accounts[3], { from:accounts[1] });
+  
+        await network.provider.send('evm_mine');
+
+        let receipt0 = await tx0.wait();
+        expectEthersEvent(receipt0, governanceVPEth, 'DelegateChanged', { delegator: accounts[1], fromDelegate: constants.ZERO_ADDRESS, toDelegate: accounts[2] });
+
+        let receipt1 = await tx1.wait();
+        expectEthersEvent(receipt1, governanceVPEth, 'DelegateChanged', { delegator: accounts[1], fromDelegate: accounts[2], toDelegate: accounts[3] });
+      } finally {
+        await network.provider.send('evm_setAutomine', [true]);
+      }
+    });
+
+    it("Should 'clean' empty checkpoints", async() => {
+      await governanceVotePower.setCleanupBlockNumber(await web3.eth.getBlockNumber() - 1);
+      await governanceVotePower.setCleanerContract(accounts[77]);
+      let clean = await governanceVotePower.contract.methods.delegatesHistoryCleanup(accounts[8], 1).call({ from: accounts[77] });
+      await governanceVotePower.delegatesHistoryCleanup(accounts[8], 1, { from: accounts[77] });
+      expect(clean).to.equals("0");
+    });
+
+    it("Should 'clean' zero address checkpoints", async() => {
+      await governanceVotePower.setCleanupBlockNumber(await web3.eth.getBlockNumber() - 1);
+      await governanceVotePower.setCleanerContract(accounts[77]);
+      let clean = await governanceVotePower.contract.methods.delegatesHistoryCleanup(constants.ZERO_ADDRESS, 1).call({ from: accounts[77] });
+      await governanceVotePower.delegatesHistoryCleanup(constants.ZERO_ADDRESS, 1, { from: accounts[77] });
+      expect(clean).to.equals("0");
     });
 
   });

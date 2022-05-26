@@ -25,6 +25,7 @@ const WNAT = artifacts.require("WNat") as WNatContract;
 const InflationMock = artifacts.require("InflationMock");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const MockContract = artifacts.require("MockContract");
+const GasConsumer = artifacts.require("GasConsumer2");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -411,7 +412,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             assert.equal(a2UnclaimedReward[0].toNumber(), 297);
         });
 
-        it("Should finalize price epoch and distribute all authorized rewards for 7 daily cycle", async () => {
+        it("Should finalize price epoch and distribute all authorized rewards for 7 daily cycle, revert later", async () => {
             const dailyStartTs = await time.latest();
 
             // Time travel to the end of the 7 daily cycle, distributing rewards along the way.
@@ -436,6 +437,19 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
             assert.equal(a1UnclaimedReward[0].toNumber() + a2UnclaimedReward[0].toNumber(), 2000000);
+
+            const promise = mockFtsoManager.distributeRewardsCall(
+                [accounts[1], accounts[2]],
+                [25, 75],
+                100,
+                0,
+                accounts[6],
+                MY_LONGER_PRICE_EPOCH_SEC,
+                0,
+                dailyStartTs.addn(7 * 86400 - 1),
+                0
+            );
+            await expectRevert.unspecified(promise);
         });
 
         it("Should only be called from ftso manager", async () => {
@@ -780,7 +794,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             assert.equal(claimedRewardBeforeClaim2[0], false);
             assert.equal(claimedRewardBeforeClaim2[1].toNumber(), 0);
 
+            let consumer = await GasConsumer.new(3);
+            let tx = ftsoRewardManager.claimReward(consumer.address, [0], { from: accounts[1] });
+            await expectRevert(tx, "claim failed");
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
+
+            await ftsoRewardManager.claimAndWrapReward(accounts[1], [0], { from: accounts[99] });
 
             let rewardEpochAfterClaim = await ftsoRewardManager.getEpochReward(0);
             assert.equal(rewardEpochAfterClaim[0].toNumber(), 396 * 2);

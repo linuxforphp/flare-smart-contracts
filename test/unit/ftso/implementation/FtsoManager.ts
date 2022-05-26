@@ -7,7 +7,8 @@ import {
   FtsoRegistryInstance,
   FtsoRewardManagerInstance, MockContractInstance,
   MockVPTokenContract,
-  MockVPTokenInstance
+  MockVPTokenInstance,
+  MockUpdateValidatorsInstance
 } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 import { createMockSupplyContract } from "../../../utils/FTSO-test-utils";
@@ -33,6 +34,7 @@ const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
 const MockContract = artifacts.require("MockContract");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
+const MockUpdateValidators = artifacts.require("MockUpdateValidators");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -70,6 +72,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
   let mockVoterWhitelister: MockContractInstance;
   let mockSupply: MockContractInstance;
   let mockUpdateValidator: MockContractInstance;
+  let mockUpdateValidators: MockUpdateValidatorsInstance;
 
   async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance) {
     const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
@@ -2590,6 +2593,31 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let tx2 = await ftsoManager.daemonize();
       expectEvent.notEmitted(tx2, "UpdatingActiveValidatorsTriggerFailed");
     });
+
+
+    it("Should revert with message while trying to update active validators", async () => {
+      await cleanupBlockNumberManager.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
+        [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
+
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize();
+      // Time travel 2 days
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S + 172800);
+
+      const mock = await MockContract.new();
+      await ftsoManager.setUpdateOnRewardEpochSwitchover(mock.address);
+
+      mockUpdateValidators = await MockUpdateValidators.new();
+
+      const updateActive = mockUpdateValidators.contract.methods.updateActiveValidators().encodeABI();
+      await mock.givenMethodRevertWithMessage(updateActive, "unable to update active validators");
+
+      let tx1 = await ftsoManager.daemonize();
+      expectEvent(tx1, "UpdatingActiveValidatorsTriggerFailed");
+    });
+
 
   });
 

@@ -163,6 +163,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await calculateCorrectVotePowers(natFtso);
         });
 
+        it("calculates correct vote powers (NAT without fassets)", async () => {
+            natFtso = await createFtso("NAT", usd(1));
+            xrpFtso = await createFtso("XRP", usd(0.5));
+            btcFtso = await createFtso("BTC", usd(5));
+            await natFtso.setAssetFtsos([xrpFtso.address, btcFtso.address], { from: ftsoManager });
+            await calculateCorrectVotePowers(natFtso);
+        });
+
         it("calculates correct vote powers (XRP)", async () => {
             await calculateCorrectVotePowers(xrpFtso);
         });
