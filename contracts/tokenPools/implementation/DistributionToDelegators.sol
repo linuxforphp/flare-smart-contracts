@@ -107,6 +107,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     )
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
+        require(address(_priceSubmitter) != address(0), ERR_ADDRESS_ZERO);
         require(address(_treasury) != address(0), ERR_ADDRESS_ZERO);
         priceSubmitter = _priceSubmitter;
         treasury = _treasury;

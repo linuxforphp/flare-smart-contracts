@@ -3,7 +3,7 @@ import { Contracts } from "../../../deployment/scripts/Contracts";
 import { 
   FlareDaemonMockInstance,
   InflationInstance,
-  MockContractInstance, 
+  TeamEscrowInstance, 
   SupplyInstance, 
   FtsoRewardManagerInstance, 
   PercentageProviderMockInstance } from "../../../typechain-truffle";
@@ -18,16 +18,18 @@ const PercentageProviderMock = artifacts.require("PercentageProviderMock");
 const FlareDaemonMock = artifacts.require("FlareDaemonMock");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const Supply = artifacts.require("Supply");
+const TeamEscrow = artifacts.require("TeamEscrow");
 
 const BN = web3.utils.toBN;
 
-contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation and Supply integration tests`, async accounts => {
+contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)}; Inflation and Supply integration tests`, async accounts => {
   // contains a fresh contract set for each test
   let mockInflationPercentageProvider: PercentageProviderMockInstance;
   let inflation: InflationInstance;
   let mockFlareDaemon: FlareDaemonMockInstance;
   let supply: SupplyInstance;
   let ftsoRewardManager: FtsoRewardManagerInstance;
+  let teamEscrow: TeamEscrowInstance;
   const initialGenesisAmountWei = BN(15000000000).mul(BN(10).pow(BN(18)));
   const foundationSupplyWei = BN(2250000000).mul(BN(10).pow(BN(18)));
   const circulatingSupply = initialGenesisAmountWei.sub(foundationSupplyWei);
@@ -70,6 +72,9 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
       [ftsoRewardManager.address]
     );
 
+    // Wire up escrow contract
+    teamEscrow = await TeamEscrow.new(accounts[0], 0);
+
     // Tell supply about inflation
     await supply.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
@@ -84,6 +89,9 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
     await ftsoRewardManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
+
+    await supply.addTokenPool(teamEscrow.address, 0, {from: accounts[0]});
+
   });
 
   describe("daily roll", async() => {
@@ -182,6 +190,118 @@ contract(`Inflation.sol and Supply.sol; ${getTestFile(__filename)}; Inflation an
       const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
       assert.equal(inflatableBalance.toString(), circulatingSupply.toString());
       assert.equal(totalInflationAuthorizedWei.toString(), expectedInflationAuthorizedWei.toString());   
+    });
+
+    it("Should continue rolling and update according to claiming schedule from escrow contract", async() => {
+      const base_amount = BN(10).pow(BN(9)).muln(100)
+      const lockedAmount1 = BN(85).mul(base_amount).div(BN(100));
+      teamEscrow.lock({from: accounts[1], value: lockedAmount1});
+      const lockedAmount2 = lockedAmount1.muln(2);
+      teamEscrow.lock({from: accounts[2], value: lockedAmount2});
+      const lockedAmount3 = lockedAmount1.muln(3);
+      teamEscrow.lock({from: accounts[3], value: lockedAmount3});
+
+      const fullLockedAmount = lockedAmount1.add(lockedAmount2).add(lockedAmount3);
+
+      // Assemble
+      const firstMonthInflationAuthorized = circulatingSupply.sub(fullLockedAmount).mul(BN(inflationBips)).div(BN(10000)).divn(12);
+
+      // After first month it will recognize locked amounts
+      const firstDayMonth2InflationAuthorized = circulatingSupply.sub(fullLockedAmount).mul(BN(inflationBips)).div(BN(10000)).divn(12).div(BN(30));
+      // Total inflation authorized over 1 month + 1 day
+      const expectedInflationAuthorizedWei = firstMonthInflationAuthorized.add(firstDayMonth2InflationAuthorized).addn(0);
+
+      let firstAnnumStart: BN = BN(0);
+      let firstAnnum: any = null;
+      
+      // Act
+      // Force a block in order to get most up to date time
+      await time.advanceBlock();
+      const now = await time.latest()
+      await teamEscrow.setClaimingStartTs(now.subn(24*60*60*30), {from: accounts[0]});
+      await time.advanceBlock();
+
+      // Wait one month
+      for (let i = 0; i < 31; i++) {
+        // Advance time to next day if not day 0
+        if (i != 0) {
+          await time.increase(86400);
+        }
+        // Pulse inflation for that day by calling daemon
+        await mockFlareDaemon.trigger();
+        if(i == 0){
+          firstAnnum = await inflation.getCurrentAnnum();
+          firstAnnumStart = BN(firstAnnum.startTimeStamp.toString());
+        }
+      }
+      const secondAnnum = await inflation.getCurrentAnnum();
+      
+      // New annum should be initialized
+      assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
+      // Should recognize more inflation
+      assert.equal(
+        secondAnnum.recognizedInflationWei.toString(), 
+        circulatingSupply.sub(fullLockedAmount).mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()) // 10 percent of initial ()
+
+      assert.equal(
+        (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
+        firstDayMonth2InflationAuthorized.toString()) 
+
+
+      // Assert
+      // Supply should have a new authorized inflation and the same inflatable balance (nothing was claimed yet)
+      const inflatableBalance = await supply.getInflatableBalance();
+      const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
+      assert.equal(inflatableBalance.toString(), circulatingSupply.sub(fullLockedAmount).toString());
+      assert.equal(totalInflationAuthorizedWei.toString(), expectedInflationAuthorizedWei.toString());   
+
+      // Claim from some of the accounts
+      await time.advanceBlock();
+      const now2 = await time.latest()
+
+      await teamEscrow.claim({from: accounts[1]});
+      await teamEscrow.claim({from: accounts[3]});
+
+      const claimed1 = (await teamEscrow.lockedAmounts(accounts[1]))[1];
+      const claimed3 = (await teamEscrow.lockedAmounts(accounts[3]))[1];
+      assert.equal(base_amount.muln(1).muln(237*2).divn(10000).toString(), claimed1.toString());
+      assert.equal(base_amount.muln(3).muln(237*2).divn(10000).toString(), claimed3.toString());
+
+      // Wait one month
+      for (let i = 0; i < 31; i++) {
+        // Advance time to next day if not day 0
+        if (i != 0) {
+          await time.increase(86400);
+        }
+        // Pulse inflation for that day by calling daemon
+        await mockFlareDaemon.trigger();
+      }
+
+      const thirdAnnum = await inflation.getCurrentAnnum();
+      
+      // New annum should be initialized
+      assert.isTrue(BN(secondAnnum.startTimeStamp.toString()).lt(BN(thirdAnnum.startTimeStamp.toString())));
+      // Should recognize more inflation
+      assert.equal(
+        thirdAnnum.recognizedInflationWei.toString(), 
+        circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()
+        )
+         // recognized in annum3 (smaller base with some claims)
+
+      assert.equal(
+        (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
+        (circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).mul(BN(inflationBips)).div(BN(10000)).divn(12).divn(30)).toString()) 
+
+      const month3InflationAuthorized = circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).mul(BN(inflationBips)).div(BN(10000)).divn(12).divn(30);
+      // Assert
+      // Supply should have a new authorized inflation and the same inflatable balance
+      const inflatableBalance2 = await supply.getInflatableBalance();
+      const totalInflationAuthorizedWei2 = await supply.totalInflationAuthorizedWei();
+      assert.equal(inflatableBalance2.toString(), circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).toString());
+      assert.equal(
+        totalInflationAuthorizedWei2.toString(), 
+        firstMonthInflationAuthorized.muln(2).add(month3InflationAuthorized).toString()
+      );   
     });
   });
 });

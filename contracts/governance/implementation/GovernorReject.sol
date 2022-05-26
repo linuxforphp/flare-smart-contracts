@@ -25,7 +25,8 @@ contract GovernorReject is Governor, GovernorRejectSettings {
      *          executionPeriodSeconds      Execution period in seconds
      *          quorumThresholdBIPS         Percentage in BIPS of the total vote power required for proposal quorum
      *          _votePowerLifeTimeDays      Number of days after which checkpoint can be deleted
-     *          _vpBlockPeriodDays          Period (in days) in which the vote power block is randomly chosen
+     *          _vpBlockPeriodSeconds       Minimal length of the period (in seconds) from which the
+     vote power block is randomly chosen
      * @param _rejectionThresholdBIPS       Percentage in BIPS of the total vote power required to reject a proposal
      * @param _proposers                    Array of addresses allowed to submit a proposal
      */
