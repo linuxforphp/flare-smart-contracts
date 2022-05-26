@@ -87,6 +87,7 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
 
     // initialize first annum
     await expectRevert(inflation.getCurrentAnnum(), "no annum");
+    await expectRevert(inflation.getAnnum(0), "no annum");
     let oldMintingRequest = await flareDaemon.totalMintingRequestedWei();
     let initializeFirstAnnumTx = await flareDaemon.triggerDaemonize();
     await expectEvent.notEmitted.inTransaction(initializeFirstAnnumTx.tx, supply, "AuthorizedInflationUpdateError");

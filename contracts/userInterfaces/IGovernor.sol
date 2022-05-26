@@ -35,12 +35,6 @@ interface IGovernor {
     );
 
     /**
-     * @notice Event emitted when a proposal is canceled
-     * @dev Required for compatibility with Tally (OpenZeppelin style)
-     */
-    event ProposalCanceled(uint256 proposalId);
-
-    /**
      * @notice Event emitted when a proposal is executed
      * @dev Required for compatibility with Tally (OpenZeppelin style)
      */

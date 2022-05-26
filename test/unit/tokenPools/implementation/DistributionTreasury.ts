@@ -1,14 +1,11 @@
-import { 
-    DistributionTreasuryInstance, 
-    MockContractInstance, SuicidalMockInstance
-} from "../../../../typechain-truffle";
+import { expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { DistributionTreasuryInstance, SuicidalMockInstance } from "../../../../typechain-truffle";
 
-import { time, expectRevert, expectEvent} from '@openzeppelin/test-helpers';
-import { GOVERNANCE_GENESIS_ADDRESS } from '../../../utils/constants';
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const DistributionTreasury = artifacts.require("DistributionTreasury");
 const SuicidalMock = artifacts.require("SuicidalMock");
+const DistributionMock = artifacts.require("DistributionMock");
 
 const ONLY_GOVERNANCE_MSG = "only governance";
 const ERR_DISTRIBUTION_ONLY = "distribution only";
@@ -92,5 +89,19 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
             expect(lastPull2.toNumber()).to.equal(now2.toNumber());
         });
 
+        it("Should revert at pullFunds if receive method is not implemented", async() => {
+            await treasury.initialiseFixedAddress();
+            let governance = await treasury.governance();
+
+            // sneak wei into DistributionTreasury
+            await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
+            await mockSuicidal.die();
+
+            let distribution = await DistributionMock.new(treasury.address);
+            let maxpull = 10**6;
+            await treasury.setDistributionContract(distribution.address, maxpull, { from: governance });
+
+            await expectRevert(distribution.pullFunds(maxpull), ERR_PULL_FAILED);
+        });
     });
 });

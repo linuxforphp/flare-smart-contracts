@@ -744,6 +744,49 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; Inflation unit tests`, asyn
       );
     });
 
+    it("Should not request inflation to topup if receiver has balance", async () => {
+      // Assemble
+      // Set up two sharing percentages
+      const sharingPercentages = [];
+      const receiver1 = await MockContract.new();
+      const receiver2 = await MockContract.new();
+      sharingPercentages[0] = { inflationReceiver: receiver1.address, percentBips: 3000 };
+      sharingPercentages[1] = { inflationReceiver: receiver2.address, percentBips: 7000 };
+      const percentageProviderMock = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+      await inflation.updateContractAddresses(
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION]),
+        [ADDRESS_UPDATER, mockSupply.address, percentageProviderMock.address], {from: ADDRESS_UPDATER});
+      await mockFlareDaemon.trigger();
+      const {
+        3: rewardServicesState1 } = await inflation.getCurrentAnnum() as any;
+      const expectedAuthorizedInflation = Math.floor(inflationForAnnum / 30);
+      // This should cap at one days authorization...not the factor
+      const expectedTopupService0 = Math.floor(expectedAuthorizedInflation * 0.3);
+      const expectedTopupService1 = expectedAuthorizedInflation - expectedTopupService0;
+      // Check topup inflation for first reward service
+      assert.equal(rewardServicesState1.rewardServices[0].inflationTopupRequestedWei, expectedTopupService0);
+      // Check topup inflation for the second reward service
+      assert.equal(rewardServicesState1.rewardServices[1].inflationTopupRequestedWei, expectedTopupService1);
+      const nowTs = await time.latest() as BN;
+      // A day passes...
+      await time.increaseTo(nowTs.addn(86400));
+      await web3.eth.sendTransaction({ from: accounts[0], to: receiver1.address, value: toBN(inflationForAnnum) });
+      // Act
+      await mockFlareDaemon.trigger();
+      // Assert
+      const expectedAuthorizedInflationCycle1 = Math.floor(inflationForAnnum / 30);
+      const expectedAuthorizedInflationCycle2 = Math.floor((inflationForAnnum - expectedAuthorizedInflationCycle1) / 29);
+      const expectedAuthorizedInflationCycle2Service1 = Math.floor(expectedAuthorizedInflationCycle2 * 0.3);
+      const expectedAuthorizedInflationCycle2Service2 = expectedAuthorizedInflationCycle2 - expectedAuthorizedInflationCycle2Service1;
+      const expectedTopupService2 = Math.floor(expectedAuthorizedInflationCycle2Service2 * 1.2);
+      const {
+        3: rewardServicesState2 } = await inflation.getCurrentAnnum() as any;
+      // Check topup inflation for first reward service
+      assert.equal(rewardServicesState2.rewardServices[0].inflationTopupRequestedWei, expectedTopupService0);
+      // Check topup inflation for the second reward service
+      assert.equal(rewardServicesState2.rewardServices[1].inflationTopupRequestedWei, expectedTopupService2);
+    });
+
     it("Should revert if topup factor is less than 100 and topup type is FACTOROFDAILYAUTHORIZED", async() => {
       const receiver = await MockContract.new();
       const tx = inflation.setTopupConfiguration(receiver.address, TopupType.FACTOROFDAILYAUTHORIZED, 10);

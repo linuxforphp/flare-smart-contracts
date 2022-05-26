@@ -138,7 +138,7 @@ contract DelegationAccountClonable is IDelegationAccount {
         emit UndelegateGovernance(address(this));
     }
 
-    function setExecutor(address _executor) external override onlyOwner { // can input be array
+    function setExecutor(address _executor) external override onlyOwner {
         isExecutor[_executor] = true;
         emit SetExecutor(address(this), _executor);
     }

@@ -1,7 +1,6 @@
 import {
   WNatInstance,
   GovernanceVotePowerInstance,
-  FtsoRegistryInstance,
   GovernorRejectInstance,
   ExecuteMockInstance,
   FtsoManagerInstance,
@@ -11,7 +10,8 @@ import {
   PriceSubmitterInstance,
   MockContractContract,
   VoterWhitelisterInstance,
-  VoterWhitelisterContract
+  VoterWhitelisterContract,
+  GovernorAcceptInstance
 } from "../../../../typechain-truffle";
 import { toBN } from "../../../utils/test-helpers";
 import { time, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers';
@@ -23,6 +23,7 @@ import { createMockSupplyContract } from "../../../utils/FTSO-test-utils";
 import {
   setDefaultGovernanceParameters
 } from "../../../utils/FtsoManager-test-utils";
+import { Bytes } from "ethers";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
@@ -30,7 +31,6 @@ const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANC
 
 const WNat = artifacts.require("WNat");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
-const FtsoRegistry = artifacts.require("FtsoRegistry");
 const GovernorReject = artifacts.require("GovernorReject");
 const MockFtso = artifacts.require("MockContract");
 const ExecuteMock = artifacts.require("ExecuteMock");
@@ -41,9 +41,7 @@ const Ftso = artifacts.require("Ftso");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const MockRegistry = artifacts.require("MockContract") as MockContractContract;
 const VoterWhitelister = artifacts.require("VoterWhitelister") as VoterWhitelisterContract;
-
-
-let MOCK_FTSO_MANAGER_ADDRESS: string;
+const GovernorAccept = artifacts.require("GovernorAccept");
 
 const ONLY_GOVERNANCE_MSG = "only governance";
 const PROPOSALTHRESHOLDSET_EVENT = 'ProposalThresholdSet'
@@ -93,10 +91,10 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
   let priceSubmitter: PriceSubmitterInstance;
   let mockFtsoRegistry: MockContractInstance;
   let voterWhitelister: VoterWhitelisterInstance;
+  let governorAccept: GovernorAcceptInstance;
 
   const GOVERNANCE_ADDRESS = accounts[0];
   const ADDRESS_UPDATER = accounts[16];
-  MOCK_FTSO_MANAGER_ADDRESS = accounts[123];
 
   beforeEach(async () => {
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
@@ -425,7 +423,7 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
 
       it("Should propose and execute", async () => {
         let tx = await governorReject.methods["propose(string)"].sendTransaction("Proposal", { from: accounts[2] }) as any;
-        let proposal1Id = tx.logs[0].args.proposalId.toString();
+        let proposal1Id = tx.logs[0].args.proposalId.toString();  
 
         // advance one hour to the voting period
         await time.increase(3600);
@@ -488,6 +486,8 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
         // execute
         let descriptionHash = web3.utils.soliditySha3("Proposal") as string;
         //web3.utils.soliditySha3(web3.utils.toHex("Proposal"));
+        expect((await governorReject.getProposalId([executeMock.address], [0],  [executeMock.contract.methods.setNum(3).encodeABI()], descriptionHash)).toString()).to.equals(proposal1Id);
+
         let execute = await governorReject.methods["execute(address[],uint256[],bytes[],bytes32)"].sendTransaction([executeMock.address], [0], [executeMock.contract.methods.setNum(3).encodeABI()], descriptionHash, { from: accounts[2] }) as any;
         expectEvent(execute, "ProposalExecuted", { proposalId: proposal1Id });
 
@@ -524,9 +524,9 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
       });
 
       it("Should choose vote power block, propose and execute or revert", async () => {
+        let blockBeforeDelegation = await web3.eth.getBlockNumber();
         await governanceVotePower.delegate(accounts[6], { from: accounts[4] });
         await governanceVotePower.delegate(accounts[6], { from: accounts[5] });
-        let blockAfterDelegation = await web3.eth.getBlockNumber();
 
         for (let i = 0; i <= 172800 / 1200; i++) {
           await time.increase(1200);
@@ -551,7 +551,7 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
         await time.increase(7200);
 
         // try to execute
-        if (vpBlock <= blockAfterDelegation) {
+        if (vpBlock <= blockBeforeDelegation) {
           await governorReject.methods["execute(string)"].sendTransaction("Proposal", { from: accounts[2] }) as any;
           let info1 = await governorReject.contract.methods.getProposalInfo(proposal1Id).call();
           await governorReject.getProposalInfo(proposal1Id);
@@ -937,6 +937,35 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
         await expectRevert(tx, "unknown proposal id")
       });
 
+      it("Should revert on-chain proposal if msg.value does not equal msg.value", async () => {
+        // propose
+        let propose = await governorReject.methods["propose(address[],uint256[],bytes[],string)"].sendTransaction([executeMock.address], [10], [executeMock.contract.methods.setNum(3).encodeABI()], "Proposal", { from: accounts[2] }) as any;
+
+        let proposal1Id = propose.logs[0].args.proposalId.toString();
+
+        // advance to the voting period
+        await time.increase(3600);
+
+        // voting
+        await governorReject.castVote(proposal1Id, 1, { from: accounts[4] });
+        await governorReject.castVote(proposal1Id, 2, { from: accounts[5] });
+
+        // advance to end of the voting period
+        await time.increase(7200);
+
+        // advance to the executing period
+        await time.increase(1500);
+
+        // execute
+        let descriptionHash = web3.utils.soliditySha3("Proposal") as string;
+        //web3.utils.soliditySha3(web3.utils.toHex("Proposal"));
+        expect((await governorReject.getProposalId([executeMock.address], [10],  [executeMock.contract.methods.setNum(3).encodeABI()], descriptionHash)).toString()).to.equals(proposal1Id);
+
+        let execute = governorReject.methods["execute(address[],uint256[],bytes[],bytes32)"].sendTransaction([executeMock.address], [10], [executeMock.contract.methods.setNum(3).encodeABI()], descriptionHash, { from: accounts[2], value: "5" }) as any;
+
+        await expectRevert(execute, "sum of _values does not equals msg.value");
+      });
+
     });
 
     describe("Settings change", async () => {
@@ -1051,8 +1080,128 @@ contract(`GovernorReject.sol; ${getTestFile(__filename)}; GovernanceVotePower un
         expect(await governorReject.isProposer(accounts[6])).to.equals(true);
         expect(await governorReject.isProposer(accounts[19])).to.equals(false);
       });
+
     });
 
   });
+
+  describe("Governor accept", async () => {
+
+    beforeEach(async () => {
+      governorAccept = await GovernorAccept.new(
+        [2000, 3600, 7200, 1500, 2000, 5000, 30, 259200],
+        accounts[0],
+        priceSubmitter.address,
+        ADDRESS_UPDATER,
+        5000
+      );
+
+      await governorAccept.updateContractAddresses(
+          encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER]),
+          [ADDRESS_UPDATER, ftsoManager.address, governanceVotePower.address], { from: ADDRESS_UPDATER }
+      );
+    });
+
+    it("Should check deployment parameters", async () => {
+      expect((await governorAccept.proposalThreshold()).toNumber()).to.equals(2000);
+      expect((await governorAccept.votingDelay()).toNumber()).to.equals(3600);
+      expect((await governorAccept.votingPeriod()).toNumber()).to.equals(7200);
+      expect((await governorAccept.executionDelay()).toNumber()).to.equals(1500);
+      expect((await governorAccept.executionPeriod()).toNumber()).to.equals(2000);
+      expect((await governorAccept.quorumThreshold()).toNumber()).to.equals(5000);
+      expect((await governorAccept.getVotePowerLifeTimeDays()).toNumber()).to.equals(30);
+      expect((await governorAccept.getVpBlockPeriodSeconds()).toNumber()).to.equals(259200);
+
+      expect((await governorAccept.acceptanceThreshold()).toNumber()).to.equals(5000);
+    });
+
+    it("Should propose and execute", async () => {
+      let tx = await governorAccept.methods["propose(string)"].sendTransaction("Proposal accept", { from: accounts[5] }) as any;
+      let proposal1Id = tx.logs[0].args.proposalId.toString();
+
+      // advance one hour to the voting period
+      await time.increase(3600);
+
+      // voting
+      await governorAccept.castVote(proposal1Id, 1, { from: accounts[2] });
+      await governorAccept.castVote(proposal1Id, 1, { from: accounts[3] });
+      await governorAccept.castVote(proposal1Id, 2, { from: accounts[4] });
+      await governorAccept.castVote(proposal1Id, 1, { from: accounts[5] });
+
+      let proposalVP = await governorAccept.getProposalVP(proposal1Id);
+      expect(proposalVP[0].toString()).to.equals("7100");
+      expect(proposalVP[1].toString()).to.equals("5000");
+      expect(proposalVP[2].toString()).to.equals("0");
+      expect(proposalVP[3].toString()).to.equals("2000");
+
+      expectEvent(tx, "ProposalSettingsAccept", { proposalId: proposal1Id, quorumThreshold: toBN(5000), acceptanceThreshold: toBN(5000) }); 
+
+      // advance to end of the voting period
+      await time.increase(7200);
+
+      // should not be yet executed
+      let info = await governorAccept.getProposalInfo(proposal1Id);
+      expect(info[6]).to.equal(false);
+
+      // mark proposal as executed
+      let execute = await governorAccept.methods["execute(string)"].sendTransaction("Proposal accept", { from: accounts[5] }) as any;
+      
+      expectEvent(execute, "ProposalExecuted", { proposalId: proposal1Id });
+
+      let info1 = await governorAccept.getProposalInfo(proposal1Id);
+      expect(info1[6]).to.equal(true);
+    });
+
+    it("Should reject proposal if not enough vote power votes for", async() => {
+      let tx = await governorAccept.methods["propose(string)"].sendTransaction("Proposal accept", { from: accounts[5] }) as any;
+      let proposal1Id = tx.logs[0].args.proposalId.toString();
+
+      await time.increase(3600);
+
+      await governorAccept.castVote(proposal1Id, 1, { from: accounts[2] });
+      await governorAccept.castVote(proposal1Id, 1, { from: accounts[3] });
+      await governorAccept.castVote(proposal1Id, 2, { from: accounts[4] });
+      await governorAccept.castVote(proposal1Id, 2, { from: accounts[5] });
+
+      await time.increase(7200);
+
+      // proposal rejected
+      let state1 = await governorAccept.state(proposal1Id);
+      expect(state1.toString()).to.equals("2");
+
+      let execute = governorAccept.methods["execute(string)"].sendTransaction("Proposal accept", { from: accounts[5] }) as any;
+      
+      await expectRevert(execute, "proposal not in execution state");
+    });
+
+
+    it("Should reject proposal if quorum is not achieved", async() => {
+      let tx = await governorAccept.methods["propose(string)"].sendTransaction("Proposal accept", { from: accounts[5] }) as any;
+      let proposal1Id = tx.logs[0].args.proposalId.toString();
+
+      await time.increase(3600);
+
+      await governorAccept.castVote(proposal1Id, 1, { from: accounts[2] });
+
+      await time.increase(7200);
+
+      // proposal rejected
+      let state1 = await governorAccept.state(proposal1Id);
+      expect(state1.toString()).to.equals("2");
+
+      let execute = governorAccept.methods["execute(string)"].sendTransaction("Proposal accept", { from: accounts[5] }) as any;
+      
+      await expectRevert(execute, "proposal not in execution state");
+    });
+
+    it("Should change acceptance threshold", async() => {
+      expect((await governorAccept.acceptanceThreshold()).toString()).to.equals("5000");
+
+      await governorAccept.setAcceptanceThreshold(8000);
+      expect((await governorAccept.acceptanceThreshold()).toString()).to.equals("8000");
+    });
+
+  });
+
 
 });
