@@ -65,6 +65,8 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     string internal constant ERR_OPT_OUT = "already opted out";
     string internal constant ERR_NO_BALANCE_CLAIMABLE = "no balance currently available";
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
+    string internal constant ERR_ALREADY_STARTED = "already started";
+    string internal constant ERR_TREASURY_ONLY = "treasury only";
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -106,7 +108,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
      * @notice Needed in order to receive funds from DistributionTreasury
      */
     receive() external payable {
-        /* empty block */
+        require(msg.sender == address(treasury), ERR_TREASURY_ONLY);
     }
 
     /**
@@ -118,6 +120,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     function setClaimBalance(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);
         require(toAddress.length == balance.length, ERR_ARRAY_MISMATCH);
+        require (entitlementStartTs == 0, ERR_ALREADY_STARTED);
         for (uint16 i = 0; i < toAddress.length; i++) {
             // Assume that when the initial 15% was allocated, that any remainder was truncated.
             // Therefore, compute the difference to obtain the remaining entitlement balance.

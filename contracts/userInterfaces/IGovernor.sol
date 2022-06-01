@@ -21,6 +21,7 @@ interface IGovernor {
      * @notice Event emitted when a proposal is created
      * @dev Required for compatibility with Tally (OpenZeppelin style)
      * @dev Violates compatibility with Tally (startTime and endTime instead of startBlock and endBlock)
+     * @dev additional data - votePowerBlock, wrappingThreshold, absoluteThreshold, relativeThreshold
      */
     event ProposalCreated(
         uint256 proposalId,
@@ -31,7 +32,11 @@ interface IGovernor {
         bytes[] calldatas,
         uint256 startTime,
         uint256 endTime,
-        string description
+        string description,
+        uint256 votePowerBlock,
+        uint256 wrappingThreshold,
+        uint256 absoluteThreshold,
+        uint256 relativeThreshold
     );
 
     /**

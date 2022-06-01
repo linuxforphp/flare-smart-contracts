@@ -138,6 +138,14 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
     });
 
+    it("Should revert sending founds if not treasury contract", async () => {
+      // Assemble
+      // Act
+      const res = web3.eth.sendTransaction({ from: accounts[0], to: distribution.address, value: 500 });
+      // Assert
+      await expectRevert(res, "treasury only")
+    });
+
     it("Should only opt out once", async () => {
       // Assemble
       // Act

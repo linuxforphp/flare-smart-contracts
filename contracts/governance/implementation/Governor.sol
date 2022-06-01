@@ -10,10 +10,11 @@ import "./GovernorVotePower.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/drafts/EIP712.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import "../../ftso/implementation/FtsoManager.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
+import "../../inflation/interface/IISupply.sol";
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../token/interface/IIGovernanceVotePower.sol";
+import "../../userInterfaces/IPriceSubmitter.sol";
 
 abstract contract Governor is
     IIGovernor, EIP712, GovernorSettings, GovernorVotePower, GovernorProposals,
@@ -23,8 +24,9 @@ abstract contract Governor is
 
     uint256 internal constant BIPS = 1e4;
 
-    IIFtsoManager public ftsoManager;
     IPriceSubmitter public immutable priceSubmitter;
+    IIFtsoManager public ftsoManager;
+    IISupply public supply;
 
     /// @notice The EIP-712 typehash for the ballot struct used by the contract
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");
@@ -40,10 +42,12 @@ abstract contract Governor is
      *          votingPeriodSeconds         Voting period in seconds
      *          executionDelaySeconds       Execution delay in seconds
      *          executionPeriodSeconds      Execution period in seconds
-     *          quorumThresholdBIPS         Percentage in BIPS of the total vote power required for proposal quorum
-     *          _votePowerLifeTimeDays      Number of days after which checkpoint can be deleted
-     *          _vpBlockPeriodSeconds       Minimal length of the period (in seconds) from which the
-     vote power block is randomly chosen
+     *          votePowerLifeTimeDays       Number of days after which checkpoint can be deleted
+     *          vpBlockPeriodSeconds        Minimal length of the period (in seconds) from which the
+     *                                      vote power block is randomly chosen
+     *          wrappingThresholdBIPS       Percentage in BIPS of the min wrapped supply given total circulating supply
+     *          absoluteThresholdBIPS       Percentage in BIPS of the total vote power required for proposal "quorum"
+     *          relativeThresholdBIPS       Percentage in BIPS of the proper relation between FOR and AGAINST votes
      */
     constructor(
         uint256[] memory _proposalSettings,
@@ -61,7 +65,9 @@ abstract contract Governor is
             _proposalSettings[4],
             _proposalSettings[5],
             _proposalSettings[6],
-            _proposalSettings[7]
+            _proposalSettings[7],
+            _proposalSettings[8],
+            _proposalSettings[9]
         )
         GovernorProposals()
         GovernorVotes()
@@ -282,7 +288,7 @@ abstract contract Governor is
      * @return Vote power representing the quorum at _blockNumber
      */
     function quorum(uint256 _blockNumber) public view override returns (uint256) {        
-        return quorumThreshold().mulDiv(totalVotePowerAt(_blockNumber), BIPS);
+        return absoluteThreshold().mulDiv(totalVotePowerAt(_blockNumber), BIPS);
     }
 
     /**
@@ -298,7 +304,7 @@ abstract contract Governor is
         uint256[] memory _values,
         bytes[] memory _calldatas,
         bytes32 _descriptionHash
-    ) public pure returns (uint256) {
+    ) public view returns (uint256) {
         return _getProposalId(_targets, _values, _calldatas, _descriptionHash);
     }
 
@@ -318,6 +324,9 @@ abstract contract Governor is
         string memory _description
     ) internal returns (uint256) {
         (uint256 votePowerBlock, uint256 rewardEpochTimestamp) = _calculateVotePowerBlock();
+        uint256 totalWrappedSupply = totalVotePowerAt(votePowerBlock);
+        require(totalWrappedSupply >= supply.getCirculatingSupplyAt(votePowerBlock).mulDiv(wrappingThreshold(), BIPS), 
+            "wrapped supply too low");
 
         require(_isValidProposer(msg.sender, votePowerBlock), "submitter is not eligible to submit a proposal");
         
@@ -330,10 +339,8 @@ abstract contract Governor is
             votePowerBlock,
             rewardEpochTimestamp,
             this,
-            totalVotePowerAt(votePowerBlock)
+            totalWrappedSupply
         );
-
-        _storeProposalSettings(proposalId);
 
         emit ProposalCreated(
             proposalId,
@@ -344,7 +351,11 @@ abstract contract Governor is
             _calldatas,
             proposal.voteStartTime,
             proposal.voteEndTime,
-            _description
+            _description,
+            proposal.votePowerBlock,
+            wrappingThreshold(),
+            proposal.absoluteThreshold,
+            proposal.relativeThreshold
         );
 
         return proposalId;
@@ -452,12 +463,6 @@ abstract contract Governor is
     function _isValidProposer(address _proposer, uint256 _votePowerBlock) internal virtual view returns (bool);
 
     /**
-     * @notice Stores some of the proposal settings (quorum threshold, rejection/accept threshold)
-     * @param _proposalId             Id of the proposal
-     */
-    function _storeProposalSettings(uint256 _proposalId) internal virtual;
-
-    /**
      * @notice Determines if the submitter of a proposal has sufficient vote power to propose
      * @param _proposer             Address of the submitter
      * @param _votePowerBlock       Number representing the block at which the vote power is checked
@@ -492,7 +497,7 @@ abstract contract Governor is
             return ProposalState.Active;
         }
 
-        if (_proposalSucceeded(_proposalId, _proposal.totalVP)) {
+        if (_proposalSucceeded(_proposalId, _proposal)) {
             if (!_proposal.executableOnChain) {
                 return ProposalState.Queued;
             }
@@ -511,10 +516,10 @@ abstract contract Governor is
     /**
      * @notice Determines if a proposal has been successful
      * @param _proposalId           Id of the proposal
-     * @param _proposalTotalVP      Total vote power of the proposal
+     * @param _proposal             Proposal
      * @return True if proposal succeeded and false otherwise
      */
-    function _proposalSucceeded(uint256 _proposalId, uint256 _proposalTotalVP) internal view virtual returns (bool);
+    function _proposalSucceeded(uint256 _proposalId, Proposal storage _proposal) internal view virtual returns (bool);
 
     /**
      * @notice Returns the name of the governor contract
@@ -541,10 +546,12 @@ abstract contract Governor is
         ftsoManager = IIFtsoManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
 
+        supply = IISupply(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
+
         IIGovernanceVotePower vpContract = IIGovernanceVotePower(
             _getContractAddress(_contractNameHashes, _contractAddresses, "GovernanceVotePower"));
 
         setVotePowerContract(vpContract);
     }
-
 }
