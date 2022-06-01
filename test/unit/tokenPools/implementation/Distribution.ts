@@ -24,6 +24,8 @@ const ERR_NO_BALANCE_CLAIMABLE = "no balance currently available";
 const ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
 const ERR_TOO_MANY = "too many";
 const ERR_NOT_REGISTERED = "not registered";
+const ERR_ALREADY_STARTED = "already started";
+const ERR_TREASURY_ONLY = "treasury only";
 
 const EVENT_ENTITLEMENT_STARTED = "EntitlementStarted";
 const EVENT_ACCOUNT_CLAIM = "AccountClaimed";
@@ -75,6 +77,14 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assert
       await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
     });
+    
+    it("Should revert sending founds if not treasury contract", async () => {
+      // Assemble
+      // Act
+      const res = web3.eth.sendTransaction({ from: accounts[0], to: distribution.address, value: 500 });
+      // Assert
+      await expectRevert(res, ERR_TREASURY_ONLY)
+    });
   });
 
   describe("Adding Accounts", async () => {
@@ -122,6 +132,18 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const addingEvent = distribution.setClaimBalance(addresses, balances);
       // Assert
       await expectRevert(addingEvent, ERR_TOO_MANY);
+    });
+
+    it("Should revert if entitlement already started", async () => {
+      // Assemble
+      await bulkLoad(BN(1000));
+      await bestowClaimableBalance(BN(8500));
+      const nowTs = await time.latest() as BN;
+      await distribution.setEntitlementStart(nowTs);
+      // Act
+      const addingEvent = distribution.setClaimBalance([accounts[20]], [BN(1000)]);
+      // Assert
+      await expectRevert(addingEvent, ERR_ALREADY_STARTED);
     });
   });
 

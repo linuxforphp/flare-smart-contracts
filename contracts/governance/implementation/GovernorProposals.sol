@@ -18,11 +18,24 @@ abstract contract GovernorProposals {
         uint256 execEndTime;        // end time of execution window (in seconds from epoch)
         bool executableOnChain;     // flag indicating if proposal is executable on chain (via execution parameters)
         bool executed;              // flag indicating if proposal has been executed
+        uint256 absoluteThreshold;  // Percentage in BIPS of the total vote power required for proposal "quorum"
+        uint256 relativeThreshold;  // Percentage in BIPS of the proper relation between FOR and AGAINST votes
         uint256 totalVP;            // total vote power at votePowerBlock
     }
 
     uint256 internal nextExecutionStartTime;            // first available time for next proposal execution
     mapping(uint256 => Proposal) internal proposals;
+    uint256 immutable public chainId;
+
+    constructor() {
+        uint256 id;
+        /* solhint-disable no-inline-assembly */
+        assembly {
+            id := chainid()
+        }
+        /* solhint-enable no-inline-assembly */
+        chainId = id;
+    }
 
     /**
      * @notice Stores a new proposal
@@ -72,6 +85,8 @@ abstract contract GovernorProposals {
             nextExecutionStartTime = proposal.execEndTime;
         }
 
+        proposal.absoluteThreshold = _settings.absoluteThreshold();
+        proposal.relativeThreshold = _settings.relativeThreshold();
         proposal.totalVP = _totalVP;
 
         return (proposalId, proposal);
@@ -124,8 +139,8 @@ abstract contract GovernorProposals {
         uint256[] memory _values,
         bytes[] memory _calldatas,
         bytes32 _descriptionHash
-    ) internal pure returns (uint256) {
-        return uint256(keccak256(abi.encode(_targets, _values, _calldatas, _descriptionHash)));
+    ) internal view returns (uint256) {
+        return uint256(keccak256(abi.encode(chainId, address(this), _targets, _values, _calldatas, _descriptionHash)));
     }
 
     /**
@@ -136,5 +151,4 @@ abstract contract GovernorProposals {
     function _getDescriptionHash(string memory _description) internal pure returns (bytes32) {
         return keccak256(bytes(_description));
     }
-
 }

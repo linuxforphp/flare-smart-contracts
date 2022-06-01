@@ -13,18 +13,22 @@ abstract contract GovernorSettings is IIGovernor, Governed {
     uint256 private votingPeriodSeconds;
     uint256 private executionDelaySeconds;
     uint256 private executionPeriodSeconds;
-    uint256 private quorumThresholdBIPS;
     uint256 private votePowerLifeTimeDays;
     uint256 private vpBlockPeriodSeconds;
+    uint256 private wrappingThresholdBIPS;
+    uint256 private absoluteThresholdBIPS;
+    uint256 private relativeThresholdBIPS;
 
     event ProposalThresholdSet(uint256 oldProposalThreshold, uint256 newProposalThreshold);
     event VotingDelaySet(uint256 oldVotingDelay, uint256 newVotingDelay);
     event VotingPeriodSet(uint256 oldVotingPeriod, uint256 newVotingPeriod);
     event ExecutionDelaySet(uint256 oldExecutionDelay, uint256 newExecutionDelay);
     event ExecutionPeriodSet(uint256 oldExecutionPeriod, uint256 newExecutionPeriod);
-    event QuorumThresholdSet(uint256 oldQuorumThreshold, uint256 newQuorumThreshold);
     event VotePowerLifeTimeDaysSet(uint256 oldVotePowerLifeTimeDays, uint256 newVotePowerLifeTimeDays);
-    event VpBlockPeriodSecondsSet(uint256 oldVpBlockPeriodSeconds, uint256 newVpBlockPeriodSeconds);        
+    event VpBlockPeriodSecondsSet(uint256 oldVpBlockPeriodSeconds, uint256 newVpBlockPeriodSeconds);
+    event WrappingThresholdSet(uint256 oldWrappingThreshold, uint256 newWrappingThreshold);
+    event AbsoluteThresholdSet(uint256 oldAbsoluteThreshold, uint256 newAbsoluteThreshold);
+    event RelativeThresholdSet(uint256 oldRelativeThreshold, uint256 newRelativeThreshold);
  
 
     /**
@@ -35,11 +39,12 @@ abstract contract GovernorSettings is IIGovernor, Governed {
      * @param _votingPeriodSeconds          Voting period in seconds
      * @param _executionDelaySeconds        Execution delay in seconds
      * @param _executionPeriodSeconds       Execution period in seconds
-     * @param _quorumThresholdBIPS          Percentage in BIPS of the total vote power required for 
-     proposal quorum
      * @param _votePowerLifeTimeDays        Period in days after which checkpoint can be deleted
      * @param _vpBlockPeriodSeconds         Minimal length of the period (in seconds) from which the
-     vote power block is randomly chosen
+     *                                      vote power block is randomly chosen
+     * @param _wrappingThresholdBIPS        Percentage in BIPS of the min wrapped supply given total circulating supply
+     * @param _absoluteThresholdBIPS        Percentage in BIPS of the total vote power required for proposal "quorum"
+     * @param _relativeThresholdBIPS        Percentage in BIPS of the proper relation between FOR and AGAINST votes
      */
     constructor(
         address _governance,
@@ -48,18 +53,22 @@ abstract contract GovernorSettings is IIGovernor, Governed {
         uint256 _votingPeriodSeconds,
         uint256 _executionDelaySeconds,
         uint256 _executionPeriodSeconds,
-        uint256 _quorumThresholdBIPS,
         uint256 _votePowerLifeTimeDays,
-        uint256 _vpBlockPeriodSeconds
+        uint256 _vpBlockPeriodSeconds,
+        uint256 _wrappingThresholdBIPS,
+        uint256 _absoluteThresholdBIPS,
+        uint256 _relativeThresholdBIPS
     ) Governed(_governance) {
         _setProposalThreshold(_proposalThresholdBIPS);
         _setVotingDelay(_votingDelaySeconds);
         _setVotingPeriod(_votingPeriodSeconds);
         _setExecutionDelay(_executionDelaySeconds);
         _setExecutionPeriod(_executionPeriodSeconds);
-        _setQuorumThreshold(_quorumThresholdBIPS);
         _setVotePowerLifeTimeDays(_votePowerLifeTimeDays);
         _setVpBlockPeriodSeconds(_vpBlockPeriodSeconds);
+        _setWrappingThreshold(_wrappingThresholdBIPS);
+        _setAbsoluteThreshold(_absoluteThresholdBIPS);
+        _setRelativeThreshold(_relativeThresholdBIPS);
     }
 
     /**
@@ -113,16 +122,6 @@ abstract contract GovernorSettings is IIGovernor, Governed {
     }
 
     /**
-     * @notice Updates the quorum threshold
-     * @param _quorumThresholdBIPS      Percentage in BIPS of the total vote power required for proposal quorum
-     * @notice This operation can only be performed through a governance proposal
-     * @notice Emits a QuorumThresholdSet event
-     */
-    function setQuorumThreshold(uint256 _quorumThresholdBIPS) public onlyGovernance {
-        _setQuorumThreshold(_quorumThresholdBIPS);
-    }
-
-    /**
      * @notice Updates the vote power life time days
      * @param _votePowerLifeTimeDays      Time in days from the time vote power checkpoint 
      was created to the time that the checkpoint can be deleted
@@ -138,10 +137,40 @@ abstract contract GovernorSettings is IIGovernor, Governed {
      * @param _vpBlockPeriodSeconds     Minimal length of period in seconds from which the vote power
      block is randomly chosen
      * @notice This operation can only be performed through a governance proposal
-     * @notice Emits a VotePowerLifeTimeDaysSet event
+     * @notice Emits a VpBlockPeriodSecondsSet event
      */
     function setVpBlockPeriodSeconds(uint256 _vpBlockPeriodSeconds) public onlyGovernance {
         _setVpBlockPeriodSeconds(_vpBlockPeriodSeconds);
+    }
+
+    /**
+     * @notice Updates wrapping threshold
+     * @param _wrappingThresholdBIPS    Percentage in BIPS of the min wrapped supply given total circulating supply
+     * @notice This operation can only be performed through a governance proposal
+     * @notice Emits a WrappingThresholdSet event
+     */
+    function setWrappingThreshold(uint256 _wrappingThresholdBIPS) public onlyGovernance {
+        _setWrappingThreshold(_wrappingThresholdBIPS);
+    }
+
+    /**
+     * @notice Updates absolute threshold
+     * @param _absoluteThresholdBIPS    Percentage in BIPS of the total vote power required for proposal "quorum"
+     * @notice This operation can only be performed through a governance proposal
+     * @notice Emits an AbsoluteThresholdSet event
+     */
+    function setAbsoluteThreshold(uint256 _absoluteThresholdBIPS) public onlyGovernance {
+        _setAbsoluteThreshold(_absoluteThresholdBIPS);
+    }
+
+    /**
+     * @notice Updates relative threshold
+     * @param _relativeThresholdBIPS    Percentage in BIPS of the proper relation between FOR and AGAINST votes
+     * @notice This operation can only be performed through a governance proposal
+     * @notice Emits a RelativeThresholdSet event
+     */
+    function setRelativeThreshold(uint256 _relativeThresholdBIPS) public onlyGovernance {
+        _setRelativeThreshold(_relativeThresholdBIPS);
     }
 
     /**
@@ -184,17 +213,9 @@ abstract contract GovernorSettings is IIGovernor, Governed {
         return executionPeriodSeconds;
     }
 
-    /**
-     * @notice Returns quorum threshold
-     * @return Percentage in BIPS of the vote power required for proposal quorum
-     */
-    function quorumThreshold() public view override returns (uint256) {
-        return quorumThresholdBIPS;
-    }
-
     /** 
      * @notice Returns vote power life time days
-     * @return Percentage in BIPS of the vote power required for proposal quorum
+     * @return Period in days after which checkpoint can be deleted
      */
     function getVotePowerLifeTimeDays() public view override returns (uint256) {
         return votePowerLifeTimeDays;
@@ -202,10 +223,34 @@ abstract contract GovernorSettings is IIGovernor, Governed {
 
     /** 
      * @notice Returns vote power period (in seconds) from which the vote power block is randomly chosen
-     * @return Vote power block in period in days
+     * @return Minimal period length
      */
     function getVpBlockPeriodSeconds() public view override returns (uint256) {
         return vpBlockPeriodSeconds;
+    }
+
+    /**
+     * @notice Returns quorum threshold
+     * @return Percentage in BIPS of the min wrapped supply given total circulating supply
+     */
+    function wrappingThreshold() public view override returns (uint256) {
+        return wrappingThresholdBIPS;
+    }
+
+    /**
+     * @notice Returns quorum threshold
+     * @return Percentage in BIPS of the total vote power required for proposal "quorum"
+     */
+    function absoluteThreshold() public view override returns (uint256) {
+        return absoluteThresholdBIPS;
+    }
+
+    /**
+     * @notice Returns quorum threshold
+     * @return Percentage in BIPS of the proper relation between FOR and AGAINST votes
+     */
+    function relativeThreshold() public view override returns (uint256) {
+        return relativeThresholdBIPS;
     }
 
     /**
@@ -263,16 +308,6 @@ abstract contract GovernorSettings is IIGovernor, Governed {
     }
 
     /**
-     * @notice Sets quorum threshold
-     * @param _quorumThresholdBIPS      Percentage in BIPS of the total vote power required for proposal quorum
-     * @notice Emits a QuorumThresholdSet event
-     */
-    function _setQuorumThreshold(uint256 _quorumThresholdBIPS) internal {
-        emit QuorumThresholdSet(quorumThresholdBIPS, _quorumThresholdBIPS);
-        quorumThresholdBIPS = _quorumThresholdBIPS;
-    }
-
-    /**
      * @notice Sets the vote power life time days
      * @param _votePowerLifeTimeDays      Time in days from the time vote power checkpoint 
      was created to the time that the checkpoint can be deleted
@@ -287,11 +322,41 @@ abstract contract GovernorSettings is IIGovernor, Governed {
      * @notice Sets the vote power block period
      * @param _vpBlockPeriodSeconds      Minimal length of period in seconds from which the vote power 
      block is randomly chosen
-     * @notice Emits a VotePowerLifeTimeDaysSet event
+     * @notice Emits a VpBlockPeriodSecondsSet event
      */
     function _setVpBlockPeriodSeconds(uint256 _vpBlockPeriodSeconds) internal {
         emit VpBlockPeriodSecondsSet(vpBlockPeriodSeconds, _vpBlockPeriodSeconds);
         vpBlockPeriodSeconds = _vpBlockPeriodSeconds;
     }
 
+    /**
+     * @notice Sets wrapping threshold
+     * @param _wrappingThresholdBIPS    Percentage in BIPS of the min wrapped supply given total circulating supply
+     * @notice Emits a WrappingThresholdSet event
+     */
+    function _setWrappingThreshold(uint256 _wrappingThresholdBIPS) internal {
+        emit WrappingThresholdSet(wrappingThresholdBIPS, _wrappingThresholdBIPS);
+        wrappingThresholdBIPS = _wrappingThresholdBIPS;
+    }
+
+    /**
+     * @notice Sets absolute threshold
+     * @param _absoluteThresholdBIPS    Percentage in BIPS of the total vote power required for proposal "quorum"
+     * @notice Emits an AbsoluteThresholdSet event
+     */
+    function _setAbsoluteThreshold(uint256 _absoluteThresholdBIPS) internal {
+        emit AbsoluteThresholdSet(absoluteThresholdBIPS, _absoluteThresholdBIPS);
+        absoluteThresholdBIPS = _absoluteThresholdBIPS;
+    }
+
+    /**
+     * @notice Sets relative threshold
+     * @param _relativeThresholdBIPS    Percentage in BIPS of the proper relation between FOR and AGAINST votes
+     * @notice Emits a RelativeThresholdSet event
+     */
+    function _setRelativeThreshold(uint256 _relativeThresholdBIPS) internal {
+        require(_relativeThresholdBIPS >= 5000, "invalid _relativeThresholdBIPS");
+        emit RelativeThresholdSet(relativeThresholdBIPS, _relativeThresholdBIPS);
+        relativeThresholdBIPS = _relativeThresholdBIPS;
+    }
 }
