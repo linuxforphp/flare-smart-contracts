@@ -11,7 +11,7 @@ const GENERATED_ROOT = "deployment/genesis_gen/generated";
 const filenameCode1 = "StateConnector";
 const filenameCode2 = "FlareDaemon";
 const filenameCode3 = "PriceSubmitter";
-const filenameCode5 = "DistributionTreasury";
+const filenameCode4 = "DistributionTreasury";
 
 async function relativeContractABIPathForContractName(name: string, artifactsRoot = ARTIFACTS_ROOT): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -59,7 +59,7 @@ async function joinChainGenesis(network: string, verbose: boolean) {
     cChainGenesis.alloc["1000000000000000000000000000000000000001"].code = await getArtifactCode(filenameCode1, verbose);
     cChainGenesis.alloc["1000000000000000000000000000000000000002"].code = await getArtifactCode(filenameCode2, verbose);
     cChainGenesis.alloc["1000000000000000000000000000000000000003"].code = await getArtifactCode(filenameCode3, verbose);
-    cChainGenesis.alloc["1000000000000000000000000000000000000005"].code = await getArtifactCode(filenameCode5, verbose);
+    cChainGenesis.alloc["1000000000000000000000000000000000000004"].code = await getArtifactCode(filenameCode4, verbose);
 
     template.cChainGenesis = JSON.stringify(cChainGenesis);
 
