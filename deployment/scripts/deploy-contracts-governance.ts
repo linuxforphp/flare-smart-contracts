@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { GovernanceVotePowerContract, GovernorRejectContract, WNatContract } from '../../typechain-truffle';
+import { GovernanceVotePowerContract, PollingRejectContract, WNatContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { DeployedFlareGovernanceContracts, spewNewContractInfo } from './deploy-utils';
 
@@ -36,7 +36,7 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
   // // Contract definitions
   // const WNat: WNatContract = artifacts.require("WNat");
   // const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
-  // const GovernorReject: GovernorRejectContract = artifacts.require("GovernorReject");
+  // const PollingReject: PollingRejectContract = artifacts.require("PollingReject");
 
   // // Deploy wrapped native token
   // const wNat = await WNat.new(deployerAccount.address, parameters.wrappedNativeName, parameters.wrappedNativeSymbol);
@@ -50,8 +50,8 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
   // spewNewContractInfo(contracts, addressUpdaterContracts, GovernanceVotePower.contractName, `GovernanceVotePower.sol`, governanceVotePower.address, quiet);
 
 
-  // // Deploy governor reject
-  // const governorReject = await GovernorReject.new(
+  // // Deploy polling reject
+  // const pollingReject = await PollingReject.new(
   //   deployerAccount.address,
   //   parameters.ftsoRegistryAddress,
   //   governanceVotePower.address,
@@ -69,7 +69,7 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
   //   parameters.proposers,
   //   parameters.ftsoManagerAddress
   // );
-  // spewNewContractInfo(contracts, addressUpdaterContracts, GovernorReject.contractName, `GovernorReject.sol`, governorReject.address, quiet);
+  // spewNewContractInfo(contracts, addressUpdaterContracts, PollingReject.contractName, `PollingReject.sol`, pollingReject.address, quiet);
 
   // if (!quiet) {
   //   console.error("Contracts in JSON:");
@@ -79,7 +79,7 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
 
   // return {
   //   governanceVP: governanceVotePower,
-  //   governorReject: governorReject,
+  //   pollingReject: pollingReject,
   //   contracts: contracts,
   // } as DeployedFlareGovernanceContracts;
 }

@@ -3,14 +3,12 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "./Governor.sol";
-import "./GovernorAcceptSettings.sol";
+import "./GovernorProposer.sol";
 import "../../utils/implementation/SafePct.sol";
 
-contract GovernorAccept is Governor, GovernorAcceptSettings {
+contract PollingReject is Governor, GovernorProposer {
 
     using SafePct for uint256;
-
-    mapping(uint256 => ProposalSettings) public proposalsSettings;
 
     /**
      * @notice Initializes the contract with default parameters
@@ -23,18 +21,20 @@ contract GovernorAccept is Governor, GovernorAcceptSettings {
      *          votingPeriodSeconds         Voting period in seconds
      *          executionDelaySeconds       Execution delay in seconds
      *          executionPeriodSeconds      Execution period in seconds
-     *          quorumThresholdBIPS         Percentage in BIPS of the total vote power required for proposal quorum
-     *          _votePowerLifeTimeDays      Number of days after which checkpoint can be deleted
-     *          _vpBlockPeriodSeconds       Minimal length of the period (in seconds) from which the
-     vote power block is randomly chosen 
-     * @param _acceptanceThresholdBIPS      Percentage in BIPS of the total vote power required to accept a proposal
+     *          votePowerLifeTimeDays       Number of days after which checkpoint can be deleted
+     *          vpBlockPeriodSeconds        Minimal length of the period (in seconds) from which the
+     *                                      vote power block is randomly chosen
+     *          wrappingThresholdBIPS       Percentage in BIPS of the min wrapped supply given total circulating supply
+     *          absoluteThresholdBIPS       Percentage in BIPS of the total vote power required for proposal "quorum"
+     *          relativeThresholdBIPS       Percentage in BIPS of the proper relation between FOR and AGAINST votes
+     * @param _proposers                    Array of addresses allowed to submit a proposal
      */
     constructor(
         uint256[] memory _proposalSettings,
         address _governance,
         address _priceSubmitter,
         address _addressUpdater,
-        uint256 _acceptanceThresholdBIPS
+        address[] memory _proposers
     )
         Governor(
             _proposalSettings,
@@ -42,28 +42,10 @@ contract GovernorAccept is Governor, GovernorAcceptSettings {
             _priceSubmitter,
             _addressUpdater
         )
-        GovernorAcceptSettings(
-            _acceptanceThresholdBIPS
+        GovernorProposer(
+            _proposers
         )
     {}
-
-    /**
-     * @notice Stores some of the proposal settings (quorum threshold, acceptance threshold)
-     * @param _proposalId             Id of the proposal
-     */
-    function _storeProposalSettings(uint256 _proposalId) internal override {
-        ProposalSettings storage proposalSettings = proposalsSettings[_proposalId];
-        
-        proposalSettings.quorumThreshold = quorumThreshold();
-        proposalSettings.acceptanceThreshold = acceptanceThreshold();
-
-        emit ProposalSettingsAccept(
-            _proposalId,
-            proposals[_proposalId].votePowerBlock,
-            proposalSettings.quorumThreshold,
-            proposalSettings.acceptanceThreshold
-        );
-    }
 
     /**
      * @notice Determines if the submitter of a proposal is a valid proposer
@@ -72,29 +54,28 @@ contract GovernorAccept is Governor, GovernorAcceptSettings {
      * @return True if the submitter is valid, and false otherwise
      */
     function _isValidProposer(address _proposer, uint256 _votePowerBlock) internal view override returns (bool) {
-        return _hasVotePowerToPropose(_proposer, _votePowerBlock);
+        return isProposer(_proposer) && _hasVotePowerToPropose(_proposer, _votePowerBlock);
     }
 
     /**
      * @notice Determines if a proposal has been successful
      * @param _proposalId           Id of the proposal
-     * @param _proposalTotalVP      Total vote power of the proposal
+     * @param _proposal             Proposal
      * @return True if proposal succeeded and false otherwise
      */
-    function _proposalSucceeded(uint256 _proposalId, uint256 _proposalTotalVP) internal view override returns (bool) {
+    function _proposalSucceeded(uint256 _proposalId, Proposal storage _proposal) internal view override returns (bool){
         ProposalVoting storage voting = proposalVotings[_proposalId];
-        ProposalSettings storage proposalSettings = proposalsSettings[_proposalId];
 
-        if (voting.abstainVotePower + voting.againstVotePower + voting.forVotePower <
-            proposalSettings.quorumThreshold.mulDiv(_proposalTotalVP, BIPS)) {
-            return false;
+        if (voting.againstVotePower < _proposal.absoluteThreshold.mulDiv(_proposal.totalVP, BIPS)) {
+            return true;
         }
 
-        if (voting.forVotePower < proposalSettings.acceptanceThreshold.mulDiv(_proposalTotalVP, BIPS)) {
-            return false;
+        if (voting.againstVotePower <=
+            _proposal.relativeThreshold.mulDiv(voting.forVotePower + voting.againstVotePower, BIPS)) {
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     /**
@@ -102,7 +83,7 @@ contract GovernorAccept is Governor, GovernorAcceptSettings {
      * @return String representing the name
      */
     function _name() internal pure override returns (string memory) {
-        return "GovernorAccept";
+        return "PollingReject";
     }
 
     /**

@@ -41,15 +41,10 @@ interface IIGovernor is IGovernor {
      */
     function executionPeriod() external view returns (uint256);
 
-    /**
-     * @notice Returns quorum threshold
-     * @return Percentage in BIPS of the vote power required for proposal quorum
-     */
-    function quorumThreshold() external view returns (uint256);
 
     /**
      * @notice Returns vote power life time days
-     * @return Percentage in BIPS of the vote power required for proposal quorum
+     * @return Period in days after which checkpoint can be deleted
      */
     function getVotePowerLifeTimeDays() external view returns (uint256);
 
@@ -58,4 +53,22 @@ interface IIGovernor is IGovernor {
      * @return Minimal period length
      */
     function getVpBlockPeriodSeconds() external view returns (uint256);
+
+    /**
+     * @notice Returns wrapping threshold
+     * @return Percentage in BIPS of the min wrapped supply given total circulating supply
+     */
+    function wrappingThreshold() external view returns (uint256);
+
+    /**
+     * @notice Returns absolute threshold
+     * @return Percentage in BIPS of the total vote power required for proposal "quorum"
+     */
+    function absoluteThreshold() external view returns (uint256);
+
+    /**
+     * @notice Returns relative threshold
+     * @return Percentage in BIPS of the proper relation between FOR and AGAINST votes
+     */
+    function relativeThreshold() external view returns (uint256);
 }

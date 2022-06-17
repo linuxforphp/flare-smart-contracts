@@ -52,6 +52,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_OPT_OUT = "already opted out";
     string internal constant ERR_NOT_OPT_OUT = "not opted out";
     string internal constant ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero";
+    string internal constant ERR_TREASURY_ONLY = "treasury only";
 
     // storage
     uint256 public totalEntitlementWei;     // Total wei to be distributed by this contract (all but initial airdrop)
@@ -118,7 +119,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @notice Needed in order to receive funds from DistributionTreasury
      */
     receive() external payable {
-        /* empty block */
+        require(msg.sender == address(treasury), ERR_TREASURY_ONLY);
     }
 
     function stop() external onlyGovernance {
