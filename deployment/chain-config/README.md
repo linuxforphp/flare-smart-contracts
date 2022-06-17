@@ -95,6 +95,9 @@ Should add up to 100 Percent
 - `priceEpochDurationSeconds` - 
     Price epoch duration, in seconds. Typical production value is 180 seconds (3 minutes).
 
+- `inflationStartDelaySeconds` -
+    Offset of the start of the first inflation annum from the time of deploy, in seconds (0 seconds).
+
 - `rewardEpochsStartDelayPriceEpochs` - 
     Offset of the start of reward epochs from the time of deploy, in number of price epochs. Typical production value is 3, so first reward epoch starts after `rewardEpochsStartDelayPriceEpochs * priceEpochDurationSeconds + revealEpochDurationSeconds` (10.5 minutes).
 

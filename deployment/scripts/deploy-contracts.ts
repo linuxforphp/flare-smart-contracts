@@ -191,7 +191,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     deployerAccount.address,
     flareDaemon.address,
     addressUpdater.address,
-    startTs
+    startTs.addn(parameters.inflationStartDelaySeconds)
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, Inflation.contractName, `Inflation.sol`, inflation.address, quiet);
 
@@ -201,7 +201,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     addressUpdater.address,
     parameters.burnAddress,
     BN(parameters.totalNativeSupplyNAT).mul(BN(10).pow(BN(18))),
-    BN(parameters.totalFoundationSupplyNAT).mul(BN(10).pow(BN(18))),
+    BN(parameters.totalExcludedSupplyNAT).mul(BN(10).pow(BN(18))),
     []
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
@@ -225,6 +225,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Team escrow contract
   const teamEscrow = await TeamEscrow.new(deployerAccount.address, 0);
+  spewNewContractInfo(contracts, addressUpdaterContracts, TeamEscrow.contractName, `TeamEscrow.sol`, teamEscrow.address, quiet);
 
   // Inflation allocation needs to know about reward managers
   let receiversAddresses = []
@@ -235,7 +236,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Supply contract needs to know about reward managers
   await supply.addTokenPool(ftsoRewardManager.address, 0);
-  await supply.addTokenPool(teamEscrow.address, 0);
 
   // setup topup factors on inflation receivers
   for (let i = 0; i < receiversAddresses.length; i++) {

@@ -48,6 +48,7 @@ export async function claimGovernance(
   const Distribution = artifacts.require("Distribution");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const WNat = artifacts.require("WNat");
+  const TeamEscrow = artifacts.require("TeamEscrow");
 
   // Get deployed contracts
   const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
@@ -63,6 +64,7 @@ export async function claimGovernance(
   const distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
+  const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
 
   // Claim
   await addressUpdater.claimGovernance({from: claimantAccount.address});
@@ -82,4 +84,5 @@ export async function claimGovernance(
   await distributionTreasury.claimGovernance({from: claimantAccount.address});
   await ftsoRegistry.claimGovernance({from: claimantAccount.address});
   await wNat.claimGovernance({from: claimantAccount.address});
+  await teamEscrow.claimGovernance({from: claimantAccount.address});
 }

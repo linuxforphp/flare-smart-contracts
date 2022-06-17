@@ -122,4 +122,10 @@ contract(`transfer-governance.ts system tests`, async accounts => {
       await checkGovernance(Contracts.WNAT);
     });
   });
+
+  describe(Contracts.TEAM_ESCROW, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.TEAM_ESCROW);
+    });
+  });
 });

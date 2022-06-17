@@ -50,6 +50,7 @@ export async function proposeGovernance(
   const Distribution = artifacts.require("Distribution");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const WNat = artifacts.require("WNat");
+  const TeamEscrow = artifacts.require("TeamEscrow");
 
   // Get deployed contracts
   const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
@@ -65,6 +66,7 @@ export async function proposeGovernance(
   const distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY)); 
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
+  const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
 
   if (!quiet) {
     console.error(`Proposed address is ${newGovernanceAccountAddress}`);
@@ -88,4 +90,5 @@ export async function proposeGovernance(
   await distributionTreasury.proposeGovernance(newGovernanceAccountAddress);
   await ftsoRegistry.proposeGovernance(newGovernanceAccountAddress);
   await wNat.proposeGovernance(newGovernanceAccountAddress);
+  await teamEscrow.proposeGovernance(newGovernanceAccountAddress);
 }

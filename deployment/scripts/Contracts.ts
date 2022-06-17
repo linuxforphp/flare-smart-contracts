@@ -18,13 +18,13 @@ export class Contracts {
   private static WRAP_SYMBOL = "f";
   private static WRAP_SYMBOL_MINT = "";
   public static readonly ADDRESS_UPDATER = "AddressUpdater";
-  public static readonly FTSO_V2_UPGRADER = "FtsoV2Upgrader";
   public static readonly CLEANUP_BLOCK_NUMBER_MANAGER = "CleanupBlockNumberManager";
   public static readonly FTSO_REGISTRY = "FtsoRegistry";
   public static readonly DISTRIBUTION = "Distribution";
   public static readonly DISTRIBUTION_TREASURY = "DistributionTreasury";
   public static readonly DISTRIBUTION_TO_DELEGATORS = "DistributionToDelegators";
   public static readonly DELEGATION_ACCOUNT_MANAGER = "DelegationAccountManager";
+  public static readonly TEAM_ESCROW = "TeamEscrow";
   public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";
