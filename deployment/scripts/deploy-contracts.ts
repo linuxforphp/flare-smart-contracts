@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
@@ -66,6 +66,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const Distribution: DistributionContract = artifacts.require("Distribution");
   const DistributionTreasury: DistributionTreasuryContract = artifacts.require("DistributionTreasury");
   const TeamEscrow: TeamEscrowContract = artifacts.require("TeamEscrow");
+  const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -277,7 +278,14 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   await setDefaultVPContract(hre, wNat, deployerAccount.address);
   await cleanupBlockNumberManager.registerToken(wNat.address);
-  await wNat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address)
+  await wNat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
+
+  // Deploy governance vote power
+  const governanceVotePower = await GovernanceVotePower.new(wNat.address);
+  spewNewContractInfo(contracts, addressUpdaterContracts, GovernanceVotePower.contractName, `GovernanceVotePower.sol`, governanceVotePower.address, quiet);
+
+  // Tell wNat contract about governance vote power
+  await wNat.setGovernanceVotePower(governanceVotePower.address);
 
   // Tell address updater about all contracts
   await addressUpdater.addOrUpdateContractNamesAndAddresses(

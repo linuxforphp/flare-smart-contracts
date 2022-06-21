@@ -58,7 +58,7 @@ flattened
 ## Test deploys info
 deployment/deploys/*
 !deployment/deploys/staging.json
-!deployment/deploys/songbird.json
+!deployment/deploys/flare.json
 
 ## .env
 .env

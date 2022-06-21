@@ -37,7 +37,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     
     // the contract that is allowed to set cleanupBlockNumber
     // usually this will be an instance of CleanupBlockNumberManager
-    address private cleanupBlockNumberManager;
+    address public cleanupBlockNumberManager;
     
     /**
      * When true, the argument to `setWriteVpContract` must be a vpContract

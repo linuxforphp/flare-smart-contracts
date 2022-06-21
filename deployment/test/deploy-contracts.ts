@@ -9,10 +9,10 @@ import {
   FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
-  FtsoRewardManagerInstance, InflationAllocationContract,
+  FtsoRewardManagerInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
   InflationInstance, SupplyContract,
-  SupplyInstance, WNatContract
+  SupplyInstance, WNatContract, WNatInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
@@ -290,17 +290,49 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.GOVERNANCE_VOTE_POWER, async () => {
+    let GovernanceVotePower: GovernanceVotePowerContract;
+    let governanceVotePower: GovernanceVotePowerInstance;
+
+    beforeEach(async () => {
+      GovernanceVotePower = artifacts.require("GovernanceVotePower") ;
+      governanceVotePower = await GovernanceVotePower.at(contracts.getContractAddress(Contracts.GOVERNANCE_VOTE_POWER));
+    });
+
+    it("Should know about WNat", async () => {
+      // Assemble
+      // Act
+      const address = await governanceVotePower.ownerToken();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.WNAT));
+    });
+  });
+
   describe(Contracts.WNAT, async () => {
+    let WNAT: WNatContract;
+    let wnat: WNatInstance;
+
+    beforeEach(async () => {
+      WNAT = artifacts.require("WNat") ;
+      wnat = await WNAT.at(contracts.getContractAddress(Contracts.WNAT));
+    });
+
     it("Should accept deposits", async () => {
       // Assemble
-      const WNAT = artifacts.require("WNat") as WNatContract;
-      const wnat = await WNAT.at(contracts.getContractAddress(Contracts.WNAT));
       const openingBalance = await wnat.balanceOf(deployerAccountAddress)
       // Act
       await waitFinalize3(deployerAccountAddress, () => wnat.deposit({ from: deployerAccountAddress, value: BN(10) }));
       // Assert
       const balance = await wnat.balanceOf(deployerAccountAddress)
       assert.equal(balance.toNumber() - openingBalance.toNumber(), 10);
+    });
+
+    it("Should know about GovernanceVotePower", async () => {
+      // Assemble
+      // Act
+      const governanceVotePower = await wnat.governanceVotePower();
+      // Assert
+      assert.equal(governanceVotePower, contracts.getContractAddress(Contracts.GOVERNANCE_VOTE_POWER));
     });
   });
 
@@ -521,7 +553,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about all contracts", async () => {
       let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY,
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.TEAM_ESCROW,
-        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER];
+        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER];
 
       if (parameters.deployDistributionContract) {
         contractNames.push(Contracts.DISTRIBUTION);

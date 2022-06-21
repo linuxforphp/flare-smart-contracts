@@ -29,7 +29,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     string internal constant ERR_ONLY_INFLATION = "only inflation";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
-    uint256 internal constant MAX_SCHEDULE_COUNT = 10;
+    uint256 internal constant MAX_SCHEDULE_COUNT = 25;
     uint256 internal constant MAX_INFLATION_RECEIVERS = 10;
     uint256 internal constant MAX_INFLATION_PERCENTAGE_BIPS = BIPS100 / 10;  // 10% in basis points
 

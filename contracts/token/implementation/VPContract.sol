@@ -30,7 +30,7 @@ contract VPContract is IIVPContract, Delegatable {
     // the contract that is allowed to set cleanupBlockNumber
     // usually this will be an instance of CleanupBlockNumberManager
     // only set when detached from vptoken and directly registered to CleanupBlockNumberManager
-    address private cleanupBlockNumberManager;
+    address public cleanupBlockNumberManager;
     
     // The block number when vote power for an address was first set.
     // Reading vote power before this block would return incorrect result and must revert.
