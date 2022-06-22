@@ -38,7 +38,7 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     uint256 private cleanupBlockNumber;
 
     // Address of the contract that is allowed to call methods for history cleaning.
-    address private cleanerContract;
+    address public cleanerContract;
 
     // A record of each account's delegate
     // can delegate to only one address
