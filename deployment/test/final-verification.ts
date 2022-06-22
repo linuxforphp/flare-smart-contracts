@@ -41,7 +41,7 @@ contract(`final-verification.ts system tests`, async accounts => {
       // Act
       const inflationAnnum = await inflation.getCurrentAnnum();
       const inflationWei = BN(inflationAnnum.recognizedInflationWei.toString());
-      const calculatedInflationWei = BN(parameters.totalNativeSupplyNAT).sub(BN(parameters.totalExcludedSupplyNAT)).mul(BN(10).pow(BN(18))).muln(parameters.scheduledInflationPercentageBIPS[0]).divn(10000);
+      const calculatedInflationWei = BN(parameters.totalNativeSupplyNAT).sub(BN(parameters.totalExcludedSupplyNAT)).mul(BN(10).pow(BN(18))).muln(parameters.scheduledInflationPercentageBIPS[0]).divn(10000).divn(12);
       // Assert
       assert(inflationWei.eq(calculatedInflationWei));
     });
