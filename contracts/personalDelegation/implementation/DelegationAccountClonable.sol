@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "../interface/IDelegationAccount.sol";
 import "./DelegationAccountManager.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract DelegationAccountClonable is IDelegationAccount {
 
@@ -66,7 +67,7 @@ contract DelegationAccountClonable is IDelegationAccount {
 
     /**
      * @notice Allows user to claim all unclaimed ftso rewards for his delegation contract account
-     * @dev Reverts if `msg.sender` is not an owner
+     * @dev Reverts if `msg.sender` is not an owner or executor
      */
     function claimAllFtsoRewards() external override onlyOwnerOrExecutor returns(uint256) {
         uint256 amount;
@@ -152,6 +153,20 @@ contract DelegationAccountClonable is IDelegationAccount {
         bool returnValue = manager.wNat().transfer(owner, _amount);
         require(returnValue == true, "transfer failed");
         emit WidthrawToOwner(address(this), _amount);
+    }
+
+    /**
+     * @notice Allows user to transfer balance of ERC20 tokens owned by the personal delegation contract.
+     The main use case is to transfer tokens/NFTs that were received as part of an airdrop or register 
+     as participant in such airdrop.
+     * @param _token            Target token contract address
+     * @param _amount           Amount of tokens to transfer
+     * @dev Reverts if `msg.sender` is not an owner or the target token in WNat contract
+     */
+    function transferFromExternalToken(IERC20 _token, uint256 _amount) external override onlyOwner {
+        require(address(_token) != address(manager.wNat()), "Transfer from wNat is not allowed");
+        bool returnValue = _token.transfer(owner, _amount);
+        require(returnValue == true, "transfer failed");
     }
     
     function _claimAirdrop(IDistributionToDelegators _distribution) internal returns (uint256) {
