@@ -63,6 +63,7 @@ const GovernanceVotePower = artifacts.require("GovernanceVotePower");
 const Supply = artifacts.require("Supply");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const CloneFactoryMock = artifacts.require("CloneFactoryMock");
+const ERC20Mock = artifacts.require("ERC20Mock");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -672,10 +673,56 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await expectRevert(tx, "owner address missing");
   });
 
-  it("Should check if contarct is clone", async() => {
+  it("Should check if contract is clone", async() => {
     cloneFactoryMock = await CloneFactoryMock.new();
     let tx = await cloneFactoryMock.isClonePublic(libraryContract.address, delegationAccountClonable1.address);
     expect(tx).to.equals(true);
   });
+
+
+  it("Should enable transfers of ERC tokens", async() =>{
+    const tokenMock = await MockContract.new()
+    const token = await ERC20Mock.new("XTOK", "XToken");
+
+    // Arguments are irrelvant
+    const transferMethod = token.contract.methods.transfer(accounts[99], 0).encodeABI()
+    tokenMock.givenMethodReturnBool(transferMethod, true)
+
+    // Should allow transfer
+    await delegationAccountClonable1.transferFromExternalToken(tokenMock.address, 70, accounts[10], {from: accounts[1]});
+
+    // Should call exactly once
+    const invocationCount = await tokenMock.invocationCountForMethod.call(transferMethod)
+    assert.equal("1", invocationCount.toString())
+  })
+
+  it("Should enable transfers of ERC tokens2", async() =>{
+    const token = await ERC20Mock.new("XTOK", "XToken");
+    // Mint tokens
+    await token.mintAmount(delegationAccountClonable1.address, 100);
+    assert.equal((await token.balanceOf(delegationAccountClonable1.address)).toString(), "100");
+    // Should allow transfer
+    await delegationAccountClonable1.transferFromExternalToken(token.address, 70, {from: accounts[1]});
+
+    assert.equal((await token.balanceOf(delegationAccountClonable1.address)).toString(), "30");
+    assert.equal((await token.balanceOf(accounts[1])).toString(), "70");
+
+  })
+
+  it("Should not allow wnat transfer", async() =>{
+    // Should not allow transfer
+    const tx = delegationAccountClonable1.transferFromExternalToken(wNat.address, 70, {from: accounts[1]});
+    await expectRevert(tx, "Transfer from wNat is not allowed");
+  })
+
+  it("Should fail if calling non existing contract", async() =>{
+    const tx = delegationAccountClonable1.transferFromExternalToken(accounts[3], 70, {from: accounts[1]});
+    await expectRevert(tx, "Transaction reverted: function call to a non-contract account");
+  })
+
+  it("Should fail if calling non conforming contract", async() =>{
+    const tx = delegationAccountClonable1.transferFromExternalToken(ftsoRewardManager.address, 70, {from: accounts[1]});
+    await expectRevert(tx, "Transaction reverted: function selector was not recognized and there's no fallback function");
+  })
 
 });

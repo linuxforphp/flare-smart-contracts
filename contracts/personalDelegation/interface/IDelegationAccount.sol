@@ -44,4 +44,6 @@ interface IDelegationAccount {
     function removeExecutor(address _executor) external;
 
     function withdraw(uint256 _amount) external;
+    
+    function transferFromExternalToken(IERC20 _token, uint256 _amount) external;
 }
