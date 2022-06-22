@@ -56,7 +56,7 @@ contract Delegatable is IVPContractEvents {
     uint256 private cleanupBlockNumber;
     
     // Address of the contract that is allowed to call methods for history cleaning.
-    address private cleanerContract;
+    address public cleanerContract;
     
     /**
      * Emitted when a vote power cache entry is created.
