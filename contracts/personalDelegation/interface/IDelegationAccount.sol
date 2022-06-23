@@ -45,5 +45,5 @@ interface IDelegationAccount {
 
     function withdraw(uint256 _amount) external;
     
-    function transferFromExternalToken(IERC20 _token, uint256 _amount) external;
+    function transferExternalToken(IERC20 _token, uint256 _amount) external;
 }

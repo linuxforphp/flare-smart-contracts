@@ -689,7 +689,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     tokenMock.givenMethodReturnBool(transferMethod, true)
 
     // Should allow transfer
-    await delegationAccountClonable1.transferFromExternalToken(tokenMock.address, 70, accounts[10], {from: accounts[1]});
+    await delegationAccountClonable1.transferExternalToken(tokenMock.address, 70, accounts[10], {from: accounts[1]});
 
     // Should call exactly once
     const invocationCount = await tokenMock.invocationCountForMethod.call(transferMethod)
@@ -702,7 +702,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await token.mintAmount(delegationAccountClonable1.address, 100);
     assert.equal((await token.balanceOf(delegationAccountClonable1.address)).toString(), "100");
     // Should allow transfer
-    await delegationAccountClonable1.transferFromExternalToken(token.address, 70, {from: accounts[1]});
+    await delegationAccountClonable1.transferExternalToken(token.address, 70, {from: accounts[1]});
 
     assert.equal((await token.balanceOf(delegationAccountClonable1.address)).toString(), "30");
     assert.equal((await token.balanceOf(accounts[1])).toString(), "70");
@@ -711,17 +711,17 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
   it("Should not allow wnat transfer", async() =>{
     // Should not allow transfer
-    const tx = delegationAccountClonable1.transferFromExternalToken(wNat.address, 70, {from: accounts[1]});
-    await expectRevert(tx, "Transfer from wNat is not allowed");
+    const tx = delegationAccountClonable1.transferExternalToken(wNat.address, 70, {from: accounts[1]});
+    await expectRevert(tx, "Transfer from wNat not allowed");
   })
 
   it("Should fail if calling non existing contract", async() =>{
-    const tx = delegationAccountClonable1.transferFromExternalToken(accounts[3], 70, {from: accounts[1]});
+    const tx = delegationAccountClonable1.transferExternalToken(accounts[3], 70, {from: accounts[1]});
     await expectRevert(tx, "Transaction reverted: function call to a non-contract account");
   })
 
   it("Should fail if calling non conforming contract", async() =>{
-    const tx = delegationAccountClonable1.transferFromExternalToken(ftsoRewardManager.address, 70, {from: accounts[1]});
+    const tx = delegationAccountClonable1.transferExternalToken(ftsoRewardManager.address, 70, {from: accounts[1]});
     await expectRevert(tx, "Transaction reverted: function selector was not recognized and there's no fallback function");
   })
 
