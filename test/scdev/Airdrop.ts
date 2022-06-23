@@ -135,7 +135,7 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
           totalNative = totalNative.add(parsedAirdrop[i*BATCH_SIZE+j].totalNativeBalance.muln(85).divn(100));
         }
       }
-      await distribution.setClaimBalance(currentAccounts,currentBalances, {from: genesisGovernanceAccount.address});
+      await distribution.setAirdropBalances(currentAccounts,currentBalances, {from: genesisGovernanceAccount.address});
       bar1.update(i);
     }
     bar1.stop();
@@ -148,7 +148,8 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     assert.equal((await distribution.totalEntitlementWei()).toString(),(await GetBalance(distributionTreasury.address)).toString());
 
     console.log("Set distribution contract on distribution treasury");
-    await distributionTreasury.setDistributionContract(distribution.address, totalNative, {from: genesisGovernanceAccount.address});
+    await distributionTreasury.setContracts(distribution.address, accounts[100], {from: genesisGovernanceAccount.address});
+    await distributionTreasury.selectDistributionContract(distribution.address, {from: genesisGovernanceAccount.address});
     
     console.log("Start entitlement process in the past (to simulate the future)");
     let now = await time.latest();

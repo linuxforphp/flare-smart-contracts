@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../userInterfaces/IDistribution.sol";
 import "../interface/IITokenPool.sol";
-import "./DistributionTreasury.sol";
+import "../../genesis/implementation/DistributionTreasury.sol";
 
 /**
  * @title Distribution
@@ -117,7 +117,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
      * @param balance array of balances to be airdropped to respective accounts
      * @dev Note that toAddress and balance arrays must be equal length
      */
-    function setClaimBalance(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
+    function setAirdropBalances(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);
         require(toAddress.length == balance.length, ERR_ARRAY_MISMATCH);
         require (entitlementStartTs == 0, ERR_ALREADY_STARTED);

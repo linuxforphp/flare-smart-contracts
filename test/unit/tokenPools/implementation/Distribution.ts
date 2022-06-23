@@ -1,10 +1,9 @@
+import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { DistributionInstance, DistributionTreasuryInstance } from "../../../../typechain-truffle";
-import { toBN } from "../../../utils/test-helpers";
+import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 
 const getTestFile = require('../../../utils/constants').getTestFile;
-const { sumGas, calcGasCost } = require('../../../utils/eth');
-import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
-import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
+const { calcGasCost } = require('../../../utils/eth');
 
 const BN = web3.utils.toBN;
 
@@ -12,10 +11,11 @@ const DistributionTreasury = artifacts.require("DistributionTreasury");
 const Distribution = artifacts.require("Distribution");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const GasConsumer = artifacts.require("GasConsumer2");
+const MockContract = artifacts.require("MockContract");
 
 const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_ADDRESS_ZERO = "address zero";
-const ERR_TOO_MUCH = "too much"
+const ERR_PULL_FAILED = "pull failed";
 const ERR_NOT_ZERO = "not zero";
 const ERR_OPT_OUT = "already opted out";
 const ERR_NOT_STARTED = "not started";
@@ -54,7 +54,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     for (let i = 0; i < claimants.length; i++) {
       balances[i] = balance;
     }
-    await distribution.setClaimBalance(claimants, balances);
+    await distribution.setAirdropBalances(claimants, balances);
   }
 
   async function bestowClaimableBalance(balance: BN) {
@@ -65,8 +65,10 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     await web3.eth.sendTransaction({ from: accounts[0], to: suicidalMock.address, value: balance });
     // Attacker dies
     await suicidalMock.die();
-    // set distribution contract and claimable amount
-    await distributionTreasury.setDistributionContract(distribution.address, balance, {from: GOVERNANCE_GENESIS_ADDRESS});
+    // set distribution contract
+    await distributionTreasury.setContracts(distribution.address, (await MockContract.new()).address, {from: GOVERNANCE_GENESIS_ADDRESS});
+    // select distribution contract
+    await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
   }
 
   describe("Basic", async () => {
@@ -92,7 +94,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assemble
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000),
       BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
-      await distribution.setClaimBalance(claimants, balances);
+      await distribution.setAirdropBalances(claimants, balances);
       // Act
       // Assert
       const totalEntitlementWei = await distribution.totalEntitlementWei();
@@ -104,7 +106,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000),
       BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
       // Act
-      const addingEvent = await distribution.setClaimBalance(claimants, balances);
+      const addingEvent = await distribution.setAirdropBalances(claimants, balances);
       // Assert
       expectEvent(addingEvent, EVENT_ACCOUNTS_ADDED);
     });
@@ -114,7 +116,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000),
       BN(1000), BN(1000), BN(1000), BN(1000)];
       // Act
-      const addingEvent = distribution.setClaimBalance(claimants, balances);
+      const addingEvent = distribution.setAirdropBalances(claimants, balances);
       // Assert
       await expectRevert(addingEvent, ERR_ARRAY_MISMATCH);
     });
@@ -129,7 +131,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
         balances[i] = web3.utils.toWei(BN(420));
       }
       // Act
-      const addingEvent = distribution.setClaimBalance(addresses, balances);
+      const addingEvent = distribution.setAirdropBalances(addresses, balances);
       // Assert
       await expectRevert(addingEvent, ERR_TOO_MANY);
     });
@@ -141,7 +143,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const nowTs = await time.latest() as BN;
       await distribution.setEntitlementStart(nowTs);
       // Act
-      const addingEvent = distribution.setClaimBalance([accounts[20]], [BN(1000)]);
+      const addingEvent = distribution.setAirdropBalances([accounts[20]], [BN(1000)]);
       // Assert
       await expectRevert(addingEvent, ERR_ALREADY_STARTED);
     });
@@ -159,7 +161,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     beforeEach(async () => {
       for (let txNumber = 0; txNumber < 1; txNumber++) {
         // Add addresses to airdrop
-        await distribution.setClaimBalance(addresses, balances);
+        await distribution.setAirdropBalances(addresses, balances);
         // Allocate the right amount of wei
         await bestowClaimableBalance(totalBalance);
         now = await time.latest();
@@ -350,7 +352,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       let start_promise = distribution.setEntitlementStart(now);
       // Assert
-      await expectRevert(start_promise, ERR_TOO_MUCH);
+      await expectRevert(start_promise, ERR_PULL_FAILED);
     });
 
     it("Should not start entitlement if not from governance", async () => {

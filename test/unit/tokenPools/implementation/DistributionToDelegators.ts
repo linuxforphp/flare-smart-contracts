@@ -51,8 +51,10 @@ async function bestowClaimableBalance(balance: BN) {
   await web3.eth.sendTransaction({ from: GOVERNANCE_GENESIS_ADDRESS, to: suicidalMock.address, value: balance });
   // Attacker dies
   await suicidalMock.die();
-  // set distribution contract and claimable amount
-  await distributionTreasury.setDistributionContract(distribution.address, balance.divn(35), {from: GOVERNANCE_GENESIS_ADDRESS});
+  // set distribution contract
+  await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+  // select distribution contract
+  await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 }
 
 // WARNING: using givenMethodReturn instead of givenCalldataReturn may cause problems

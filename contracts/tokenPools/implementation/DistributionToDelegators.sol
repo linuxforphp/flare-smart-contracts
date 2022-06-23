@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../userInterfaces/IDistributionToDelegators.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../interface/IITokenPool.sol";
-import "./DistributionTreasury.sol";
+import "../../genesis/implementation/DistributionTreasury.sol";
 import "./UnearnedRewardBurner.sol";
 
 /**
@@ -71,8 +71,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     mapping(uint256 => uint256) public totalUnclaimedWeight; // mapping from month to weight of unclaimed amount
     mapping(address => mapping(uint256 => uint256)) internal claimed; // mapping from address to claimed amount / month
 
-    mapping(address => bool) public optOutCandidate; // indicates if user has triggered to opt out of airdop
-    mapping(address => bool) public optOut; // indicates if user is opted out of airdop (confirmed by governance)
+    mapping(address => bool) public optOutCandidate; // indicates if user has triggered to opt out of airdrop
+    mapping(address => bool) public optOut; // indicates if user is opted out of airdrop (confirmed by governance)
     address[] public optOutAddresses; // all opted out addresses (confirmed by governance)
     bool public stopped;
 
