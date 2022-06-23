@@ -163,8 +163,8 @@ contract DelegationAccountClonable is IDelegationAccount {
      * @param _amount           Amount of tokens to transfer
      * @dev Reverts if `msg.sender` is not an owner or the target token in WNat contract
      */
-    function transferFromExternalToken(IERC20 _token, uint256 _amount) external override onlyOwner {
-        require(address(_token) != address(manager.wNat()), "Transfer from wNat is not allowed");
+    function transferExternalToken(IERC20 _token, uint256 _amount) external override onlyOwner {
+        require(address(_token) != address(manager.wNat()), "Transfer from wNat not allowed");
         bool returnValue = _token.transfer(owner, _amount);
         require(returnValue == true, "transfer failed");
     }
