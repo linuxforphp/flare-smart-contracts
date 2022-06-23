@@ -48,6 +48,7 @@ library IncentivePoolAnnums {
      *   authorized across all annums.
      * @param _atTimeStamp  The timestamp at which the number of daily periods remaining in the current
      *   annum will be calculated.
+     * @param _maxAuthorizeAmountWei The maximum amount that can be authorized according to treasury pull limits.
      * @param _sharingPercentages   An array of the sharing percentages by incentivePool receiver used to
      *   allocate authorized incentive.
      * @return _amountAuthorizedWei The amount of incentive authorized for this authorization cycle.
@@ -56,6 +57,7 @@ library IncentivePoolAnnums {
     function authorizeDailyIncentive(
         IncentivePoolAnnumsState storage _self,
         uint256 _atTimeStamp, 
+        uint256 _maxAuthorizeAmountWei,
         SharingPercentage[] memory _sharingPercentages
     ) 
         internal
@@ -70,6 +72,7 @@ library IncentivePoolAnnums {
             _self.totalRecognizedIncentiveWei,
             _self.totalAuthorizedIncentiveWei, 
             currentAnnum.getPeriodsRemaining(_atTimeStamp), 
+            _maxAuthorizeAmountWei,
             _sharingPercentages);
         // Accumulate total authorized incentive across all annums
         _self.totalAuthorizedIncentiveWei = _self.totalAuthorizedIncentiveWei.add(_amountAuthorizedWei);

@@ -6,6 +6,7 @@ import "../../utils/implementation/DateTimeLibrary.sol";
 import "../implementation/IncentivePool.sol";
 import "../interface/IIIncentivePoolReceiver.sol";
 import "./IncentivePoolRewardService.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../interface/IIIncentivePoolSharingPercentageProvider.sol";
@@ -59,6 +60,7 @@ library IncentivePoolRewardServices {
      * @param _totalRecognizedIncentiveWei The total recognized incentive across all annums.
      * @param _totalAuthorizedIncentiveWei The total authorized incentive across all annums.
      * @param _periodsRemaining The number of periods remaining in the current annum.
+     * @param _maxAuthorizeAmountWei The maximum amount that can be authorized according to treasury pull limits.
      * @param _sharingPercentages An array of incentive sharing percentages.
      * @return _amountAuthorizedWei The incentive authorized for this cycle.
      * @dev This method requires totals across all annums so as to continually calculate
@@ -70,6 +72,7 @@ library IncentivePoolRewardServices {
         uint256 _totalRecognizedIncentiveWei,
         uint256 _totalAuthorizedIncentiveWei,
         uint256 _periodsRemaining,
+        uint256 _maxAuthorizeAmountWei,
         SharingPercentage[] memory _sharingPercentages
     )
         internal
@@ -82,9 +85,9 @@ library IncentivePoolRewardServices {
         }
         
         // Compute amount to allocate
-        uint256 amountToAuthorizeRemaingWei = _totalRecognizedIncentiveWei
-            .sub(_totalAuthorizedIncentiveWei)
-            .div(_periodsRemaining);
+        uint256 amountToAuthorizeRemaingWei = Math.min(
+            _totalRecognizedIncentiveWei.sub(_totalAuthorizedIncentiveWei).div(_periodsRemaining),
+            _maxAuthorizeAmountWei);
         // Set up return value with amount authorized
         _amountAuthorizedWei = amountToAuthorizeRemaingWei;
         // Accumulate authorized total...note that this total is for a given annum, for a given service

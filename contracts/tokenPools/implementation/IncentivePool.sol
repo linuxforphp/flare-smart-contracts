@@ -51,6 +51,7 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
     uint256 internal constant DEFAULT_TOPUP_FACTOR_X100 = 120;
+    uint256 internal constant MAX_DAILY_TOPUP_FACTOR_X100 = 400;
     uint256 internal constant AUTHORIZE_TIME_FRAME_SEC = 1 days;
 
     event IncentiveAuthorized(uint256 amountWei);
@@ -183,7 +184,7 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
     {
         if (_topupType == TopupType.FACTOROFDAILYAUTHORIZED) {
             require(_topupFactorX100 > 100, ERR_TOPUP_LOW);
-            require(_topupFactorX100 <= IncentivePoolAnnum.MAX_DAILY_TOPUP_FACTOR_X100, ERR_TOPUP_HIGH);
+            require(_topupFactorX100 <= MAX_DAILY_TOPUP_FACTOR_X100, ERR_TOPUP_HIGH);
         }
         TopupConfiguration storage topupConfiguration = topupConfigurations[_incentivePoolReceiver];
         topupConfiguration.topupType = _topupType;
@@ -251,6 +252,7 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
             // Authorize incentive for current sharing percentages.
             uint256 amountAuthorizedWei = incentivePoolAnnums.authorizeDailyIncentive(
                 block.timestamp,
+                treasury.MAX_DAILY_PULL_AMOUNT_WEI().mulDiv(100, MAX_DAILY_TOPUP_FACTOR_X100),
                 incentivePoolAllocation.getSharingPercentages()
             );
 
@@ -316,10 +318,12 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
 
     function _initNewAnnum(uint256 startTs) internal {
         uint256 inflatableSupply = supply.getInflatableBalance();
-        uint256 treasuryBalance = address(treasury).balance;
+        uint256 freeTreasuryBalance = address(treasury).balance
+            .add(incentivePoolAnnums.totalIncentiveTopupWithdrawnWei)
+            .sub(incentivePoolAnnums.totalAuthorizedIncentiveWei);
 
         try incentivePoolAllocation.getAnnualPercentageBips() returns(uint256 annualPercentBips) {
-            incentivePoolAnnums.initializeNewAnnum(startTs, treasuryBalance, inflatableSupply, annualPercentBips);
+            incentivePoolAnnums.initializeNewAnnum(startTs, freeTreasuryBalance, inflatableSupply, annualPercentBips);
         } catch Error(string memory message) {
             revert(message);
         } catch {

@@ -12,7 +12,7 @@ contract IncentivePoolTreasury is GovernedAtGenesis {
 
     // How often can incentive pool pull funds - 23 hours constant
     uint256 internal constant MAX_PULL_FREQUENCY_SEC = 23 hours;
-    uint256 internal constant MAX_DAILY_PULL_AMOUNT_WEI = 25000000 ether;
+    uint256 public constant MAX_DAILY_PULL_AMOUNT_WEI = 25000000 ether;
 
     // Errors
     string internal constant ERR_INCENTIVE_POOL_ONLY = "incentive pool only";

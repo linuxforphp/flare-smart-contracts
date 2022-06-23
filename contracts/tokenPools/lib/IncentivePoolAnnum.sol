@@ -32,11 +32,8 @@ library IncentivePoolAnnum {
         IncentivePoolRewardServices.IncentivePoolRewardServicesState incentivePoolRewardServices;
     }
 
-    uint256 public constant MAX_DAILY_TOPUP_FACTOR_X100 = 400;
     uint256 internal constant BIPS100 = 1e4;                                // 100% in basis points
     uint256 internal constant MAX_ANNUAL_FACTOR_BIPS = 1e3;                 // 10% in basis points
-    uint256 internal constant MAX_DAILY_PULL_AMOUNT_WEI = 25000000 ether;   // should be the same as in treasury
-    uint256 internal constant DAYS_IN_MONTH = 30;
 
     /**
      * @notice Helper function to compute recognized incentive.
@@ -53,10 +50,9 @@ library IncentivePoolAnnum {
         internal pure
         returns(uint256)
     {
-        return Math.min(Math.min(
+        return Math.min(
             _inflatableBalance.mulDiv(_annualIncentivePoolPercentageBips, 12 * BIPS100),
-            _treasuryBalance.mulDiv(MAX_ANNUAL_FACTOR_BIPS, 12 * BIPS100)),
-            MAX_DAILY_PULL_AMOUNT_WEI.mulDiv(DAYS_IN_MONTH * 100, MAX_DAILY_TOPUP_FACTOR_X100)
+            _treasuryBalance.mulDiv(MAX_ANNUAL_FACTOR_BIPS, 12 * BIPS100)
         ); // monthly incentive
     }
 
@@ -88,7 +84,7 @@ library IncentivePoolAnnum {
      */
     function _getAnnumEndsTs(uint256 _startTimeStamp) internal pure returns (uint256) {
         // This should cover passing through Feb 29
-        return _startTimeStamp.addDays(DAYS_IN_MONTH).subSeconds(1);
+        return _startTimeStamp.addDays(30).subSeconds(1);
     }
 
     /**
