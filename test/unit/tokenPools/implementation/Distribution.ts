@@ -221,31 +221,31 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert.equal(claimable2.toNumber(), 0);
     });
 
-    it("Should be able to claim 3% after day 30", async () => {
+    it("Should be able to claim 2.37% after day 30", async () => {
       // Assemble
       await time.increaseTo(now.addn(86400 * 30 + 20));
       // Act
       const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
       const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
-      assert.equal(claimable1.toNumber(), 12);
-      assert.equal(claimable2.toNumber(), 9);
+      assert.equal(claimable1.toNumber(), 9);
+      assert.equal(claimable2.toNumber(), 7);
     });
 
-    it("Should be able to claim 9% after day 90", async () => {
+    it("Should be able to claim 3*2.37% after day 90", async () => {
       // Assemble
       await time.increaseTo(now.addn(86400 * 90 + 20));
       // Act
       const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
       const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
       // Assert
-      assert.equal(claimable1.toNumber(), 37);
-      assert.equal(claimable2.toNumber(), 28);
+      assert.equal(claimable1.toNumber(), 29);
+      assert.equal(claimable2.toNumber(), 22);
     });
 
-    it("Should be able to claim 85% after day 870", async () => {
+    it("Should be able to claim 85% after day 1080", async () => {
       // Assemble
-      await time.increaseTo(now.add(BN(86400).muln(870).addn(20)));
+      await time.increaseTo(now.add(BN(86400).muln(1080).addn(20)));
       // Act
       const claimable1 = await distribution.getClaimableAmountOf(addresses[0]);
       const claimable2 = await distribution.getClaimableAmountOf(addresses[1]);
@@ -255,7 +255,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     });
   });
 
-  describe("Time till net claimable Wei", async () => {
+  describe("Time till next claimable Wei", async () => {
     let nowTs = BN(0);
 
     beforeEach(async () => {
@@ -283,13 +283,13 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
     });
 
     it("Should be 1 second just before end of distribution", async () => {
-      await time.increaseTo(nowTs.add(BN(86400 * 30).muln(29).subn(1)));
+      await time.increaseTo(nowTs.add(BN(86400 * 30).muln(36).subn(1)));
       const timeTillClaim = await distribution.secondsTillNextClaim({ from: claimants[0] });
       assert.equal(timeTillClaim.toNumber(), 1);
     });
 
-    it("Should Revert after 29 months has passed", async () => {
-      await time.increaseTo(nowTs.add(BN(86400 * 30).muln(29)));
+    it("Should Revert after 36 months has passed", async () => {
+      await time.increaseTo(nowTs.add(BN(86400 * 30).muln(36)));
       const timeTillClaim_promise = distribution.secondsTillNextClaim({ from: claimants[0] });
       await expectRevert(timeTillClaim_promise, ERR_FULLY_CLAIMED);
     });
@@ -404,7 +404,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       await distribution.setEntitlementStart(now);
       // Act
-      await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
+      await time.increaseTo(now.add(BN(86400 * 30).muln(36).addn(150)));
       for (let i of [0, 1, 2, 3, 4, 5]) {
         await distribution.claim(claimants[i], { from: claimants[i] });
       }
@@ -454,7 +454,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assert
       const closingBalance = BN(await web3.eth.getBalance(claimants[0]));
       let txCost = BN(await calcGasCost(claimResult));
-      assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 1000 * 3 / 100);
+      assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), Math.floor(1000 * 2.37 / 100));
     });
 
     it("Should emit claiming event", async () => {
@@ -494,7 +494,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const claimResult = await distribution.claim(claimants[0], { from: claimants[0] });
       const closingBalance = BN(await web3.eth.getBalance(claimants[0]));
       let txCost = BN(await calcGasCost(claimResult));
-      assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 1000 * 3 / 100);
+      assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), Math.floor(1000 * 2.37 / 100));
       // Act
       const {
         0: entitlementBalanceWei1,
@@ -512,7 +512,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const totalClaimedWei = await distribution.totalClaimedWei();
       // Assert
       assert.equal(entitlementBalanceWei1.toNumber(), 850);
-      assert.equal(totalClaimedWei1.toNumber(), 30);
+      assert.equal(totalClaimedWei1.toNumber(), 23);
       assert.equal(optOutBalance1.toNumber(), 0);
       assert.equal(airdroppedWei1.toNumber(), 150);
       assert.equal(entitlementBalanceWei2.toNumber(), 850);
@@ -520,7 +520,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       assert.equal(optOutBalance2.toNumber(), 0);
       assert.equal(airdroppedWei2.toNumber(), 150);
       assert.equal(totalEntitlementWei.toNumber(), 8500);
-      assert.equal(totalClaimedWei.toNumber(), 30);
+      assert.equal(totalClaimedWei.toNumber(), 23);
     });
 
     it("Should not be able to claim if no funds are claimable at given time", async () => {
@@ -588,7 +588,7 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       await distribution.setEntitlementStart(now);
       // Act
-      await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
+      await time.increaseTo(now.add(BN(86400 * 30).muln(36).addn(150)));
       await distribution.claim(claimants[0], { from: claimants[0] });
       const optOutRevert = distribution.optOutOfAirdrop({ from: claimants[0] });
       // Assert
@@ -764,17 +764,17 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       // Assert
       // ACC 0 balance
       const midVal0 = BN(await calcGasCost(claimResult0));
-      assert.equal(midVal0.add(midBalance0).sub(openingBalance0).toNumber(), 30);
+      assert.equal(midVal0.add(midBalance0).sub(openingBalance0).toNumber(), 23);
       const endVal0 = BN(await calcGasCost(claimResult0_1));
-      assert.equal(endVal0.add(endBalance0).sub(midBalance0).toNumber(), 30);
-      assert.equal(midVal0.add(endVal0).add(endBalance0).sub(openingBalance0).toNumber(), 60);
+      assert.equal(endVal0.add(endBalance0).sub(midBalance0).toNumber(), 24);
+      assert.equal(midVal0.add(endVal0).add(endBalance0).sub(openingBalance0).toNumber(), 47);
       // ACC 1 balance 
       assert.isTrue(openingBalance1.eq(midBalance1));
       const endVal1 = BN(await calcGasCost(claimResult1));
-      assert.equal(endVal1.add(endBalance1).sub(midBalance1).toNumber(), 60);
+      assert.equal(endVal1.add(endBalance1).sub(midBalance1).toNumber(), 47);
       // ACC 5 balance 
       const midVal5 = BN(await calcGasCost(claimResult5));
-      assert.equal(midVal5.add(midBalance5).sub(openingBalance5).toNumber(), 30);
+      assert.equal(midVal5.add(midBalance5).sub(openingBalance5).toNumber(), 23);
       assert.isTrue(midBalance5.eq(endBalance5));
       // ACC 6 balance 
       assert.isTrue(openingBalance6.eq(midBalance6));
@@ -787,8 +787,8 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       const now = await time.latest();
       await distribution.setEntitlementStart(now);
       // Act
-      // It takes 29 months to claim all 
-      await time.increaseTo(now.add(BN(86400 * 30).muln(29).addn(150)));
+      // It takes 36 months to claim all 
+      await time.increaseTo(now.add(BN(86400 * 30).muln(36).addn(150)));
       const entitlementPending = await distribution.getClaimableAmountOf(claimants[0]);
       // Assert
       assert.equal(entitlementPending.toNumber(), 850);

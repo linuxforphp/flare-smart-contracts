@@ -40,7 +40,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     uint256 internal constant TOTAL_BIPS = 10000;
     uint256 internal constant CLAIMED_AT_GENESIS_BIPS = 1500;
     uint256 internal constant TOTAL_CLAIMABLE_BIPS = 8500;
-    uint256 internal constant MONTHLY_CLAIMABLE_BIPS = 300;  // 3% every 30 days
+    uint256 internal constant MONTHLY_CLAIMABLE_BIPS = 237;  // 2.37% every 30 days
 
     // storage
     mapping(address => AirdropAccount) public airdropAccounts;
@@ -121,6 +121,8 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);
         require(toAddress.length == balance.length, ERR_ARRAY_MISMATCH);
         require (entitlementStartTs == 0, ERR_ALREADY_STARTED);
+
+        if (airdropAccounts[toAddress[0]].entitlementBalanceWei > 0) return; // batch already added
         for (uint16 i = 0; i < toAddress.length; i++) {
             // Assume that when the initial 15% was allocated, that any remainder was truncated.
             // Therefore, compute the difference to obtain the remaining entitlement balance.
@@ -259,7 +261,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
 
     /**
      * @notice Get the claimable percent for the current timestamp
-     * @dev Every 30 days from initial day 3% of the total amount is unlocked and becomes available for claiming
+     * @dev Every 30 days from initial day 2.37% of the total amount is unlocked and becomes available for claiming
      * @return percentBips maximal claimable bips at given time
      */
     function _getCurrentClaimablePercent() internal view entitlementStarted 
@@ -271,7 +273,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
 
     /**
      * @notice Get current claimable amount for users account
-     * @dev Every 30 days from initial day 3% of the reward is released
+     * @dev Every 30 days from initial day 2.37% of the reward is released
      */
     function _getCurrentClaimableWei(address _owner) internal view entitlementStarted accountCanClaim(_owner) 
         returns(uint256 claimableWei)
@@ -293,7 +295,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
         returns(uint256 timeTill) 
     {
         // Get the account we want to check
-        require(block.timestamp.sub(entitlementStartTs).div(MONTH) < 29, ERR_FULLY_CLAIMED);
+        require(block.timestamp.sub(entitlementStartTs).div(MONTH) < 36, ERR_FULLY_CLAIMED);
         timeTill = MONTH.sub(block.timestamp.sub(entitlementStartTs).mod(MONTH));
     }
 

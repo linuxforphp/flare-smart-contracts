@@ -76,6 +76,8 @@ contract InitialAirdrop is GovernedAtGenesis {
         require(_accounts.length <= 1000, ERR_TOO_MANY);
         require(_accounts.length == _balances.length, ERR_ARRAY_MISMATCH);
         require (initialAirdropStartTs == 0, ERR_ALREADY_STARTED);
+
+        if (airdropAmountsWei[_accounts[0]] > 0) return; // batch already added
         for (uint16 i = 0; i < _accounts.length; i++) {
             address airdropAccount = _accounts[i];
             uint256 airdropAmountWei = _balances[i].mulDiv(CLAIMED_AT_GENESIS_BIPS, TOTAL_BIPS);
@@ -111,7 +113,7 @@ contract InitialAirdrop is GovernedAtGenesis {
             // Send
             /* solhint-disable avoid-low-level-calls */
             //slither-disable-next-line arbitrary-send
-            (bool success, ) = account.call{value: amountWei}("");
+            (bool success, ) = account.call{value: amountWei}(""); // TODO add gas limit?
             /* solhint-enable avoid-low-level-calls */
             if (success) {
                 delete airdropAmountsWei[account];
