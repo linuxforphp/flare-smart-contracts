@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/math/Math.sol";
 import "../../governance/implementation/Governed.sol";
 import "../interface/IIAddressUpdatable.sol";
 
@@ -16,9 +17,11 @@ contract AddressUpdater is Governed {
     
     uint256 private timelock;
     
-    string[] public updatedContractNames;
-    mapping(bytes32 => address) public updatedContractAddresses;
-    uint256 public addressUpdateEffectiveAt;
+    mapping(uint256 => string) private updatedContractNames;
+    mapping(bytes32 => address) private updatedContractAddresses;
+    uint256 private updatedNamesStart;
+    uint256 private updatedNamesEnd;
+    uint256 private addressUpdateEffectiveAt;
     
     uint256 public updatedTimelock;
     uint256 public updatedTimelockEffectiveAt;
@@ -32,6 +35,7 @@ contract AddressUpdater is Governed {
      * @param _timelock            the new timelock value
      */
     function setTimelock(uint256 _timelock) external onlyGovernance {
+        _updateTimelock();  // flush the previous update if already effective (otherwise forget it)
         updatedTimelock = _timelock;
         updatedTimelockEffectiveAt = block.timestamp + timelock;
     }
@@ -43,7 +47,7 @@ contract AddressUpdater is Governed {
     function updateContractAddresses(IIAddressUpdatable[] memory _contractsToUpdate) external onlyGovernance {
         // flush the timelocked contract changes first
         if (_addressUpdatesEffective()) {
-            _executeContractNamesAndAddressesChange(updatedContractNames.length);
+            _executeContractNamesAndAddressesChange(updatedNamesEnd - updatedNamesStart);
         }
         _updateContractAddresses(_contractsToUpdate);
     }
@@ -110,6 +114,33 @@ contract AddressUpdater is Governed {
     }
 
     /**
+     * @notice Returns the contract names and the corresponding addresses
+     */
+    function getTimelockedContractUpdates() external view returns(
+        string[] memory _contractNames,
+        address[] memory _contractAddresses,
+        uint256 _timelockExpiresAt
+    ) {
+        if (block.timestamp >= addressUpdateEffectiveAt) {
+            return (new string[](0), new address[](0), 0);
+        }
+        uint256 start = updatedNamesStart;
+        uint256 len = updatedNamesEnd - start;
+        _contractNames = new string[](len);
+        _contractAddresses = new address[](len);
+        for (uint256 i = 0; i < len; i++) {
+            string memory name = updatedContractNames[i + start];
+            _contractNames[i] = name;
+            _contractAddresses[i] = updatedContractAddresses[_keccak256AbiEncode(name)];
+        }
+        _timelockExpiresAt = addressUpdateEffectiveAt;
+    }
+    
+    function contractNamesAndAddressesChangesToExecute() external view returns (uint256) {
+        return block.timestamp >= addressUpdateEffectiveAt ? updatedNamesEnd - updatedNamesStart : 0;
+    }
+    
+    /**
      * @notice Add or update contract names and addreses that are later used in updateContractAddresses calls
      * Has to wait for `timelock` time before the updates take effect.
      * @param _contractNames                contracts names
@@ -129,7 +160,7 @@ contract AddressUpdater is Governed {
             bytes32 nameHash = _keccak256AbiEncode(_contractNames[i]);
             // add new contract name if address is not known yet
             if (updatedContractAddresses[nameHash] == address(0)) {
-                updatedContractNames.push(_contractNames[i]);
+                updatedContractNames[updatedNamesEnd++] = _contractNames[i];
             }
             // set or update contract address
             updatedContractAddresses[nameHash] = _contractAddresses[i];
@@ -146,14 +177,11 @@ contract AddressUpdater is Governed {
      * @param _maxCount The maximum number of changes to execute, to prevent breaking the block gas limit.
      */
     function _executeContractNamesAndAddressesChange(uint256 _maxCount) internal {
-        uint256 count = _maxCount;
-        uint256 i = updatedContractNames.length;
-        while (i > 0 && count > 0) {
-            --i;
-            --count;
+        uint256 end = Math.min(updatedNamesEnd, updatedNamesStart + _maxCount);
+        for (uint256 i = updatedNamesStart; i < end; i++) {
             string memory name = updatedContractNames[i];
             bytes32 nameHash = _keccak256AbiEncode(name);
-            updatedContractNames.pop();
+            delete updatedContractNames[i];
             // add new contract name if address is not known yet
             if (contractAddresses[nameHash] == address(0)) {
                 contractNames.push(name);
@@ -162,6 +190,7 @@ contract AddressUpdater is Governed {
             contractAddresses[nameHash] = updatedContractAddresses[nameHash];
             updatedContractAddresses[nameHash] = address(0);
         }
+        updatedNamesStart = end;
     }
     
     /**
@@ -197,7 +226,6 @@ contract AddressUpdater is Governed {
     function _updateTimelock() private {
         if (updatedTimelockEffectiveAt != 0 && block.timestamp >= updatedTimelockEffectiveAt) {
             timelock = updatedTimelock;
-            updatedTimelock = 0;
             updatedTimelockEffectiveAt = 0;
         }
     }
@@ -208,19 +236,19 @@ contract AddressUpdater is Governed {
     function _getContractNames() private view returns (string[] memory _contractNames) {
         if (_addressUpdatesEffective()) {
             uint256 newCount = 0;
-            uint256 len = contractNames.length;
-            uint256 waitingLen = updatedContractNames.length;
-            for (uint256 i = 0; i < waitingLen; i++) {
+            uint256 length = contractNames.length;
+            uint256 updatedEnd = updatedNamesEnd;
+            for (uint256 i = updatedNamesStart; i < updatedEnd; i++) {
                 if (contractAddresses[_keccak256AbiEncode(updatedContractNames[i])] == address(0)) {
                     ++newCount;
                 }
             }
-            _contractNames = new string[](contractNames.length + newCount);
-            for (uint256 i = 0; i < len; i++) {
-                _contractNames[i] = contractNames[i];
+            _contractNames = new string[](length + newCount);
+            for (uint256 i = 0; i < length; i++) {
+                 _contractNames[i] = contractNames[i];
             }
-            uint256 dest = len;
-            for (uint256 i = 0; i < len; i++) {
+            uint256 dest = length;
+            for (uint256 i = updatedNamesStart; i < updatedEnd; i++) {
                 if (contractAddresses[_keccak256AbiEncode(updatedContractNames[i])] == address(0)) {
                     _contractNames[dest] = updatedContractNames[i];
                     dest++;
@@ -250,6 +278,6 @@ contract AddressUpdater is Governed {
      * Returns true if there are contract address updates and the update timelock has expired.
      */
     function _addressUpdatesEffective() private view returns (bool) {
-        return updatedContractNames.length > 0 && block.timestamp >= addressUpdateEffectiveAt;
+        return updatedNamesEnd > updatedNamesStart && block.timestamp >= addressUpdateEffectiveAt;
     }
 }

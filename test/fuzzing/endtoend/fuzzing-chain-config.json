@@ -53,7 +53,7 @@
     "ftsoManagerGasLimit": 40000000,
     "incentivePoolGasLimit": 3000000,
     "addressUpdaterTimelockSeconds": 10,
-    "deployDistributionContract": false,
+    "deployDistributionContract": true,
     "deployDummyXAssetTokensAndMinters": true,
     "deployNATFtso": true,
     "NATMultiAssets": ["XRP", "LTC", "DOGE"],
