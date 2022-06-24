@@ -375,6 +375,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
 
     it("Should clean checkpoints (from cleaner contract)", async() => {
       await governanceVotePower.setCleanerContract(accounts[200]);
+      expect(await governanceVotePower.cleanerContract()).to.equals(accounts[200]); 
 
       await governanceVotePower.delegate(accounts[2], { from: accounts[1] });
       let block1 = await time.latestBlock();

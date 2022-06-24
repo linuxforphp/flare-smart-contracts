@@ -50,6 +50,7 @@ contract(`VPContract.sol; ${getTestFile(__filename)}; VPContract unit tests`, as
     // there should be no revert when called via token
     await vpToken.setCleanupBlockNumber(1, { from: accounts[0] });
     await vpToken.setCleanerContract(accounts[3], { from: accounts[0] });
+    expect(await vpContract.cleanerContract()).to.equal(accounts[3]);
     // there should be no revert when called directly by token's governance
     await vpContract.setCleanupBlockNumber(1, { from: accounts[0] });
     await vpContract.setCleanerContract(accounts[3], { from: accounts[0] });
