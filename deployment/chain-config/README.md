@@ -45,6 +45,9 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `ftsoManagerGasLimit` -
     Gas limit for daemonize calls of on FtsoManager contract.
 
+- `incentivePoolGasLimit` -
+    Gas limit for daemonize calls of on IncentivePool contract.
+
 ## Inflation settings
 
 - `inflationPercentageBIPS` - 

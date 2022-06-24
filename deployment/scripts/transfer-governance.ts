@@ -49,9 +49,15 @@ export async function transferGovernance(
   const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
   const DistributionTreasury = artifacts.require("DistributionTreasury");
   const Distribution = artifacts.require("Distribution");
+  const DistributionToDelegators = artifacts.require("DistributionToDelegators");
+  const IncentivePoolTreasury = artifacts.require("IncentivePoolTreasury");
+  const IncentivePool = artifacts.require("IncentivePool");
+  const IncentivePoolAllocation = artifacts.require("IncentivePoolAllocation");
+  const InitialAirdrop = artifacts.require("InitialAirdrop");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const WNat = artifacts.require("WNat");
   const TeamEscrow = artifacts.require("TeamEscrow");
+  const DelegationAccountManager = artifacts.require("DelegationAccountManager");
 
   // Get deployed contracts
   const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
@@ -65,9 +71,14 @@ export async function transferGovernance(
   const voterWhitelister = await VoterWhitelister.at(contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.at(contracts.getContractAddress(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER));
   const distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+  const incentivePoolTreasury = await IncentivePoolTreasury.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL_TREASURY));
+  const incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+  const incentivePoolAllocation = await IncentivePoolAllocation.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL_ALLOCATION));
+  const initialAirdrop = await InitialAirdrop.at(contracts.getContractAddress(Contracts.INITIAL_AIRDROP));
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
   const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
+  const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
 
   // Transfer
   await addressUpdater.transferGovernance(newGovernanceAccountAddress);
@@ -79,7 +90,13 @@ export async function transferGovernance(
   if (distributionDeployed) {
     const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
     await distribution.transferGovernance(newGovernanceAccountAddress);
+    const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+    await distributionToDelegators.transferGovernance(newGovernanceAccountAddress);
   }
+  await incentivePoolTreasury.transferGovernance(newGovernanceAccountAddress);
+  await incentivePool.transferGovernance(newGovernanceAccountAddress);
+  await incentivePoolAllocation.transferGovernance(newGovernanceAccountAddress);
+  await initialAirdrop.transferGovernance(newGovernanceAccountAddress);
   await ftsoManager.transferGovernance(newGovernanceAccountAddress);
   await priceSubmitter.transferGovernance(newGovernanceAccountAddress);
   await voterWhitelister.transferGovernance(newGovernanceAccountAddress);
@@ -88,4 +105,5 @@ export async function transferGovernance(
   await ftsoRegistry.transferGovernance(newGovernanceAccountAddress);
   await wNat.transferGovernance(newGovernanceAccountAddress);
   await teamEscrow.transferGovernance(newGovernanceAccountAddress);
+  await delegationAccountManager.transferGovernance(newGovernanceAccountAddress);
 }

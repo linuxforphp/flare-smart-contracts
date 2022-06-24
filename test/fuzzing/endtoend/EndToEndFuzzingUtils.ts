@@ -31,7 +31,7 @@ export async function internalFullDeploy(parameters: any, quiet: boolean) {
     const deployed = await deployContracts(hre, parameters, quiet);
     const contracts = deployed.contracts!;
     await daemonizeContracts(hre, contracts, parameters.deployerPrivateKey, parameters.inflationReceivers,
-        parameters.inflationGasLimit, parameters.ftsoManagerGasLimit, quiet);
+        parameters.inflationGasLimit, parameters.ftsoManagerGasLimit, parameters.incentivePoolGasLimit, quiet);
     await activateManagers(hre, contracts, parameters.deployerPrivateKey, quiet);
     await transferGovernance(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey,
         parameters.governancePublicKey, parameters.deployDistributionContract, quiet);

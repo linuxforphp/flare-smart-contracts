@@ -127,6 +127,7 @@ task("daemonize-contracts", "Register contracts to be daemonized with the FlareD
         parameters.inflationReceivers, 
         parameters.inflationGasLimit, 
         parameters.ftsoManagerGasLimit, 
+        parameters.incentivePoolGasLimit, 
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")

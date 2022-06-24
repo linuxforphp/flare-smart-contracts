@@ -111,6 +111,46 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async function() {
+      if (!parameters.deployDistributionContract) return this.skip();
+      await checkGovernance(Contracts.DISTRIBUTION_TO_DELEGATORS);
+    });
+    it("Should not have deployed", async function () {
+      if (parameters.deployDistributionContract) return this.skip();
+      try {
+        await checkGovernance(Contracts.DISTRIBUTION_TO_DELEGATORS);
+        assert.fail('The expected Error was not thrown.');
+      } catch (err: any) {
+        assert.include(err.message, `${Contracts.DISTRIBUTION_TO_DELEGATORS} not found`);
+      }
+    });
+  });
+  
+  describe(Contracts.INCENTIVE_POOL_TREASURY, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.INCENTIVE_POOL_TREASURY);
+    });
+  });
+
+  describe(Contracts.INCENTIVE_POOL, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.INCENTIVE_POOL);
+    });
+  });
+
+  describe(Contracts.INCENTIVE_POOL_ALLOCATION, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.INCENTIVE_POOL_ALLOCATION);
+    });
+  });
+
+  describe(Contracts.INITIAL_AIRDROP, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.INITIAL_AIRDROP);
+    });
+  });
+
   describe(Contracts.FTSO_REGISTRY, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
       await checkGovernance(Contracts.FTSO_REGISTRY);
@@ -126,6 +166,12 @@ contract(`transfer-governance.ts system tests`, async accounts => {
   describe(Contracts.TEAM_ESCROW, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
       await checkGovernance(Contracts.TEAM_ESCROW);
+    });
+  });
+
+  describe(Contracts.DELEGATION_ACCOUNT_MANAGER, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+      await checkGovernance(Contracts.DELEGATION_ACCOUNT_MANAGER);
     });
   });
 });

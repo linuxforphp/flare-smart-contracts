@@ -6,7 +6,8 @@ import "../../governance/implementation/GovernedAtGenesis.sol";
 
 /**
  * @title Incentive pool treasury
- * @notice A genesis contract used to hold funds until the incentive pool distribute them.
+ * @notice A genesis contract which holds the entire treasury for the incentive pool.
+ *         It enables limited flow of funds to the incentive pool.
  */
 contract IncentivePoolTreasury is GovernedAtGenesis {
 
@@ -49,8 +50,8 @@ contract IncentivePoolTreasury is GovernedAtGenesis {
     }
 
     /**
-     * @notice Moves funds to the distribution contract (once per month)
-     * @param _amountWei   The amount of wei to pull to distribution contract
+     * @notice Moves funds to the incentive pool contract (once per day)
+     * @param _amountWei   The amount of wei to pull to incentive pool contract
      */
     function pullFunds(uint256 _amountWei) external onlyIncentivePool {
         // this also serves as reentrancy guard, since any re-entry will happen in the same block

@@ -15,10 +15,8 @@ contract InitialAirdrop is GovernedAtGenesis {
     using SafeMath for uint256;
     using SafePct for uint256;
 
-    event AirdopTransferFailure(address indexed account, uint256 amountWei);
-
     // constants
-    uint256 public constant LATEST_AIRDROP_START = 1664884800; // October 4, 2022 12:00:00 PM (GMT)
+    uint256 public constant LATEST_AIRDROP_START = 1667563200; // November 4, 2022 12:00:00 PM (GMT)
     uint256 internal constant CLAIMED_AT_GENESIS_BIPS = 1500;
     uint256 internal constant TOTAL_BIPS = 10000;
 
@@ -39,8 +37,9 @@ contract InitialAirdrop is GovernedAtGenesis {
     string internal constant ERR_ALREADY_STARTED = "already started";
 
     // Events
-    event AirdropStart(uint256 initialAirdropStartTs);
     event AccountsAdded(address[] accounts);
+    event AirdropStart(uint256 initialAirdropStartTs);
+    event AirdropTransferFailure(address indexed account, uint256 amountWei);
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -121,7 +120,7 @@ contract InitialAirdrop is GovernedAtGenesis {
                 // Update grand total transferred
                 totalTransferredAirdropWei = totalTransferredAirdropWei.add(amountWei);
             } else {
-                emit AirdopTransferFailure(account, amountWei);
+                emit AirdropTransferFailure(account, amountWei);
             }
         }
 

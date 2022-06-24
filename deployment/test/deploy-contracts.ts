@@ -5,11 +5,11 @@ import {
   AddressUpdatableContract,
   AddressUpdaterContract,
   AddressUpdaterInstance,
-  AssetTokenContract, AssetTokenInstance, DummyAssetMinterContract,
+  AssetTokenContract, AssetTokenInstance, DelegationAccountManagerContract, DelegationAccountManagerInstance, DistributionContract, DistributionInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
   FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
-  FtsoRewardManagerInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, InflationAllocationContract,
+  FtsoRewardManagerInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
   InflationInstance, SupplyContract,
   SupplyInstance, WNatContract, WNatInstance
@@ -234,27 +234,6 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     });
 
-    // TODO: This test is almost unnecessary immediatelly after deployment on Flare node since
-    // reward epoch starts with delay. 
-    // It also does not work with deployment on hardhat network.
-    // Skipped for now
-    it.skip("Should have recognized inflation set if rewarding started", async () => {
-      // Assemble
-      const rewardEpochStartTs = await inflation.rewardEpochStartTs();
-      const startTs = await time.latest();
-      // Act
-      try {  // This is unnecessary on Flare chain and it fails. It is relevant on hardhat chain.
-        await flareDaemon.trigger();
-      } catch (e) {
-        console.log(e)
-      }
-      // Assert
-      if (rewardEpochStartTs.lt(startTs)) {
-        const { 0: recognizedInflationWei } = await inflation.getCurrentAnnum() as any;
-        assert(BN(recognizedInflationWei).gt(BN(0)));
-      }
-    });
-
     it("Should know about supply contract", async () => {
       // Assemble
       // Act
@@ -269,6 +248,198 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       const address = await inflation.flareDaemon();
       // Assert
       assert.equal(address, flareDaemon.address);
+    });
+  });
+
+  if (parameters.deployDistributionContract) {
+    describe(Contracts.DISTRIBUTION_TREASURY, async () => {
+      let DistributionTreasury: DistributionTreasuryContract;
+      let distributionTreasury: DistributionTreasuryInstance;
+      let Distribution: DistributionContract;
+      let distribution: DistributionInstance;
+      let DistributionToDelegators: DistributionToDelegatorsContract;
+      let distributionToDelegators: DistributionToDelegatorsInstance;
+
+      beforeEach(async () => {
+        DistributionTreasury = artifacts.require("DistributionTreasury");
+        distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+        Distribution = artifacts.require("Distribution");
+        distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
+        DistributionToDelegators = artifacts.require("DistributionToDelegators");
+        distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+      });
+
+      it("Should know about distribution contract", async () => {
+        // Assemble
+        // Act
+        const address = await distributionTreasury.initialDistribution();
+        // Assert
+        assert.equal(address, distribution.address);
+      });
+
+      it("Should know about distribution to delegators contract", async () => {
+        // Assemble
+        // Act
+        const address = await distributionTreasury.distributionToDelegators();
+        // Assert
+        assert.equal(address, distributionToDelegators.address);
+      });
+    });
+
+    describe(Contracts.DISTRIBUTION, async () => {
+      let Distribution: DistributionContract;
+      let distribution: DistributionInstance;
+      let DistributionTreasury: DistributionTreasuryContract;
+      let distributionTreasury: DistributionTreasuryInstance;
+
+      beforeEach(async () => {
+        Distribution = artifacts.require("Distribution");
+        distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
+        DistributionTreasury = artifacts.require("DistributionTreasury");
+        distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+      });
+
+      it("Should know about distribution treasury contract", async () => {
+        // Assemble
+        // Act
+        const address = await distribution.treasury();
+        // Assert
+        assert.equal(address, distributionTreasury.address);
+      });
+    });
+
+    describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
+      let DistributionToDelegators: DistributionToDelegatorsContract;
+      let distributionToDelegators: DistributionToDelegatorsInstance;
+      let DistributionTreasury: DistributionTreasuryContract;
+      let distributionTreasury: DistributionTreasuryInstance;
+      let Supply: SupplyContract;
+      let supply: SupplyInstance;
+      let WNat: WNatContract;
+      let wNat: WNatInstance;
+      let DelegationAccountManager: DelegationAccountManagerContract;
+      let delegationAccountManager: DelegationAccountManagerInstance;
+
+      beforeEach(async () => {
+        DistributionToDelegators = artifacts.require("DistributionToDelegators");
+        distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+        DistributionTreasury = artifacts.require("DistributionTreasury");
+        distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+        Supply = artifacts.require("Supply");
+        supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
+        WNat = artifacts.require("WNat");
+        wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
+        DelegationAccountManager = artifacts.require("DelegationAccountManager");
+        delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+      });
+
+      it("Should know about distribution treasury contract", async () => {
+        // Assemble
+        // Act
+        const address = await distributionToDelegators.treasury();
+        // Assert
+        assert.equal(address, distributionTreasury.address);
+      });
+
+      it("Should know about supply contract", async () => {
+        // Assemble
+        // Act
+        const address = await distributionToDelegators.supply();
+        // Assert
+        assert.equal(address, supply.address);
+      });
+
+      it("Should know about wNat contract", async () => {
+        // Assemble
+        // Act
+        const address = await distributionToDelegators.wNat();
+        // Assert
+        assert.equal(address, wNat.address);
+      });
+
+      it("Should know about delegation account manager contract", async () => {
+        // Assemble
+        // Act
+        const address = await distributionToDelegators.delegationAccountManager();
+        // Assert
+        assert.equal(address, delegationAccountManager.address);
+      });
+
+      it("Should have total entitlement set correctly", async () => {
+        // Assemble
+        // Act
+        const totalEntitlementWei = await distributionToDelegators.totalEntitlementWei();
+        // Assert
+        assert.equal(totalEntitlementWei.toString(), parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
+      });
+    });
+  }
+
+  describe(Contracts.INCENTIVE_POOL_TREASURY, async () => {
+    let IncentivePoolTreasury: IncentivePoolTreasuryContract;
+    let incentivePoolTreasury: IncentivePoolTreasuryInstance;
+    let IncentivePool: IncentivePoolContract;
+    let incentivePool: IncentivePoolInstance;
+
+    beforeEach(async () => {
+      IncentivePoolTreasury = artifacts.require("IncentivePoolTreasury");
+      incentivePoolTreasury = await IncentivePoolTreasury.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL_TREASURY));
+      IncentivePool = artifacts.require("IncentivePool");
+      incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+    });
+
+    it("Should know about incentive pool contract", async () => {
+      // Assemble
+      // Act
+      const address = await incentivePoolTreasury.incentivePool();
+      // Assert
+      assert.equal(address, incentivePool.address);
+    });
+  });
+
+  describe(Contracts.INCENTIVE_POOL, async () => {
+    let IncentivePool: IncentivePoolContract;
+    let incentivePool: IncentivePoolInstance;
+    let Supply: SupplyContract;
+    let supply: SupplyInstance;
+    let FlareDaemon: FlareDaemonContract;
+    let flareDaemon: FlareDaemonInstance;
+    let IncentivePoolTreasury: IncentivePoolTreasuryContract;
+    let incentivePoolTreasury: IncentivePoolTreasuryInstance;
+
+    beforeEach(async () => {
+      IncentivePool = artifacts.require("IncentivePool");
+      incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+      Supply = artifacts.require("Supply");
+      supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
+      FlareDaemon = artifacts.require("FlareDaemon");
+      flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
+      IncentivePoolTreasury = artifacts.require("IncentivePoolTreasury");
+      incentivePoolTreasury = await IncentivePoolTreasury.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL_TREASURY));
+    });
+
+    it("Should know about supply contract", async () => {
+      // Assemble
+      // Act
+      const address = await incentivePool.supply();
+      // Assert
+      assert.equal(address, supply.address);
+    });
+
+    it("Should know about flare daemon contract", async () => {
+      // Assemble
+      // Act
+      const address = await incentivePool.flareDaemon();
+      // Assert
+      assert.equal(address, flareDaemon.address);
+    });
+
+    it("Should know about incentive pool treasury contract", async () => {
+      // Assemble
+      // Act
+      const address = await incentivePool.treasury();
+      // Assert
+      assert.equal(address, incentivePoolTreasury.address);
     });
   });
 
@@ -553,10 +724,12 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about all contracts", async () => {
       let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY,
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.TEAM_ESCROW,
-        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER];
+        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER,
+        Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.DELEGATION_ACCOUNT_MANAGER];
 
       if (parameters.deployDistributionContract) {
         contractNames.push(Contracts.DISTRIBUTION);
+        contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
 
       for (let name of contractNames) {
@@ -569,7 +742,12 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
 
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
-        Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER];
+        Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER,
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.DELEGATION_ACCOUNT_MANAGER];
+
+      if (parameters.deployDistributionContract) {
+        contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
+      }
 
       for (let name of contractNames) {
         // Act

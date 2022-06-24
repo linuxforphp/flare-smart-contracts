@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract, IncentivePoolTreasuryInstance, IncentivePoolTreasuryContract, DistributionToDelegatorsContract, IncentivePoolContract, InitialAirdropContract, InitialAirdropInstance, DistributionToDelegatorsInstance, IncentivePoolAllocationContract, DelegationAccountManagerContract, DelegationAccountClonableContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
@@ -63,10 +63,17 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const Supply: SupplyContract = artifacts.require("Supply");
   const VoterWhitelister: VoterWhitelisterContract = artifacts.require("VoterWhitelister");
   const WNat: WNatContract = artifacts.require("WNat");
-  const Distribution: DistributionContract = artifacts.require("Distribution");
   const DistributionTreasury: DistributionTreasuryContract = artifacts.require("DistributionTreasury");
+  const Distribution: DistributionContract = artifacts.require("Distribution");
+  const DistributionToDelegators: DistributionToDelegatorsContract = artifacts.require("DistributionToDelegators");
+  const IncentivePoolTreasury: IncentivePoolTreasuryContract = artifacts.require("IncentivePoolTreasury");
+  const IncentivePool: IncentivePoolContract = artifacts.require("IncentivePool");
+  const IncentivePoolAllocation: IncentivePoolAllocationContract = artifacts.require("IncentivePoolAllocation");
+  const InitialAirdrop: InitialAirdropContract = artifacts.require("InitialAirdrop");
   const TeamEscrow: TeamEscrowContract = artifacts.require("TeamEscrow");
   const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
+  const DelegationAccountClonable: DelegationAccountClonableContract = artifacts.require("DelegationAccountClonable");
+  const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -168,6 +175,54 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   
   spewNewContractInfo(contracts, addressUpdaterContracts, DistributionTreasury.contractName, `DistributionTreasury.sol`, distributionTreasury.address, quiet);
 
+  // Initialize the incentive pool treasury
+  let incentivePoolTreasury: IncentivePoolTreasuryInstance;
+  try {
+    incentivePoolTreasury = await IncentivePoolTreasury.at(parameters.incentivePoolTreasuryAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("IncentivePoolTreasury not in genesis...creating new.")
+    }
+    incentivePoolTreasury = await IncentivePoolTreasury.new();
+  }
+  // This has to be done always
+  try {
+    await incentivePoolTreasury.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`incentivePoolTreasury.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
+  // Assigning governance to deployer
+  let incentivePoolTreasuryGovernance = await incentivePoolTreasury.governance();
+  await incentivePoolTreasury.proposeGovernance(deployerAccount.address, { from: incentivePoolTreasuryGovernance });
+  await incentivePoolTreasury.claimGovernance({ from: deployerAccount.address })
+  
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolTreasury.contractName, `IncentivePoolTreasury.sol`, incentivePoolTreasury.address, quiet);
+
+  // Initialize the initial airdrop contract
+  let initialAirdrop: InitialAirdropInstance;
+  try {
+    initialAirdrop = await InitialAirdrop.at(parameters.initialAirdropAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("InitialAirdrop not in genesis...creating new.")
+    }
+    initialAirdrop = await InitialAirdrop.new();
+  }
+  // This has to be done always
+  try {
+    await initialAirdrop.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`initialAirdrop.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
+  // Assigning governance to deployer
+  let initialAirdropGovernance = await initialAirdrop.governance();
+  await initialAirdrop.proposeGovernance(deployerAccount.address, { from: initialAirdropGovernance });
+  await initialAirdrop.claimGovernance({ from: deployerAccount.address })
+  
+  spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
+
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);
   spewNewContractInfo(contracts, addressUpdaterContracts, AddressUpdater.contractName, `AddressUpdater.sol`, addressUpdater.address, quiet);
@@ -251,11 +306,41 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const voterWhitelister = await VoterWhitelister.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, parameters.defaultVoterWhitelistSize);
   spewNewContractInfo(contracts, addressUpdaterContracts, VoterWhitelister.contractName, `VoterWhitelister.sol`, voterWhitelister.address, quiet);
 
-  // Distribution Contract
+  // DelegationAccountManager
+  const delegationAccountManager = await DelegationAccountManager.new(deployerAccount.address, addressUpdater.address);
+  spewNewContractInfo(contracts, addressUpdaterContracts, DelegationAccountManager.contractName, `DelegationAccountManager.sol`, delegationAccountManager.address, quiet);
+
+  const delegationAccountClonable = await DelegationAccountClonable.new();
+  spewNewContractInfo(contracts, null, DelegationAccountClonable.contractName, `DelegationAccountClonable.sol`, delegationAccountClonable.address, quiet);
+  delegationAccountManager.setLibraryAddress(delegationAccountClonable.address);
+
+  // Distribution contracts
+  let distributionToDelegators: DistributionToDelegatorsInstance;
   if (parameters.deployDistributionContract) {
     const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address);
     spewNewContractInfo(contracts, addressUpdaterContracts, Distribution.contractName, `Distribution.sol`, distribution.address, quiet);
+
+    const totalEntitlementWei = BN(parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
+    distributionToDelegators = await DistributionToDelegators.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, distributionTreasury.address, totalEntitlementWei);
+    spewNewContractInfo(contracts, addressUpdaterContracts, DistributionToDelegators.contractName, `DistributionToDelegators.sol`, distributionToDelegators.address, quiet);
+
+    await distributionTreasury.setContracts(distribution.address, distributionToDelegators.address);
   }
+
+  // IncentivePoolAllocation contract
+  const incentivePoolAllocation = await IncentivePoolAllocation.new(deployerAccount.address, addressUpdater.address, [0]);
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolAllocation.contractName, `IncentivePoolAllocation.sol`, incentivePoolAllocation.address, quiet);
+
+  // IncentivePool contract
+  const incentivePool = await IncentivePool.new(
+    deployerAccount.address,
+    flareDaemon.address,
+    addressUpdater.address,
+    incentivePoolTreasury.address,
+    startTs
+  );
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePool.contractName, `IncentivePool.sol`, incentivePool.address, quiet);
+  await incentivePoolTreasury.setIncentivePoolContract(incentivePool.address);
 
   // FtsoManager contract
   const ftsoManager = await FtsoManager.new(
@@ -303,8 +388,14 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     priceSubmitter.address, 
     ftsoManager.address, 
     ftsoRewardManager.address,
-    supply.address
+    supply.address,
+    delegationAccountManager.address,
+    incentivePoolAllocation.address,
+    incentivePool.address
   ];
+  if (parameters.deployDistributionContract) {
+    addressUpdatableContracts.push(distributionToDelegators!.address);
+  }
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
 
   let assetToContracts = new Map<string, AssetContracts>();

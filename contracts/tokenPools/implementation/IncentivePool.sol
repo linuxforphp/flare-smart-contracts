@@ -38,8 +38,9 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
     uint256 public lastAuthorizationTs;                             // The last time incentive was authorized
     mapping(IIIncentivePoolReceiver => TopupConfiguration)
         internal topupConfigurations;                               // A topup configuration for a contract
-                                                                    // receiving incentive.
-    uint256 public rewardEpochStartTs;                    // Do not start incentivePool annums before this
+                                                                    //   receiving incentive.
+    uint256 public immutable rewardEpochStartTs;                    // Do not start incentivePool annums before this
+    uint256 public rewardEpochStartedTs;                            // When the first reward epoch was started
 
     // Constants
     string internal constant ERR_IS_ZERO = "address is 0";
@@ -86,15 +87,15 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
         address _governance, 
         FlareDaemon _flareDaemon,
         address _addressUpdater,
-        uint256 _rewardEpochStartTs,
-        IncentivePoolTreasury _treasury
+        IncentivePoolTreasury _treasury,
+        uint256 _rewardEpochStartTs
     ) payable
         notZero(address(_treasury))
         GovernedAndFlareDaemonized(_governance, _flareDaemon)
         AddressUpdatable(_addressUpdater)
     {
-        rewardEpochStartTs = _rewardEpochStartTs;
         treasury = _treasury;
+        rewardEpochStartTs = _rewardEpochStartTs;
     }
 
     /**
@@ -232,6 +233,11 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
             return true;
         }
 
+        // If incetive rewarding started and we have not updated when it started, do so now.
+        if (rewardEpochStartedTs == 0) {
+            rewardEpochStartedTs = block.timestamp;
+        }
+
         // Is it time to recognize an initial incentivePool annum?
         if (incentivePoolAnnums.getCount() == 0) {
             _initNewAnnum(block.timestamp);
@@ -260,14 +266,13 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
 
             // Time to compute topup amount for incentivePool receivers.
             uint256 topupRequestWei = incentivePoolAnnums.computeTopupRequest(this);
+            emit TopupRequested(topupRequestWei);
             // Pull funds from treasury contract
             treasury.pullFunds(topupRequestWei);
             // Distribute received funds
             uint256 amountPostedWei = incentivePoolAnnums.distributeTopupRequest();
             // calculated and distributed amount should be the same
             assert(topupRequestWei == amountPostedWei);
-
-            emit TopupRequested(topupRequestWei);
         }
         return true;
     }

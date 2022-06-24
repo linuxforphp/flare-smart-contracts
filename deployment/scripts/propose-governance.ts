@@ -48,9 +48,15 @@ export async function proposeGovernance(
   const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
   const DistributionTreasury = artifacts.require("DistributionTreasury");
   const Distribution = artifacts.require("Distribution");
+  const DistributionToDelegators = artifacts.require("DistributionToDelegators");
+  const IncentivePoolTreasury = artifacts.require("IncentivePoolTreasury");
+  const IncentivePool = artifacts.require("IncentivePool");
+  const IncentivePoolAllocation = artifacts.require("IncentivePoolAllocation");
+  const InitialAirdrop = artifacts.require("InitialAirdrop");
   const FtsoRegistry = artifacts.require("FtsoRegistry");
   const WNat = artifacts.require("WNat");
   const TeamEscrow = artifacts.require("TeamEscrow");
+  const DelegationAccountManager = artifacts.require("DelegationAccountManager");
 
   // Get deployed contracts
   const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
@@ -64,9 +70,14 @@ export async function proposeGovernance(
   const voterWhitelister = await VoterWhitelister.at(contracts.getContractAddress(Contracts.VOTER_WHITELISTER));
   const cleanupBlockNumberManager = await CleanupBlockNumberManager.at(contracts.getContractAddress(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER));
   const distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+  const incentivePoolTreasury = await IncentivePoolTreasury.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL_TREASURY));
+  const incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+  const incentivePoolAllocation = await IncentivePoolAllocation.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL_ALLOCATION));
+  const initialAirdrop = await InitialAirdrop.at(contracts.getContractAddress(Contracts.INITIAL_AIRDROP));
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY)); 
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
   const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
+  const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
 
   if (!quiet) {
     console.error(`Proposed address is ${newGovernanceAccountAddress}`);
@@ -82,7 +93,13 @@ export async function proposeGovernance(
   if (distributionDeployed) {
     const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
     await distribution.proposeGovernance(newGovernanceAccountAddress);
+    const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+    await distributionToDelegators.proposeGovernance(newGovernanceAccountAddress);
   }
+  await incentivePoolTreasury.proposeGovernance(newGovernanceAccountAddress);
+  await incentivePool.proposeGovernance(newGovernanceAccountAddress);
+  await incentivePoolAllocation.proposeGovernance(newGovernanceAccountAddress);
+  await initialAirdrop.proposeGovernance(newGovernanceAccountAddress);
   await ftsoManager.proposeGovernance(newGovernanceAccountAddress);
   await priceSubmitter.proposeGovernance(newGovernanceAccountAddress);
   await voterWhitelister.proposeGovernance(newGovernanceAccountAddress);
@@ -91,4 +108,5 @@ export async function proposeGovernance(
   await ftsoRegistry.proposeGovernance(newGovernanceAccountAddress);
   await wNat.proposeGovernance(newGovernanceAccountAddress);
   await teamEscrow.proposeGovernance(newGovernanceAccountAddress);
+  await delegationAccountManager.proposeGovernance(newGovernanceAccountAddress);
 }

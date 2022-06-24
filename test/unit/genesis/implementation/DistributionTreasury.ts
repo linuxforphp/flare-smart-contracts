@@ -81,7 +81,6 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
             let governance = await treasury.governance();
 
             let newaddress = accounts[100];
-            let newmaxpull = 10**6;
 
             await treasury.setContracts(newaddress, accounts[101], { from: governance });
             await treasury.selectDistributionContract(newaddress, { from: governance });
@@ -159,6 +158,25 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
             let lastPull2 = await treasury.lastPullTs();
             let now2 = await time.latest()
             expect(lastPull2.toNumber()).to.equal(now2.toNumber());
+        });
+
+        it("Should update lastPull timestamp even if pulling 0 funds", async() => {
+            await treasury.initialiseFixedAddress();
+            let governance = await treasury.governance();
+
+            // sneak wei into DistributionTreasury
+            await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
+            await mockSuicidal.die();
+
+            let distribution = accounts[100];
+            await treasury.setContracts(distribution, accounts[101], { from: governance });
+            await treasury.selectDistributionContract(distribution, { from: governance });
+
+            // pull 0 funds
+            await treasury.pullFunds(0, { from: distribution });
+            let lastPull = await treasury.lastPullTs();
+            let now = await time.latest()
+            expect(lastPull.toNumber()).to.equal(now.toNumber());
         });
 
         it("Should revert at pullFunds if receive method is not implemented", async() => {

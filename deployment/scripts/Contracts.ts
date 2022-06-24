@@ -23,6 +23,10 @@ export class Contracts {
   public static readonly DISTRIBUTION = "Distribution";
   public static readonly DISTRIBUTION_TREASURY = "DistributionTreasury";
   public static readonly DISTRIBUTION_TO_DELEGATORS = "DistributionToDelegators";
+  public static readonly INCENTIVE_POOL_TREASURY = "IncentivePoolTreasury";
+  public static readonly INCENTIVE_POOL = "IncentivePool";
+  public static readonly INCENTIVE_POOL_ALLOCATION = "IncentivePoolAllocation";
+  public static readonly INITIAL_AIRDROP = "InitialAirdrop";
   public static readonly DELEGATION_ACCOUNT_MANAGER = "DelegationAccountManager";
   public static readonly TEAM_ESCROW = "TeamEscrow";
   public static readonly SUPPLY = "Supply";

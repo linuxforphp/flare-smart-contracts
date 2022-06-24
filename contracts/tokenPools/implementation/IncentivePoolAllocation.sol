@@ -29,7 +29,7 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     string internal constant ERR_ONLY_INCENTIVE_POOL = "only incentivePool";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
-    uint256 internal constant MAX_SCHEDULE_COUNT = 10;
+    uint256 internal constant MAX_SCHEDULE_COUNT = 25;
     uint256 internal constant MAX_INCENTIVE_POOL_RECEIVERS = 10;
     uint256 internal constant MAX_INCENTIVE_POOL_PERCENTAGE_BIPS = BIPS100 / 10;  // 10% in basis points
 
@@ -231,22 +231,18 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
      * @notice Set the annual incentivePool percentage schedule. This schedule is meant to be set for recognition
      *   a per-annum basis.
      * @param _annualIncentivePoolScheduleBips  An array of incentivePool percentages in bips.
-     * @dev The schedule must be a decaying schedule. Once the schedule has been used up, the last percentage
+     * @dev Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
     function _setAnnualIncentivePoolSchedule(uint256[] memory _annualIncentivePoolScheduleBips) internal {
         require(_annualIncentivePoolScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
         uint256 len = _annualIncentivePoolScheduleBips.length;
-        uint256 lastOne = lastAnnualIncentivePoolPercentageBips;
 
         for (uint256 i = 0; i < len; i++) {
-            // Validate the schedule...percentages must be the same or decay, and cannot be greater than last given.
+            // Validate the schedule...
             require(
-                _annualIncentivePoolScheduleBips[i] <= lastOne && 
-                _annualIncentivePoolScheduleBips[i] > 0 &&
                 _annualIncentivePoolScheduleBips[i] <= MAX_INCENTIVE_POOL_PERCENTAGE_BIPS,
                 ANNUAL_INCENTIVE_POOL_OUT_OF_BOUNDS);
-                lastOne = _annualIncentivePoolScheduleBips[i];
 
             // Push in the new schedule
             annualIncentivePoolPercentagesBips.push(_annualIncentivePoolScheduleBips[i]);
