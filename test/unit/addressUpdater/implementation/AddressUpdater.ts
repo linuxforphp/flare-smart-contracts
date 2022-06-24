@@ -119,26 +119,4 @@ contract(`AddressUpdater.sol; ${getTestFile(__filename)}; AddressUpdater contrac
     await expectRevert(updatePromise, "only governance")
   });
 
-  it("Should update addresses on addressUpdatable contract using update method", async() => {
-    // Assemble
-    const addressUpdatable = await MockContract.new();
-    const addressUpdatableInterface = await AddressUpdatableMock.new(addressUpdater.address);
-    await addressUpdater.update([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME], [FTSO_MANAGER_ADDRESS, addressUpdater.address], [addressUpdatable.address], { from: GOVERNANCE_ADDRESS });
-    // Assert
-    const updateContractAddresses = addressUpdatableInterface.contract.methods.updateContractAddresses(
-      encodeContractNames([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME]), 
-      [FTSO_MANAGER_ADDRESS, addressUpdater.address]).encodeABI();
-    const invocationCount = await addressUpdatable.invocationCountForCalldata.call(updateContractAddresses);
-    assert.equal(invocationCount.toNumber(), 1);
-  });
-
-  it("Should revert calling update if not from governance", async() => {
-    // Assemble
-    const addressUpdatable = await MockContract.new();
-    // Act
-    const updatePromise = addressUpdater.update([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME], [FTSO_MANAGER_ADDRESS, addressUpdater.address], [addressUpdatable.address], { from: accounts[0] });
-    // Assert
-    await expectRevert(updatePromise, "only governance")
-  });
-  
 });

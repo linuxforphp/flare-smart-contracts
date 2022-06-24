@@ -397,6 +397,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     addressUpdatableContracts.push(distributionToDelegators!.address);
   }
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
+  
+  await addressUpdater.setTimelock(parameters.addressUpdaterTimelockSeconds);
 
   let assetToContracts = new Map<string, AssetContracts>();
 
