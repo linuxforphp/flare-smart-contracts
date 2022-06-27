@@ -94,7 +94,7 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
      * @notice Set the annual incentivePool percentage schedule. This schedule is meant to be set for recognition
      *   a per-annum basis.
      * @param _annualIncentivePoolScheduleBips  An array of incentivePool percentages in bips.
-     * @dev The schedule must be a decaying schedule. Once the schedule has been used up, the last percentage
+     * @dev Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
     function setAnnualIncentivePool(uint256[] memory _annualIncentivePoolScheduleBips) external onlyGovernance {
