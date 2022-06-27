@@ -205,7 +205,8 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
         internal override
     {
         IncentivePool _incentivePool = IncentivePool(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "IncentivePool"));
+            // Since IncentivePool is payable, we have to explicitly convert the address to a payable address.
+            payable(_getContractAddress(_contractNameHashes, _contractAddresses, "IncentivePool")));
         emit IncentivePoolSet(address(incentivePool), address(_incentivePool));
         incentivePool = _incentivePool;
 

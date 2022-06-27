@@ -48,7 +48,7 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
     string internal constant ERR_TOPUP_LOW = "topup low";
     string internal constant ERR_TOPUP_HIGH = "topup high";
     string internal constant ERR_GET_ANNUAL_PERCENT = "unknown error. getAnnualPercentageBips";
-    string internal constant ERR_INFLATION_ONLY = "inflation only";
+    string internal constant ERR_TREASURY_ONLY = "treasury only";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
     uint256 internal constant DEFAULT_TOPUP_FACTOR_X100 = 120;
@@ -347,5 +347,12 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
             incentivePoolAnnum.incentivePoolRewardServices.totalIncentiveTopupReceivedWei,
             incentivePoolAnnum.incentivePoolRewardServices.totalIncentiveTopupWithdrawnWei
         );
+    }
+
+    /**
+     * @notice Needed in order to receive funds from Treasury
+     */
+    receive() external payable {
+        require(msg.sender == address(treasury), ERR_TREASURY_ONLY);
     }
 }
