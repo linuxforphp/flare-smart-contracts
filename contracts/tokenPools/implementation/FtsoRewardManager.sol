@@ -69,7 +69,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed rewards.
      */
     mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardWeight;
-    mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardAmount;    
+    mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardAmount;
+    mapping(uint256 => mapping(address => uint256)) private epochProviderVotePowerIgnoringRevocation;
+    mapping(uint256 => mapping(address => uint256)) private epochProviderRewardAmount;
     mapping(uint256 => mapping(address => mapping(address => RewardClaim))) private epochProviderClaimerReward;
     mapping(uint256 => uint256) private totalRewardEpochRewards;
     mapping(uint256 => uint256) private claimedRewardEpochRewards;
@@ -397,7 +399,13 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             rewards[i] = rewards[0].mulDiv(_weights[i], _weights[0]);
             epochProviderUnclaimedRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
             epochProviderUnclaimedRewardWeight[_currentRewardEpoch][_addresses[i]] =
-                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);            
+                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);
+            epochProviderRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
+            if (epochProviderVotePowerIgnoringRevocation[_currentRewardEpoch][_addresses[i]] == 0) {
+                epochProviderVotePowerIgnoringRevocation[_currentRewardEpoch][_addresses[i]] =
+                    wNat.votePowerOfAtIgnoringRevocation(_addresses[i], _votePowerBlock);
+            }
+
             if (i == 0) {
                 break;
             }
@@ -644,6 +652,24 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     {
         _amount = epochProviderUnclaimedRewardAmount[_rewardEpoch][_dataProvider];
         _weight = epochProviderUnclaimedRewardWeight[_rewardEpoch][_dataProvider];
+    }
+
+    /**
+     * @notice Returns the information on rewards and initial vote power of `_dataProvider` for `_rewardEpoch`
+     * @param _rewardEpoch                      reward epoch number
+     * @param _dataProvider                     address representing the data provider
+     * @return _rewardAmount                    number representing the amount of rewards
+     * @return _votePowerIgnoringRevocation     number representing the vote power ignoring revocations
+     */
+    function getDataProviderRewardInfo(
+        uint256 _rewardEpoch,
+        address _dataProvider
+    )
+        external view override 
+        returns (uint256 _rewardAmount, uint256 _votePowerIgnoringRevocation)
+    {
+        _rewardAmount = epochProviderRewardAmount[_rewardEpoch][_dataProvider];
+        _votePowerIgnoringRevocation = epochProviderVotePowerIgnoringRevocation[_rewardEpoch][_dataProvider];
     }
 
     /**

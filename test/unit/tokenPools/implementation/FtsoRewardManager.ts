@@ -410,6 +410,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
             assert.equal(a1UnclaimedReward[0].toNumber(), 99);
             assert.equal(a2UnclaimedReward[0].toNumber(), 297);
+
+            let a1RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
+            let a2RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[2]);
+            assert.equal(a1RewardInfo[0].toNumber(), 99);
+            assert.equal(a2RewardInfo[0].toNumber(), 297);
         });
 
         it("Should finalize price epoch and distribute all authorized rewards for 7 daily cycle, revert later", async () => {
@@ -437,6 +442,10 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
             assert.equal(a1UnclaimedReward[0].toNumber() + a2UnclaimedReward[0].toNumber(), 2000000);
+
+            let a1RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
+            let a2RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[2]);
+            assert.equal(a1RewardInfo[0].toNumber() + a2RewardInfo[0].toNumber(), 2000000);
 
             const promise = mockFtsoManager.distributeRewardsCall(
                 [accounts[1], accounts[2]],
@@ -908,6 +917,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
+            let a1RewardInfoBeforeClaim = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
+
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
             compareArrays(data[0], [accounts[1]]);
@@ -920,6 +931,13 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             compareNumberArrays(data[1], [99]);
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
+
+            let a1RewardInfoAfterClaim = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
+
+            expect(a1RewardInfoBeforeClaim[0].toNumber()).to.equals(99 + 99);
+            expect(a1RewardInfoBeforeClaim[1].toNumber()).to.equals(200);
+            expect(a1RewardInfoBeforeClaim[0].toNumber()).to.equals(a1RewardInfoAfterClaim[0].toNumber());
+            expect(a1RewardInfoBeforeClaim[1].toNumber()).to.equals(a1RewardInfoAfterClaim[1].toNumber());
 
             await ftsoRewardManager.claimReward(accounts[4], [0], { from: accounts[4] });
 
