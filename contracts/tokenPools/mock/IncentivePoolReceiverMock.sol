@@ -10,6 +10,6 @@ contract IncentivePoolReceiverMock is IIIncentivePoolReceiver {
     function getIncentivePoolAddress() external override returns(address) {}
 
     function getContractName() external pure override returns (string memory) {
-        return "IncentiveReceiverMock";
+        return "IncentivePoolReceiverMock";
     }
 }

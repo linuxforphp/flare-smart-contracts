@@ -14,7 +14,7 @@
     "governancePrivateKey": "<use .env: GOVERNANCE_PRIVATE_KEY>",
     "governancePublicKey": "<use .env: GOVERNANCE_PUBLIC_KEY>",
     "burnAddress": "0x0000000000000000000000000000000000000000",
-    "totalNativeSupplyNAT": 100000000000,
+    "totalNativeSupplyNAT":  100000000000,
     "totalExcludedSupplyNAT": 85000000000,
     "distributionTotalEntitlementWei": "23 800 000 000 000 000 000 000 000 000",
     "scheduledInflationPercentageBIPS": [500],

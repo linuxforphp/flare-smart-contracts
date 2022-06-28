@@ -42,7 +42,7 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     event AnnualIncentivePoolPercentageYielded(uint256 percentageBips);
     event AnnualIncentivePoolPercentageScheduleSet(uint256[] annualIncentivePoolPercentagesBips);
     event IncentivePoolSharingPercentagesSet(
-        IIIncentivePoolReceiver[] incentivePoolRecievers, 
+        IIIncentivePoolReceiver[] incentivePoolReceivers, 
         uint256[] percentagePerReceiverBips
     );
 
@@ -77,17 +77,17 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     /**
      * @notice Set the sharing percentages between incentivePool receiver contracts. Percentages must sum
      *   to 100%.
-     * @param _incentivePoolRecievers   An array of contracts to receive incentivePool rewards for distribution.
+     * @param _incentivePoolReceivers   An array of contracts to receive incentivePool rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function setSharingPercentages(
-        IIIncentivePoolReceiver[] memory _incentivePoolRecievers, 
+        IIIncentivePoolReceiver[] memory _incentivePoolReceivers, 
         uint256[] memory _percentagePerReceiverBips
     )
         external
         onlyGovernance 
     {
-        _setSharingPercentages(_incentivePoolRecievers, _percentagePerReceiverBips);
+        _setSharingPercentages(_incentivePoolReceivers, _percentagePerReceiverBips);
     }
 
     /**
@@ -142,7 +142,7 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     }
 
     /**
-     * @notice Get the incentivePool reciever contracts and the current sharing percentages.
+     * @notice Get the incentivePool receiver contracts and the current sharing percentages.
      * @return _sharingPercentages An array of SharingPercentage.
      */
     function getSharingPercentages() external view override returns(SharingPercentage[] memory _sharingPercentages) {
@@ -159,17 +159,17 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     /**
      * @notice Set the sharing percentages between incentivePool receiver contracts. Percentages must sum
      *   to 100%.
-     * @param _incentivePoolRecievers   An array of contracts to receive incentivePool rewards for distribution.
+     * @param _incentivePoolReceivers   An array of contracts to receive incentivePool rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function _setSharingPercentages(
-        IIIncentivePoolReceiver[] memory _incentivePoolRecievers, 
+        IIIncentivePoolReceiver[] memory _incentivePoolReceivers, 
         uint256[] memory _percentagePerReceiverBips
     )
         internal
     {
-        require(_incentivePoolRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
-        require (_incentivePoolRecievers.length <= MAX_INCENTIVE_POOL_RECEIVERS, ERR_TOO_MANY);
+        require(_incentivePoolReceivers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
+        require (_incentivePoolReceivers.length <= MAX_INCENTIVE_POOL_RECEIVERS, ERR_TOO_MANY);
 
         uint256 sumSharingPercentage;
 
@@ -178,20 +178,20 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
             incentivePoolReceivers.pop();
         }
 
-        for (uint256 i = 0; i < _incentivePoolRecievers.length; i++) {
+        for (uint256 i = 0; i < _incentivePoolReceivers.length; i++) {
             require (_percentagePerReceiverBips[i] <= BIPS100, ERR_HIGH_SHARING_PERCENTAGE);
-            require (_incentivePoolRecievers[i] != IIIncentivePoolReceiver(0), ERR_IS_ZERO);
+            require (_incentivePoolReceivers[i] != IIIncentivePoolReceiver(0), ERR_IS_ZERO);
 
             sumSharingPercentage += _percentagePerReceiverBips[i];
 
             incentivePoolReceivers.push( IncentivePoolReceiver({
-                receiverContract: _incentivePoolRecievers[i],
+                receiverContract: _incentivePoolReceivers[i],
                 percentageBips: uint32(_percentagePerReceiverBips[i])
             }));
         }
 
         require (sumSharingPercentage == BIPS100, ERR_SUM_SHARING_PERCENTAGE);
-        emit IncentivePoolSharingPercentagesSet(_incentivePoolRecievers, _percentagePerReceiverBips);
+        emit IncentivePoolSharingPercentagesSet(_incentivePoolReceivers, _percentagePerReceiverBips);
     }
 
     /**

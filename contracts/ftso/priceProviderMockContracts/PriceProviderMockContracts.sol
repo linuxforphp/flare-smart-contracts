@@ -544,6 +544,7 @@ contract MockVoterWhitelister is IVoterWhitelister {
  */
 contract MockPriceSubmitter is IPriceSubmitter, AddressUpdatable {
 
+    string internal constant ERR_ALREADY_SET = "Already set";
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
     string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
     string internal constant ERR_INVALID_INDEX = "Invalid index";
@@ -596,6 +597,7 @@ contract MockPriceSubmitter is IPriceSubmitter, AddressUpdatable {
      * @param _addressUpdater   The address updater contract.
      */
     function setAddressUpdater(address _addressUpdater) external {
+        require(getAddressUpdater() == address(0), ERR_ALREADY_SET);
         setAddressUpdaterValue(_addressUpdater);
     }
 

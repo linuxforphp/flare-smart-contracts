@@ -24,6 +24,7 @@ const ERR_NOT_WHITELISTED = "Not whitelisted";
 const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_ONLY_ADDRESS_UPDATER = "only address updater";
 const ERR_ARRAY_LENGTHS = "Array lengths do not match";
+const ERR_ALREADY_SET = "Already set";
 
 // contains a fresh contract for each test 
 let wnatInterface: WNatInstance;
@@ -771,6 +772,12 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let tx = priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: accounts[10]});
 
             await expectRevert(tx, ERR_ONLY_GOVERNANCE);
+        });
+
+        it("Should not update address updater", async() => {
+            let tx = priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: GOVERNANCE_GENESIS_ADDRESS});
+
+            await expectRevert(tx, ERR_ALREADY_SET);
         });
 
         it("Should not set addresses if not address updater", async() => {

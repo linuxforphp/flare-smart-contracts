@@ -89,13 +89,20 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
         address _addressUpdater,
         IncentivePoolTreasury _treasury,
         uint256 _rewardEpochStartTs
-    ) payable
+    )
         notZero(address(_treasury))
         GovernedAndFlareDaemonized(_governance, _flareDaemon)
         AddressUpdatable(_addressUpdater)
     {
         treasury = _treasury;
         rewardEpochStartTs = _rewardEpochStartTs;
+    }
+
+    /**
+     * @notice Needed in order to receive funds from Treasury
+     */
+    receive() external payable {
+        require(msg.sender == address(treasury), ERR_TREASURY_ONLY);
     }
 
     /**
@@ -347,12 +354,5 @@ contract IncentivePool is GovernedAndFlareDaemonized, IFlareDaemonize, IITokenPo
             incentivePoolAnnum.incentivePoolRewardServices.totalIncentiveTopupReceivedWei,
             incentivePoolAnnum.incentivePoolRewardServices.totalIncentiveTopupWithdrawnWei
         );
-    }
-
-    /**
-     * @notice Needed in order to receive funds from Treasury
-     */
-    receive() external payable {
-        require(msg.sender == address(treasury), ERR_TREASURY_ONLY);
     }
 }

@@ -268,7 +268,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       const wNatBalances1 = [500, 2000, 1500];
       const wNatBalances2 = [600, 1800, 2000];
       const wNatBalances3 = [1000, 800, 2100];
-      const numberOfBlocks = 12 * (days - 7);
+      const numberOfBlocks = 12 * (days - 8);
       const startBlockNumber = (await time.latestBlock()).toNumber() + numberOfBlocks * (addresses.length + 1) + 7 + 7 * 12;
       await setMockBalances(startBlockNumber, numberOfBlocks / 3, addresses, wNatBalances1);
       await setMockBalances(startBlockNumber + numberOfBlocks / 3, numberOfBlocks / 3, addresses, wNatBalances2);
@@ -309,7 +309,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       expectEvent(claimTx3, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
       expect(endBalance7.sub(startBalance7).toNumber()).to.equals(claimable3.toNumber());
       expect((await distribution.startBlockNumber(0)).toNumber()).to.equals(startBlockNumber);
-      expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
+      expect((await distribution.endBlockNumber(0)).toNumber()).to.equals(startBlockNumber + numberOfBlocks);
       expect((await distribution.totalClaimedWei()).toNumber()).to.equals(claimable1.add(claimable2).add(claimable3).toNumber());
       expect((await distribution.totalClaimedWei()).toNumber()).to.equals((await distribution.totalAvailableAmount(0)).toNumber());
       expect((await distribution.totalUnclaimedAmount(0)).toNumber()).to.equals(0);

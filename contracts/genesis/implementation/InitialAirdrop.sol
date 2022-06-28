@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "../../governance/implementation/GovernedAtGenesis.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../utils/implementation/SafePct.sol";
 
 /**
@@ -11,7 +12,7 @@ import "../../utils/implementation/SafePct.sol";
  * @notice A contract to manage the initial airdrop allocation. 
  * @notice The balance that will be added to this contract must initially be a part of circulating supply 
  **/
-contract InitialAirdrop is GovernedAtGenesis {
+contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     using SafeMath for uint256;
     using SafePct for uint256;
 
@@ -103,23 +104,23 @@ contract InitialAirdrop is GovernedAtGenesis {
     /**
      * @notice Method for transfering initial airdrop amounts in batches of 100
      */
-    function transferAirdrop() external airdropStarted mustBalance {
+    function transferAirdrop() external airdropStarted mustBalance nonReentrant {
         uint256 upperBound = Math.min(nextAirdropAccountIndexToTransfer + 100, airdropAccounts.length);
         for (uint256 i = nextAirdropAccountIndexToTransfer; i < upperBound; i++) {
             // Get the account and amount
             address account = airdropAccounts[i];
             uint256 amountWei = airdropAmountsWei[account];
+            // update state
+            delete airdropAmountsWei[account];
+            delete airdropAccounts[i];
+            // Update grand total transferred
+            totalTransferredAirdropWei = totalTransferredAirdropWei.add(amountWei);
             // Send
             /* solhint-disable avoid-low-level-calls */
             //slither-disable-next-line arbitrary-send
             (bool success, ) = account.call{value: amountWei}(""); // TODO add gas limit?
             /* solhint-enable avoid-low-level-calls */
-            if (success) {
-                delete airdropAmountsWei[account];
-                delete airdropAccounts[i];
-                // Update grand total transferred
-                totalTransferredAirdropWei = totalTransferredAirdropWei.add(amountWei);
-            } else {
+            if (!success) {
                 emit AirdropTransferFailure(account, amountWei);
             }
         }

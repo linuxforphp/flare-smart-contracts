@@ -37,6 +37,6 @@ export async function undaemonizeContracts(
   // Get deployed contracts
   const flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
 
-  await flareDaemon.unregisterAll();
+  await flareDaemon.registerToDaemonize([]);
   await sleep(2000);  // Do we really need to sleep here?
 }
