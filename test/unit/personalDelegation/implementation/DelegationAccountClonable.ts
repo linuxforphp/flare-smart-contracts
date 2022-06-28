@@ -58,6 +58,7 @@ const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
+const FtsoManagement = artifacts.require("FtsoManagement");
 const InflationMock = artifacts.require("InflationMock");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
 const Supply = artifacts.require("Supply");
@@ -218,6 +219,11 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   ADDRESS_UPDATER = accounts[16];
   const GOVERNANCE_ADDRESS = accounts[0];
   INFLATION_ADDRESS = accounts[17];
+
+  before(async () => {
+    const ftsoManagement = await FtsoManagement.new();
+    FtsoManager.link(ftsoManagement as any);
+  });
 
   beforeEach(async () => {
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");

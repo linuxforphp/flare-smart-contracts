@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract, IncentivePoolTreasuryInstance, IncentivePoolTreasuryContract, DistributionToDelegatorsContract, IncentivePoolContract, InitialAirdropContract, InitialAirdropInstance, DistributionToDelegatorsInstance, IncentivePoolAllocationContract, DelegationAccountManagerContract, DelegationAccountClonableContract } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract, IncentivePoolTreasuryInstance, IncentivePoolTreasuryContract, DistributionToDelegatorsContract, IncentivePoolContract, InitialAirdropContract, InitialAirdropInstance, DistributionToDelegatorsInstance, IncentivePoolAllocationContract, DelegationAccountManagerContract, DelegationAccountClonableContract, FtsoManagementContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
@@ -55,6 +55,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const TestableFlareDaemon: TestableFlareDaemonContract = artifacts.require("TestableFlareDaemon");
   const Ftso: FtsoContract = artifacts.require("Ftso");
   const FtsoManager: FtsoManagerContract = artifacts.require("FtsoManager");
+  const FtsoManagement: FtsoManagementContract = artifacts.require("FtsoManagement");
   const Inflation: InflationContract = artifacts.require("Inflation");
   const FtsoRegistry: FtsoRegistryContract = artifacts.require("FtsoRegistry");
   const FtsoRewardManager: FtsoRewardManagerContract = artifacts.require("FtsoRewardManager");
@@ -342,7 +343,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePool.contractName, `IncentivePool.sol`, incentivePool.address, quiet);
   await incentivePoolTreasury.setIncentivePoolContract(incentivePool.address);
 
-  // FtsoManager contract
+  // FtsoManager contract (must link with library first)
+  FtsoManager.link(await FtsoManagement.new() as any)
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     flareDaemon.address,

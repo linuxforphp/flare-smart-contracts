@@ -12,6 +12,7 @@ const Ftso = artifacts.require("Ftso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 const AssetToken = artifacts.require("AssetToken") as AssetTokenContract;
 
 function toBNFixed(x: number, decimals: number) {
@@ -58,6 +59,11 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
 
   let vpBlockNumber: number;
   let epochId: number;
+
+  before(async () => {
+    const ftsoManagement = await FtsoManagement.new();
+    FtsoManager.link(ftsoManagement as any);
+  });
 
   async function createFtso(symbol: string, initialPrice: BN) {
     const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, startTs, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);

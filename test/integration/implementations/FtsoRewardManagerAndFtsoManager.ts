@@ -22,6 +22,7 @@ const BN = web3.utils.toBN;
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 const Ftso = artifacts.require("Ftso");
 const MockContract = artifacts.require("MockContract");
 const WNAT = artifacts.require("WNat");
@@ -46,6 +47,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockVoterWhitelister: MockContractInstance;
     let mockSupply: MockContractInstance;
     let mockCleanupBlockNumberManager: MockContractInstance;
+
+    before(async () => {
+        const ftsoManagement = await FtsoManagement.new();
+        FtsoManager.link(ftsoManagement as any);
+    });
 
     beforeEach(async () => {
         const ADDRESS_UPDATER = accounts[16];

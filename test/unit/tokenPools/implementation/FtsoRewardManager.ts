@@ -20,6 +20,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
+const FtsoManagement = artifacts.require("FtsoManagement");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const WNAT = artifacts.require("WNat") as WNatContract;
 const InflationMock = artifacts.require("InflationMock");
@@ -141,6 +142,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
     let mockSuicidal: SuicidalMockInstance;
     
     ADDRESS_UPDATER = accounts[16];
+
+    before(async () => {
+        const ftsoManagement = await FtsoManagement.new();
+        FtsoManager.link(ftsoManagement as any);
+    });
 
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();
