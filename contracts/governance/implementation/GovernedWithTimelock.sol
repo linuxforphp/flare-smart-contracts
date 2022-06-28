@@ -19,13 +19,13 @@ contract GovernedWithTimelock {
     
     address public proposedGovernance;
     
+    address public governanceExecutor;
+
     mapping(bytes4 => TimelockedCall) private timelockedCalls;
     
-    address[] private executors;
-    mapping(address => bool) private isExecutor;
-
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
+    
     event GovernanceProposed(address proposedGovernance);
     event GovernanceUpdated(address oldGovernance, address newGovernance);
     
@@ -48,25 +48,16 @@ contract GovernedWithTimelock {
         timelock = SafeCast.toUint64(_timelock);
     }
 
-    function setGovernanceExecutors(address[] memory _executors)
+    function setGovernanceExecutor(address _executor)
         external 
         onlyImmediateGovernance
     {
-        require(_executors.length >= 1, "empty executors list");
-        // clear old
-        for (uint256 i = 0; i < executors.length; i++) {
-            isExecutor[executors[i]] = false;
-        }
-        delete executors;
-        // set new
-        for (uint256 i = 0; i < _executors.length; i++) {
-            executors.push(_executors[i]);
-            isExecutor[_executors[i]] = true;
-        }
+        require(_executor != address(0), "zero executor");
+        governanceExecutor = _executor;
     }
 
     function executeGovernanceCall(bytes4 _selector) external {
-        require(isExecutor[msg.sender], "only executor");
+        require(msg.sender == governanceExecutor, "only executor");
         TimelockedCall storage call = timelockedCalls[_selector];
         require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
         require(block.timestamp >= call.allowedAfterTimestamp, "timelock: not allowed yet");

@@ -1,4 +1,4 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/constants";
 import { assertNumberEqual } from "../../../utils/test-helpers";
@@ -20,7 +20,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     beforeEach(async () => {
         mock = await GovernedWithTimelockMock.new(governance, 3600);
         await mock.transferGovernance(governance, { from: governance });  // end deployment phase
-        await mock.setGovernanceExecutors([executor], { from: governance });
+        await mock.setGovernanceExecutor(executor, { from: governance });
     });
 
     it("allow direct changes in deployment phase", async () => {
@@ -38,7 +38,8 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
         const res = await mock.changeA(15, { from: governance });
         const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        await mock.executeGovernanceCall(selector, { from: executor });
+        const execRes = await mock.executeGovernanceCall(selector, { from: executor });
+        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { selector: selector });
         assertNumberEqual(await mock.a(), 15);
     });
 
