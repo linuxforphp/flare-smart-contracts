@@ -13,15 +13,16 @@ import "./GovernedBase.sol";
  *  to claim governance by an unauthorized address.
  **/
 contract GovernedAtGenesis is GovernedBase {
-    constructor(address _governance) GovernedBase(_governance) { }
+    constructor(address _governance, uint256 _timelock) GovernedBase(_governance, _timelock) { }
 
     /**
      * @notice Set governance to a fixed address when constructor is not called.
      **/
     function initialiseFixedAddress() public virtual returns (address) {
         address governanceAddress = address(0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7);
+        uint256 governanceTimelock = 7 days;
         
-        super.initialise(governanceAddress);
+        super.initialise(governanceAddress, governanceTimelock);
         return governanceAddress;
     }
 
@@ -30,7 +31,7 @@ contract GovernedAtGenesis is GovernedBase {
      * @param _governance The governance address for initial claiming
      **/
     // solhint-disable-next-line no-unused-vars
-    function initialise(address _governance) public override pure {
+    function initialise(address _governance, uint256 _timelock) public override pure {
         assert(false);
     }
 }
