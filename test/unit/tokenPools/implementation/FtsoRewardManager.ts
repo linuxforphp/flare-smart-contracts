@@ -180,6 +180,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         await ftsoRewardManager.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
             [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+        await ftsoRewardManager.enableClaims();
         
         // set the daily authorized inflation...this proxies call to ftso reward manager
         await mockInflation.setDailyAuthorizedInflation(2000000);
@@ -206,6 +207,14 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         it("Should revert calling activate if not from governance", async () => {
             await expectRevert(ftsoRewardManager.activate({ from: accounts[1] }), "only governance");
+        });
+
+        it("Should revert calling enableClaims if not from governance", async () => {
+            await expectRevert(ftsoRewardManager.enableClaims({ from: accounts[1] }), "only governance");
+        });
+
+        it("Should revert calling enableClaims twice", async () => {
+            await expectRevert(ftsoRewardManager.enableClaims(), "already enabled");
         });
 
         it("Should deactivate and disable claiming rewards", async () => {
@@ -302,36 +311,42 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         });
 
         it("Should set initial reward data", async () => {
+            let oldFtsoRewardManager = await MockContract.new();
             ftsoRewardManager = await FtsoRewardManager.new(
                 accounts[0],
                 ADDRESS_UPDATER,
-                accounts[8],
+                oldFtsoRewardManager.address,
                 3,
                 0
             );
-
+            
             const getRewardEpochToExpireNext = web3.utils.sha3("getRewardEpochToExpireNext()")!.slice(0, 10); // first 4 bytes is function selector
             const getCurrentRewardEpoch = web3.utils.sha3("getCurrentRewardEpoch()")!.slice(0, 10); // first 4 bytes is function selector
             await mockFtsoManager.givenMethodReturnUint(getRewardEpochToExpireNext, 5);
             await mockFtsoManager.givenMethodReturnUint(getCurrentRewardEpoch, 20);
-
+            
             await ftsoRewardManager.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
                 [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+            await ftsoRewardManager.enableClaims();
 
             expect((await ftsoRewardManager.getInitialRewardEpoch()).toNumber()).to.equals(0);
+
+            const firstClaimableRewardEpoch = ftsoRewardManager.contract.methods.firstClaimableRewardEpoch().encodeABI();
+            await oldFtsoRewardManager.givenMethodReturnUint(firstClaimableRewardEpoch, 2);
 
             await ftsoRewardManager.setInitialRewardData();
 
             expect((await ftsoRewardManager.getRewardEpochToExpireNext()).toNumber()).to.equals(5);
             expect((await ftsoRewardManager.getInitialRewardEpoch()).toNumber()).to.equals(20);
+            expect((await ftsoRewardManager.firstClaimableRewardEpoch()).toNumber()).to.equals(2);
         });
 
         it("Should revert calling setInitialRewardData twice", async () => {
             ftsoRewardManager = await FtsoRewardManager.new(
                 accounts[0],
                 ADDRESS_UPDATER,
-                accounts[8],
+                (await MockContract.new()).address,
                 3,
                 0
             );
@@ -339,6 +354,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
                 [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+            await ftsoRewardManager.enableClaims();
 
             await ftsoRewardManager.setInitialRewardData();
 
@@ -411,8 +427,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             assert.equal(a1UnclaimedReward[0].toNumber(), 99);
             assert.equal(a2UnclaimedReward[0].toNumber(), 297);
 
-            let a1RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
-            let a2RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[2]);
+            let a1RewardInfo = await ftsoRewardManager.getDataProviderPerformanceInfo(0, accounts[1]);
+            let a2RewardInfo = await ftsoRewardManager.getDataProviderPerformanceInfo(0, accounts[2]);
             assert.equal(a1RewardInfo[0].toNumber(), 99);
             assert.equal(a2RewardInfo[0].toNumber(), 297);
         });
@@ -443,8 +459,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
             assert.equal(a1UnclaimedReward[0].toNumber() + a2UnclaimedReward[0].toNumber(), 2000000);
 
-            let a1RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
-            let a2RewardInfo = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[2]);
+            let a1RewardInfo = await ftsoRewardManager.getDataProviderPerformanceInfo(0, accounts[1]);
+            let a2RewardInfo = await ftsoRewardManager.getDataProviderPerformanceInfo(0, accounts[2]);
             assert.equal(a1RewardInfo[0].toNumber() + a2RewardInfo[0].toNumber(), 2000000);
 
             const promise = mockFtsoManager.distributeRewardsCall(
@@ -688,7 +704,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             ftsoRewardManager = await FtsoRewardManager.new(
                 accounts[0],
                 ADDRESS_UPDATER,
-                accounts[8],
+                (await MockContract.new()).address,
                 3,
                 0
             );
@@ -701,6 +717,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
                 [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+            await ftsoRewardManager.enableClaims();
 
             await ftsoRewardManager.setInitialRewardData();
             await ftsoRewardManager.setDataProviderFeePercentage(5, { from: accounts[2] });
@@ -917,7 +934,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
-            let a1RewardInfoBeforeClaim = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
+            let a1RewardInfoBeforeClaim = await ftsoRewardManager.getDataProviderPerformanceInfo(0, accounts[1]);
 
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
             data = await ftsoRewardManager.getStateOfRewards(accounts[1], 0);
@@ -932,7 +949,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             compareArrays(data[2], [false]);
             expect(data[3]).to.equals(true);
 
-            let a1RewardInfoAfterClaim = await ftsoRewardManager.getDataProviderRewardInfo(0, accounts[1]);
+            let a1RewardInfoAfterClaim = await ftsoRewardManager.getDataProviderPerformanceInfo(0, accounts[1]);
 
             expect(a1RewardInfoBeforeClaim[0].toNumber()).to.equals(99 + 99);
             expect(a1RewardInfoBeforeClaim[1].toNumber()).to.equals(200);
@@ -2196,6 +2213,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
                 [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+            await ftsoRewardManager.enableClaims();
 
             await ftsoRewardManager.setInitialRewardData();
             await ftsoRewardManager.setNewFtsoRewardManager(accounts[2]);

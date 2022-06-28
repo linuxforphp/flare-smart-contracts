@@ -23,6 +23,10 @@ interface IFtsoRewardManager {
         uint256[] rewards
     );
 
+    event RewardClaimsEnabled(
+        uint256 rewardEpochId
+    ); 
+
     event FeePercentageChanged(
         address indexed dataProvider,
         uint256 value,
@@ -306,7 +310,7 @@ interface IFtsoRewardManager {
      * @return _rewardAmount                    number representing the amount of rewards
      * @return _votePowerIgnoringRevocation     number representing the vote power ignoring revocations
      */
-    function getDataProviderRewardInfo(
+    function getDataProviderPerformanceInfo(
         uint256 _rewardEpoch,
         address _dataProvider
     )

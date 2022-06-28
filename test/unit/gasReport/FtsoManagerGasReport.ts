@@ -300,6 +300,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
         [ADDRESS_UPDATER, inflation, ftsoManager.address, wNat.address, supplyInterface.address], {from: ADDRESS_UPDATER});
       await ftsoRewardManager.activate({ from: governance });
+      await ftsoRewardManager.enableClaims({ from: governance });
 
       // set the daily authorized inflation...this proxies call to ftso reward manager
       await ftsoRewardManager.setDailyAuthorizedInflation(1000000, { from: inflation });

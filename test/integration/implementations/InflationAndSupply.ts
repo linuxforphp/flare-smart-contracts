@@ -89,6 +89,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     await ftsoRewardManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
+    await ftsoRewardManager.enableClaims();
 
     await supply.addTokenPool(teamEscrow.address, 0, {from: accounts[0]});
 

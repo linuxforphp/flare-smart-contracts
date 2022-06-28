@@ -151,6 +151,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Time travel to price epoch initialization time
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoRewardManager.enableClaims();
             // Trigger price epoch initialization
             await ftsoManager.daemonize();
 
@@ -198,6 +199,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             // Time travel to price epoch initialization time
             await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
             await ftsoManager.daemonize(); // initialize reward epoch
+            await ftsoRewardManager.enableClaims();
             // Trigger price epoch initialization
             await ftsoManager.daemonize();
             // Time travel to price epoch finalization time

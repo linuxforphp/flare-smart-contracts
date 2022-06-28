@@ -176,7 +176,8 @@ async function bestowClaimableBalance(balance: BN) {
   // Attacker dies
   await suicidalMock.die();
   // set distribution contract and claimable amount
-  await distributionTreasury.setDistributionContract(distribution.address, balance.divn(35), {from: GOVERNANCE_GENESIS_ADDRESS});
+  await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+  await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 }
 
 async function setMockBalances(startBlockNumber: number, numberOfBlocks: number, addresses: string[], wNatBalances: number[]) {
@@ -271,6 +272,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await ftsoRewardManager.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
         [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+    await ftsoRewardManager.enableClaims();
     
     // set the daily authorized inflation...this proxies call to ftso reward manager
     await mockInflation.setDailyAuthorizedInflation(2000000);
@@ -689,7 +691,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     tokenMock.givenMethodReturnBool(transferMethod, true)
 
     // Should allow transfer
-    await delegationAccountClonable1.transferExternalToken(tokenMock.address, 70, accounts[10], {from: accounts[1]});
+    await delegationAccountClonable1.transferExternalToken(tokenMock.address, 70, {from: accounts[1]});
 
     // Should call exactly once
     const invocationCount = await tokenMock.invocationCountForMethod.call(transferMethod)

@@ -50,12 +50,16 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     string internal constant ERR_AFTER_DAILY_CYCLE = "after daily cycle";
     string internal constant ERR_NO_CLAIMABLE_EPOCH = "no epoch with claimable rewards";
     string internal constant ERR_EXECUTOR_ONLY = "claim executor only";
+    string internal constant ERR_ALREADY_ENABLED = "already enabled";
     
     uint256 constant internal MAX_BIPS = 1e4;
     uint256 constant internal ALMOST_SEVEN_FULL_DAYS_SEC = 7 days - 1;
     uint256 constant internal MAX_BURNABLE_PCT = 20;
+    uint256 constant internal FIRST_CLAIMABLE_EPOCH = uint(-1);
 
     bool public override active;
+    uint256 public override firstClaimableRewardEpoch;  // first epochs will not be claimable - those epochs will 
+                                                        // happen before the token generation event for Flare launch.
 
     uint256 public immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
     uint256 public immutable defaultFeePercentage; // default value for fee percentage
@@ -142,6 +146,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         oldFtsoRewardManager = _oldFtsoRewardManager;
         feePercentageUpdateOffset = _feePercentageUpdateOffset;
         defaultFeePercentage = _defaultFeePercentage;
+        firstClaimableRewardEpoch = FIRST_CLAIMABLE_EPOCH;
     }
 
     /**
@@ -321,6 +326,15 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     }
 
     /**
+     * @notice Enable claiming for current and all future reward epochs
+     */
+    function enableClaims() external override onlyGovernance {
+        require (firstClaimableRewardEpoch == FIRST_CLAIMABLE_EPOCH, ERR_ALREADY_ENABLED);
+        firstClaimableRewardEpoch = getCurrentRewardEpoch();
+        emit RewardClaimsEnabled(firstClaimableRewardEpoch);
+    }
+
+    /**
      * @notice Deactivates reward manager (prevents claiming rewards)
      */
     function deactivate() external override onlyGovernance {
@@ -468,6 +482,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             initialRewardEpoch == 0 && nextRewardEpochToExpire == 0, "not initial state");
         initialRewardEpoch = getCurrentRewardEpoch().add(1); // in order to distinguish from 0 
         nextRewardEpochToExpire = ftsoManager.getRewardEpochToExpireNext();
+        firstClaimableRewardEpoch = IIFtsoRewardManager(oldFtsoRewardManager).firstClaimableRewardEpoch();
     }
 
     /**
@@ -549,7 +564,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     {
         uint256 currentRewardEpoch = getCurrentRewardEpoch();
         _claimable = _isRewardClaimable(_rewardEpoch, currentRewardEpoch);
-        if (_claimable || _rewardEpoch == currentRewardEpoch) {
+        if (_claimable || (_rewardEpoch == currentRewardEpoch && _rewardEpoch >= firstClaimableRewardEpoch)) {
             RewardState memory rewardState = _getStateOfRewards(_beneficiary, _rewardEpoch, false);
             _dataProviders = rewardState.dataProviders;
             _rewardAmounts = rewardState.amounts;
@@ -580,7 +595,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     {
         uint256 currentRewardEpoch = getCurrentRewardEpoch();
         _claimable = _isRewardClaimable(_rewardEpoch, currentRewardEpoch);
-        if (_claimable || _rewardEpoch == currentRewardEpoch) {
+        if (_claimable || (_rewardEpoch == currentRewardEpoch && _rewardEpoch >= firstClaimableRewardEpoch)) {
             RewardState memory rewardState = _getStateOfRewardsFromDataProviders(
                 _beneficiary,
                 _rewardEpoch,
@@ -661,7 +676,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @return _rewardAmount                    number representing the amount of rewards
      * @return _votePowerIgnoringRevocation     number representing the vote power ignoring revocations
      */
-    function getDataProviderRewardInfo(
+    function getDataProviderPerformanceInfo(
         uint256 _rewardEpoch,
         address _dataProvider
     )
@@ -1239,8 +1254,10 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @param _currentRewardEpoch   number of the current reward epoch
      */
     function _isRewardClaimable(uint256 _rewardEpoch, uint256 _currentRewardEpoch) internal view returns (bool) {
-        if (_rewardEpoch < nextRewardEpochToExpire || _rewardEpoch >= _currentRewardEpoch) {
-            // reward expired and closed or current or future
+        if (_rewardEpoch < nextRewardEpochToExpire || 
+            _rewardEpoch >= _currentRewardEpoch || 
+            _rewardEpoch < firstClaimableRewardEpoch) {
+            // reward expired and closed or current or future or before claming enabled
             return false;
         }
         return true;
