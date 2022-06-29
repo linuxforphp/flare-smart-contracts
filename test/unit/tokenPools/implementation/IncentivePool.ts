@@ -6,13 +6,13 @@ import {
   IncentivePoolInstance,
   IncentivePoolTreasuryInstance,
   IncentivePoolAllocationInstance
-} from "../../../../../typechain-truffle";
+} from "../../../../typechain-truffle";
 
 import { constants, expectRevert, expectEvent, time } from '@openzeppelin/test-helpers';
-import { encodeContractNames, toBN } from "../../../../utils/test-helpers";
-import { Contracts } from "../../../../../deployment/scripts/Contracts";
-import { GOVERNANCE_GENESIS_ADDRESS } from "../../../../utils/constants";
-const getTestFile = require('../../../../utils/constants').getTestFile;
+import { encodeContractNames, toBN } from "../../../utils/test-helpers";
+import { Contracts } from "../../../../deployment/scripts/Contracts";
+import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
+const getTestFile = require('../../../utils/constants').getTestFile;
 
 const IncentivePool = artifacts.require("IncentivePool");
 const IncentivePoolTreasury = artifacts.require("IncentivePoolTreasury");
@@ -20,8 +20,6 @@ const MockContract = artifacts.require("MockContract");
 const IncentivePoolAllocationMock = artifacts.require("IncentivePoolAllocationMock");
 const IncentivePoolReceiverMock = artifacts.require("IncentivePoolReceiverMock");
 const FlareDaemonMock = artifacts.require("FlareDaemonMock");
-const FlareDaemonMock1 = artifacts.require("FlareDaemonMock1");
-const FlareDaemonMock2 = artifacts.require("FlareDaemonMock2");
 const FlareDaemon = artifacts.require("FlareDaemon");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const IncentivePoolAllocation = artifacts.require("IncentivePoolAllocation");
@@ -912,6 +910,16 @@ contract(`IncentivePool.sol; ${getTestFile(__filename)}; Incentive pool unit tes
       // Check that target reward service contracts got the native token they are due
       assert.equal((await web3.eth.getBalance(rewardingServiceContract0.address)), expectedTopupService0.toString());
       assert.equal((await web3.eth.getBalance(rewardingServiceContract1.address)), expectedTopupService1.toString());
+    
+      const {
+        0: lockedFunds, 1: inflationAuthorized, 2: claimed
+      } = await incentivePool.getTokenPoolSupplyData()
+
+      assert.equal(lockedFunds.toString(), BN(supply).toString());
+      assert.equal(inflationAuthorized.toString(), "0");
+      assert.equal(claimed.toString(), incentivePoolWithdrawn.toString());
+    
+    
     });
 
     it("Should balance when receiving self-destruct amount between daemonize calls", async () => {
