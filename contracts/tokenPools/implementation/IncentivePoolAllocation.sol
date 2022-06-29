@@ -97,7 +97,7 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
      * @dev Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
-    function setAnnualIncentivePoolSchedule(uint256[] memory _annualIncentivePoolScheduleBips) external onlyGovernance {
+    function setAnnualIncentivePool(uint256[] memory _annualIncentivePoolScheduleBips) external onlyGovernance {
         // Clear the existing schedule
         uint256 lenExistingSchedule = annualIncentivePoolPercentagesBips.length;
         for (uint256 i = 0; i < lenExistingSchedule; i++) {

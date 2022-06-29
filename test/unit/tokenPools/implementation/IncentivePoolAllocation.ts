@@ -97,7 +97,7 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
       // Assemble
       const schedule: BN[] = [BN(1000), BN(900), BN(800)];
       // Act
-      await incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      await incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Assert
       const percentage0 = await incentivePoolAllocation.annualIncentivePoolPercentagesBips(0);
       const percentage1 = await incentivePoolAllocation.annualIncentivePoolPercentagesBips(1);
@@ -110,7 +110,7 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
     it("Should yield each incentive percentage from schedule", async() => {
       // Assemble
       const schedule: BN[] = [BN(1000), BN(900), BN(800)];
-      await incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      await incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Act
       let percentage = await incentivePoolAllocation.getAnnualPercentageBips.call();
       await incentivePoolAllocation.getAnnualPercentageBips();
@@ -137,7 +137,7 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
       // Assemble
       const schedule: BN[] = [BN(1001)];
       // Act
-      const promise = incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      const promise = incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);        
     });
@@ -146,7 +146,7 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
       // Assemble
       const schedule: BN[] = [BN(900), BN(800), BN(900)];
       // Act
-      await incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      await incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Assert
       
     });
@@ -157,7 +157,7 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
         BN(989), BN(988), BN(987), BN(986), BN(985), BN(984), BN(983), BN(982), BN(981), BN(980),
         BN(979), BN(978), BN(977), BN(976), BN(975), BN(974)];
       // Act
-      const promise = incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      const promise = incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Assert
       await expectRevert(promise, ERR_TOO_MANY);
     });
@@ -165,7 +165,7 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
     it("Should make available last incentive percentage yielded from schedule", async() => {
       // Assemble
       const schedule: BN[] = [BN(900), BN(800)];
-      await incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      await incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Act
       await incentivePoolAllocation.getAnnualPercentageBips();
       // Assert
@@ -176,11 +176,11 @@ contract(`IncentivePoolAllocation.sol; ${getTestFile(__filename)}; IncentivePool
     it("Should take a schedule with no percents and yield last percentage given", async() => {
       // Assemble
       const schedule: BN[] = [BN(900), BN(800)];
-      await incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      await incentivePoolAllocation.setAnnualIncentivePool(schedule);
       await incentivePoolAllocation.getAnnualPercentageBips();
       // Act
       const newSchedule: BN[] = [];
-      await incentivePoolAllocation.setAnnualIncentivePoolSchedule(schedule);
+      await incentivePoolAllocation.setAnnualIncentivePool(schedule);
       // Assert
       const percentage = await incentivePoolAllocation.lastAnnualIncentivePoolPercentageBips();
       assert.equal(percentage.toNumber(), 900);
