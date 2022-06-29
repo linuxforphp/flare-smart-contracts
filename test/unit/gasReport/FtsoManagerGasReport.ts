@@ -152,6 +152,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
     vpBlockNumber = (await ftsoManager.getRewardEpochVotePowerBlock(0)).toNumber();
     assert(vpBlockNumber > 0, "first reward epoch not initialized");
     console.log(`initialize first reward epoch: ${initializeFirstRewardEpochTx.receipt.gasUsed}`);
+    await ftsoRewardManager.enableClaims({ from: governance });
 
     epochId = await getCurrentEpochId();
     assert(epochId > 0, "epochId == 0");
@@ -300,7 +301,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
         [ADDRESS_UPDATER, inflation, ftsoManager.address, wNat.address, supplyInterface.address], {from: ADDRESS_UPDATER});
       await ftsoRewardManager.activate({ from: governance });
-      await ftsoRewardManager.enableClaims({ from: governance });
 
       // set the daily authorized inflation...this proxies call to ftso reward manager
       await ftsoRewardManager.setDailyAuthorizedInflation(1000000, { from: inflation });

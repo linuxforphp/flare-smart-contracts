@@ -17,7 +17,6 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     using SafePct for uint256;
 
     // constants
-    uint256 public constant LATEST_AIRDROP_START = 1667563200; // November 4, 2022 12:00:00 PM (GMT)
     uint256 internal constant CLAIMED_AT_GENESIS_BIPS = 1500;
     uint256 internal constant TOTAL_BIPS = 10000;
 
@@ -26,6 +25,7 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     mapping(address => uint256) public airdropAmountsWei;
     uint256 public totalInitialAirdropWei;          // Total wei to be distributed by this contract (initial airdrop)
     uint256 public initialAirdropStartTs;           // Day 0 when airdrop starts
+    uint256 public latestAirdropStartTs;            // Latest day 0 when airdrop starts
     uint256 public totalTransferredAirdropWei;      // All wei already transferred
     uint256 public nextAirdropAccountIndexToTransfer;
 
@@ -35,6 +35,7 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
     string internal constant ERR_NOT_STARTED = "not started";
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
+    string internal constant ERR_ALREADY_SET = "already set";
     string internal constant ERR_ALREADY_STARTED = "already started";
 
     // Events
@@ -90,12 +91,21 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     }
 
     /** 
+     * @notice Latest start of the initial airdrop at _latestAirdropStartTs timestamp
+     * @param _latestAirdropStartTs point in time when latest start is possible
+     */
+    function setLatestAirdropStart(uint256 _latestAirdropStartTs) external onlyGovernance {
+        require(latestAirdropStartTs == 0, ERR_ALREADY_SET);
+        latestAirdropStartTs = _latestAirdropStartTs;
+    }
+
+    /** 
      * @notice Start the initial airdrop at _initialAirdropStartTs timestamp
      * @param _initialAirdropStartTs point in time when we start
      */
     function setAirdropStart(uint256 _initialAirdropStartTs) external onlyGovernance mustBalance {
         require(nextAirdropAccountIndexToTransfer == 0, ERR_ALREADY_STARTED);
-        require(initialAirdropStartTs < _initialAirdropStartTs && _initialAirdropStartTs <= LATEST_AIRDROP_START,
+        require(initialAirdropStartTs < _initialAirdropStartTs && _initialAirdropStartTs <= latestAirdropStartTs,
             ERR_WRONG_START_TIMESTAMP);
         initialAirdropStartTs = _initialAirdropStartTs;
         emit AirdropStart(_initialAirdropStartTs);
@@ -118,7 +128,7 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
             // Send
             /* solhint-disable avoid-low-level-calls */
             //slither-disable-next-line arbitrary-send
-            (bool success, ) = account.call{value: amountWei}(""); // TODO add gas limit?
+            (bool success, ) = account.call{ value: amountWei, gas: 21000 }("");
             /* solhint-enable avoid-low-level-calls */
             if (!success) {
                 emit AirdropTransferFailure(account, amountWei);

@@ -14,7 +14,7 @@ const BN = web3.utils.toBN;
 
 
 
-contract(`IncentivePool.sol; ${getTestFile(__filename)}; Incentive pool unit tests`, async accounts => {
+contract(`IncentivePoolTreasury.sol; ${getTestFile(__filename)}; Incentive pool treasury unit tests`, async accounts => {
   const governance = GOVERNANCE_GENESIS_ADDRESS;
   let incentivePoolTreasury : IncentivePoolTreasuryInstance
 
