@@ -347,7 +347,6 @@ abstract contract Governor is
             msg.sender,
             _targets,
             _values,
-            new string[](_targets.length),
             _calldatas,
             proposal.voteStartTime,
             proposal.voteEndTime,
