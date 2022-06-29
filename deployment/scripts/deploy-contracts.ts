@@ -312,7 +312,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   const delegationAccountClonable = await DelegationAccountClonable.new();
   spewNewContractInfo(contracts, null, DelegationAccountClonable.contractName, `DelegationAccountClonable.sol`, delegationAccountClonable.address, quiet);
-  await delegationAccountManager.setLibraryAddress(delegationAccountClonable.address);
+  delegationAccountManager.setLibraryAddress(delegationAccountClonable.address);
 
   // Distribution contracts
   let distributionToDelegators: DistributionToDelegatorsInstance;
@@ -397,9 +397,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     addressUpdatableContracts.push(distributionToDelegators!.address);
   }
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
-  
-  // set nonzero timelock only when all contracts are initialized
-  await addressUpdater.setTimelock(parameters.addressUpdaterTimelockSeconds);
 
   let assetToContracts = new Map<string, AssetContracts>();
 
