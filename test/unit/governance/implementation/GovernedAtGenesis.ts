@@ -14,14 +14,14 @@ contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts =>
   let governedAtGenesis: GovernedAtGenesisInstance;
 
   beforeEach(async() => {
-    governedAtGenesis = await GovernedAtGenesis.new(constants.ZERO_ADDRESS);
+    governedAtGenesis = await GovernedAtGenesis.new(constants.ZERO_ADDRESS, 0);
   });
 
   describe("initialise", async() => {
     it("Should not initialize with a specifiable governance address", async() => {
       // Assemble
       // Act
-      let initializePromise = governedAtGenesis.initialise(accounts[1]);
+      let initializePromise = governedAtGenesis.initialise(accounts[1], 10);
       // Assert
       await expectRevert.assertion(initializePromise);
     });

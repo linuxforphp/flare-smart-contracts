@@ -119,6 +119,7 @@ abstract contract GovernedBase {
     function transferGovernance(address _governance) external onlyGovernance {
         emit GovernanceUpdated(governance, _governance);
         governance = _governance;
+        proposedGovernance = address(0);
         // finish deploy on first governance transfer
         deploymentFinished = true;
     }
