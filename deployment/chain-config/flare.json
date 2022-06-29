@@ -50,7 +50,6 @@
     "inflationGasLimit": 2000000,
     "ftsoManagerGasLimit": 40000000,
     "incentivePoolGasLimit": 3000000,
-    "addressUpdaterTimelockSeconds": 259200,
     "deployDistributionContract": true,
     "deployDummyXAssetTokensAndMinters": false,
     "deployNATFtso": false,

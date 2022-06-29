@@ -77,6 +77,79 @@ abstract contract Governor is
     }
 
     /**
+     * @notice Returns information of the specified proposal
+     * @param _proposalId           Id of the proposal
+     * @return _proposer            Address of the proposal submitter
+     * @return _votePowerBlock      Block number used to determine the vote powers in voting process
+     * @return _voteStartTime       Start time (in seconds from epoch) of the proposal voting
+     * @return _voteEndTime         End time (in seconds from epoch) of the proposal voting
+     * @return _execStartTime       Start time (in seconds from epoch) of the proposal execution window
+     * @return _execEndTime         End time (in seconds from epoch) of the proposal exectuion window
+     * @return _executed            Flag indicating if proposal has been executed
+     */
+    function getProposalInfo(
+        uint256 _proposalId
+    )
+        external view override
+        returns (
+            address _proposer,
+            uint256 _votePowerBlock,
+            uint256 _voteStartTime,
+            uint256 _voteEndTime,
+            uint256 _execStartTime,
+            uint256 _execEndTime,
+            bool _executed
+        ) 
+    {
+        Proposal storage proposal = proposals[_proposalId];
+        _proposer = proposal.proposer;
+        _votePowerBlock = proposal.votePowerBlock;
+        _voteStartTime = proposal.voteStartTime;
+        _voteEndTime = proposal.voteEndTime;
+        _execStartTime = proposal.execStartTime;
+        _execEndTime = proposal.execEndTime;
+        _executed = proposal.executed;
+    }
+
+    /**
+     * @notice Returns vote power (for, against, abstain) of the specified proposal 
+                and total vote power at the vote power block
+     * @param _proposalId       Id of the proposal
+     * @return _totalVP         Total vote power at the vote power block
+     * @return _for             Accumulated vote power for the proposal
+     * @return _against         Accumulated vote power against the proposal
+     * @return _abstain         Accumulated vote power abstained from voting
+     */
+    function getProposalVP(
+        uint256 _proposalId
+    )
+        external view override
+        returns (
+            uint256 _totalVP,
+            uint256 _for,
+            uint256 _against,
+            uint256 _abstain
+        ) 
+    {
+        ProposalVoting storage voting = proposalVotings[_proposalId];
+        Proposal storage proposal = proposals[_proposalId];
+        _totalVP = proposal.totalVP;
+        _for = voting.forVotePower;
+        _against = voting.againstVotePower;
+        _abstain = voting.abstainVotePower;
+    }
+
+    /**
+     * @notice Returns information if a voter has cast a vote on a specific proposal
+     * @param _proposalId           Id of the proposal
+     * @param _voter                Address of the voter
+     * @return True if the voter has cast a vote on the proposal, and false otherwise
+     */
+    function hasVoted(uint256 _proposalId, address _voter) external view override returns (bool) {
+        return proposalVotings[_proposalId].hasVoted[_voter];
+    }
+
+    /**
      * @notice Creates a new proposal without execution parameters
      * @param _description          String description of the proposal
      * @return Proposal id (unique identifier obtained by hashing proposal data)
@@ -191,79 +264,6 @@ abstract contract Governor is
     }
 
     /**
-     * @notice Returns information of the specified proposal
-     * @param _proposalId           Id of the proposal
-     * @return _proposer            Address of the proposal submitter
-     * @return _votePowerBlock      Block number used to determine the vote powers in voting process
-     * @return _voteStartTime       Start time (in seconds from epoch) of the proposal voting
-     * @return _voteEndTime         End time (in seconds from epoch) of the proposal voting
-     * @return _execStartTime       Start time (in seconds from epoch) of the proposal execution window
-     * @return _execEndTime         End time (in seconds from epoch) of the proposal exectuion window
-     * @return _executed            Flag indicating if proposal has been executed
-     */
-    function getProposalInfo(
-        uint256 _proposalId
-    )
-        external view override
-        returns (
-            address _proposer,
-            uint256 _votePowerBlock,
-            uint256 _voteStartTime,
-            uint256 _voteEndTime,
-            uint256 _execStartTime,
-            uint256 _execEndTime,
-            bool _executed
-        ) 
-    {
-        Proposal storage proposal = proposals[_proposalId];
-        _proposer = proposal.proposer;
-        _votePowerBlock = proposal.votePowerBlock;
-        _voteStartTime = proposal.voteStartTime;
-        _voteEndTime = proposal.voteEndTime;
-        _execStartTime = proposal.execStartTime;
-        _execEndTime = proposal.execEndTime;
-        _executed = proposal.executed;
-    }
-
-    /**
-     * @notice Returns vote power (for, against, abstain) of the specified proposal 
-                and total vote power at the vote power block
-     * @param _proposalId       Id of the proposal
-     * @return _totalVP         Total vote power at the vote power block
-     * @return _for             Accumulated vote power for the proposal
-     * @return _against         Accumulated vote power against the proposal
-     * @return _abstain         Accumulated vote power abstained from voting
-     */
-    function getProposalVP(
-        uint256 _proposalId
-    )
-        external view override
-        returns (
-            uint256 _totalVP,
-            uint256 _for,
-            uint256 _against,
-            uint256 _abstain
-        ) 
-    {
-        ProposalVoting storage voting = proposalVotings[_proposalId];
-        Proposal storage proposal = proposals[_proposalId];
-        _totalVP = proposal.totalVP;
-        _for = voting.forVotePower;
-        _against = voting.againstVotePower;
-        _abstain = voting.abstainVotePower;
-    }
-
-    /**
-     * @notice Returns information if a voter has cast a vote on a specific proposal
-     * @param _proposalId           Id of the proposal
-     * @param _voter                Address of the voter
-     * @return True if the voter has cast a vote on the proposal, and false otherwise
-     */
-    function hasVoted(uint256 _proposalId, address _voter) external view override returns (bool) {
-        return proposalVotings[_proposalId].hasVoted[_voter];
-    }
-
-    /**
      * @notice Returns the current state of a proposal
      * @param _proposalId           Id of the proposal
      * @return ProposalState enum
@@ -361,6 +361,45 @@ abstract contract Governor is
     }
     
     /**
+     * @notice Claculates a vote power block for proposal
+     * @return Vote power block number
+     */
+    function _calculateVotePowerBlock() internal view returns (uint256, uint256) {
+        uint256 rewardEpochId = ftsoManager.getCurrentRewardEpoch();
+
+        IIFtsoManager.RewardEpochData memory rewardEpochData = 
+            ftsoManager.getRewardEpochData(rewardEpochId);
+
+        uint256 nowBlockNumber = block.number;
+        uint256 vpBlockPeriodSeconds = getVpBlockPeriodSeconds();
+        uint256 cleanupBlock = votePower.getCleanupBlockNumber();
+        
+        while (rewardEpochId > 0) {
+            IIFtsoManager.RewardEpochData memory prevRewardEpochData = 
+                ftsoManager.getRewardEpochData(rewardEpochId - 1);
+            uint256 prevDiffSeconds = block.timestamp - prevRewardEpochData.startTimestamp;
+            if (prevDiffSeconds >= vpBlockPeriodSeconds || prevRewardEpochData.startBlock < cleanupBlock) {
+                break;
+            }
+            rewardEpochId -= 1;
+            rewardEpochData = prevRewardEpochData;
+        }
+
+        uint256 epochBlockNumber = rewardEpochData.startBlock;
+                
+        uint256 currentTs = block.timestamp;
+        //slither-disable-next-line weak-prng
+        uint256 ftsoRandom = priceSubmitter.getCurrentRandom();
+        //slither-disable-next-line weak-prng
+        uint256 keccakRandom = uint256(keccak256(abi.encode(currentTs, ftsoRandom)));
+
+        //slither-disable-next-line weak-prng
+        uint256 random = keccakRandom % (nowBlockNumber - epochBlockNumber);
+        
+        return (nowBlockNumber - random, rewardEpochData.startTimestamp);
+    }
+
+    /**
      * @notice Casts a vote on a proposal
      * @param _proposalId           Id of the proposal
      * @param _voter                Address of the voter
@@ -412,66 +451,6 @@ abstract contract Governor is
         emit ProposalExecuted(proposalId);
         
         return proposalId;
-    }
-    
-    /**
-     * @notice Implementation of the AddressUpdatable abstract method.
-     */
-    function _updateContractAddresses(
-        bytes32[] memory _contractNameHashes,
-        address[] memory _contractAddresses
-    )
-        internal override
-    {
-        ftsoManager = IIFtsoManager(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
-
-        supply = IISupply(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
-
-        IIGovernanceVotePower vpContract = IIGovernanceVotePower(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "GovernanceVotePower"));
-
-        setVotePowerContract(vpContract);
-    }
-
-    /**
-     * @notice Claculates a vote power block for proposal
-     * @return Vote power block number
-     */
-    function _calculateVotePowerBlock() internal view returns (uint256, uint256) {
-        uint256 rewardEpochId = ftsoManager.getCurrentRewardEpoch();
-
-        IIFtsoManager.RewardEpochData memory rewardEpochData = 
-            ftsoManager.getRewardEpochData(rewardEpochId);
-
-        uint256 nowBlockNumber = block.number;
-        uint256 vpBlockPeriodSeconds = getVpBlockPeriodSeconds();
-        uint256 cleanupBlock = votePower.getCleanupBlockNumber();
-        
-        while (rewardEpochId > 0) {
-            IIFtsoManager.RewardEpochData memory prevRewardEpochData = 
-                ftsoManager.getRewardEpochData(rewardEpochId - 1);
-            uint256 prevDiffSeconds = block.timestamp - prevRewardEpochData.startTimestamp;
-            if (prevDiffSeconds >= vpBlockPeriodSeconds || prevRewardEpochData.startBlock < cleanupBlock) {
-                break;
-            }
-            rewardEpochId -= 1;
-            rewardEpochData = prevRewardEpochData;
-        }
-
-        uint256 epochBlockNumber = rewardEpochData.startBlock;
-                
-        uint256 currentTs = block.timestamp;
-        //slither-disable-next-line weak-prng
-        uint256 ftsoRandom = priceSubmitter.getCurrentRandom();
-        //slither-disable-next-line weak-prng
-        uint256 keccakRandom = uint256(keccak256(abi.encode(currentTs, ftsoRandom)));
-
-        //slither-disable-next-line weak-prng
-        uint256 random = keccakRandom % (nowBlockNumber - epochBlockNumber);
-        
-        return (nowBlockNumber - random, rewardEpochData.startTimestamp);
     }
 
     /**
@@ -553,4 +532,25 @@ abstract contract Governor is
      */
     function _version() internal pure virtual returns (string memory);
 
+
+    /**
+     * @notice Implementation of the AddressUpdatable abstract method.
+     */
+    function _updateContractAddresses(
+        bytes32[] memory _contractNameHashes,
+        address[] memory _contractAddresses
+    )
+        internal override
+    {
+        ftsoManager = IIFtsoManager(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
+
+        supply = IISupply(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
+
+        IIGovernanceVotePower vpContract = IIGovernanceVotePower(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "GovernanceVotePower"));
+
+        setVotePowerContract(vpContract);
+    }
 }
