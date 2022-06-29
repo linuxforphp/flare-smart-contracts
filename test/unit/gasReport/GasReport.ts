@@ -61,8 +61,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   let epochId: number;
 
   before(async () => {
-    const ftsoManagement = await FtsoManagement.new();
-    FtsoManager.link(ftsoManagement as any);
+    FtsoManager.link(await FtsoManagement.new() as any);
   });
 
   async function createFtso(symbol: string, initialPrice: BN) {

@@ -101,8 +101,7 @@ contract(`PollingReject.sol; ${getTestFile(__filename)}; GovernanceVotePower uni
   const ADDRESS_UPDATER = accounts[16];
 
   before(async () => {
-    const ftsoManagement = await FtsoManagement.new();
-    FtsoManager.link(ftsoManagement as any);
+    FtsoManager.link(await FtsoManagement.new() as any);
   });
 
   beforeEach(async () => {

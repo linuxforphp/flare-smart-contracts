@@ -2,13 +2,14 @@
 pragma solidity 0.7.6;
 
 import "../interface/IIFtsoRewardManager.sol";
+import "../lib/DataProviderFee.sol";
+import "../lib/UnearnedRewardBurning.sol";
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../inflation/implementation/Supply.sol";
-import "./UnearnedRewardBurner.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -22,11 +23,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, AddressUpdatable {
     using SafePct for uint256;
     using SafeMath for uint256;
-
-    struct FeePercentage {          // used for storing data provider fee percentage settings
-        uint16 value;               // fee percentage value (value between 0 and 1e4)
-        uint240 validFromEpoch;     // id of the reward epoch from which the value is valid
-    }
+    using DataProviderFee for DataProviderFee.State;
 
     struct RewardClaim {            // used for storing reward claim info
         bool claimed;               // indicates if reward has been claimed
@@ -45,8 +42,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_CLAIM_FAILED = "claim failed";
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
-    string internal constant ERR_FEE_PERCENTAGE_INVALID = "invalid fee percentage value";
-    string internal constant ERR_FEE_PERCENTAGE_UPDATE_FAILED = "fee percentage can not be updated";
     string internal constant ERR_AFTER_DAILY_CYCLE = "after daily cycle";
     string internal constant ERR_NO_CLAIMABLE_EPOCH = "no epoch with claimable rewards";
     string internal constant ERR_EXECUTOR_ONLY = "claim executor only";
@@ -61,9 +56,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     uint256 public override firstClaimableRewardEpoch;  // first epochs will not be claimable - those epochs will 
                                                         // happen before the token generation event for Flare launch.
 
-    uint256 public immutable feePercentageUpdateOffset; // fee percentage update timelock measured in reward epochs
-    uint256 public immutable defaultFeePercentage; // default value for fee percentage
-        
     // id of the first epoch to expire. Closed = expired and unclaimed funds sent back
     uint256 private nextRewardEpochToExpire; 
     // reward epoch when setInitialRewardData is called (set to +1) - used for forwarding closeExpiredRewardEpoch
@@ -73,15 +65,15 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @dev Provides a mapping of reward epoch ids to an address mapping of unclaimed rewards.
      */
     mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardWeight;
-    mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardAmount;
+    mapping(uint256 => mapping(address => uint256)) private epochProviderUnclaimedRewardAmount;    
     mapping(uint256 => mapping(address => uint256)) private epochProviderVotePowerIgnoringRevocation;
     mapping(uint256 => mapping(address => uint256)) private epochProviderRewardAmount;
     mapping(uint256 => mapping(address => mapping(address => RewardClaim))) private epochProviderClaimerReward;
     mapping(uint256 => uint256) private totalRewardEpochRewards;
     mapping(uint256 => uint256) private claimedRewardEpochRewards;
 
-    mapping(address => FeePercentage[]) private dataProviderFeePercentages;
-    
+    DataProviderFee.State private dataProviderFee;
+        
     // mapping(reward owner address, claim executor address) => bool
     mapping(address => mapping(address => bool)) private allowedClaimExecutors;
 
@@ -144,8 +136,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         oldFtsoRewardManager = _oldFtsoRewardManager;
-        feePercentageUpdateOffset = _feePercentageUpdateOffset;
-        defaultFeePercentage = _defaultFeePercentage;
+        dataProviderFee.feePercentageUpdateOffset = _feePercentageUpdateOffset;
+        dataProviderFee.defaultFeePercentage = _defaultFeePercentage;
         firstClaimableRewardEpoch = FIRST_CLAIMABLE_EPOCH;
     }
 
@@ -413,7 +405,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             rewards[i] = rewards[0].mulDiv(_weights[i], _weights[0]);
             epochProviderUnclaimedRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
             epochProviderUnclaimedRewardWeight[_currentRewardEpoch][_addresses[i]] =
-                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);
+                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);            
             epochProviderRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
             if (epochProviderVotePowerIgnoringRevocation[_currentRewardEpoch][_addresses[i]] == 0) {
                 epochProviderVotePowerIgnoringRevocation[_currentRewardEpoch][_addresses[i]] =
@@ -442,33 +434,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @return Returns the reward epoch number when the setting becomes effective.
      */
     function setDataProviderFeePercentage(uint256 _feePercentageBIPS) external override returns (uint256) {
-        require(_feePercentageBIPS <= MAX_BIPS, ERR_FEE_PERCENTAGE_INVALID);
-
-        uint256 rewardEpoch = getCurrentRewardEpoch() + feePercentageUpdateOffset;
-        FeePercentage[] storage fps = dataProviderFeePercentages[msg.sender];
-
-        // determine whether to update the last setting or add a new one
-        uint256 position = fps.length;
-        if (position > 0) {
-            // do not allow updating the settings in the past
-            // (this can only happen if the sharing percentage epoch offset is updated)
-            require(rewardEpoch >= fps[position - 1].validFromEpoch, ERR_FEE_PERCENTAGE_UPDATE_FAILED);
-            
-            if (rewardEpoch == fps[position - 1].validFromEpoch) {
-                // update
-                position = position - 1;
-            }
-        }
-        if (position == fps.length) {
-            // add
-            fps.push();
-        }
-
-        // apply setting
-        fps[position].value = uint16(_feePercentageBIPS);
-        assert(rewardEpoch < 2**240);
-        fps[position].validFromEpoch = uint240(rewardEpoch);
-
+        uint256 rewardEpoch = 
+            dataProviderFee.setDataProviderFeePercentage(_feePercentageBIPS, getCurrentRewardEpoch());
         emit FeePercentageChanged(msg.sender, _feePercentageBIPS, rewardEpoch);
         return rewardEpoch;
     }
@@ -713,7 +680,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @param _dataProvider         address representing data provider
      */
     function getDataProviderCurrentFeePercentage(address _dataProvider) external view override returns (uint256) {
-        return _getDataProviderFeePercentage(_dataProvider, getCurrentRewardEpoch());
+        return dataProviderFee._getDataProviderFeePercentage(_dataProvider, getCurrentRewardEpoch());
     }
 
     /**
@@ -729,9 +696,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         returns (uint256 _feePercentageBIPS)
     {
         require(getInitialRewardEpoch() <= _rewardEpoch && 
-            _rewardEpoch <= getCurrentRewardEpoch().add(feePercentageUpdateOffset),
+            _rewardEpoch <= getCurrentRewardEpoch().add(dataProviderFee.feePercentageUpdateOffset),
             "invalid reward epoch");
-        return _getDataProviderFeePercentage(_dataProvider, _rewardEpoch);
+        return dataProviderFee._getDataProviderFeePercentage(_dataProvider, _rewardEpoch);
     }
 
     /**
@@ -751,25 +718,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             bool[] memory _fixed
         ) 
     {
-        FeePercentage[] storage fps = dataProviderFeePercentages[_dataProvider];
-        if (fps.length > 0) {
-            uint256 currentEpoch = getCurrentRewardEpoch();
-            uint256 position = fps.length;
-            while (position > 0 && fps[position - 1].validFromEpoch > currentEpoch) {
-                position--;
-            }
-            uint256 count = fps.length - position;
-            if (count > 0) {
-                _feePercentageBIPS = new uint256[](count);
-                _validFromEpoch = new uint256[](count);
-                _fixed = new bool[](count);
-                for (uint256 i = 0; i < count; i++) {
-                    _feePercentageBIPS[i] = fps[i + position].value;
-                    _validFromEpoch[i] = fps[i + position].validFromEpoch;
-                    _fixed[i] = (_validFromEpoch[i] - currentEpoch) != feePercentageUpdateOffset;
-                }
-            }
-        }        
+        return dataProviderFee.getDataProviderScheduledFeePercentageChanges(_dataProvider, getCurrentRewardEpoch());
     }
 
     /**
@@ -794,6 +743,14 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         )
     {
         return (0, totalInflationAuthorizedWei, totalClaimedWei.add(totalBurnedWei));
+    }
+
+    function feePercentageUpdateOffset() external view returns (uint256) {
+        return dataProviderFee.feePercentageUpdateOffset;
+    }
+
+    function defaultFeePercentage() external view returns (uint256) {
+        return dataProviderFee.defaultFeePercentage;
     }
 
     /**
@@ -872,11 +829,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
                 // (though there can not be any reentrancy due to transfer(0) or die() on known contract)
                 lastBalance = lastBalance.sub(toBurnWei);
 
-                // Burn baby burn
-                UnearnedRewardBurner unearnedRewardBurner = new UnearnedRewardBurner(burnAddress);
-                //slither-disable-next-line arbitrary-send
-                address(unearnedRewardBurner).transfer(toBurnWei);
-                unearnedRewardBurner.die();
+                // Burn by a temp contract suicide
+                UnearnedRewardBurning.burnAmount(burnAddress, toBurnWei);
 
                 // Emit event to signal what we did
                 emit RewardsBurned(toBurnWei);
@@ -1374,7 +1328,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         }
 
         // weight share based on data provider fee
-        uint256 feePercentageBIPS = _getDataProviderFeePercentage(_dataProvider, _rewardEpoch);
+        uint256 feePercentageBIPS = dataProviderFee._getDataProviderFeePercentage(_dataProvider, _rewardEpoch);
         if (feePercentageBIPS > 0) {
             rewardWeight += (votePower - dataProviderVotePower).mul(feePercentageBIPS);
         }
@@ -1403,35 +1357,12 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         uint256 rewardWeight = 0;
 
         // reward weight determined by vote power share
-        uint256 feePercentageBIPS = _getDataProviderFeePercentage(_delegate, _rewardEpoch);
+        uint256 feePercentageBIPS = dataProviderFee._getDataProviderFeePercentage(_delegate, _rewardEpoch);
         if (feePercentageBIPS < MAX_BIPS) {
             rewardWeight += _delegatedVotePower.mul(MAX_BIPS - feePercentageBIPS);
         }
 
         return rewardWeight;
-    }
-
-    /**
-     * @notice Returns fee percentage setting for `_dataProvider` at `_rewardEpoch`.
-     * @param _dataProvider         address representing a data provider
-     * @param _rewardEpoch          reward epoch number
-     */
-    function _getDataProviderFeePercentage(
-        address _dataProvider,
-        uint256 _rewardEpoch
-    )
-        internal view
-        returns (uint256)
-    {
-        FeePercentage[] storage fps = dataProviderFeePercentages[_dataProvider];
-        uint256 index = fps.length;
-        while (index > 0) {
-            index--;
-            if (_rewardEpoch >= fps[index].validFromEpoch) {
-                return fps[index].value;
-            }
-        }
-        return defaultFeePercentage;
     }
 
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {

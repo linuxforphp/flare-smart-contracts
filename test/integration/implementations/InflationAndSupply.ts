@@ -17,6 +17,8 @@ const MockContract = artifacts.require("MockContract");
 const PercentageProviderMock = artifacts.require("PercentageProviderMock");
 const FlareDaemonMock = artifacts.require("FlareDaemonMock");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
+const DataProviderFee = artifacts.require("DataProviderFee" as any);
+const UnearnedRewardBurning = artifacts.require("UnearnedRewardBurning" as any);
 const Supply = artifacts.require("Supply");
 const TeamEscrow = artifacts.require("TeamEscrow");
 
@@ -35,6 +37,11 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
   const circulatingSupply = initialGenesisAmountWei.sub(foundationSupplyWei);
   const inflationBips = 1000;
 
+  before(async () => {
+    FtsoRewardManager.link(await DataProviderFee.new() as any);
+    FtsoRewardManager.link(await UnearnedRewardBurning.new() as any);
+  });
+  
   beforeEach(async() => {
     const ADDRESS_UPDATER = accounts[16];
     mockFlareDaemon = await FlareDaemonMock.new();

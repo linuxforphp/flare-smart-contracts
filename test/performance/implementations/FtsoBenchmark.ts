@@ -106,8 +106,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
     }
     
     before(async () => {
-        const ftsoManagement = await FtsoManagement.new();
-        FtsoManager.link(ftsoManagement as any);
+        FtsoManager.link(await FtsoManagement.new() as any);
     });
 
     describe("Voting for nat + 5 assets", async () => {
