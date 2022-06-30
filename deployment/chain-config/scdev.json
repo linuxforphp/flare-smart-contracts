@@ -13,6 +13,7 @@
     "genesisGovernancePrivateKey": "<use .env: GENESIS_GOVERNANCE_PRIVATE_KEY>",
     "governancePrivateKey": "<use .env: GOVERNANCE_PRIVATE_KEY>",
     "governancePublicKey": "<use .env: GOVERNANCE_PUBLIC_KEY>",
+    "governanceTimelock": 1,
     "burnAddress": "0x0000000000000000000000000000000000000000",
     "totalNativeSupplyNAT":  100000000000,
     "totalExcludedSupplyNAT": 88000000000,

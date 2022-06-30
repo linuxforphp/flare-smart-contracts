@@ -69,11 +69,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; Minting system test limit
       // NOTE: unregister must claim governance of flareDaemon!
       currentGovernanceAddress = governanceAccount.address
     }
-    await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
-    await flareDaemon.claimGovernance({ from: deployerAccount.address });
 
     // Set a reference to inflation mock on the daemon
-    await flareDaemon.setAddressUpdater(ADDRESS_UPDATER, { from: deployerAccount.address });
+    await flareDaemon.setAddressUpdater(ADDRESS_UPDATER, { from: currentGovernanceAddress });
     await flareDaemon.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
       [ADDRESS_UPDATER, inflationMock.address], {from: ADDRESS_UPDATER});

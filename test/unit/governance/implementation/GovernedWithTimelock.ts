@@ -3,11 +3,13 @@ import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle"
 import { getTestFile } from "../../../utils/constants";
 import { assertNumberEqual } from "../../../utils/test-helpers";
 
+const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer"); 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
 
 contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTimelock unit tests`, async accounts => {
-    const governance = accounts[10];
-    const executor = accounts[11];
+    const initialGovernance = accounts[10];
+    const governance = accounts[11];
+    const executor = accounts[12];
     
     function findRequiredEvent<E extends Truffle.AnyEvent, N extends E['name']>(res: Truffle.TransactionResponse<E>, name: N): Truffle.TransactionLog<Extract<E, { name: N }>> {
         const event = res.logs.find(e => e.event === name) as any;
@@ -18,14 +20,15 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     let mock: GovernedWithTimelockMockInstance;
     
     beforeEach(async () => {
-        mock = await GovernedWithTimelockMock.new(governance, 3600);
-        await mock.transferGovernance(governance, { from: governance });  // end deployment phase
+        mock = await GovernedWithTimelockMock.new(initialGovernance);
+        const governanceAddressPointer = await GovernanceAddressPointer.new(governance);
+        await mock.switchToProductionMode(governanceAddressPointer.address, 3600, { from: initialGovernance });
         await mock.setGovernanceExecutor(executor, { from: governance });
     });
 
     it("allow direct changes in deployment phase", async () => {
-        const mockDeployment = await GovernedWithTimelockMock.new(governance, 3600);
-        await mockDeployment.changeA(15, { from: governance });
+        const mockDeployment = await GovernedWithTimelockMock.new(initialGovernance);
+        await mockDeployment.changeA(15, { from: initialGovernance });
         assertNumberEqual(await mockDeployment.a(), 15);
     });
     
@@ -62,7 +65,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     });
 
     it("require governance - deployment phase", async () => {
-        const mockDeployment = await GovernedWithTimelockMock.new(governance, 3600);
+        const mockDeployment = await GovernedWithTimelockMock.new(initialGovernance);
         await expectRevert(mockDeployment.changeA(20), "only governance");
     });
 

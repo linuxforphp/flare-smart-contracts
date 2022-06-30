@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../implementation/GovernedBase.sol";
+import "../implementation/Governed.sol";
 
 
-contract GovernedWithTimelockMock is GovernedBase {
+contract GovernedWithTimelockMock is Governed {
     uint256 public a;
     uint256 public b;
     
-    constructor(address _governance, uint256 _timelock)
-        GovernedBase(_governance)
+    constructor(address _governance)
+        Governed(_governance)
     {
     }
 
