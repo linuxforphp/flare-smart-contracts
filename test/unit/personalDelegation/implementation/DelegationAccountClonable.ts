@@ -37,6 +37,7 @@ let distributionTreasury: DistributionTreasuryInstance;
 let ftsoRewardManager: FtsoRewardManagerInstance;
 let ftsoManagerInterface: FtsoManagerInstance;
 let startTs: BN;
+let latestStart: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let mockInflation: InflationMockInstance;
 let mockSupply: MockContractInstance;
@@ -175,9 +176,6 @@ async function bestowClaimableBalance(balance: BN) {
   await web3.eth.sendTransaction({ from: GOVERNANCE_GENESIS_ADDRESS, to: suicidalMock.address, value: balance });
   // Attacker dies
   await suicidalMock.die();
-  // set distribution contract and claimable amount
-  await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
-  await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 }
 
 async function setMockBalances(startBlockNumber: number, numberOfBlocks: number, addresses: string[], wNatBalances: number[]) {
@@ -231,7 +229,13 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
-    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei);
+    await bestowClaimableBalance(totalEntitlementWei);
+    latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
+    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei, latestStart);
+    // set distribution contract
+    await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+    // select distribution contract
+    await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 
     supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10000000, 9000000, []);
 
@@ -370,7 +374,6 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   });
 
   it("Should be able to claim 2.37% * 3 after day 90", async () => {
-    await bestowClaimableBalance(totalEntitlementWei);
     // Assemble
     const days = 90;
     const addresses = [delAcc1Address, delAcc2Address, accounts[3]];
@@ -649,8 +652,8 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     expect((await delegationAccountManager.getFtsoRewardManagers()).length).to.equals(2);
   });
 
-  it("Should not add ftso reward manager if it already exists", async() => {
-    let distribution2 = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei);
+  it("Should not add distribution if it already exists", async() => {
+    let distribution2 = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei, latestStart);
 
     await distribution2.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.SUPPLY, Contracts.DELEGATION_ACCOUNT_MANAGER]),
@@ -662,7 +665,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
       [ADDRESS_UPDATER, wNat.address, ftsoRewardManager.address, distribution2.address], {from: ADDRESS_UPDATER});
     expect((await delegationAccountManager.getDistributions()).length).to.equals(2);
     
-    // try to add ftsoRewardManager2 again
+    // try to add distribution again
     await delegationAccountManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
       [ADDRESS_UPDATER, wNat.address, ftsoRewardManager.address, distribution2.address], {from: ADDRESS_UPDATER});
