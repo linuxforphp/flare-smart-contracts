@@ -47,7 +47,7 @@ contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts =>
     it("Should not propose governance if not initialized to fixed address", async() => {
       // Assemble
       // Act
-      const promise = governedAtGenesis.proposeGovernance(accounts[1]);
+      const promise = governedAtGenesis.switchToProductionMode(accounts[1], 0);
       // Assert
       await expectRevert(promise, ONLY_GOVERNANCE_MSG);
     });

@@ -26,10 +26,6 @@ contract DummyAssetMinter is ICollateralizable {
         maxMintRequestTwei = maxMintRequestTwei_;
     }
 
-    function claimGovernanceOverMintableToken() external {
-        mintableToken.claimGovernance();
-    }
-
     /* solhint-disable no-unused-vars */
 
     /// addRewardToAgentPosition function will be triggered by the reward contract per reward allocation.

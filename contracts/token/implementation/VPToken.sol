@@ -510,7 +510,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @param _blockNumber The new cleanup block number.
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external override {
-        require(msg.sender == address(governance) || msg.sender == cleanupBlockNumberManager, 
+        require(msg.sender == governance() || msg.sender == cleanupBlockNumberManager, 
             "only governance or manager");
         _setCleanupBlockNumber(_blockNumber);
         if (address(readVpContract) != address(0)) {

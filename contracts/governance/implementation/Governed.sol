@@ -9,9 +9,7 @@ import { GovernedBase } from "./GovernedBase.sol";
  * @dev For deployed, governed contracts, enforce a non-zero address at create time.
  **/
 contract Governed is GovernedBase {
-    uint256 internal constant GOVERNANCE_TIMELOCK = 7 days;
-    
-    constructor(address _governance) GovernedBase(_governance, GOVERNANCE_TIMELOCK) {
+    constructor(address _governance) GovernedBase(_governance) {
         require(_governance != address(0), "_governance zero");
     }
 }

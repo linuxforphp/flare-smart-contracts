@@ -39,7 +39,7 @@ contract DistributionTreasury is GovernedAtGenesis {
      * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
      *   The super constructor is called for testing convenience.
      */
-    constructor() GovernedAtGenesis(address(0), 0) {
+    constructor() GovernedAtGenesis(address(0)) {
         /* empty block */
     }
 

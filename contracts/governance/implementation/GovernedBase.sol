@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-
+import "./GovernanceAddressPointer.sol";
 
 /**
  * @title Governed Base
@@ -17,14 +17,14 @@ abstract contract GovernedBase {
         bytes encodedCall;
     }
     
-    address public governance;
-    uint64 public governanceTimelock;
-    bool public deploymentFinished;
-    
+    address private initialGovernance;
     bool private initialised;
-    bool private executing;
     
-    address public proposedGovernance;
+    GovernanceAddressPointer public governanceAddressPointer;
+    uint64 public governanceTimelock;
+    bool public productionMode;
+    
+    bool private executing;
     
     address public governanceExecutor;
 
@@ -33,11 +33,11 @@ abstract contract GovernedBase {
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
     
-    event GovernanceProposed(address proposedGovernance);
-    event GovernanceUpdated(address oldGovernance, address newGovernance);
+    event GovernanceInitialised(address initialGovernance);
+    event GovernedProductionModeEntered(address governanceAddressPointer, uint256 timelock);
     
     modifier onlyGovernance {
-        if (executing || !deploymentFinished) {
+        if (executing || !productionMode) {
             _beforeExecute();
             _;
         } else {
@@ -50,9 +50,9 @@ abstract contract GovernedBase {
         _;
     }
 
-    constructor(address _governance, uint256 _timelock) {
-        if (_governance != address(0)) {
-            initialise(_governance, _timelock);
+    constructor(address _initialGovernance) {
+        if (_initialGovernance != address(0)) {
+            initialise(_initialGovernance);
         }
     }
 
@@ -85,56 +85,43 @@ abstract contract GovernedBase {
     function setGovernanceExecutor(address _executor) external onlyImmediateGovernance {
         governanceExecutor = _executor;
     }
-
-    /**
-     * @notice First of a two step process for turning over governance to another address.
-     * @param _governance The address to propose to receive governance role.
-     * @dev Must hold governance to propose another address.
-     * @dev Timelocked if not in deployment mode.
-     */
-    function proposeGovernance(address _governance) external onlyGovernance
-    {
-        proposedGovernance = _governance;
-        emit GovernanceProposed(_governance);
-    }
     
     /**
-     * @notice Once proposed, claimant can claim the governance role as the second of a two-step process.
-     * @dev Always turns the deployment mode off.
+     * Enter the production mode after all the initial governance settings have been set.
+     * This enables timelocks and the governance is afterwards obtained by calling 
+     * governanceAddressPointer.getGovernanceAddress(). 
+     * @param _governanceAddressPointer The value for the governanceAddressPointer contract address.
+     *    All governed contracts should have the same governanceAddressPointer.
+     * @param _timelock The timelock to be used (the time before governance calls a method and it can be executed).
      */
-    function claimGovernance() external {
-        require(msg.sender == proposedGovernance, "not claimaint");
-        emit GovernanceUpdated(governance, proposedGovernance);
-        governance = proposedGovernance;
-        proposedGovernance = address(0);
-        // finish deploy on first governance transfer
-        deploymentFinished = true;
-    }
-
-    /**
-     * @notice In a one-step process, turn over governance to another address.
-     * @dev Must hold governance to transfer.
-     * @dev Timelocked if not in deployment mode. Always turns the deployment mode off.
-     */
-    function transferGovernance(address _governance) external onlyGovernance {
-        emit GovernanceUpdated(governance, _governance);
-        governance = _governance;
-        proposedGovernance = address(0);
-        // finish deploy on first governance transfer
-        deploymentFinished = true;
+    function switchToProductionMode(GovernanceAddressPointer _governanceAddressPointer, uint256 _timelock) external {
+        _checkOnlyGovernance();
+        require(!productionMode, "already in production mode");
+        require(address(_governanceAddressPointer) != address(0) && 
+            _governanceAddressPointer.getGovernanceAddress() != address(0),
+            "invalid governance pointer");
+        governanceAddressPointer = _governanceAddressPointer;
+        governanceTimelock = SafeCast.toUint64(_timelock);
+        initialGovernance = address(0);
+        productionMode = true;
+        emit GovernedProductionModeEntered(address(_governanceAddressPointer), _timelock);
     }
 
     /**
      * @notice Initialize the governance address if not first initialized.
      */
-    function initialise(address _governance, uint256 _timelock) public virtual {
+    function initialise(address _initialGovernance) public virtual {
         require(initialised == false, "initialised != false");
         initialised = true;
-        
-        emit GovernanceUpdated(governance, _governance);
-        governance = _governance;
-        governanceTimelock = SafeCast.toUint64(_timelock);
-        proposedGovernance = address(0);
+        initialGovernance = _initialGovernance;
+        emit GovernanceInitialised(_initialGovernance);
+    }
+    
+    /**
+     * Returns the current effective governance address.
+     */
+    function governance() public view returns (address) {
+        return productionMode ? governanceAddressPointer.getGovernanceAddress() : initialGovernance;
     }
 
     function _beforeExecute() private {
@@ -165,7 +152,7 @@ abstract contract GovernedBase {
     }
     
     function _checkOnlyGovernance() private view {
-        require(msg.sender == governance, "only governance");
+        require(msg.sender == governance(), "only governance");
     }
     
     function _passReturnOrRevert(bool _success) private pure {

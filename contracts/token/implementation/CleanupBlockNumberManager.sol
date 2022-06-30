@@ -24,7 +24,7 @@ contract CleanupBlockNumberManager is Governed, AddressUpdatable {
         
     modifier onlyTriggerOrGovernance {
         require(
-            msg.sender == triggerContract || msg.sender == governance,
+            msg.sender == triggerContract || msg.sender == governance(),
             ERR_TRIGGER_CONTRACT_OR_GOVERNANCE_ONLY
         );
         _;

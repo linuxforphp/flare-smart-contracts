@@ -43,7 +43,7 @@ contract FlareDaemonWithInflationMock is GovernedAtGenesis {
         _;
     }
 
-    constructor() GovernedAtGenesis(address(0), 0) {
+    constructor() GovernedAtGenesis(address(0)) {
         /* empty block */
     }
 

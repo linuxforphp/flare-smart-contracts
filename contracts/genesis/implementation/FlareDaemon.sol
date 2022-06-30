@@ -151,7 +151,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
      * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
      *   The super constructor is called for testing convenience.
      */
-    constructor() GovernedAtGenesis(address(0), 0) AddressUpdatable(address(0)) {
+    constructor() GovernedAtGenesis(address(0)) AddressUpdatable(address(0)) {
         /* empty block */
     }
 
@@ -288,7 +288,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
             address governanceAddress = super.initialiseFixedAddress();
             return governanceAddress;
         } else {
-            return governance;
+            return governance();
         }
     }
 

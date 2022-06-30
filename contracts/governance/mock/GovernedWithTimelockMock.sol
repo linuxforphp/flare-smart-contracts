@@ -9,7 +9,7 @@ contract GovernedWithTimelockMock is GovernedBase {
     uint256 public b;
     
     constructor(address _governance, uint256 _timelock)
-        GovernedBase(_governance, _timelock)
+        GovernedBase(_governance)
     {
     }
 

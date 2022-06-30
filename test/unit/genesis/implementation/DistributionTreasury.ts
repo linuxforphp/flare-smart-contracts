@@ -31,8 +31,8 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
     describe("methods", async() => {
 
         it("Should initialize governance", async() => {
-           let tx = await treasury.initialiseFixedAddress();
-           expectEvent(tx, "GovernanceUpdated");
+            let tx = await treasury.initialiseFixedAddress();
+            expectEvent(tx, "GovernanceInitialised");
         });
 
         it("Should fail calling setContracts from non-governance", async() => {

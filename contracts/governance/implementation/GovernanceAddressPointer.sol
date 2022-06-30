@@ -36,3 +36,4 @@ contract GovernanceAddressPointer {
     function getGovernanceAddress() external view returns (address) {
         return governanceAddress;
     }
+}
