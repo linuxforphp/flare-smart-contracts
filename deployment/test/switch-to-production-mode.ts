@@ -1,5 +1,6 @@
 import { Contracts } from "../scripts/Contracts";
 import {
+  GovernanceAddressPointerInstance,
   GovernedBaseContract,
 } from "../../typechain-truffle";
 
@@ -7,10 +8,11 @@ import {
  * This test assumes a chain is running with Flare allocated in accounts
  * listed in `./hardhat.config.ts`
  */
-contract(`transfer-governance.ts system tests`, async accounts => {
+contract(`switch-to-production-mode.ts system tests`, async accounts => {
   let contracts: Contracts;
   let parameters: any;
   let GovernedBase: GovernedBaseContract;
+  let governanceAddressPointer: GovernanceAddressPointerInstance;
   const SHOULD_HAVE_TRANSERED_GOVERNANCE = "Should have transfered governance";
 
   before(async () => {
@@ -18,8 +20,19 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     await contracts.deserialize(process.stdin);
     parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
     GovernedBase = artifacts.require("GovernedBase");
+    const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer");
+    governanceAddressPointer = await GovernanceAddressPointer.at(contracts.getContractAddress("GovernanceAddressPointer"));
   });
 
+  async function checkGovernancePointerContract(contractName: string) {
+    // Assemble
+    const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
+    // Act
+    const governancePointer = await governedBase.governanceAddressPointer();
+    // Assert
+    assert.equal(governancePointer, governanceAddressPointer.address);
+  }
+  
   async function checkGovernance(contractName: string) {
     // Assemble
     const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
@@ -29,81 +42,106 @@ contract(`transfer-governance.ts system tests`, async accounts => {
     assert.equal(governance.toLowerCase(), parameters.governancePublicKey.toLowerCase());
   }
 
+  async function checkProductionMode(contractName: string) {
+    // Assemble
+    const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
+    // Act
+    const productionMode = await governedBase.productionMode();
+    // Assert
+    assert.equal(productionMode, true);
+  }
+
+  async function checkTimelock(contractName: string) {
+    // Assemble
+    const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
+    // Act
+    const timelock = await governedBase.governanceTimelock();
+    // Assert
+    assert.equal(timelock.toNumber(), parameters.governanceTimelock);
+  }
+  
+  async function checkProductionSwitch(contractName: string) {
+    await checkProductionMode(contractName);
+    await checkGovernance(contractName);
+    await checkGovernancePointerContract(contractName);
+    await checkTimelock(contractName);
+  }
+  
   describe(Contracts.ADDRESS_UPDATER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.ADDRESS_UPDATER);
+      await checkProductionSwitch(Contracts.ADDRESS_UPDATER);
     });
   });
   
   describe(Contracts.INFLATION_ALLOCATION, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.INFLATION_ALLOCATION);
+      await checkProductionSwitch(Contracts.INFLATION_ALLOCATION);
     });
   });
 
   describe(Contracts.FTSO_MANAGER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.FTSO_MANAGER);
+      await checkProductionSwitch(Contracts.FTSO_MANAGER);
     });
   });
 
   describe(Contracts.FLARE_DAEMON, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.FLARE_DAEMON);
+      await checkProductionSwitch(Contracts.FLARE_DAEMON);
     });
   });
 
   describe(Contracts.INFLATION, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.INFLATION);
+      await checkProductionSwitch(Contracts.INFLATION);
     });
   });
 
   describe(Contracts.FTSO_REWARD_MANAGER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.FTSO_REWARD_MANAGER);
+      await checkProductionSwitch(Contracts.FTSO_REWARD_MANAGER);
     });
   });    
 
   describe(Contracts.PRICE_SUBMITTER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.PRICE_SUBMITTER);
+      await checkProductionSwitch(Contracts.PRICE_SUBMITTER);
     });
   });      
 
   describe(Contracts.SUPPLY, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.SUPPLY);
+      await checkProductionSwitch(Contracts.SUPPLY);
     });
   });      
 
   describe(Contracts.VOTER_WHITELISTER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.VOTER_WHITELISTER);
+      await checkProductionSwitch(Contracts.VOTER_WHITELISTER);
     });
   });
 
   describe(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER);
+      await checkProductionSwitch(Contracts.CLEANUP_BLOCK_NUMBER_MANAGER);
     });
   });
 
   describe(Contracts.DISTRIBUTION_TREASURY, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.DISTRIBUTION_TREASURY);
+      await checkProductionSwitch(Contracts.DISTRIBUTION_TREASURY);
     });
   });
 
   describe(Contracts.DISTRIBUTION, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async function() {
       if (!parameters.deployDistributionContract) return this.skip();
-      await checkGovernance(Contracts.DISTRIBUTION);
+      await checkProductionSwitch(Contracts.DISTRIBUTION);
     });
     it("Should not have deployed", async function () {
       if (parameters.deployDistributionContract) return this.skip();
       try {
-        await checkGovernance(Contracts.DISTRIBUTION);
+        await checkProductionSwitch(Contracts.DISTRIBUTION);
         assert.fail('The expected Error was not thrown.');
       } catch (err: any) {
         assert.include(err.message, `${Contracts.DISTRIBUTION} not found`);
@@ -114,12 +152,12 @@ contract(`transfer-governance.ts system tests`, async accounts => {
   describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async function() {
       if (!parameters.deployDistributionContract) return this.skip();
-      await checkGovernance(Contracts.DISTRIBUTION_TO_DELEGATORS);
+      await checkProductionSwitch(Contracts.DISTRIBUTION_TO_DELEGATORS);
     });
     it("Should not have deployed", async function () {
       if (parameters.deployDistributionContract) return this.skip();
       try {
-        await checkGovernance(Contracts.DISTRIBUTION_TO_DELEGATORS);
+        await checkProductionSwitch(Contracts.DISTRIBUTION_TO_DELEGATORS);
         assert.fail('The expected Error was not thrown.');
       } catch (err: any) {
         assert.include(err.message, `${Contracts.DISTRIBUTION_TO_DELEGATORS} not found`);
@@ -129,49 +167,49 @@ contract(`transfer-governance.ts system tests`, async accounts => {
   
   describe(Contracts.INCENTIVE_POOL_TREASURY, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.INCENTIVE_POOL_TREASURY);
+      await checkProductionSwitch(Contracts.INCENTIVE_POOL_TREASURY);
     });
   });
 
   describe(Contracts.INCENTIVE_POOL, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.INCENTIVE_POOL);
+      await checkProductionSwitch(Contracts.INCENTIVE_POOL);
     });
   });
 
   describe(Contracts.INCENTIVE_POOL_ALLOCATION, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.INCENTIVE_POOL_ALLOCATION);
+      await checkProductionSwitch(Contracts.INCENTIVE_POOL_ALLOCATION);
     });
   });
 
   describe(Contracts.INITIAL_AIRDROP, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.INITIAL_AIRDROP);
+      await checkProductionSwitch(Contracts.INITIAL_AIRDROP);
     });
   });
 
   describe(Contracts.FTSO_REGISTRY, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.FTSO_REGISTRY);
+      await checkProductionSwitch(Contracts.FTSO_REGISTRY);
     });
   });
 
   describe(Contracts.WNAT, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.WNAT);
+      await checkProductionSwitch(Contracts.WNAT);
     });
   });
 
   describe(Contracts.TEAM_ESCROW, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.TEAM_ESCROW);
+      await checkProductionSwitch(Contracts.TEAM_ESCROW);
     });
   });
 
   describe(Contracts.DELEGATION_ACCOUNT_MANAGER, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkGovernance(Contracts.DELEGATION_ACCOUNT_MANAGER);
+      await checkProductionSwitch(Contracts.DELEGATION_ACCOUNT_MANAGER);
     });
   });
 });

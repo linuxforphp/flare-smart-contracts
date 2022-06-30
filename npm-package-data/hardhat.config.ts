@@ -34,6 +34,9 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
     if (process.env.GOVERNANCE_PUBLIC_KEY) {
       parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
     }
+    if (process.env.GOVERNANCE_EXECUTOR_PUBLIC_KEY) {
+      parameters.governanceExecutorPublicKey = process.env.GOVERNANCE_EXECUTOR_PUBLIC_KEY
+    }
     return parameters;
   } else {
     return undefined;

@@ -1,7 +1,7 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/constants";
-import { assertNumberEqual } from "../../../utils/test-helpers";
+import { assertNumberEqual, findRequiredEvent } from "../../../utils/test-helpers";
 
 const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer"); 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
@@ -11,12 +11,6 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     const governance = accounts[11];
     const executor = accounts[12];
     
-    function findRequiredEvent<E extends Truffle.AnyEvent, N extends E['name']>(res: Truffle.TransactionResponse<E>, name: N): Truffle.TransactionLog<Extract<E, { name: N }>> {
-        const event = res.logs.find(e => e.event === name) as any;
-        assert.isTrue(event != null);
-        return event;
-    }
-
     let mock: GovernedWithTimelockMockInstance;
     
     beforeEach(async () => {

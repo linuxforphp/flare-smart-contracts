@@ -364,3 +364,9 @@ export async function getAddressWithZeroBalance() {
 export function getRandom(): BN {
     return MIN_RANDOM.addn(Math.floor(Math.random() * 1000));
 }
+
+export function findRequiredEvent<E extends Truffle.AnyEvent, N extends E['name']>(res: Truffle.TransactionResponse<E>, name: N): Truffle.TransactionLog<Extract<E, { name: N }>> {
+    const event = res.logs.find(e => e.event === name) as any;
+    assert.isTrue(event != null);
+    return event;
+}

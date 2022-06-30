@@ -46,6 +46,9 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
     if (process.env.GOVERNANCE_PUBLIC_KEY) {
       parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
     }
+    if (process.env.GOVERNANCE_EXECUTOR_PUBLIC_KEY) {
+      parameters.governanceExecutorPublicKey = process.env.GOVERNANCE_EXECUTOR_PUBLIC_KEY
+    }
     verifyParameters(parameters);
     return parameters;
   } else {
@@ -122,6 +125,7 @@ task("daemonize-contracts", "Register contracts to be daemonized with the FlareD
         hre,
         contracts, 
         parameters.deployerPrivateKey, 
+        parameters.genesisGovernancePrivateKey,
         parameters.inflationReceivers, 
         parameters.inflationGasLimit, 
         parameters.ftsoManagerGasLimit, 
@@ -161,6 +165,7 @@ task("switch-to-production-mode", "Switch governed contracts to production mode.
         contracts,
         parameters.deployerPrivateKey,
         parameters.genesisGovernancePrivateKey,
+        parameters.governanceExecutorPublicKey,
         parameters.governanceTimelock,
         parameters.deployDistributionContract,
         args.quiet

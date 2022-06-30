@@ -26,7 +26,7 @@
       "deployment/test/activate-managers.ts", 
       "deployment/test/deploy-contracts.ts", 
       "deployment/test/daemonize-contracts.ts", 
-      "deployment/test/transfer-governance.ts", 
+      "deployment/test/switch-to-production-mode.ts", 
       "./deployment/test/priceSubmitter.ts", 
     ],
     "files": ["./hardhat.config.ts", "./type-extensions.ts"]
