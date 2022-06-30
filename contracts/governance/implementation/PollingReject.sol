@@ -66,12 +66,12 @@ contract PollingReject is Governor, GovernorProposer {
     function _proposalSucceeded(uint256 _proposalId, Proposal storage _proposal) internal view override returns (bool){
         ProposalVoting storage voting = proposalVotings[_proposalId];
 
-        if (voting.againstVotePower < _proposal.absoluteThreshold.mulDiv(_proposal.totalVP, BIPS)) {
+        if (voting.againstVotePower < _proposal.absoluteThreshold.mulDiv(_proposal.totalVP, MAX_BIPS)) {
             return true;
         }
 
         if (voting.againstVotePower <=
-            _proposal.relativeThreshold.mulDiv(voting.forVotePower + voting.againstVotePower, BIPS)) {
+            _proposal.relativeThreshold.mulDiv(voting.forVotePower + voting.againstVotePower, MAX_BIPS)) {
             return true;
         }
 

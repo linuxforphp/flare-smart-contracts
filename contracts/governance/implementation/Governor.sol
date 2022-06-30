@@ -22,7 +22,7 @@ abstract contract Governor is
     
     using SafePct for uint256;
 
-    uint256 internal constant BIPS = 1e4;
+    uint256 internal constant MAX_BIPS = 1e4;
 
     IPriceSubmitter public immutable priceSubmitter;
     IIFtsoManager public ftsoManager;
@@ -288,7 +288,7 @@ abstract contract Governor is
      * @return Vote power representing the quorum at _blockNumber
      */
     function quorum(uint256 _blockNumber) public view override returns (uint256) {        
-        return absoluteThreshold().mulDiv(totalVotePowerAt(_blockNumber), BIPS);
+        return absoluteThreshold().mulDiv(totalVotePowerAt(_blockNumber), MAX_BIPS);
     }
 
     /**
@@ -325,7 +325,7 @@ abstract contract Governor is
     ) internal returns (uint256) {
         (uint256 votePowerBlock, uint256 rewardEpochTimestamp) = _calculateVotePowerBlock();
         uint256 totalWrappedSupply = totalVotePowerAt(votePowerBlock);
-        require(totalWrappedSupply >= supply.getCirculatingSupplyAt(votePowerBlock).mulDiv(wrappingThreshold(), BIPS), 
+        require(totalWrappedSupply >= supply.getCirculatingSupplyAt(votePowerBlock).mulDiv(wrappingThreshold(), MAX_BIPS), 
             "wrapped supply too low");
 
         require(_isValidProposer(msg.sender, votePowerBlock), "submitter is not eligible to submit a proposal");
@@ -470,7 +470,7 @@ abstract contract Governor is
     function _hasVotePowerToPropose(address _proposer, uint256 _votePowerBlock) internal view returns (bool) {
         uint256 threshold = proposalThreshold();
         return threshold == 0 ||
-            votePowerOfAt(_proposer, _votePowerBlock) >= threshold.mulDiv(totalVotePowerAt(_votePowerBlock), BIPS);
+            votePowerOfAt(_proposer, _votePowerBlock) >= threshold.mulDiv(totalVotePowerAt(_votePowerBlock), MAX_BIPS);
     }
 
     /**
