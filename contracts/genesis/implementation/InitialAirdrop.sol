@@ -32,10 +32,10 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     // Errors
     string internal constant ERR_OUT_OF_BALANCE = "balance too low";
     string internal constant ERR_TOO_MANY = "too many";
-    string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
     string internal constant ERR_NOT_STARTED = "not started";
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
     string internal constant ERR_ALREADY_SET = "already set";
+    string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
     string internal constant ERR_ALREADY_STARTED = "already started";
 
     // Events
@@ -102,9 +102,10 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     /** 
      * @notice Start the initial airdrop at _initialAirdropStartTs timestamp
      * @param _initialAirdropStartTs point in time when we start
+     * @dev should be called immediately after all airdrop accounts and balances are set
      */
     function setAirdropStart(uint256 _initialAirdropStartTs) external onlyGovernance mustBalance {
-        require(nextAirdropAccountIndexToTransfer == 0, ERR_ALREADY_STARTED);
+        require(initialAirdropStartTs == 0 || initialAirdropStartTs > block.timestamp, ERR_ALREADY_STARTED);
         require(initialAirdropStartTs < _initialAirdropStartTs && _initialAirdropStartTs <= latestAirdropStartTs,
             ERR_WRONG_START_TIMESTAMP);
         initialAirdropStartTs = _initialAirdropStartTs;

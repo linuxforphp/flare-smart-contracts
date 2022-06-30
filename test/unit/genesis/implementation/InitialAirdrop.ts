@@ -222,7 +222,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
     it("Should allow airdrop start to be pushed a bit to the future", async () => {
       // Assemble
       await bestowClaimableBalance(BN(1500));
-      const now = await time.latest();
+      const now = (await time.latest()).addn(10);
       await initialAirdrop.setAirdropStart(now);
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
@@ -237,7 +237,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
     it("Should not allow airdrop start to be pushed over latest start timestamp", async () => {
       // Assemble
       await bestowClaimableBalance(BN(1500));
-      const now = await time.latest();
+      const now = (await time.latest()).addn(10);
       await initialAirdrop.setAirdropStart(now);
       const latestAirdropStartTs = await initialAirdrop.latestAirdropStartTs();
       // Act
@@ -250,11 +250,11 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
     it("Should not allow airdrop start to be pushed before current start timestamp", async () => {
       // Assemble
       await bestowClaimableBalance(BN(1500));
-      const now = await time.latest();
+      const now = (await time.latest()).addn(10);
       await initialAirdrop.setAirdropStart(now);
       // Act
-      const later = now.subn(1);
-      const start_promise = initialAirdrop.setAirdropStart(later);
+      const before = now.subn(10);
+      const start_promise = initialAirdrop.setAirdropStart(before);
       // Assert
       await expectRevert(start_promise, ERR_WRONG_START_TIMESTAMP);
     });

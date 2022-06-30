@@ -73,7 +73,8 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     );
 
     // Wire up escrow contract
-    teamEscrow = await TeamEscrow.new(accounts[0], 0);
+    const latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
+    teamEscrow = await TeamEscrow.new(accounts[0], latestStart);
 
     // Tell supply about inflation
     await supply.updateContractAddresses(
@@ -218,8 +219,9 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       // Act
       // Force a block in order to get most up to date time
       await time.advanceBlock();
-      const now = await time.latest()
-      await teamEscrow.setClaimingStartTs(now.subn(24*60*60*30), {from: accounts[0]});
+      const now = (await time.latest()).addn(10);
+      await teamEscrow.setClaimingStartTs(now, {from: accounts[0]});
+      await time.increaseTo(now.addn(24*60*60*30));
       await time.advanceBlock();
 
       // Wait one month

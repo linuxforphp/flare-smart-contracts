@@ -8,7 +8,7 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract, IncentivePoolTreasuryInstance, IncentivePoolTreasuryContract, DistributionToDelegatorsContract, IncentivePoolContract, InitialAirdropContract, InitialAirdropInstance, DistributionToDelegatorsInstance, IncentivePoolAllocationContract, DelegationAccountManagerContract, DelegationAccountClonableContract } from '../../typechain-truffle';
+import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance, GovernanceVotePowerContract, IncentivePoolTreasuryInstance, IncentivePoolTreasuryContract, DistributionToDelegatorsContract, IncentivePoolContract, InitialAirdropContract, InitialAirdropInstance, DistributionToDelegatorsInstance, IncentivePoolAllocationContract, DelegationAccountManagerContract, DelegationAccountClonableContract, SuicidalMockContract } from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
 import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
 
@@ -74,6 +74,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
   const DelegationAccountClonable: DelegationAccountClonableContract = artifacts.require("DelegationAccountClonable");
   const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
+  const SuicidalMock: SuicidalMockContract = artifacts.require("SuicidalMock");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -151,15 +152,19 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   spewNewContractInfo(contracts, addressUpdaterContracts, PriceSubmitter.contractName, "PriceSubmitter.sol", priceSubmitter.address, quiet);
 
+  const distributionTotalEntitlementWei = BN(parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
   // Initialize the distribution treasury
   let distributionTreasury: DistributionTreasuryInstance;
   try {
     distributionTreasury = await DistributionTreasury.at(parameters.distributionTreasuryAddress);
   } catch (e) {
     if (!quiet) {
-      console.error("DistributionTreasury not in genesis...creating new.")
+      console.error("DistributionTreasury not in genesis...creating new and sending funds.")
     }
     distributionTreasury = await DistributionTreasury.new();
+    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
+    await web3.eth.sendTransaction({to: suicidalMock.address, value: distributionTotalEntitlementWei});
+    await suicidalMock.die();
   }
   // This has to be done always
   try {
@@ -222,6 +227,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   await initialAirdrop.claimGovernance({ from: deployerAccount.address })
   
   spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
+  await initialAirdrop.setLatestAirdropStart(parameters.initialAirdopLatestStart);
 
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);
@@ -280,7 +286,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
   // Team escrow contract
-  const teamEscrow = await TeamEscrow.new(deployerAccount.address, 0);
+  const teamEscrow = await TeamEscrow.new(deployerAccount.address, parameters.distributionLatestEntitlementStart);
   spewNewContractInfo(contracts, addressUpdaterContracts, TeamEscrow.contractName, `TeamEscrow.sol`, teamEscrow.address, quiet);
 
   // Inflation allocation needs to know about reward managers
@@ -317,11 +323,10 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Distribution contracts
   let distributionToDelegators: DistributionToDelegatorsInstance;
   if (parameters.deployDistributionContract) {
-    const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address);
+    const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address, parameters.distributionLatestEntitlementStart);
     spewNewContractInfo(contracts, addressUpdaterContracts, Distribution.contractName, `Distribution.sol`, distribution.address, quiet);
 
-    const totalEntitlementWei = BN(parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
-    distributionToDelegators = await DistributionToDelegators.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, distributionTreasury.address, totalEntitlementWei);
+    distributionToDelegators = await DistributionToDelegators.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, distributionTreasury.address, distributionTotalEntitlementWei, parameters.distributionLatestEntitlementStart);
     spewNewContractInfo(contracts, addressUpdaterContracts, DistributionToDelegators.contractName, `DistributionToDelegators.sol`, distributionToDelegators.address, quiet);
 
     await distributionTreasury.setContracts(distribution.address, distributionToDelegators.address);

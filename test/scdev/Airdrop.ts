@@ -1,7 +1,7 @@
 import { timeStamp } from "console";
 import {
-  DistributionContract,
-  DistributionInstance,
+  DistributionMockContract,
+  DistributionMockInstance,
   DistributionTreasuryContract,
   DistributionTreasuryInstance
 } from "../../typechain-truffle";
@@ -77,8 +77,8 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
 
   let DistributionTreasury: DistributionTreasuryContract;
   let distributionTreasury: DistributionTreasuryInstance;
-  let Distribution: DistributionContract;
-  let distribution: DistributionInstance;
+  let Distribution: DistributionMockContract;
+  let distribution: DistributionMockInstance;
 
   let parsedAirdrop: ProcessedLineItem[];
 
@@ -94,10 +94,10 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
 
     // Contract artifact definitions
     DistributionTreasury = artifacts.require("DistributionTreasury");
-    Distribution = artifacts.require("Distribution");
+    Distribution = artifacts.require("DistributionMock");
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
-    distribution = await Distribution.new(genesisGovernanceAccount, distributionTreasury.address);
+    distribution = await Distribution.new(genesisGovernanceAccount, distributionTreasury.address, (await time.latest()).addn(10*24*60*60));
 
     parsedAirdrop = parseAndProcessData("../../airdrop/data/export.csv");
   });
