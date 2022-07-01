@@ -325,7 +325,8 @@ abstract contract Governor is
     ) internal returns (uint256) {
         (uint256 votePowerBlock, uint256 rewardEpochTimestamp) = _calculateVotePowerBlock();
         uint256 totalWrappedSupply = totalVotePowerAt(votePowerBlock);
-        require(totalWrappedSupply >= supply.getCirculatingSupplyAt(votePowerBlock).mulDiv(wrappingThreshold(), MAX_BIPS), 
+        require(totalWrappedSupply >= 
+            supply.getCirculatingSupplyAt(votePowerBlock).mulDiv(wrappingThreshold(), MAX_BIPS), 
             "wrapped supply too low");
 
         require(_isValidProposer(msg.sender, votePowerBlock), "submitter is not eligible to submit a proposal");
