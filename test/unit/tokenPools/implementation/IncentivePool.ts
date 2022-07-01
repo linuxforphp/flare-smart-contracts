@@ -29,8 +29,10 @@ const IncentivePoolAllocation = artifacts.require("IncentivePoolAllocation");
 const DateTimeContract = artifacts.require("BokkyPooBahsDateTimeContract");
 
 const ERR_TOPUP_LOW = "topup low";
+const ERR_TOPUP_HIGH = "topup high";
 const ONLY_GOVERNANCE_MSG = "only governance";
 const ERR_IS_ZERO = "address is 0";
+const ERR_TREASURY_ONLY = "treasury only";
 
 const INCENTIVEAUTHORIZED_EVENT = "IncentiveAuthorized";
 const ANNUM_INITIALIZED_EVENT = "NewAnnumInitialized";
@@ -174,6 +176,14 @@ contract(`IncentivePool.sol; ${getTestFile(__filename)}; Incentive pool unit tes
       // Assert
       const { 4: recognizedIncentive } = await incentivePool.getTotals();
       assert.equal(recognizedIncentive.toNumber(), incentiveForAnnum);
+    });
+
+    it("Should revert sending founds if not treasury contract", async () => {
+      // Assemble
+      // Act
+      const res = web3.eth.sendTransaction({ from: accounts[0], to: incentivePool.address, value: 500 });
+      // Assert
+      await expectRevert(res, ERR_TREASURY_ONLY)
     });
 
     it("Should initialize the annum", async () => {
@@ -531,6 +541,14 @@ contract(`IncentivePool.sol; ${getTestFile(__filename)}; Incentive pool unit tes
       const setPromise = incentivePool.setTopupConfiguration((await MockContract.new()).address, TopupType.FACTOROFDAILYAUTHORIZED, 100);
       // Require
       await expectRevert(setPromise, ERR_TOPUP_LOW);
+    });
+
+    it("Should require topup factor less than or equal to 4 (x100) if using daily authorized", async () => {
+      // Assemble
+      // Act
+      const setPromise = incentivePool.setTopupConfiguration((await MockContract.new()).address, TopupType.FACTOROFDAILYAUTHORIZED, 401);
+      // Require
+      await expectRevert(setPromise, ERR_TOPUP_HIGH);
     });
 
     it("Should disregard topup factor if using allauthorized", async () => {

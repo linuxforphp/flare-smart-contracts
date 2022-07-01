@@ -313,6 +313,15 @@ contract(`Distribution.sol; ${getTestFile(__filename)}; Distribution unit tests`
       await bulkLoad(BN(1000));
     });
 
+    it("Should ignore loading bulk again", async () => {
+      // Assemble
+      // Act
+      await bulkLoad(BN(1000));
+      // Assert
+      const totalEntitlementWei = await distribution.totalEntitlementWei();
+      assert.equal(totalEntitlementWei.toNumber(), 8500);
+    });
+
     it("Should bulk load and total account entitlement balances", async () => {
       // Assemble
       // Act

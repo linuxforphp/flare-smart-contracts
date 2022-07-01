@@ -41,6 +41,14 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
             await expectRevert(tx, ONLY_GOVERNANCE_MSG);
         });
 
+        it("Should fail calling setContracts twice", async() => {
+            await treasury.initialiseFixedAddress();
+            let governance = await treasury.governance();
+            await treasury.setContracts(accounts[100], accounts[101], { from: governance });
+            let tx = treasury.setContracts(accounts[100], accounts[101], { from: governance });
+            await expectRevert(tx, ERR_ALREADY_SET);
+        });
+
         it("Should fail calling setContracts to zero address", async() => {
             await treasury.initialiseFixedAddress();
             let governance = await treasury.governance();
