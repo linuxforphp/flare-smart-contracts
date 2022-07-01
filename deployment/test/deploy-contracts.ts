@@ -265,7 +265,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       // Act
       const latestAirdropStartTs = await initialAirdrop.latestAirdropStartTs();
       // Assert
-      assert.equal(latestAirdropStartTs.toNumber(), parameters.initialAirdopLatestStart);
+      assert.equal(latestAirdropStartTs.toNumber(), parameters.initialAirdropLatestStart);
     });
   });
 
@@ -793,9 +793,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY,
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.TEAM_ESCROW,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER,
-        Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.DELEGATION_ACCOUNT_MANAGER];
+        Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP];
 
       if (parameters.deployDistributionContract) {
+        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
@@ -811,9 +812,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
         Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.DELEGATION_ACCOUNT_MANAGER];
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION];
 
       if (parameters.deployDistributionContract) {
+        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
 

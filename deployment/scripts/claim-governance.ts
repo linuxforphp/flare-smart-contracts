@@ -75,8 +75,7 @@ export async function claimGovernance(
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
   const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
-  const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
-
+  
   // Claim
   await addressUpdater.claimGovernance({from: claimantAccount.address});
   await supply.claimGovernance({from: claimantAccount.address});
@@ -89,6 +88,8 @@ export async function claimGovernance(
     await distribution.claimGovernance({from: claimantAccount.address});
     const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
     await distributionToDelegators.claimGovernance({from: claimantAccount.address});
+    const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+    await delegationAccountManager.claimGovernance({from: claimantAccount.address});
   }
   await incentivePoolTreasury.claimGovernance({from: claimantAccount.address});
   await incentivePool.claimGovernance({from: claimantAccount.address});
@@ -102,5 +103,4 @@ export async function claimGovernance(
   await ftsoRegistry.claimGovernance({from: claimantAccount.address});
   await wNat.claimGovernance({from: claimantAccount.address});
   await teamEscrow.claimGovernance({from: claimantAccount.address});
-  await delegationAccountManager.claimGovernance({from: claimantAccount.address});
 }

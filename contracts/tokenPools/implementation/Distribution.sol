@@ -117,8 +117,9 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     /**
      * @notice Method to set addresses and their respective balances in batches to this contract (airdrop)
      * @param toAddress array of adresses we are adding in batch
-     * @param balance array of balances to be airdropped to respective accounts
+     * @param balance array of balances to be airdropped to respective accounts (total amount - 100%)
      * @dev Note that toAddress and balance arrays must be equal length
+     * @dev Note that script must use the same batches to fill data (if restarted), otherwise duplicates may occure
      */
     function setAirdropBalances(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);

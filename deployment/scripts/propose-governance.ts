@@ -77,8 +77,7 @@ export async function proposeGovernance(
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY)); 
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
   const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
-  const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
-
+  
   if (!quiet) {
     console.error(`Proposed address is ${newGovernanceAccountAddress}`);
   }
@@ -95,6 +94,8 @@ export async function proposeGovernance(
     await distribution.proposeGovernance(newGovernanceAccountAddress);
     const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
     await distributionToDelegators.proposeGovernance(newGovernanceAccountAddress);
+    const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+    await delegationAccountManager.proposeGovernance(newGovernanceAccountAddress);
   }
   await incentivePoolTreasury.proposeGovernance(newGovernanceAccountAddress);
   await incentivePool.proposeGovernance(newGovernanceAccountAddress);
@@ -108,5 +109,4 @@ export async function proposeGovernance(
   await ftsoRegistry.proposeGovernance(newGovernanceAccountAddress);
   await wNat.proposeGovernance(newGovernanceAccountAddress);
   await teamEscrow.proposeGovernance(newGovernanceAccountAddress);
-  await delegationAccountManager.proposeGovernance(newGovernanceAccountAddress);
 }

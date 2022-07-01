@@ -78,8 +78,7 @@ export async function transferGovernance(
   const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
   const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
   const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
-  const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
-
+  
   // Transfer
   await addressUpdater.transferGovernance(newGovernanceAccountAddress);
   await supply.transferGovernance(newGovernanceAccountAddress);
@@ -92,6 +91,8 @@ export async function transferGovernance(
     await distribution.transferGovernance(newGovernanceAccountAddress);
     const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
     await distributionToDelegators.transferGovernance(newGovernanceAccountAddress);
+    const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+    await delegationAccountManager.transferGovernance(newGovernanceAccountAddress);
   }
   await incentivePoolTreasury.transferGovernance(newGovernanceAccountAddress);
   await incentivePool.transferGovernance(newGovernanceAccountAddress);
@@ -105,5 +106,4 @@ export async function transferGovernance(
   await ftsoRegistry.transferGovernance(newGovernanceAccountAddress);
   await wNat.transferGovernance(newGovernanceAccountAddress);
   await teamEscrow.transferGovernance(newGovernanceAccountAddress);
-  await delegationAccountManager.transferGovernance(newGovernanceAccountAddress);
 }
