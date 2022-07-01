@@ -8,8 +8,6 @@ export async function switchToProductionMode(
     contracts: Contracts,
     deployerPrivateKey: string,
     genesisGovernancePrivateKey: string,
-    governanceExecutorPublicKey: string,
-    governanceTimelock: number,
     distributionDeployed: boolean,
     quiet: boolean = false
 ) {
@@ -94,57 +92,30 @@ export async function switchToProductionMode(
     const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
     const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
 
-    // set executor (with initial governance, so that we don't need multisig)
-    await flareDaemon.setGovernanceExecutor(governanceExecutorPublicKey, { from: genesisGovernanceAccount.address });
-    await priceSubmitter.setGovernanceExecutor(governanceExecutorPublicKey, { from: genesisGovernanceAccount.address });
-    await distributionTreasury.setGovernanceExecutor(governanceExecutorPublicKey, { from: genesisGovernanceAccount.address });
-    await incentivePoolTreasury.setGovernanceExecutor(governanceExecutorPublicKey, { from: genesisGovernanceAccount.address });
-    await initialAirdrop.setGovernanceExecutor(governanceExecutorPublicKey, { from: genesisGovernanceAccount.address });
-    await addressUpdater.setGovernanceExecutor(governanceExecutorPublicKey);
-    await supply.setGovernanceExecutor(governanceExecutorPublicKey);
-    await inflation.setGovernanceExecutor(governanceExecutorPublicKey);
-    await inflationAllocation.setGovernanceExecutor(governanceExecutorPublicKey);
-    await ftsoRewardManager.setGovernanceExecutor(governanceExecutorPublicKey);
-    if (distributionDeployed) {
-        const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
-        const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
-        await distribution.setGovernanceExecutor(governanceExecutorPublicKey);
-        await distributionToDelegators.setGovernanceExecutor(governanceExecutorPublicKey);
-    }
-    await incentivePool.setGovernanceExecutor(governanceExecutorPublicKey);
-    await incentivePoolAllocation.setGovernanceExecutor(governanceExecutorPublicKey);
-    await ftsoManager.setGovernanceExecutor(governanceExecutorPublicKey);
-    await voterWhitelister.setGovernanceExecutor(governanceExecutorPublicKey);
-    await cleanupBlockNumberManager.setGovernanceExecutor(governanceExecutorPublicKey);
-    await ftsoRegistry.setGovernanceExecutor(governanceExecutorPublicKey);
-    await wNat.setGovernanceExecutor(governanceExecutorPublicKey);
-    await teamEscrow.setGovernanceExecutor(governanceExecutorPublicKey);
-    await delegationAccountManager.setGovernanceExecutor(governanceExecutorPublicKey);
-    
     // switch to production mode
-    await flareDaemon.switchToProductionMode(governanceAddressPointer.address, governanceTimelock, { from: genesisGovernanceAccount.address });
-    await priceSubmitter.switchToProductionMode(governanceAddressPointer.address, governanceTimelock, { from: genesisGovernanceAccount.address });
-    await distributionTreasury.switchToProductionMode(governanceAddressPointer.address, governanceTimelock, { from: genesisGovernanceAccount.address });
-    await incentivePoolTreasury.switchToProductionMode(governanceAddressPointer.address, governanceTimelock, { from: genesisGovernanceAccount.address });
-    await initialAirdrop.switchToProductionMode(governanceAddressPointer.address, governanceTimelock, { from: genesisGovernanceAccount.address });
-    await addressUpdater.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await supply.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await inflation.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await inflationAllocation.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await ftsoRewardManager.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
+    await flareDaemon.switchToProductionMode(governanceAddressPointer.address, { from: genesisGovernanceAccount.address });
+    await priceSubmitter.switchToProductionMode(governanceAddressPointer.address, { from: genesisGovernanceAccount.address });
+    await distributionTreasury.switchToProductionMode(governanceAddressPointer.address, { from: genesisGovernanceAccount.address });
+    await incentivePoolTreasury.switchToProductionMode(governanceAddressPointer.address, { from: genesisGovernanceAccount.address });
+    await initialAirdrop.switchToProductionMode(governanceAddressPointer.address, { from: genesisGovernanceAccount.address });
+    await addressUpdater.switchToProductionMode(governanceAddressPointer.address);
+    await supply.switchToProductionMode(governanceAddressPointer.address);
+    await inflation.switchToProductionMode(governanceAddressPointer.address);
+    await inflationAllocation.switchToProductionMode(governanceAddressPointer.address);
+    await ftsoRewardManager.switchToProductionMode(governanceAddressPointer.address);
     if (distributionDeployed) {
         const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
         const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
-        await distribution.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-        await distributionToDelegators.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
+        await distribution.switchToProductionMode(governanceAddressPointer.address);
+        await distributionToDelegators.switchToProductionMode(governanceAddressPointer.address);
     }
-    await incentivePool.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await incentivePoolAllocation.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await ftsoManager.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await voterWhitelister.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await cleanupBlockNumberManager.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await ftsoRegistry.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await wNat.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await teamEscrow.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
-    await delegationAccountManager.switchToProductionMode(governanceAddressPointer.address, governanceTimelock);
+    await incentivePool.switchToProductionMode(governanceAddressPointer.address);
+    await incentivePoolAllocation.switchToProductionMode(governanceAddressPointer.address);
+    await ftsoManager.switchToProductionMode(governanceAddressPointer.address);
+    await voterWhitelister.switchToProductionMode(governanceAddressPointer.address);
+    await cleanupBlockNumberManager.switchToProductionMode(governanceAddressPointer.address);
+    await ftsoRegistry.switchToProductionMode(governanceAddressPointer.address);
+    await wNat.switchToProductionMode(governanceAddressPointer.address);
+    await teamEscrow.switchToProductionMode(governanceAddressPointer.address);
+    await delegationAccountManager.switchToProductionMode(governanceAddressPointer.address);
 }

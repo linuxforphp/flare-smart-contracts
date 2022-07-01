@@ -43,7 +43,6 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
     let signers: SignerWithAddress[];
     let governance: SignerWithAddress;
     let executor: SignerWithAddress;
-    let timelock: number;
 
     // contract instances
     let flareDaemon: FlareDaemon;
@@ -266,7 +265,6 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         eventDecoder.addAddress('governance', governance.address);
         executor = signerForAddress(parameters.governanceExecutorPublicKey);
         eventDecoder.addAddress('executor', executor.address);
-        timelock = parameters.governanceTimelock;
         // set runner
         transactionRunner = new EthersTransactionRunner(networkType, signers[0], flareDaemon, eventDecoder);
         transactionRunner.openLog("test_logs/end-to-end-fuzzing.log");

@@ -165,8 +165,6 @@ task("switch-to-production-mode", "Switch governed contracts to production mode.
         contracts,
         parameters.deployerPrivateKey,
         parameters.genesisGovernancePrivateKey,
-        parameters.governanceExecutorPublicKey,
-        parameters.governanceTimelock,
         parameters.deployDistributionContract,
         args.quiet
       );

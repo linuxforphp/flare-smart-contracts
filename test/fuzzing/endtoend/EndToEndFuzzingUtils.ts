@@ -37,7 +37,7 @@ export async function internalFullDeploy(parameters: any, quiet: boolean) {
         parameters.inflationReceivers, parameters.inflationGasLimit, parameters.ftsoManagerGasLimit, parameters.incentivePoolGasLimit, quiet);
     await activateManagers(hre, contracts, parameters.deployerPrivateKey, quiet);
     await switchToProductionMode(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey, 
-        parameters.governanceExecutorPublicKey, parameters.governanceTimelock, parameters.deployDistributionContract, quiet);
+        parameters.deployDistributionContract, quiet);
     return deployed;
 }
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./GovernanceAddressPointer.sol";
 
 /**
@@ -18,23 +17,22 @@ abstract contract GovernedBase {
     }
     
     address private initialGovernance;
+
     bool private initialised;
     
     GovernanceAddressPointer public governanceAddressPointer;
-    uint64 public governanceTimelock;
+
     bool public productionMode;
     
     bool private executing;
     
-    address public governanceExecutor;
-
     mapping(bytes4 => TimelockedCall) private timelockedCalls;
     
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
     
     event GovernanceInitialised(address initialGovernance);
-    event GovernedProductionModeEntered(address governanceAddressPointer, uint256 timelock);
+    event GovernedProductionModeEntered(address governanceAddressPointer);
     
     modifier onlyGovernance {
         if (executing || !productionMode) {
@@ -62,7 +60,7 @@ abstract contract GovernedBase {
      * @param _selector The method selector (only one timelocked call per method is stored).
      */
     function executeGovernanceCall(bytes4 _selector) external {
-        require(msg.sender == governanceExecutor, "only executor");
+        require(governanceAddressPointer.isExecutor(msg.sender), "only executor");
         TimelockedCall storage call = timelockedCalls[_selector];
         require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
         require(block.timestamp >= call.allowedAfterTimestamp, "timelock: not allowed yet");
@@ -77,34 +75,22 @@ abstract contract GovernedBase {
     }
     
     /**
-     * @notice Set the address of the account that is allowed to execute the timelocked governance calls
-     * once the timelock period expires.
-     * It isn't very dangerous to allow for anyone to execute timelocked calls, but we reserve the right to
-     * make sure the timing of the execution is under control.
-     */
-    function setGovernanceExecutor(address _executor) external onlyImmediateGovernance {
-        governanceExecutor = _executor;
-    }
-    
-    /**
      * Enter the production mode after all the initial governance settings have been set.
      * This enables timelocks and the governance is afterwards obtained by calling 
      * governanceAddressPointer.getGovernanceAddress(). 
      * @param _governanceAddressPointer The value for the governanceAddressPointer contract address.
      *    All governed contracts should have the same governanceAddressPointer.
-     * @param _timelock The timelock to be used (the time before governance calls a method and it can be executed).
      */
-    function switchToProductionMode(GovernanceAddressPointer _governanceAddressPointer, uint256 _timelock) external {
+    function switchToProductionMode(GovernanceAddressPointer _governanceAddressPointer) external {
         _checkOnlyGovernance();
         require(!productionMode, "already in production mode");
         require(address(_governanceAddressPointer) != address(0) && 
             _governanceAddressPointer.getGovernanceAddress() != address(0),
             "invalid governance pointer");
         governanceAddressPointer = _governanceAddressPointer;
-        governanceTimelock = SafeCast.toUint64(_timelock);
         initialGovernance = address(0);
         productionMode = true;
-        emit GovernedProductionModeEntered(address(_governanceAddressPointer), _timelock);
+        emit GovernedProductionModeEntered(address(_governanceAddressPointer));
     }
 
     /**
@@ -143,7 +129,8 @@ abstract contract GovernedBase {
         assembly {
             selector := calldataload(_data.offset)
         }
-        uint256 allowedAt = block.timestamp + governanceTimelock;
+        uint256 timelock = governanceAddressPointer.getTimelock();
+        uint256 allowedAt = block.timestamp + timelock;
         timelockedCalls[selector] = TimelockedCall({
             allowedAfterTimestamp: allowedAt,
             encodedCall: _data

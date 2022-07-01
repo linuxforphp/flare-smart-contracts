@@ -217,7 +217,9 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
 
   // GovernanceAddressPointer (do not add it to AddressUpdater)
-  const governanceAddressPointer = await GovernanceAddressPointer.new(parameters.governancePublicKey);
+  // default executors are governancePublicKey and governanceExecutorPublicKey
+  const governanceAddressPointer = await GovernanceAddressPointer.new(parameters.governancePublicKey, 
+    parameters.governanceTimelock, [parameters.governancePublicKey, parameters.governanceExecutorPublicKey]);
   spewNewContractInfo(contracts, null, GovernanceAddressPointer.contractName, `GovernanceAddressPointer.sol`, governanceAddressPointer.address, quiet);
 
   // AddressUpdater

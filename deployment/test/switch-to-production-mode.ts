@@ -51,20 +51,10 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     assert.equal(productionMode, true);
   }
 
-  async function checkTimelock(contractName: string) {
-    // Assemble
-    const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
-    // Act
-    const timelock = await governedBase.governanceTimelock();
-    // Assert
-    assert.equal(timelock.toNumber(), parameters.governanceTimelock);
-  }
-  
   async function checkProductionSwitch(contractName: string) {
     await checkProductionMode(contractName);
     await checkGovernance(contractName);
     await checkGovernancePointerContract(contractName);
-    await checkTimelock(contractName);
   }
   
   describe(Contracts.ADDRESS_UPDATER, async () => {

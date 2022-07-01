@@ -461,9 +461,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should switch to production mode", async () => {
       // Assemble
       let initialProductionMode = await flareDaemon.productionMode();
-      const governanceAddressPointer = await GovernanceAddressPointer.new(accounts[1]);
+      const governanceAddressPointer = await GovernanceAddressPointer.new(accounts[1], 1, []);
       // Act
-      await flareDaemon.switchToProductionMode(governanceAddressPointer.address, 1, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.switchToProductionMode(governanceAddressPointer.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Assert
       let newProductionMode = await flareDaemon.productionMode();
       let newGovernance = await flareDaemon.governance();

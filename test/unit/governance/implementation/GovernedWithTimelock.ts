@@ -15,9 +15,8 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     
     beforeEach(async () => {
         mock = await GovernedWithTimelockMock.new(initialGovernance);
-        const governanceAddressPointer = await GovernanceAddressPointer.new(governance);
-        await mock.switchToProductionMode(governanceAddressPointer.address, 3600, { from: initialGovernance });
-        await mock.setGovernanceExecutor(executor, { from: governance });
+        const governanceAddressPointer = await GovernanceAddressPointer.new(governance, 3600, [governance, executor]);
+        await mock.switchToProductionMode(governanceAddressPointer.address, { from: initialGovernance });
     });
 
     it("allow direct changes in deployment phase", async () => {
@@ -71,4 +70,10 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
         await expectRevert(mock.changeB(20), "only governance");
     });
 
+    it("require executor", async () => {
+        const res = await mock.changeA(15, { from: governance });
+        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        await time.increase(3600);
+        await expectRevert(mock.executeGovernanceCall(selector, { from: accounts[5] }), "only executor");
+    });
 });

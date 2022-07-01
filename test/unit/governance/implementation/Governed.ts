@@ -13,6 +13,7 @@ const GOVERNANCE_ZERO = "_governance zero";
 contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async accounts => {
     const initialGovernance = accounts[1];
     const productionGovernance = accounts[2];
+    const productionExecutor = accounts[3];
 
     // contains a fresh contract for each test
     let governed: GovernedInstance;
@@ -20,7 +21,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
     beforeEach(async () => {
         governed = await Governed.new(initialGovernance);
-        governanceAddressPointer = await GovernanceAddressPointer.new(productionGovernance);
+        governanceAddressPointer = await GovernanceAddressPointer.new(productionGovernance, 10, [productionGovernance, productionExecutor]);
     });
 
     describe("initialise", async () => {
@@ -48,30 +49,30 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         it("Should switch to production", async () => {
             // Assemble
             // Act
-            const tx = await governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: initialGovernance });
+            const tx = await governed.switchToProductionMode(governanceAddressPointer.address, { from: initialGovernance });
             // Assert
             const currentGovernance = await governed.governance();
             assert.equal(currentGovernance, productionGovernance);
-            expectEvent(tx, "GovernedProductionModeEntered", { governanceAddressPointer: governanceAddressPointer.address, timelock: "10" });
+            expectEvent(tx, "GovernedProductionModeEntered", { governanceAddressPointer: governanceAddressPointer.address });
         });
 
         it("Should reject switch if not from governed address", async () => {
             // Assemble
             // Act
-            const promiseTransfer = governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: accounts[3] });
+            const promiseTransfer = governed.switchToProductionMode(governanceAddressPointer.address, { from: accounts[3] });
             // Assert
             await expectRevert(promiseTransfer, ONLY_GOVERNANCE_MSG);
         });
 
         it("Should not switch to production twice", async () => {
             // Assemble
-            await governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: initialGovernance });
+            await governed.switchToProductionMode(governanceAddressPointer.address, { from: initialGovernance });
             // Act
-            const promiseTransfer1 = governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: initialGovernance });
+            const promiseTransfer1 = governed.switchToProductionMode(governanceAddressPointer.address, { from: initialGovernance });
             // Assert
             await expectRevert(promiseTransfer1, ONLY_GOVERNANCE_MSG);
             // Act
-            const promiseTransfer2 = governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: productionGovernance });
+            const promiseTransfer2 = governed.switchToProductionMode(governanceAddressPointer.address, { from: productionGovernance });
             // Assert
             await expectRevert(promiseTransfer2, "already in production mode");
         });
@@ -79,11 +80,11 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         it("Should use valid governance pointer", async () => {
             // Assemble
             // Act
-            const promiseTransfer1 = governed.switchToProductionMode(constants.ZERO_ADDRESS, 10, { from: initialGovernance });
+            const promiseTransfer1 = governed.switchToProductionMode(constants.ZERO_ADDRESS, { from: initialGovernance });
             // Assert
             await expectRevert(promiseTransfer1, "invalid governance pointer");
             // Act
-            const promiseTransfer2 = governed.switchToProductionMode(accounts[8], 10, { from: initialGovernance });
+            const promiseTransfer2 = governed.switchToProductionMode(accounts[8], { from: initialGovernance });
             // Assert
             await expectRevert(promiseTransfer2, "function call to a non-contract account");
         });
@@ -91,45 +92,17 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         it("Should have new governance parameters after switching", async () => {
             // Assemble
             const startGovernance = await governed.governance();
-            const startTimelock = await governed.governanceTimelock();
             const startProductionMode = await governed.productionMode();
             // Act
-            const tx = await governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: initialGovernance });
+            const tx = await governed.switchToProductionMode(governanceAddressPointer.address, { from: initialGovernance });
             // Assert
             const newGovernance = await governed.governance();
-            const newTimelock = await governed.governanceTimelock();
             const newProductionMode = await governed.productionMode();
             //
             assert.equal(startGovernance, initialGovernance);
-            assert.equal(startTimelock.toNumber(), 0);
             assert.equal(startProductionMode, false);
             assert.equal(newGovernance, productionGovernance);
-            assert.equal(newTimelock.toNumber(), 10);
             assert.equal(newProductionMode, true);
-        });
-    });
-    
-    describe("set executor", async () => {
-        it("Should set executor", async () => {
-            const startExecutor = await governed.governanceExecutor();
-            await governed.setGovernanceExecutor(accounts[10], { from: initialGovernance });
-            const executor = await governed.governanceExecutor();
-            assert.equal(startExecutor, constants.ZERO_ADDRESS);
-            assert.equal(executor, accounts[10]);
-        });
-        
-        it("Should set executor immediately in production mode", async () => {
-            const startExecutor = await governed.governanceExecutor();
-            await governed.switchToProductionMode(governanceAddressPointer.address, 10, { from: initialGovernance });
-            await governed.setGovernanceExecutor(accounts[10], { from: productionGovernance });
-            const executor = await governed.governanceExecutor();
-            assert.equal(startExecutor, constants.ZERO_ADDRESS);
-            assert.equal(executor, accounts[10]);
-        });
-
-        it("Only governance can set executor", async () => {
-            const promise = governed.setGovernanceExecutor(accounts[10], { from: accounts[5] });
-            await expectRevert(promise, ONLY_GOVERNANCE_MSG);
         });
     });
 });
