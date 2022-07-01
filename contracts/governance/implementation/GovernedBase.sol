@@ -30,6 +30,7 @@ abstract contract GovernedBase {
     
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
+    event TimelockedGovernanceCallCanceled(bytes4 selector, uint256 timestamp);
     
     event GovernanceInitialised(address initialGovernance);
     event GovernedProductionModeEntered(address governanceAddressPointer);
@@ -72,6 +73,17 @@ abstract contract GovernedBase {
         executing = false;
         emit TimelockedGovernanceCallExecuted(_selector, block.timestamp);
         _passReturnOrRevert(success);
+    }
+    
+    /**
+     * Cancel a timelocked governance call before it has been executed.
+     * @dev Only governance can call this method.
+     * @param _selector The method selector.
+     */
+    function cancelGovernanceCall(bytes4 _selector) external onlyImmediateGovernance {
+        require(timelockedCalls[_selector].allowedAfterTimestamp != 0, "timelock: invalid selector");
+        emit TimelockedGovernanceCallCanceled(_selector, block.timestamp);
+        delete timelockedCalls[_selector];
     }
     
     /**
