@@ -55,10 +55,12 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       expect(locked.eq(lockedBalance[0]));
     });
 
-    it("Should prevent double locking", async() => {
-      await escrow.lock({from: claimants[0], value: BN(await web3.eth.getBalance(claimants[0])).divn(10)})
-      const tx = escrow.lock({from: claimants[0], value: BN(await web3.eth.getBalance(claimants[0])).divn(10)})
-      await expectRevert(tx, "Already locked");
+    it("Should be able to lock some more", async() => {
+      const locked = BN(await web3.eth.getBalance(claimants[0])).divn(10);
+      await escrow.lock({from: claimants[0], value: locked});
+      await escrow.lock({from: claimants[0], value: locked});
+      const lockedBalance = await escrow.lockedAmounts(claimants[0]);
+      expect(locked.muln(2).eq(lockedBalance[0]));
     });
 
     it("Should not allow claiming start to be pushed in the past", async () => {

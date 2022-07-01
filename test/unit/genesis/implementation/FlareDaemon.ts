@@ -760,7 +760,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
         [ADDRESS_UPDATER, mockInflation.address], {from: ADDRESS_UPDATER});
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
-      await flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(55000000)), { from: GOVERNANCE_GENESIS_ADDRESS });
+      await flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(66000000)), { from: GOVERNANCE_GENESIS_ADDRESS });
     });
 
     it("Should make sure setMaxMintRequest changes are not too large", async () => {
@@ -771,7 +771,7 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
       await mockInflation.setFlareDaemon(flareDaemon.address);
 
       // the request should fail as we can only increase the maximum by 10%
-      await expectRevert(flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(55000001)),
+      await expectRevert(flareDaemon.setMaxMintingRequest(web3.utils.toWei(BN(66000001)),
         { from: GOVERNANCE_GENESIS_ADDRESS }),
         "max mint too high");
     });

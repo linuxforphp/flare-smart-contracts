@@ -138,9 +138,8 @@ contract TeamEscrow is Governed, IITokenPool  {
     }
 
     function _lockTo(address _target) internal {
-        require(lockedAmounts[_target].totalLockedAmountWei == 0, "Already locked");
         totalLockedAmountWei += msg.value;
-        lockedAmounts[_target].totalLockedAmountWei = msg.value;
+        lockedAmounts[_target].totalLockedAmountWei += msg.value;
         // Emit the locked event
         emit AccountLocked(_target, msg.value);
     }
