@@ -11,8 +11,8 @@ import {
   FtsoManagerInstance, FtsoRewardManagerContract,
   FtsoRewardManagerInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
-  InflationInstance, SupplyContract,
-  SupplyInstance, WNatContract, WNatInstance
+  InflationInstance, InitialAirdropContract, InitialAirdropInstance, SupplyContract,
+  SupplyInstance, TeamEscrowContract, TeamEscrowInstance, WNatContract, WNatInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
@@ -251,6 +251,50 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.INITIAL_AIRDROP, async () => {
+    let InitialAirdrop: InitialAirdropContract;
+    let initialAirdrop: InitialAirdropInstance;
+
+    beforeEach(async () => {
+      InitialAirdrop = artifacts.require("InitialAirdrop");
+      initialAirdrop = await InitialAirdrop.at(contracts.getContractAddress(Contracts.INITIAL_AIRDROP));
+    });
+
+    it("Should know about latest start", async () => {
+      // Assemble
+      // Act
+      const latestAirdropStartTs = await initialAirdrop.latestAirdropStartTs();
+      // Assert
+      assert.equal(latestAirdropStartTs.toNumber(), parameters.initialAirdropLatestStart);
+    });
+  });
+
+  describe(Contracts.TEAM_ESCROW, async () => {
+    let TeamEscrow: TeamEscrowContract;
+    let teamEscrow: TeamEscrowInstance;
+
+    beforeEach(async () => {
+      TeamEscrow = artifacts.require("TeamEscrow");
+      teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
+    });
+
+    it("Should know about latest start", async () => {
+      // Assemble
+      // Act
+      const latestClaimStartTs = await teamEscrow.latestClaimStartTs();
+      // Assert
+      assert.equal(latestClaimStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
+    });
+
+    it("Should know about start", async () => {
+      // Assemble
+      // Act
+      const claimStartTs = await teamEscrow.claimStartTs();
+      // Assert
+      assert.equal(claimStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
+    });
+  });
+
   if (parameters.deployDistributionContract) {
     describe(Contracts.DISTRIBUTION_TREASURY, async () => {
       let DistributionTreasury: DistributionTreasuryContract;
@@ -305,6 +349,14 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         const address = await distribution.treasury();
         // Assert
         assert.equal(address, distributionTreasury.address);
+      });
+
+      it("Should know about latest start", async () => {
+        // Assemble
+        // Act
+        const latestEntitlementStartTs = await distribution.latestEntitlementStartTs();
+        // Assert
+        assert.equal(latestEntitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
       });
     });
 
@@ -371,6 +423,22 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         const totalEntitlementWei = await distributionToDelegators.totalEntitlementWei();
         // Assert
         assert.equal(totalEntitlementWei.toString(), parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
+      });
+
+      it("Should know about latest start", async () => {
+        // Assemble
+        // Act
+        const latestEntitlementStartTs = await distributionToDelegators.latestEntitlementStartTs();
+        // Assert
+        assert.equal(latestEntitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
+      });
+
+      it("Should know about start", async () => {
+        // Assemble
+        // Act
+        const entitlementStartTs = await distributionToDelegators.entitlementStartTs();
+        // Assert
+        assert.equal(entitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
       });
     });
   }
@@ -725,9 +793,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY,
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.TEAM_ESCROW,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER,
-        Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.DELEGATION_ACCOUNT_MANAGER];
+        Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP];
 
       if (parameters.deployDistributionContract) {
+        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
@@ -743,9 +812,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
         Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.DELEGATION_ACCOUNT_MANAGER];
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION];
 
       if (parameters.deployDistributionContract) {
+        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
 

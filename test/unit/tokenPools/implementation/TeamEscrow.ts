@@ -21,18 +21,30 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
   let escrow: TeamEscrowInstance;
   let claimants: string[] = [];
   const GOVERNANCE_ADDRESS = accounts[0];
+  let latestStart: BN;
 
   beforeEach(async () => {
-    escrow = await TeamEscrow.new(GOVERNANCE_ADDRESS, 0);
+    latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
+    escrow = await TeamEscrow.new(GOVERNANCE_ADDRESS, latestStart);
     // Build an array of claimant accounts
     for (let i = 0; i < 10; i++) {
       claimants[i] = accounts[i + 1];
     }
   });
 
+  describe("Basic", async() => {
+    it("Should revert if latest start time in the past", async () => {
+      // Assemble
+      // Act
+      const teamEscrowPromise = TeamEscrow.new(GOVERNANCE_ADDRESS, (await time.latest()).subn(5));
+      // Assert
+      await expectRevert(teamEscrowPromise, "In the past");
+    });
+  });
+
   describe("Locking", async() => {
     it("Should not be able to get claimbale bips", async() => {
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await expectRevert(escrow.getCurrentClaimablePercentBips(now), "Claiming not started");
     });
 
@@ -43,17 +55,65 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       expect(locked.eq(lockedBalance[0]));
     });
 
-    it("Should prevent double locking", async() => {
-      await escrow.lock({from: claimants[0], value: BN(await web3.eth.getBalance(claimants[0])).divn(10)})
-      const tx = escrow.lock({from: claimants[0], value: BN(await web3.eth.getBalance(claimants[0])).divn(10)})
-      await expectRevert(tx, "Already locked");
+    it("Should be able to lock some more", async() => {
+      const locked = BN(await web3.eth.getBalance(claimants[0])).divn(10);
+      await escrow.lock({from: claimants[0], value: locked});
+      await escrow.lock({from: claimants[0], value: locked});
+      const lockedBalance = await escrow.lockedAmounts(claimants[0]);
+      expect(locked.muln(2).eq(lockedBalance[0]));
     });
 
-    it("Should prevent governance to set timestamp twice", async() => {
-      const now = await time.latest();
-      await escrow.setClaimingStartTs(now.subn(10), {from: GOVERNANCE_ADDRESS});
-      const tx = escrow.setClaimingStartTs(now.addn(10), {from: GOVERNANCE_ADDRESS});
-      await expectRevert(tx, "Already set");
+    it("Should not allow claiming start to be pushed in the past", async () => {
+      // Assemble
+      const now = (await time.latest()).addn(10);
+      await escrow.setClaimingStartTs(now);
+      const claimStartTs = await escrow.claimStartTs();
+      assert(claimStartTs.eq(now));
+      // Act
+      const before = now.subn(60 * 60 * 24 * 5);
+      const restart_promise = escrow.setClaimingStartTs(before);
+      // Assert
+      await expectRevert(restart_promise, "Wrong start timestamp");
+    });
+
+    it("Should allow claiming start to be pushed in the future", async () => {
+      // Assemble
+      const now = (await time.latest()).addn(10);
+      await escrow.setClaimingStartTs(now);
+      const claimStartTs = await escrow.claimStartTs();
+      assert(claimStartTs.eq(now));
+      // Act
+      const later = now.addn(60 * 60 * 24 * 5);
+      await escrow.setClaimingStartTs(later);
+      // Assert
+      const claimStartTs2 = await escrow.claimStartTs();
+      assert(claimStartTs2.eq(later));
+    });
+
+    it("Should not allow claiming start to be pushed in the future if already started", async () => {
+      // Assemble
+      const now = (await time.latest()).addn(1);
+      await escrow.setClaimingStartTs(now);
+      const claimStartTs = await escrow.claimStartTs();
+      assert(claimStartTs.eq(now));
+      // Act
+      const later = now.addn(60 * 60 * 24 * 5);
+      const restart_promise = escrow.setClaimingStartTs(later);
+      // Assert
+      await expectRevert(restart_promise, "Already started");
+    });
+
+    it("Should not allow claiming start to be pushed to far in the future", async () => {
+      // Assemble
+      const now = (await time.latest()).addn(10);
+      await escrow.setClaimingStartTs(now);
+      const claimStartTs = await escrow.claimStartTs();
+      assert(claimStartTs.eq(now));
+      // Act
+      const later = now.subn(60 * 60 * 24 * 10);
+      const restart_promise = escrow.setClaimingStartTs(later);
+      // Assert
+      await expectRevert(restart_promise, "Wrong start timestamp");
     });
 
   })
@@ -63,7 +123,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
     it("Should not collect before start is set", async() => {
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(2);
 
       const tx = escrow.claim({from: claimants[0]});
       await expectRevert(tx, "Claiming not started");
@@ -81,7 +141,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
     it("Should not collect before start timestamp", async() => {
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
 
       const tx = escrow.claim({from: claimants[0]});
       await escrow.setClaimingStartTs(now.addn(200), {from: GOVERNANCE_ADDRESS});
@@ -96,7 +156,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // Lock some funds
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
 
       await time.increaseTo(now.addn(86400 * 31));
@@ -115,7 +175,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // Lock some funds
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
 
       await time.increaseTo(now.addn(86400 * 31));
@@ -145,7 +205,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // Lock some funds
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
 
       await time.increaseTo(now.addn(86400 * 31));
@@ -172,7 +232,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // Lock some funds
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
 
       await time.increaseTo(now.addn(86400 * 31));
@@ -213,7 +273,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // Lock some funds
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
 
       await time.increaseTo(now.addn(86400 * 31));
@@ -256,7 +316,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // Lock some funds
       const locked = BN(8500)
       await escrow.lock({from: claimants[0], value: locked});
-      const now = await time.latest();
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
 
       await time.increaseTo(now.addn(86400 * 31));
@@ -297,7 +357,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
        // Lock some funds
        const locked = BN(8500)
        await escrow.lock({from: claimants[0], value: locked});
-       const now = await time.latest();
+       const now = (await time.latest()).addn(1);
        await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
  
        await time.increaseTo(now.addn(86400 * 31));
@@ -358,7 +418,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       assert.equal(inflatableSupplyAfterLock2.toNumber(), initialCirculatingSupply - locked2.toNumber() - locked1.toNumber());
 
       // Move time forward
-      const now = await time.latest()
+      const now = (await time.latest()).addn(1);
       await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
       await time.increaseTo(now.addn(86400 * 30));
 

@@ -198,8 +198,18 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
   });
 
   describe(Contracts.DELEGATION_ACCOUNT_MANAGER, async () => {
-    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
+    it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async function() {
+      if (!parameters.deployDistributionContract) return this.skip();
       await checkProductionSwitch(Contracts.DELEGATION_ACCOUNT_MANAGER);
     });
+    it("Should not have deployed", async function () {
+      if (parameters.deployDistributionContract) return this.skip();
+      try {
+        await checkGovernance(Contracts.DELEGATION_ACCOUNT_MANAGER);
+        assert.fail('The expected Error was not thrown.');
+      } catch (err: any) {
+        assert.include(err.message, `${Contracts.DELEGATION_ACCOUNT_MANAGER} not found`);
+      }
   });
+});
 });

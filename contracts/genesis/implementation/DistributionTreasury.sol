@@ -18,7 +18,7 @@ contract DistributionTreasury is GovernedAtGenesis {
     string internal constant ERR_DISTRIBUTION_ONLY = "distribution only";
     string internal constant ERR_TOO_OFTEN = "too often";
     string internal constant ERR_TOO_MUCH = "too much";
-    string internal constant ERR_PULL_FAILED = "pull failed";
+    string internal constant ERR_SEND_FUNDS_FAILED = "send funds failed";
     string internal constant ERR_ALREADY_SET = "already set";
     string internal constant ERR_WRONG_ADDRESS = "wrong address";
     string internal constant ERR_ADDRESS_ZERO = "address zero";
@@ -30,8 +30,8 @@ contract DistributionTreasury is GovernedAtGenesis {
     uint256 public lastPullTs;
 
 
-    modifier onlyDistribution {
-        require (msg.sender == selectedDistribution, ERR_DISTRIBUTION_ONLY);
+    modifier onlyDistributionToDelegators {
+        require (msg.sender == selectedDistribution && msg.sender == distributionToDelegators, ERR_DISTRIBUTION_ONLY);
         _;
     }
 
@@ -64,21 +64,29 @@ contract DistributionTreasury is GovernedAtGenesis {
         require(_selectedDistribution == initialDistribution || _selectedDistribution == distributionToDelegators, 
             ERR_WRONG_ADDRESS);
         selectedDistribution = _selectedDistribution;
+        if (_selectedDistribution == initialDistribution) {
+            // send funds
+            _sendFunds(_selectedDistribution, address(this).balance);
+        }
     }
 
     /**
      * @notice Moves funds to the distribution contract (once per month)
      * @param _amountWei   The amount of wei to pull to distribution contract
      */
-    function pullFunds(uint256 _amountWei) external onlyDistribution {
+    function pullFunds(uint256 _amountWei) external onlyDistributionToDelegators {
         // this also serves as reentrancy guard, since any re-entry will happen in the same block
         require(lastPullTs + MAX_PULL_FREQUENCY_SEC <= block.timestamp, ERR_TOO_OFTEN);
-        require(_amountWei <= MAX_PULL_AMOUNT_WEI || selectedDistribution == initialDistribution, ERR_TOO_MUCH);
+        require(_amountWei <= MAX_PULL_AMOUNT_WEI, ERR_TOO_MUCH);
         lastPullTs = block.timestamp;
+        _sendFunds(msg.sender, _amountWei);
+    }
+
+    function _sendFunds(address _recipient, uint256 _amountWei) internal {
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send
-        (bool success, ) = msg.sender.call{value: _amountWei}("");
+        (bool success, ) = _recipient.call{value: _amountWei}("");
         /* solhint-enable avoid-low-level-calls */
-        require(success, ERR_PULL_FAILED);
+        require(success, ERR_SEND_FUNDS_FAILED);
     }
 }

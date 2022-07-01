@@ -22,7 +22,6 @@ const GasConsumer = artifacts.require("GasConsumer2");
 const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_ADDRESS_ZERO = "address zero";
 const ERR_BALANCE_TOO_LOW = "balance too low";
-const ERR_NOT_ZERO = "not zero";
 const ERR_IN_THE_PAST = "in the past";
 const ERR_OPT_OUT = "already opted out";
 const ERR_NOT_OPT_OUT = "not opted out"
@@ -32,6 +31,9 @@ const ERR_MONTH_EXPIRED = "month expired";
 const ERR_MONTH_NOT_CLAIMABLE = "month not claimable";
 const ERR_MONTH_NOT_CLAIMABLE_YET = "month not claimable yet";
 const ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero"
+const ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
+const ERR_ALREADY_STARTED = "already started";
+const ERR_TREASURY_ONLY = "treasury only";
 
 let priceSubmitterMock: MockContractInstance;
 let wNatMock: MockContractInstance;
@@ -51,10 +53,6 @@ async function bestowClaimableBalance(balance: BN) {
   await web3.eth.sendTransaction({ from: GOVERNANCE_GENESIS_ADDRESS, to: suicidalMock.address, value: balance });
   // Attacker dies
   await suicidalMock.die();
-  // set distribution contract
-  await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
-  // select distribution contract
-  await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 }
 
 // WARNING: using givenMethodReturn instead of givenCalldataReturn may cause problems
@@ -96,6 +94,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
   ADDRESS_UPDATER = accounts[16];
   INFLATION_ADDRESS = accounts[17];
   const totalEntitlementWei = toBN(100000);
+  let latestStart: BN;
 
 
   beforeEach(async () => {
@@ -105,8 +104,14 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10000000, 9000000, []);
     delegationAccountManagerMock = await MockContract.new();
     distributionTreasury = await DistributionTreasury.new();
+    await bestowClaimableBalance(totalEntitlementWei);
     await distributionTreasury.initialiseFixedAddress();
-    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei);
+    latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
+    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei, latestStart);
+    // set distribution contract
+    await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+    // select distribution contract
+    await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 
     await distribution.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.SUPPLY, Contracts.DELEGATION_ACCOUNT_MANAGER]),
@@ -120,14 +125,19 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
   });
 
   describe("Basic", async () => {
-    beforeEach(async () => {
-      await bestowClaimableBalance(totalEntitlementWei);
+
+    it("Should revert if not in balance", async () => {
+      // Assemble
+      // Act
+      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, PRICE_SUBMITTER_ADDRESS, distributionTreasury.address, totalEntitlementWei.addn(10), latestStart);
+      // Assert
+      await expectRevert(distributionPromise, ERR_BALANCE_TOO_LOW);
     });
 
     it("Should revert if price submitter contract zero", async () => {
       // Assemble
       // Act
-      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, distributionTreasury.address, totalEntitlementWei);
+      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, distributionTreasury.address, totalEntitlementWei, latestStart);
       // Assert
       await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
     });
@@ -135,9 +145,17 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     it("Should revert if treasury contract zero", async () => {
       // Assemble
       // Act
-      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, PRICE_SUBMITTER_ADDRESS, constants.ZERO_ADDRESS, totalEntitlementWei);
+      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, PRICE_SUBMITTER_ADDRESS, constants.ZERO_ADDRESS, totalEntitlementWei, latestStart);
       // Assert
       await expectRevert(distributionPromise, ERR_ADDRESS_ZERO);
+    });
+
+    it("Should revert if latest start time in the past", async () => {
+      // Assemble
+      // Act
+      const distributionPromise = DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, PRICE_SUBMITTER_ADDRESS, distributionTreasury.address, totalEntitlementWei, (await time.latest()).subn(5));
+      // Assert
+      await expectRevert(distributionPromise, ERR_IN_THE_PAST);
     });
 
     it("Should revert sending founds if not treasury contract", async () => {
@@ -145,7 +163,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       // Act
       const res = web3.eth.sendTransaction({ from: accounts[0], to: distribution.address, value: 500 });
       // Assert
-      await expectRevert(res, "treasury only")
+      await expectRevert(res, ERR_TREASURY_ONLY)
     });
 
     it("Should only opt out once", async () => {
@@ -214,9 +232,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
   });
 
   describe("Claiming", async () => {
-    beforeEach(async () => {
-      await bestowClaimableBalance(totalEntitlementWei);
-    });
 
     it("Should not be able to claim anything from month >= 36", async () => {
       // Assemble
@@ -514,7 +529,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     let nowTs: BN;
 
     beforeEach(async () => {
-      await bestowClaimableBalance(totalEntitlementWei);
       await time.advanceBlock();
       nowTs = (await time.latest()).addn(10);
       await distribution.setEntitlementStart(nowTs, {from: GOVERNANCE_ADDRESS});
@@ -560,7 +574,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
 
     it("Should start entitlement", async () => {
       // Assemble
-      await bestowClaimableBalance(totalEntitlementWei);
       // Act
       const now = (await time.latest()).addn(1);
       await distribution.setEntitlementStart(now, {from: GOVERNANCE_ADDRESS});
@@ -571,29 +584,17 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
 
     it("Should emit entitlement start event", async () => {
       // Assemble
-      await bestowClaimableBalance(totalEntitlementWei);
       // Act
       const now = (await time.latest()).addn(1);
       const startEvent = await distribution.setEntitlementStart(now, {from: GOVERNANCE_ADDRESS});
       // Assert
       const entitlementStartTs = await distribution.entitlementStartTs();
       assert(entitlementStartTs.eq(now));
-      expectEvent(startEvent, "EntitlementStarted");
-    });
-
-    it("Should not start entitlement if not in balance", async () => {
-      // Assemble
-      await bestowClaimableBalance(BN(8000));
-      // Act
-      const now = (await time.latest()).addn(1);
-      let start_promise = distribution.setEntitlementStart(now, {from: GOVERNANCE_ADDRESS});
-      // Assert
-      await expectRevert(start_promise, ERR_BALANCE_TOO_LOW);
+      expectEvent(startEvent, "EntitlementStart", {entitlementStartTs: now});
     });
 
     it("Should not start entitlement if not from governance", async () => {
       // Assemble
-      await bestowClaimableBalance(totalEntitlementWei);
       // Act
       const now = (await time.latest()).addn(1);
       let start_promise = distribution.setEntitlementStart(now, { from: accounts[1] });
@@ -601,28 +602,70 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(start_promise, ERR_ONLY_GOVERNANCE);
     });
 
-    it("Should not allow entitlement start to be reset", async () => {
+    it("Should not allow entitlement start to be pushed in the past", async () => {
       // Assemble
-      await bestowClaimableBalance(totalEntitlementWei);
-      const now = (await time.latest()).addn(1);
-      await distribution.setEntitlementStart(now, {from: GOVERNANCE_ADDRESS});
+      await bestowClaimableBalance(BN(8500));
+      const start = (await time.latest()).addn(100);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       const entitlementStartTs = await distribution.entitlementStartTs();
-      assert(entitlementStartTs.eq(now));
+      assert(entitlementStartTs.eq(start));
       // Act
-      const later = now.addn(60 * 60 * 24 * 5);
-      const restart_promise = distribution.setEntitlementStart(later, {from: GOVERNANCE_ADDRESS});
+      const before = (await time.latest()).subn(5);
+      const restart_promise = distribution.setEntitlementStart(before, {from: GOVERNANCE_ADDRESS});
       // Assert
-      await expectRevert(restart_promise, ERR_NOT_ZERO);
+      await expectRevert(restart_promise, ERR_WRONG_START_TIMESTAMP);
     });
 
-    it("Should not allow entitlement to start in past", async () => {
+    it("Should allow entitlement start to be pushed in the future", async () => {
       // Assemble
-      await bestowClaimableBalance(totalEntitlementWei);
-      const now = (await time.latest()).subn(10);
+      await bestowClaimableBalance(BN(8500));
+      const start = (await time.latest()).addn(100);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      const entitlementStartTs = await distribution.entitlementStartTs();
+      assert(entitlementStartTs.eq(start));
       // Act
-      const in_the_past_promise = distribution.setEntitlementStart(now, {from: GOVERNANCE_ADDRESS});
+      const later = start.addn(60 * 60 * 24 * 5);
+      await distribution.setEntitlementStart(later, {from: GOVERNANCE_ADDRESS});
       // Assert
-      await expectRevert(in_the_past_promise, ERR_IN_THE_PAST);
+      const entitlementStartTs2 = await distribution.entitlementStartTs();
+      assert(entitlementStartTs2.eq(later));
+    });
+
+    it("Should not allow entitlement start to be pushed in the future if already started", async () => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      const entitlementStartTs = await distribution.entitlementStartTs();
+      assert(entitlementStartTs.eq(start));
+      // Act
+      const later = start.addn(60 * 60 * 24 * 5);
+      const restart_promise = distribution.setEntitlementStart(later, {from: GOVERNANCE_ADDRESS});
+      // Assert
+      await expectRevert(restart_promise, ERR_ALREADY_STARTED);
+    });
+
+    it("Should not allow entitlement start to be pushed to far in the future", async () => {
+      // Assemble
+      await bestowClaimableBalance(BN(8500));
+      const start = (await time.latest()).addn(100);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      const entitlementStartTs = await distribution.entitlementStartTs();
+      assert(entitlementStartTs.eq(start));
+      // Act
+      const later = start.subn(60 * 60 * 24 * 10);
+      const restart_promise = distribution.setEntitlementStart(later, {from: GOVERNANCE_ADDRESS});
+      // Assert
+      await expectRevert(restart_promise, ERR_WRONG_START_TIMESTAMP);
+    });
+
+    it("Should not allow entitlement to start in the past", async () => {
+      // Assemble
+      const start = (await time.latest()).subn(10);
+      // Act
+      const in_the_past_promise = distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      // Assert
+      await expectRevert(in_the_past_promise, ERR_WRONG_START_TIMESTAMP);
     });
   });
 });

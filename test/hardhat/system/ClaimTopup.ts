@@ -303,6 +303,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   const inflationBips = 500;
   let initialGenesisAmountWei: BN;
   let totalFoundationSupplyWei: BN;
+  let totalLockedWei: BN;
   let totalClaimedWei: BN;
 
   before(async () => {
@@ -442,14 +443,15 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Supply contract - inflatable balance should not be updated ()
     initialGenesisAmountWei = await supply.initialGenesisAmountWei();
     totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    totalLockedWei = await supply.totalLockedWei();
     const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(inflatableBalanceWei.eq(initialGenesisAmountWei.sub(totalFoundationSupplyWei)) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
+    assert(inflatableBalanceWei.eq(initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei)) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
 
     // Assert
     // Recognized inflation should be correct
     const firstInflationAnnum = await inflation.getAnnum(0);
-    const firstAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    const firstAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
     assert.equal(firstInflationAnnum.recognizedInflationWei.toString(), firstAnnumInflationWei.toString());
   });
 
@@ -926,7 +928,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     
     // Recognized inflation should be updated
     const totalBurnedWei = await ftsoRewardManager.totalBurnedWei(); // burned amount is part of inflatable balance
-    const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
     assert.isTrue(totalClaimedWei.eq(await ftsoRewardManager.totalClaimedWei()));
     assert.equal(secondAnnum.recognizedInflationWei.toString(), secondAnnumInflationWei.toString());
       

@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 interface IDistribution {
     // Events
-    event EntitlementStarted();
+    event EntitlementStart(uint256 entitlementStartTs);
     event AccountClaimed(address indexed theAccount);
     event AccountOptOut(address indexed theAccount);
     event OptOutWeiWithdrawn();

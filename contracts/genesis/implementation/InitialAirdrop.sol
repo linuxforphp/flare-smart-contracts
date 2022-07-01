@@ -32,10 +32,10 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     // Errors
     string internal constant ERR_OUT_OF_BALANCE = "balance too low";
     string internal constant ERR_TOO_MANY = "too many";
-    string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
     string internal constant ERR_NOT_STARTED = "not started";
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
     string internal constant ERR_ALREADY_SET = "already set";
+    string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
     string internal constant ERR_ALREADY_STARTED = "already started";
 
     // Events
@@ -70,8 +70,9 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     /**
      * @notice Method to set addresses and their respective balances in batches to this contract (initial airdrop)
      * @param _accounts         Array of adresses we are adding in batch
-     * @param _balances         Array of balances to be airdropped to respective accounts
+     * @param _balances         Array of balances to be airdropped to respective accounts (total amount - 100%)
      * @dev Note that _toAddresses and _balances arrays must be of equal length
+     * @dev Note that script must use the same batches to fill data (if restarted), otherwise duplicates may occure
      */
     function setAirdropBalances(address[] calldata _accounts, uint256[] calldata _balances) external onlyGovernance {
         require(_accounts.length <= 1000, ERR_TOO_MANY);
@@ -102,9 +103,10 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     /** 
      * @notice Start the initial airdrop at _initialAirdropStartTs timestamp
      * @param _initialAirdropStartTs point in time when we start
+     * @dev should be called immediately after all airdrop accounts and balances are set
      */
     function setAirdropStart(uint256 _initialAirdropStartTs) external onlyGovernance mustBalance {
-        require(nextAirdropAccountIndexToTransfer == 0, ERR_ALREADY_STARTED);
+        require(initialAirdropStartTs == 0 || initialAirdropStartTs > block.timestamp, ERR_ALREADY_STARTED);
         require(initialAirdropStartTs < _initialAirdropStartTs && _initialAirdropStartTs <= latestAirdropStartTs,
             ERR_WRONG_START_TIMESTAMP);
         initialAirdropStartTs = _initialAirdropStartTs;

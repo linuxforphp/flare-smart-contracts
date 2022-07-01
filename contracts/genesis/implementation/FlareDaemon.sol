@@ -63,8 +63,8 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
     string internal constant ERR_INFLATION_MINT_RECEIVE_FAIL = "unknown error. receiveMinting";
 
     uint256 internal constant MAX_DAEMONIZE_CONTRACTS = 10;
-    // Initial max mint request - 90 million native token
-    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 50000000 ether;
+    // Initial max mint request - 60 million native token
+    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 60000000 ether;
     // How often can inflation request minting from the validator - 23 hours constant
     uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours;
     // How often can the maximal mint request amount be updated

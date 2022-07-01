@@ -90,7 +90,6 @@ export async function switchToProductionMode(
     const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
     const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
     const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
-    const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode(governanceAddressPointer.address, { from: genesisGovernanceAccount.address });
@@ -108,6 +107,8 @@ export async function switchToProductionMode(
         const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
         await distribution.switchToProductionMode(governanceAddressPointer.address);
         await distributionToDelegators.switchToProductionMode(governanceAddressPointer.address);
+        const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+        await delegationAccountManager.switchToProductionMode(governanceAddressPointer.address);
     }
     await incentivePool.switchToProductionMode(governanceAddressPointer.address);
     await incentivePoolAllocation.switchToProductionMode(governanceAddressPointer.address);
@@ -117,5 +118,4 @@ export async function switchToProductionMode(
     await ftsoRegistry.switchToProductionMode(governanceAddressPointer.address);
     await wNat.switchToProductionMode(governanceAddressPointer.address);
     await teamEscrow.switchToProductionMode(governanceAddressPointer.address);
-    await delegationAccountManager.switchToProductionMode(governanceAddressPointer.address);
 }
