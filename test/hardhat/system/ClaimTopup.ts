@@ -11,7 +11,7 @@ import {
   FtsoInstance,
   FtsoManagerContract,
   FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract,
-  FtsoRewardManagerInstance, InflationContract,
+  FtsoRewardManagerInstance, GovernanceAddressPointerContract, GovernanceAddressPointerInstance, InflationContract,
   InflationInstance, PriceSubmitterContract,
   PriceSubmitterInstance,
   SuicidalMockContract,
@@ -24,13 +24,15 @@ import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-ut
 import { BN_ZERO } from '../../utils/fuzzing-utils';
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
-import { getRandom, submitHash, toBN } from '../../utils/test-helpers';
+import { findRequiredEvent, getRandom, submitHash, toBN } from '../../utils/test-helpers';
 
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
 const calcGasCost = require('../../utils/eth').calcGasCost;
 
 let contracts: Contracts;
+let GovernanceAddressPointer: GovernanceAddressPointerContract;
+let governanceAddressPointer: GovernanceAddressPointerInstance;
 let FlareDaemon: FlareDaemonContract;
 let flareDaemon: FlareDaemonInstance;
 let FtsoRewardManager: FtsoRewardManagerContract;
@@ -64,6 +66,15 @@ let VoterWhitelister: VoterWhitelisterContract;
 let voterWhitelister: VoterWhitelisterInstance;
 let Inflation: InflationContract;
 let inflation: InflationInstance;
+
+async function executeTimelockedGovernanceCall(contract: any, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<any>>) {
+  const governance = await governanceAddressPointer.getGovernanceAddress();
+  const executor = (await governanceAddressPointer.getExecutors())[0];
+  const response = await methodCall(governance);
+  const timelockArgs = findRequiredEvent(response, "GovernanceCallTimelocked").args;
+  await time.increaseTo(timelockArgs.allowedAfterTimestamp.addn(1));
+  await contract.executeGovernanceCall(timelockArgs.selector, { from: executor });
+}
 
 function preparePrice(price: number) {
   // Assume 5 decimals
@@ -300,6 +311,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await contracts.deserialize(process.stdin);
 
     // Wire up needed contracts
+    GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer");
+    governanceAddressPointer = await GovernanceAddressPointer.at(contracts.getContractAddress(Contracts.GOVERNANCE_ADDRESS_POINTER));
     FlareDaemon = artifacts.require("FlareDaemon");
     flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     FtsoRewardManager = artifacts.require("FtsoRewardManager");
@@ -389,7 +402,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await flareDaemon.trigger({ gas: 40_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
     let votePowerBlock = firstRewardEpoch.votepowerBlock;
-    await ftsoRewardManager.enableClaims({from: await ftsoRewardManager.governance()});
+    await executeTimelockedGovernanceCall(ftsoRewardManager, governance => ftsoRewardManager.enableClaims({ from: governance }));
 
     // Make sure price providers have vote power
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
@@ -898,7 +911,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const difference = BN(24 * 60 * 60)
 
     while ((await time.latest()).lt(target)) {
-      transferWithSuicide(BN(1_000_000_000_000), accounts[1], flareDaemon.address);
+      await transferWithSuicide(BN(1_000_000_000_000), accounts[1], flareDaemon.address);
       await time.advanceBlock();
       await time.increase(difference);
       await flareDaemon.trigger({ gas: 40_000_000 });

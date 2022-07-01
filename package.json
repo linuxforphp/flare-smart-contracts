@@ -133,11 +133,12 @@
     "deploy_contracts_local_hardhat": "env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json && yarn test_deploy_hardhat",
     
     "---------FAST---SCRIPTS---SKIP---DEPLOY---TESTS": "",
-    "deploy_local_hardhat_commands_fast": "yarn deploy_contracts_local_hardhat_fast && yarn daemonize_contracts_local_hardhat_fast && yarn activate_managers_local_hardhat_fast",
+    "deploy_local_hardhat_commands_fast": "yarn deploy_contracts_local_hardhat_fast && yarn daemonize_contracts_local_hardhat_fast && yarn activate_managers_local_hardhat_fast && yarn switch_to_production_mode_local_hardhat_fast",
     "activate_managers_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost activate-managers",
     "daemonize_contracts_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost daemonize-contracts",
     "deploy_contracts_local_hardhat_fast": "env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json",
-    
+    "switch_to_production_mode_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost switch-to-production-mode",
+
     "---------UNREGISTER---SCRIPTS": "",
     "unregister_local_scdev": "env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev undaemonize-contracts",
     "unregister_network_staging": "env CHAIN_CONFIG=staging yarn --silent hardhat --network staging undaemonize-contracts",
