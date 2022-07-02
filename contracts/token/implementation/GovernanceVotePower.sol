@@ -53,19 +53,6 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     }
 
     /**
-     * Setting cleaner contract is allowed from
-     * owner token or owner token's governance (when GovernanceVotePower is detached,
-     * methods can no longer be called via the owner token, but the GovernanceVotePower
-     * still remembers the old owner token and can see its governance).
-     */
-    modifier onlyOwnerOrGovernance {
-        require(msg.sender == address(ownerToken) || 
-            msg.sender == GovernedBase(address(ownerToken)).governance(),
-            "only owner or governance");
-        _;
-    }
-
-    /**
      * History cleaning methods can be called only from the cleaner address.
      */
     modifier onlyCleaner {
@@ -160,7 +147,7 @@ contract GovernanceVotePower is IIGovernanceVotePower {
      * In particular, cleanup block number must be before current vote power block.
      * @param _blockNumber The new cleanup block number.
      */
-    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerOrGovernance {
+    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerToken {
         require(_blockNumber >= cleanupBlockNumber, "cleanup block number must never decrease");
         require(_blockNumber < block.number, "cleanup block must be in the past");
         cleanupBlockNumber = _blockNumber;
@@ -174,7 +161,7 @@ contract GovernanceVotePower is IIGovernanceVotePower {
      * Set the contract that is allowed to call history cleaning methods.
      * The method can be called by the owner token or its governance.
      */
-    function setCleanerContract(address _cleanerContract) external override onlyOwnerOrGovernance {
+    function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
         cleanerContract = _cleanerContract;
     }
 

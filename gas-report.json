@@ -1,39 +1,39 @@
 [
   {
     "function": "transfer wNat where both sender and receiver have 0 delegates (by percentage)",
-    "gasUsed": 177785
+    "gasUsed": 177829
   },
   {
     "function": "transfer wNat where sender has 1 delegate and receiver has 0 delegates (by percentage)",
-    "gasUsed": 185768
+    "gasUsed": 185812
   },
   {
     "function": "transfer wNat where sender has 0 delegates and receiver has 1 delegate (by percentage)",
-    "gasUsed": 186233
+    "gasUsed": 186277
   },
   {
     "function": "transfer wNat where both sender and receiver have 1 delegate (by percentage)",
-    "gasUsed": 194216
+    "gasUsed": 194260
   },
   {
     "function": "transfer wNat where sender has 2 delegates and receiver has 0 delegates (by percentage)",
-    "gasUsed": 191371
+    "gasUsed": 191415
   },
   {
     "function": "transfer wNat where sender has 0 delegates and receiver has 2 delegates (by percentage)",
-    "gasUsed": 191836
+    "gasUsed": 191880
   },
   {
     "function": "transfer wNat where sender has 2 delegates and receiver has 1 delegate (by percentage)",
-    "gasUsed": 199819
+    "gasUsed": 199863
   },
   {
     "function": "transfer wNat where sender has 1 delegate and receiver has 2 delegates (by percentage)",
-    "gasUsed": 199819
+    "gasUsed": 199863
   },
   {
     "function": "transfer wNat where both sender and receiver have 2 delegates (by percentage)",
-    "gasUsed": 205422
+    "gasUsed": 205466
   },
   {
     "function": "initialize for reveal for single ftso",
@@ -45,11 +45,11 @@
   },
   {
     "function": "submit price for single ftso",
-    "gasUsed": 54396
+    "gasUsed": 54419
   },
   {
     "function": "reveal price for single ftso",
-    "gasUsed": 208504
+    "gasUsed": 208516
   },
   {
     "function": "initialize for reveal for wNat ftso with 4 assets + 8 ftsos",
@@ -57,7 +57,7 @@
   },
   {
     "function": "submit prices for wNat ftso with 4 assets + 8 ftsos",
-    "gasUsed": 54396
+    "gasUsed": 54419
   },
   {
     "function": "reveal prices for wNat ftso with 4 assets + 8 ftsos",
@@ -65,6 +65,6 @@
   },
   {
     "function": "finalize price epoch for 100 submissions + 5 trusted providers",
-    "gasUsed": 2728485
+    "gasUsed": 2726959
   }
 ]

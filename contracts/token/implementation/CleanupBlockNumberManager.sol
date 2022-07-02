@@ -13,7 +13,7 @@ import "../../token/interface/IICleanable.sol";
 contract CleanupBlockNumberManager is Governed, AddressUpdatable {
 
     string internal constant ERR_CONTRACT_NOT_FOUND = "contract not found";
-    string internal constant ERR_TRIGGER_CONTRACT_OR_GOVERNANCE_ONLY = "trigger or governance only";
+    string internal constant ERR_TRIGGER_CONTRACT_ONLY = "trigger contract only";
 
     IICleanable[] public registeredTokens;
     address public triggerContract;
@@ -22,11 +22,8 @@ contract CleanupBlockNumberManager is Governed, AddressUpdatable {
     event RegistrationUpdated (IICleanable theContract, bool add);
     event CleanupBlockNumberSet (IICleanable theContract, uint256 blockNumber, bool success);
         
-    modifier onlyTriggerOrGovernance {
-        require(
-            msg.sender == triggerContract || msg.sender == governance(),
-            ERR_TRIGGER_CONTRACT_OR_GOVERNANCE_ONLY
-        );
+    modifier onlyTrigger {
+        require(msg.sender == triggerContract, ERR_TRIGGER_CONTRACT_ONLY);
         _;
     }
 
@@ -82,7 +79,7 @@ contract CleanupBlockNumberManager is Governed, AddressUpdatable {
      * @notice Sets clean up block number on managed cleanable tokens
      * @param _blockNumber cleanup block number
      */
-    function setCleanUpBlockNumber(uint256 _blockNumber) external onlyTriggerOrGovernance {
+    function setCleanUpBlockNumber(uint256 _blockNumber) external onlyTrigger {
         uint256 len = registeredTokens.length;
         for (uint256 i = 0; i < len; i++) {
             try registeredTokens[i].setCleanupBlockNumber(_blockNumber) {

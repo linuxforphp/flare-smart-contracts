@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { time } from '@openzeppelin/test-helpers';
 import BN from "bn.js";
 import { BigNumber, ContractReceipt, ContractTransaction, Signer } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { MIN_RANDOM } from "./constants";
 
 const Wallet = require('ethereumjs-wallet').default;

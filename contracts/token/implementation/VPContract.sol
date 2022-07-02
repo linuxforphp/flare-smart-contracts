@@ -27,11 +27,6 @@ contract VPContract is IIVPContract, Delegatable {
      */
     bool public immutable override isReplacement;
 
-    // the contract that is allowed to set cleanupBlockNumber
-    // usually this will be an instance of CleanupBlockNumberManager
-    // only set when detached from vptoken and directly registered to CleanupBlockNumberManager
-    address public cleanupBlockNumberManager;
-    
     // The block number when vote power for an address was first set.
     // Reading vote power before this block would return incorrect result and must revert.
     mapping (address => uint256) private votePowerInitializationBlock;
@@ -51,19 +46,6 @@ contract VPContract is IIVPContract, Delegatable {
      */
     modifier onlyOwnerToken {
         require(msg.sender == address(ownerToken), "only owner token");
-        _;
-    }
-
-    /**
-     * Setting cleaner contract is allowed from
-     * owner token or owner token's governance (when VPContract is detached,
-     * methods can no longer be called via the owner token, but the VPContract
-     * still remembers the old owner token and can see its governance).
-     */
-    modifier onlyOwnerOrGovernance {
-        require(msg.sender == address(ownerToken) || 
-            msg.sender == GovernedBase(address(ownerToken)).governance(),
-            "only owner or governance");
         _;
     }
 
@@ -96,28 +78,15 @@ contract VPContract is IIVPContract, Delegatable {
      * The method can be called by the owner token, its governance or cleanupBlockNumberManager.
      * @param _blockNumber The new cleanup block number.
      */
-    function setCleanupBlockNumber(uint256 _blockNumber) external override {
-        require(msg.sender == address(ownerToken) || 
-            msg.sender == cleanupBlockNumberManager ||
-            msg.sender == GovernedBase(address(ownerToken)).governance(),
-            "only owner, governance or cleanup block manager");
+    function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerToken {
         _setCleanupBlockNumber(_blockNumber);
     }
 
     /**
-     * Set the contract that is allowed to set cleanupBlockNumber.
-     * Usually this will be an instance of CleanupBlockNumberManager.
-     * Only to be set when detached from the owner token and directly attached to cleanup block number manager.
-     */
-    function setCleanupBlockNumberManager(address _cbnManager) external override onlyOwnerOrGovernance {
-        cleanupBlockNumberManager = _cbnManager;
-    }
-    
-    /**
      * Set the contract that is allowed to call history cleaning methods.
      * The method can be called by the owner token or its governance.
      */
-    function setCleanerContract(address _cleanerContract) external override onlyOwnerOrGovernance {
+    function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
         _setCleanerContract(_cleanerContract);
     }
     

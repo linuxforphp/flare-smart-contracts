@@ -9,6 +9,12 @@ import "./IICleanable.sol";
 
 interface IIVPToken is IVPToken, IICleanable {
     /**
+     * Set the contract that is allowed to set cleanupBlockNumber.
+     * Usually this will be an instance of CleanupBlockNumberManager.
+     */
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager) external;
+    
+    /**
      * Sets new governance vote power contract that allows token owners to participate in governance voting
      * and delegate governance vote power. 
      */

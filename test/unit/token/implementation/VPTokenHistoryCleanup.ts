@@ -24,6 +24,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             // vpToken
             vpToken = await VPToken.new(accounts[0], "A token", "ATOK");
             await setDefaultVPContract(vpToken, accounts[0]);
+            await vpToken.setCleanupBlockNumberManager(accounts[8]);
             // vpContract
             vpContract = await VPContract.at(await vpToken.getReadVpContract());
         });
@@ -38,7 +39,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] })
             const blk2 = await web3.eth.getBlockNumber();
             // Act
-            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Assert
             await expectRevert(vpToken.totalSupplyHistoryCleanup(1), "Only cleaner contract");
             await expectRevert(vpToken.balanceHistoryCleanup(accounts[1], 1), "Only cleaner contract");
@@ -56,7 +57,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await time.advanceBlock();
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
-            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Act
             await vpToken.totalSupplyHistoryCleanup(1, { from: accounts[5] });
             await vpToken.balanceHistoryCleanup(accounts[1], 1, { from: accounts[5] });
@@ -92,7 +93,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await time.advanceBlock();
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
-            await vpToken.setCleanupBlockNumber(blk1, { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk1, { from: accounts[8] });
             // Act
             await vpToken.totalVotePowerAtCached(blk1);
             await vpToken.revokeDelegationAt(accounts[2], blk1, { from: accounts[1] });
@@ -127,7 +128,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] })
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
-            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // verify initial
             assertNumberEqual(await vpToken.totalSupplyHistoryCleanup.call(10, { from: accounts[5] }), 2);
             assertNumberEqual(await vpToken.balanceHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 1);
@@ -173,7 +174,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.delegateExplicit(accounts[3], 20, { from: accounts[2] });
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
-            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Assert
             // there should be opportunities to clean
             assertNumberEqual(await vpToken.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 1);
@@ -239,7 +240,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] })
             const blk2 = await web3.eth.getBlockNumber();
             await vpToken.setCleanerContract(accounts[5], { from: accounts[0] });
-            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[0] });
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // verify initial
             assertNumberEqual(await vpToken.totalSupplyHistoryCleanup.call(10, { from: accounts[5] }), 2);
             assertNumberEqual(await vpToken.balanceHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 1);
@@ -278,6 +279,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             // vpToken
             vpToken = await VPToken.new(accounts[0], "A token", "ATOK");
             await setDefaultVPContract(vpToken, accounts[0]);
+            await vpToken.setCleanupBlockNumberManager(accounts[8]);
             // vpContract
             vpContract = await VPContract.at(await vpToken.getReadVpContract());
             // history cleaner
@@ -306,7 +308,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await cleaner.track(vpToken.transfer(accounts[2], 30, { from: accounts[1] }));
             await time.advanceBlock();
             const blk2 = await web3.eth.getBlockNumber();
-            await vpToken.setCleanupBlockNumber(blk2);
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Act
             // console.log(Array.from(cleaner.records).map(r => `${r.address} [${r.blockNumber}] ${r.comment}`));
             const beforeCleanup = await cleaner.check(20);
@@ -333,7 +335,7 @@ contract(`VPTokenHistoryCleanup.sol; ${getTestFile(__filename)}; VPToken history
             await cleaner.track(vpToken.votePowerOfAtCached(accounts[1], blk1));
             await cleaner.track(vpToken.revokeDelegationAt(accounts[3], blk1, { from: accounts[1] }));
             const blk2 = await web3.eth.getBlockNumber();
-            await vpToken.setCleanupBlockNumber(blk2);
+            await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Act
             const beforeCleanup = await cleaner.check(50);
             // console.log(Array.from(cleaner.records).map((r, i) => `${i} ${r.address} [${r.blockNumber}] ${r.comment} => ${beforeCleanup[i]}`));

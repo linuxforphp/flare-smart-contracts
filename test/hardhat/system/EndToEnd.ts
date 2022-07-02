@@ -7,23 +7,20 @@ import { Contracts } from "../../../deployment/scripts/Contracts";
 import {
   FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance,
-  GovernanceAddressPointerContract,
-  GovernanceAddressPointerInstance,
   PriceSubmitterContract, PriceSubmitterInstance, SuicidalMockContract, SuicidalMockInstance, SupplyContract,
   SupplyInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract, WNatInstance
 } from "../../../typechain-truffle";
+import { executeTimelockedGovernanceCall } from '../../utils/contract-test-helpers';
 import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
-import { findRequiredEvent, getRandom, submitHash } from '../../utils/test-helpers';
+import { getRandom, submitHash } from '../../utils/test-helpers';
 
 const getTestFile = require('../../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
 const calcGasCost = require('../../utils/eth').calcGasCost;
 
 let contracts: Contracts;
-let GovernanceAddressPointer: GovernanceAddressPointerContract;
-let governanceAddressPointer: GovernanceAddressPointerInstance;
 let FlareDaemon: FlareDaemonContract;
 let flareDaemon: FlareDaemonInstance;
 let FtsoRewardManager: FtsoRewardManagerContract;
@@ -67,15 +64,6 @@ let ftsoIndices: BN[] = [];
 let priceSeries: number[][];
 let firstPriceEpoch: number = -1;
 let firstRewardEpochId: number = -1;
-
-export async function executeTimelockedGovernanceCall(contract: any, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<any>>) {
-  const governance = await governanceAddressPointer.getGovernanceAddress();
-  const executor = (await governanceAddressPointer.getExecutors())[0];
-  const response = await methodCall(governance);
-  const timelockArgs = findRequiredEvent(response, "GovernanceCallTimelocked").args;
-  await time.increaseTo(timelockArgs.allowedAfterTimestamp.addn(1));
-  await contract.executeGovernanceCall(timelockArgs.selector, { from: executor });
-}
 
 export function preparePrice(price: number) {
   // Assume 5 decimals
@@ -263,8 +251,6 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await contracts.deserialize(process.stdin);
 
     // Wire up needed contracts
-    GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer");
-    governanceAddressPointer = await GovernanceAddressPointer.at(contracts.getContractAddress(Contracts.GOVERNANCE_ADDRESS_POINTER));
     FlareDaemon = artifacts.require("FlareDaemon");
     flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
     FtsoRewardManager = artifacts.require("FtsoRewardManager");

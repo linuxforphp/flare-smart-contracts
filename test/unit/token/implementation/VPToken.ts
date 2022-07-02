@@ -667,26 +667,28 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   it("Should check cleanup block validity", async () => {
     // Assemble
+    await vpToken.setCleanupBlockNumberManager(accounts[8]);
     await time.advanceBlock();
     const blk = await web3.eth.getBlockNumber();
     await time.advanceBlock();
     // Act
-    await vpToken.setCleanupBlockNumber(blk);
+    await vpToken.setCleanupBlockNumber(blk, { from: accounts[8] });
     // Assert
-    await expectRevert(vpToken.setCleanupBlockNumber(blk - 1), "Cleanup block number must never decrease");
+    await expectRevert(vpToken.setCleanupBlockNumber(blk - 1, { from: accounts[8] }), "Cleanup block number must never decrease");
     const blk2 = await web3.eth.getBlockNumber();
-    await expectRevert(vpToken.setCleanupBlockNumber(blk2 + 1), "Cleanup block must be in the past");
+    await expectRevert(vpToken.setCleanupBlockNumber(blk2 + 1, { from: accounts[8] }), "Cleanup block must be in the past");
   });
 
   it("Should cleanup history", async () => {
     // Assemble
+    await vpToken.setCleanupBlockNumberManager(accounts[8]);
     await vpToken.mint(accounts[1], 100);
     await time.advanceBlock();
     const blk1 = await web3.eth.getBlockNumber();
     await vpToken.transfer(accounts[2], toBN(10), { from: accounts[1] });
     const blk2 = await web3.eth.getBlockNumber();
     // Act
-    await vpToken.setCleanupBlockNumber(toBN(blk2));
+    await vpToken.setCleanupBlockNumber(toBN(blk2), { from: accounts[8] });
     await vpToken.transfer(accounts[2], toBN(10), { from: accounts[1] });
     const blk3 = await web3.eth.getBlockNumber();
     // Assert
@@ -702,6 +704,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   it("Should cleanup history (delegation)", async () => {
     // Assemble
+    await vpToken.setCleanupBlockNumberManager(accounts[8]);
     await vpToken.mint(accounts[1], 100);
     await vpToken.delegate(accounts[2], toBN(1000), { from: accounts[1] });
     await time.advanceBlock();
@@ -709,7 +712,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.delegate(accounts[2], toBN(3000), { from: accounts[1] });
     const blk2 = await web3.eth.getBlockNumber();
     // Act
-    await vpToken.setCleanupBlockNumber(toBN(blk2));
+    await vpToken.setCleanupBlockNumber(toBN(blk2), { from: accounts[8] });
     await vpToken.delegate(accounts[2], toBN(5000), { from: accounts[1] });
     // Assert
     // should fail at blk1
@@ -722,6 +725,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   it("May set cleaner and cleanup block without VPContract", async () => {
     // Assemble
+    await vpToken.setCleanupBlockNumberManager(accounts[8]);
     await vpToken.mint(accounts[1], 100);
     await vpToken.delegate(accounts[2], 1000, { from: accounts[1] });
     await time.advanceBlock();
@@ -734,12 +738,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     await vpToken.setWriteVpContract(constants.ZERO_ADDRESS);
     await vpToken.setReadVpContract(constants.ZERO_ADDRESS);
     await vpToken.setCleanerContract(accounts[5]);
-    await vpToken.setCleanupBlockNumber(blk2);
+    await vpToken.setCleanupBlockNumber(blk2, { from: accounts[8] });
     const vpcontract = await VPContract.new(vpToken.address, true);
     await vpToken.setWriteVpContract(vpcontract.address);
     await vpToken.delegate(accounts[2], 4000, { from: accounts[1] }); // trigger some cleanup
     await vpToken.setCleanerContract(accounts[5]);
-    await vpToken.setCleanupBlockNumber(blk3);
+    await vpToken.setCleanupBlockNumber(blk3, { from: accounts[8] });
     await vpToken.delegate(accounts[2], 5000, { from: accounts[1] }); // trigger some cleanup
     await vpToken.setReadVpContract(vpcontract.address);
     // Assert
@@ -775,6 +779,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
 
   it("Can execute methods with governance vote power set", async () => {
     // Assemble
+    await vpToken.setCleanupBlockNumberManager(accounts[8]);
     const governanceVotePower = await MockContract.new();
     const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
     await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, vpToken.address);
@@ -783,7 +788,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     // Act
     await vpToken.mint(accounts[1], 100);
     await vpToken.transfer(accounts[2], 50, { from: accounts[1] });
-    await vpToken.setCleanupBlockNumber(1);
+    await vpToken.setCleanupBlockNumber(1, { from: accounts[8] });
     await vpToken.setCleanerContract(accounts[5]);
     // Assert
     const invocations = await governanceVotePower.invocationCount.call();
@@ -993,19 +998,20 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
       "only governance");
   });
 
-  it("Only governance or cleanup block number manager can set cleanup block", async () => {
+  it("Only cleanup block number manager can set cleanup block", async () => {
     // Assemble
     await vpToken.setCleanupBlockNumberManager(accounts[10]);
     await time.advanceBlock();
     await time.advanceBlock();
     // Act
     // Assert
-    await vpToken.setCleanupBlockNumber(1, { from: accounts[0] });  // governance
-    assertNumberEqual(await vpToken.cleanupBlockNumber(), 1);
+    const promise = vpToken.setCleanupBlockNumber(1, { from: accounts[0] });  // governance
+    await expectRevert(promise, "only cleanup block manager");  // cannot be called by governance
+    assertNumberEqual(await vpToken.cleanupBlockNumber(), 0);
     await vpToken.setCleanupBlockNumber(2, { from: accounts[10] });  // cleanup block number manager
     assertNumberEqual(await vpToken.cleanupBlockNumber(), 2);
     await expectRevert(vpToken.setCleanupBlockNumber(1, { from: accounts[1] }),
-      "only governance or manager");
+      "only cleanup block manager");
   });
 
   it("Can read batch vote powers", async () => {

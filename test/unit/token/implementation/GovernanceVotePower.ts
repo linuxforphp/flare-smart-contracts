@@ -1,16 +1,12 @@
-import {
-  WNatInstance,
-  GovernanceVotePowerInstance,
-  VPContractInstance
-} from "../../../../typechain-truffle";
-import { toBN } from "../../../utils/test-helpers";
-import { time, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers';
+import { constants, ether, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { ethers, network } from "hardhat";
 import { GovernanceVotePower__factory } from "../../../../typechain";
+import { GovernanceVotePowerInstance, VPContractInstance, WNatInstance } from "../../../../typechain-truffle";
+import { getTestFile } from "../../../utils/constants";
+import { impersonateContract } from "../../../utils/contract-test-helpers";
 import { expectEthersEvent } from "../../../utils/EventDecoder";
+import { toBN } from "../../../utils/test-helpers";
 
-
-const getTestFile = require('../../../utils/constants').getTestFile;
 
 const WNat = artifacts.require("WNat");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
@@ -20,18 +16,23 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
   let wNat: WNatInstance
   let governanceVotePower: GovernanceVotePowerInstance
   let vpContract: VPContractInstance
+  let cbnManagerAccount = accounts[18]
 
   describe("GovernanceVotePower", async () => {
 
     beforeEach(async () => {
       wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
+      await wNat.setCleanupBlockNumberManager(cbnManagerAccount, { from: accounts[0] });
       governanceVotePower = await GovernanceVotePower.new(wNat.address);
       await wNat.setGovernanceVotePower(governanceVotePower.address);
-  
+
       // deposit
       await wNat.deposit({ from: accounts[1], value: toBN(600) });
       await wNat.deposit({ from: accounts[3], value: toBN(200) });
       await wNat.deposit({ from: accounts[6], value: toBN(1000) });
+
+      // allow us to send transactions in the name of wnat
+      await impersonateContract(wNat.address, ether("100"), accounts[0]);
     });
 
     it("Should check if tokens are deposited", async () => {
@@ -65,7 +66,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
 
       // deposit another 1000
       let deposit = await wNat.deposit({ from: accounts[3], value: toBN(1000) });
-      await expectEvent.inTransaction(deposit.tx, governanceVotePower, "DelegateVotesChanged", 
+      await expectEvent.inTransaction(deposit.tx, governanceVotePower, "DelegateVotesChanged",
         { delegate: accounts[4], previousBalance: toBN(200), newBalance: toBN(1200) });
       const blockAfterDeposit = await web3.eth.getBlockNumber();
       let votePower41 = await governanceVotePower.votePowerOfAt(accounts[4], blockAfterDeposit);
@@ -74,7 +75,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect((balanceOf3).toString()).to.equals("1200");
 
       // redelegate to accounts[5]
-      await wNat.setCleanupBlockNumber(blockAfterDeposit);
+      await wNat.setCleanupBlockNumber(blockAfterDeposit, { from: cbnManagerAccount });
       let redelegate = await governanceVotePower.delegate(accounts[5], { from: accounts[3] });
       const blockAfterRedelegate = await web3.eth.getBlockNumber();
       expect(await governanceVotePower.getDelegateOfAtNow(accounts[3])).to.equals(accounts[5]);
@@ -83,7 +84,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect(votePower42.toString()).to.equals("0");
       expect(votePower5.toString()).to.equals("1200");
       expectEvent(redelegate, "DelegateChanged",
-        { delegator: accounts[3], fromDelegate: accounts[4],  toDelegate: accounts[5] });
+        { delegator: accounts[3], fromDelegate: accounts[4], toDelegate: accounts[5] });
       expectEvent(redelegate, "DelegateVotesChanged",
         { delegate: accounts[4], previousBalance: toBN(1200), newBalance: toBN(0) });
       expectEvent(redelegate, "DelegateVotesChanged",
@@ -94,7 +95,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       await expectRevert(governanceVotePower.votePowerOfAt(accounts[4], blockAfterDelegate3), "CheckPointHistory: reading from cleaned-up block");
     });
 
-    it("Should delegate and emit events", async() => {
+    it("Should delegate and emit events", async () => {
       let delegate3 = await governanceVotePower.delegate(accounts[1], { from: accounts[3] });
       let votePower1 = await governanceVotePower.getVotes(accounts[1]);
       let votePower3 = await governanceVotePower.getVotes(accounts[3]);
@@ -106,7 +107,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
         { delegate: accounts[1], previousBalance: toBN(0), newBalance: toBN(200) });
     });
 
-    it("Should delegate, transfer and change VP", async() => {
+    it("Should delegate, transfer and change VP", async () => {
       const blockAfterDelegation = await web3.eth.getBlockNumber();
       let votePower1 = await governanceVotePower.votePowerOfAt(accounts[1], blockAfterDelegation);
       expect(votePower1.toString()).to.equals("600");
@@ -120,7 +121,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect(votePower42.toString()).to.equals("100");
     });
 
-    it("Should delegate and redelegate", async() => {
+    it("Should delegate and redelegate", async () => {
       await governanceVotePower.delegate(accounts[3], { from: accounts[1] });
       const block = await web3.eth.getBlockNumber();
       let votePower3 = await governanceVotePower.votePowerOfAt(accounts[3], block);
@@ -146,7 +147,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
         { delegate: accounts[3], previousBalance: toBN(600), newBalance: toBN(0) });
     });
 
-    it("Delegate and undelegate", async() => {
+    it("Delegate and undelegate", async () => {
       const block1 = await web3.eth.getBlockNumber();
       let votePower1 = await governanceVotePower.votePowerOfAt(accounts[1], block1);
       expect(votePower1.toString()).to.equals("600");
@@ -176,7 +177,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect(bal1.toString()).to.equals("600");
       expect(bal3.toString()).to.equals("200");
 
-      await wNat.transfer(accounts[1], 100, { from: accounts[3]});
+      await wNat.transfer(accounts[1], 100, { from: accounts[3] });
       const block5 = await web3.eth.getBlockNumber();
       let votePower15 = await governanceVotePower.votePowerOfAt(accounts[1], block5);
       let votePower33 = await governanceVotePower.votePowerOfAt(accounts[3], block5);
@@ -204,19 +205,19 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect(balanceOf1.toString()).to.equals("100");
       expect(balanceOf3.toString()).to.equals("700");
 
-      await expectEvent.inTransaction(transfer.tx, governanceVotePower,  "DelegateVotesChanged",
+      await expectEvent.inTransaction(transfer.tx, governanceVotePower, "DelegateVotesChanged",
         { delegate: accounts[2], previousBalance: toBN(600), newBalance: toBN(100) });
       await expectEvent.inTransaction(transfer.tx, governanceVotePower, "DelegateVotesChanged",
         { delegate: accounts[4], previousBalance: toBN(200), newBalance: toBN(700) });
-    
+
     });
 
-    it ("Should revert if ownerToken is zero address", async() => {
+    it("Should revert if ownerToken is zero address", async () => {
       let tx = GovernanceVotePower.new(constants.ZERO_ADDRESS);
       await expectRevert(tx, "governanceVotePower must belong to a VPToken");
     });
 
-    it ("Should delegate and then burn part of balance", async() => {
+    it("Should delegate and then burn part of balance", async () => {
       await governanceVotePower.delegate(accounts[7], { from: accounts[6] });
       const block = await web3.eth.getBlockNumber();
       let votePower7 = await governanceVotePower.votePowerOfAt(accounts[7], block);
@@ -229,11 +230,11 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect(bal6.toString()).to.equals("500");
     });
 
-    it("Should emit delegation events", async() => {
+    it("Should emit delegation events", async () => {
       let del1 = await governanceVotePower.delegate(accounts[2], { from: accounts[1] });
       let del3 = await governanceVotePower.delegate(accounts[2], { from: accounts[3] });
       expectEvent(del1, "DelegateChanged",
-      { delegator: accounts[1], fromDelegate: constants.ZERO_ADDRESS, toDelegate: accounts[2] });
+        { delegator: accounts[1], fromDelegate: constants.ZERO_ADDRESS, toDelegate: accounts[2] });
       expectEvent(del1, "DelegateVotesChanged",
         { delegate: accounts[2], previousBalance: toBN(0), newBalance: toBN(600) });
       expectEvent(del3, "DelegateChanged",
@@ -241,21 +242,21 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expectEvent(del3, "DelegateVotesChanged",
         { delegate: accounts[2], previousBalance: toBN(600), newBalance: toBN(800) });
 
-      let undelegate1 = await governanceVotePower.undelegate( {from: accounts[1] });
+      let undelegate1 = await governanceVotePower.undelegate({ from: accounts[1] });
       expectEvent(undelegate1, "DelegateChanged",
         { delegator: accounts[1], fromDelegate: accounts[2], toDelegate: constants.ZERO_ADDRESS });
       expectEvent(undelegate1, "DelegateVotesChanged",
         { delegate: accounts[2], previousBalance: toBN(800), newBalance: toBN(200) });
     });
 
-    it("Should check if votePowerOfAt function works correctly", async() => {
+    it("Should check if votePowerOfAt function works correctly", async () => {
       const block1 = await web3.eth.getBlockNumber();
       expect((await governanceVotePower.votePowerOfAt(accounts[1], block1)).toString()).to.equals("600");
-      await governanceVotePower.delegate(accounts[2], { from: accounts[1]});
+      await governanceVotePower.delegate(accounts[2], { from: accounts[1] });
       expect((await governanceVotePower.votePowerOfAt(accounts[1], block1)).toString()).to.equals("600");
     });
 
-    it("Should check if delegates checkpointing works correctly", async() => {
+    it("Should check if delegates checkpointing works correctly", async () => {
       expect(await governanceVotePower.getDelegateOfAtNow(accounts[1])).to.equals(constants.ZERO_ADDRESS);
       expect((await governanceVotePower.getVotes(accounts[1])).toString()).to.equals("600");
       expect((await governanceVotePower.getVotes(accounts[2])).toString()).to.equals("0");
@@ -265,7 +266,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect((await governanceVotePower.getVotes(accounts[1])).toString()).to.equals("0");
       expect((await governanceVotePower.getVotes(accounts[2])).toString()).to.equals("600");
 
-      await governanceVotePower.undelegate( { from: accounts[1]} );
+      await governanceVotePower.undelegate({ from: accounts[1] });
       expect(await governanceVotePower.getDelegateOfAtNow(accounts[1])).to.equals(constants.ZERO_ADDRESS);
       expect((await governanceVotePower.getVotes(accounts[1])).toString()).to.equals("600");
       expect((await governanceVotePower.getVotes(accounts[2])).toString()).to.equals("0");
@@ -279,12 +280,12 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect((await governanceVotePower.votePowerOfAt(accounts[1], block)).toString()).to.equals("800");
     });
 
-    it("Should revert if caller is not the owner or governance", async() => {
+    it("Should revert if caller is not the owner or governance", async () => {
       let tx = governanceVotePower.setCleanerContract(accounts[100], { from: accounts[50] });
-      await expectRevert(tx, "only owner or governance");
+      await expectRevert(tx, "only owner token");
     });
 
-    it("Should revert if trying to delegate to yourself", async() => {
+    it("Should revert if trying to delegate to yourself", async () => {
       let tx = governanceVotePower.delegate(accounts[1], { from: accounts[1] });
       await expectRevert(tx, "can't delegate to yourself");
     });
@@ -294,7 +295,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
     //   await expectRevert(tx, "Cannot transfer zero amount");
     // });
 
-    it("Should unwrap (burn) some WNAT while not delegating to anyone", async() => {
+    it("Should unwrap (burn) some WNAT while not delegating to anyone", async () => {
       expect((await governanceVotePower.getVotes(accounts[1])).toString()).to.equals("600");
       expect(await governanceVotePower.getDelegateOfAtNow(accounts[1])).to.equals(constants.ZERO_ADDRESS);
 
@@ -303,7 +304,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect((await governanceVotePower.getVotes(accounts[1])).toString()).to.equals("500");
     });
 
-    it("Should not change governance VP when transfering WNAT", async() => {
+    it("Should not change governance VP when transfering WNAT", async () => {
       // if both sides are delegating to the same account, its vote power should not change
       await governanceVotePower.delegate(accounts[6], { from: accounts[1] });
       await governanceVotePower.delegate(accounts[6], { from: accounts[3] });
@@ -332,7 +333,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
 
     });
 
-    it("Should change governance VP when transfering WNAT", async() => {
+    it("Should change governance VP when transfering WNAT", async () => {
       // if both sides are delegating to the same account, its vote power should not change
       await governanceVotePower.delegate(accounts[6], { from: accounts[3] });
 
@@ -356,26 +357,26 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect((await wNat.balanceOf(accounts[6])).toString()).to.equals("1000");
     });
 
-    it("Should revert if cleanup block number is not in the past", async() => {
+    it("Should revert if cleanup block number is not in the past", async () => {
       await time.advanceBlock();
       await time.advanceBlock();
-      let block = await time.latestBlock() as any;
-      let tx = governanceVotePower.setCleanupBlockNumber(block + 1);
+      let block = await time.latestBlock();
+      let tx = governanceVotePower.setCleanupBlockNumber(block.toNumber() + 1, { from: wNat.address });
       await expectRevert(tx, "cleanup block must be in the past");
     });
 
-    it("Should revert if cleanup block decreases", async() => {
+    it("Should revert if cleanup block decreases", async () => {
       await time.advanceBlock();
       await time.advanceBlock();
-      let block = await time.latestBlock() as any;
-      await governanceVotePower.setCleanupBlockNumber(block);
-      let tx = governanceVotePower.setCleanupBlockNumber(block - 1);
+      let block = await time.latestBlock();
+      await governanceVotePower.setCleanupBlockNumber(block, { from: wNat.address });
+      let tx = governanceVotePower.setCleanupBlockNumber(block.toNumber() - 1, { from: wNat.address });
       await expectRevert(tx, "cleanup block number must never decrease");
     });
 
-    it("Should clean checkpoints (from cleaner contract)", async() => {
-      await governanceVotePower.setCleanerContract(accounts[200]);
-      expect(await governanceVotePower.cleanerContract()).to.equals(accounts[200]); 
+    it("Should clean checkpoints (from cleaner contract)", async () => {
+      await governanceVotePower.setCleanerContract(accounts[200], { from: wNat.address });
+      expect(await governanceVotePower.cleanerContract()).to.equals(accounts[200]);
 
       await governanceVotePower.delegate(accounts[2], { from: accounts[1] });
       let block1 = await time.latestBlock();
@@ -411,7 +412,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
 
       // set cleanup block number
       let block = await time.latestBlock();
-      await governanceVotePower.setCleanupBlockNumber(block);
+      await governanceVotePower.setCleanupBlockNumber(block, { from: wNat.address });
       expect((await governanceVotePower.getCleanupBlockNumber()).toString()).to.equals(block.toString());
 
       // should be called from cleaner contract
@@ -453,23 +454,23 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       expect(await governanceVotePower.getDelegateOfAt(accounts[6], block5)).to.equals(accounts[2]);
       expect(await governanceVotePower.getDelegateOfAtNow(accounts[6])).to.equals(accounts[2]);
     });
- 
-    it("Should revert if updateAtTokenTransfer is not called fot owner token", async() => {
+
+    it("Should revert if updateAtTokenTransfer is not called fot owner token", async () => {
       let tx = governanceVotePower.updateAtTokenTransfer(accounts[1], accounts[2], 600, 0, 100);
       await expectRevert(tx, "only owner token");
     });
 
-    it("Should delegate twice in the same block", async() => {
+    it("Should delegate twice in the same block", async () => {
       const signer = await ethers.getSigner(accounts[1]);
       const governanceVPEth = GovernanceVotePower__factory.connect(governanceVotePower.address, signer);
       try {
         // switch to manual mining
         await network.provider.send('evm_setAutomine', [false]);
         await network.provider.send("evm_setIntervalMining", [0]);
-        
-        let tx0 = await governanceVPEth.delegate(accounts[2], { from:accounts[1] });
-        let tx1 = await governanceVPEth.delegate(accounts[3], { from:accounts[1] });
-  
+
+        let tx0 = await governanceVPEth.delegate(accounts[2], { from: accounts[1] });
+        let tx1 = await governanceVPEth.delegate(accounts[3], { from: accounts[1] });
+
         await network.provider.send('evm_mine');
 
         let receipt0 = await tx0.wait();
@@ -482,17 +483,17 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       }
     });
 
-    it("Should 'clean' empty checkpoints", async() => {
-      await governanceVotePower.setCleanupBlockNumber(await web3.eth.getBlockNumber() - 1);
-      await governanceVotePower.setCleanerContract(accounts[77]);
+    it("Should 'clean' empty checkpoints", async () => {
+      await governanceVotePower.setCleanupBlockNumber(await web3.eth.getBlockNumber() - 1, { from: wNat.address });
+      await governanceVotePower.setCleanerContract(accounts[77], { from: wNat.address });
       let clean = await governanceVotePower.contract.methods.delegatesHistoryCleanup(accounts[8], 1).call({ from: accounts[77] });
       await governanceVotePower.delegatesHistoryCleanup(accounts[8], 1, { from: accounts[77] });
       expect(clean).to.equals("0");
     });
 
-    it("Should 'clean' zero address checkpoints", async() => {
-      await governanceVotePower.setCleanupBlockNumber(await web3.eth.getBlockNumber() - 1);
-      await governanceVotePower.setCleanerContract(accounts[77]);
+    it("Should 'clean' zero address checkpoints", async () => {
+      await governanceVotePower.setCleanupBlockNumber(await web3.eth.getBlockNumber() - 1, { from: wNat.address });
+      await governanceVotePower.setCleanerContract(accounts[77], { from: wNat.address });
       let clean = await governanceVotePower.contract.methods.delegatesHistoryCleanup(constants.ZERO_ADDRESS, 1).call({ from: accounts[77] });
       await governanceVotePower.delegatesHistoryCleanup(constants.ZERO_ADDRESS, 1, { from: accounts[77] });
       expect(clean).to.equals("0");
@@ -500,7 +501,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
 
   });
 
-  describe("Transfer tokens, only VP", async() => {
+  describe("Transfer tokens, only VP", async () => {
     beforeEach(async () => {
       wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
       vpContract = await VPContract.new(wNat.address, false);
@@ -510,7 +511,7 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       await wNat.deposit({ from: accounts[3], value: toBN(200) });
     });
 
-    it("Should check how much gas uses tokens transfer", async() => {
+    it("Should check how much gas uses tokens transfer", async () => {
       await wNat.delegate(accounts[2], 10000, { from: accounts[1] });
       expect((await wNat.votePowerOf(accounts[2])).toString()).to.equals("600");
 
@@ -538,12 +539,12 @@ contract(`GovernanceVotePower.sol; ${getTestFile(__filename)}; GovernanceVotePow
       vpContract = await VPContract.new(wNat.address, false);
       await wNat.setReadVpContract(vpContract.address);
       await wNat.setWriteVpContract(vpContract.address);
-      
+
       await wNat.deposit({ from: accounts[1], value: toBN(600) });
       await wNat.deposit({ from: accounts[3], value: toBN(200) });
     });
 
-    it("Should check how much gas is used for tokens transfer", async() => {
+    it("Should check how much gas is used for tokens transfer", async () => {
       await wNat.delegate(accounts[2], 10000, { from: accounts[1] });
       expect((await wNat.votePowerOf(accounts[2])).toString()).to.equals("600");
 
