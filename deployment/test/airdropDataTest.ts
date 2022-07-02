@@ -5,7 +5,7 @@ const toBN = web3.utils.toBN;
 const IsAddress = web3.utils.isAddress;
 const cliProgress = require('cli-progress');
 import path from "path";
-import {LineItem, ProcessedLineItem} from "../../airdrop/utils/airdropTypes"
+import {LineItem, ProcessedLineItem} from "../../airdrop/songbird/utils/airdropTypes"
 // const airdropExports = require("../../airdrop/data");
 
 function parseAndProcessData(dataFile:string):ProcessedLineItem[] {

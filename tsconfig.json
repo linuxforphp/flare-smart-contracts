@@ -9,7 +9,7 @@
       "typeRoots": [
         "test/types",
         "node_modules/@types",
-        "airdrop/utils/airdropTypes.ts"
+        "airdrop/songbird/utils/airdropTypes.ts"
       ]
     },
     "include": [
