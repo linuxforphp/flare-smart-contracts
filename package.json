@@ -143,11 +143,12 @@
     "unregister_network_staging": "env CHAIN_CONFIG=staging yarn --silent hardhat --network staging undaemonize-contracts",
     
     "---------COMPILE---SCRIPTS": "",
-    "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
+    "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-ethers-v5 && yarn typechain-truffle-v5 && yarn typechain-web3-v1",
     "c": "yarn compile",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
     "typechain-ethers-v5": "yarn typechain --target=ethers-v5 --out-dir typechain \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\" 1> nul",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\" 1> nul",
+    "typechain-web3-v1": "yarn typechain --target=web3-v1 --out-dir typechain-web3 \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\" 1> nul",
     "size": "yarn run hardhat size-contracts",
     "flatten": "yarn hardhat flatten",
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json && rm -f ./slither_badge.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json",
