@@ -1,15 +1,15 @@
+import BigNumber from "bignumber.js";
 import * as fs from 'fs';
-import {createAirdropUnsignedTransactions, createFlareAirdropGenesisData, createSetAirdropBalanceUnsignedTransactions, validateFile} from "./utils/processFile";
-import { logMessage, writeError } from './utils/utils';
+import { createFlareAirdropGenesisData, createSetAirdropBalanceUnsignedTransactions, validateFile } from "./utils/processFile";
+import { logMessage } from './utils/utils';
 const Web3Utils = require('web3-utils');
 const parse = require('csv-parse/lib/sync');
-import BigNumber from "bignumber.js";
 
 const TEN = new BigNumber(10);
 BigNumber.config({ ROUNDING_MODE: BigNumber.ROUND_FLOOR, DECIMAL_PLACES: 20 })
 
 // CONSTANTS
-const initialAirdropPercentage:BigNumber = new BigNumber(0.15);
+// const initialAirdropPercentage:BigNumber = new BigNumber(0.15);
 const conversionFactor:BigNumber = new BigNumber(1.0073);
 
 const { argv } = require("yargs")
@@ -44,7 +44,7 @@ const { argv } = require("yargs")
         alias: "log-path",
         describe: "log data path",
         type: "string",
-        default: "airdrop/files/logs/",
+        default: "airdrop/flare/files/logs/",
         nargs: 1
     })
     .option("g", {
@@ -191,7 +191,6 @@ logMessage(logFileName, inputRepString, quiet)
 
 const constantRepString = separatorLine + `Constants
 Contingent Percentages                      : ${contingentPercentage.multipliedBy(100).toFixed()} %
-Initial Airdrop percentage                  : ${initialAirdropPercentage.multipliedBy(100).toFixed()} %
 Conversion Factor                           : ${conversionFactor.toFixed()}`
 logMessage(logFileName, constantRepString, quiet)
 
@@ -225,14 +224,13 @@ let expectedFlrToDistribute:BigNumber = new BigNumber(0);
 expectedFlrToDistribute = validatedData.totalXRPBalance;
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(conversionFactor)
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(contingentPercentage)
-expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(initialAirdropPercentage);
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(TEN.pow(12));
 logMessage(logFileName, `Expected Flare to distribute (Wei) (FLare)  : ${expectedFlrToDistribute.toFixed()}`, quiet);
 // Calculating conversion factor
 logMessage(logFileName, separatorLine+"Input file processing", quiet);
 // Create Flare balance json
 let convertedAirdropData = createFlareAirdropGenesisData(parsed_file, validatedData,
-    contingentPercentage, conversionFactor, initialAirdropPercentage, logFileName);
+    contingentPercentage, conversionFactor, logFileName);
 // Log balance created
 const zeroPad = (num:any, places:any) => String(num).padStart(places, '0')
 logMessage(logFileName, `Number of processed accounts                : ${convertedAirdropData.processedAccountsLen}`, quiet);
@@ -263,22 +261,22 @@ if(healthy){
     //     parseInt(nonceOffset));
 
         // Initial Airdrop transactions
-        const fileData = createSetAirdropBalanceUnsignedTransactions(
-            convertedAirdropData.processedAccounts,
-            InitialAirdropAddress?.address || '',
-            DistributionAddress?.address || '',
-            senderAddress,
-            gasPrice,
-            gas,
-            chainId,
-            parseInt(nonceOffset),
-            900);
-    let totalGasInitialAirdrop = new BigNumber(fileData.InitialAirdropTotalGasPrice)
-    let totalGasDistribution = new BigNumber(fileData.DistributionTotalGasPrice)
-    let totalCost = convertedAirdropData.processedWei.plus(totalGasInitialAirdrop).plus(totalGasDistribution);
-    fs.appendFileSync(transactionFile, JSON.stringify(fileData.InitialAirdropTotalGasPrice));
+    const fileData = createSetAirdropBalanceUnsignedTransactions(
+        convertedAirdropData.processedAccounts,
+        InitialAirdropAddress?.address || '0x94fC7CAAa7Bd3dA076813dB7fe014b5b40422d95',  // TODO
+        DistributionAddress?.address || '0x94fC7CAAa7Bd3dA076813dB7fe014b5b40422d95',  // TODO
+        senderAddress,
+        gasPrice,
+        gas,
+        chainId,
+        parseInt(nonceOffset),
+        1000
+        );
+    let totalGas = new BigNumber(fileData.totalGasPrice)
+    let totalCost = convertedAirdropData.processedWei.plus(totalGas);
+    fs.appendFileSync(transactionFile, JSON.stringify(fileData.rawTransactions));
     logMessage(logFileName, `Created output transaction file             : ${transactionFile}`, quiet);
-    logMessage(logFileName, `Created transactions                        : ${fileData.transactions.length}`, quiet); 
+    logMessage(logFileName, `Created transactions                        : ${fileData.rawTransactions.length}`, quiet); 
     logMessage(logFileName, `Total gas cost of transactions              : ${fileData.totalGasPrice}`, quiet); 
     logMessage(logFileName, `Total balance + gas cost (in Wei)           : ${totalCost.toString(10)}`, quiet); 
     logMessage(logFileName, `Total balance + gas cost (in Wei) (hex)     : 0x${totalCost.toString(16)}`, quiet); 

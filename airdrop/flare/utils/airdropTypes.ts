@@ -54,10 +54,8 @@ export interface signedTransaction {
 }
 
 export interface generateTransactionCallRes {
-  InitialAirdropTransactions: unsignedContractCall[];
-  InitialAirdropTotalGasPrice: string;
-  DistributionTransactions: unsignedContractCall[];
-  DistributionTotalGasPrice: string;
+  rawTransactions: unsignedContractCall[];
+  totalGasPrice: string;
 }
 
 export interface generateTransactionRes {

@@ -1,19 +1,13 @@
 const Web3Utils = require("web3-utils");
 const RippleAPI = require("ripple-lib").RippleAPI;
 const Web3 = require("web3");
-import * as fs from "fs";
-import { isBaseTenNumber, logMessage, writeError } from "./utils";
 import BigNumber from "bignumber.js";
-import { removeUndefined } from "ripple-lib/dist/npm/common";
 import {
   airdropGenesisRes,
-  generateTransactionCallRes,
-  generateTransactionRes,
-  LineItem,
-  ProcessedAccount,
-  unsignedTransaction,
-  validateRes,
+  generateTransactionCallRes, LineItem,
+  ProcessedAccount, validateRes
 } from "./airdropTypes";
+import { isBaseTenNumber, logMessage } from "./utils";
 
 import InitialAirdropAbi from "../../../artifacts/contracts/genesis/implementation/InitialAirdrop.sol/InitialAirdrop.json";
 import { InitialAirdrop } from "../../../typechain-web3/InitialAirdrop";
@@ -137,7 +131,6 @@ export function createFlareAirdropGenesisData(
   validAccounts: validateRes,
   contingentPercentage: BigNumber,
   conversionFactor: BigNumber,
-  initialAirdropPercentage: BigNumber,
   logFile: string,
   logConsole: boolean = true
 ): airdropGenesisRes {
@@ -181,7 +174,9 @@ export function createFlareAirdropGenesisData(
       }
       // Calculate account balance
       accBalance = accBalance.multipliedBy(contingentPercentage);
-      accBalance = accBalance.multipliedBy(initialAirdropPercentage);
+
+      // accBalance = accBalance.multipliedBy(initialAirdropPercentage);
+
       // rounding down to 0 decimal places
       accBalance = accBalance.dp(0, BigNumber.ROUND_FLOOR);
       // Total Wei book keeping
@@ -224,40 +219,40 @@ export function createFlareAirdropGenesisData(
 }
 
 // transaction object https://web3js.readthedocs.io/en/v1.2.9/web3-eth.html#eth-sendtransaction
-export function createAirdropUnsignedTransactions(
-  processedAccounts: ProcessedAccount[],
-  senderAddress: string,
-  gasPrice: string,
-  gas: string,
-  chainId: number,
-  initialNonceOffset: number = 0
-): generateTransactionRes {
-  let transactions = [];
-  let nonce = initialNonceOffset;
-  for (let acc of processedAccounts) {
-    const newTransaction: unsignedTransaction = {
-      from: senderAddress,
-      to: acc.NativeAddress,
-      gas: gas,
-      gasPrice: gasPrice,
-      value: "0x" + acc.NativeBalance,
-      nonce: nonce,
-      chainId: chainId,
-    };
-    transactions.push(newTransaction);
-    nonce += 1;
-  }
-  let totalGasPriceNum = new BigNumber(1);
-  totalGasPriceNum = totalGasPriceNum
-    .multipliedBy(gas)
-    .multipliedBy(gasPrice)
-    .multipliedBy(transactions.length);
-  const totalGasPrice = totalGasPriceNum.toString(10);
-  return {
-    transactions,
-    totalGasPrice,
-  };
-}
+// export function createAirdropUnsignedTransactions(
+//   processedAccounts: ProcessedAccount[],
+//   senderAddress: string,
+//   gasPrice: string,
+//   gas: string,
+//   chainId: number,
+//   initialNonceOffset: number = 0
+// ): generateTransactionRes {
+//   let transactions = [];
+//   let nonce = initialNonceOffset;
+//   for (let acc of processedAccounts) {
+//     const newTransaction: unsignedTransaction = {
+//       from: senderAddress,
+//       to: acc.NativeAddress,
+//       gas: gas,
+//       gasPrice: gasPrice,
+//       value: "0x" + acc.NativeBalance,
+//       nonce: nonce,
+//       chainId: chainId,
+//     };
+//     transactions.push(newTransaction);
+//     nonce += 1;
+//   }
+//   let totalGasPriceNum = new BigNumber(1);
+//   totalGasPriceNum = totalGasPriceNum
+//     .multipliedBy(gas)
+//     .multipliedBy(gasPrice)
+//     .multipliedBy(transactions.length);
+//   const totalGasPrice = totalGasPriceNum.toString(10);
+//   return {
+//     transactions,
+//     totalGasPrice,
+//   };
+// }
 
 export function createSetAirdropBalanceUnsignedTransactions(
   processedAccounts: ProcessedAccount[],
@@ -270,9 +265,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
   initialNonceOffset: number = 0,
   batchSize: number = 900
 ): generateTransactionCallRes {
-  const rawTransactionsInitialAirdrop = [];
-  const rawTransactionsDistribution = [];
-
+  const rawTransactions = [];
   const web3 = new Web3();
 
   const InitialAirdropContract = new web3.eth.Contract(
@@ -289,7 +282,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
   let nonce = initialNonceOffset;
   let shouldBreak = false;
   while (true) {
-    const tempAddresses = [];
+    const tempAddresses: string[] = [];
     const tempBalances = [];
 
     for (let i = 0; i < batchSize; i++) {
@@ -298,7 +291,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
         break;
       }
       tempAddresses.push(processedAccounts[index].NativeAddress);
-      tempBalances.push(processedAccounts[index].NativeBalance);
+      tempBalances.push(web3.utils.toBN(processedAccounts[index].NativeBalance));
       index += 1;
     }
 
@@ -318,7 +311,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
         nonce: nonce,
         chainId: chainId,
       };
-      rawTransactionsInitialAirdrop.push(newTransaction);
+      rawTransactions.push(newTransaction);
       console.log("Initial Airdrop", newTransaction);
       nonce += 1;
 
@@ -334,7 +327,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
         nonce: nonce,
         chainId: chainId,
       };
-      rawTransactionsDistribution.push(newTransactionDistribution);
+      rawTransactions.push(newTransactionDistribution);
       console.log("Distribution", newTransactionDistribution);
       nonce += 1;
     }
@@ -343,23 +336,15 @@ export function createSetAirdropBalanceUnsignedTransactions(
       break;
     }
   }
-  let totalGasPriceNumInitial = new BigNumber(1);
-  totalGasPriceNumInitial = totalGasPriceNumInitial
+  let totalGasPrice = new BigNumber(1);
+  totalGasPrice = totalGasPrice
     .multipliedBy(gas)
     .multipliedBy(gasPrice)
-    .multipliedBy(rawTransactionsInitialAirdrop.length);
-  const totalGasPriceInitial = totalGasPriceNumInitial.toString(10);
+    .multipliedBy(rawTransactions.length);
+  const GasPrice = totalGasPrice.toString(10);
 
-  let totalGasPriceNumDist = new BigNumber(1);
-  totalGasPriceNumDist = totalGasPriceNumDist
-    .multipliedBy(gas)
-    .multipliedBy(gasPrice)
-    .multipliedBy(rawTransactionsDistribution.length);
-  const totalGasPriceDist = totalGasPriceNumDist.toString(10);
   return {
-    InitialAirdropTransactions: rawTransactionsInitialAirdrop,
-    InitialAirdropTotalGasPrice: totalGasPriceInitial,
-    DistributionTransactions: rawTransactionsDistribution,
-    DistributionTotalGasPrice: totalGasPriceDist
+    rawTransactions: rawTransactions,
+    totalGasPrice: GasPrice,
   };
 }

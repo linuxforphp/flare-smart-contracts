@@ -1,12 +1,12 @@
 import BigNumber from "bignumber.js";
 
-var assert = require('assert');
+const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-var processFile = require('../../airdrop/utils/processFile');
+const processFile = require('../../../airdrop/flare/utils/processFile');
 const LineItem = processFile.LineItem;
 
-describe('Validate File testing', function() {
+describe('Validate File testing for songbird', function() {
   const testLogPath = path.join(__dirname,  "temp")
   const testLogFile = testLogPath + "/test.txt"
 
