@@ -1,6 +1,6 @@
 import { network } from "hardhat";
 import { GovernedBaseInstance } from "../../typechain-truffle";
-import { findRequiredEvent, increaseTimeTo } from "./test-helpers";
+import { findRequiredEvent, increaseTimeTo, toBN } from "./test-helpers";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
 const IGovernanceAddressPointer = artifacts.require("IGovernanceAddressPointer");
@@ -17,6 +17,20 @@ export async function impersonateContract(contractAddress: string, gasBalance: B
     await network.provider.request({ method: "hardhat_impersonateAccount", params: [contractAddress] });
     // provide some balance for gas
     await transferWithSuicide(gasBalance, gasSource, contractAddress);
+}
+
+export async function stopImpersonatingContract(contractAddress: string) {
+    await network.provider.request({ method: "hardhat_stopImpersonatingAccount", params: [contractAddress] });
+}
+
+export async function emptyAddressBalance(address: string, toAccount: string) {
+    const gasPrice = toBN(100_000_000_000);
+    const gasAmount = 21000;
+    await impersonateContract(address, gasPrice.muln(gasAmount), toAccount);
+    const addressBalance = toBN(await web3.eth.getBalance(address));
+    const amount = addressBalance.sub(gasPrice.muln(gasAmount));
+    await web3.eth.sendTransaction({ from: address, to: toAccount, value: amount, gas: gasAmount, gasPrice: gasPrice });
+    await stopImpersonatingContract(address);
 }
 
 export async function executeTimelockedGovernanceCall(contract: Truffle.ContractInstance, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<any>>) {

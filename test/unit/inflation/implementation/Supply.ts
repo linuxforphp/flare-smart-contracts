@@ -1,7 +1,8 @@
-import { FtsoRewardManagerInstance, MockContractInstance, SupplyInstance } from "../../../../typechain-truffle";
-import { encodeContractNames, getAddressWithZeroBalance, increaseTimeTo, toBN } from "../../../utils/test-helpers";
-import {constants, expectRevert, expectEvent, time} from '@openzeppelin/test-helpers';
+import { balance, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../../deployment/scripts/Contracts";
+import { MockContractInstance, SupplyInstance } from "../../../../typechain-truffle";
+import { emptyAddressBalance } from "../../../utils/contract-test-helpers";
+import { encodeContractNames, increaseTimeTo, toBN } from "../../../utils/test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Supply = artifacts.require("Supply");
@@ -12,6 +13,7 @@ let mockTokenPools: MockContractInstance[] = [];
 const initialGenesisAmountWei = 10000;
 const totalFoundationSupplyWei =  7500;
 const circulatingSupply       =  initialGenesisAmountWei - totalFoundationSupplyWei;
+const burnAddress = "0x000000000000000000000000000000000000dEaD";
 
 const getTokenPoolSupplyData = web3.utils.sha3("getTokenPoolSupplyData()")!.slice(0,10);
 
@@ -41,18 +43,20 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     const inflationAddress = accounts[9];
     // contains a fresh contract for each test 
     let supply: SupplyInstance;
-    let burnAddress: string;
 
     beforeEach(async() => {
-        burnAddress = await getAddressWithZeroBalance();
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        // clean up burnAddress
+        await emptyAddressBalance(burnAddress, accounts[0]);
+        assert.equal(Number(await balance.current(burnAddress)), 0);
+        //
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, []);
         await supply.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
             [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
     });
 
     it("Should revert deploying supply - initial genesis amount zero", async() => {
-        await expectRevert(Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, 0, totalFoundationSupplyWei, []), "initial genesis amount zero");
+        await expectRevert(Supply.new(governanceAddress, ADDRESS_UPDATER, 0, totalFoundationSupplyWei, []), "initial genesis amount zero");
     });
 
     it("Should know about inflation", async() => {
@@ -192,13 +196,13 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
 
     it("Should deploy supply with token pools", async() => {
         await createTokenPools([500, 1000], [0, 0], [200, 50]);
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 500 - 1000 + 200 + 50);
     });
 
     it("Should deploy supply with some burn address balance", async() => {
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, []);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
     });
 

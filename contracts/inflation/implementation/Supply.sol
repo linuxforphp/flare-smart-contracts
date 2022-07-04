@@ -20,6 +20,8 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     using CheckPointHistoryCache for CheckPointHistoryCache.CacheState;
     using SafeMath for uint256;
 
+    address payable private constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+    
     struct SupplyData {
         IITokenPool tokenPool;
         uint256 totalLockedWei;
@@ -44,7 +46,6 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     SupplyData[] public tokenPools;
 
     address public inflation;
-    address immutable public burnAddress;
 
     // balance of burn address at last check - needed for updating circulating supply
     uint256 private burnAddressBalance;
@@ -60,7 +61,6 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     constructor(
         address _governance,
         address _addressUpdater,
-        address _burnAddress,
         uint256 _initialGenesisAmountWei,
         uint256 _totalExcludedSupplyWei,
         IITokenPool[] memory _tokenPools
@@ -68,7 +68,6 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         require(_initialGenesisAmountWei > 0, ERR_INITIAL_GENESIS_AMOUNT_ZERO);
-        burnAddress = _burnAddress;
         initialGenesisAmountWei = _initialGenesisAmountWei;
         totalExcludedSupplyWei = _totalExcludedSupplyWei;
 
@@ -78,7 +77,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
             _addTokenPool(_tokenPools[i]);
         }
 
-        _updateCirculatingSupply(_burnAddress);
+        _updateCirculatingSupply(BURN_ADDRESS);
     }
 
     /**
@@ -86,7 +85,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
      * @dev Also updates the burn address amount
     */
     function updateCirculatingSupply() external override onlyInflation {
-        _updateCirculatingSupply(burnAddress);
+        _updateCirculatingSupply(BURN_ADDRESS);
     }
 
     /**
@@ -103,7 +102,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         // Save old total inflation authorized value to compare with after update.
         uint256 oldTotalInflationAuthorizedWei = totalInflationAuthorizedWei;
         
-        _updateCirculatingSupply(burnAddress);
+        _updateCirculatingSupply(BURN_ADDRESS);
         
         // Check if new authorized inflation was distributed and updated correctly.
         if (totalInflationAuthorizedWei != oldTotalInflationAuthorizedWei.add(_inflationAuthorizedWei)) {
@@ -128,7 +127,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     {
         _increaseDistributedSupply(_increaseDistributedSupplyByAmountWei);
         _addTokenPool(_tokenPool);
-        _updateCirculatingSupply(burnAddress);
+        _updateCirculatingSupply(BURN_ADDRESS);
     }
 
     /**
@@ -137,7 +136,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
      */
     function increaseDistributedSupply(uint256 _amountWei) external onlyGovernance {
         _increaseDistributedSupply(_amountWei);
-        _updateCirculatingSupply(burnAddress);
+        _updateCirculatingSupply(BURN_ADDRESS);
     }
 
     /**
@@ -147,7 +146,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
     function decreaseDistributedSupply(uint256 _amountWei) external onlyGovernance {
         distributedExcludedSupplyWei = distributedExcludedSupplyWei.sub(_amountWei);
         _decreaseCirculatingSupply(_amountWei);
-        _updateCirculatingSupply(burnAddress);
+        _updateCirculatingSupply(BURN_ADDRESS);
     }
     
     /**
@@ -165,7 +164,7 @@ contract Supply is IISupply, Governed, AddressUpdatable {
         require(_blockNumber < block.number, "Can only be used for past blocks");
         (_circulatingSupplyWei,) = circulatingSupplyWeiCache.valueAt(circulatingSupplyWei, _blockNumber);
     }
-
+    
     /**
      * @notice Get approximate circulating supply for given block number
      * @param _blockNumber                          Block number
@@ -189,6 +188,13 @@ contract Supply is IISupply, Governed, AddressUpdatable {
             .add(totalClaimedWei)
             .sub(totalExcludedSupplyWei.sub(distributedExcludedSupplyWei))
             .sub(totalLockedWei);
+    }
+
+    /**
+     * Return the burn address (a constant).
+     */
+    function burnAddress() external pure returns (address payable) {
+        return BURN_ADDRESS;
     }
 
     /**

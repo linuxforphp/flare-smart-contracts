@@ -736,7 +736,7 @@ export async function createMockSupplyContract(address: string, circulatingSuppl
     // balance is not zeroed for every test, so if there were some nats burned before test, zero address's balance may be positive
     // the problem is that this makes Supply.new fail if that balance is greater than initial genesis amount
     let zeroAddressBalance = toBN(await web3.eth.getBalance(constants.ZERO_ADDRESS));
-    let supplyInterface = await Supply.new(address, address, constants.ZERO_ADDRESS, zeroAddressBalance.addn(1000), 0, []);
+    let supplyInterface = await Supply.new(address, address, zeroAddressBalance.addn(1000), 0, []);
     let mockSupply = await MockSupply.new();
     const getCirculatingSupplyAtCached = supplyInterface.contract.methods.getCirculatingSupplyAtCached(0).encodeABI();
     const getCirculatingSupplyAtCachedReturn = web3.eth.abi.encodeParameter('uint256', circulatingSupply);

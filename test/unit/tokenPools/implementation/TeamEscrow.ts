@@ -1,7 +1,8 @@
-import { expectRevert, time } from '@openzeppelin/test-helpers';
+import { balance, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../../deployment/scripts/Contracts";
 import { SupplyInstance, TeamEscrowInstance } from "../../../../typechain-truffle";
-import { encodeContractNames, getAddressWithZeroBalance } from "../../../utils/test-helpers";
+import { emptyAddressBalance } from '../../../utils/contract-test-helpers';
+import { encodeContractNames } from "../../../utils/test-helpers";
 
 const Supply = artifacts.require("Supply");
 
@@ -11,6 +12,7 @@ const { calcGasCost } = require('../../../utils/eth');
 const initialGenesisAmountWei = 10 ** 10;
 const totalFoundationSupplyWei =  10 ** 5;
 const initialCirculatingSupply = initialGenesisAmountWei - totalFoundationSupplyWei;
+const burnAddress = "0x000000000000000000000000000000000000dEaD";
 
 const BN = web3.utils.toBN;
 
@@ -375,11 +377,13 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
     const inflationAddress = accounts[9];
     // contains a fresh contract for each test 
     let supply: SupplyInstance;
-    let burnAddress: string;
 
     beforeEach(async() => {
-        burnAddress = await getAddressWithZeroBalance();
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, burnAddress, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        // clean up burnAddress
+        await emptyAddressBalance(burnAddress, accounts[0]);
+        assert.equal(Number(await balance.current(burnAddress)), 0);
+        //
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, []);
         await supply.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
             [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});

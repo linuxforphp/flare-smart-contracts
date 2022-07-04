@@ -278,7 +278,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const supply = await Supply.new(
     deployerAccount.address,
     addressUpdater.address,
-    parameters.burnAddress,
     BN(parameters.totalNativeSupplyNAT).mul(BN(10).pow(BN(18))),
     BN(parameters.totalExcludedSupplyNAT).mul(BN(10).pow(BN(18))),
     []

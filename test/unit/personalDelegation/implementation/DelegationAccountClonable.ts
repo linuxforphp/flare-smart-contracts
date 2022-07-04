@@ -244,7 +244,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     // select distribution contract
     await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 
-    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10000000, 9000000, []);
+    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 10000000, 9000000, []);
 
     // ftso reward manager
     mockFtsoManager = await MockFtsoManager.new();
@@ -698,7 +698,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     // Arguments are irrelvant
     const transferMethod = token.contract.methods.transfer(accounts[99], 0).encodeABI()
-    tokenMock.givenMethodReturnBool(transferMethod, true)
+    await tokenMock.givenMethodReturnBool(transferMethod, true)
 
     // Should allow transfer
     await delegationAccountClonable1.transferExternalToken(tokenMock.address, 70, {from: accounts[1]});

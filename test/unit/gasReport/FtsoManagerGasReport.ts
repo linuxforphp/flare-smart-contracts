@@ -255,7 +255,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       );
 
       // create supply
-      supplyInterface = await Supply.new(governance, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10_000, 0, []);
+      supplyInterface = await Supply.new(governance, ADDRESS_UPDATER, 10_000, 0, []);
       // create registry
       ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
       // create whitelister

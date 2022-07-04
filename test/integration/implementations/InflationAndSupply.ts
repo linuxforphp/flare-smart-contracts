@@ -71,7 +71,6 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     supply = await Supply.new(
       accounts[0],
       ADDRESS_UPDATER,
-      constants.ZERO_ADDRESS,
       initialGenesisAmountWei,
       foundationSupplyWei,
       [ftsoRewardManager.address]
