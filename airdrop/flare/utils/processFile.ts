@@ -1,6 +1,7 @@
 const Web3Utils = require("web3-utils");
 const RippleAPI = require("ripple-lib").RippleAPI;
 const Web3 = require("web3");
+const cliProgress = require('cli-progress');
 import BigNumber from "bignumber.js";
 import {
   airdropGenesisRes,
@@ -258,6 +259,8 @@ export function createSetAirdropBalanceUnsignedTransactions(
   processedAccounts: ProcessedAccount[],
   initialAirdropContractAddress: string,
   distributionContractAddress: string,
+  initialAirdropStartTs: string,
+  distributionStartTs: string,
   senderAddress: string,
   gasPrice: string,
   gas: string,
@@ -281,6 +284,12 @@ export function createSetAirdropBalanceUnsignedTransactions(
   let index = 0;
   let nonce = initialNonceOffset;
   let shouldBreak = false;
+
+  const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  let progress = 0
+
+  console.log('Creating unsigned transactions for InitialAirdrop and Distribution');
+  bar1.start(Math.ceil(processedAccounts.length / batchSize) + 2, 0);
   while (true) {
     const tempAddresses: string[] = [];
     const tempBalances = [];
@@ -312,7 +321,6 @@ export function createSetAirdropBalanceUnsignedTransactions(
         chainId: chainId,
       };
       rawTransactions.push(newTransaction);
-      console.log("Initial Airdrop", newTransaction);
       nonce += 1;
 
       const encodedCallDistribution = distributionContract.methods
@@ -328,14 +336,49 @@ export function createSetAirdropBalanceUnsignedTransactions(
         chainId: chainId,
       };
       rawTransactions.push(newTransactionDistribution);
-      console.log("Distribution", newTransactionDistribution);
       nonce += 1;
+
+      progress += 1
+      bar1.update(progress)
     }
 
     if (shouldBreak) {
       break;
     }
   }
+ 
+  // create transaction to disable adding data to initial airdrop
+  const disableInitialAirdrop = InitialAirdropContract.methods.setAirdropStart(initialAirdropStartTs).encodeABI();
+  const disableAirdropTx = {
+    from: senderAddress,
+    to: initialAirdropContractAddress,
+    data: disableInitialAirdrop,
+    gas: gas,
+    gasPrice: gasPrice,
+    nonce: nonce,
+    chainId: chainId,
+  };
+  rawTransactions.push(disableAirdropTx);
+  nonce += 1;
+
+  progress += 1
+  bar1.update(progress)
+
+  const disableDistribution = distributionContract.methods.setEntitlementStart(distributionStartTs).encodeABI();
+  const disableDistributionTx = {
+    from: senderAddress,
+    to: initialAirdropContractAddress,
+    data: disableDistribution,
+    gas: gas,
+    gasPrice: gasPrice,
+    nonce: nonce,
+    chainId: chainId,
+  };
+  rawTransactions.push(disableDistributionTx);
+  progress += 1
+  bar1.update(progress)
+  bar1.stop();
+
   let totalGasPrice = new BigNumber(1);
   totalGasPrice = totalGasPrice
     .multipliedBy(gas)

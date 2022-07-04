@@ -20,7 +20,7 @@ let { argv } = require("yargs")
     alias: "log-path",
     describe: "log data path",
     type: "string",
-    default: "airdrop/files/logs/",
+    default: "airdrop/flare/files/logs/",
     nargs: 1
 })
 .option("q", {
@@ -56,16 +56,13 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     logMessage(logFileName, `--transactions-file        (-f)       : ${transactionsFile}`, quiet);
     logMessage(logFileName, `--log-path                 (-l)       : ${logPath}`, quiet);
     logMessage(logFileName, `web3 provider url          (.ENV)     : ${web3Provider}`, quiet);
-
-
-    console.log(web3Provider);
     
     const web3 = new Web3(web3Provider);
 
     const rawTransactions = JSON.parse(await fs.readFileSync(transactionsFile, "utf8"));
     let promises = []
 
-    let totalBalance = new BigNumber(0);
+    // let totalBalance = new BigNumber(0);
     let totalGasPrice = new BigNumber(0);
 
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
@@ -76,16 +73,16 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     let progress = 0;
     for(let tx of rawTransactions){
         let decoded = txDecoder.decodeTx(tx.raw);
-        totalBalance = totalBalance.plus(decoded.value);
+        // totalBalance = totalBalance.plus(decoded.value);
         let decodedGas = new BigNumber(decoded.gasLimit);
         totalGasPrice = totalGasPrice.plus(decodedGas.multipliedBy(decoded.gasPrice));
         promises.push(web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => null));
-        await sleep(8);
+        await sleep(20);
         progress += 1;
         if(!quiet) bar1.update(progress);
     }
     if(!quiet) bar1.stop();
-    logMessage(logFileName, `Total Balance send                    : ${totalBalance.toFixed()}`, quiet);
+    // logMessage(logFileName, `Total Balance send                    : ${totalBalance.toFixed()}`, quiet);
     logMessage(logFileName, `Total Gas upper limit                 : ${totalGasPrice.toFixed()}`, quiet);
     
     await Promise.all(promises);

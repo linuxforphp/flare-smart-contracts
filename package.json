@@ -81,19 +81,19 @@
     
     "---------AIRDROP---SCRIPTS": "",
     "-----------SONGBIRD": "",
-    "test_initial_airdrop_state_songbird": "yarn test deployment/test/initialVerificationTest.ts",
+    "test_initial_airdrop_state_songbird": "yarn test deployment/test/songbird/initialVerificationTest.ts",
     "create_airdrop_transactions_songbird": "yarn ts-node -r dotenv/config airdrop/songbird/createAirdropTransactions.ts --snapshot-file airdrop/songbird/data/export.csv --transaction-file airdrop/songbird/files/trans/unsigned_transactions.json --override -h true -i 19",
     "sign_airdrop_transactions_songbird": "yarn ts-node -r dotenv/config airdrop/songbird/signAirdropTransactions.ts -f airdrop/songbird/files/trans/unsigned_transactions.json -o airdrop/songbird/files/trans/signed_transactions.json",
     "send_airdrop_transactions_songbird": "yarn ts-node -r dotenv/config airdrop/songbird/sendAirdropTransactions.ts -f airdrop/songbird/files/trans/signed_transactions.json",
-    "test_final_airdrop_state_songbird": "yarn test deployment/test/airdropDataTest.ts",
+    "test_final_airdrop_state_songbird": "yarn test deployment/test/songbird/airdropDataTest.ts",
     "songbird_airdrop": "yarn test_initial_airdrop_state_songbird && yarn create_airdrop_transactions_songbird && yarn sign_airdrop_transactions_songbird && yarn send_airdrop_transactions_songbird && yarn test_final_airdrop_state_songbird",
     
     "-----------FLARE": "",
-    "test_initial_airdrop_state_mainnet": "yarn test deployment/test/initialVerificationTest.ts",
-    "create_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -i 19 -d deployment/deploys/staging.json",
+    "test_initial_airdrop_state_mainnet": "yarn test deployment/test/flare/initialVerificationTest.ts",
+    "create_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -i 19 -d deployment/deploys/staging.json -a 1662016953 -b 1663226553",
     "sign_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/signAirdropTransactions.ts -f airdrop/flare/files/trans/unsigned_call_transactions.json -o airdrop/flare/files/trans/signed_call_transactions.json",
     "send_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/sendAirdropTransactions.ts -f airdrop/flare/files/trans/signed_call_transactions.json",
-    "test_final_airdrop_state_mainnet": "yarn test deployment/test/airdropDataTest.ts",
+    "test_final_airdrop_state_mainnet": "yarn test deployment/test/flare/airdropDataTest.ts",
     "flare_airdrop": "yarn test_initial_airdrop_state_mainnet && yarn create_airdrop_transactions_mainnet && yarn sign_airdrop_transactions_mainnet && yarn send_airdrop_transactions_mainnet && yarn test_final_airdrop_state_mainnet",
     
 

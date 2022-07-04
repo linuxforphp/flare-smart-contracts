@@ -5,7 +5,7 @@ const toBN = web3.utils.toBN;
 const IsAddress = web3.utils.isAddress;
 const cliProgress = require('cli-progress');
 import path from "path";
-import {LineItem, ProcessedLineItem} from "../../airdrop/songbird/utils/airdropTypes"
+import {LineItem, ProcessedLineItem} from "../../../airdrop/songbird/utils/airdropTypes"
 // const airdropExports = require("../../airdrop/data");
 
 function parseAndProcessData(dataFile:string):ProcessedLineItem[] {
@@ -44,14 +44,14 @@ function parseAndProcessData(dataFile:string):ProcessedLineItem[] {
   return processedFile;
 }
 
-contract(`Airdrop testing: Airdrop transactions validation tests tests`, async accounts => {
+contract(`Airdrop testing: Airdrop transactions validation tests tests for Songbird deploy`, async accounts => {
   let parsedAirdrop: ProcessedLineItem[];
   let web3Provider: string;
   let Web3: any;
   let airdropSigner: string;
 
   before(async() => {
-    const airdropExports = path.join(process.cwd(), '/airdrop/data/export.csv')
+    const airdropExports = path.join(process.cwd(), '/airdrop/songbird/data/export.csv')
     parsedAirdrop = parseAndProcessData(airdropExports);
     if (process.env.WEB3_PROVIDER_URL) {
       web3Provider = process.env.WEB3_PROVIDER_URL

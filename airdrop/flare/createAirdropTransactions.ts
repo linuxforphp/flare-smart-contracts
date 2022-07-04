@@ -51,7 +51,7 @@ const { argv } = require("yargs")
         alias: "gas",
         describe: "gas per transaction",
         type: "string",
-        default: "21000",
+        default: "2200000",
         nargs: 1
     })
     .option("p", {
@@ -73,6 +73,20 @@ const { argv } = require("yargs")
         describe: "Deployment file name (generated to deployment/deploys/ folder)",
         type: "string",
         demandOption: "Deployment name is required (-d or --deployment-name)",
+        nargs: 1
+    })
+    .option("a", {
+        alias: "airdrop-start",
+        describe: "airdrop start ts",
+        type: "string",
+        demandOption: "Initial Airdrop strat ts is required (-a or --airdrop-start) ",
+        nargs: 1
+    })
+    .option("b", {
+        alias: "distribution-start",
+        describe: "distribution start ts",
+        type: "string",
+        demandOption: "Distribution entitlement start ts is required (-b or --distribution-start)",
         nargs: 1
     })
     .option("c", {
@@ -105,7 +119,7 @@ const { argv } = require("yargs")
         process.exit(0);
     })
 
-const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, nonceOffset, chainId, deploymentName } = argv;
+const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, nonceOffset, chainId, deploymentName, airdropStart, distributionStart } = argv;
 let {contingentPercentage} = argv;
 contingentPercentage = new BigNumber(contingentPercentage).dividedBy(100)
 const separatorLine = "--------------------------------------------------------------------------------\n"
@@ -156,7 +170,6 @@ if(!fs.existsSync(transactionFile)){
 if(!fs.existsSync(deploymentName)){
     console.error(`No file at ${deploymentName}`);
     throw new Error(`No file at ${deploymentName}`);
-    
 }
 
 const rawDeploy = fs.readFileSync(deploymentName)
@@ -225,7 +238,7 @@ expectedFlrToDistribute = validatedData.totalXRPBalance;
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(conversionFactor)
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(contingentPercentage)
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(TEN.pow(12));
-logMessage(logFileName, `Expected Flare to distribute (Wei) (FLare)  : ${expectedFlrToDistribute.toFixed()}`, quiet);
+logMessage(logFileName, `Expected Flare without caps (Wei) (FLare)   : ${expectedFlrToDistribute.toFixed()}`, quiet);
 // Calculating conversion factor
 logMessage(logFileName, separatorLine+"Input file processing", quiet);
 // Create Flare balance json
@@ -246,25 +259,20 @@ logMessage(logFileName, `Total FLR added to accounts                 : ${convert
 // Do final health checks
 let healthy = true;
 let accounts_match = convertedAirdropData.processedAccountsLen == validatedData.validAccountsLen;
+// check that towo calculated balances and flare calculated balances match
+
 healthy = healthy && accounts_match;
 logMessage(logFileName, separatorLine+"Health checks", quiet);
 logMessage(logFileName, `Read and processed account number match     : ${accounts_match}`, quiet);
 
 if(healthy){
-    // normal transactions
-    // const fileData = createAirdropUnsignedTransactions(
-    //     convertedAirdropData.processedAccounts,
-    //     senderAddress,
-    //     gasPrice,
-    //     gas,
-    //     chainId,
-    //     parseInt(nonceOffset));
-
-        // Initial Airdrop transactions
+    // Initial Airdrop transactions
     const fileData = createSetAirdropBalanceUnsignedTransactions(
         convertedAirdropData.processedAccounts,
-        InitialAirdropAddress?.address || '0x94fC7CAAa7Bd3dA076813dB7fe014b5b40422d95',  // TODO
-        DistributionAddress?.address || '0x94fC7CAAa7Bd3dA076813dB7fe014b5b40422d95',  // TODO
+        InitialAirdropAddress?.address || '',
+        DistributionAddress?.address || '',
+        airdropStart,
+        distributionStart,
         senderAddress,
         gasPrice,
         gas,
@@ -274,10 +282,13 @@ if(healthy){
         );
     let totalGas = new BigNumber(fileData.totalGasPrice)
     let totalCost = convertedAirdropData.processedWei.plus(totalGas);
+    const balancesMatch = validatedData.totalFLRBalance.toString(10) === convertedAirdropData.processedWei.toString(10)
+    logMessage(logFileName, `Towo balances and Flare balances match      : ${balancesMatch}`, quiet);
     fs.appendFileSync(transactionFile, JSON.stringify(fileData.rawTransactions));
     logMessage(logFileName, `Created output transaction file             : ${transactionFile}`, quiet);
     logMessage(logFileName, `Created transactions                        : ${fileData.rawTransactions.length}`, quiet); 
     logMessage(logFileName, `Total gas cost of transactions              : ${fileData.totalGasPrice}`, quiet); 
+    logMessage(logFileName, `Total gas cost of transactions (hex)        : 0x${(new BigNumber(fileData.totalGasPrice)).toString(16)}`, quiet); 
     logMessage(logFileName, `Total balance + gas cost (in Wei)           : ${totalCost.toString(10)}`, quiet); 
     logMessage(logFileName, `Total balance + gas cost (in Wei) (hex)     : 0x${totalCost.toString(16)}`, quiet); 
     logMessage(logFileName, "Successfully generated transactions", quiet);

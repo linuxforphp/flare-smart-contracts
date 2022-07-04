@@ -3,9 +3,10 @@ const web3 = require("web3");
 import BigNumber from "bignumber.js";
 import * as openpgp from 'openpgp';
 
-const AIRDROP_SIGNER_BALANCE = "3900056276934594667740000000";
+const AIRDROP_TRANSACTIONS_GAS_COST = "160446000000000000000"
+// const AIRDROP_SIGNER_BALANCE = "3900056276934594667740000000";
 
-contract(`initialVerificationTest.ts: Airdrop validation pre-tests`, async accounts => {
+contract(`initialVerificationTest.ts: Airdrop validation pre-tests for flare deployment`, async accounts => {
   let web3Provider: string;
   let Web3: any;
   let airdropSigner: string;
@@ -28,8 +29,8 @@ contract(`initialVerificationTest.ts: Airdrop validation pre-tests`, async accou
     }
   });
 
-  it(`Should balance airdrop signer address to ${AIRDROP_SIGNER_BALANCE}`, async function(){
-    const bninitial = new BigNumber(AIRDROP_SIGNER_BALANCE);
+  it(`Should balance airdrop signer address to ${AIRDROP_TRANSACTIONS_GAS_COST}`, async function(){
+    const bninitial = new BigNumber(AIRDROP_TRANSACTIONS_GAS_COST);
     const signerBalance = await Web3.eth.getBalance(airdropSigner);
     assert.equal(signerBalance,bninitial.toString(10));
   });
@@ -41,9 +42,9 @@ contract(`initialVerificationTest.ts: Airdrop validation pre-tests`, async accou
 
   it("Should verify digital signature of airdrop conversion file", async () => {
     // Assemble
-    let msg_data = fs.readFileSync("./airdrop/data/export.csv", 'utf8');
-    let sig_data = fs.readFileSync("./airdrop/data/export.csv.sig", null);
-    let pubkey_data = fs.readFileSync("./airdrop/data/flare-foundation.asc", 'utf8');
+    let msg_data = fs.readFileSync("./airdrop/flare/data/export.csv", 'utf8');
+    let sig_data = fs.readFileSync("./airdrop/flare/data/export.csv.sig", null);
+    let pubkey_data = fs.readFileSync("./airdrop/flare/data/flare-foundation.asc", 'utf8');
     // Read in csv and create a pgp message to verify
     const msg = await openpgp.createMessage({
       text: msg_data
