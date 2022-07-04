@@ -156,7 +156,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         const blk1 = await web3.eth.getBlockNumber();
         await time.advanceBlock();
         // Act
-        await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
+        await cbnManager.setCleanUpBlockNumber(blk1, { from: trigger });
         // Assert
         assertNumberEqual(await vpToken1.cleanupBlockNumber(), blk1);
         assertNumberEqual(await vpToken2.cleanupBlockNumber(), blk1);
@@ -185,7 +185,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         // Act
         // Assert
         await expectRevert(cbnManager.setCleanUpBlockNumber(blk1, { from: accounts[1] }),
-            "trigger or governance only");
+            "trigger contract only");
     });
 
     it("Setting cleanup blocks emits events", async () => {
@@ -199,7 +199,7 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
         const blk1 = await web3.eth.getBlockNumber();
         await time.advanceBlock();
         // Act
-        const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
+        const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: trigger });
         // Assert
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken1.address, blockNumber: toBN(blk1), success: true });
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken2.address, blockNumber: toBN(blk1), success: true });
@@ -207,43 +207,24 @@ contract(`CleanupBlockNumberManager.sol; ${getTestFile(__filename)}; CleanupBloc
 
     it("Setting cleanup blocks fails silently if something is wrong", async () => {
         // Assemble
+        // create tokens
         const vpToken1 = await createVPToken("A token", "ATOK");
-        await vpToken1.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
-        await cbnManager.registerToken(vpToken1.address, { from: governance });
         const vpToken2 = await createVPToken("Another token", "BTOK");
-        await vpToken2.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
-        await cbnManager.registerToken(vpToken2.address, { from: governance });
         const blk1 = await web3.eth.getBlockNumber();
         await time.advanceBlock();
+        // set cleanup block manually on token1
+        await vpToken1.setCleanupBlockNumberManager(accounts[30], { from: governance });
+        await vpToken1.setCleanupBlockNumber(blk1 + 1, { from: accounts[30]  });
+        // set real cleanup block manager
+        await vpToken1.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
+        await cbnManager.registerToken(vpToken1.address, { from: governance });
+        await vpToken2.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
+        await cbnManager.registerToken(vpToken2.address, { from: governance });
         // Act
-        await vpToken1.setCleanupBlockNumber(blk1 + 1);
         await vpToken2.setCleanupBlockNumberManager(constants.ZERO_ADDRESS, { from: governance });
-        const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
+        const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: trigger });
         // Assert
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken1.address, blockNumber: toBN(blk1), success: false });
         expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken2.address, blockNumber: toBN(blk1), success: false });
-    });
-
-    it("Can register detached VPContract directly", async () => {
-        // Assemble
-        const vpToken = await createVPToken("A token", "ATOK");
-        await vpToken.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
-        await cbnManager.registerToken(vpToken.address, { from: governance });
-        // Act
-        const vpContract = await VPContract.at(await vpToken.readVotePowerContract());
-        // detach vpContract from vpToken
-        await vpToken.setWriteVpContract(constants.ZERO_ADDRESS);
-        await vpToken.setReadVpContract(constants.ZERO_ADDRESS);
-        // register vpContract to cbnManager
-        await vpContract.setCleanupBlockNumberManager(cbnManager.address, { from: governance });
-        await cbnManager.registerToken(vpContract.address, { from: governance });
-        // Assert
-        assert.equal(await cbnManager.registeredTokens(0), vpToken.address);
-        assert.equal(await cbnManager.registeredTokens(1), vpContract.address);
-        const blk1 = await web3.eth.getBlockNumber();
-        await time.advanceBlock();
-        const receipt = await cbnManager.setCleanUpBlockNumber(blk1, { from: governance });
-        expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpToken.address, blockNumber: toBN(blk1), success: true });
-        expectEvent(receipt, "CleanupBlockNumberSet", { theContract: vpContract.address, blockNumber: toBN(blk1), success: true });
     });
 });

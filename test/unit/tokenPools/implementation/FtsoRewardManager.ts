@@ -19,7 +19,10 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
+const DataProviderFee = artifacts.require("DataProviderFee" as any);
+const UnearnedRewardBurning = artifacts.require("UnearnedRewardBurning" as any);
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
+const FtsoManagement = artifacts.require("FtsoManagement");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const WNAT = artifacts.require("WNat") as WNatContract;
 const InflationMock = artifacts.require("InflationMock");
@@ -141,6 +144,12 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
     let mockSuicidal: SuicidalMockInstance;
     
     ADDRESS_UPDATER = accounts[16];
+
+    before(async () => {
+        FtsoManager.link(await FtsoManagement.new() as any);
+        FtsoRewardManager.link(await DataProviderFee.new() as any);
+        FtsoRewardManager.link(await UnearnedRewardBurning.new() as any);
+    });
 
     beforeEach(async () => {
         mockFtsoManager = await MockFtsoManager.new();

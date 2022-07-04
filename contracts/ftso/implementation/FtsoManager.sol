@@ -6,6 +6,7 @@ import "../interface/IIFtsoManager.sol";
 import "../interface/IIFtsoManagerV1.sol";
 import "../interface/IIFtso.sol";
 import "../lib/FtsoManagerSettings.sol";
+import "../lib/FtsoManagement.sol";
 import "../../genesis/implementation/FlareDaemon.sol";
 import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
@@ -33,6 +34,7 @@ import "../../utils/interface/IUpdateValidators.sol";
 //solhint-disable-next-line max-states-count
 contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdatable, RevertErrorTracking {
     using FtsoManagerSettings for FtsoManagerSettings.State;
+    using FtsoManagement for FtsoManagement.State;
 
     uint256 public constant MAX_TRUSTED_ADDRESSES_LENGTH = 5;
 
@@ -48,12 +50,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_REVEAL_PRICE_EPOCH_TOO_LONG = "Reveal price epoch too long";
     string internal constant ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized";
     string internal constant ERR_GOV_PARAMS_INVALID = "Gov. params invalid";
-    string internal constant ERR_ASSET_FTSO_NOT_MANAGED = "Asset FTSO not managed";
     string internal constant ERR_NOT_FOUND = "Not found";
     string internal constant ERR_ALREADY_ADDED = "Already added";
     string internal constant ERR_ALREADY_ACTIVATED = "Already activated";
-    string internal constant ERR_FTSO_ASSET_FTSO_ZERO = "Asset ftsos list empty";
-    string internal constant ERR_FTSO_EQUALS_ASSET_FTSO = "ftso equals asset ftso";
     string internal constant ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL = "err close expired";
     string internal constant ERR_SET_CLEANUP_BLOCK_FAIL = "err set cleanup block";
     string internal constant ERR_PRICE_EPOCH_FINALIZE_FAIL = "err finalize price epoch";
@@ -72,6 +71,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     uint256 public override currentRewardEpochEnds;
 
     FtsoManagerSettings.State public settings;
+    FtsoManagement.State public ftsoManagement;
 
     // price epoch data
     uint256 internal immutable firstPriceEpochStartTs;
@@ -89,20 +89,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     uint256 internal votePowerIntervalFraction;
     uint256 internal nextRewardEpochToExpire;
 
-    mapping(IIFtso => bool) public managedFtsos;
-    mapping(IIFtso => bool) public override notInitializedFtsos;
-
     IIPriceSubmitter public immutable priceSubmitter;
     IIFtsoRewardManager public rewardManager;
-    IIFtsoRegistry public ftsoRegistry;
-    IIVoterWhitelister public voterWhitelister;
     IISupply public supply;
     CleanupBlockNumberManager public cleanupBlockNumberManager;
     IUpdateValidators public updateOnRewardEpochSwitchover;
 
     // fallback mode
     bool internal fallbackMode; // all ftsos in fallback mode
-    mapping(IIFtso => bool) internal ftsoInFallbackMode;
 
     // for redeploy
     IIFtsoManagerV1 public immutable oldFtsoManager;
@@ -250,10 +244,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
      * @dev Deactivates _ftso
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
-        uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_ftso.symbol());
-        voterWhitelister.removeFtso(ftsoIndex);
-        ftsoRegistry.removeFtso(_ftso);
-        _cleanFtso(_ftso);
+        ftsoManagement.removeFtso(_ftso);
     }
     
     /**
@@ -294,29 +285,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
      * @notice Deactivates ftsos that are no longer used on ftso registry
      */
     function deactivateFtsos(IIFtso[] memory _ftsos) external onlyGovernance {
-        uint256 len = _ftsos.length;
-        while(len > 0) {
-            len--;
-            IIFtso ftso = _ftsos[len];
-            try ftsoRegistry.getFtsoBySymbol(ftso.symbol()) returns (IIFtso _ftso) {
-                if (_ftso != ftso) {
-                    // deactivate ftso if it was already replaced on ftso registry
-                    ftso.deactivateFtso();
-                    delete ftsoInFallbackMode[ftso];
-                    delete notInitializedFtsos[ftso];
-                    delete managedFtsos[ftso];
-                } else {
-                    // ftso still in use on ftso registy - it could be removed using removeFtso call
-                    emit FtsoDeactivationFailed(ftso);
-                }
-            } catch {
-                // deactivate ftso if ftso symbol is not used anymore on ftso registry
-                ftso.deactivateFtso();
-                delete ftsoInFallbackMode[ftso];
-                delete notInitializedFtsos[ftso];
-                delete managedFtsos[ftso];
-            }
-        }
+        ftsoManagement.deactivateFtsos(_ftsos);
     }
     
     /**
@@ -330,24 +299,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
      * @notice Set asset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
      */
     function setFtsoAssetFtsos(IIFtso _ftso, IIFtso[] memory _assetFtsos) external override onlyGovernance {
-        uint256 len = _assetFtsos.length;
-        require(len > 0, ERR_FTSO_ASSET_FTSO_ZERO);
-        for (uint256 i = 0; i < len; i++) {
-            if (_ftso == _assetFtsos[i]) {
-                revert(ERR_FTSO_EQUALS_ASSET_FTSO);
-            }
-        }
-
-        if (managedFtsos[_ftso]) {
-            _checkAssetFtsosAreManaged(_assetFtsos);
-        }
-        _ftso.setAssetFtsos(_assetFtsos);
+        ftsoManagement.setFtsoAssetFtsos(_ftso, _assetFtsos);
     }
 
     /**
      * @notice Set fallback mode
      */
-    function setFallbackMode(bool _fallbackMode) external override onlyGovernance {
+    function setFallbackMode(bool _fallbackMode) external override onlyImmediateGovernance {
         fallbackMode = _fallbackMode;
         emit FallbackMode(_fallbackMode);
     }
@@ -355,9 +313,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     /**
      * @notice Set fallback mode for ftso
      */
-    function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external override onlyGovernance {
-        require(managedFtsos[_ftso], ERR_NOT_FOUND);
-        ftsoInFallbackMode[_ftso] = _fallbackMode;
+    function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external override onlyImmediateGovernance {
+        require(ftsoManagement.managedFtsos[_ftso], ERR_NOT_FOUND);
+        ftsoManagement.ftsoInFallbackMode[_ftso] = _fallbackMode;
         emit FtsoFallbackMode(_ftso, _fallbackMode);
     }
 
@@ -508,7 +466,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         _ftsoInFallbackMode = new bool[](len);
         
         for (uint256 i = 0; i < len; i++) {
-            _ftsoInFallbackMode[i] = ftsoInFallbackMode[_ftsos[i]];
+            _ftsoInFallbackMode[i] = ftsoManagement.ftsoInFallbackMode[_ftsos[i]];
         }
     }
 
@@ -574,13 +532,25 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         _startTimestamp = rewardEpochData.startTimestamp;
     }
     
+    function notInitializedFtsos(IIFtso _ftso) external view override returns (bool) {
+        return ftsoManagement.notInitializedFtsos[_ftso];
+    }
+
+    function ftsoRegistry() external view returns (IIFtsoRegistry) {
+        return ftsoManagement.ftsoRegistry;
+    }
+
+    function voterWhitelister() external view returns (IIVoterWhitelister) {
+        return ftsoManagement.voterWhitelister;
+    }
+    
     /**
      * @notice Implement this function for updating daemonized contracts through AddressUpdater.
      */
     function getContractName() external pure override returns (string memory) {
         return "FtsoManager";
     }
-
+    
     /**
      * @notice Returns reward epoch data
      * @param _rewardEpochId        Reward epoch id
@@ -605,131 +575,23 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     function _addFtso(IIFtso _ftso, bool _addNewFtso) internal {
-        require(settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
-
-        _checkAssetFtsosAreManaged(_ftso.getAssetFtsos());
-
-        if (_addNewFtso) {
-            // Check if symbol already exists in registry
-            bytes32 symbol = keccak256(abi.encode(_ftso.symbol()));
-            string[] memory supportedSymbols = ftsoRegistry.getSupportedSymbols();
-            uint256 len = supportedSymbols.length;
-            while (len > 0) {
-                --len;
-                if (keccak256(abi.encode(supportedSymbols[len])) == symbol) {
-                    revert(ERR_ALREADY_ADDED);
-                }
-            }
-        }
-
+        ftsoManagement.addFtso(settings, _ftso, _addNewFtso, lastUnprocessedPriceEpochInitialized);
+        _initialActivateFtso(_ftso);
+    }
+    
+    function _replaceFtso(IIFtso _ftsoToAdd, bool _copyCurrentPrice, bool _copyAssetOrAssetFtsos) internal {
+        ftsoManagement.replaceFtso(settings, _ftsoToAdd, _copyCurrentPrice, _copyAssetOrAssetFtsos, 
+            lastUnprocessedPriceEpochInitialized);
+        _initialActivateFtso(_ftsoToAdd);
+    }
+    
+    function _initialActivateFtso(IIFtso _ftso) internal {
         _ftso.activateFtso(firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
 
         // Set the vote power block
         if (rewardEpochsLength != 0) {
             _ftso.setVotePowerBlock(_getRewardEpoch(_getCurrentRewardEpochId()).votepowerBlock);
         }
-
-        // Configure 
-        _ftso.configureEpochs(
-            settings.maxVotePowerNatThresholdFraction,
-            settings.maxVotePowerAssetThresholdFraction,
-            settings.lowAssetUSDThreshold,
-            settings.highAssetUSDThreshold,
-            settings.highAssetTurnoutThresholdBIPS,
-            settings.lowNatTurnoutThresholdBIPS,
-            settings.trustedAddresses
-        );
-        
-        // skip first round of price finalization if price epoch was already initialized for reveal
-        notInitializedFtsos[_ftso] = lastUnprocessedPriceEpochInitialized;
-        managedFtsos[_ftso] = true;
-        uint256 ftsoIndex = ftsoRegistry.addFtso(_ftso);
-
-        // When a new ftso is added we also add it to the voter whitelister contract
-        if (_addNewFtso) {
-            voterWhitelister.addFtso(ftsoIndex);
-        }
-        
-        emit FtsoAdded(_ftso, true);
-    }
-
-    /**
-     * @notice Replaces one ftso with another - symbols must match
-     * All ftsos in multi asset ftso must be managed by this ftso manager
-     * @dev Deactivates old ftso
-     */
-    function _replaceFtso(
-        IIFtso _ftsoToAdd,
-        bool _copyCurrentPrice,
-        bool _copyAssetOrAssetFtsos
-    )
-        internal
-    {
-        IIFtso ftsoToRemove = ftsoRegistry.getFtsoBySymbol(_ftsoToAdd.symbol());
-
-        if (_copyCurrentPrice) {
-            (uint256 currentPrice, uint256 timestamp) = ftsoToRemove.getCurrentPrice();
-            _ftsoToAdd.updateInitialPrice(currentPrice, timestamp);
-        }
-
-        if (_copyAssetOrAssetFtsos) {
-            IIVPToken asset = ftsoToRemove.getAsset();
-            if (address(asset) != address(0)) { // copy asset if exists
-                _ftsoToAdd.setAsset(asset);
-            } else { // copy assetFtsos list if not empty
-                IIFtso[] memory assetFtsos = ftsoToRemove.getAssetFtsos();
-                if (assetFtsos.length > 0) {
-                    _ftsoToAdd.setAssetFtsos(assetFtsos);
-                }
-            }
-        }
-        // Add without duplicate check
-        _addFtso(_ftsoToAdd, false);
-        
-        // replace old contract with the new one in multi asset ftsos
-        IIFtso[] memory contracts = _getFtsos();
-
-        uint256 ftsosLen = contracts.length;
-        for (uint256 i = 0; i < ftsosLen; i++) {
-            IIFtso ftso = contracts[i];
-            if (ftso.ftsoManager() != address(this)) { // it cannot be updated and will be replaced
-                continue;
-            }
-            IIFtso[] memory assetFtsos = ftso.getAssetFtsos();
-            uint256 assetFtsosLen = assetFtsos.length;
-            if (assetFtsosLen > 0) {
-                bool changed = false;
-                for (uint256 j = 0; j < assetFtsosLen; j++) {
-                    if (assetFtsos[j] == ftsoToRemove) {
-                        assetFtsos[j] = _ftsoToAdd;
-                        changed = true;
-                    }
-                }
-                if (changed) {
-                    ftso.setAssetFtsos(assetFtsos);
-                }
-            }
-        }
-
-        // cleanup old contract
-        _cleanFtso(ftsoToRemove);
-    }
-
-    function _cleanFtso(IIFtso _ftso) internal {
-        // Since this is as mapping, we can also just delete it, as false is default value for non-existing keys
-        delete ftsoInFallbackMode[_ftso];
-        delete notInitializedFtsos[_ftso];
-        delete managedFtsos[_ftso];
-
-        // may fail if not managed by current ftso manager (can happen in redeploy)
-        if (_ftso.ftsoManager() == address(this)) {
-            _ftso.deactivateFtso();
-            _checkMultiAssetFtsosAreManaged(_getFtsos());
-        } else {
-            // do nothing, old ftso not deactivated, but actually it is not a problem, just emit an event
-            emit FtsoDeactivationFailed(_ftso);
-        }
-        emit FtsoAdded(_ftso, false);
     }
 
     /**
@@ -911,8 +773,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                 IIFtso ftso = ftsos[id];
 
                 // skip finalizing ftso, as it is not initialized for reveal and tx would revert
-                if (notInitializedFtsos[ftso]) {
-                    delete notInitializedFtsos[ftso];
+                if (ftsoManagement.notInitializedFtsos[ftso]) {
+                    delete ftsoManagement.notInitializedFtsos[ftso];
                     continue;
                 }
 
@@ -966,8 +828,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             for (uint256 i = 0; i < numFtsos; i++) {
                 IIFtso ftso = ftsos[i];
                 // skip finalizing ftso, as it is not initialized for reveal and tx would revert
-                if (notInitializedFtsos[ftso]) {
-                    delete notInitializedFtsos[ftso];
+                if (ftsoManagement.notInitializedFtsos[ftso]) {
+                    delete ftsoManagement.notInitializedFtsos[ftso];
                     continue;
                 }
                 _fallbackFinalizePriceEpoch(ftso);
@@ -1054,7 +916,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
 
             try ftso.initializeCurrentEpochStateForReveal(
                 circulatingSupplyNat,
-                fallbackMode || ftsoInFallbackMode[ftso]) {
+                fallbackMode || ftsoManagement.ftsoInFallbackMode[ftso]) {
             } catch Error(string memory message) {
                 _initializeCurrentEpochStateForRevealFailed(ftso, message);
             } catch {
@@ -1077,16 +939,16 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         addRevertError(address(ftso), message);
 
         // if it was already called with fallback = true, just mark as not initialized, else retry
-        if (fallbackMode || ftsoInFallbackMode[ftso]) {
-            notInitializedFtsos[ftso] = true;
+        if (fallbackMode || ftsoManagement.ftsoInFallbackMode[ftso]) {
+            ftsoManagement.notInitializedFtsos[ftso] = true;
         } else {
             try ftso.initializeCurrentEpochStateForReveal(0, true) {
             } catch Error(string memory message1) {
-                notInitializedFtsos[ftso] = true;
+                ftsoManagement.notInitializedFtsos[ftso] = true;
                 emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
                 addRevertError(address(ftso), message1);
             } catch {
-                notInitializedFtsos[ftso] = true;
+                ftsoManagement.notInitializedFtsos[ftso] = true;
                 emit InitializingCurrentEpochStateForRevealFailed(ftso, _getCurrentPriceEpochId());
                 addRevertError(address(ftso), ERR_FALLBACK_INIT_EPOCH_REVEAL_FAIL);
             }
@@ -1104,14 +966,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     {
         rewardManager = IIFtsoRewardManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRewardManager"));
-        ftsoRegistry = IIFtsoRegistry(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
-        voterWhitelister = IIVoterWhitelister(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "VoterWhitelister"));
         supply = IISupply(
             _getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
         cleanupBlockNumberManager = CleanupBlockNumberManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "CleanupBlockNumberManager"));
+        ftsoManagement.ftsoRegistry = IIFtsoRegistry(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
+        ftsoManagement.voterWhitelister = IIVoterWhitelister(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "VoterWhitelister"));
     }
 
     /**
@@ -1133,28 +995,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
                 startBlock: sBlock,
                 startTimestamp: sTimestamp
             });
-        }
-    }
-
-    /**
-     * @notice Check if asset ftsos are managed by this ftso manager, revert otherwise
-     */
-    function _checkAssetFtsosAreManaged(IIFtso[] memory _assetFtsos) internal view {
-        uint256 len = _assetFtsos.length;
-        for (uint256 i = 0; i < len; i++) {
-            if (!managedFtsos[_assetFtsos[i]]) {
-                revert(ERR_ASSET_FTSO_NOT_MANAGED);
-            }
-        }
-    }
-
-    /**
-     * @notice Check if all multi asset ftsos are managed by this ftso manager, revert otherwise
-     */
-    function _checkMultiAssetFtsosAreManaged(IIFtso[] memory _ftsos) internal view {
-        uint256 len = _ftsos.length;
-        for (uint256 i = 0; i < len; i++) {
-            _checkAssetFtsosAreManaged(_ftsos[i].getAssetFtsos());
         }
     }
 
@@ -1185,6 +1025,6 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     function _getFtsos() internal view returns (IIFtso[] memory) {
-        return ftsoRegistry.getSupportedFtsos();
+        return ftsoManagement.ftsoRegistry.getSupportedFtsos();
     }
 }

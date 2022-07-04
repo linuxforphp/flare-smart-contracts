@@ -6,7 +6,7 @@ import { Contracts } from "../../../deployment/scripts/Contracts";
 import hardhatConfig from "../../../hardhat.config";
 import { FlareDaemon, FlareDaemon__factory, Ftso, FtsoManager, FtsoManager__factory, FtsoRegistry, FtsoRegistry__factory, FtsoRewardManager, FtsoRewardManager__factory, Ftso__factory, Inflation, Inflation__factory, PriceSubmitter, PriceSubmitter__factory, VoterWhitelister, VoterWhitelister__factory, VPContract__factory, WNat, WNat__factory } from "../../../typechain";
 import { getTestFile } from "../../utils/constants";
-import { BaseEvent, EthersEventDecoder, ethersEventIs, formatBN } from "../../utils/EventDecoder";
+import { BaseEvent, EthersEventDecoder, ethersEventIs, ethersFindEvent, formatBN } from "../../utils/EventDecoder";
 import { toBigNumberFixedPrecision } from "../../utils/test-helpers";
 import { BIG_NUMBER_ZERO, currentRealTime, randomShuffled, toNumber } from "../../utils/fuzzing-utils";
 import { messageIncluded, getChainConfigParameters, internalFullDeploy, reportError } from "./EndToEndFuzzingUtils";
@@ -42,6 +42,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
 
     let signers: SignerWithAddress[];
     let governance: SignerWithAddress;
+    let executor: SignerWithAddress;
 
     // contract instances
     let flareDaemon: FlareDaemon;
@@ -100,8 +101,9 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         const resultByAddress: { [address: string]: Contract } = {};
         for (const contract of contracts.allContracts()) {
             const contractName = contract.contractName.replace(/\.sol$/, '');
-            let contractFactory = await ethers.getContractFactory(contractName, signers[0]);
-            const instance = contractFactory.attach(contract.address);
+            // let contractFactory = await ethers.getContractFactory(contractName, signers[0]);
+            // const instance = contractFactory.attach(contract.address);
+            const instance = await ethers.getContractAt(contractName, contract.address, signers[0]);
             const instanceName = contract.name.slice(0, 1).toLowerCase() + contract.name.slice(1);
             result[instanceName] = instance;
             resultByAddress[contract.address] = instance;
@@ -187,8 +189,15 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             const maxMintingRequestWei = await flareDaemon.maxMintingRequestWei();
             const newMaxMintingRequestWei = maxMintingRequestWei.mul(110).div(100);   // multiply by 1.1 - max allowed per day
             if (newMaxMintingRequestWei.gt(annualInflationWei)) return;
-            await transactionRunner.runMethod(flareDaemon, f => f.setMaxMintingRequest(newMaxMintingRequestWei, { gasLimit: 1_000_000 }),
+            // setMaxMintingRequest (possibly with timelock)
+            const response = await transactionRunner.runMethod(flareDaemon, f => f.setMaxMintingRequest(newMaxMintingRequestWei, { gasLimit: 1_000_000 }),
                 { signer: governance, method: "flareDaemon.setMaxMintingRequest()", comment: `Increasing maxMintingRequest to ${formatBN(newMaxMintingRequestWei)}` });
+            const event = ethersFindEvent(response.allEvents, flareDaemon, 'GovernanceCallTimelocked');
+            if (event) {    // timelocked?
+                await transactionRunner.skipToTime(event.args.allowedAfterTimestamp.toNumber() + 1);
+                await transactionRunner.runMethod(flareDaemon, f => f.executeGovernanceCall(event.args.selector, { gasLimit: 1_000_000 }),
+                    { signer: executor, method: "flareDaemon.executeGovernanceCall()", comment: `Executing timelocked call to flareDaemon.setMaxMintingRequest()` });
+            }
         } catch (e) {
             transactionRunner.logUnexpectedError(e);
         }
@@ -225,18 +234,26 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         }
         return parameters;
     }
+    
+    function signerForAddress(address: string) {
+        const signer = signers.find(signer => signer.address === address);
+        if(signer == null) assert.fail(`Missing signer with address ${address}`);
+        return signer;
+    }
 
     before(async () => {
         console.log(`Network = ${networkType}`);
         signers = getSigners(getProviders(), RESERVED_ACCOUNTS + N_DELEGATORS + N_PROVIDERS);
+        let parameters: any;
         if (networkType === NetworkType.HARDHAT) {
             console.log("Deploying contracts...");
-            const parameters = getConfigParameters(`test/fuzzing/endtoend/fuzzing-chain-config.json`, CHAIN_CONFIG);
+            parameters = getConfigParameters(`test/fuzzing/endtoend/fuzzing-chain-config.json`, CHAIN_CONFIG);
             const deployed = await internalFullDeploy(parameters, true);
             console.log("...deployed");
             await setTestContracts(deployed.contracts!);
         } else {
             const contracts = new Contracts();
+            parameters = getConfigParameters(`deployment/chain-config/scdev.json`, {});
             contracts.deserializeFile('deployment/deploys/scdev.json');
             await setTestContracts(contracts);
         }
@@ -244,8 +261,10 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         eventDecoder = new EthersEventDecoder(contractDict);
         eventDecoder.addAddress('defaultAccount', signers[0].address);
         // after deploy, governance was transferred to account 1
-        governance = signers[1];
+        governance = signerForAddress(parameters.governancePublicKey);
         eventDecoder.addAddress('governance', governance.address);
+        executor = signerForAddress(parameters.governanceExecutorPublicKey);
+        eventDecoder.addAddress('executor', executor.address);
         // set runner
         transactionRunner = new EthersTransactionRunner(networkType, signers[0], flareDaemon, eventDecoder);
         transactionRunner.openLog("test_logs/end-to-end-fuzzing.log");
@@ -261,21 +280,10 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
 
     let is_passing = true;
     
-    afterEach(function () {
-        const status = this.currentTest?.state
-        if (status === "failed") {
-            is_passing = false;
-        }
-    })
-
-    after(async () => {
-        transactionRunner.logGasUsage();
-        transactionRunner.closeLog();
-        let BadgeStorageURL = ""
-        if (process.env.BADGE_URL) {
-          BadgeStorageURL = process.env.BADGE_URL
-        }
-        let fromMaster = true
+    async function uploadBadge() {
+        let BadgeStorageURL = process.env.BADGE_URL;
+        if (!BadgeStorageURL) return;
+        let fromMaster = true;
         // if (process.env.FROM_MASTER) {
         //     fromMaster = process.env.FROM_MASTER
         // }
@@ -287,7 +295,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
                 "label": "E2E Fuzzer",
                 "color": "red",
                 "message": "Fail"
-            }
+            };
         } else {
             badge_data = {
                 "name": "FlareSCE2EFuzzer",
@@ -295,20 +303,34 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
                 "label": "E2E Fuzzer",
                 "color": "green",
                 "message": "Pass"
-            }
+            };
         }
-        if(fromMaster){
+        if (fromMaster) {
             await axios.post(
-                BadgeStorageURL+"api/0/badges",
+                BadgeStorageURL + "api/0/badges",
                 badge_data
-              )
+            );
         }
+    }
+    
+    afterEach(function () {
+        const status = this.currentTest?.state
+        if (status === "failed") {
+            is_passing = false;
+        }
+    })
+
+    after(async () => {
+        transactionRunner.logGasUsage();
+        transactionRunner.closeLog();
+        await uploadBadge();
+
     });
 
     function checkForbiddenErrors() {
         // in AVOID_ERRORS mode, we have strict error checking - all errors are forbidden,
         // except for those that cannot be avoided (due to timing issues)
-        const allowedErrors = ['Wrong epoch id'];
+        const allowedErrors = ['Wrong epoch id', 'vote power too low', 'Not whitelisted'];
         // if AVOID_ERRORS=false, then all errors, expected by methods, are allowed, but assertion failures are forbidden (in solidity and ts)
         const forbiddenErrors = ['Transaction reverted without a reason', 'invalid opcode', 'AssertionError'];
         // count unexpectd / forbidden errors

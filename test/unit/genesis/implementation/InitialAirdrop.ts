@@ -27,13 +27,13 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
   let initialAirdrop: InitialAirdropInstance;
   let claimants: string[] = [];
   let latestStart: BN;
+  let airdropGovernance = GOVERNANCE_GENESIS_ADDRESS;
 
   beforeEach(async () => {
     initialAirdrop = await InitialAirdrop.new();
     await initialAirdrop.initialiseFixedAddress();
-    await initialAirdrop.transferGovernance(accounts[0], {from: GOVERNANCE_GENESIS_ADDRESS}); // for easier testing
     latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
-    await initialAirdrop.setLatestAirdropStart(latestStart);
+    await initialAirdrop.setLatestAirdropStart(latestStart, { from: airdropGovernance });
     
     // Build an array of claimant accounts
     for (let i = 0; i < 10; i++) {
@@ -46,7 +46,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
     for (let i = 0; i < allClaimants.length; i++) {
       balances[i] = balance;
     }
-    await initialAirdrop.setAirdropBalances(allClaimants, balances);
+    await initialAirdrop.setAirdropBalances(allClaimants, balances, { from: airdropGovernance });
   }
 
   async function bestowClaimableBalance(balance: BN) {
@@ -64,7 +64,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000),
       BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
-      await initialAirdrop.setAirdropBalances(claimants, balances);
+      await initialAirdrop.setAirdropBalances(claimants, balances, { from: airdropGovernance });
       // Act
       // Assert
       const totalInitialAirdropWei = await initialAirdrop.totalInitialAirdropWei();
@@ -76,7 +76,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000),
       BN(1000), BN(1000), BN(1000), BN(1000), BN(1000)];
       // Act
-      const addingEvent = await initialAirdrop.setAirdropBalances(claimants, balances);
+      const addingEvent = await initialAirdrop.setAirdropBalances(claimants, balances, { from: airdropGovernance });
       // Assert
       expectEvent(addingEvent, EVENT_ACCOUNTS_ADDED);
     });
@@ -86,7 +86,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       const balances = [BN(1000), BN(1000), BN(1000), BN(1000), BN(1000),
       BN(1000), BN(1000), BN(1000), BN(1000)];
       // Act
-      const addingEvent = initialAirdrop.setAirdropBalances(claimants, balances);
+      const addingEvent = initialAirdrop.setAirdropBalances(claimants, balances, { from: airdropGovernance });
       // Assert
       await expectRevert(addingEvent, ERR_ARRAY_MISMATCH);
     });
@@ -101,7 +101,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
         balances[i] = web3.utils.toWei(BN(420));
       }
       // Act
-      const addingEvent = initialAirdrop.setAirdropBalances(addresses, balances);
+      const addingEvent = initialAirdrop.setAirdropBalances(addresses, balances, { from: airdropGovernance });
       // Assert
       await expectRevert(addingEvent, ERR_TOO_MANY);
     });
@@ -111,9 +111,9 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       await bulkLoad(BN(1000));
       await bestowClaimableBalance(BN(1500));
       const nowTs = await time.latest() as BN;
-      await initialAirdrop.setAirdropStart(nowTs);
+      await initialAirdrop.setAirdropStart(nowTs, { from: airdropGovernance });
       // Act
-      const addingEvent = initialAirdrop.setAirdropBalances([accounts[20]], [BN(1000)]);
+      const addingEvent = initialAirdrop.setAirdropBalances([accounts[20]], [BN(1000)], { from: airdropGovernance });
       // Assert
       await expectRevert(addingEvent, ERR_ALREADY_STARTED);
     });
@@ -162,7 +162,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       await bestowClaimableBalance(BN(1500));
       // Act
       const now = await time.latest();
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       // Assert
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
@@ -173,7 +173,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       await bestowClaimableBalance(BN(1500));
       // Act
       const now = await time.latest();
-      const startEvent = await initialAirdrop.setAirdropStart(now);
+      const startEvent = await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       // Assert
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
@@ -185,7 +185,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       await bestowClaimableBalance(BN(150));
       // Act
       const now = await time.latest();
-      let start_promise = initialAirdrop.setAirdropStart(now);
+      let start_promise = initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       // Assert
       await expectRevert(start_promise, ERR_OUT_OF_BALANCE);
     });
@@ -204,7 +204,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(1500));
       const now = await time.latest();
-      const restart_promise = initialAirdrop.setLatestAirdropStart(now);
+      const restart_promise = initialAirdrop.setLatestAirdropStart(now, { from: airdropGovernance });
       // Assert
       await expectRevert(restart_promise, ERR_ALREDY_SET);
     });
@@ -223,12 +223,12 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(1500));
       const now = (await time.latest()).addn(10);
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       // Act
       const later = now.addn(60 * 60 * 24 * 5);
-      await initialAirdrop.setAirdropStart(later);
+      await initialAirdrop.setAirdropStart(later, { from: airdropGovernance });
       // Assert
       const initialAirdropStartTs2 = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs2.eq(later));
@@ -238,11 +238,11 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(1500));
       const now = (await time.latest()).addn(10);
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       const latestAirdropStartTs = await initialAirdrop.latestAirdropStartTs();
       // Act
       const later = latestAirdropStartTs.addn(1);
-      const start_promise = initialAirdrop.setAirdropStart(later);
+      const start_promise = initialAirdrop.setAirdropStart(later, { from: airdropGovernance });
       // Assert
       await expectRevert(start_promise, ERR_WRONG_START_TIMESTAMP);
     });
@@ -251,10 +251,10 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(1500));
       const now = (await time.latest()).addn(10);
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       // Act
       const before = now.subn(10);
-      const start_promise = initialAirdrop.setAirdropStart(before);
+      const start_promise = initialAirdrop.setAirdropStart(before, { from: airdropGovernance });
       // Assert
       await expectRevert(start_promise, ERR_WRONG_START_TIMESTAMP);
     });
@@ -263,13 +263,13 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(1500));
       const now = await time.latest();
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       await initialAirdrop.transferAirdrop();
       // Act
       const later = now.addn(60 * 60 * 24 * 5);
-      const start_promise = initialAirdrop.setAirdropStart(later);
+      const start_promise = initialAirdrop.setAirdropStart(later, { from: airdropGovernance });
       // Assert
       await expectRevert(start_promise, ERR_ALREADY_STARTED);
     });
@@ -289,7 +289,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(150 * 150));
       const now = await time.latest();
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       // Act
@@ -313,7 +313,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(150 * 150));
       const now = await time.latest();
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       // Act
@@ -343,7 +343,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       await bulkLoad(BN(1000), additionalClimants);
       await bestowClaimableBalance(BN(160 * 150));
       const now = await time.latest();
-      await initialAirdrop.setAirdropStart(now);
+      await initialAirdrop.setAirdropStart(now, { from: airdropGovernance });
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       // Act
@@ -373,7 +373,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Assemble
       await bestowClaimableBalance(BN(150 * 150));
       const later = (await time.latest()).addn(100);
-      await initialAirdrop.setAirdropStart(later);
+      await initialAirdrop.setAirdropStart(later, { from: airdropGovernance });
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(later));
       // Act

@@ -288,7 +288,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
             address governanceAddress = super.initialiseFixedAddress();
             return governanceAddress;
         } else {
-            return governance;
+            return governance();
         }
     }
 

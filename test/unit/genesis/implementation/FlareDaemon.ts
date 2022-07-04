@@ -22,6 +22,7 @@ const InflationMock = artifacts.require("InflationMock");
 const InflationMock1 = artifacts.require("InflationMock1");
 const EndlessLoopMock = artifacts.require("EndlessLoopMock");
 const RealFlareDaemon = artifacts.require("FlareDaemon");
+const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer");
 
 const BN = web3.utils.toBN;
 
@@ -457,13 +458,17 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
   });
 
   describe("governance", async () => {
-    it("Should transfer governance", async () => {
+    it("Should switch to production mode", async () => {
       // Assemble
-      await flareDaemon.proposeGovernance(accounts[1], { from: GOVERNANCE_GENESIS_ADDRESS });
-      await flareDaemon.claimGovernance({ from: accounts[1] });
+      let initialProductionMode = await flareDaemon.productionMode();
+      const governanceAddressPointer = await GovernanceAddressPointer.new(accounts[1], 1, []);
       // Act
-      let newGovernance = await flareDaemon.governance();
+      await flareDaemon.switchToProductionMode(governanceAddressPointer.address, { from: GOVERNANCE_GENESIS_ADDRESS });
       // Assert
+      let newProductionMode = await flareDaemon.productionMode();
+      let newGovernance = await flareDaemon.governance();
+      assert.equal(initialProductionMode, false);
+      assert.equal(newProductionMode, true);
       assert.equal(newGovernance, accounts[1]);
     })
 

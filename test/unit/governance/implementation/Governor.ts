@@ -35,6 +35,7 @@ const PollingReject = artifacts.require("PollingReject");
 const MockFtso = artifacts.require("MockContract");
 const ExecuteMock = artifacts.require("ExecuteMock");
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 const MockContract = artifacts.require("MockContract");
 const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 const Ftso = artifacts.require("Ftso");
@@ -98,6 +99,10 @@ contract(`PollingReject.sol; ${getTestFile(__filename)}; GovernanceVotePower uni
 
   const GOVERNANCE_ADDRESS = accounts[0];
   const ADDRESS_UPDATER = accounts[16];
+
+  before(async () => {
+    FtsoManager.link(await FtsoManagement.new() as any);
+  });
 
   beforeEach(async () => {
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");

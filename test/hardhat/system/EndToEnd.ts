@@ -5,21 +5,12 @@
 import { expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../deployment/scripts/Contracts";
 import {
-  FlareDaemonContract,
-  FlareDaemonInstance,
-  FtsoContract,
-  FtsoInstance,
-  FtsoManagerContract,
-  FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract,
-  FtsoRewardManagerInstance,
-  PriceSubmitterContract,
-  PriceSubmitterInstance,
-  SuicidalMockContract,
-  SuicidalMockInstance,
-  SupplyContract,
-  SupplyInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract,
-  WNatInstance
+  FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract,
+  FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance,
+  PriceSubmitterContract, PriceSubmitterInstance, SuicidalMockContract, SuicidalMockInstance, SupplyContract,
+  SupplyInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract, WNatInstance
 } from "../../../typechain-truffle";
+import { executeTimelockedGovernanceCall } from '../../utils/contract-test-helpers';
 import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
@@ -89,7 +80,7 @@ export async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndic
     let preparedPrice = preparePrice(price);
     preparedPrices.push(preparedPrice);
   }
-  
+
   // console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
   const random = await getRandom();
@@ -365,7 +356,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await flareDaemon.trigger({ gas: 2_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
     let votePowerBlock = firstRewardEpoch.votepowerBlock;
-    await ftsoRewardManager.enableClaims({from: await ftsoRewardManager.governance()});
+    await executeTimelockedGovernanceCall(ftsoRewardManager, (governance) => ftsoRewardManager.enableClaims({ from: governance }));
 
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
     assert((await wNAT.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")

@@ -6,7 +6,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 
 const AssetToken = artifacts.require("AssetToken") as AssetTokenContract;
 
-const ONLY_GOVERNANCE_MSG = "only governance";
+const ONLY_MINTER_MSG = "only minter";
 
 contract(`AssetToken.sol; ${getTestFile(__filename)}; Asset token unit tests`, async accounts => {
   // contains a fresh contract for each test
@@ -22,7 +22,7 @@ contract(`AssetToken.sol; ${getTestFile(__filename)}; Asset token unit tests`, a
     // Act
     let promise = xassetToken.mint(accounts[2], 10);
     // Assert
-    await expectRevert(promise, ONLY_GOVERNANCE_MSG);
+    await expectRevert(promise, ONLY_MINTER_MSG);
   });
 
   it("Should not burn if not from governance", async() => {
@@ -31,7 +31,7 @@ contract(`AssetToken.sol; ${getTestFile(__filename)}; Asset token unit tests`, a
     // Act
     let promise = xassetToken.burn(accounts[2], 10);
     // Assert
-    await expectRevert(promise, ONLY_GOVERNANCE_MSG);
+    await expectRevert(promise, ONLY_MINTER_MSG);
   });
   
   it("Should mint", async() => {

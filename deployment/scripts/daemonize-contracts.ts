@@ -13,6 +13,7 @@ export async function daemonizeContracts(
   hre: HardhatRuntimeEnvironment,
   contracts: Contracts,
   deployerPrivateKey: string,
+  genesisGovernancePrivateKey: string,
   inflationReceivers: string[], 
   inflationGasLimit: number,
   ftsoManagerGasLimit: number,
@@ -28,6 +29,7 @@ export async function daemonizeContracts(
 
   // Define accounts in play for the deployment process
   let deployerAccount: any;
+  let genesisGovernanceAccount: any;
 
   // Get deployer account
   try {
@@ -36,6 +38,12 @@ export async function daemonizeContracts(
     throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
   }
 
+  try {
+    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(genesisGovernancePrivateKey);
+  } catch (e) {
+    throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
+  }
+  
   if (!quiet) {
     console.error(`Deploying with address ${deployerAccount.address}`)
   }
@@ -76,5 +84,5 @@ export async function daemonizeContracts(
     { daemonizedContract: ftsoManager.address, gasLimit: ftsoManagerGasLimit },
     { daemonizedContract: incentivePool.address, gasLimit: incentivePoolGasLimit }
   ];
-  await flareDaemon.registerToDaemonize(registrations); 
+  await flareDaemon.registerToDaemonize(registrations, { from: genesisGovernanceAccount.address }); 
 }

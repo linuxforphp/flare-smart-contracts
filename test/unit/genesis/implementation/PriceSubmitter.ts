@@ -11,6 +11,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 const Wnat = artifacts.require("WNat") as WNatContract;
 const MockWnat = artifacts.require("MockContract") as MockContractContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
+const FtsoManagement = artifacts.require("FtsoManagement");
 const MockRegistry = artifacts.require("MockContract") as MockContractContract;
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
@@ -77,6 +78,10 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
     FTSO_MANAGER_ADDRESS = accounts[12];
     ADDRESS_UPDATER = accounts[16];
+
+    before(async () => {
+        FtsoManager.link(await FtsoManagement.new() as any);
+    });
 
     describe("submit and reveal price", async() => {
         beforeEach(async() => {

@@ -15,6 +15,7 @@ const BN = web3.utils.toBN;
 const FlareDaemon = artifacts.require("FlareDaemon");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 const MockContract = artifacts.require("MockContract");
 
 
@@ -71,6 +72,8 @@ const MockContract = artifacts.require("MockContract");
             }
             // keep going
         }
+        // link contracts
+        FtsoManager.link(await FtsoManagement.new() as any);
     });
 
     beforeEach(async() => {
