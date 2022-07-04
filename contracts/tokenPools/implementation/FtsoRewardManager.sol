@@ -404,7 +404,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             rewards[i] = rewards[0].mulDiv(_weights[i], _weights[0]);
             epochProviderUnclaimedRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
             epochProviderUnclaimedRewardWeight[_currentRewardEpoch][_addresses[i]] =
-                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);            
+                wNat.votePowerOfAt(_addresses[i], _votePowerBlock).mul(MAX_BIPS);
             epochProviderRewardAmount[_currentRewardEpoch][_addresses[i]] += rewards[i];
             if (epochProviderVotePowerIgnoringRevocation[_currentRewardEpoch][_addresses[i]] == 0) {
                 epochProviderVotePowerIgnoringRevocation[_currentRewardEpoch][_addresses[i]] =

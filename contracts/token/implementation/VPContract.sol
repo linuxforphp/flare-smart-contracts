@@ -75,7 +75,7 @@ contract VPContract is IIVPContract, Delegatable {
      * Historic data for the blocks before `cleanupBlockNumber` can be erased,
      * history before that block should never be used since it can be inconsistent.
      * In particular, cleanup block number must be before current vote power block.
-     * The method can be called by the owner token, its governance or cleanupBlockNumberManager.
+     * The method can be called only by the owner token.
      * @param _blockNumber The new cleanup block number.
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerToken {
@@ -84,7 +84,7 @@ contract VPContract is IIVPContract, Delegatable {
 
     /**
      * Set the contract that is allowed to call history cleaning methods.
-     * The method can be called by the owner token or its governance.
+     * The method can be called only by the owner token.
      */
     function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
         _setCleanerContract(_cleanerContract);

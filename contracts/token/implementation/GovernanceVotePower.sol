@@ -159,7 +159,7 @@ contract GovernanceVotePower is IIGovernanceVotePower {
 
     /**
      * Set the contract that is allowed to call history cleaning methods.
-     * The method can be called by the owner token or its governance.
+     * The method can be called by the owner token.
      */
     function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
         cleanerContract = _cleanerContract;
