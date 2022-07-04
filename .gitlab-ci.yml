@@ -68,12 +68,12 @@ workflow:
         - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
         
 ### Jobs
-test-scdev-daemon:
-    stage: test
-    <<: *yarn-scdev
-    script:
-        - yarn c
-        - yarn hardhat test --network scdev test/scdev/system/FlareDaemon.ts
+# test-scdev-daemon:
+#     stage: test
+#     <<: *yarn-scdev
+#     script:
+#         - yarn c
+#         - yarn hardhat test --network scdev test/scdev/system/FlareDaemon.ts
 
 test-contract-unit-1:
     stage: test
