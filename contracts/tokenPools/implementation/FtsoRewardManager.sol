@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "../interface/IIFtsoRewardManager.sol";
 import "../lib/DataProviderFee.sol";
-import "../lib/UnearnedRewardBurning.sol";
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/Governed.sol";
@@ -829,8 +828,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
                 // (though there can not be any reentrancy due to transfer(0) or die() on known contract)
                 lastBalance = lastBalance.sub(toBurnWei);
 
-                // Burn by a temp contract suicide
-                UnearnedRewardBurning.burnAmount(burnAddress, toBurnWei);
+                // Burn
+                burnAddress.transfer(toBurnWei);
 
                 // Emit event to signal what we did
                 emit RewardsBurned(toBurnWei);

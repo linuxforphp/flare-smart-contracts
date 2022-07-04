@@ -59,7 +59,6 @@ const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
-const UnearnedRewardBurning = artifacts.require("UnearnedRewardBurning" as any);
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const FtsoManagement = artifacts.require("FtsoManagement");
 const InflationMock = artifacts.require("InflationMock");
@@ -223,7 +222,6 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   before(async () => {
     FtsoManager.link(await FtsoManagement.new() as any);
     FtsoRewardManager.link(await DataProviderFee.new() as any);
-    FtsoRewardManager.link(await UnearnedRewardBurning.new() as any);
   });
 
   beforeEach(async () => {

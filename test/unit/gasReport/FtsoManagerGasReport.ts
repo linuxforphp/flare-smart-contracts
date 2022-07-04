@@ -13,7 +13,6 @@ const PriceSubmitter = artifacts.require("PriceSubmitter");
 const Supply = artifacts.require("Supply");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
-const UnearnedRewardBurning = artifacts.require("UnearnedRewardBurning" as any);
 const AssetToken = artifacts.require("AssetToken");
 const FtsoManager = artifacts.require("FtsoManager");
 const FtsoManagement = artifacts.require("FtsoManagement");
@@ -62,7 +61,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   before(async () => {
     FtsoManager.link(await FtsoManagement.new() as any);
     FtsoRewardManager.link(await DataProviderFee.new() as any);
-    FtsoRewardManager.link(await UnearnedRewardBurning.new() as any);
   });
 
   async function createFtso(symbol: string, initialPrice: BN) {

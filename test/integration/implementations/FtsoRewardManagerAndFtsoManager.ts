@@ -22,7 +22,6 @@ const BN = web3.utils.toBN;
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
-const UnearnedRewardBurning = artifacts.require("UnearnedRewardBurning" as any);
 const FtsoManager = artifacts.require("FtsoManager");
 const FtsoManagement = artifacts.require("FtsoManagement");
 const Ftso = artifacts.require("Ftso");
@@ -53,7 +52,6 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     before(async () => {
         FtsoManager.link(await FtsoManagement.new() as any);
         FtsoRewardManager.link(await DataProviderFee.new() as any);
-        FtsoRewardManager.link(await UnearnedRewardBurning.new() as any);
     });
 
     beforeEach(async () => {

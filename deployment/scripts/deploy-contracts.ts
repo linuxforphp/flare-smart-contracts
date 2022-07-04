@@ -73,7 +73,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const FtsoRegistry: FtsoRegistryContract = artifacts.require("FtsoRegistry");
   const FtsoRewardManager: FtsoRewardManagerContract = artifacts.require("FtsoRewardManager");
   const DataProviderFee = artifacts.require("DataProviderFee");
-  const UnearnedRewardBurning = artifacts.require("UnearnedRewardBurning");
   const CleanupBlockNumberManager: CleanupBlockNumberManagerContract = artifacts.require("CleanupBlockNumberManager");
   const PriceSubmitter: PriceSubmitterContract = artifacts.require("PriceSubmitter");
   const Supply: SupplyContract = artifacts.require("Supply");
@@ -288,7 +287,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // FtsoRewardManager contract (must link first)
   FtsoRewardManager.link(await DataProviderFee.new());
-  FtsoRewardManager.link(await UnearnedRewardBurning.new());
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     addressUpdater.address,

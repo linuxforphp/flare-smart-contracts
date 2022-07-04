@@ -14,7 +14,6 @@ import "../../userInterfaces/IDistributionToDelegators.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../interface/IITokenPool.sol";
 import "../../genesis/implementation/DistributionTreasury.sol";
-import "./UnearnedRewardBurner.sol";
 
 /**
  * @title Distribution to delegators
@@ -389,11 +388,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
                 totalBurnedWei = totalBurnedWei.add(toBurnWei);
                 // Get the burn address; make it payable
                 address payable burnAddress = payable(supply.burnAddress());
-                // Burn baby burn
-                UnearnedRewardBurner unearnedRewardBurner = new UnearnedRewardBurner(burnAddress);
-                //slither-disable-next-line arbitrary-send
-                address(unearnedRewardBurner).transfer(toBurnWei);
-                unearnedRewardBurner.die();
+                burnAddress.transfer(toBurnWei);
             }
         }
 

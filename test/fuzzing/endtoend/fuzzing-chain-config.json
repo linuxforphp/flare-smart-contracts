@@ -15,7 +15,7 @@
     "governancePublicKey": "<use .env: GOVERNANCE_PUBLIC_KEY>",
     "governanceTimelock": 1,
     "governanceExecutorPublicKey": "<use .env: GOVERNANCE_EXECUTOR_PUBLIC_KEY>",
-    "burnAddress": "0x0000000000000000000000000000000000000000",
+    "burnAddress": "0x000000000000000000000000000000000000dEaD",
     "totalNativeSupplyNAT":  100000000000,
     "totalExcludedSupplyNAT": 68000000000,
     "systemStart": 0,
