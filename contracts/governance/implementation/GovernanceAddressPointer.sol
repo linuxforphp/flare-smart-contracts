@@ -4,12 +4,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-///////////////////
-// A special contract that will hold Flare governance address 
-//      this contract enables updating governance address only by hard forking the network
-//      meaning only by updating validator code.
-//////////////////
-contract GovernanceAddressPointer {
+import "../../userInterfaces/IGovernanceAddressPointer.sol";
+
+
+/**
+ * A special contract that holds Flare governance address.
+ * This contract enables updating governance address and timelock only by hard forking the network,
+ * meaning only by updating validator code.
+ */
+contract GovernanceAddressPointer is IGovernanceAddressPointer {
 
     address public constant SIGNAL_COINBASE = address(0x00000000000000000000000000000000000dEAD0);
 
@@ -18,7 +21,7 @@ contract GovernanceAddressPointer {
     // governance address set by the validator (initialy set in cTor)
     address private governanceAddress;
     
-    // global timelock setting, also set by validator (initialy set in cTor)
+    // global timelock setting (in seconds), also set by validator (initialy set in cTor)
     uint64 private timelock;
     
     // executor addresses, changeable anytime by the governance
@@ -80,6 +83,7 @@ contract GovernanceAddressPointer {
      * once the timelock period expires.
      * It isn't very dangerous to allow for anyone to execute timelocked calls, but we reserve the right to
      * make sure the timing of the execution is under control.
+     * Can only be called by the governance.
      */
     function setExecutors(address[] memory _newExecutors) external {
         require(msg.sender == governanceAddress, "only governance");
@@ -89,14 +93,14 @@ contract GovernanceAddressPointer {
     /**
      * Get the governance account address.
      */
-    function getGovernanceAddress() external view returns (address) {
+    function getGovernanceAddress() external view override returns (address) {
         return governanceAddress;
     }
     
     /**
      * Get the time that must pass between a governance call and execution.
      */
-    function getTimelock() external view returns (uint256) {
+    function getTimelock() external view override returns (uint256) {
         return timelock;
     }
     
@@ -104,14 +108,14 @@ contract GovernanceAddressPointer {
      * Get the addresses of the accounts that are allowed to execute the timelocked governance calls
      * once the timelock period expires.
      */
-    function getExecutors() external view returns (address[] memory) {
+    function getExecutors() external view override returns (address[] memory) {
         return executors;
     }
     
     /**
      * Check whether an address is allowed to execute an governance call after timelock expires.
      */
-    function isExecutor(address _address) external view returns (bool) {
+    function isExecutor(address _address) external view override returns (bool) {
         return executorMap[_address];
     }
 

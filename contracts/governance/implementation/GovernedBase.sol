@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "./GovernanceAddressPointer.sol";
+import "../../userInterfaces/IGovernanceAddressPointer.sol";
+
 
 /**
  * @title Governed Base
@@ -20,7 +21,7 @@ abstract contract GovernedBase {
 
     bool private initialised;
     
-    GovernanceAddressPointer public governanceAddressPointer;
+    IGovernanceAddressPointer public governanceAddressPointer;
 
     bool public productionMode;
     
@@ -93,7 +94,7 @@ abstract contract GovernedBase {
      * @param _governanceAddressPointer The value for the governanceAddressPointer contract address.
      *    All governed contracts should have the same governanceAddressPointer.
      */
-    function switchToProductionMode(GovernanceAddressPointer _governanceAddressPointer) external {
+    function switchToProductionMode(IGovernanceAddressPointer _governanceAddressPointer) external {
         _checkOnlyGovernance();
         require(!productionMode, "already in production mode");
         require(address(_governanceAddressPointer) != address(0) && 

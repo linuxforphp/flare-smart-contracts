@@ -3,7 +3,7 @@ import { GovernedBaseInstance } from "../../typechain-truffle";
 import { findRequiredEvent, increaseTimeTo } from "./test-helpers";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
-const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer");
+const IGovernanceAddressPointer = artifacts.require("IGovernanceAddressPointer");
 
 export async function transferWithSuicide(amount: BN, from: string, to: string) {
     if (amount.lten(0)) throw new Error("Amount must be positive");
@@ -21,7 +21,7 @@ export async function impersonateContract(contractAddress: string, gasBalance: B
 
 export async function executeTimelockedGovernanceCall(contract: Truffle.ContractInstance, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<any>>) {
     const contractGoverned = contract as GovernedBaseInstance;
-    const governanceAddressPointer = await GovernanceAddressPointer.at(await contractGoverned.governanceAddressPointer());
+    const governanceAddressPointer = await IGovernanceAddressPointer.at(await contractGoverned.governanceAddressPointer());
     const governance = await governanceAddressPointer.getGovernanceAddress();
     const executor = (await governanceAddressPointer.getExecutors())[0];
     const response = await methodCall(governance);
