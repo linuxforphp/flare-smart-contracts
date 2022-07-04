@@ -98,11 +98,11 @@ async function main(transactionsFile:string, outputFile:string, logPath:string, 
     logMessage(logFileName, `Complete`, quiet);
 }
   
-  const { transactionsFile, quiet, outputFile, logPath } = argv;
-  main(transactionsFile, outputFile, logPath, quiet )
-    .then(() => process.exit(0))
-    .catch(error => {
-      console.error(error);
-      process.exit(1);
-    });
+const { transactionsFile, quiet, outputFile, logPath } = argv;
+main(transactionsFile, outputFile, logPath, quiet )
+.then(() => process.exit(0))
+.catch(error => {
+    console.error(error);
+    process.exit(1);
+});
   

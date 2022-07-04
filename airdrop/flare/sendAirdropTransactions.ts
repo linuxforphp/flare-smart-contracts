@@ -62,7 +62,6 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     const rawTransactions = JSON.parse(await fs.readFileSync(transactionsFile, "utf8"));
     let promises = []
 
-    // let totalBalance = new BigNumber(0);
     let totalGasPrice = new BigNumber(0);
 
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
@@ -73,7 +72,6 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     let progress = 0;
     for(let tx of rawTransactions){
         let decoded = txDecoder.decodeTx(tx.raw);
-        // totalBalance = totalBalance.plus(decoded.value);
         let decodedGas = new BigNumber(decoded.gasLimit);
         totalGasPrice = totalGasPrice.plus(decodedGas.multipliedBy(decoded.gasPrice));
         promises.push(web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => null));
@@ -82,18 +80,17 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
         if(!quiet) bar1.update(progress);
     }
     if(!quiet) bar1.stop();
-    // logMessage(logFileName, `Total Balance send                    : ${totalBalance.toFixed()}`, quiet);
     logMessage(logFileName, `Total Gas upper limit                 : ${totalGasPrice.toFixed()}`, quiet);
     
     await Promise.all(promises);
     logMessage(logFileName, `Complete`, quiet);
 }
   
-  const { transactionsFile, quiet, logPath } = argv;
-  main(transactionsFile, logPath, quiet )
-    .then(() => process.exit(0))
-    .catch(error => {
-      console.error(error);
-      process.exit(1);
-    });
+const { transactionsFile, quiet, logPath } = argv;
+main(transactionsFile, logPath, quiet )
+.then(() => process.exit(0))
+.catch(error => {
+    console.error(error);
+    process.exit(1);
+});
   
