@@ -40,7 +40,7 @@ export async function switchToProductionMode(
 
     if (!quiet) {
         console.error(`Switching to production from deployer address ${deployerAccount.address} and genesis governance address ${genesisGovernanceAccount.address}`);
-        console.error(`Using governance address pointer at ${contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS)}`);
+        console.error(`Using governance settings at ${contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS)}`);
     }
 
     // Wire up the default account that will do the deployment
