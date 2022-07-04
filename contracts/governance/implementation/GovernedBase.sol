@@ -97,7 +97,7 @@ abstract contract GovernedBase {
     function switchToProductionMode(IGovernanceSettings _governanceSettings) external {
         _checkOnlyGovernance();
         require(!productionMode, "already in production mode");
-        require(address(_governanceSettings) != address(0), "invalid governance pointer");
+        require(address(_governanceSettings) != address(0), "invalid governance settings");
         governanceSettings = _governanceSettings;
         initialGovernance = address(0);
         productionMode = true;
@@ -127,7 +127,7 @@ abstract contract GovernedBase {
             // make sure nothing else gets executed, even in case of reentrancy
             executing = false;
         } else {
-            // must be called with: deploymentFinished=false
+            // must be called with: productionMode=false
             // must check governance in this case
             _checkOnlyGovernance();
         }

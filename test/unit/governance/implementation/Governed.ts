@@ -82,7 +82,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
             // Act
             const promiseTransfer1 = governed.switchToProductionMode(constants.ZERO_ADDRESS, { from: initialGovernance });
             // Assert
-            await expectRevert(promiseTransfer1, "invalid governance pointer");
+            await expectRevert(promiseTransfer1, "invalid governance settings");
         });
         
         it("Should have new governance parameters after switching", async () => {

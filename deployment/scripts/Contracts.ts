@@ -17,7 +17,7 @@ export class Contracts {
 
   private static WRAP_SYMBOL = "f";
   private static WRAP_SYMBOL_MINT = "";
-  public static readonly GOVERNANCE_ADDRESS_POINTER = "GovernanceSettings";
+  public static readonly GOVERNANCE_SETTINGS = "GovernanceSettings";
   public static readonly ADDRESS_UPDATER = "AddressUpdater";
   public static readonly CLEANUP_BLOCK_NUMBER_MANAGER = "CleanupBlockNumberManager";
   public static readonly FTSO_REGISTRY = "FtsoRegistry";

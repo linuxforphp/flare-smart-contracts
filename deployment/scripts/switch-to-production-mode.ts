@@ -40,7 +40,7 @@ export async function switchToProductionMode(
 
     if (!quiet) {
         console.error(`Switching to production from deployer address ${deployerAccount.address} and genesis governance address ${genesisGovernanceAccount.address}`);
-        console.error(`Using governance address pointer at ${contracts.getContractAddress(Contracts.GOVERNANCE_ADDRESS_POINTER)}`);
+        console.error(`Using governance address pointer at ${contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS)}`);
     }
 
     // Wire up the default account that will do the deployment
@@ -71,7 +71,7 @@ export async function switchToProductionMode(
     const DelegationAccountManager = artifacts.require("DelegationAccountManager");
 
     // Get deployed contracts
-    const governanceSettings = await GovernanceSettings.at(contracts.getContractAddress(Contracts.GOVERNANCE_ADDRESS_POINTER));
+    const governanceSettings = await GovernanceSettings.at(contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS));
     const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
     const supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
