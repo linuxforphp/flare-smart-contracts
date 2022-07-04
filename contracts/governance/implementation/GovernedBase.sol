@@ -97,9 +97,7 @@ abstract contract GovernedBase {
     function switchToProductionMode(IGovernanceAddressPointer _governanceAddressPointer) external {
         _checkOnlyGovernance();
         require(!productionMode, "already in production mode");
-        require(address(_governanceAddressPointer) != address(0) && 
-            _governanceAddressPointer.getGovernanceAddress() != address(0),
-            "invalid governance pointer");
+        require(address(_governanceAddressPointer) != address(0), "invalid governance pointer");
         governanceAddressPointer = _governanceAddressPointer;
         initialGovernance = address(0);
         productionMode = true;

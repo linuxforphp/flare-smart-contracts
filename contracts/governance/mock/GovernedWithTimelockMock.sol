@@ -20,6 +20,12 @@ contract GovernedWithTimelockMock is Governed {
         a = _value;
     }
 
+    function increaseA(uint256 _increment)
+        external
+        onlyGovernance
+    {
+        a += _increment;
+    }
 
     function changeWithRevert(uint256 _value)
         external
