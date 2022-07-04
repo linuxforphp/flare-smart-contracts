@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IGovernanceAddressPointer.sol";
+import "../../userInterfaces/IGovernanceSettings.sol";
 
 
 /**
@@ -21,7 +21,7 @@ abstract contract GovernedBase {
 
     bool private initialised;
     
-    IGovernanceAddressPointer public governanceAddressPointer;
+    IGovernanceSettings public governanceSettings;
 
     bool public productionMode;
     
@@ -34,7 +34,7 @@ abstract contract GovernedBase {
     event TimelockedGovernanceCallCanceled(bytes4 selector, uint256 timestamp);
     
     event GovernanceInitialised(address initialGovernance);
-    event GovernedProductionModeEntered(address governanceAddressPointer);
+    event GovernedProductionModeEntered(address governanceSettings);
     
     modifier onlyGovernance {
         if (executing || !productionMode) {
@@ -62,7 +62,7 @@ abstract contract GovernedBase {
      * @param _selector The method selector (only one timelocked call per method is stored).
      */
     function executeGovernanceCall(bytes4 _selector) external {
-        require(governanceAddressPointer.isExecutor(msg.sender), "only executor");
+        require(governanceSettings.isExecutor(msg.sender), "only executor");
         TimelockedCall storage call = timelockedCalls[_selector];
         require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
         require(block.timestamp >= call.allowedAfterTimestamp, "timelock: not allowed yet");
@@ -90,18 +90,18 @@ abstract contract GovernedBase {
     /**
      * Enter the production mode after all the initial governance settings have been set.
      * This enables timelocks and the governance is afterwards obtained by calling 
-     * governanceAddressPointer.getGovernanceAddress(). 
-     * @param _governanceAddressPointer The value for the governanceAddressPointer contract address.
-     *    All governed contracts should have the same governanceAddressPointer.
+     * governanceSettings.getGovernanceAddress(). 
+     * @param _governanceSettings The value for the governanceSettings contract address.
+     *    All governed contracts should have the same governanceSettings.
      */
-    function switchToProductionMode(IGovernanceAddressPointer _governanceAddressPointer) external {
+    function switchToProductionMode(IGovernanceSettings _governanceSettings) external {
         _checkOnlyGovernance();
         require(!productionMode, "already in production mode");
-        require(address(_governanceAddressPointer) != address(0), "invalid governance pointer");
-        governanceAddressPointer = _governanceAddressPointer;
+        require(address(_governanceSettings) != address(0), "invalid governance pointer");
+        governanceSettings = _governanceSettings;
         initialGovernance = address(0);
         productionMode = true;
-        emit GovernedProductionModeEntered(address(_governanceAddressPointer));
+        emit GovernedProductionModeEntered(address(_governanceSettings));
     }
 
     /**
@@ -118,7 +118,7 @@ abstract contract GovernedBase {
      * Returns the current effective governance address.
      */
     function governance() public view returns (address) {
-        return productionMode ? governanceAddressPointer.getGovernanceAddress() : initialGovernance;
+        return productionMode ? governanceSettings.getGovernanceAddress() : initialGovernance;
     }
 
     function _beforeExecute() private {
@@ -140,7 +140,7 @@ abstract contract GovernedBase {
         assembly {
             selector := calldataload(_data.offset)
         }
-        uint256 timelock = governanceAddressPointer.getTimelock();
+        uint256 timelock = governanceSettings.getTimelock();
         uint256 allowedAt = block.timestamp + timelock;
         timelockedCalls[selector] = TimelockedCall({
             allowedAfterTimestamp: allowedAt,

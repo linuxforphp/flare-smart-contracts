@@ -3,7 +3,7 @@ import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle"
 import { getTestFile } from "../../../utils/constants";
 import { assertNumberEqual, findRequiredEvent } from "../../../utils/test-helpers";
 
-const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer"); 
+const GovernanceSettings = artifacts.require("GovernanceSettings"); 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
 
 contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTimelock unit tests`, async accounts => {
@@ -15,8 +15,8 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     
     beforeEach(async () => {
         mock = await GovernedWithTimelockMock.new(initialGovernance);
-        const governanceAddressPointer = await GovernanceAddressPointer.new(governance, 3600, [governance, executor]);
-        await mock.switchToProductionMode(governanceAddressPointer.address, { from: initialGovernance });
+        const governanceSettings = await GovernanceSettings.new(governance, 3600, [governance, executor]);
+        await mock.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
     });
 
     it("allow direct changes in deployment phase", async () => {

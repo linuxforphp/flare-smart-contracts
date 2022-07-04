@@ -7,7 +7,7 @@ pragma solidity 0.7.6;
  * This contract enables updating governance address and timelock only by hard forking the network,
  * meaning only by updating validator code.
  */
-interface IGovernanceAddressPointer {
+interface IGovernanceSettings {
     /**
      * Get the governance account address.
      * The governance address can only be changed by a hardfork.

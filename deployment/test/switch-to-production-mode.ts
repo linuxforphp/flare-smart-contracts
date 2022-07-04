@@ -1,6 +1,6 @@
 import { Contracts } from "../scripts/Contracts";
 import {
-  GovernanceAddressPointerInstance,
+  GovernanceSettingsInstance,
   GovernedBaseContract,
 } from "../../typechain-truffle";
 
@@ -12,7 +12,7 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
   let contracts: Contracts;
   let parameters: any;
   let GovernedBase: GovernedBaseContract;
-  let governanceAddressPointer: GovernanceAddressPointerInstance;
+  let governanceSettings: GovernanceSettingsInstance;
   const SHOULD_HAVE_TRANSERED_GOVERNANCE = "Should have transfered governance";
 
   before(async () => {
@@ -20,17 +20,17 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     await contracts.deserialize(process.stdin);
     parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
     GovernedBase = artifacts.require("GovernedBase");
-    const GovernanceAddressPointer = artifacts.require("GovernanceAddressPointer");
-    governanceAddressPointer = await GovernanceAddressPointer.at(contracts.getContractAddress("GovernanceAddressPointer"));
+    const GovernanceSettings = artifacts.require("GovernanceSettings");
+    governanceSettings = await GovernanceSettings.at(contracts.getContractAddress("GovernanceSettings"));
   });
 
   async function checkGovernancePointerContract(contractName: string) {
     // Assemble
     const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
     // Act
-    const governancePointer = await governedBase.governanceAddressPointer();
+    const governancePointer = await governedBase.governanceSettings();
     // Assert
-    assert.equal(governancePointer, governanceAddressPointer.address);
+    assert.equal(governancePointer, governanceSettings.address);
   }
   
   async function checkGovernance(contractName: string) {

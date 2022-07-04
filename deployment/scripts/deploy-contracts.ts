@@ -12,7 +12,7 @@ import {
   AddressUpdaterContract, CleanupBlockNumberManagerContract, DelegationAccountClonableContract, DelegationAccountManagerContract,
   DelegationAccountManagerInstance, DistributionContract, DistributionToDelegatorsContract, DistributionToDelegatorsInstance,
   DistributionTreasuryContract, DistributionTreasuryInstance, FlareDaemonContract, FlareDaemonInstance, FtsoContract,
-  FtsoInstance, FtsoManagementContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, GovernanceAddressPointerContract,
+  FtsoInstance, FtsoManagementContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, GovernanceSettingsContract,
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
@@ -60,7 +60,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   web3.eth.defaultAccount = deployerAccount.address;
 
   // Contract definitions
-  const GovernanceAddressPointer: GovernanceAddressPointerContract = artifacts.require("GovernanceAddressPointer");
+  const GovernanceSettings: GovernanceSettingsContract = artifacts.require("GovernanceSettings");
   const AddressUpdater: AddressUpdaterContract = artifacts.require("AddressUpdater");
   const InflationAllocation: InflationAllocationContract = artifacts.require("InflationAllocation");
   const StateConnector: StateConnectorContract = artifacts.require("StateConnector");
@@ -230,11 +230,11 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
   await initialAirdrop.setLatestAirdropStart(parameters.initialAirdropLatestStart, { from: genesisGovernance });
 
-  // GovernanceAddressPointer (do not add it to AddressUpdater)
+  // GovernanceSettings (do not add it to AddressUpdater)
   // default executors are governancePublicKey and governanceExecutorPublicKey
-  const governanceAddressPointer = await GovernanceAddressPointer.new(parameters.governancePublicKey,
+  const governanceSettings = await GovernanceSettings.new(parameters.governancePublicKey,
     parameters.governanceTimelock, [parameters.governancePublicKey, parameters.governanceExecutorPublicKey]);
-  spewNewContractInfo(contracts, null, GovernanceAddressPointer.contractName, `GovernanceAddressPointer.sol`, governanceAddressPointer.address, quiet);
+  spewNewContractInfo(contracts, null, GovernanceSettings.contractName, `GovernanceSettings.sol`, governanceSettings.address, quiet);
 
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);

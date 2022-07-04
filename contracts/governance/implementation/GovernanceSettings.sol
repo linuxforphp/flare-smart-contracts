@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../userInterfaces/IGovernanceAddressPointer.sol";
+import "../../userInterfaces/IGovernanceSettings.sol";
 
 
 /**
@@ -12,7 +12,7 @@ import "../../userInterfaces/IGovernanceAddressPointer.sol";
  * This contract enables updating governance address and timelock only by hard forking the network,
  * meaning only by updating validator code.
  */
-contract GovernanceAddressPointer is IGovernanceAddressPointer {
+contract GovernanceSettings is IGovernanceSettings {
 
     address public constant SIGNAL_COINBASE = address(0x00000000000000000000000000000000000dEAD0);
 
