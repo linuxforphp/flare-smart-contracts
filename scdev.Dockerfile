@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y \
 RUN git clone https://gitlab.com/flarenetwork/flare.git flare
 WORKDIR flare
 RUN git pull
-RUN git checkout docker-scdev-14-03-2022
+RUN git checkout docker-scdev-04-07-2022
 
 # Do the build
 RUN ./compile.sh $GENESIS
