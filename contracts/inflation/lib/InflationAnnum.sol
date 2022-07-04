@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "../../utils/implementation/DateTimeLibrary.sol";
 import "./RewardServices.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
@@ -32,6 +33,7 @@ library InflationAnnum {
     }
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
+    uint256 internal constant MAX_ANNUAL_INFLATION = 5000000000 ether;
 
     /**
      * @notice Helper function to compute recognized inflation.
@@ -46,9 +48,10 @@ library InflationAnnum {
         internal pure
         returns(uint256)
     {
-        return _inflatableBalance.mulDiv(
-            _annualInflationPercentageBips, 
-            12 * BIPS100); // monthly inflation
+        return Math.min(
+            _inflatableBalance.mulDiv(_annualInflationPercentageBips, 12 * BIPS100),
+            MAX_ANNUAL_INFLATION.div(12)
+        ); // monthly inflation
     }
 
     /**

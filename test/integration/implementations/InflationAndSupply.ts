@@ -17,6 +17,7 @@ const MockContract = artifacts.require("MockContract");
 const PercentageProviderMock = artifacts.require("PercentageProviderMock");
 const FlareDaemonMock = artifacts.require("FlareDaemonMock");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
+const DataProviderFee = artifacts.require("DataProviderFee" as any);
 const Supply = artifacts.require("Supply");
 const TeamEscrow = artifacts.require("TeamEscrow");
 
@@ -35,6 +36,10 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
   const circulatingSupply = initialGenesisAmountWei.sub(foundationSupplyWei);
   const inflationBips = 1000;
 
+  before(async () => {
+    FtsoRewardManager.link(await DataProviderFee.new() as any);
+  });
+  
   beforeEach(async() => {
     const ADDRESS_UPDATER = accounts[16];
     mockFlareDaemon = await FlareDaemonMock.new();
@@ -66,14 +71,14 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     supply = await Supply.new(
       accounts[0],
       ADDRESS_UPDATER,
-      constants.ZERO_ADDRESS,
       initialGenesisAmountWei,
       foundationSupplyWei,
       [ftsoRewardManager.address]
     );
 
     // Wire up escrow contract
-    teamEscrow = await TeamEscrow.new(accounts[0], 0);
+    const latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
+    teamEscrow = await TeamEscrow.new(accounts[0], latestStart);
 
     // Tell supply about inflation
     await supply.updateContractAddresses(
@@ -89,6 +94,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     await ftsoRewardManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
+    await ftsoRewardManager.enableClaims();
 
     await supply.addTokenPool(teamEscrow.address, 0, {from: accounts[0]});
 
@@ -217,8 +223,9 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       // Act
       // Force a block in order to get most up to date time
       await time.advanceBlock();
-      const now = await time.latest()
-      await teamEscrow.setClaimingStartTs(now.subn(24*60*60*30), {from: accounts[0]});
+      const now = (await time.latest()).addn(10);
+      await teamEscrow.setClaimingStartTs(now, {from: accounts[0]});
+      await time.increaseTo(now.addn(24*60*60*30));
       await time.advanceBlock();
 
       // Wait one month

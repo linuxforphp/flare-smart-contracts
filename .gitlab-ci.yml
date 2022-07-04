@@ -16,6 +16,7 @@ variables:
     GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
     GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
     GOVERNANCE_PUBLIC_KEY: "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4"
+    GOVERNANCE_EXECUTOR_PUBLIC_KEY: "0xE5904695748fe4A84b40b3fc79De2277660BD1D3"
     TEST_LINTER: "lint"
     TEST_STATE_CONNECTOR_FILES: "compare_state_connector_file_to_flare_repo"
     YARN_CACHE_DIR: "$CI_PROJECT_DIR/.yarn-cache"
@@ -62,7 +63,7 @@ workflow:
         - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
 
 .yarn-scdev: &yarn-scdev
-    image: timivesel/flare-scdev:1.2
+    image: timivesel/flare-scdev:1.3
     <<: *pipeline-settings
     before_script:
         - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
@@ -295,4 +296,3 @@ e2e-fuzzer:on-schedule:
         name: end-to-end-fuzzing
         when: always
         expire_in: 30 days
-        public: false

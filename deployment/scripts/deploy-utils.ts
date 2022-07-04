@@ -190,10 +190,8 @@ export async function deployNewAsset(
     const dummyAssetMinter = await DummyAssetMinter.new(xAssetToken.address, xAssetDefinition.maxMintRequestTwei!);
     spewNewContractInfo(contracts, null, `Dummy ${xAssetDefinition.wSymbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet, false);
 
-
-    // Establish governance over Asset by minter !!!
-    await xAssetToken.proposeGovernance(dummyAssetMinter.address, { from: deployerAccountAddress });
-    await dummyAssetMinter.claimGovernanceOverMintableToken();
+    // Establish minting over Asset by minter !!!
+    xAssetToken.setMinter(dummyAssetMinter.address, { from: deployerAccountAddress });
 
     await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
 

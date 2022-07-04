@@ -12,8 +12,10 @@ const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const Supply = artifacts.require("Supply");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
+const DataProviderFee = artifacts.require("DataProviderFee" as any);
 const AssetToken = artifacts.require("AssetToken");
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 
 function toBNFixed(x: number, decimals: number) {
@@ -55,6 +57,11 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
   let ftsoRewardManager: FtsoRewardManagerInstance;
   let ftsoManager: FtsoManagerInstance;
   let cleanupBlockNumberManager: CleanupBlockNumberManagerInstance;
+
+  before(async () => {
+    FtsoManager.link(await FtsoManagement.new() as any);
+    FtsoRewardManager.link(await DataProviderFee.new() as any);
+  });
 
   async function createFtso(symbol: string, initialPrice: BN) {
     const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, epochDurationSec, revealDurationSec, initialPrice, 10000, defaultPriceEpochCyclicBufferSize);
@@ -152,6 +159,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
     vpBlockNumber = (await ftsoManager.getRewardEpochVotePowerBlock(0)).toNumber();
     assert(vpBlockNumber > 0, "first reward epoch not initialized");
     console.log(`initialize first reward epoch: ${initializeFirstRewardEpochTx.receipt.gasUsed}`);
+    await ftsoRewardManager.enableClaims({ from: governance });
 
     epochId = await getCurrentEpochId();
     assert(epochId > 0, "epochId == 0");
@@ -247,7 +255,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       );
 
       // create supply
-      supplyInterface = await Supply.new(governance, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10_000, 0, []);
+      supplyInterface = await Supply.new(governance, ADDRESS_UPDATER, 10_000, 0, []);
       // create registry
       ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
       // create whitelister

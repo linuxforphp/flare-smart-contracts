@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "../interface/IDelegationAccount.sol";
 import "./DelegationAccountManager.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract DelegationAccountClonable is IDelegationAccount {
 

@@ -18,8 +18,8 @@ contract TeamEscrow is Governed, IITokenPool  {
         uint256 totalClaimedAmountWei;
     }
 
+    uint256 public immutable latestClaimStartTs;
     uint256 public claimStartTs;
-    bool public governanceChangedClaimTs = false;
     // Time based constants
     uint256 internal constant MONTH = 30;
     // 2.37% every 30 days (so total distribution takes 36 * 30 days =~ 3 years)
@@ -36,8 +36,15 @@ contract TeamEscrow is Governed, IITokenPool  {
 
     mapping(address => LockedAmount) public lockedAmounts;
 
-    constructor(address _governance, uint256 _claimStartTs) Governed(_governance) {
-        claimStartTs = _claimStartTs;
+    event ClaimStart(uint256 claimStartTs);
+    event AccountLocked(address indexed whoLocked, uint256 amountWei);
+    event AccountClaimed(address indexed whoClaimed, address indexed sentTo, uint256 amountWei);
+
+    constructor(address _governance, uint256 _latestClaimStartTs) Governed(_governance) {
+        require(_latestClaimStartTs >= block.timestamp, "In the past");
+        latestClaimStartTs = _latestClaimStartTs;
+        claimStartTs = _latestClaimStartTs;
+        emit ClaimStart(_latestClaimStartTs);
     }
 
     function lock() external payable {
@@ -70,9 +77,14 @@ contract TeamEscrow is Governed, IITokenPool  {
         _totalClaimedWei = totalClaimedAmountWei;
     }
 
+    /**
+     * @notice Enable claiming from contract at _claimStartTs timestamp
+     * @param _claimStartTs point in time when we start
+     */
     function setClaimingStartTs(uint256 _claimStartTs) public onlyGovernance {
-        require(governanceChangedClaimTs == false, "Already set");
-        governanceChangedClaimTs = true;
+        require(claimStartTs > block.timestamp, "Already started");
+        require(_claimStartTs >= block.timestamp && _claimStartTs <= latestClaimStartTs,
+            "Wrong start timestamp");
         claimStartTs = _claimStartTs;
     }
 
@@ -83,7 +95,7 @@ contract TeamEscrow is Governed, IITokenPool  {
     function getCurrentClaimablePercentBips(uint256 _timestamp) public view 
         returns(uint256 percentBips)
     {
-        require(claimStartTs <= _timestamp && claimStartTs != 0, "Claiming not started");
+        require(claimStartTs <= _timestamp, "Claiming not started");
         uint256 diffDays = _timestamp.sub(claimStartTs).div(1 days);
         percentBips = Math.min(diffDays.div(MONTH).mul(MONTHLY_CLAIMABLE_BIPS), LOCKED_CLAIM_BIPS);
     }
@@ -121,12 +133,14 @@ contract TeamEscrow is Governed, IITokenPool  {
         (bool success, ) = _target.call{value: claimableWei}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, "Failed to call claiming contract");
+        // Emit the claim event
+        emit AccountClaimed(source, _target, claimableWei);
     }
 
     function _lockTo(address _target) internal {
-        require(lockedAmounts[_target].totalLockedAmountWei == 0, "Already locked");
         totalLockedAmountWei += msg.value;
-        lockedAmounts[_target].totalLockedAmountWei = msg.value;
+        lockedAmounts[_target].totalLockedAmountWei += msg.value;
+        // Emit the locked event
+        emit AccountLocked(_target, msg.value);
     }
-
 }

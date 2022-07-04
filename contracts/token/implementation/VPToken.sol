@@ -37,7 +37,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     
     // the contract that is allowed to set cleanupBlockNumber
     // usually this will be an instance of CleanupBlockNumberManager
-    address private cleanupBlockNumberManager;
+    address public cleanupBlockNumberManager;
     
     /**
      * When true, the argument to `setWriteVpContract` must be a vpContract
@@ -510,8 +510,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
      * @param _blockNumber The new cleanup block number.
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external override {
-        require(msg.sender == address(governance) || msg.sender == cleanupBlockNumberManager, 
-            "only governance or manager");
+        require(msg.sender == cleanupBlockNumberManager, "only cleanup block manager");
         _setCleanupBlockNumber(_blockNumber);
         if (address(readVpContract) != address(0)) {
             readVpContract.setCleanupBlockNumber(_blockNumber);

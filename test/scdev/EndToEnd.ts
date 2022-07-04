@@ -233,6 +233,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       rewardEpochDurationSeconds.toNumber(), 
       currentRewardEpoch);
 
+    await rewardManager.enableClaims({from: await rewardManager.governance()});
+
   });
 
   it("Should delegate, price submit, reveal, earn, and claim ftso rewards", async() => {

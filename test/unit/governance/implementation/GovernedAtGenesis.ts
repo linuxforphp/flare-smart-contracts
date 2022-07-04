@@ -1,6 +1,7 @@
 import { GovernedAtGenesisInstance } from "../../../../typechain-truffle";
 
 import {constants, expectRevert, expectEvent} from '@openzeppelin/test-helpers';
+import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const GovernedAtGenesis = artifacts.require("GovernedAtGenesis");
@@ -32,7 +33,7 @@ contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts =>
       await governedAtGenesis.initialiseFixedAddress();
       // Assert
       let governedAddress = await governedAtGenesis.governance();
-      assert.notEqual(governedAddress, constants.ZERO_ADDRESS);
+      assert.equal(governedAddress, GOVERNANCE_GENESIS_ADDRESS);
     });  
 
     it("Should not initialize twice", async() => {
@@ -44,12 +45,11 @@ contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts =>
       await expectRevert(initializePromise, ALREADY_INIT_MSG);
     });
 
-    it("Should not propose governance if not initialized to fixed address", async() => {
-      // Assemble
-      // Act
-      const promise = governedAtGenesis.proposeGovernance(accounts[1]);
-      // Assert
-      await expectRevert(promise, ONLY_GOVERNANCE_MSG);
+    it("Should not switch to production if not initialized to fixed address", async() => {
+      const promise1 = governedAtGenesis.switchToProductionMode(accounts[1]);
+      await expectRevert(promise1, ONLY_GOVERNANCE_MSG);
+      const promise2 = governedAtGenesis.switchToProductionMode(accounts[1], { from: GOVERNANCE_GENESIS_ADDRESS });
+      await expectRevert(promise2, ONLY_GOVERNANCE_MSG);
     });
   });
 });

@@ -1,7 +1,7 @@
 import { timeStamp } from "console";
 import {
-  DistributionContract,
-  DistributionInstance,
+  DistributionMockContract,
+  DistributionMockInstance,
   DistributionTreasuryContract,
   DistributionTreasuryInstance
 } from "../../typechain-truffle";
@@ -77,8 +77,8 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
 
   let DistributionTreasury: DistributionTreasuryContract;
   let distributionTreasury: DistributionTreasuryInstance;
-  let Distribution: DistributionContract;
-  let distribution: DistributionInstance;
+  let Distribution: DistributionMockContract;
+  let distribution: DistributionMockInstance;
 
   let parsedAirdrop: ProcessedLineItem[];
 
@@ -94,10 +94,10 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
 
     // Contract artifact definitions
     DistributionTreasury = artifacts.require("DistributionTreasury");
-    Distribution = artifacts.require("Distribution");
+    Distribution = artifacts.require("DistributionMock");
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
-    distribution = await Distribution.new(genesisGovernanceAccount, distributionTreasury.address);
+    distribution = await Distribution.new(genesisGovernanceAccount, distributionTreasury.address, (await time.latest()).addn(10*24*60*60));
 
     parsedAirdrop = parseAndProcessData("../../airdrop/data/export.csv");
   });
@@ -135,7 +135,7 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
           totalNative = totalNative.add(parsedAirdrop[i*BATCH_SIZE+j].totalNativeBalance.muln(85).divn(100));
         }
       }
-      await distribution.setClaimBalance(currentAccounts,currentBalances, {from: genesisGovernanceAccount.address});
+      await distribution.setAirdropBalances(currentAccounts,currentBalances, {from: genesisGovernanceAccount.address});
       bar1.update(i);
     }
     bar1.stop();
@@ -148,7 +148,8 @@ contract(`Airdrop testing: ${getTestFile(__filename)}; Initial Airdrop and Distr
     assert.equal((await distribution.totalEntitlementWei()).toString(),(await GetBalance(distributionTreasury.address)).toString());
 
     console.log("Set distribution contract on distribution treasury");
-    await distributionTreasury.setDistributionContract(distribution.address, totalNative, {from: genesisGovernanceAccount.address});
+    await distributionTreasury.setContracts(distribution.address, accounts[100], {from: genesisGovernanceAccount.address});
+    await distributionTreasury.selectDistributionContract(distribution.address, {from: genesisGovernanceAccount.address});
     
     console.log("Start entitlement process in the past (to simulate the future)");
     let now = await time.latest();

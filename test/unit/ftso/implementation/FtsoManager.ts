@@ -28,7 +28,9 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
+const DataProviderFee = artifacts.require("DataProviderFee" as any);
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
 const Ftso = artifacts.require("Ftso");
 const MockFtso = artifacts.require("MockContract");
@@ -81,6 +83,11 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
   }
 
   const ADDRESS_UPDATER = accounts[16];
+  
+  before(async() => {
+    FtsoManager.link(await FtsoManagement.new() as any);
+    FtsoRewardManager.link(await DataProviderFee.new() as any);
+  });
 
   beforeEach(async () => {
     mockFtso = await MockFtso.new();
@@ -654,7 +661,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso.address, add: true });
       assert.equal(mockFtso.address, (await ftsoManager.getFtsos())[0]);
       const ftsoManagerFunction = web3.utils.sha3("ftsoManager()")!.slice(0, 10); // first 4 bytes is function selector
-      mockFtso.givenMethodReturnAddress(ftsoManagerFunction, ftsoManager.address);
+      await mockFtso.givenMethodReturnAddress(ftsoManagerFunction, ftsoManager.address);
 
       // Act
       let tx2 = await ftsoManager.removeFtso(mockFtso.address);

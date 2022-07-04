@@ -158,7 +158,9 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
 
     it("Should not take a schedule count more than max allowed", async() => {
       // Assemble
-      const schedule: BN[] = [BN(999), BN(998), BN(997), BN(996), BN(995), BN(994), BN(993), BN(992), BN(991), BN(990), BN(989)];
+      const schedule: BN[] = [BN(999), BN(998), BN(997), BN(996), BN(995), BN(994), BN(993), BN(992), BN(991), BN(990),
+        BN(989), BN(988), BN(987), BN(986), BN(985), BN(984), BN(983), BN(982), BN(981), BN(980),
+        BN(979), BN(978), BN(977), BN(976), BN(975), BN(974)];
       // Act
       const promise = inflationAllocation.setAnnualInflation(schedule);
       // Assert

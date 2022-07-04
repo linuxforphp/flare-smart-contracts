@@ -21,7 +21,6 @@ import {
   WNatInstance
 } from "../../../typechain-truffle";
 import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
-import { BN_ZERO } from '../../utils/fuzzing-utils';
 import { PriceInfo } from '../../utils/PriceInfo';
 import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
 import { getRandom, submitHash, toBN } from '../../utils/test-helpers';
@@ -292,6 +291,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   const inflationBips = 500;
   let initialGenesisAmountWei: BN;
   let totalFoundationSupplyWei: BN;
+  let totalLockedWei: BN;
   let totalClaimedWei: BN;
 
   before(async () => {
@@ -389,6 +389,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await flareDaemon.trigger({ gas: 40_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
     let votePowerBlock = firstRewardEpoch.votepowerBlock;
+    await ftsoRewardManager.enableClaims({ from: await ftsoRewardManager.governance() });
 
     // Make sure price providers have vote power
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
@@ -428,14 +429,15 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Supply contract - inflatable balance should not be updated ()
     initialGenesisAmountWei = await supply.initialGenesisAmountWei();
     totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    totalLockedWei = await supply.totalLockedWei();
     const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(inflatableBalanceWei.eq(initialGenesisAmountWei.sub(totalFoundationSupplyWei)) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
+    assert(inflatableBalanceWei.eq(initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei)) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
 
     // Assert
     // Recognized inflation should be correct
     const firstInflationAnnum = await inflation.getAnnum(0);
-    const firstAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    const firstAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
     assert.equal(firstInflationAnnum.recognizedInflationWei.toString(), firstAnnumInflationWei.toString());
   });
 
@@ -897,7 +899,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const difference = BN(24 * 60 * 60)
 
     while ((await time.latest()).lt(target)) {
-      transferWithSuicide(BN(1_000_000_000_000), accounts[1], flareDaemon.address);
+      await transferWithSuicide(BN(1_000_000_000_000), accounts[1], flareDaemon.address);
       await time.advanceBlock();
       await time.increase(difference);
       await flareDaemon.trigger({ gas: 40_000_000 });
@@ -912,7 +914,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     
     // Recognized inflation should be updated
     const totalBurnedWei = await ftsoRewardManager.totalBurnedWei(); // burned amount is part of inflatable balance
-    const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
     assert.isTrue(totalClaimedWei.eq(await ftsoRewardManager.totalClaimedWei()));
     assert.equal(secondAnnum.recognizedInflationWei.toString(), secondAnnumInflationWei.toString());
       

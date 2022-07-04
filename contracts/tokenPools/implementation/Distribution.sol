@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../utils/implementation/SafePct.sol";
 import "../../userInterfaces/IDistribution.sol";
 import "../interface/IITokenPool.sol";
-import "./DistributionTreasury.sol";
 
 /**
  * @title Distribution
@@ -40,9 +39,10 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     uint256 internal constant TOTAL_BIPS = 10000;
     uint256 internal constant CLAIMED_AT_GENESIS_BIPS = 1500;
     uint256 internal constant TOTAL_CLAIMABLE_BIPS = 8500;
-    uint256 internal constant MONTHLY_CLAIMABLE_BIPS = 300;  // 3% every 30 days
+    uint256 internal constant MONTHLY_CLAIMABLE_BIPS = 237;  // 2.37% every 30 days
 
     // storage
+    uint256 public immutable latestEntitlementStartTs;  // Latest day 0 when contract starts
     mapping(address => AirdropAccount) public airdropAccounts;
     uint256 public totalEntitlementWei;   // Total wei to be distributed by this contract (all but initial airdrop)
     uint256 public totalClaimedWei;       // All wei already claimed
@@ -51,14 +51,12 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     uint256 public entitlementStartTs;    // Day 0 when contract starts
 
     // contracts
-    DistributionTreasury public immutable treasury;
+    address public immutable treasury;
 
     // Errors
     string internal constant ERR_ADDRESS_ZERO = "address zero";
     string internal constant ERR_OUT_OF_BALANCE = "balance too low";
     string internal constant ERR_TOO_MANY = "too many";
-    string internal constant ERR_NOT_ZERO = "not zero";
-    string internal constant ERR_ALREADY_REGISTERED = "already registered";
     string internal constant ERR_NOT_REGISTERED = "not registered";
     string internal constant ERR_NOT_STARTED = "not started";
     string internal constant ERR_FULLY_CLAIMED = "already fully claimed";
@@ -67,6 +65,8 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
     string internal constant ERR_ALREADY_STARTED = "already started";
     string internal constant ERR_TREASURY_ONLY = "treasury only";
+    string internal constant ERR_IN_THE_PAST = "in the past";
+    string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -96,12 +96,15 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
 
     constructor(
         address _governance,
-        DistributionTreasury _treasury
+        address _treasury,
+        uint256 _latestEntitlementStartTs
     )
         Governed(_governance)
     {
-        require(address(_treasury) != address(0), ERR_ADDRESS_ZERO);
+        require(_treasury != address(0), ERR_ADDRESS_ZERO);
+        require(_latestEntitlementStartTs >= block.timestamp, ERR_IN_THE_PAST);
         treasury = _treasury;
+        latestEntitlementStartTs = _latestEntitlementStartTs;
     }
 
     /**
@@ -114,13 +117,16 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
     /**
      * @notice Method to set addresses and their respective balances in batches to this contract (airdrop)
      * @param toAddress array of adresses we are adding in batch
-     * @param balance array of balances to be airdropped to respective accounts
+     * @param balance array of balances to be airdropped to respective accounts (total amount - 100%)
      * @dev Note that toAddress and balance arrays must be equal length
+     * @dev Note that script must use the same batches to fill data (if restarted), otherwise duplicates may occure
      */
-    function setClaimBalance(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
+    function setAirdropBalances(address[] calldata toAddress, uint256[] calldata balance) external onlyGovernance {
         require(toAddress.length <= MAX_ADDRESS_BATCH_SIZE, ERR_TOO_MANY);
         require(toAddress.length == balance.length, ERR_ARRAY_MISMATCH);
         require (entitlementStartTs == 0, ERR_ALREADY_STARTED);
+
+        if (airdropAccounts[toAddress[0]].entitlementBalanceWei > 0) return; // batch already added
         for (uint16 i = 0; i < toAddress.length; i++) {
             // Assume that when the initial 15% was allocated, that any remainder was truncated.
             // Therefore, compute the difference to obtain the remaining entitlement balance.
@@ -141,14 +147,17 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
 
     /** 
      * @notice Start the distribution contract at _entitlementStartTs timestamp
-     * @dev We can start in the past, is this what we expect?
      * @param _entitlementStartTs point in time when we start
+     * @dev should be called immediately after all airdrop accounts and balances are set
      */
-    function setEntitlementStart(uint256 _entitlementStartTs) external onlyGovernance mustBalance {
-        require(entitlementStartTs == 0, ERR_NOT_ZERO);
+    function setEntitlementStart(uint256 _entitlementStartTs) external virtual onlyGovernance {
+        require(entitlementStartTs == 0 || entitlementStartTs > block.timestamp, ERR_ALREADY_STARTED);
+        require(_entitlementStartTs >= block.timestamp && _entitlementStartTs <= latestEntitlementStartTs,
+            ERR_WRONG_START_TIMESTAMP);
+        require(treasury.balance >= totalEntitlementWei || address(this).balance >= totalEntitlementWei,
+            ERR_OUT_OF_BALANCE);
         entitlementStartTs = _entitlementStartTs;
-        treasury.pullFunds(totalEntitlementWei);
-        emit EntitlementStarted();
+        emit EntitlementStart(_entitlementStartTs);
     }
 
     /**
@@ -259,7 +268,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
 
     /**
      * @notice Get the claimable percent for the current timestamp
-     * @dev Every 30 days from initial day 3% of the total amount is unlocked and becomes available for claiming
+     * @dev Every 30 days from initial day 2.37% of the total amount is unlocked and becomes available for claiming
      * @return percentBips maximal claimable bips at given time
      */
     function _getCurrentClaimablePercent() internal view entitlementStarted 
@@ -271,7 +280,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
 
     /**
      * @notice Get current claimable amount for users account
-     * @dev Every 30 days from initial day 3% of the reward is released
+     * @dev Every 30 days from initial day 2.37% of the reward is released
      */
     function _getCurrentClaimableWei(address _owner) internal view entitlementStarted accountCanClaim(_owner) 
         returns(uint256 claimableWei)
@@ -293,7 +302,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
         returns(uint256 timeTill) 
     {
         // Get the account we want to check
-        require(block.timestamp.sub(entitlementStartTs).div(MONTH) < 29, ERR_FULLY_CLAIMED);
+        require(block.timestamp.sub(entitlementStartTs).div(MONTH) < 36, ERR_FULLY_CLAIMED);
         timeTill = MONTH.sub(block.timestamp.sub(entitlementStartTs).mod(MONTH));
     }
 

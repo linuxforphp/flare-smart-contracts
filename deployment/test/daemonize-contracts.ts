@@ -49,5 +49,13 @@ contract(`daemonize-contracts.ts system tests`, async accounts => {
       // Assert
       assert(found);
     });
+
+    it("Should be daemonizing incentive pool", async () => {
+      // Assemble
+      // Act
+      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+      // Assert
+      assert(found);
+    });
   });
 });

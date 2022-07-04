@@ -14,18 +14,16 @@ import "hardhat-gas-reporter";
 import { extendEnvironment, task } from "hardhat/config";
 import 'solidity-coverage';
 import { activateManagers } from "./deployment/scripts/activate-managers";
-import { claimGovernance } from "./deployment/scripts/claim-governance";
 import { Contracts } from "./deployment/scripts/Contracts";
 import { daemonizeContracts } from "./deployment/scripts/daemonize-contracts";
 import { deployContracts } from "./deployment/scripts/deploy-contracts";
 import { verifyParameters } from "./deployment/scripts/deploy-utils";
-import { proposeGovernance } from "./deployment/scripts/propose-governance";
 import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-working-balance";
-import { transferGovernance } from "./deployment/scripts/transfer-governance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
 import { TASK_CONSOLE } from "hardhat/builtin-tasks/task-names";
 import "./type-extensions";
 import { deployContractsGovernance } from "./deployment/scripts/deploy-contracts-governance";
+import { switchToProductionMode } from "./deployment/scripts/switch-to-production-mode";
 
 
 dotenv.config();
@@ -47,6 +45,9 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
     }
     if (process.env.GOVERNANCE_PUBLIC_KEY) {
       parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
+    }
+    if (process.env.GOVERNANCE_EXECUTOR_PUBLIC_KEY) {
+      parameters.governanceExecutorPublicKey = process.env.GOVERNANCE_EXECUTOR_PUBLIC_KEY
     }
     verifyParameters(parameters);
     return parameters;
@@ -124,9 +125,11 @@ task("daemonize-contracts", "Register contracts to be daemonized with the FlareD
         hre,
         contracts, 
         parameters.deployerPrivateKey, 
+        parameters.genesisGovernancePrivateKey,
         parameters.inflationReceivers, 
         parameters.inflationGasLimit, 
         parameters.ftsoManagerGasLimit, 
+        parameters.incentivePoolGasLimit, 
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
@@ -150,41 +153,21 @@ task("activate-managers", "Activate all manager contracts.")
     }
   });
 
-task("propose-governance", "Propose governance change for all governed contracts.")
+task("switch-to-production-mode", "Switch governed contracts to production mode. All contracts will use governance from governance pointer contract and with timelock.")
   .addFlag("quiet", "Suppress console output")
   .setAction(async (args, hre, runSuper) => {
     const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
     if (parameters) {
       const contracts = new Contracts();
       await contracts.deserialize(process.stdin);
-      await proposeGovernance(
+      await switchToProductionMode(
         hre,
-        contracts, 
-        parameters.deployerPrivateKey, 
-        parameters.genesisGovernancePrivateKey, 
-        parameters.governancePublicKey, 
+        contracts,
+        parameters.deployerPrivateKey,
+        parameters.genesisGovernancePrivateKey,
         parameters.deployDistributionContract,
-        args.quiet);
-    } else {
-      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
-    }
-  });
-
-task("transfer-governance", "Transfer governance directly for all governed contracts.")
-  .addFlag("quiet", "Suppress console output")
-  .setAction(async (args, hre, runSuper) => {
-    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
-    if (parameters) {
-      const contracts = new Contracts();
-      await contracts.deserialize(process.stdin);
-      await transferGovernance(
-        hre,
-        contracts, 
-        parameters.deployerPrivateKey, 
-        parameters.genesisGovernancePrivateKey, 
-        parameters.governancePublicKey, 
-        parameters.deployDistributionContract,
-        args.quiet);
+        args.quiet
+      );
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
     }
@@ -198,25 +181,6 @@ task("transfer-gov-working-balance", "Transfer working balance to multisig gover
       await transferGovWorkingBalance(
         hre,
         parameters.deployerPrivateKey, 
-        args.quiet);
-    } else {
-      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
-    }
-  });
-
-// This will work with Gnosis safe. A signed transaction will have to be executed instead.
-task("claim-governance", "Claim governance change for all governed contracts.")
-  .addFlag("quiet", "Suppress console output")
-  .setAction(async (args, hre, runSuper) => {
-    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
-    if (parameters) {
-      const contracts = new Contracts();
-      await contracts.deserialize(process.stdin);
-      await claimGovernance(
-        hre,
-        contracts, 
-        parameters.governancePrivateKey, 
-        parameters.deployDistributionContract,
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")

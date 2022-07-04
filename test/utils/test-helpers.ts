@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { time } from '@openzeppelin/test-helpers';
 import BN from "bn.js";
 import { BigNumber, ContractReceipt, ContractTransaction, Signer } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { MIN_RANDOM } from "./constants";
 
 const Wallet = require('ethereumjs-wallet').default;
@@ -363,4 +363,10 @@ export async function getAddressWithZeroBalance() {
 
 export function getRandom(): BN {
     return MIN_RANDOM.addn(Math.floor(Math.random() * 1000));
+}
+
+export function findRequiredEvent<E extends Truffle.AnyEvent, N extends E['name']>(res: Truffle.TransactionResponse<E>, name: N): Truffle.TransactionLog<Extract<E, { name: N }>> {
+    const event = res.logs.find(e => e.event === name) as any;
+    assert.isTrue(event != null);
+    return event;
 }

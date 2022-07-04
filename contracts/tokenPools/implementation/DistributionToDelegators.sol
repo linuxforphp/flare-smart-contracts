@@ -13,8 +13,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../userInterfaces/IDistributionToDelegators.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../interface/IITokenPool.sol";
-import "./DistributionTreasury.sol";
-import "./UnearnedRewardBurner.sol";
+import "../../genesis/implementation/DistributionTreasury.sol";
 
 /**
  * @title Distribution to delegators
@@ -40,8 +39,6 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     // Errors
     string internal constant ERR_ADDRESS_ZERO = "address zero";
     string internal constant ERR_BALANCE_TOO_LOW = "balance too low";
-    string internal constant ERR_WRONG_OPT_OUT_FEE_VALUE = "wrong opt out fee value";
-    string internal constant ERR_NOT_ZERO = "not zero";
     string internal constant ERR_IN_THE_PAST = "in the past";
     string internal constant ERR_NOT_STARTED = "not started";
     string internal constant ERR_ALREADY_FINISHED = "already finished";
@@ -53,9 +50,12 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_NOT_OPT_OUT = "not opted out";
     string internal constant ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero";
     string internal constant ERR_TREASURY_ONLY = "treasury only";
+    string internal constant ERR_ALREADY_STARTED = "already started";
+    string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
 
     // storage
-    uint256 public totalEntitlementWei;     // Total wei to be distributed by this contract (all but initial airdrop)
+    uint256 public immutable totalEntitlementWei;       // Total wei to be distributed (all but initial airdrop)
+    uint256 public immutable latestEntitlementStartTs;  // Latest day 0 when contract starts
     uint256 public totalClaimedWei;         // All wei already claimed
     uint256 public totalBurnedWei;          // Amounts that were not claimed in time and expired and was burned
     uint256 public totalDistributableAmount;// Total distributable amount (sum of totalAvailableAmount)
@@ -71,8 +71,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     mapping(uint256 => uint256) public totalUnclaimedWeight; // mapping from month to weight of unclaimed amount
     mapping(address => mapping(uint256 => uint256)) internal claimed; // mapping from address to claimed amount / month
 
-    mapping(address => bool) public optOutCandidate; // indicates if user has triggered to opt out of airdop
-    mapping(address => bool) public optOut; // indicates if user is opted out of airdop (confirmed by governance)
+    mapping(address => bool) public optOutCandidate; // indicates if user has triggered to opt out of airdrop
+    mapping(address => bool) public optOut; // indicates if user is opted out of airdrop (confirmed by governance)
     address[] public optOutAddresses; // all opted out addresses (confirmed by governance)
     bool public stopped;
 
@@ -95,7 +95,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @dev This modifier ensures that the entitelment was already started
      */
     modifier entitlementStarted {
-        require (entitlementStartTs != 0 && entitlementStartTs < block.timestamp, ERR_NOT_STARTED);
+        require (entitlementStartTs < block.timestamp, ERR_NOT_STARTED);
         _;
     }
 
@@ -104,15 +104,21 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         address _addressUpdater,
         IPriceSubmitter _priceSubmitter,
         DistributionTreasury _treasury,
-        uint256 _totalEntitlementWei
+        uint256 _totalEntitlementWei,
+        uint256 _latestEntitlementStartTs
     )
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         require(address(_priceSubmitter) != address(0), ERR_ADDRESS_ZERO);
         require(address(_treasury) != address(0), ERR_ADDRESS_ZERO);
+        require(address(_treasury).balance >= _totalEntitlementWei, ERR_BALANCE_TOO_LOW);
+        require(_latestEntitlementStartTs >= block.timestamp, ERR_IN_THE_PAST);
         priceSubmitter = _priceSubmitter;
         treasury = _treasury;
         totalEntitlementWei = _totalEntitlementWei;
+        latestEntitlementStartTs = _latestEntitlementStartTs;
+        entitlementStartTs = _latestEntitlementStartTs;
+        emit EntitlementStart(_latestEntitlementStartTs);
     }
 
     /**
@@ -131,11 +137,11 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @param _entitlementStartTs point in time when we start
      */
     function setEntitlementStart(uint256 _entitlementStartTs) external onlyGovernance {
-        require(entitlementStartTs == 0, ERR_NOT_ZERO);
-        require(_entitlementStartTs >= block.timestamp, ERR_IN_THE_PAST);
-        require(address(treasury).balance >= totalEntitlementWei, ERR_BALANCE_TOO_LOW);
+        require(entitlementStartTs > block.timestamp, ERR_ALREADY_STARTED);
+        require(_entitlementStartTs >= block.timestamp && _entitlementStartTs <= latestEntitlementStartTs,
+            ERR_WRONG_START_TIMESTAMP);
         entitlementStartTs = _entitlementStartTs;
-        emit EntitlementStarted();
+        emit EntitlementStart(_entitlementStartTs);
     }
 
     /**
@@ -382,11 +388,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
                 totalBurnedWei = totalBurnedWei.add(toBurnWei);
                 // Get the burn address; make it payable
                 address payable burnAddress = payable(supply.burnAddress());
-                // Burn baby burn
-                UnearnedRewardBurner unearnedRewardBurner = new UnearnedRewardBurner(burnAddress);
                 //slither-disable-next-line arbitrary-send
-                address(unearnedRewardBurner).transfer(toBurnWei);
-                unearnedRewardBurner.die();
+                burnAddress.transfer(toBurnWei);
             }
         }
 

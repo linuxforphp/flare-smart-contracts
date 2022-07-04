@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 interface IDistributionToDelegators {
     // Events
-    event EntitlementStarted();
+    event EntitlementStart(uint256 entitlementStartTs);
     event AccountClaimed(address indexed whoClaimed, address indexed sentTo, uint256 month, uint256 amountWei);
     event AccountOptOut(address indexed theAccount, bool confirmed);
 

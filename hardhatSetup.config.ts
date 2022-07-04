@@ -101,6 +101,11 @@ const config: HardhatUserConfig = {
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
+    flare: {
+      url: process.env.FLARE_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+      timeout: 40000,
+      accounts: accounts.map((x: any) => x.privateKey)
+    },
     coston: {
       url: process.env.COSTON_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
       timeout: 40000,

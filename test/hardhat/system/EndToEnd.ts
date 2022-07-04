@@ -5,20 +5,10 @@
 import { expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../deployment/scripts/Contracts";
 import {
-  FlareDaemonContract,
-  FlareDaemonInstance,
-  FtsoContract,
-  FtsoInstance,
-  FtsoManagerContract,
-  FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract,
-  FtsoRewardManagerInstance,
-  PriceSubmitterContract,
-  PriceSubmitterInstance,
-  SuicidalMockContract,
-  SuicidalMockInstance,
-  SupplyContract,
-  SupplyInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract,
-  WNatInstance
+  FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract,
+  FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance,
+  PriceSubmitterContract, PriceSubmitterInstance, SuicidalMockContract, SuicidalMockInstance, SupplyContract,
+  SupplyInstance, VoterWhitelisterContract, VoterWhitelisterInstance, WNatContract, WNatInstance
 } from "../../../typechain-truffle";
 import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
 import { PriceInfo } from '../../utils/PriceInfo';
@@ -89,7 +79,7 @@ export async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndic
     let preparedPrice = preparePrice(price);
     preparedPrices.push(preparedPrice);
   }
-  
+
   // console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
   const random = await getRandom();
@@ -338,9 +328,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Supply contract - inflatable balance should not be updated (nothing was claimed yet)
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
     const totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    const totalLockedWei = await supply.totalLockedWei();
     const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(initialGenesisAmountWei.sub(totalFoundationSupplyWei).eq(inflatableBalanceWei) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
+    assert(initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).eq(inflatableBalanceWei) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
 
     // A minting request should be pending...
     const mintingRequestWei = await flareDaemon.totalMintingRequestedWei();
@@ -364,6 +355,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await flareDaemon.trigger({ gas: 2_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
     let votePowerBlock = firstRewardEpoch.votepowerBlock;
+    await ftsoRewardManager.enableClaims({ from: await ftsoRewardManager.governance() });
 
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
     assert((await wNAT.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")

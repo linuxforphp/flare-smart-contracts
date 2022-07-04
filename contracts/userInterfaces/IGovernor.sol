@@ -22,13 +22,13 @@ interface IGovernor {
      * @dev Required for compatibility with Tally (OpenZeppelin style)
      * @dev Violates compatibility with Tally (startTime and endTime instead of startBlock and endBlock)
      * @dev additional data - votePowerBlock, wrappingThreshold, absoluteThreshold, relativeThreshold
+     * @dev remove data - string[] signatures: they are always a list of empty strings in our case 
      */
     event ProposalCreated(
         uint256 proposalId,
         address proposer,
         address[] targets,
         uint256[] values,
-        string[] signatures,
         bytes[] calldatas,
         uint256 startTime,
         uint256 endTime,

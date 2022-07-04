@@ -17,6 +17,13 @@ import "../../token/implementation/VPContract.sol";
 contract AssetToken is VPToken {
     using SafeMath for uint256;
     
+    address public minter;
+    
+    modifier onlyMinter {
+        require(msg.sender == minter, "only minter");
+        _;
+    }
+    
     constructor(
         address _governance,
         string memory _name, 
@@ -26,13 +33,18 @@ contract AssetToken is VPToken {
         VPToken(_governance, _name, _symbol)
     {
         _setupDecimals(decimals_);
+        minter = _governance;
+    }
+    
+    function setMinter(address _minter) external onlyGovernance {
+        minter = _minter;
     }
 
-    function mint(address to, uint256 amount) external onlyGovernance {
+    function mint(address to, uint256 amount) external onlyMinter {
         _mint(to, amount);
     }
 
-    function burn(address from, uint256 amount) external onlyGovernance {
+    function burn(address from, uint256 amount) external onlyMinter {
         _burn(from, amount);
     }
 }

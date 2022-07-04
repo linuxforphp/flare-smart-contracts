@@ -158,7 +158,6 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
       supply = await Supply.new(
         governance,
         ADDRESS_UPDATER,
-        constants.ZERO_ADDRESS,
         10_000_000,
         0,
         []

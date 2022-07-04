@@ -58,7 +58,7 @@ flattened
 ## Test deploys info
 deployment/deploys/*
 !deployment/deploys/staging.json
-!deployment/deploys/songbird.json
+!deployment/deploys/flare.json
 
 ## .env
 .env
@@ -78,3 +78,5 @@ deployments
 
 ## Airdrop transactions
 airdrop/files
+airdrop/flare/files
+airdrop/songbird/files

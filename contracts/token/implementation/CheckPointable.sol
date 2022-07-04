@@ -29,7 +29,7 @@ abstract contract CheckPointable {
     uint256 private cleanupBlockNumber;
     
     // Address of the contract that is allowed to call methods for history cleaning.
-    address private cleanerContract;
+    address public cleanerContract;
     
     /**
      * Emitted when a total supply cache entry is created.

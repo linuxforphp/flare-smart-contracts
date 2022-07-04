@@ -37,6 +37,7 @@ let distributionTreasury: DistributionTreasuryInstance;
 let ftsoRewardManager: FtsoRewardManagerInstance;
 let ftsoManagerInterface: FtsoManagerInstance;
 let startTs: BN;
+let latestStart: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let mockInflation: InflationMockInstance;
 let mockSupply: MockContractInstance;
@@ -57,7 +58,9 @@ const DistributionTreasury = artifacts.require("DistributionTreasury");
 const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
+const DataProviderFee = artifacts.require("DataProviderFee" as any);
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
+const FtsoManagement = artifacts.require("FtsoManagement");
 const InflationMock = artifacts.require("InflationMock");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
 const Supply = artifacts.require("Supply");
@@ -175,8 +178,6 @@ async function bestowClaimableBalance(balance: BN) {
   await web3.eth.sendTransaction({ from: GOVERNANCE_GENESIS_ADDRESS, to: suicidalMock.address, value: balance });
   // Attacker dies
   await suicidalMock.die();
-  // set distribution contract and claimable amount
-  await distributionTreasury.setDistributionContract(distribution.address, balance.divn(35), {from: GOVERNANCE_GENESIS_ADDRESS});
 }
 
 async function setMockBalances(startBlockNumber: number, numberOfBlocks: number, addresses: string[], wNatBalances: number[]) {
@@ -218,6 +219,11 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   const GOVERNANCE_ADDRESS = accounts[0];
   INFLATION_ADDRESS = accounts[17];
 
+  before(async () => {
+    FtsoManager.link(await FtsoManagement.new() as any);
+    FtsoRewardManager.link(await DataProviderFee.new() as any);
+  });
+
   beforeEach(async () => {
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
     await setDefaultVPContract(wNat, accounts[0]);
@@ -230,9 +236,15 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     distributionTreasury = await DistributionTreasury.new();
     await distributionTreasury.initialiseFixedAddress();
-    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei);
+    await bestowClaimableBalance(totalEntitlementWei);
+    latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
+    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei, latestStart);
+    // set distribution contract
+    await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
+    // select distribution contract
+    await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 
-    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, constants.ZERO_ADDRESS, 10000000, 9000000, []);
+    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 10000000, 9000000, []);
 
     // ftso reward manager
     mockFtsoManager = await MockFtsoManager.new();
@@ -271,6 +283,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     await ftsoRewardManager.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
         [ADDRESS_UPDATER, mockInflation.address, mockFtsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+    await ftsoRewardManager.enableClaims();
     
     // set the daily authorized inflation...this proxies call to ftso reward manager
     await mockInflation.setDailyAuthorizedInflation(2000000);
@@ -368,7 +381,6 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
   });
 
   it("Should be able to claim 2.37% * 3 after day 90", async () => {
-    await bestowClaimableBalance(totalEntitlementWei);
     // Assemble
     const days = 90;
     const addresses = [delAcc1Address, delAcc2Address, accounts[3]];
@@ -647,8 +659,8 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     expect((await delegationAccountManager.getFtsoRewardManagers()).length).to.equals(2);
   });
 
-  it("Should not add ftso reward manager if it already exists", async() => {
-    let distribution2 = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei);
+  it("Should not add distribution if it already exists", async() => {
+    let distribution2 = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei, latestStart);
 
     await distribution2.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.SUPPLY, Contracts.DELEGATION_ACCOUNT_MANAGER]),
@@ -660,7 +672,7 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
       [ADDRESS_UPDATER, wNat.address, ftsoRewardManager.address, distribution2.address], {from: ADDRESS_UPDATER});
     expect((await delegationAccountManager.getDistributions()).length).to.equals(2);
     
-    // try to add ftsoRewardManager2 again
+    // try to add distribution again
     await delegationAccountManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
       [ADDRESS_UPDATER, wNat.address, ftsoRewardManager.address, distribution2.address], {from: ADDRESS_UPDATER});
@@ -686,10 +698,10 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
 
     // Arguments are irrelvant
     const transferMethod = token.contract.methods.transfer(accounts[99], 0).encodeABI()
-    tokenMock.givenMethodReturnBool(transferMethod, true)
+    await tokenMock.givenMethodReturnBool(transferMethod, true)
 
     // Should allow transfer
-    await delegationAccountClonable1.transferExternalToken(tokenMock.address, 70, accounts[10], {from: accounts[1]});
+    await delegationAccountClonable1.transferExternalToken(tokenMock.address, 70, {from: accounts[1]});
 
     // Should call exactly once
     const invocationCount = await tokenMock.invocationCountForMethod.call(transferMethod)

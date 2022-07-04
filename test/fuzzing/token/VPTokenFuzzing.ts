@@ -76,6 +76,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         await setDefaultVPContract(vpToken, governance);
         governanceVP = await GovernanceVP.new(vpToken.address);
         await vpToken.setGovernanceVotePower(governanceVP.address);
+        await vpToken.setCleanupBlockNumberManager(governance, { from: governance });
         history = new VPTokenHistory(vpToken, governanceVP);
         simulator = new VPTokenSimulator(history);
     });

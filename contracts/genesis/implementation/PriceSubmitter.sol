@@ -12,6 +12,7 @@ import "../interface/IIPriceSubmitter.sol";
  */
 contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable {
 
+    string internal constant ERR_ALREADY_SET = "Already set";
     string internal constant ERR_ARRAY_LENGTHS = "Array lengths do not match";
     string internal constant ERR_NOT_WHITELISTED = "Not whitelisted";
     string internal constant ERR_FTSO_MANAGER_ONLY = "FTSO manager only";
@@ -64,6 +65,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
      * @param _addressUpdater   The address updater contract.
      */
     function setAddressUpdater(address _addressUpdater) external onlyGovernance {
+        require(getAddressUpdater() == address(0), ERR_ALREADY_SET);
         setAddressUpdaterValue(_addressUpdater);
     }
     

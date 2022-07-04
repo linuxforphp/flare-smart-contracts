@@ -13,9 +13,11 @@ export async function daemonizeContracts(
   hre: HardhatRuntimeEnvironment,
   contracts: Contracts,
   deployerPrivateKey: string,
+  genesisGovernancePrivateKey: string,
   inflationReceivers: string[], 
   inflationGasLimit: number,
   ftsoManagerGasLimit: number,
+  incentivePoolGasLimit: number,
   quiet: boolean = false) {
 
   const web3 = hre.web3;
@@ -27,6 +29,7 @@ export async function daemonizeContracts(
 
   // Define accounts in play for the deployment process
   let deployerAccount: any;
+  let genesisGovernanceAccount: any;
 
   // Get deployer account
   try {
@@ -35,6 +38,12 @@ export async function daemonizeContracts(
     throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
   }
 
+  try {
+    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(genesisGovernancePrivateKey);
+  } catch (e) {
+    throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
+  }
+  
   if (!quiet) {
     console.error(`Deploying with address ${deployerAccount.address}`)
   }
@@ -46,12 +55,14 @@ export async function daemonizeContracts(
   const FlareDaemon = artifacts.require("FlareDaemon");
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
+  const IncentivePool = artifacts.require("IncentivePool");
   const IIInflationReceiver = artifacts.require("IIInflationReceiver");
 
   // Fetch already deployed contracts
-  const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
-  const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
   const flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
+  const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
+  const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
+  const incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
 
   // Do inflation receivers know about inflation?
   for (let inflationReceiverName of inflationReceivers) {
@@ -66,10 +77,12 @@ export async function daemonizeContracts(
   if (!quiet) {
     console.error(`Registering Inflation with gas limit ${inflationGasLimit}`);
     console.error(`Registering FtsoManager with gas limit ${ftsoManagerGasLimit}`);
+    console.error(`Registering IncentivePool with gas limit ${incentivePoolGasLimit}`);
   }
   const registrations = [
     { daemonizedContract: inflation.address, gasLimit: inflationGasLimit },
-    { daemonizedContract: ftsoManager.address, gasLimit: ftsoManagerGasLimit }
+    { daemonizedContract: ftsoManager.address, gasLimit: ftsoManagerGasLimit },
+    { daemonizedContract: incentivePool.address, gasLimit: incentivePoolGasLimit }
   ];
-  await flareDaemon.registerToDaemonize(registrations); 
+  await flareDaemon.registerToDaemonize(registrations, { from: genesisGovernanceAccount.address }); 
 }

@@ -11,6 +11,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 const Wnat = artifacts.require("WNat") as WNatContract;
 const MockWnat = artifacts.require("MockContract") as MockContractContract;
 const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
+const FtsoManagement = artifacts.require("FtsoManagement");
 const MockRegistry = artifacts.require("MockContract") as MockContractContract;
 const MockFtso = artifacts.require("MockContract") as MockContractContract;
 const Ftso = artifacts.require("Ftso") as FtsoContract;
@@ -24,6 +25,7 @@ const ERR_NOT_WHITELISTED = "Not whitelisted";
 const ERR_ONLY_GOVERNANCE = "only governance";
 const ERR_ONLY_ADDRESS_UPDATER = "only address updater";
 const ERR_ARRAY_LENGTHS = "Array lengths do not match";
+const ERR_ALREADY_SET = "Already set";
 
 // contains a fresh contract for each test 
 let wnatInterface: WNatInstance;
@@ -76,6 +78,10 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
 
     FTSO_MANAGER_ADDRESS = accounts[12];
     ADDRESS_UPDATER = accounts[16];
+
+    before(async () => {
+        FtsoManager.link(await FtsoManagement.new() as any);
+    });
 
     describe("submit and reveal price", async() => {
         beforeEach(async() => {
@@ -771,6 +777,12 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
             let tx = priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: accounts[10]});
 
             await expectRevert(tx, ERR_ONLY_GOVERNANCE);
+        });
+
+        it("Should not update address updater", async() => {
+            let tx = priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, {from: GOVERNANCE_GENESIS_ADDRESS});
+
+            await expectRevert(tx, ERR_ALREADY_SET);
         });
 
         it("Should not set addresses if not address updater", async() => {

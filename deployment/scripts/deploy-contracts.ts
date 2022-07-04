@@ -8,9 +8,21 @@
  */
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AddressUpdaterContract, CleanupBlockNumberManagerContract, DistributionContract, FlareDaemonContract, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, InflationAllocationContract, InflationContract, PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SupplyContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, TeamEscrowContract, DistributionTreasuryContract, DistributionTreasuryInstance } from '../../typechain-truffle';
+import {
+  AddressUpdaterContract, CleanupBlockNumberManagerContract, DelegationAccountClonableContract, DelegationAccountManagerContract,
+  DelegationAccountManagerInstance, DistributionContract, DistributionToDelegatorsContract, DistributionToDelegatorsInstance,
+  DistributionTreasuryContract, DistributionTreasuryInstance, FlareDaemonContract, FlareDaemonInstance, FtsoContract,
+  FtsoInstance, FtsoManagementContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, GovernanceSettingsContract,
+  GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
+  IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
+  PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
+  TeamEscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract
+} from '../../typechain-truffle';
 import { Contracts } from "./Contracts";
-import { AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo, verifyParameters, waitFinalize3 } from './deploy-utils';
+import {
+  AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo,
+  verifyParameters, waitFinalize3
+} from './deploy-utils';
 
 
 export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters: any, quiet: boolean = false) {
@@ -36,18 +48,19 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Check whether genesis governance account has some funds. If not, wire 1 NAT 
   let genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
-  if(genesisGovernanceBalance == '0') {
+  if (genesisGovernanceBalance == '0') {
     console.error("Sending 2 NAT to genesis governance account ...");
-    await waitFinalize3(hre, deployerAccount.address, () => web3.eth.sendTransaction({from: deployerAccount.address, to: genesisGovernanceAccount.address, value: web3.utils.toWei("2") }));
+    await waitFinalize3(hre, deployerAccount.address, () => web3.eth.sendTransaction({ from: deployerAccount.address, to: genesisGovernanceAccount.address, value: web3.utils.toWei("2") }));
   }
   genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
-  if(genesisGovernanceBalance == '0') {
+  if (genesisGovernanceBalance == '0') {
     throw Error("Genesis governance account still empty.")
   }
   // Wire up the default account that will do the deployment
   web3.eth.defaultAccount = deployerAccount.address;
 
   // Contract definitions
+  const GovernanceSettings: GovernanceSettingsContract = artifacts.require("GovernanceSettings");
   const AddressUpdater: AddressUpdaterContract = artifacts.require("AddressUpdater");
   const InflationAllocation: InflationAllocationContract = artifacts.require("InflationAllocation");
   const StateConnector: StateConnectorContract = artifacts.require("StateConnector");
@@ -55,17 +68,28 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const TestableFlareDaemon: TestableFlareDaemonContract = artifacts.require("TestableFlareDaemon");
   const Ftso: FtsoContract = artifacts.require("Ftso");
   const FtsoManager: FtsoManagerContract = artifacts.require("FtsoManager");
+  const FtsoManagement: FtsoManagementContract = artifacts.require("FtsoManagement");
   const Inflation: InflationContract = artifacts.require("Inflation");
   const FtsoRegistry: FtsoRegistryContract = artifacts.require("FtsoRegistry");
   const FtsoRewardManager: FtsoRewardManagerContract = artifacts.require("FtsoRewardManager");
+  const DataProviderFee = artifacts.require("DataProviderFee");
   const CleanupBlockNumberManager: CleanupBlockNumberManagerContract = artifacts.require("CleanupBlockNumberManager");
   const PriceSubmitter: PriceSubmitterContract = artifacts.require("PriceSubmitter");
   const Supply: SupplyContract = artifacts.require("Supply");
   const VoterWhitelister: VoterWhitelisterContract = artifacts.require("VoterWhitelister");
   const WNat: WNatContract = artifacts.require("WNat");
-  const Distribution: DistributionContract = artifacts.require("Distribution");
   const DistributionTreasury: DistributionTreasuryContract = artifacts.require("DistributionTreasury");
+  const Distribution: DistributionContract = artifacts.require("Distribution");
+  const DistributionToDelegators: DistributionToDelegatorsContract = artifacts.require("DistributionToDelegators");
+  const IncentivePoolTreasury: IncentivePoolTreasuryContract = artifacts.require("IncentivePoolTreasury");
+  const IncentivePool: IncentivePoolContract = artifacts.require("IncentivePool");
+  const IncentivePoolAllocation: IncentivePoolAllocationContract = artifacts.require("IncentivePoolAllocation");
+  const InitialAirdrop: InitialAirdropContract = artifacts.require("InitialAirdrop");
   const TeamEscrow: TeamEscrowContract = artifacts.require("TeamEscrow");
+  const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
+  const DelegationAccountClonable: DelegationAccountClonableContract = artifacts.require("DelegationAccountClonable");
+  const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
+  const SuicidalMock: SuicidalMockContract = artifacts.require("SuicidalMock");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -100,13 +124,13 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     console.error(`flareDaemon.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
   }
 
-  let currentGovernanceAddress = await flareDaemon.governance()
+  let genesisGovernance = await flareDaemon.governance()
 
   // Unregister whatever is registered with verification
   try {
     console.error("Unregistring contracts");
     try {
-      await waitFinalize3(hre, currentGovernanceAddress, () => flareDaemon.registerToDaemonize([], { from: currentGovernanceAddress }));
+      await waitFinalize3(hre, genesisGovernance, () => flareDaemon.registerToDaemonize([], { from: genesisGovernance }));
     } catch (ee) {
       console.error("Error while unregistring. ", ee)
     }
@@ -114,10 +138,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     console.error("No more kept contracts")
   }
 
-  await flareDaemon.proposeGovernance(deployerAccount.address, { from: currentGovernanceAddress });
-  await flareDaemon.claimGovernance({ from: deployerAccount.address });
   // Set the block holdoff should a kept contract exceeded its max gas allocation
-  await flareDaemon.setBlockHoldoff(parameters.flareDaemonGasExceededHoldoffBlocks);
+  await flareDaemon.setBlockHoldoff(parameters.flareDaemonGasExceededHoldoffBlocks, { from: genesisGovernance });
 
   // PriceSubmitter contract
   let priceSubmitter: PriceSubmitterInstance;
@@ -136,22 +158,21 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     console.error(`priceSubmitter.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
   }
 
-  // Assigning governance to deployer
-  let priceSubmitterGovernance = await priceSubmitter.governance();
-  await priceSubmitter.proposeGovernance(deployerAccount.address, { from: priceSubmitterGovernance });
-  await priceSubmitter.claimGovernance({ from: deployerAccount.address })
-
   spewNewContractInfo(contracts, addressUpdaterContracts, PriceSubmitter.contractName, "PriceSubmitter.sol", priceSubmitter.address, quiet);
 
+  const distributionTotalEntitlementWei = BN(parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
   // Initialize the distribution treasury
   let distributionTreasury: DistributionTreasuryInstance;
   try {
     distributionTreasury = await DistributionTreasury.at(parameters.distributionTreasuryAddress);
   } catch (e) {
     if (!quiet) {
-      console.error("DistributionTreasury not in genesis...creating new.")
+      console.error("DistributionTreasury not in genesis...creating new and sending funds.")
     }
     distributionTreasury = await DistributionTreasury.new();
+    const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
+    await web3.eth.sendTransaction({ to: suicidalMock.address, value: distributionTotalEntitlementWei });
+    await suicidalMock.die();
   }
   // This has to be done always
   try {
@@ -160,28 +181,86 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     console.error(`distributionTreasury.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
   }
 
-  // Assigning governance to deployer
-  let distributionTreasuryGovernance = await distributionTreasury.governance();
-  await distributionTreasury.proposeGovernance(deployerAccount.address, { from: distributionTreasuryGovernance });
-  await distributionTreasury.claimGovernance({ from: deployerAccount.address })
-  
   spewNewContractInfo(contracts, addressUpdaterContracts, DistributionTreasury.contractName, `DistributionTreasury.sol`, distributionTreasury.address, quiet);
+
+  // Initialize the incentive pool treasury
+  let incentivePoolTreasury: IncentivePoolTreasuryInstance;
+  try {
+    incentivePoolTreasury = await IncentivePoolTreasury.at(parameters.incentivePoolTreasuryAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("IncentivePoolTreasury not in genesis...creating new and sending funds.")
+    }
+    const incentivePoolWei = BN(parameters.incentivePoolWei.replace(/\s/g, ''));
+    incentivePoolTreasury = await IncentivePoolTreasury.new();
+    const suicidalMock = await SuicidalMock.new(incentivePoolTreasury.address);
+    await web3.eth.sendTransaction({ to: suicidalMock.address, value: incentivePoolWei });
+    await suicidalMock.die();
+  }
+  // This has to be done always
+  try {
+    await incentivePoolTreasury.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`incentivePoolTreasury.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolTreasury.contractName, `IncentivePoolTreasury.sol`, incentivePoolTreasury.address, quiet);
+
+  // Initialize the initial airdrop contract
+  let initialAirdrop: InitialAirdropInstance;
+  try {
+    initialAirdrop = await InitialAirdrop.at(parameters.initialAirdropAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("InitialAirdrop not in genesis...creating new and sending funds.")
+    }
+    const initialAirdropWei = BN(parameters.initialAirdropWei.replace(/\s/g, ''));
+    initialAirdrop = await InitialAirdrop.new();
+    const suicidalMock = await SuicidalMock.new(initialAirdrop.address);
+    await web3.eth.sendTransaction({ to: suicidalMock.address, value: initialAirdropWei });
+    await suicidalMock.die();
+  }
+  // This has to be done always
+  try {
+    await initialAirdrop.initialiseFixedAddress();
+  } catch (e) {
+    console.error(`initialAirdrop.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
+  }
+
+  spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
+  await initialAirdrop.setLatestAirdropStart(parameters.initialAirdropLatestStart, { from: genesisGovernance });
+
+  // GovernanceSettings (do not add it to AddressUpdater)
+  // default executors are governancePublicKey and governanceExecutorPublicKey
+  const governanceSettings = await GovernanceSettings.new(parameters.governancePublicKey,
+    parameters.governanceTimelock, [parameters.governancePublicKey, parameters.governanceExecutorPublicKey]);
+  spewNewContractInfo(contracts, null, GovernanceSettings.contractName, `GovernanceSettings.sol`, governanceSettings.address, quiet);
 
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);
   spewNewContractInfo(contracts, addressUpdaterContracts, AddressUpdater.contractName, `AddressUpdater.sol`, addressUpdater.address, quiet);
 
   // Tell genesis contracts about address updater
-  await flareDaemon.setAddressUpdater(addressUpdater.address);
-  await priceSubmitter.setAddressUpdater(addressUpdater.address);
+  await flareDaemon.setAddressUpdater(addressUpdater.address, { from: genesisGovernance });
+  await priceSubmitter.setAddressUpdater(addressUpdater.address, { from: genesisGovernance });
 
   // InflationAllocation contract
   const inflationAllocation = await InflationAllocation.new(deployerAccount.address, addressUpdater.address, parameters.scheduledInflationPercentageBIPS);
   spewNewContractInfo(contracts, addressUpdaterContracts, InflationAllocation.contractName, `InflationAllocation.sol`, inflationAllocation.address, quiet);
 
-  // Get the timestamp for the just mined block
-  let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
-  const startTs = BN(currentBlock.timestamp);
+  let startTs = BN(parameters.systemStart);
+  if (startTs.eqn(0)) {
+    // Get the timestamp for the just mined block
+    let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
+    startTs = BN(currentBlock.timestamp);
+    if (!quiet) {
+      console.error(`Using current block timestamp ${currentBlock.timestamp} as system start timestamp.`);
+    }
+  } else {
+    if (!quiet) {
+      console.error(`Using systemStart parameter ${parameters.systemStart} as system start timestamp.`);
+    }
+  }
 
   // Delayed reward epoch start time
   const rewardEpochStartTs = startTs.addn(parameters.rewardEpochsStartDelayPriceEpochs * parameters.priceEpochDurationSeconds + parameters.revealEpochDurationSeconds);
@@ -191,7 +270,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     deployerAccount.address,
     flareDaemon.address,
     addressUpdater.address,
-    startTs
+    startTs.addn(parameters.inflationStartDelaySeconds)
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, Inflation.contractName, `Inflation.sol`, inflation.address, quiet);
 
@@ -199,14 +278,14 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const supply = await Supply.new(
     deployerAccount.address,
     addressUpdater.address,
-    parameters.burnAddress,
     BN(parameters.totalNativeSupplyNAT).mul(BN(10).pow(BN(18))),
-    BN(parameters.totalFoundationSupplyNAT).mul(BN(10).pow(BN(18))),
+    BN(parameters.totalExcludedSupplyNAT).mul(BN(10).pow(BN(18))),
     []
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
 
-  // FtsoRewardManager contract
+  // FtsoRewardManager contract (must link first)
+  FtsoRewardManager.link(await DataProviderFee.new());
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     addressUpdater.address,
@@ -224,7 +303,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
   // Team escrow contract
-  const teamEscrow = await TeamEscrow.new(deployerAccount.address, 0);
+  const teamEscrow = await TeamEscrow.new(deployerAccount.address, parameters.distributionLatestEntitlementStart);
+  spewNewContractInfo(contracts, addressUpdaterContracts, TeamEscrow.contractName, `TeamEscrow.sol`, teamEscrow.address, quiet);
 
   // Inflation allocation needs to know about reward managers
   let receiversAddresses = []
@@ -235,7 +315,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // Supply contract needs to know about reward managers
   await supply.addTokenPool(ftsoRewardManager.address, 0);
-  await supply.addTokenPool(teamEscrow.address, 0);
 
   // setup topup factors on inflation receivers
   for (let i = 0; i < receiversAddresses.length; i++) {
@@ -250,13 +329,46 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const voterWhitelister = await VoterWhitelister.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, parameters.defaultVoterWhitelistSize);
   spewNewContractInfo(contracts, addressUpdaterContracts, VoterWhitelister.contractName, `VoterWhitelister.sol`, voterWhitelister.address, quiet);
 
-  // Distribution Contract
+  let delegationAccountManager: DelegationAccountManagerInstance;
+  let distributionToDelegators: DistributionToDelegatorsInstance;
   if (parameters.deployDistributionContract) {
-    const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address);
+    // DelegationAccountManager
+    delegationAccountManager = await DelegationAccountManager.new(deployerAccount.address, addressUpdater.address);
+    spewNewContractInfo(contracts, addressUpdaterContracts, DelegationAccountManager.contractName, `DelegationAccountManager.sol`, delegationAccountManager.address, quiet);
+
+    const delegationAccountClonable = await DelegationAccountClonable.new();
+    spewNewContractInfo(contracts, null, DelegationAccountClonable.contractName, `DelegationAccountClonable.sol`, delegationAccountClonable.address, quiet);
+    await delegationAccountManager.setLibraryAddress(delegationAccountClonable.address);
+
+    // Distribution contracts
+    const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address, parameters.distributionLatestEntitlementStart);
     spewNewContractInfo(contracts, addressUpdaterContracts, Distribution.contractName, `Distribution.sol`, distribution.address, quiet);
+
+    distributionToDelegators = await DistributionToDelegators.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, distributionTreasury.address, distributionTotalEntitlementWei, parameters.distributionLatestEntitlementStart);
+    spewNewContractInfo(contracts, addressUpdaterContracts, DistributionToDelegators.contractName, `DistributionToDelegators.sol`, distributionToDelegators.address, quiet);
+
+    await distributionTreasury.setContracts(distribution.address, distributionToDelegators.address, { from: genesisGovernance });
   }
 
-  // FtsoManager contract
+  // IncentivePoolAllocation contract
+  const incentivePoolAllocation = await IncentivePoolAllocation.new(deployerAccount.address, addressUpdater.address, [0]);
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolAllocation.contractName, `IncentivePoolAllocation.sol`, incentivePoolAllocation.address, quiet);
+
+  // IncentivePool contract
+  const incentivePool = await IncentivePool.new(
+    deployerAccount.address,
+    flareDaemon.address,
+    addressUpdater.address,
+    incentivePoolTreasury.address,
+    parameters.incentivePoolStart
+  );
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePool.contractName, `IncentivePool.sol`, incentivePool.address, quiet);
+  await incentivePoolTreasury.setIncentivePoolContract(incentivePool.address, { from: genesisGovernance });
+  // Supply contract needs to know about token pool
+  await supply.addTokenPool(incentivePool.address, 0);
+
+  // FtsoManager contract (must link with library first)
+  FtsoManager.link(await FtsoManagement.new() as any)
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     flareDaemon.address,
@@ -277,11 +389,18 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   await setDefaultVPContract(hre, wNat, deployerAccount.address);
   await cleanupBlockNumberManager.registerToken(wNat.address);
-  await wNat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address)
+  await wNat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
+
+  // Deploy governance vote power
+  const governanceVotePower = await GovernanceVotePower.new(wNat.address);
+  spewNewContractInfo(contracts, addressUpdaterContracts, GovernanceVotePower.contractName, `GovernanceVotePower.sol`, governanceVotePower.address, quiet);
+
+  // Tell wNat contract about governance vote power
+  await wNat.setGovernanceVotePower(governanceVotePower.address);
 
   // Tell address updater about all contracts
   await addressUpdater.addOrUpdateContractNamesAndAddresses(
-    addressUpdaterContracts, addressUpdaterContracts.map( name => contracts.getContractAddress(name) )
+    addressUpdaterContracts, addressUpdaterContracts.map(name => contracts.getContractAddress(name))
   );
 
   // Set other contracts on all address updatable contracts
@@ -289,14 +408,20 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     flareDaemon.address,
     inflationAllocation.address,
     inflation.address,
-    ftsoRegistry.address, 
-    cleanupBlockNumberManager.address, 
-    voterWhitelister.address, 
-    priceSubmitter.address, 
-    ftsoManager.address, 
+    ftsoRegistry.address,
+    cleanupBlockNumberManager.address,
+    voterWhitelister.address,
+    priceSubmitter.address,
+    ftsoManager.address,
     ftsoRewardManager.address,
-    supply.address
+    supply.address,
+    incentivePoolAllocation.address,
+    incentivePool.address
   ];
+  if (parameters.deployDistributionContract) {
+    addressUpdatableContracts.push(delegationAccountManager!.address);
+    addressUpdatableContracts.push(distributionToDelegators!.address);
+  }
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
 
   let assetToContracts = new Map<string, AssetContracts>();
@@ -329,7 +454,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
       priceSubmitter.address,
       wNat.address,
       cleanupBlockNumberManager,
-      startTs, 
+      startTs,
       parameters.priceEpochDurationSeconds,
       parameters.revealEpochDurationSeconds,
       rewrapXassetParams(asset),
@@ -364,7 +489,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   }
 
   let assetList = [
-    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol}] : []), 
+    ...(parameters.deployNATFtso ? [{ assetSymbol: parameters.nativeSymbol }] : []),
     ...parameters.assets
   ]
 

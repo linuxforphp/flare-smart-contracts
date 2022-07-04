@@ -13,6 +13,7 @@ const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const MockContract = artifacts.require("MockContract");
 const FtsoManager = artifacts.require("FtsoManager");
+const FtsoManagement = artifacts.require("FtsoManagement");
 
 function toBNFixed(x: number, decimals: number) {
     const prec = Math.min(decimals, 6);
@@ -104,6 +105,10 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         await advanceTimeTo((epochId + 1) * epochDurationSec); // reveal period start
     }
     
+    before(async () => {
+        FtsoManager.link(await FtsoManagement.new() as any);
+    });
+
     describe("Voting for nat + 5 assets", async () => {
         let assetData: Array<[name: string, symbol: string, price: BN]> = [
             ["Ripple", "XRP", usd(0.5)],

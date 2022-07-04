@@ -37,7 +37,10 @@ contract AddressUpdater is Governed {
      * @notice Updates contract addresses on all contracts implementing IIAddressUpdatable interface
      * @param _contractsToUpdate            contracts to be updated
      */
-    function updateContractAddresses(IIAddressUpdatable[] memory _contractsToUpdate) external onlyGovernance {
+    function updateContractAddresses(IIAddressUpdatable[] memory _contractsToUpdate)
+        external
+        onlyImmediateGovernance
+    {
         _updateContractAddresses(_contractsToUpdate);
     }
 

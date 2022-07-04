@@ -45,6 +45,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
         uint256 gasLimit;
     }
 
+    string internal constant ERR_ALREADY_SET = "already set";
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_NOT_INFLATION = "not inflation";
     string internal constant ERR_TOO_MANY = "too many";
@@ -62,8 +63,8 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
     string internal constant ERR_INFLATION_MINT_RECEIVE_FAIL = "unknown error. receiveMinting";
 
     uint256 internal constant MAX_DAEMONIZE_CONTRACTS = 10;
-    // Initial max mint request - 90 million native token
-    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 90000000 ether;
+    // Initial max mint request - 60 million native token
+    uint256 internal constant MAX_MINTING_REQUEST_DEFAULT = 60000000 ether;
     // How often can inflation request minting from the validator - 23 hours constant
     uint256 internal constant MAX_MINTING_FREQUENCY_SEC = 23 hours;
     // How often can the maximal mint request amount be updated
@@ -221,6 +222,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
      * @param _addressUpdater   The address updater contract.
      */
     function setAddressUpdater(address _addressUpdater) external onlyGovernance {
+        require(getAddressUpdater() == address(0), ERR_ALREADY_SET);
         setAddressUpdaterValue(_addressUpdater);
     }
 
@@ -237,13 +239,6 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
     //slither-disable-next-line reentrancy-eth      // method protected by reentrancy guard (see comment below)
     function trigger() external virtual inflationSet onlySystemTrigger returns (uint256 _toMintWei) {
         return triggerInternal();
-    }
-    
-    /**
-     * @notice Unregister all contracts from being polled by the daemon process.
-     */
-    function unregisterAll() external onlyGovernance {
-        _unregisterAll();
     }
 
     function getDaemonizedContractsData() external view 
@@ -293,7 +288,7 @@ contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
             address governanceAddress = super.initialiseFixedAddress();
             return governanceAddress;
         } else {
-            return governance;
+            return governance();
         }
     }
 

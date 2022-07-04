@@ -122,6 +122,7 @@ async function submitALLRevealandFinalizeEpoch(submitters: string[], ftsos: Ftso
   
     console.log(`Initializing price epoch for reveal ${latestPriceEpoch}`);
     await flareDaemon.trigger({ gas: 40_000_000 });
+    await flareDaemon.trigger({ gas: 40_000_000 });
   
     // Time travel to reveal period
     await moveToRevealStart(firstPriceEpochStartTs.toNumber(), priceEpochDurationSeconds.toNumber(), latestPriceEpoch);
@@ -359,10 +360,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Prime the daemon to establish vote power block.
     await flareDaemon.trigger({ gas: 2_000_000 });
 
-    // Supply contract - inflatable balance should be updated
+    // Supply contract - inflatable balance should not be updated (nothing was claimed yet)
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
+    const totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
-    assert(inflatableBalanceWei.gt(initialGenesisAmountWei), "Authorized inflation not distributed...");
+    assert(initialGenesisAmountWei.sub(totalFoundationSupplyWei).eq(inflatableBalanceWei) && totalInflationAuthorizedWei.gtn(0), "Authorized inflation not distributed...");
 
     // A minting request should be pending...
     const mintingRequestWei = await flareDaemon.totalMintingRequestedWei();
@@ -386,6 +389,8 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await flareDaemon.trigger({ gas: 2_000_000 }); // initialize reward epoch - also start of new price epoch
     let firstRewardEpoch = await ftsoManager.getRewardEpochData(0);
     let votePowerBlock = firstRewardEpoch.votepowerBlock;
+    await ftsoRewardManager.enableClaims({from: await ftsoRewardManager.governance()});
+    
 
     assert((await wNAT.votePowerOfAt(p1, votePowerBlock)).gt(BN(0)), "Vote power of p1 must be > 0")
     assert((await wNAT.votePowerOfAt(p2, votePowerBlock)).gt(BN(0)), "Vote power of p2 must be > 0")

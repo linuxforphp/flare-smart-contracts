@@ -82,7 +82,7 @@ export function expectEthersEvent<T extends Contract, E extends EthersEventKeys<
     const eventDecoder = new EthersEventDecoder({ contract });
     const allEvents = eventDecoder.decodeEvents(tx);
     const events = ethersFilterEvents(allEvents, contract, eventName);
-    if (events.length === 0) assert.fail(`Missing event ${eventName}`);
+    if (events.length === 0) assert.fail(`Missing event ${String(eventName)}`);
     if (args != undefined) {
         let mismatch: [string, any] | undefined;
         for (const event of events) {
@@ -91,7 +91,7 @@ export function expectEthersEvent<T extends Contract, E extends EthersEventKeys<
             if (mismatch == null) return;  // found exact match
         }
         const [mismatchKey, mismatchValue] = mismatch!;
-        assert.fail(`Event ${eventName} mismatch for '${mismatchKey}': ${mismatchValue} != ${(events[0].args as any)[mismatchKey]}`);
+        assert.fail(`Event ${String(eventName)} mismatch for '${mismatchKey}': ${mismatchValue} != ${(events[0].args as any)[mismatchKey]}`);
     }
 }
 
@@ -99,7 +99,7 @@ export function expectEthersEventNotEmitted<T extends Contract, E extends Ethers
     const eventDecoder = new EthersEventDecoder({ contract });
     const allEvents = eventDecoder.decodeEvents(tx);
     const events = ethersFilterEvents(allEvents, contract, eventName);
-    if (events.length > 0) assert.fail(`Expected event ${eventName} not to be emitted`);
+    if (events.length > 0) assert.fail(`Expected event ${String(eventName)} not to be emitted`);
 }
 
 // event formatting

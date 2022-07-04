@@ -29,7 +29,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     string internal constant ERR_ONLY_INFLATION = "only inflation";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
-    uint256 internal constant MAX_SCHEDULE_COUNT = 10;
+    uint256 internal constant MAX_SCHEDULE_COUNT = 25;
     uint256 internal constant MAX_INFLATION_RECEIVERS = 10;
     uint256 internal constant MAX_INFLATION_PERCENTAGE_BIPS = BIPS100 / 10;  // 10% in basis points
 
@@ -42,7 +42,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     event AnnualInflationPercentageYielded(uint256 percentageBips);
     event AnnualInflationPercentageScheduleSet(uint256[] annualInflationPercentagesBips);
     event InflationSharingPercentagesSet(
-        IIInflationReceiver[] inflationRecievers, 
+        IIInflationReceiver[] inflationReceivers, 
         uint256[] percentagePerReceiverBips
     );
 
@@ -77,17 +77,17 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     /**
      * @notice Set the sharing percentages between inflation receiver contracts. Percentages must sum
      *   to 100%.
-     * @param _inflationRecievers   An array of contracts to receive inflation rewards for distribution.
+     * @param _inflationReceivers   An array of contracts to receive inflation rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function setSharingPercentages(
-        IIInflationReceiver[] memory _inflationRecievers, 
+        IIInflationReceiver[] memory _inflationReceivers, 
         uint256[] memory _percentagePerReceiverBips
     )
         external
         onlyGovernance 
     {
-        _setSharingPercentages(_inflationRecievers, _percentagePerReceiverBips);
+        _setSharingPercentages(_inflationReceivers, _percentagePerReceiverBips);
     }
 
     /**
@@ -135,7 +135,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     }
 
     /**
-     * @notice Get the inflation reciever contracts and the current sharing percentages.
+     * @notice Get the inflation receiver contracts and the current sharing percentages.
      * @return _sharingPercentages An array of SharingPercentage.
      */
     function getSharingPercentages() external view override returns(SharingPercentage[] memory _sharingPercentages) {
@@ -152,17 +152,17 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     /**
      * @notice Set the sharing percentages between inflation receiver contracts. Percentages must sum
      *   to 100%.
-     * @param _inflationRecievers   An array of contracts to receive inflation rewards for distribution.
+     * @param _inflationReceivers   An array of contracts to receive inflation rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function _setSharingPercentages(
-        IIInflationReceiver[] memory _inflationRecievers, 
+        IIInflationReceiver[] memory _inflationReceivers, 
         uint256[] memory _percentagePerReceiverBips
     )
         internal
     {
-        require(_inflationRecievers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
-        require (_inflationRecievers.length <= MAX_INFLATION_RECEIVERS, ERR_TOO_MANY);
+        require(_inflationReceivers.length == _percentagePerReceiverBips.length, ERR_LENGTH_MISMATCH);
+        require (_inflationReceivers.length <= MAX_INFLATION_RECEIVERS, ERR_TOO_MANY);
 
         uint256 sumSharingPercentage;
 
@@ -171,20 +171,20 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
             inflationReceivers.pop();
         }
 
-        for (uint256 i = 0; i < _inflationRecievers.length; i++) {
+        for (uint256 i = 0; i < _inflationReceivers.length; i++) {
             require (_percentagePerReceiverBips[i] <= BIPS100, ERR_HIGH_SHARING_PERCENTAGE);
-            require (_inflationRecievers[i] != IIInflationReceiver(0), ERR_IS_ZERO);
+            require (_inflationReceivers[i] != IIInflationReceiver(0), ERR_IS_ZERO);
 
             sumSharingPercentage += _percentagePerReceiverBips[i];
 
             inflationReceivers.push( InflationReceiver({
-                receiverContract: _inflationRecievers[i],
+                receiverContract: _inflationReceivers[i],
                 percentageBips: uint32(_percentagePerReceiverBips[i])
             }));
         }
 
         require (sumSharingPercentage == BIPS100, ERR_SUM_SHARING_PERCENTAGE);
-        emit InflationSharingPercentagesSet(_inflationRecievers, _percentagePerReceiverBips);
+        emit InflationSharingPercentagesSet(_inflationReceivers, _percentagePerReceiverBips);
     }
 
     /**
