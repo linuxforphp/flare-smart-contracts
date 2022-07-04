@@ -829,6 +829,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
                 lastBalance = lastBalance.sub(toBurnWei);
 
                 // Burn
+                //slither-disable-next-line arbitrary-send
                 burnAddress.transfer(toBurnWei);
 
                 // Emit event to signal what we did

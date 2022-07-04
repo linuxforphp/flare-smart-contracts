@@ -388,6 +388,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
                 totalBurnedWei = totalBurnedWei.add(toBurnWei);
                 // Get the burn address; make it payable
                 address payable burnAddress = payable(supply.burnAddress());
+                //slither-disable-next-line arbitrary-send
                 burnAddress.transfer(toBurnWei);
             }
         }
