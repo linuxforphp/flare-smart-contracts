@@ -309,7 +309,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     /**
      * @notice Activates reward manager (allows claiming rewards)
      */
-    function activate() external override onlyGovernance {
+    function activate() external override onlyImmediateGovernance {
         require(inflation != address(0) && address(ftsoManager) != address(0) && 
             address(wNat) != address(0) && address(supply) != address(0),
             "contract addresses not set");
@@ -319,7 +319,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     /**
      * @notice Enable claiming for current and all future reward epochs
      */
-    function enableClaims() external override onlyGovernance {
+    function enableClaims() external override onlyImmediateGovernance {
         require (firstClaimableRewardEpoch == FIRST_CLAIMABLE_EPOCH, ERR_ALREADY_ENABLED);
         firstClaimableRewardEpoch = getCurrentRewardEpoch();
         emit RewardClaimsEnabled(firstClaimableRewardEpoch);
@@ -328,7 +328,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     /**
      * @notice Deactivates reward manager (prevents claiming rewards)
      */
-    function deactivate() external override onlyGovernance {
+    function deactivate() external override onlyImmediateGovernance {
         active = false;
     }
 
