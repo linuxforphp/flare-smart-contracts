@@ -18,8 +18,6 @@ const ERR_ALREADY_SET = "already set";
 const ERR_WRONG_ADDRESS = "wrong address";
 const ERR_ADDRESS_ZERO = "address zero";
 
-const MAX_PULL_AMOUNT_WEI = toBN(663600000).mul(toBN(10).pow(toBN(18)));
-
 contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTreasury unit tests`, async accounts => {
     let treasury: DistributionTreasuryInstance;
     let mockSuicidal: SuicidalMockInstance;
@@ -130,7 +128,8 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
             await treasury.selectDistributionContract(distribution, { from: governance });
 
             // pull too much funds
-            let tx1 = treasury.pullFunds(MAX_PULL_AMOUNT_WEI.muln(2), { from: distribution });
+            const MAX_PULL_AMOUNT_WEI = await treasury.MAX_PULL_AMOUNT_WEI();
+            let tx1 = treasury.pullFunds(MAX_PULL_AMOUNT_WEI.addn(1), { from: distribution });
             await expectRevert(tx1, ERR_TOO_MUCH);
 
             // pull half the funds

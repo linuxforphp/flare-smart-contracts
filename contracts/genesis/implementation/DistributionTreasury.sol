@@ -10,9 +10,9 @@ import "../../governance/implementation/GovernedAtGenesis.sol";
  */
 contract DistributionTreasury is GovernedAtGenesis {
 
-    // How often can distribution pull funds - 29 days constant
+    // How often can the distribution contract pull funds - 29 days constant
     uint256 internal constant MAX_PULL_FREQUENCY_SEC = 29 days;
-    uint256 internal constant MAX_PULL_AMOUNT_WEI = 663600000 ether;
+    uint256 public constant MAX_PULL_AMOUNT_WEI = 725000000 ether;
 
     // Errors
     string internal constant ERR_DISTRIBUTION_ONLY = "distribution only";

@@ -593,6 +593,27 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       expectEvent(startEvent, "EntitlementStart", {entitlementStartTs: now});
     });
 
+    it("Should update total entitlement wei", async () => {
+      // Assemble
+      const additionalWei = BN(1500);
+      const totalEntitlementWeiOld = await distribution.totalEntitlementWei();
+      await bestowClaimableBalance(additionalWei);
+      // Act
+      await distribution.updateTotalEntitlementWei({ from: GOVERNANCE_ADDRESS});
+      const totalEntitlementWeiNew = await distribution.totalEntitlementWei();
+      // Assert
+      assert(totalEntitlementWei.eq(totalEntitlementWeiOld));
+      assert(totalEntitlementWei.add(additionalWei).eq(totalEntitlementWeiNew));
+    });
+    
+    it("Should not update total entitlement wei if not from governance", async () => {
+      // Assemble
+      // Act
+      const updateTotalEntitlementWeiPromise = distribution.updateTotalEntitlementWei({from: accounts[1]});
+      // Assert
+      await expectRevert(updateTotalEntitlementWeiPromise, ERR_ONLY_GOVERNANCE);
+    });
+
     it("Should not start entitlement if not from governance", async () => {
       // Assemble
       // Act
@@ -604,7 +625,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
 
     it("Should not allow entitlement start to be pushed in the past", async () => {
       // Assemble
-      await bestowClaimableBalance(BN(8500));
       const start = (await time.latest()).addn(100);
       await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       const entitlementStartTs = await distribution.entitlementStartTs();
@@ -618,7 +638,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
 
     it("Should allow entitlement start to be pushed in the future", async () => {
       // Assemble
-      await bestowClaimableBalance(BN(8500));
       const start = (await time.latest()).addn(100);
       await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       const entitlementStartTs = await distribution.entitlementStartTs();
@@ -633,7 +652,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
 
     it("Should not allow entitlement start to be pushed in the future if already started", async () => {
       // Assemble
-      await bestowClaimableBalance(BN(8500));
       const start = (await time.latest()).addn(1);
       await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       const entitlementStartTs = await distribution.entitlementStartTs();
@@ -645,9 +663,20 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(restart_promise, ERR_ALREADY_STARTED);
     });
 
+    it("Should not allow total entitlement wei to be updated if already started", async () => {
+      // Assemble
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      const entitlementStartTs = await distribution.entitlementStartTs();
+      assert(entitlementStartTs.eq(start));
+      // Act
+      const restart_promise = distribution.updateTotalEntitlementWei({from: GOVERNANCE_ADDRESS});
+      // Assert
+      await expectRevert(restart_promise, ERR_ALREADY_STARTED);
+    });
+
     it("Should not allow entitlement start to be pushed to far in the future", async () => {
       // Assemble
-      await bestowClaimableBalance(BN(8500));
       const start = (await time.latest()).addn(100);
       await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       const entitlementStartTs = await distribution.entitlementStartTs();
