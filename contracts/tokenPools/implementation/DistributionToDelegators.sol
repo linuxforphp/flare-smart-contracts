@@ -54,7 +54,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
 
     // storage
-    uint256 public immutable totalEntitlementWei;       // Total wei to be distributed (all but initial airdrop)
+    uint256 public totalEntitlementWei;     // Total wei to be distributed (all but initial airdrop)
     uint256 public immutable latestEntitlementStartTs;  // Latest day 0 when contract starts
     uint256 public totalClaimedWei;         // All wei already claimed
     uint256 public totalBurnedWei;          // Amounts that were not claimed in time and expired and was burned
@@ -130,6 +130,14 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
 
     function stop() external onlyGovernance {
         stopped = true;
+    }
+
+    /**
+     * @notice Update the totalEntitlementWei
+     */
+    function updateTotalEntitlementWei() external onlyGovernance {
+        require(entitlementStartTs > block.timestamp, ERR_ALREADY_STARTED);
+        totalEntitlementWei = address(treasury).balance;
     }
 
     /**
@@ -412,7 +420,9 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
             // maximal claimable bips for this month
             uint256 claimBIPS = Math.min((_month + 1).mul(MONTHLY_CLAIMABLE_BIPS), TOTAL_CLAIMABLE_BIPS);
             // what can be distributed minus what was already distributed till now
-            uint256 amountWei = totalEntitlementWei.mulDiv(claimBIPS, TOTAL_CLAIMABLE_BIPS) - totalDistributableAmount;
+            uint256 amountWei = Math.min(
+                totalEntitlementWei.mulDiv(claimBIPS, TOTAL_CLAIMABLE_BIPS) - totalDistributableAmount,
+                treasury.MAX_PULL_AMOUNT_WEI());
             // update total values
             totalAvailableAmount[_month] = amountWei;
             totalUnclaimedAmount[_month] = amountWei;
