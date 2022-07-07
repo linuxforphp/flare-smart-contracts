@@ -58,12 +58,12 @@ async function joinChainGenesis(network: string, verbose: boolean) {
 
     const cChainGenesis = JSON.parse(fs.readFileSync(`${ROOT}/${network}/cChainGenesis.json`).toString());
 
-    cChainGenesis.alloc["1000000000000000000000000000000000000001"].code = await getArtifactCode(filenameCode1, verbose);
-    cChainGenesis.alloc["1000000000000000000000000000000000000002"].code = await getArtifactCode(filenameCode2, verbose);
-    cChainGenesis.alloc["1000000000000000000000000000000000000003"].code = await getArtifactCode(filenameCode3, verbose);
-    cChainGenesis.alloc["1000000000000000000000000000000000000004"].code = await getArtifactCode(filenameCode4, verbose);
-    cChainGenesis.alloc["1000000000000000000000000000000000000005"].code = await getArtifactCode(filenameCode5, verbose);
-    cChainGenesis.alloc["1000000000000000000000000000000000000006"].code = await getArtifactCode(filenameCode6, verbose);
+    cChainGenesis.alloc["0x1000000000000000000000000000000000000001"].code = await getArtifactCode(filenameCode1, verbose);
+    cChainGenesis.alloc["0x1000000000000000000000000000000000000002"].code = await getArtifactCode(filenameCode2, verbose);
+    cChainGenesis.alloc["0x1000000000000000000000000000000000000003"].code = await getArtifactCode(filenameCode3, verbose);
+    cChainGenesis.alloc["0x1000000000000000000000000000000000000004"].code = await getArtifactCode(filenameCode4, verbose);
+    cChainGenesis.alloc["0x1000000000000000000000000000000000000005"].code = await getArtifactCode(filenameCode5, verbose);
+    cChainGenesis.alloc["0x1000000000000000000000000000000000000006"].code = await getArtifactCode(filenameCode6, verbose);
 
     template.cChainGenesis = JSON.stringify(cChainGenesis);
 

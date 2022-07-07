@@ -50,7 +50,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   let genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
   if (genesisGovernanceBalance == '0') {
     console.error("Sending 2 NAT to genesis governance account ...");
-    await waitFinalize3(hre, deployerAccount.address, () => web3.eth.sendTransaction({ from: deployerAccount.address, to: genesisGovernanceAccount.address, value: web3.utils.toWei("2") }));
+    const toTransfer = web3.utils.toWei("210")
+    await waitFinalize3(hre, deployerAccount.address, () => web3.eth.sendTransaction({ from: deployerAccount.address, to: genesisGovernanceAccount.address, value: toTransfer }));
   }
   genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
   if (genesisGovernanceBalance == '0') {
@@ -367,6 +368,15 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Supply contract needs to know about token pool
   await supply.addTokenPool(incentivePool.address, 0);
 
+  // Get the timestamp for the just mined block
+  let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
+  let ftsoStartTs = BN(currentBlock.timestamp);
+  if (ftsoStartTs.lt(startTs)) {
+    ftsoStartTs = ftsoStartTs.subn(parameters.priceEpochDurationSeconds).addn(startTs.sub(ftsoStartTs).modn(parameters.priceEpochDurationSeconds));
+  } else {
+    ftsoStartTs = startTs;
+  }
+
   // FtsoManager contract (must link with library first)
   FtsoManager.link(await FtsoManagement.new() as any)
   const ftsoManager = await FtsoManager.new(
@@ -375,7 +385,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     addressUpdater.address,
     priceSubmitter.address,
     "0x0000000000000000000000000000000000000000", // old ftso manager
-    startTs,
+    ftsoStartTs,
     parameters.priceEpochDurationSeconds,
     parameters.revealEpochDurationSeconds,
     rewardEpochStartTs,
@@ -429,7 +439,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Create a FTSO for WNAT
   let ftsoWnat: FtsoInstance;
   if (parameters.deployNATFtso) {
-    ftsoWnat = await Ftso.new(parameters.nativeSymbol, parameters.nativeFtsoDecimals, priceSubmitter.address, wNat.address, ftsoManager.address, startTs, parameters.priceEpochDurationSeconds,
+    ftsoWnat = await Ftso.new(parameters.nativeSymbol, parameters.nativeFtsoDecimals, priceSubmitter.address, wNat.address, ftsoManager.address, ftsoStartTs, parameters.priceEpochDurationSeconds,
       parameters.revealEpochDurationSeconds, parameters.initialWnatPriceUSDDec5, parameters.priceDeviationThresholdBIPS, parameters.priceEpochCyclicBufferSize);
     spewNewContractInfo(contracts, null, `FTSO WNAT`, `Ftso.sol`, ftsoWnat.address, quiet);
 
@@ -454,7 +464,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
       priceSubmitter.address,
       wNat.address,
       cleanupBlockNumberManager,
-      startTs,
+      ftsoStartTs,
       parameters.priceEpochDurationSeconds,
       parameters.revealEpochDurationSeconds,
       rewrapXassetParams(asset),

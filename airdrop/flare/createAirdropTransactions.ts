@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { createFlareAirdropGenesisData, createSetAirdropBalanceUnsignedTransactions, validateFile } from "./utils/processFile";
 import { logMessage } from './utils/utils';
 const Web3Utils = require('web3-utils');
+const Web3 = require('web3');
 const parse = require('csv-parse/lib/sync');
 
 const TEN = new BigNumber(10);
@@ -51,14 +52,14 @@ const { argv } = require("yargs")
         alias: "gas",
         describe: "gas per transaction",
         type: "string",
-        default: "2200000",
+        default: "2000000",
         nargs: 1
     })
     .option("p", {
         alias: "gas-price",
         describe: "gas price per transaction",
         type: "string",
-        default: "255000000000",
+        default: "25000000000",
         nargs: 1
     })
     .option("i", {
@@ -76,34 +77,20 @@ const { argv } = require("yargs")
         nargs: 1
     })
     .option("a", {
-        alias: "airdrop-start",
-        describe: "airdrop start ts",
+        alias: "deployment-config",
+        describe: "Deployment file name (generated to deployment/chain-config/ folder)",
         type: "string",
-        demandOption: "Initial Airdrop strat ts is required (-a or --airdrop-start) ",
+        demandOption: "Deployment name is required (-a or --deployment-config)",
         nargs: 1
     })
-    .option("b", {
-        alias: "distribution-start",
-        describe: "distribution start ts",
-        type: "string",
-        demandOption: "Distribution entitlement start ts is required (-b or --distribution-start)",
-        nargs: 1
-    })
-    .option("c", {
-        alias: "contingent-percentage",
-        describe: "contingent-percentage to be used at the airdrop, default to 100%",
-        type: "number",
-        default: 100,
-        choices: [...Array(101).keys()],
-        nargs: 1
-    })
-    .option("n", {
-        alias: "nonce-offset",
-        describe: "Nonce offset if account makes some transactions before airdrop distribution",
-        type: "number",
-        default: "0",
-        nargs: 1
-    })
+    // .option("c", {
+    //     alias: "contingent-percentage",
+    //     describe: "contingent-percentage to be used at the airdrop, default to 100%",
+    //     type: "number",
+    //     default: 100,
+    //     choices: [...Array(101).keys()],
+    //     nargs: 1
+    // })
     .option("q", {
         alias: "quiet",
         describe: "quiet",
@@ -119,9 +106,21 @@ const { argv } = require("yargs")
         process.exit(0);
     })
 
-const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, nonceOffset, chainId, deploymentName, airdropStart, distributionStart } = argv;
-let {contingentPercentage} = argv;
-contingentPercentage = new BigNumber(contingentPercentage).dividedBy(100)
+
+async function main(
+    snapshotFile: string,
+    transactionFile: string,
+    override: any,
+    logPath: any,
+    header: any,
+    gas: any,
+    gasPrice: any,
+    quiet: any, 
+    chainId: number, 
+    deploymentName: string, 
+    deploymentConfig: string,
+    ){
+
 const separatorLine = "--------------------------------------------------------------------------------\n"
 if (fs.existsSync(transactionFile)) {
     if(!override){
@@ -146,15 +145,23 @@ if (fs.existsSync(transactionFile)) {
       });
   }
 
-let senderAddress: string;
-if (process.env.AIRDROP_PUBLIC_KEY) {
-    senderAddress = process.env.AIRDROP_PUBLIC_KEY
+let initialAirdropSenderAddress: string;
+if (process.env.GENESIS_GOVERNANCE_PUBLIC_KEY) {
+    initialAirdropSenderAddress = process.env.GENESIS_GOVERNANCE_PUBLIC_KEY
 }
 else {
-    console.error("No AIRDROP_PUBLIC_KEY provided in env");
-    throw new Error("No AIRDROP_PUBLIC_KEY provided in env");
+    console.error("No GENESIS_GOVERNANCE_PUBLIC_KEY provided in env");
+    throw new Error("No GENESIS_GOVERNANCE_PUBLIC_KEY provided in env");
 }
 
+let distributionSenderAddress: string
+if (process.env.DEPLOYER_PUBLIC_KEY) {
+    distributionSenderAddress = process.env.DEPLOYER_PUBLIC_KEY
+}
+else {
+    console.error("No DEPLOYER_PUBLIC_KEY provided in env");
+    throw new Error("No DEPLOYER_PUBLIC_KEY provided in env");
+}
 if(!fs.existsSync(logPath)){
     fs.mkdirSync(logPath, {recursive: true});
 }
@@ -162,8 +169,8 @@ if(!fs.existsSync(logPath)){
 if(!fs.existsSync(transactionFile)){
     let transaction_dir = transactionFile.split("/");
     if(transaction_dir.length > 1){
-        transaction_dir = transaction_dir.slice(0, -1).join("/")        
-        fs.mkdirSync(transaction_dir, {recursive: true});
+        const transactionGenDir = transaction_dir.slice(0, -1).join("/")        
+        fs.mkdirSync(transactionGenDir, {recursive: true});
     }
 }
 
@@ -183,27 +190,49 @@ const logFileName = logPath+`${now.toISOString()}_createAirdropTransactions_log.
 if(!quiet) console.log(logFileName);
 logMessage(logFileName, `Log file created at ${now.toISOString()} GMT(+0)`, quiet)
 
+let web3Provider = ""
+if (process.env.WEB3_PROVIDER_URL) {
+    web3Provider = process.env.WEB3_PROVIDER_URL
+}
+else {
+    console.error("No WEB3_PROVIDER_URL provided in env");
+    throw new Error("No WEB3_PROVIDER_URL provided in env");
+}
+
+// Get initial nonce of sender
+const web3 = new Web3(web3Provider);
+const initialAirdropNonce = await web3.eth.getTransactionCount(initialAirdropSenderAddress);
+const distributionNonce = await web3.eth.getTransactionCount(distributionSenderAddress);
+
+// deployment parameters
+const deploymentConfigJson = JSON.parse(fs.readFileSync(deploymentConfig, "utf8"))
+const airdropStart = `${deploymentConfigJson.initialAirdropStart}`
+const distributionStart = `${deploymentConfigJson.distributionLatestEntitlementStart}`
+
 const inputRepString = `Script run with 
---snapshot-file            (-f)             : ${snapshotFile}
---transaction-file         (-t)             : ${transactionFile}
---override                 (-o)             : ${override}
---log-path                 (-l)             : ${logPath}
---header                   (-h)             : ${header}
---gas                      (-g)             : ${gas}
---gas-price                (-p)             : ${gasPrice}
---AIRDROP_PUBLIC_KEY       (.ENV)           : ${senderAddress}
---nonce-offset             (-n)             : ${nonceOffset}
---chain-id                 (-i)             : ${chainId}
---deployment-name          (-d)             : ${deploymentName}
---contingent-percentage    (-c)             : ${contingentPercentage.multipliedBy(100).toFixed()}
+--snapshot-file                    (-f)     : ${snapshotFile}
+--transaction-file                 (-t)     : ${transactionFile}
+--override                         (-o)     : ${override}
+--log-path                         (-l)     : ${logPath}
+--header                           (-h)     : ${header}
+--gas                              (-g)     : ${gas}
+--gas-price                        (-p)     : ${gasPrice}
+--GENESIS_GOVERNANCE_PRIVATE_KEY   (.ENV)   : ${initialAirdropSenderAddress}
+--WEB3_PROVIDER_URL                (.ENV)   : ${web3Provider}
+--chain-id                         (-i)     : ${chainId}
+--deployment-name                  (-d)     : ${deploymentName}
+--deployment-config                (-a)     : ${deploymentConfig}
 
 Initial airdrop address                     : ${InitialAirdropAddress?.address}
 Distribution address                        : ${DistributionAddress?.address}
+Initial Airdrop signer Nonce                : ${initialAirdropNonce.toString(10)}
+Initial Distribution signer Nonce           : ${distributionNonce.toString(10)}
+Initial Airdrop start ts                    : ${airdropStart}
+Distribution start ts                       : ${distributionStart}
 `
 logMessage(logFileName, inputRepString, quiet)
 
 const constantRepString = separatorLine + `Constants
-Contingent Percentages                      : ${contingentPercentage.multipliedBy(100).toFixed()} %
 Conversion Factor                           : ${conversionFactor.toFixed()}`
 logMessage(logFileName, constantRepString, quiet)
 
@@ -236,14 +265,13 @@ logMessage(logFileName, `Total invalid FLR balance predicted (Towo)  : ${validat
 let expectedFlrToDistribute:BigNumber = new BigNumber(0);
 expectedFlrToDistribute = validatedData.totalXRPBalance;
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(conversionFactor)
-expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(contingentPercentage)
 expectedFlrToDistribute = expectedFlrToDistribute.multipliedBy(TEN.pow(12));
 logMessage(logFileName, `Expected Flare without caps (Wei) (FLare)   : ${expectedFlrToDistribute.toFixed()}`, quiet);
 // Calculating conversion factor
 logMessage(logFileName, separatorLine+"Input file processing", quiet);
 // Create Flare balance json
 let convertedAirdropData = createFlareAirdropGenesisData(parsed_file, validatedData,
-    contingentPercentage, conversionFactor, logFileName);
+    conversionFactor, logFileName);
 // Log balance created
 const zeroPad = (num:any, places:any) => String(num).padStart(places, '0')
 logMessage(logFileName, `Number of processed accounts                : ${convertedAirdropData.processedAccountsLen}`, quiet);
@@ -273,12 +301,14 @@ if(healthy){
         DistributionAddress?.address || '',
         airdropStart,
         distributionStart,
-        senderAddress,
+        initialAirdropSenderAddress,
+        distributionSenderAddress,
         gasPrice,
         gas,
         chainId,
-        parseInt(nonceOffset),
-        1000
+        parseInt(initialAirdropNonce),
+        parseInt(distributionNonce),
+        35
         );
     let totalGas = new BigNumber(fileData.totalGasPrice)
     let totalCost = convertedAirdropData.processedWei.plus(totalGas);
@@ -295,3 +325,12 @@ if(healthy){
 } else {
     logMessage(logFileName, "No transactions was created", quiet);
 }
+}
+const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig } = argv;
+main(snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig)
+.then(() => process.exit(0))
+.catch(error => {
+    console.error(error);
+    process.exit(1);
+});
+  

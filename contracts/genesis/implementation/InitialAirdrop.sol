@@ -114,10 +114,10 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
     }
 
     /**
-     * @notice Method for transfering initial airdrop amounts in batches of 100
+     * @notice Method for transfering initial airdrop amounts in batches of 50
      */
     function transferAirdrop() external airdropStarted mustBalance nonReentrant {
-        uint256 upperBound = Math.min(nextAirdropAccountIndexToTransfer + 100, airdropAccounts.length);
+        uint256 upperBound = Math.min(nextAirdropAccountIndexToTransfer + 50, airdropAccounts.length);
         for (uint256 i = nextAirdropAccountIndexToTransfer; i < upperBound; i++) {
             // Get the account and amount
             address account = airdropAccounts[i];

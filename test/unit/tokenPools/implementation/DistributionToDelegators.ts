@@ -599,10 +599,25 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       const totalEntitlementWeiOld = await distribution.totalEntitlementWei();
       await bestowClaimableBalance(additionalWei);
       // Act
-      await distribution.updateTotalEntitlementWei({ from: GOVERNANCE_ADDRESS});
+      await distribution.updateTotalEntitlementWei({ from: GOVERNANCE_ADDRESS });
       const totalEntitlementWeiNew = await distribution.totalEntitlementWei();
       // Assert
       assert(totalEntitlementWei.eq(totalEntitlementWeiOld));
+      assert(totalEntitlementWei.add(additionalWei).eq(totalEntitlementWeiNew));
+    });
+    
+    it("Should allow total entitlement wei to be updated even if already started", async () => {
+      // Assemble
+      const additionalWei = BN(1500);
+      const start = (await time.latest()).addn(1);
+      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
+      const entitlementStartTs = await distribution.entitlementStartTs();
+      assert(entitlementStartTs.eq(start));
+      // Act
+      await bestowClaimableBalance(additionalWei);
+      await distribution.updateTotalEntitlementWei({ from: GOVERNANCE_ADDRESS });
+      const totalEntitlementWeiNew = await distribution.totalEntitlementWei();
+      // Assert
       assert(totalEntitlementWei.add(additionalWei).eq(totalEntitlementWeiNew));
     });
     
@@ -659,18 +674,6 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       // Act
       const later = start.addn(60 * 60 * 24 * 5);
       const restart_promise = distribution.setEntitlementStart(later, {from: GOVERNANCE_ADDRESS});
-      // Assert
-      await expectRevert(restart_promise, ERR_ALREADY_STARTED);
-    });
-
-    it("Should not allow total entitlement wei to be updated if already started", async () => {
-      // Assemble
-      const start = (await time.latest()).addn(1);
-      await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
-      const entitlementStartTs = await distribution.entitlementStartTs();
-      assert(entitlementStartTs.eq(start));
-      // Act
-      const restart_promise = distribution.updateTotalEntitlementWei({from: GOVERNANCE_ADDRESS});
       // Assert
       await expectRevert(restart_promise, ERR_ALREADY_STARTED);
     });

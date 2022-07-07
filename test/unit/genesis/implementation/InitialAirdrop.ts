@@ -285,7 +285,7 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       await bulkLoad(BN(1000));
     });
 
-    it("Should transfer airdrop to the first 100 accounts", async () => {
+    it("Should transfer airdrop to the first 50 accounts", async () => {
       // Assemble
       await bestowClaimableBalance(BN(150 * 150));
       const now = await time.latest();
@@ -295,18 +295,18 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       // Act
       await initialAirdrop.transferAirdrop();
       // Assert
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 50; i++) {
         assert.equal(await initialAirdrop.airdropAccounts(i), constants.ZERO_ADDRESS);
         assert.equal((await initialAirdrop.airdropAmountsWei(claimants[i])).toString(), "0");
         assert.equal(await web3.eth.getBalance(claimants[i]), "150");
       }
-      for (let i = 100; i < 150; i++) {
+      for (let i = 50; i < 150; i++) {
         assert.equal(await initialAirdrop.airdropAccounts(i), claimants[i]);
         assert.equal((await initialAirdrop.airdropAmountsWei(claimants[i])).toString(), "150");
         assert.equal(await web3.eth.getBalance(claimants[i]), "0");
       }
-      assert((await initialAirdrop.totalTransferredAirdropWei()).eqn(100 * 150));
-      assert((await initialAirdrop.nextAirdropAccountIndexToTransfer()).eqn(100));
+      assert((await initialAirdrop.totalTransferredAirdropWei()).eqn(50 * 150));
+      assert((await initialAirdrop.nextAirdropAccountIndexToTransfer()).eqn(50));
     });
 
     it("Should transfer airdrop - from any account", async () => {
@@ -317,8 +317,10 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       // Act
-      await initialAirdrop.transferAirdrop({from: accounts[5]});
+      const tx = await initialAirdrop.transferAirdrop({from: accounts[5]});
+      console.log(tx.receipt.gasUsed);
       await initialAirdrop.transferAirdrop({from: accounts[12]});
+      await initialAirdrop.transferAirdrop();
       // Assert
       for (let i = 0; i < 150; i++) {
         assert.equal(await initialAirdrop.airdropAccounts(i), constants.ZERO_ADDRESS);
@@ -347,6 +349,8 @@ contract(`InitialAirdrop.sol; ${getTestFile(__filename)}; InitialAirdrop unit te
       const initialAirdropStartTs = await initialAirdrop.initialAirdropStartTs();
       assert(initialAirdropStartTs.eq(now));
       // Act
+      await initialAirdrop.transferAirdrop();
+      await initialAirdrop.transferAirdrop();
       await initialAirdrop.transferAirdrop();
       const tx = await initialAirdrop.transferAirdrop();
       // Assert

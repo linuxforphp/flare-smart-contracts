@@ -39,7 +39,7 @@ export function validateFile(
   let invalidXRPBalance = new BigNumber(0);
   let totalFLRBalance = new BigNumber(0);
   let invalidFLRBalance = new BigNumber(0);
-  let seenXRPAddressesDetail: { [name: string]: number } = {};
+  let seenXRPAddressesDetail: { [name: string]: number[] } = {};
   for (let lineIndex = 0; lineIndex < parsedFile.length; lineIndex++) {
     let lineItem = parsedFile[lineIndex];
     let isValid = true;
@@ -59,17 +59,18 @@ export function validateFile(
       // We have already seen this XRP address
       logMessage(
         logFile,
-        `Line ${readableIndex}: XRP address is duplicate of line ${
+        `Line ${readableIndex}: XRP address is duplicate of lines: ${
           seenXRPAddressesDetail[lineItem.XRPAddress]
         }`,
         !logConsole
       );
-      isValid = false;
+      // isValid = false;
+      seenXRPAddressesDetail[lineItem.XRPAddress].push(lineIndex);
       lineErrors += 1;
     }
     if (!seenXRPAddresses.has(lineItem.XRPAddress)) {
       seenXRPAddresses.add(lineItem.XRPAddress);
-      seenXRPAddressesDetail[lineItem.XRPAddress] = lineIndex;
+      seenXRPAddressesDetail[lineItem.XRPAddress] = [lineIndex];
     }
     if (!Web3Utils.isAddress(lineItem.FlareAddress)) {
       logMessage(
@@ -130,7 +131,6 @@ export function validateFile(
 export function createFlareAirdropGenesisData(
   parsedFile: LineItem[],
   validAccounts: validateRes,
-  contingentPercentage: BigNumber,
   conversionFactor: BigNumber,
   logFile: string,
   logConsole: boolean = true
@@ -146,11 +146,14 @@ export function createFlareAirdropGenesisData(
     if (validAccounts.validAccounts[lineIndex]) {
       let lineItem = parsedFile[lineIndex];
       processedAccountsLen += 1;
+      // Calculate account balance
       let accBalance = new BigNumber(lineItem.XRPBalance);
       accBalance = accBalance.multipliedBy(conversionFactor);
       let expectedBalance = new BigNumber(lineItem.FlareBalance);
       // To get from XRP to 6 decimal places to Wei (Flare to 18 decimal places)
-      accBalance = accBalance.multipliedBy(TEN.pow(12));
+      accBalance = accBalance.multipliedBy(TEN.pow(12));     
+      // rounding down to 0 decimal places
+      accBalance = accBalance.dp(0, BigNumber.ROUND_FLOOR);
       // Special case for RippleWorks
       if (lineItem.XRPAddress == "rKveEyR1SrkWbJX214xcfH43ZsoGMb3PEv") {
         // RippleWorks address is capped to 1BN
@@ -173,13 +176,7 @@ export function createFlareAirdropGenesisData(
           !logConsole
         );
       }
-      // Calculate account balance
-      accBalance = accBalance.multipliedBy(contingentPercentage);
 
-      // accBalance = accBalance.multipliedBy(initialAirdropPercentage);
-
-      // rounding down to 0 decimal places
-      accBalance = accBalance.dp(0, BigNumber.ROUND_FLOOR);
       // Total Wei book keeping
       processedWei = processedWei.plus(accBalance);
       if (seenFlareAddresses.has(lineItem.FlareAddress)) {
@@ -203,7 +200,7 @@ export function createFlareAirdropGenesisData(
     }
     processedAccounts.push({
       NativeAddress: flrAdd,
-      NativeBalance: flrAddDetail[flrAdd].balance.toString(16),
+      NativeBalance: flrAddDetail[flrAdd].balance.toString(10),
     });
     if (accountsDistribution[flrAddDetail[flrAdd].num]) {
       accountsDistribution[flrAddDetail[flrAdd].num] += 1;
@@ -219,53 +216,19 @@ export function createFlareAirdropGenesisData(
   };
 }
 
-// transaction object https://web3js.readthedocs.io/en/v1.2.9/web3-eth.html#eth-sendtransaction
-// export function createAirdropUnsignedTransactions(
-//   processedAccounts: ProcessedAccount[],
-//   senderAddress: string,
-//   gasPrice: string,
-//   gas: string,
-//   chainId: number,
-//   initialNonceOffset: number = 0
-// ): generateTransactionRes {
-//   let transactions = [];
-//   let nonce = initialNonceOffset;
-//   for (let acc of processedAccounts) {
-//     const newTransaction: unsignedTransaction = {
-//       from: senderAddress,
-//       to: acc.NativeAddress,
-//       gas: gas,
-//       gasPrice: gasPrice,
-//       value: "0x" + acc.NativeBalance,
-//       nonce: nonce,
-//       chainId: chainId,
-//     };
-//     transactions.push(newTransaction);
-//     nonce += 1;
-//   }
-//   let totalGasPriceNum = new BigNumber(1);
-//   totalGasPriceNum = totalGasPriceNum
-//     .multipliedBy(gas)
-//     .multipliedBy(gasPrice)
-//     .multipliedBy(transactions.length);
-//   const totalGasPrice = totalGasPriceNum.toString(10);
-//   return {
-//     transactions,
-//     totalGasPrice,
-//   };
-// }
-
 export function createSetAirdropBalanceUnsignedTransactions(
   processedAccounts: ProcessedAccount[],
   initialAirdropContractAddress: string,
   distributionContractAddress: string,
   initialAirdropStartTs: string,
   distributionStartTs: string,
-  senderAddress: string,
+  initialAirdropSenderAddress: string,
+  distributionSenderAddress: string,
   gasPrice: string,
   gas: string,
   chainId: number,
-  initialNonceOffset: number = 0,
+  initialAirdropNonceOffset: number = 0,
+  initialDistributionNonceOffset: number = 0,
   batchSize: number = 900
 ): generateTransactionCallRes {
   const rawTransactions = [];
@@ -282,7 +245,8 @@ export function createSetAirdropBalanceUnsignedTransactions(
   ) as any as Distribution;
 
   let index = 0;
-  let nonce = initialNonceOffset;
+  let initialAirdropNonce = initialAirdropNonceOffset;
+  let distributionNonce = initialDistributionNonceOffset;
   let shouldBreak = false;
 
   const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
@@ -298,7 +262,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
       if (!(index < processedAccounts.length)) {
         shouldBreak = true;
         break;
-      }
+      }  
       tempAddresses.push(processedAccounts[index].NativeAddress);
       tempBalances.push(web3.utils.toBN(processedAccounts[index].NativeBalance));
       index += 1;
@@ -312,31 +276,31 @@ export function createSetAirdropBalanceUnsignedTransactions(
         .setAirdropBalances(tempAddresses, tempBalances)
         .encodeABI();
       const newTransaction = {
-        from: senderAddress,
+        from: initialAirdropSenderAddress,
         to: initialAirdropContractAddress,
         data: encodedCallInitialAirdrop,
         gas: gas,
         gasPrice: gasPrice,
-        nonce: nonce,
+        nonce: initialAirdropNonce,
         chainId: chainId,
       };
       rawTransactions.push(newTransaction);
-      nonce += 1;
+      initialAirdropNonce += 1;
 
       const encodedCallDistribution = distributionContract.methods
         .setAirdropBalances(tempAddresses, tempBalances)
         .encodeABI();
       const newTransactionDistribution = {
-        from: senderAddress,
-        to: initialAirdropContractAddress,
+        from: distributionSenderAddress,
+        to: distributionContractAddress,
         data: encodedCallDistribution,
         gas: gas,
         gasPrice: gasPrice,
-        nonce: nonce,
+        nonce: distributionNonce,
         chainId: chainId,
       };
       rawTransactions.push(newTransactionDistribution);
-      nonce += 1;
+      distributionNonce += 1;
 
       progress += 1
       bar1.update(progress)
@@ -350,28 +314,27 @@ export function createSetAirdropBalanceUnsignedTransactions(
   // create transaction to disable adding data to initial airdrop
   const disableInitialAirdrop = InitialAirdropContract.methods.setAirdropStart(initialAirdropStartTs).encodeABI();
   const disableAirdropTx = {
-    from: senderAddress,
+    from: initialAirdropSenderAddress,
     to: initialAirdropContractAddress,
     data: disableInitialAirdrop,
     gas: gas,
     gasPrice: gasPrice,
-    nonce: nonce,
+    nonce: initialAirdropNonce,
     chainId: chainId,
   };
   rawTransactions.push(disableAirdropTx);
-  nonce += 1;
 
   progress += 1
   bar1.update(progress)
 
   const disableDistribution = distributionContract.methods.setEntitlementStart(distributionStartTs).encodeABI();
   const disableDistributionTx = {
-    from: senderAddress,
-    to: initialAirdropContractAddress,
+    from: distributionSenderAddress,
+    to: distributionContractAddress,
     data: disableDistribution,
     gas: gas,
     gasPrice: gasPrice,
-    nonce: nonce,
+    nonce: distributionNonce,
     chainId: chainId,
   };
   rawTransactions.push(disableDistributionTx);

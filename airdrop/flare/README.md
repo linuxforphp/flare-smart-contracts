@@ -1,8 +1,10 @@
 # Airdrop process
 
-## Step 1: export.csv from TOWOLABS
+This process is run by:
+`yarn flare_airdrop` 
+## Step 1: export.csv from Flare Foundation
 
-Towo labs provides into Flare SC repo into `airdrop/data/` folder:
+Towo labs provides into Flare SC repo into `airdrop/flare/data/` folder:
 - valid export.csv
 - digital signature file
 
@@ -15,48 +17,45 @@ Airdrop deployer has to validate Towo labs'es  signature
 Run the pre-transaction verification script. With this we check
 - Digital signature of export.csv is valid
 - Genesis block hash is valid
-- Non-claim accounts balances match
-- Initial Airdrop distribution account address exists
-- Initial Airdrop distribution account balance is correct
-- Initial Airdrop distribution account nonce is 0
 
-
-Run the script with 
-`yarn test deployment/test/initialVerificationTest.ts`
+Run the test script with 
+`yarn test_initial_airdrop_state_mainnet`
 
 ## Step4: create unsigned transactions
 
 Make sure .env file has all parameters you will need
 ```
-AIRDROP_PUBLIC_KEY="<public key of airdrop transaction sender address>"
+DEPLOYER_PRIVATE_KEY=<DeployerPrivateKey>
+DEPLOYER_PUBLIC_KEY=<DeployerPublicKey>
+GENESIS_GOVERNANCE_PRIVATE_KEY=<GenesisGovernancePrivateKey>
+GENESIS_GOVERNANCE_PUBLIC_KEY=<GenesisGovernancePublicKey>
+WEB3_PROVIDER_URL=<link to web3 rpc endpoint>
 ```
 
-Run `yarn create_airdrop_transactions` script
+Run `yarn create_airdrop_transactions_mainnet` script
 
 ```
 Options:
-  --help                       Show help                               [boolean]
-  --version                    Show version number                     [boolean]
-  -f, --snapshot-file          Path to snapshot file         [string] [required]
-  -h, --header                 Flag that tells us if input csv file has header
-                                                      [boolean] [default: true]
-  -t, --transaction-file       Unsigned transaction data file for output (.json)
+      --help               Show help                                   [boolean]
+      --version            Show version number                         [boolean]
+  -f, --snapshot-file      Path to snapshot file             [string] [required]
+  -h, --header             Flag that tells us if input csv file has header
+                                                       [boolean] [default: true]
+  -t, --transaction-file   Unsigned transaction data file for output (.json)
                                                              [string] [required]
-  -o, --override               if provided genesis data file will override the
-                               one at provided destination if there is one
-  -l, --log-path               log data path
-                                       [string] [default: "airdrop/files/logs/"]
-  -g, --gas                    gas per transaction   [string] [default: "21000"]
-  -p, --gas-price              gas price per transaction
+  -o, --override           if provided genesis data file will override the one
+                           at provided destination if there is one
+  -l, --log-path           log data path
+                                 [string] [default: "airdrop/flare/files/logs/"]
+  -g, --gas                gas per transaction     [string] [default: "2000000"]
+  -p, --gas-price          gas price per transaction
                                               [string] [default: "255000000000"]
-  -i, --chain-id               chain id for network          [number] [required]
-  -c, --contingent-percentage  contingent-percentage to be used at the airdrop,
-                               default to 100%
-    [number] [choices: 0 - 100] [default: 100]
-  -n, --nonce-offset           Nonce offset if account makes some transactions
-                               before airdrop distribution
-                                                         [number] [default: "0"]
-  -q, --quiet                  quiet                [boolean] [default: "false"]
+  -i, --chain-id           chain id for network              [number] [required]
+  -d, --deployment-name    Deployment file name (generated to
+                           deployment/deploys/ folder)       [string] [required]
+  -a, --deployment-config  Deployment file name (generated to
+                           deployment/chain-config/ folder)  [string] [required]
+  -q, --quiet              quiet                    [boolean] [default: "false"]
 ```
 
 ### What does script do
@@ -70,7 +69,7 @@ In order to do that we do the following computations and checkups:
 
 For each line of airdrop file we do the following computation:
 ```
-FLR to distribute = XRP balance * conversion factor * initial airdrop percentage * contingent percentage
+FLR to distribute = XRP balance * conversion factor
 
 ```
 In order to generate transactions connecting accounts and its founds
@@ -96,8 +95,6 @@ IMPORTANT
 1. There is a cap for RippleWork account to "only" receive 1Bn balance from the airdrop.
 2. There are some account that have bigger balance
     1. `line 60231 rJb5KsHsDHF1YS5B5DU6QCkH5NsPaKQTcy,0xF977814e90dA44bFA03b6295A0616a897441aceC,2201544281505647,2217615554760638223100000000` Binance claim that is valid
-    2. `line 152115 rw7m3CtVHwGSdhFjV4MyJozmZJv3DYQnsA,0xFb6148ea2c87F424e8F3DED3567cfd7b179C1b6f,997653123928787,1004935991733467145100000000` BitBank claim that is valid
-
 
 When you run the script:
 1. A log file will be generated
@@ -114,13 +111,9 @@ Be sure to save log file!!!
 This step requires the knowing the deployers address private key
 Its recommended to do this on a secure machine
 
-in .env there should be
-```
-AIRDROP_PRIVATE_KEY=<private key of airdrop transaction sender address>
-```
 
 do this by running
-`yarn sign_airdrop_transactions`
+`yarn sign_airdrop_transactions_mainnet`
 
 ```
 Options:
@@ -144,7 +137,7 @@ WEB3_PROVIDER_URL=<link to web3 rpc endpoint>
 ```
 
 do this by running
-`yarn send_airdrop_transactions`
+`yarn send_airdrop_transactions_mainnet`
 
 ## Step7: Airdrop verification final tests
 
@@ -157,7 +150,7 @@ We run the verification script to check:
 
 
 this is done with
-`yarn test deployment/test/airdropDataTest.ts`
+`yarn test_final_airdrop_state_mainnet`
 
 ## In case of fail
 If any step does not work, we nuke the network and start over
