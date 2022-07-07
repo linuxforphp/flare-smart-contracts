@@ -24,6 +24,8 @@ contract DummyVPToken is ERC20, IIVPToken {
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override {}
 
     function delegate(address _to, uint256 _bips) external override {}
+    
+    function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external override {}
 
     function delegateExplicit(address _to, uint256 _amount) external override {}
 

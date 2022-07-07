@@ -36,6 +36,7 @@ contract MockVPToken is IIVPToken {
     function setCleanerContract(address _cleanerContract) external override {}
     function setGovernanceVotePower(IIGovernanceVotePower _governanceVotePower) external override {}
     function delegate(address to, uint256 bips) external override {}
+    function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external override {}
     function delegateExplicit(address to, uint256 amount) external override {}
     function revokeDelegationAt(address who, uint blockNumber) external override {}
     function undelegateAll() external override {}

@@ -125,6 +125,23 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
 
     /**
+     * @notice Undelegate all percentage delegations from teh sender and then delegate corresponding 
+     *   `_bips` percentage of voting power from the sender to each member of `_delegatees`.
+     * @param _delegatees The addresses of the new recipients.
+     * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
+     *   Total of all `_bips` values must be at most 10000.
+     **/
+    function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external override {
+        require(_delegatees.length == _bips.length, "Array length mismatch");
+        IIVPContract vpContract = _checkWriteVpContract();
+        uint256 balance = balanceOf(msg.sender);
+        vpContract.undelegateAll(msg.sender, balance);
+        for (uint256 i = 0; i < _delegatees.length; i++) {
+            vpContract.delegate(msg.sender, _delegatees[i], balance, _bips[i]);
+        }
+    }
+    
+    /**
      * @notice Delegate `_amount` of voting power to `_to` from `msg.sender`
      * @param _to The address of the recipient
      * @param _amount An explicit vote power amount to be delegated.

@@ -1085,5 +1085,57 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Check point unit tests`, asyn
     assert.equal((await vpToken.votePowerOfAtIgnoringRevocation(accounts[1], blockAfterDelegate1)).toNumber(), 140);
     assert.equal((await vpToken.votePowerOfAtIgnoringRevocation(accounts[2], blockAfterDelegate1)).toNumber(), 60);
   });
+  
+  it("Batch delegation should work", async() => {
+    async function checkDelegations(from: string, expectDelegates: string[], expectBips: number[]) {
+      const { 0: delegates, 1: bips } = await vpToken.delegatesOf(from);
+      compareArrays(delegates, expectDelegates);
+      compareArrays(bips.map(x => Number(x)), expectBips);
+    }
+    async function checkDelegationsAt(from: string, expectDelegates: string[], expectBips: number[], at: number) {
+      const { 0: delegates, 1: bips } = await vpToken.delegatesOfAt(from, at);
+      compareArrays(delegates, expectDelegates);
+      compareArrays(bips.map(x => Number(x)), expectBips);
+    }
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    // batch delegate to empty
+    await vpToken.batchDelegate([accounts[2], accounts[3]], [3000, 5000], { from: accounts[1] });
+    const blk1 = await web3.eth.getBlockNumber();
+    await checkDelegations(accounts[1], [accounts[2], accounts[3]], [3000, 5000]);
+    // redelegate all
+    await vpToken.batchDelegate([accounts[4], accounts[5]], [2000, 4000], { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    await checkDelegations(accounts[1], [accounts[4], accounts[5]], [2000, 4000]);
+    // redelegate to one delegator
+    await vpToken.batchDelegate([accounts[6]], [5000], { from: accounts[1] });
+    const blk3 = await web3.eth.getBlockNumber();
+    await checkDelegations(accounts[1], [accounts[6]], [5000]);
+    // undelegate via batchDelegation
+    await vpToken.batchDelegate([], [], { from: accounts[1] });
+    const blk4 = await web3.eth.getBlockNumber();
+    await checkDelegations(accounts[1], [], []);
+    // batch delegate to empty again
+    await vpToken.batchDelegate([accounts[8], accounts[9]], [1000, 2000], { from: accounts[1] });
+    const blk5 = await web3.eth.getBlockNumber();
+    await checkDelegations(accounts[1], [accounts[8], accounts[9]], [1000, 2000]);
+    // historical delegations should be correct
+    await checkDelegationsAt(accounts[1], [accounts[2], accounts[3]], [3000, 5000], blk1);
+    await checkDelegationsAt(accounts[1], [accounts[4], accounts[5]], [2000, 4000], blk2);
+    await checkDelegationsAt(accounts[1], [accounts[6]], [5000], blk3);
+    await checkDelegationsAt(accounts[1], [], [], blk4);
+    await checkDelegationsAt(accounts[1], [accounts[8], accounts[9]], [1000, 2000], blk5);
+  });
 
+  it("Batch delegation should revert properly", async () => {
+    // Assemble
+    await vpToken.mint(accounts[1], 100);
+    // Assert
+    await expectRevert(vpToken.batchDelegate([accounts[2], accounts[3]], [3000], { from: accounts[1] }),
+      "Array length mismatch");
+    await expectRevert(vpToken.batchDelegate([accounts[2], accounts[3], accounts[4]], [3000, 2000, 1000], { from: accounts[1] }),
+      "Max delegates exceeded");
+    await expectRevert(vpToken.batchDelegate([accounts[2], accounts[3]], [3000, 8000], { from: accounts[1] }),
+      "Max delegation bips exceeded");
+  });
 });
