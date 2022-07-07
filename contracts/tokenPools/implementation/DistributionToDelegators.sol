@@ -58,7 +58,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     uint256 public immutable latestEntitlementStartTs;  // Latest day 0 when contract starts
     uint256 public totalClaimedWei;         // All wei already claimed
     uint256 public totalBurnedWei;          // Amounts that were not claimed in time and expired and was burned
-    uint256 public totalDistributableAmount;// Total distributable amount (sum of totalAvailableAmount)
+    uint256 public totalDistributableAmount;// Total amount that was pulled from Distribution treasury for 
+                                            // distribution. (sum of totalAvailableAmount)
     uint256 public entitlementStartTs;      // Day 0 when contract starts
     // id of the first month to expire. Closed = expired and unclaimed amount will be redistributed
     uint256 internal nextMonthToExpireCandidate;
@@ -136,8 +137,9 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @notice Update the totalEntitlementWei
      */
     function updateTotalEntitlementWei() external onlyGovernance {
-        require(entitlementStartTs > block.timestamp, ERR_ALREADY_STARTED);
-        totalEntitlementWei = address(treasury).balance;
+        uint256 newTotalEntitlementWei = totalDistributableAmount.add(address(treasury).balance);
+        assert(newTotalEntitlementWei >= totalEntitlementWei);
+        totalEntitlementWei = newTotalEntitlementWei;
     }
 
     /**
@@ -420,9 +422,10 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
             // maximal claimable bips for this month
             uint256 claimBIPS = Math.min((_month + 1).mul(MONTHLY_CLAIMABLE_BIPS), TOTAL_CLAIMABLE_BIPS);
             // what can be distributed minus what was already distributed till now
-            uint256 amountWei = Math.min(
+            uint256 amountWei = Math.min(Math.min(
                 totalEntitlementWei.mulDiv(claimBIPS, TOTAL_CLAIMABLE_BIPS) - totalDistributableAmount,
-                treasury.MAX_PULL_AMOUNT_WEI());
+                treasury.MAX_PULL_AMOUNT_WEI()),
+                address(treasury).balance);
             // update total values
             totalAvailableAmount[_month] = amountWei;
             totalUnclaimedAmount[_month] = amountWei;

@@ -59,7 +59,7 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     
     const web3 = new Web3(web3Provider);
 
-    const rawTransactions = JSON.parse(await fs.readFileSync(transactionsFile, "utf8"));
+    const rawTransactions = JSON.parse(fs.readFileSync(transactionsFile, "utf8"));
     let promises = []
 
     let totalGasPrice = new BigNumber(0);
@@ -74,8 +74,13 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
         let decoded = txDecoder.decodeTx(tx.raw);
         let decodedGas = new BigNumber(decoded.gasLimit);
         totalGasPrice = totalGasPrice.plus(decodedGas.multipliedBy(decoded.gasPrice));
-        promises.push(web3.eth.sendSignedTransaction(tx.raw).catch((e:any) => null));
-        await sleep(20);
+        promises.push(web3.eth.sendSignedTransaction(tx.raw).then(
+            (res:any) => {
+                // console.log(res.status, res.gasUsed, res.to)
+            }
+        ).catch((e:any) => console.log(e)
+        ));
+        await sleep(950);
         progress += 1;
         if(!quiet) bar1.update(progress);
     }
