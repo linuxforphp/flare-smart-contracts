@@ -27,7 +27,7 @@ abstract contract GovernedBase {
     
     bool private executing;
     
-    mapping(bytes4 => TimelockedCall) private timelockedCalls;
+    mapping(bytes4 => TimelockedCall) public timelockedCalls;
     
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
