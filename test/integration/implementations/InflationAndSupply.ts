@@ -7,6 +7,7 @@ import {
   SupplyInstance, 
   FtsoRewardManagerInstance, 
   PercentageProviderMockInstance } from "../../../typechain-truffle";
+import { getRewardTotals } from "../../utils/RewardManagerTestUtils";
 import { encodeContractNames } from "../../utils/test-helpers";
 
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -78,7 +79,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
 
     // Wire up escrow contract
     const latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
-    teamEscrow = await TeamEscrow.new(accounts[0], latestStart);
+    teamEscrow = await TeamEscrow.new(accounts[0], ADDRESS_UPDATER, latestStart);
 
     // Tell supply about inflation
     await supply.updateContractAddresses(
@@ -94,8 +95,12 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     await ftsoRewardManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
+    // tell escrow about WNat contract
+    await teamEscrow.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT]),
+      [ADDRESS_UPDATER, (await MockContract.new()).address], {from: ADDRESS_UPDATER});
+    // enable claiming
     await ftsoRewardManager.enableClaims();
-
     await supply.addTokenPool(teamEscrow.address, 0, {from: accounts[0]});
 
   });
@@ -186,7 +191,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
         circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()) // 10 percent of initial
 
       assert.equal(
-        (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
+        ((await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation).toString(), 
         firstDayMonth2InflationAuthorized.toString()) 
 
 
@@ -251,7 +256,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
         circulatingSupply.sub(fullLockedAmount).mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()) // 10 percent of initial ()
 
       assert.equal(
-        (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
+        ((await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation).toString(), 
         firstDayMonth2InflationAuthorized.toString()) 
 
 
@@ -296,7 +301,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
          // recognized in annum3 (smaller base with some claims)
 
       assert.equal(
-        (await ftsoRewardManager.dailyAuthorizedInflation()).toString(), 
+        ((await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation).toString(), 
         (circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).mul(BN(inflationBips)).div(BN(10000)).divn(12).divn(30)).toString()) 
 
       const month3InflationAuthorized = circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).mul(BN(inflationBips)).div(BN(10000)).divn(12).divn(30);

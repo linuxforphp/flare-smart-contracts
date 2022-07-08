@@ -62,16 +62,20 @@ interface IFtsoRewardManager {
     /**
      * @notice Allows a percentage delegator to claim and wrap rewards.
      * @notice This function is intended to be used to claim and wrap rewards in case of delegation by percentage.
-     * @notice The caller does not have to be the owner, but must be allowed by owner by calling `addClaimExecutor`.
-     *   It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
+     * @notice The caller does not have to be the owner, but must be approved by the owner to claim on his behalf.
+     *   this approval is done by calling `addClaimExecutor`.
+     * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
-     * @param _rewardOwner          address of the reward owner; also, funds will be tranfered there
+     * @param _rewardOwner          address of the reward owner
+     * @param _recipient            address of the recipient; must be either _rewardOwner or one of the addresses 
+     *  allowed by the _rewardOwner
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Reverts if `msg.sender` is delegating by amount
      */
-    function claimAndWrapRewardToOwner(
-        address payable _rewardOwner,
+    function claimAndWrapRewardByExecutor(
+        address _rewardOwner,
+        address payable _recipient,
         uint256[] memory _rewardEpochs
     ) external returns (uint256 _rewardAmount);
 
@@ -112,37 +116,40 @@ interface IFtsoRewardManager {
     /**
      * @notice Allows the sender to claim and wrap rewards from specified data providers.
      * @notice This function is intended to be used to claim and wrap rewards in case of delegation by amount.
-     * @notice The caller does not have to be the owner, but must be allowed by owner by calling `addClaimExecutor`.
-     *   It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
+     * @notice The caller does not have to be the owner, but must be approved by the owner to claim on his behalf.
+     *   this approval is done by calling `addClaimExecutor`.
+     * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
-     * @param _rewardOwner          address of the reward owner; also, funds will be tranfered there
+     * @param _rewardOwner          address of the reward owner
+     * @param _recipient            address of the recipient; must be either _rewardOwner or one of the addresses 
+     *  allowed by the _rewardOwner
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @param _dataProviders        array of addresses representing data providers to claim the reward from
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
      */
-    function claimAndWrapRewardFromDataProvidersToOwner(
-        address payable _rewardOwner,
+    function claimAndWrapRewardFromDataProvidersByExecutor(
+        address _rewardOwner,
+        address payable _recipient,
         uint256[] memory _rewardEpochs,
         address[] memory _dataProviders
-    ) 
-        external
-        returns (uint256 _rewardAmount);
+    ) external returns (uint256 _rewardAmount);
         
     /**
-     * Called by reward owner to allow `_executor` to call `claimAndWrapRewardToOwner` or 
-     * `claimAndWrapRewardFromDataProvidersToOwner`.
-     * @param _executor the account that will be able to call the `claim to owner` methods
-     */
-    function addClaimExecutor(address _executor) external;
+     * Set the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * @param _executors The new executors. All old executors will be deleted and replaced by these.
+     */    
+    function setClaimExecutors(address[] memory _executors) external;
 
     /**
-     * Called by reward owner to revoke the allowance of `_executor` to call `claimAndWrapRewardToOwner` or 
-     * `claimAndWrapRewardFromDataProvidersToOwner`.
-     * @param _executor the account that won't be able to call the `claim to owner` methods any more
-     */
-    function removeClaimExecutor(address _executor) external;
-        
+     * Set the addresses of allowed recipients in the methods claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * Apart from these, the reward owner is always an allowed recipient.
+     * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
+     */    
+    function setAllowedClaimRecipients(address[] memory _recipients) external;
+    
     /**
      * @notice Allows data provider to set (or update last) fee percentage.
      * @param _feePercentageBIPS    number representing fee percentage in BIPS
@@ -319,4 +326,17 @@ interface IFtsoRewardManager {
             uint256 _rewardAmount,
             uint256 _votePowerIgnoringRevocation
         );
+
+    /**
+     * Get the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     */    
+    function claimExecutors(address _rewardOwner) external view returns (address[] memory);
+    
+    /**
+     * Get the addresses of allowed recipients in the methods claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * Apart from these, the reward owner is always an allowed recipient.
+     */    
+    function allowedClaimRecipients(address _rewardOwner) external view returns (address[] memory);
 }

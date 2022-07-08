@@ -125,6 +125,7 @@ abstract contract GovernedBase {
         if (executing) {
             // can only be run from executeGovernanceCall(), where we check that only executor can call
             // make sure nothing else gets executed, even in case of reentrancy
+            assert(msg.sender == address(this));
             executing = false;
         } else {
             // must be called with: productionMode=false

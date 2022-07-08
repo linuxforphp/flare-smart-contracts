@@ -14,7 +14,7 @@ contract StateConnector {
     uint256[16] private gap;
 
     // Signalling block.coinbase value
-    address public constant SIGNAL_COINBASE = address(0x000000000000000000000000000000000000dEaD);
+    address public constant SIGNAL_COINBASE = address(0x00000000000000000000000000000000000DEaD1);
     // November 5th, 2021
     uint256 public constant BUFFER_TIMESTAMP_OFFSET = 1636070400 seconds;
     // Amount of time a buffer is active before cycling to the next one

@@ -54,7 +54,7 @@ contract(`final-verification.ts system tests`, async accounts => {
       const FtsoRewardManager = artifacts.require("FtsoRewardManager");
       const ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
       // Act
-      const authorizedInflationWei = await ftsoRewardManager.totalInflationAuthorizedWei();
+      const { 5: authorizedInflationWei } = await ftsoRewardManager.getTotals();
       const balanceWei = await web3.eth.getBalance(ftsoRewardManager.address);
       const inflationAnnum = await inflation.getCurrentAnnum();
       const dailyInflationWei = BN(inflationAnnum.recognizedInflationWei.toString()).div(BN(30));

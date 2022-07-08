@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "../interface/IIFtsoRewardManager.sol";
 import "../lib/DataProviderFee.sol";
+import "../../utils/implementation/AddressSet.sol";
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/Governed.sol";
@@ -23,6 +24,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     using SafePct for uint256;
     using SafeMath for uint256;
     using DataProviderFee for DataProviderFee.State;
+    using AddressSet for AddressSet.State;
 
     struct RewardClaim {            // used for storing reward claim info
         bool claimed;               // indicates if reward has been claimed
@@ -44,6 +46,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     string internal constant ERR_AFTER_DAILY_CYCLE = "after daily cycle";
     string internal constant ERR_NO_CLAIMABLE_EPOCH = "no epoch with claimable rewards";
     string internal constant ERR_EXECUTOR_ONLY = "claim executor only";
+    string internal constant ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
     string internal constant ERR_ALREADY_ENABLED = "already enabled";
     
     uint256 constant internal MAX_BIPS = 1e4;
@@ -72,21 +75,24 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     mapping(uint256 => uint256) private claimedRewardEpochRewards;
 
     DataProviderFee.State private dataProviderFee;
-        
-    // mapping(reward owner address, claim executor address) => bool
-    mapping(address => mapping(address => bool)) private allowedClaimExecutors;
+    
+    // mapping reward owner address => executor set
+    mapping(address => AddressSet.State) private claimExecutorSet;
+    
+    // mapping reward owner address => claim recipient address
+    mapping(address => AddressSet.State) private allowedClaimRecipientSet;
 
     // Totals
-    uint256 public totalAwardedWei;     // rewards that were distributed
-    uint256 public totalClaimedWei;     // rewards that were claimed in time
-    uint256 public totalExpiredWei;     // rewards that were not claimed in time and expired
-    uint256 public totalUnearnedWei;    // rewards that were unearned (ftso fallback) and thus not distributed
-    uint256 public totalBurnedWei;      // rewards that were unearned or expired and thus burned
-    uint256 public totalInflationAuthorizedWei;
-    uint256 public totalInflationReceivedWei;
-    uint256 public totalSelfDestructReceivedWei;
-    uint256 public lastInflationAuthorizationReceivedTs;
-    uint256 public dailyAuthorizedInflation;
+    uint256 private totalAwardedWei;     // rewards that were distributed
+    uint256 private totalClaimedWei;     // rewards that were claimed in time
+    uint256 private totalExpiredWei;     // rewards that were not claimed in time and expired
+    uint256 private totalUnearnedWei;    // rewards that were unearned (ftso fallback) and thus not distributed
+    uint256 private totalBurnedWei;      // rewards that were unearned or expired and thus burned
+    uint256 private totalInflationAuthorizedWei;
+    uint256 private totalInflationReceivedWei;
+    uint256 private totalSelfDestructReceivedWei;
+    uint256 private lastInflationAuthorizationReceivedTs;
+    uint256 private dailyAuthorizedInflation;
 
     uint256 private lastBalance;
 
@@ -102,16 +108,16 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
 
     modifier mustBalance {
         _;
-        require(address(this).balance == _getExpectedBalance(), ERR_OUT_OF_BALANCE);
+        _checkMustBalance();
     }
-
+    
     modifier onlyFtsoManager () {
-        require (msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
+        _checkOnlyFtsoManager();
         _;
     }
 
     modifier onlyIfActive() {
-        require(active, ERR_REWARD_MANAGER_DEACTIVATED);
+        _checkOnlyActive();
         _;
     }
 
@@ -120,11 +126,11 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         _;
     }
 
-    modifier onlyRewardExecutor(address _rewardOwner) {
-        require(allowedClaimExecutors[_rewardOwner][msg.sender], ERR_EXECUTOR_ONLY);
+    modifier onlyRewardExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) {
+        _checkExecutorAndAllowedRecipient(_rewardOwner, _recipient);
         _;
     }
-    
+
     constructor(
         address _governance,
         address _addressUpdater,
@@ -189,25 +195,28 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      *   this approval is done by calling `addClaimExecutor`.
      * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
-     * @param _rewardOwner          address of the reward owner; also, funds will be tranfered there
+     * @param _rewardOwner          address of the reward owner
+     * @param _recipient            address of the recipient; must be either _rewardOwner or one of the addresses 
+     *  allowed by the _rewardOwner
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Reverts if `msg.sender` is delegating by amount
      */
-    function claimAndWrapRewardToOwner(
-        address payable _rewardOwner,
+    function claimAndWrapRewardByExecutor(
+        address _rewardOwner,
+        address payable _recipient,
         uint256[] memory _rewardEpochs
     ) 
         external override
         onlyIfActive
         mustBalance
         nonReentrant
-        onlyRewardExecutor(_rewardOwner) 
+        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
         returns (uint256 _rewardAmount)
     {
-        _rewardAmount = _claimOrWrapReward(_rewardOwner, _rewardOwner, _rewardEpochs, true);
+        _rewardAmount = _claimOrWrapReward(_rewardOwner, _recipient, _rewardEpochs, true);
     }
-
+    
     /**
      * @notice Allows the sender to claim rewards from specified data providers.
      * @notice This function is intended to be used to claim rewards in case of delegation by amount.
@@ -263,14 +272,17 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      *   this approval is done by calling `addClaimExecutor`.
      * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
-     * @param _rewardOwner          address of the reward owner; also, funds will be tranfered there
+     * @param _rewardOwner          address of the reward owner
+     * @param _recipient            address of the recipient; must be either _rewardOwner or one of the addresses 
+     *  allowed by the _rewardOwner
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @param _dataProviders        array of addresses representing data providers to claim the reward from
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
      */
-    function claimAndWrapRewardFromDataProvidersToOwner(
-        address payable _rewardOwner,
+    function claimAndWrapRewardFromDataProvidersByExecutor(
+        address _rewardOwner,
+        address payable _recipient,
         uint256[] memory _rewardEpochs,
         address[] memory _dataProviders
     ) 
@@ -278,32 +290,30 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         onlyIfActive
         mustBalance
         nonReentrant
-        onlyRewardExecutor(_rewardOwner) 
+        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
         returns (uint256 _rewardAmount)
     {
-        _rewardAmount = _claimOrWrapRewardFromDataProviders(_rewardOwner, _rewardOwner,
+        _rewardAmount = _claimOrWrapRewardFromDataProviders(_rewardOwner, _recipient,
             _rewardEpochs, _dataProviders, true);
-    }
-    
-    /**
-     * Called by reward owner to allow `_executor` to claim on behalf of the owner.
-     * the `_executor` can call `claimAndWrapRewardToOwner` or `claimAndWrapRewardFromDataProvidersToOwner`.
-     * @param _executor the account that will be able to claim on behalf of the owner.
-     */
-    function addClaimExecutor(address _executor)
-        external override
-    {
-        allowedClaimExecutors[msg.sender][_executor] = true;
     }
 
     /**
-     * Called by reward owner to revoke the allowance of an `_executor` to claim on behalf of the owner.
-     * @param _executor the account from which the privilege is revoked.
-     */
-    function removeClaimExecutor(address _executor) 
-        external override
-    {
-        allowedClaimExecutors[msg.sender][_executor] = false;
+     * Set the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * @param _executors The new executors. All old executors will be deleted and replaced by these.
+     */    
+    function setClaimExecutors(address[] memory _executors) external override {
+        claimExecutorSet[msg.sender].replaceAll(_executors);
+    }
+    
+    /**
+     * Set the addresses of allowed recipients in the methods claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * Apart from these, the reward owner is always an allowed recipient.
+     * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
+     */    
+    function setAllowedClaimRecipients(address[] memory _recipients) external override {
+        allowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
     }
 
     /**
@@ -750,6 +760,52 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
 
     function defaultFeePercentage() external view returns (uint256) {
         return dataProviderFee.defaultFeePercentage;
+    }
+
+    function getTotals() 
+        external view
+        returns (
+            uint256 _totalAwardedWei,
+            uint256 _totalClaimedWei,
+            uint256 _totalExpiredWei,
+            uint256 _totalUnearnedWei,
+            uint256 _totalBurnedWei,
+            uint256 _totalInflationAuthorizedWei,
+            uint256 _totalInflationReceivedWei,
+            uint256 _totalSelfDestructReceivedWei,
+            uint256 _lastInflationAuthorizationReceivedTs,
+            uint256 _dailyAuthorizedInflation
+        )
+    {
+        return (
+            totalAwardedWei,
+            totalClaimedWei,
+            totalExpiredWei,
+            totalUnearnedWei,
+            totalBurnedWei,
+            totalInflationAuthorizedWei,
+            totalInflationReceivedWei,
+            totalSelfDestructReceivedWei,
+            lastInflationAuthorizationReceivedTs,
+            dailyAuthorizedInflation
+        );
+    }
+    
+    /**
+     * Get the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     */    
+    function claimExecutors(address _rewardOwner) external view override returns (address[] memory) {
+        return claimExecutorSet[_rewardOwner].list;
+    }
+
+    /**
+     * Get the addresses of allowed recipients in the methods claimAndWrapRewardByExecutor
+     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * Apart from these, the reward owner is always an allowed recipient.
+     */    
+    function allowedClaimRecipients(address _rewardOwner) external view override returns (address[] memory) {
+        return allowedClaimRecipientSet[_rewardOwner].list;
     }
 
     /**
@@ -1371,4 +1427,24 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             .sub(totalClaimedWei)
             .sub(totalBurnedWei);
     }
+
+    function _checkExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) private view {
+        require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, 
+            ERR_EXECUTOR_ONLY);
+        require(_recipient == _rewardOwner || allowedClaimRecipientSet[_rewardOwner].index[_recipient] != 0,
+            ERR_RECIPIENT_NOT_ALLOWED);
+    }
+    
+    function _checkMustBalance() private view {
+        require(address(this).balance == _getExpectedBalance(), ERR_OUT_OF_BALANCE);
+    }
+
+    function _checkOnlyFtsoManager() private view {
+        require (msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
+    }
+
+    function _checkOnlyActive() private view {
+        require(active, ERR_REWARD_MANAGER_DEACTIVATED);
+    }
+    
 }
