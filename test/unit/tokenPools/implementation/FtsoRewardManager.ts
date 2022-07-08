@@ -518,7 +518,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         // Assert
         // 2 minute price epochs yield 720 price epochs per day, 5040 per week
         // 2000000 / 5040 = 396.8, unearned rewards to burn. Decimal will get truncated.
-        const totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
+        const { 3: totalUnearnedWei } = await ftsoRewardManager.getTotals();
         assert.equal(totalUnearnedWei.toNumber(), 396);
       });
 
@@ -550,8 +550,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         // 2 minute price epochs yield 720 price epochs per day, 5040 per week
         // (2000000 - 396 unearned) / (5040 - 1) = 396.8, rewards awarded. Decimal will get truncated.
         // Total "awarded" should now be 396 for actual rewards distributed.
-        const totalAwardedWei = await ftsoRewardManager.totalAwardedWei();
-        const totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
+        const { 0: totalAwardedWei, 3: totalUnearnedWei } = await ftsoRewardManager.getTotals();
         assert.equal(totalAwardedWei.toNumber(), 396);
         assert.equal(totalUnearnedWei.toNumber(), 396);
       });
@@ -580,7 +579,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         let burnAddressBalance = web3.utils.toBN(await web3.eth.getBalance(burnAddress));
         assert.equal(burnAddressBalance.toNumber(), 396);
         // Check total unearned accural
-        let totalUnearnedWei = await ftsoRewardManager.totalUnearnedWei();
+        const { 3: totalUnearnedWei } = await ftsoRewardManager.getTotals();
         assert.equal(totalUnearnedWei.toNumber(), 396);
       });
 
@@ -609,7 +608,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         let burnAddressBalance = web3.utils.toBN(await web3.eth.getBalance(burnAddress));
         assert.equal(burnAddressBalance.toNumber(), 400000, "Burn address does not contain correct balance");
         // Check totalBurnedWei()
-        let totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+        const { 4: totalBurnedWei } = await ftsoRewardManager.getTotals();
         assert.equal(totalBurnedWei.toNumber(), 400000, "FtsoRewardManager.totalBurnedWei does not contain correct balance");
       });
     });
@@ -1397,7 +1396,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await mockInflation.receiveInflation({ value: "1" });
             // Assert
             assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "2");
-            const selfDestructReceived = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            const { 7: selfDestructReceived } = await ftsoRewardManager.getTotals();
             assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
@@ -1415,7 +1414,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await mockInflation.receiveInflation({ value: "1" });
             // Assert
             assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "3");
-            const selfDestructReceived = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            const { 7: selfDestructReceived } = await ftsoRewardManager.getTotals();
             assert.equal(selfDestructReceived.toNumber(), 1);
         });
 
@@ -1525,7 +1524,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
-            let selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            const { 7: selfDestructProceeds } = await ftsoRewardManager.getTotals();
             assert.equal(selfDestructProceeds.toNumber(), 1);
 
             // Create another suicidal
@@ -1543,8 +1542,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
-            selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
-            assert.equal(selfDestructProceeds.toNumber(), 2);
+            const { 7: selfDestructProceeds1 } = await ftsoRewardManager.getTotals();
+            assert.equal(selfDestructProceeds1.toNumber(), 2);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage - should not claim twice", async () => {
@@ -1790,7 +1789,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
-            const selfDestructProceeds = await ftsoRewardManager.totalSelfDestructReceivedWei();
+            const { 7: selfDestructProceeds } = await ftsoRewardManager.getTotals();
             assert.equal(selfDestructProceeds.toNumber(), 1);
         });
 
@@ -2053,13 +2052,13 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
 
             // Act
-            await ftsoRewardManager.addClaimExecutor(accounts[5], { from: accounts[1] });
+            await ftsoRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
             
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
-            await ftsoRewardManager.claimAndWrapRewardToOwner(accounts[1], [0], { from: accounts[5] });
+            await ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], [0], { from: accounts[5] });
             // Assert
             // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
@@ -2068,6 +2067,79 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             assert(natOpeningBalance.eq(natClosingBalance));
         });
 
+        it("Should enable rewards to be claimed and wrapped by multiple executors to other accounts once reward epoch finalized - percentage", async () => {
+
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+
+            // Act
+            await ftsoRewardManager.setClaimExecutors([accounts[5], accounts[6]], { from: accounts[1] });
+            await ftsoRewardManager.setAllowedClaimRecipients([accounts[7], accounts[8]], { from: accounts[1] });
+
+            // Claim reward to a3 - test both 3rd party claim and avoid
+            // having to calc gas fees            
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[7]);
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[7]));
+            await ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[7], [0], { from: accounts[5] });
+            // Assert
+            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[7]);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[7]));
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 198);
+            assert(natOpeningBalance.eq(natClosingBalance));
+
+            await distributeRewards(accounts, startTs, 1, false);
+            await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
+            
+            // Claim reward to a3 - test both 3rd party claim and avoid
+            // having to calc gas fees            
+            let wNatOpeningBalance1 = await wNat.votePowerOf(accounts[8]);
+            let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]));
+            await ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[8], [1], { from: accounts[6] });
+            // Assert
+            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
+            let wNatClosingBalance1 = await wNat.votePowerOf(accounts[8]);
+            let natClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]));
+            assert.equal(wNatClosingBalance1.sub(wNatOpeningBalance1).toNumber(), 596);
+            assert(natOpeningBalance1.eq(natClosingBalance1));
+            
+        });
+
+        it("Executors and recipients should match allowed - percentage", async () => {
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+
+            // Act
+            await ftsoRewardManager.setClaimExecutors([accounts[5], accounts[6]], { from: accounts[1] });
+            await ftsoRewardManager.setAllowedClaimRecipients([accounts[7], accounts[8]], { from: accounts[1] });
+
+            // Assert
+            
+            // not an executor
+            await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[8], [1], { from: accounts[7] }),
+                "claim executor only");
+            
+            // owner is not an executor by default
+            await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[8], [1], { from: accounts[1] }),
+                "claim executor only");
+            
+            // not a valid recipient
+            await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[6], [1], { from: accounts[5] }),
+                "recipient not allowed");
+            
+            // owner is always valid recipient
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
+            await ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], [0], { from: accounts[5] });
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 198);
+        });
+        
         it("Executor must be allowed to be able to claim for the reward owner - percentage", async () => {
 
             // deposit some wnats
@@ -2078,7 +2150,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             // Act
             // Assert
-            await expectRevert(ftsoRewardManager.claimAndWrapRewardToOwner(accounts[1], [0], { from: accounts[5] }),
+            await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], [0], { from: accounts[5] }),
                 "claim executor only");
         });
         
@@ -2091,11 +2163,11 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
 
             // Act
-            await ftsoRewardManager.addClaimExecutor(accounts[5], { from: accounts[1] });
-            await ftsoRewardManager.removeClaimExecutor(accounts[5], { from: accounts[1] });
+            await ftsoRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
+            await ftsoRewardManager.setClaimExecutors([], { from: accounts[1] });
             
             // Assert
-            await expectRevert(ftsoRewardManager.claimAndWrapRewardToOwner(accounts[1], [0], { from: accounts[5] }),
+            await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], [0], { from: accounts[5] }),
                 "claim executor only");
         });
 
@@ -2130,13 +2202,13 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
 
             // Act
-            await ftsoRewardManager.addClaimExecutor(accounts[5], { from: accounts[1] });
+            await ftsoRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
 
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
-            await ftsoRewardManager.claimAndWrapRewardFromDataProvidersToOwner(accounts[1], [0], [accounts[1]], { from: accounts[5] });
+            await ftsoRewardManager.claimAndWrapRewardFromDataProvidersByExecutor(accounts[1], accounts[1], [0], [accounts[1]], { from: accounts[5] });
             // Assert
             // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
@@ -2155,8 +2227,85 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
             // Act
             // Assert
-            await expectRevert(ftsoRewardManager.claimAndWrapRewardFromDataProvidersToOwner(accounts[1], [0], [accounts[1]], { from: accounts[5] }),
+            await expectRevert(ftsoRewardManager.claimAndWrapRewardFromDataProvidersByExecutor(accounts[1], accounts[1], [0], [accounts[1]], { from: accounts[5] }),
                 "claim executor only");
+        });
+        
+        it("Can change executors multiple times", async() => {
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+            
+            // can set
+            await ftsoRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.claimExecutors(accounts[1]), [accounts[5]]);
+
+            // can replace
+            await ftsoRewardManager.setClaimExecutors([accounts[2], accounts[3], accounts[6]], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.claimExecutors(accounts[1]), [accounts[2], accounts[3], accounts[6]]);
+
+            // can clear
+            await ftsoRewardManager.setClaimExecutors([], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.claimExecutors(accounts[1]), []);
+            
+            // duplicates are ignored
+            await ftsoRewardManager.setClaimExecutors([accounts[2], accounts[3], accounts[6], accounts[3], accounts[2]], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.claimExecutors(accounts[1]), [accounts[2], accounts[3], accounts[6]]);
+            
+            // only last value should be used
+            await ftsoRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
+            // on other than 5 should succeed            
+            for (let i = 0; i < 10; i++) {
+                if (i !== 5) {
+                    await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], [0], { from: accounts[i] }),
+                        "claim executor only");
+                }
+            }
+            // 5 should succeed
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
+            await ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], [0], { from: accounts[5] });
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 198);
+        });
+
+        it("Can change recipients multiple times", async () => {
+            // deposit some wnats
+            await wNat.deposit({ from: accounts[1], value: "100" });
+            await distributeRewards(accounts, startTs);
+            await travelToAndSetNewRewardEpoch(1, startTs, ftsoRewardManager, accounts[0]);
+
+            // can set
+            await ftsoRewardManager.setAllowedClaimRecipients([accounts[5]], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.allowedClaimRecipients(accounts[1]), [accounts[5]]);
+
+            // can replace
+            await ftsoRewardManager.setAllowedClaimRecipients([accounts[2], accounts[3], accounts[6]], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.allowedClaimRecipients(accounts[1]), [accounts[2], accounts[3], accounts[6]]);
+
+            // can clear
+            await ftsoRewardManager.setAllowedClaimRecipients([], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.allowedClaimRecipients(accounts[1]), []);
+
+            // duplicates are ignored
+            await ftsoRewardManager.setAllowedClaimRecipients([accounts[2], accounts[3], accounts[6], accounts[3], accounts[2]], { from: accounts[1] });
+            compareArrays(await ftsoRewardManager.allowedClaimRecipients(accounts[1]), [accounts[2], accounts[3], accounts[6]]);
+
+            // only last value should be used
+            await ftsoRewardManager.setClaimExecutors([accounts[2]], { from: accounts[1] });
+            await ftsoRewardManager.setAllowedClaimRecipients([accounts[5]], { from: accounts[1] });
+            // on other than 5 should succeed            
+            for (let i = 0; i < 10; i++) {
+                if (i !== 5 && i !== 1) {   // 5 is allowed, 1 is owner (always allowed)
+                    await expectRevert(ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[i], [0], { from: accounts[2] }),
+                        "recipient not allowed");
+                }
+            }
+            // 5 should succeed
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[5]);
+            await ftsoRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[5], [0], { from: accounts[2] });
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[5]);
+            assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 198);
         });
     });
 
@@ -2171,15 +2320,15 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             await ftsoRewardManager.claimReward(accounts[1], [0], { from: accounts[1] });
 
             await travelToAndSetNewRewardEpoch(2, startTs, ftsoRewardManager, accounts[0]);
-            let rewardExpired = await ftsoRewardManager.totalExpiredWei();
+            const { 2: rewardExpired } = await ftsoRewardManager.getTotals();
             assert.equal(rewardExpired.toNumber(), 0);
 
             // expire reward epoch 0
             await expireRewardEpoch(0, ftsoRewardManager, accounts[0]);            
             // advance, but not expire epoch 1            
             await travelToAndSetNewRewardEpoch(3, startTs, ftsoRewardManager, accounts[0]);
-            rewardExpired = await ftsoRewardManager.totalExpiredWei();
-            assert.equal(rewardExpired.toNumber(), 594);
+            const { 2: rewardExpired1 } = await ftsoRewardManager.getTotals();
+            assert.equal(rewardExpired1.toNumber(), 594);
         });
 
         it("Should only be called from ftso manager or new ftso reward manager", async () => {

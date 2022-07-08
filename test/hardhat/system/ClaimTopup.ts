@@ -22,7 +22,7 @@ import {
 } from "../../../typechain-truffle";
 import { moveToFinalizeStart, moveToRevealStart } from "../../utils/FTSO-test-utils";
 import { PriceInfo } from '../../utils/PriceInfo';
-import { moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
+import { getRewardTotals, moveToRewardFinalizeStart } from "../../utils/RewardManagerTestUtils";
 import { getRandom, submitHash, toBN } from '../../utils/test-helpers';
 
 const getTestFile = require('../../utils/constants').getTestFile;
@@ -530,9 +530,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Compute what we should have distributed for one price epoch
     const almost7FullDaysSec = BN(7 * 3600 * 24 - 1);
     // Get the daily inflation authorized on ftso reward manager
-    day1_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
-    day1_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
-    const authorizedInflationTimestamp = await ftsoRewardManager.lastInflationAuthorizationReceivedTs();
+    const totals1 = await getRewardTotals(ftsoRewardManager);
+    day1_dailyAuthorizedInflation = totals1.dailyAuthorizedInflation;
+    day1_totalBurnedWei = totals1.totalBurnedWei;
+    const authorizedInflationTimestamp = totals1.lastInflationAuthorizationReceivedTs;
 
     // use the same formula as in ftso reward manager to calculate claimable value
     const dailyPeriodEndTs = authorizedInflationTimestamp.add(almost7FullDaysSec);
@@ -570,12 +571,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // A minting request should be pending...
     day2_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
-    day2_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
+    day2_dailyAuthorizedInflation = (await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation;
     console.log("total minting requested wei: " + day2_totalMintingRequestedWei.toString());
     await transferWithSuicide(day2_totalMintingRequestedWei.sub(day1_totalMintingRequestedWei), accounts[0], flareDaemon.address);
     await time.advanceBlock();
     await flareDaemon.trigger({ gas: 40_000_000 });
-    day2_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+    day2_totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei;
 
     // Reward manager balance must be total authorized inflation for day 2 + for day 1 - whatever was claimed
     let day2_expectedRewardBalance = day2_dailyAuthorizedInflation.add(day1_dailyAuthorizedInflation).sub(day1_computedRewardClaimed).sub(day2_totalBurnedWei.sub(day1_totalBurnedWei));
@@ -597,12 +598,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // mint and send balance to flare daemon 
     day3_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
-    day3_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
+    day3_dailyAuthorizedInflation = (await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation;
     console.log("total minting requested wei: " + day3_totalMintingRequestedWei.toString());
     await transferWithSuicide(day3_totalMintingRequestedWei.sub(day2_totalMintingRequestedWei), accounts[0], flareDaemon.address);
     await time.advanceBlock();
     await flareDaemon.trigger({ gas: 40_000_000 });
-    day3_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+    day3_totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei;
 
     // Reward manager balance must be total authorized inflation for day 2 + for day 1 - whatever was claimed
     let day3_expectedRewardBalance = day3_dailyAuthorizedInflation.add(day2_dailyAuthorizedInflation).add(day1_dailyAuthorizedInflation).sub(day1_computedRewardClaimed).sub(day3_totalBurnedWei.sub(day2_totalBurnedWei));
@@ -624,12 +625,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await flareDaemon.trigger({ gas: 40_000_000 });
 
     day4_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
-    day4_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
+    day4_dailyAuthorizedInflation = (await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation;
     console.log("total minting requested wei: " + day4_totalMintingRequestedWei.toString());
     await transferWithSuicide(day4_totalMintingRequestedWei.sub(day3_totalMintingRequestedWei), accounts[0], flareDaemon.address);
     await time.advanceBlock();
     await flareDaemon.trigger({ gas: 40_000_000 });
-    day4_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+    day4_totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei;
 
     // Reward manager balance must be total authorized inflation (last 3 days worth of inflation)
     day4_expectedRewardBalance = day4_dailyAuthorizedInflation.add(day3_dailyAuthorizedInflation).add(day2_dailyAuthorizedInflation).sub(day4_totalBurnedWei.sub(day3_totalBurnedWei));
@@ -743,12 +744,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // Remember Reward manager opening balance
     const Day5OpeningBalance = BN(await web3.eth.getBalance(ftsoRewardManager.address));
     day5_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
-    day5_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
+    day5_dailyAuthorizedInflation = (await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation;
     console.log("total minting requested wei: " + day5_totalMintingRequestedWei.toString());
     await transferWithSuicide(day5_totalMintingRequestedWei.sub(day4_totalMintingRequestedWei), accounts[0], flareDaemon.address);
     await time.advanceBlock();
     await flareDaemon.trigger({ gas: 40_000_000 });
-    day5_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+    day5_totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei;
 
     // Reward manager balance must be total authorized inflation past 3 days
     let day5_expectedRewardBalance = day5_dailyAuthorizedInflation.add(day4_dailyAuthorizedInflation).add(day3_dailyAuthorizedInflation).sub(day5_totalBurnedWei.sub(day4_totalBurnedWei));
@@ -859,7 +860,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await FinalizeRewardEpochs(1);
     await flareDaemon.trigger({ gas: 40_000_000 });
 
-    day7_dailyAuthorizedInflation = await ftsoRewardManager.dailyAuthorizedInflation();
+    day7_dailyAuthorizedInflation = (await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation;
 
     // A minting request should be pending...
     day7_totalMintingRequestedWei = await flareDaemon.totalMintingRequestedWei();
@@ -867,7 +868,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     // topup should happen here
     await transferWithSuicide(day7_totalMintingRequestedWei.sub(day5_totalMintingRequestedWei), accounts[0], flareDaemon.address);
     await flareDaemon.trigger({ gas: 40_000_000 });
-    day7_totalBurnedWei = await ftsoRewardManager.totalBurnedWei();
+    day7_totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei;
     await time.advanceBlock();
 
     // Reward manager balance must be min of (3 x last authorized inflation value) and (total authorized - total claimed)
@@ -913,15 +914,15 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
     
     // Recognized inflation should be updated
-    const totalBurnedWei = await ftsoRewardManager.totalBurnedWei(); // burned amount is part of inflatable balance
+    const totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei; // burned amount is part of inflatable balance
     const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
-    assert.isTrue(totalClaimedWei.eq(await ftsoRewardManager.totalClaimedWei()));
+    assert.isTrue(totalClaimedWei.eq((await getRewardTotals(ftsoRewardManager)).totalClaimedWei));
     assert.equal(secondAnnum.recognizedInflationWei.toString(), secondAnnumInflationWei.toString());
       
 
     // Check that the next daily authorized amount set on reward manager, after the month-end roll, contains the correct amount.
     assert.equal(
-      (await ftsoRewardManager.dailyAuthorizedInflation()).toString(),
+      ((await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation).toString(),
       secondAnnumInflationWei.divn(30).toString() // 100 percent is shared to reward manager
     )
 

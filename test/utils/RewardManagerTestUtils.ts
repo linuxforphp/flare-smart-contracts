@@ -1,3 +1,4 @@
+import { FtsoRewardManagerInstance } from "../../typechain-truffle";
 import { increaseTimeTo } from "./test-helpers";
 
 /**
@@ -9,4 +10,23 @@ import { increaseTimeTo } from "./test-helpers";
  export async function moveToRewardFinalizeStart(rewardEpochStartTimestamp: number, rewardEpochPeriod: number, rewardEpoch: number) {
   let finalizeTimestamp = (rewardEpoch + 1) * rewardEpochPeriod + rewardEpochStartTimestamp + 1;
   await increaseTimeTo(finalizeTimestamp);
+}
+
+export async function getRewardTotals(ftsoRewardManager: FtsoRewardManagerInstance) {
+  const {
+    0: totalAwardedWei,
+    1: totalClaimedWei,
+    2: totalExpiredWei,
+    3: totalUnearnedWei,
+    4: totalBurnedWei,
+    5: totalInflationAuthorizedWei,
+    6: totalInflationReceivedWei,
+    7: totalSelfDestructReceivedWei,
+    8: lastInflationAuthorizationReceivedTs,
+    9: dailyAuthorizedInflation
+  } = await ftsoRewardManager.getTotals();
+  return {
+    totalAwardedWei, totalClaimedWei, totalExpiredWei, totalUnearnedWei, totalBurnedWei, totalInflationAuthorizedWei,
+    totalInflationReceivedWei, totalSelfDestructReceivedWei, lastInflationAuthorizationReceivedTs, dailyAuthorizedInflation
+  };
 }

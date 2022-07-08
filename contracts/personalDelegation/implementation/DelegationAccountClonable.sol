@@ -128,6 +128,10 @@ contract DelegationAccountClonable is IDelegationAccount {
         emit UndelegateAllFtso(address(this));
     }
 
+    function revokeDelegationAt(address _who, uint256 _blockNumber) external override onlyOwner {
+        manager.wNat().revokeDelegationAt(_who, _blockNumber);
+    }
+
     function delegateGovernance(address _to) external override onlyOwner { 
         manager.governanceVP().delegate(_to);
         emit DelegateGovernance(address(this), _to, manager.wNat().balanceOf(address(this)));

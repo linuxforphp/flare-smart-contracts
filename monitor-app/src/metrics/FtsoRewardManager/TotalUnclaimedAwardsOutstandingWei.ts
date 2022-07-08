@@ -17,9 +17,7 @@ export function makeTotalUnclaimedAwardsOutstandingNatGauge(ftsoRewardManager: F
       const metricResponseTime = getMetricResponseTimeHistogram();
       const stopTimer = metricResponseTime.startTimer({ metric: TOTAL_UNCLAIMED_AWARDS_OUTSTANDING_NAT_GAUGE});
       try {
-        const totalAwardedWei = await ftsoRewardManager.totalAwardedWei();
-        const totalClaimedWei = await ftsoRewardManager.totalClaimedWei();
-        const totalExpiredWei = await ftsoRewardManager.totalExpiredWei();
+        const { 0: totalAwardedWei, 1: totalClaimedWei, 2: totalExpiredWei } = await ftsoRewardManager.getTotals();
         const totalUnclaimedAwardsOutstandingWei = totalAwardedWei.sub(totalClaimedWei).sub(totalExpiredWei);
         this.set({"address": ftsoRewardManager.address}, Number(ethers.utils.formatEther(totalUnclaimedAwardsOutstandingWei)));
       } catch (e) {

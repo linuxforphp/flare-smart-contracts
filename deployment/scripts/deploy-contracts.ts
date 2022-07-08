@@ -232,9 +232,14 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   await initialAirdrop.setLatestAirdropStart(parameters.initialAirdropLatestStart, { from: genesisGovernance });
 
   // GovernanceSettings (do not add it to AddressUpdater)
-  // default executors are governancePublicKey and governanceExecutorPublicKey
+  // default executors are governancePublicKey and governanceExecutorPublicKey if set
+  const executors = [parameters.governancePublicKey];
+  if (parameters.governanceExecutorPublicKey != "<use .env: GOVERNANCE_EXECUTOR_PUBLIC_KEY>") {
+    console.error(`Adding ${parameters.governanceExecutorPublicKey} as governance executor.`)
+    executors.push(parameters.governanceExecutorPublicKey);
+  }
   const governanceSettings = await GovernanceSettings.new(parameters.governancePublicKey,
-    parameters.governanceTimelock, [parameters.governancePublicKey, parameters.governanceExecutorPublicKey]);
+    parameters.governanceTimelock, executors);
   spewNewContractInfo(contracts, null, GovernanceSettings.contractName, `GovernanceSettings.sol`, governanceSettings.address, quiet);
 
   // AddressUpdater
@@ -304,7 +309,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
   // Team escrow contract
-  const teamEscrow = await TeamEscrow.new(deployerAccount.address, parameters.distributionLatestEntitlementStart);
+  const teamEscrow = await TeamEscrow.new(deployerAccount.address, addressUpdater.address, parameters.distributionLatestEntitlementStart);
   spewNewContractInfo(contracts, addressUpdaterContracts, TeamEscrow.contractName, `TeamEscrow.sol`, teamEscrow.address, quiet);
 
   // Inflation allocation needs to know about reward managers
@@ -339,6 +344,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
     const delegationAccountClonable = await DelegationAccountClonable.new();
     spewNewContractInfo(contracts, null, DelegationAccountClonable.contractName, `DelegationAccountClonable.sol`, delegationAccountClonable.address, quiet);
+    await delegationAccountClonable.initialize(delegationAccountManager.address, delegationAccountManager.address);
     await delegationAccountManager.setLibraryAddress(delegationAccountClonable.address);
 
     // Distribution contracts
@@ -426,7 +432,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     ftsoRewardManager.address,
     supply.address,
     incentivePoolAllocation.address,
-    incentivePool.address
+    incentivePool.address,
+    teamEscrow.address
   ];
   if (parameters.deployDistributionContract) {
     addressUpdatableContracts.push(delegationAccountManager!.address);

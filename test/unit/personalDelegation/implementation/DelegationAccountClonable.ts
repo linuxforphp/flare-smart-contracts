@@ -563,7 +563,31 @@ contract(`DelegationAccountClonable.sol; ${getTestFile(__filename)}; Delegation 
     expectEvent(claim, "EpochsWithUnclaimedRewardsFailure", { err: "cannot get unclaimed epochs", ftsoRewardManager: mockRewardManager1.address });
     expectEvent(claim, "EpochsWithUnclaimedRewardsFailure", { err: UNCLAIMED_EPOCHS_FAILURE, ftsoRewardManager: mockRewardManager2.address });
   });
+  
+  it("Should delegate and revoke delegation", async() => {
+    // "deposit" some wnats
+    await web3.eth.sendTransaction({from: accounts[1], to: delAcc1Address, value: 100 });
 
+    // delegate some wnats to ac40 an ac50
+    let delegate = await delegationAccountClonable1.delegate(accounts[40], 5000, { from: accounts[1] }) as any;
+    await delegationAccountClonable1.delegate(accounts[50], 5000, { from: accounts[1] });
+    expectEvent(delegate, "DelegateFtso", { delegationAccount: delAcc1Address, to: accounts[40], bips: toBN(5000) });
+
+    let delegates = await wNat.delegatesOf(delAcc1Address) as any;
+    expect(delegates[0][0]).to.equals(accounts[40]);
+    expect(delegates[1][0].toString()).to.equals("5000");
+    expect(delegates[0][1]).to.equals(accounts[50]);
+    expect(delegates[1][1].toString()).to.equals("5000");
+
+    const blockNumber = await web3.eth.getBlockNumber();
+    await time.advanceBlock();
+    const vpBefore = await wNat.votePowerOfAt(accounts[40], blockNumber);
+    await delegationAccountClonable1.revokeDelegationAt(accounts[40], blockNumber, { from: accounts[1] });
+    const vpAfter = await wNat.votePowerOfAt(accounts[40], blockNumber);
+
+    expect(vpBefore.gtn(0)).is.true;
+    expect(vpAfter.eqn(0)).is.true;
+  });
 
   it("Should delegate and undelegate", async() => {
     // "deposit" some wnats

@@ -1,6 +1,6 @@
-import { balance, expectRevert, time } from '@openzeppelin/test-helpers';
+import { balance, constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../../deployment/scripts/Contracts";
-import { SupplyInstance, TeamEscrowInstance } from "../../../../typechain-truffle";
+import { SupplyInstance, TeamEscrowInstance, WNatInstance } from "../../../../typechain-truffle";
 import { emptyAddressBalance } from '../../../utils/contract-test-helpers';
 import { encodeContractNames } from "../../../utils/test-helpers";
 
@@ -17,17 +17,25 @@ const burnAddress = "0x000000000000000000000000000000000000dEaD";
 const BN = web3.utils.toBN;
 
 const TeamEscrow = artifacts.require("TeamEscrow");
+const WNat = artifacts.require("WNat");
 const MockClaim = artifacts.require("GasConsumer2");
 
 contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, async accounts => {
   let escrow: TeamEscrowInstance;
   let claimants: string[] = [];
   const GOVERNANCE_ADDRESS = accounts[0];
+  const ADDRESS_UPDATER = accounts[16];
   let latestStart: BN;
+  let wNat: WNatInstance;
 
   beforeEach(async () => {
     latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
-    escrow = await TeamEscrow.new(GOVERNANCE_ADDRESS, latestStart);
+    escrow = await TeamEscrow.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, latestStart);
+    wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
+    // tell team escrow about WNat contract
+    await escrow.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT]),
+      [ADDRESS_UPDATER, wNat.address], {from: ADDRESS_UPDATER});
     // Build an array of claimant accounts
     for (let i = 0; i < 10; i++) {
       claimants[i] = accounts[i + 1];
@@ -38,9 +46,76 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
     it("Should revert if latest start time in the past", async () => {
       // Assemble
       // Act
-      const teamEscrowPromise = TeamEscrow.new(GOVERNANCE_ADDRESS, (await time.latest()).subn(5));
+      const teamEscrowPromise = TeamEscrow.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, (await time.latest()).subn(5));
       // Assert
       await expectRevert(teamEscrowPromise, "In the past");
+    });
+
+    it("Should add executors", async() => {
+      // Assemble
+      // Act
+      await escrow.setClaimExecutors([accounts[2], accounts[3]], { from: accounts[1] });
+      // Assert
+      const executors = await escrow.claimExecutors(accounts[1]);
+      expect(executors[0]).to.equals(accounts[2]);
+      expect(executors[1]).to.equals(accounts[3]);
+      expect(executors.length).to.equals(2);
+    });
+
+    it("Should remove executors", async() => {
+      // Assemble
+      await escrow.setClaimExecutors([accounts[2]], { from: accounts[1] });
+      // Act
+      await escrow.setClaimExecutors([], { from: accounts[1] });
+      // Assert
+      const executors = await escrow.claimExecutors(accounts[1]);
+      expect(executors.length).to.equals(0);
+    });
+
+    
+    it("Should add recipients", async() => {
+      // Assemble
+      // Act
+      await escrow.setAllowedClaimRecipients([accounts[2], accounts[3]], { from: accounts[1] });
+      // Assert
+      const recipients = await escrow.allowedClaimRecipients(accounts[1]);
+      expect(recipients[0]).to.equals(accounts[2]);
+      expect(recipients[1]).to.equals(accounts[3]);
+      expect(recipients.length).to.equals(2);
+    });
+
+    it("Should remove recipients", async() => {
+      // Assemble
+      await escrow.setAllowedClaimRecipients([accounts[2]], { from: accounts[1] });
+      // Act
+      await escrow.setAllowedClaimRecipients([], { from: accounts[1] });
+      // Assert
+      const recipients = await escrow.allowedClaimRecipients(accounts[1]);
+      expect(recipients.length).to.equals(0);
+    });
+
+    it("Should claim ownership", async() => {
+      // Assemble
+      const locked = BN(await web3.eth.getBalance(accounts[1])).divn(10);
+      await escrow.lock({from: accounts[1], value: locked});
+      await escrow.proposeNewOwner(accounts[2], {from: accounts[1]});
+      assert.isTrue((await escrow.lockedAmounts(accounts[1]))[0].eq(locked));
+      expect(await escrow.proposedNewOwner(accounts[1])).to.equals(accounts[2]);
+      // Act
+      await escrow.claimNewOwner(accounts[1], {from: accounts[2]});
+      // Assert
+      assert.isTrue((await escrow.lockedAmounts(accounts[2]))[0].eq(locked));
+      assert.isTrue((await escrow.lockedAmounts(accounts[1]))[0].eqn(0));
+      expect(await escrow.proposedNewOwner(accounts[1])).to.equals(constants.ZERO_ADDRESS);
+    });
+
+    it("Should not claim ownership if not set or set wrong", async() => {
+      // Assemble
+      await expectRevert(escrow.claimNewOwner(accounts[2]), "Wrong old owner");
+      // Act
+      await escrow.proposeNewOwner(accounts[2], {from: accounts[1]});
+      // Assert
+      await expectRevert(escrow.claimNewOwner(accounts[0], {from: accounts[2]}), "Wrong old owner");
     });
   });
 
@@ -311,9 +386,34 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       txCost = BN(await calcGasCost(claimResult));
       assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 8500 - 237 - 237);
     });
-  });
+    
+    it("Should enable claiming by executor", async () => {
+      // Lock some funds
+      const locked = BN(8500)
+      await escrow.lock({from: claimants[0], value: locked});
+      const now = (await time.latest()).addn(1);
+      await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
+      // add claim executor
+      const executor = accounts[55];
+      await escrow.setClaimExecutors([executor], { from: claimants[0] });
+      // increase time to enable claiming
+      await time.increaseTo(now.addn(86400 * 31));
+      // Act
+      let openingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      await escrow.claimByExecutor(claimants[0], claimants[0], { from: executor });
+      // Assert
+      let closingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      assert.equal(closingBalance.sub(openingBalance).toNumber(), 237);
 
-  describe("Collection", async() => {
+      // remove executor
+      await escrow.setClaimExecutors([], { from: claimants[0] });
+      // Should revert claiming by executor or owner using wrong method
+      await time.increaseTo(now.addn(86400 * 31).addn(86400 * 31));
+      await expectRevert(escrow.claimByExecutor(claimants[0], claimants[0], { from: executor }), "Claim executor only");
+      await expectRevert(escrow.claimByExecutor(claimants[0], claimants[0], { from: claimants[0] }), "Claim executor only");
+      await escrow.claim({ from: claimants[0] })
+    });
+
     it("Should enable claiming to a different address", async () => {
       // Lock some funds
       const locked = BN(8500)
@@ -355,6 +455,57 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 8500 - 237 - 237);
     });
 
+    it("Should enable wrapping, also with executors", async () => {
+      // Lock some funds
+      const locked = BN(8500)
+      await escrow.lock({from: claimants[0], value: locked});
+      const now = (await time.latest()).addn(1);
+      await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
+      await escrow.setClaimExecutors([accounts[20]], {from: claimants[0]});
+      await escrow.setAllowedClaimRecipients([claimants[1]], {from: claimants[0]});
+
+      await time.increaseTo(now.addn(86400 * 31));
+      // Act
+      let openingBalance = await wNat.balanceOf(claimants[0]);
+      await escrow.claimAndWrap({ from: claimants[0] });
+      // Assert
+
+      let closingBalance = await wNat.balanceOf(claimants[0]);
+      assert.equal(closingBalance.sub(openingBalance).toNumber(), 237);
+
+      // Claim again, to a different address
+      await time.increaseTo(now.addn(86400 * 31).addn(86400 * 31));
+      // Act
+      openingBalance = await wNat.balanceOf(claimants[1]);
+      await escrow.claimAndWrapTo(claimants[1], { from: claimants[0] });
+      // Assert
+
+      closingBalance = await wNat.balanceOf(claimants[1]);
+      assert.equal(closingBalance.sub(openingBalance).toNumber(), 237);
+
+      // Claim again, to a different address
+      await time.increaseTo(now.addn(86400 * 31).addn(86400 * 31).addn(86400 * 31));
+      // Act
+      openingBalance = await wNat.balanceOf(claimants[1]);
+      await escrow.claimAndWrapByExecutor(claimants[0], claimants[1], { from: accounts[20] });
+      // Assert
+
+      closingBalance = await wNat.balanceOf(claimants[1]);
+      assert.equal(closingBalance.sub(openingBalance).toNumber(), 237);
+
+      // Claim to original address
+      // Claim again after a long time
+      await time.increaseTo(now.add(BN(86400).muln(30 * 36))); // 36 months
+
+      // Act
+      openingBalance = await wNat.balanceOf(claimants[0]);
+      await escrow.claimAndWrapByExecutor(claimants[0], claimants[0], { from: accounts[20] });
+      // Assert
+
+      closingBalance = await wNat.balanceOf(claimants[0]);
+      assert.equal(closingBalance.sub(openingBalance).toNumber(), 8500 - 237 - 237 - 237);
+    });
+
     it("Should fail to claim", async() => {
        // Lock some funds
        const locked = BN(8500)
@@ -369,6 +520,85 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
        await expectRevert(claimResult, "Failed to call claiming contract");
     });
 
+    it("Should enable transfering the ownership to a different address", async () => {
+      // Lock some funds
+      const locked = BN(8500)
+      await escrow.lock({from: claimants[0], value: locked});
+      const now = (await time.latest()).addn(1);
+      await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
+
+      await time.increaseTo(now.addn(86400 * 31));
+      // Act
+      let openingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      let claimResult = await escrow.claim({ from: claimants[0] });
+      // Assert
+
+      let closingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      let txCost = BN(await calcGasCost(claimResult));
+      assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 237);
+
+      const lockedAmounts1 = await escrow.lockedAmounts(claimants[0]);
+      expect(lockedAmounts1[0].eq(locked)).is.true;
+      expect(lockedAmounts1[1].eqn(237)).is.true;
+
+      // transfer ownership
+      await escrow.proposeNewOwner(claimants[1], {from: claimants[0]});
+      await escrow.claimNewOwner(claimants[0], {from: claimants[1]});
+      const lockedAmounts2 = await escrow.lockedAmounts(claimants[0]);
+      expect(lockedAmounts2[0].eqn(0)).is.true;
+      expect(lockedAmounts2[1].eqn(0)).is.true;
+
+      // Claim again, to a different address
+      await time.increaseTo(now.addn(86400 * 31).addn(86400 * 31));
+      // Act
+      openingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      claimResult = await escrow.claimTo(claimants[0], { from: claimants[1] });
+      // Assert
+
+      closingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      assert.equal(closingBalance.sub(openingBalance).toNumber(), 237);
+
+      const lockedAmounts3 = await escrow.lockedAmounts(claimants[0]);
+      expect(lockedAmounts3[0].eqn(0)).is.true;
+      expect(lockedAmounts3[1].eqn(0)).is.true;
+
+      const lockedAmounts4 = await escrow.lockedAmounts(claimants[1]);
+      expect(lockedAmounts4[0].eq(locked)).is.true;
+      expect(lockedAmounts4[1].eqn(237 * 2)).is.true;
+    });
+
+    it("Should not enable transfering the ownership to a different address if not empty", async () => {
+      // Lock some funds
+      const locked = BN(8500)
+      await escrow.lock({from: claimants[0], value: locked});
+      await escrow.lock({from: claimants[1], value: locked});
+      const now = (await time.latest()).addn(1);
+      await escrow.setClaimingStartTs(now, {from: GOVERNANCE_ADDRESS});
+
+      await time.increaseTo(now.addn(86400 * 31));
+      // Act
+      let openingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      let claimResult = await escrow.claim({ from: claimants[0] });
+      await escrow.claim({ from: claimants[1] });
+      // Assert
+
+      let closingBalance = BN(await web3.eth.getBalance(claimants[0]));
+      let txCost = BN(await calcGasCost(claimResult));
+      assert.equal(txCost.add(closingBalance).sub(openingBalance).toNumber(), 237);
+
+      const lockedAmounts = await escrow.lockedAmounts(claimants[0]);
+      expect(lockedAmounts[0].eq(locked)).is.true;
+      expect(lockedAmounts[1].eqn(237)).is.true;
+
+      const lockedAmounts1 = await escrow.lockedAmounts(claimants[1]);
+      expect(lockedAmounts1[0].eq(locked)).is.true;
+      expect(lockedAmounts1[1].eqn(237)).is.true;
+
+      // transfer ownership
+      await escrow.proposeNewOwner(claimants[1], {from: claimants[0]});
+      // Assert
+      await expectRevert(escrow.claimNewOwner(claimants[0], {from: claimants[1]}), "Already locked");
+    });
   });
 
   describe("Integrates with supply", async () => {
