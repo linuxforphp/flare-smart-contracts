@@ -50,8 +50,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Check whether genesis governance account has some funds. If not, wire 1 NAT 
   let genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
   if (genesisGovernanceBalance == '0') {
-    console.error("Sending 2 NAT to genesis governance account ...");
-    const toTransfer = web3.utils.toWei("210")
+    console.error("Sending 415 NAT to genesis governance account ...");
+    const toTransfer = web3.utils.toWei("415")
     await waitFinalize3(hre, deployerAccount.address, () => web3.eth.sendTransaction({ from: deployerAccount.address, to: genesisGovernanceAccount.address, value: toTransfer }));
   }
   genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
