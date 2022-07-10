@@ -28,7 +28,8 @@
       "deployment/test/deploy-contracts.ts", 
       "deployment/test/daemonize-contracts.ts", 
       "deployment/test/switch-to-production-mode.ts", 
-      "./deployment/test/priceSubmitter.ts", 
+      "deployment/test/priceSubmitter.ts", 
+      "deployment/chain-config/chain-parameters.ts"
     ],
     "files": ["./hardhat.config.ts", "./type-extensions.ts"]
   }

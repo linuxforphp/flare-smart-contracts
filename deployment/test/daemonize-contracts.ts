@@ -3,8 +3,9 @@ import {
   FlareDaemonContract, 
   FlareDaemonInstance
 } from "../../typechain-truffle";
+import { validateParameters } from "../scripts/deploy-utils";
 
-const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
+const parameters = validateParameters(require(`../chain-config/${process.env.CHAIN_CONFIG}.json`))
 
 async function findDaemonizedContract(contracts: Contracts, address: string): Promise<boolean> {
   const FlareDaemon = artifacts.require("FlareDaemon");

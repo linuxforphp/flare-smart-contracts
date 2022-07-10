@@ -17,7 +17,7 @@ import { activateManagers } from "./deployment/scripts/activate-managers";
 import { Contracts } from "./deployment/scripts/Contracts";
 import { daemonizeContracts } from "./deployment/scripts/daemonize-contracts";
 import { deployContracts } from "./deployment/scripts/deploy-contracts";
-import { verifyParameters } from "./deployment/scripts/deploy-utils";
+import { loadParameters, verifyParameters } from "./deployment/scripts/deploy-utils";
 import { transferGovWorkingBalance } from "./deployment/scripts/transfer-gov-working-balance";
 import { undaemonizeContracts } from "./deployment/scripts/undaemonize-contracts";
 import { TASK_CONSOLE } from "hardhat/builtin-tasks/task-names";
@@ -28,10 +28,9 @@ import { switchToProductionMode } from "./deployment/scripts/switch-to-productio
 
 dotenv.config();
 
-function getChainConfigParameters(chainConfig: string | undefined): any {
+function getChainConfigParameters(chainConfig: string | undefined) {
   if (chainConfig) {
-    const fs = require("fs");
-    const parameters = JSON.parse(fs.readFileSync(`deployment/chain-config/${chainConfig}.json`));
+    const parameters = loadParameters(`deployment/chain-config/${chainConfig}.json`);
 
     // inject private keys from .env, if they exist
     if (process.env.DEPLOYER_PRIVATE_KEY) {
@@ -101,8 +100,7 @@ task("deploy-contracts", "Deploy all contracts")
 task("deploy-contracts-governance", "Deploy governance contracts")
   .addFlag("quiet", "Suppress console output")
   .setAction(async (args, hre, runSuper) => {
-    const fs = require("fs");
-    const parameters = JSON.parse(fs.readFileSync(`deployment/chain-config/${process.env.CHAIN_CONFIG}.json`));
+    const parameters = loadParameters(`deployment/chain-config/${process.env.CHAIN_CONFIG}.json`);
     // inject private keys from .env, if they exist
     if (process.env.DEPLOYER_PRIVATE_KEY) {
       parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY

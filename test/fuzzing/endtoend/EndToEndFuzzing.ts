@@ -16,6 +16,7 @@ import { EventStateChecker, PriceAndRewardChecker } from "./StateChecker";
 import { EthersTransactionRunner, NetworkType, SignerWithAddress } from "./TransactionRunner";
 import { DelegatorAccount, UserAccount, UserEnvironment } from "./UserAccount";
 import axios from "axios";
+import { ChainParameters } from "../../../deployment/chain-config/chain-parameters";
 const fs = require("fs");
 
 contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
@@ -229,7 +230,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
                     throw new Error(`Invalid parameter ${key}`);
                 }
                 console.log(`Setting deploy parameter ${key} = ${JSON.stringify(value)}`);
-                parameters[key] = value;
+                (parameters as any)[key] = value;
             }
         }
         return parameters;
@@ -244,7 +245,7 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
     before(async () => {
         console.log(`Network = ${networkType}`);
         signers = getSigners(getProviders(), RESERVED_ACCOUNTS + N_DELEGATORS + N_PROVIDERS);
-        let parameters: any;
+        let parameters: ChainParameters;
         if (networkType === NetworkType.HARDHAT) {
             console.log("Deploying contracts...");
             parameters = getConfigParameters(`test/fuzzing/endtoend/fuzzing-chain-config.json`, CHAIN_CONFIG);
@@ -404,6 +405,10 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         let currentRevealEpoch = currentPriceEpoch - 1;    // this one will not be used
         events.push({ address: 'fake', event: 'SubmitEpochStarted', args: { epochId: currentPriceEpoch } });
         transactionRunner.comment(`PRICE EPOCH START:  submitEpoch=${currentPriceEpoch}`);
+        
+        // enable reward claiming
+        await transactionRunner.runMethod(ftsoRewardManager, f => f.enableClaims({ gasLimit: 1_000_000 }),
+            { signer: governance, method: "ftsoRewardManager.enableClaims()", comment: `Enabling ftso reward claims` });
 
         // run very long loop
         let startEvent = 0;

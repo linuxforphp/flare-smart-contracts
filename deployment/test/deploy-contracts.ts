@@ -15,9 +15,9 @@ import {
   SupplyInstance, TeamEscrowContract, TeamEscrowInstance, WNatContract, WNatInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
-import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
+import { findAssetFtso, findFtso, validateParameters } from '../scripts/deploy-utils';
 
-const parameters = require(`../chain-config/${process.env.CHAIN_CONFIG}.json`)
+const parameters = validateParameters(require(`../chain-config/${process.env.CHAIN_CONFIG}.json`))
 const BN = web3.utils.toBN;
 
 /**
