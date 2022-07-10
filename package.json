@@ -165,6 +165,7 @@
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json && rm -f ./slither_badge.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json && rm -f ./slither_badge.json 2> /dev/null; slither . --json=./slither.json || true; node scripts/slither-parse.js ./slither.json",
     "gas-report-check": "./scripts/gas-report-check.sh",
+    "generate-parameter-schema": "typescript-json-schema deployment/chain-config/chain-parameters.ts ChainParameters -o deployment/chain-config/chain-parameters.json --noExtraProps --required --strictNullChecks",
     
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
@@ -208,7 +209,8 @@
     "got": "11.8.2",
     "hardhat": "2.3.0",
     "solhint": "3.3.2",
-    "solidity-coverage": "0.7.16"
+    "solidity-coverage": "0.7.16",
+    "typescript-json-schema": "0.54.0"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",

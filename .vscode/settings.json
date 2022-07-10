@@ -9,6 +9,16 @@
   "[solidity]": {
     "editor.tabSize": 4
   },
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "deployment/chain-config/*.json",
+        "!deployment/chain-config/chain-parameters.json",
+        "test/fuzzing/endtoend/fuzzing-chain-config.json"
+      ],
+      "url": "./deployment/chain-config/chain-parameters.json"
+    }
+  ],
   "terminal.integrated.scrollback": 2000,
   "slither.solcPath": "",
   "slither.hiddenDetectors": [],

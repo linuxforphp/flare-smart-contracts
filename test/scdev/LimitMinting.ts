@@ -1,11 +1,12 @@
 import { Contracts } from "../../deployment/scripts/Contracts";
+import { validateParameters } from "../../deployment/scripts/deploy-utils";
 import { FlareDaemonInstance, InflationMockInstance } from "../../typechain-truffle";
 import { encodeContractNames } from "../utils/test-helpers";
 
 const getTestFile = require('../utils/constants').getTestFile;
 const BN = web3.utils.toBN;
 
-const parameters = require(`../../deployment/chain-config/${ process.env.CHAIN_CONFIG }.json`)
+const parameters = validateParameters(require(`../../deployment/chain-config/${ process.env.CHAIN_CONFIG }.json`))
 
 // inject private keys from .env, if they exist
 if (process.env.DEPLOYER_PRIVATE_KEY) {

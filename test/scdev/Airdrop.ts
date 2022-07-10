@@ -16,13 +16,14 @@ const cliProgress = require('cli-progress');
 const SuicidalMock = artifacts.require("SuicidalMock");
 import { time } from '@openzeppelin/test-helpers';
 import { expect } from "hardhat";
+import { validateParameters } from "../../deployment/scripts/deploy-utils";
 const calcGasCost = require('../utils/eth').calcGasCost; 
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const parameters = require(`../../deployment/chain-config/${ process.env.CHAIN_CONFIG }.json`)
+const parameters = validateParameters(require(`../../deployment/chain-config/${ process.env.CHAIN_CONFIG }.json`))
 // inject private keys from .env, if they exist
 if (process.env.DEPLOYER_PRIVATE_KEY) {
   parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY

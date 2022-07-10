@@ -18,6 +18,7 @@ import {
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
   TeamEscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract
 } from '../../typechain-truffle';
+import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
 import {
   AssetContracts, DeployedFlareContracts, deployNewAsset, rewrapXassetParams, setDefaultVPContract, spewNewContractInfo,
@@ -25,7 +26,7 @@ import {
 } from './deploy-utils';
 
 
-export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters: any, quiet: boolean = false) {
+export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters: ChainParameters, quiet: boolean = false) {
   const web3 = hre.web3;
   const artifacts = hre.artifacts;
   const BN = web3.utils.toBN;

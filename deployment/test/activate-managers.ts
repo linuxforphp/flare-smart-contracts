@@ -6,12 +6,10 @@ import { Contracts } from "../scripts/Contracts";
  */
 contract(`activate-managers.ts system tests`, async accounts => {
   let contracts: Contracts;
-  let parameters: any;
 
   before(async () => {
     contracts = new Contracts();
     await contracts.deserialize(process.stdin);
-    parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
   });
 
   describe(Contracts.FTSO_MANAGER, async () => {

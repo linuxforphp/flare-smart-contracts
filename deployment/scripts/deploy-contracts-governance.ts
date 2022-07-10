@@ -9,10 +9,11 @@
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { GovernanceVotePowerContract, PollingRejectContract, WNatContract } from '../../typechain-truffle';
+import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
 import { DeployedFlareGovernanceContracts, spewNewContractInfo } from './deploy-utils';
 
-export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, parameters: any, quiet: boolean = false) {
+export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, parameters: ChainParameters, quiet: boolean = false) {
   // const web3 = hre.web3;
   // const artifacts = hre.artifacts;
 

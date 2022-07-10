@@ -3,6 +3,7 @@ import {
   GovernanceSettingsInstance,
   GovernedBaseContract,
 } from "../../typechain-truffle";
+import { ChainParameters } from "../chain-config/chain-parameters";
 
 /**
  * This test assumes a chain is running with Flare allocated in accounts
@@ -10,7 +11,7 @@ import {
  */
 contract(`switch-to-production-mode.ts system tests`, async accounts => {
   let contracts: Contracts;
-  let parameters: any;
+  let parameters: ChainParameters;
   let GovernedBase: GovernedBaseContract;
   let governanceSettings: GovernanceSettingsInstance;
   const SHOULD_HAVE_TRANSERED_GOVERNANCE = "Should have transfered governance";

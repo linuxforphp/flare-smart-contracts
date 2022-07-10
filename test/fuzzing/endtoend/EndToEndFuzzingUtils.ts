@@ -1,13 +1,13 @@
-import { readFileSync } from "fs";
 import hre from 'hardhat';
+import { ChainParameters } from "../../../deployment/chain-config/chain-parameters";
 import { activateManagers } from "../../../deployment/scripts/activate-managers";
 import { daemonizeContracts } from "../../../deployment/scripts/daemonize-contracts";
 import { deployContracts } from "../../../deployment/scripts/deploy-contracts";
-import { verifyParameters } from "../../../deployment/scripts/deploy-utils";
+import { loadParameters, verifyParameters } from "../../../deployment/scripts/deploy-utils";
 import { switchToProductionMode } from "../../../deployment/scripts/switch-to-production-mode";
 
-export function getChainConfigParameters(configFile: string): any {
-    const parameters = JSON.parse(readFileSync(configFile).toString());
+export function getChainConfigParameters(configFile: string): ChainParameters {
+    const parameters = loadParameters(configFile);
 
     // inject private keys from .env, if they exist
     if (process.env.DEPLOYER_PRIVATE_KEY) {
@@ -30,7 +30,7 @@ export function getChainConfigParameters(configFile: string): any {
     return parameters;
 }
 
-export async function internalFullDeploy(parameters: any, quiet: boolean) {
+export async function internalFullDeploy(parameters: ChainParameters, quiet: boolean) {
     const deployed = await deployContracts(hre, parameters, quiet);
     const contracts = deployed.contracts!;
     await daemonizeContracts(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey,

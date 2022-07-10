@@ -1,4 +1,5 @@
 import { InflationInstance } from "../../typechain-truffle";
+import { ChainParameters } from "../chain-config/chain-parameters";
 import { Contracts } from "../scripts/Contracts";
 
 const Inflation = artifacts.require("Inflation");
@@ -24,7 +25,7 @@ function calculateAuthorizedInflationWei(parameters: any, totalAuthorizedDailyIn
  */
 contract(`final-verification.ts system tests`, async accounts => {
   let contracts: Contracts;
-  let parameters: any;
+  let parameters: ChainParameters;
   let inflation: InflationInstance;
 
   before(async () => {

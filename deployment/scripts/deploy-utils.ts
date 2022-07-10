@@ -1,7 +1,9 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { pascalCase } from "pascal-case";
 import { AssetTokenContract, AssetTokenInstance, CleanupBlockNumberManagerInstance, DummyAssetMinterContract, DummyAssetMinterInstance, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance, StateConnectorInstance, SupplyInstance, TestableFlareDaemonInstance, WNatInstance, GovernanceVotePowerInstance, PollingRejectInstance,  } from "../../typechain-truffle";
+import { ChainParameters } from "../chain-config/chain-parameters";
 import { Contract, Contracts } from "./Contracts";
+import { readFileSync } from "fs";
 
 export interface AssetDefinition {
   name?: string;
@@ -41,8 +43,27 @@ export interface DeployedFlareGovernanceContracts {
   contracts?: Contracts,
 }
 
+const Ajv = require('ajv');
+const ajv = new Ajv();
+const validateParamaterSchema = ajv.compile(require('../chain-config/chain-parameters.json'));
+
+// Load parameters with validation against schema chain-parameters.json
+export function loadParameters(filename: string): ChainParameters {
+  const jsonText = readFileSync(filename).toString();
+  const parameters = JSON.parse(jsonText);
+  return validateParameters(parameters);
+}
+
+// Validate already decoded parameters; to be used with require
+export function validateParameters(parameters: any): ChainParameters {
+  if (!validateParamaterSchema(parameters)) {
+    throw new Error(`Invalid format of parameter file`);
+  }
+  return parameters;
+}
+
 // Here we should add certain verifications of parameters
-export function verifyParameters(parameters: any) {
+export function verifyParameters(parameters: ChainParameters) {
   // Inflation receivers
   if (!parameters.inflationReceivers) throw Error(`"inflationReceivers" parameter missing`);
   if (!parameters.inflationSharingBIPS) throw Error(`"inflationSharingBIPS" parameter missing`);
@@ -191,7 +212,7 @@ export async function deployNewAsset(
     spewNewContractInfo(contracts, null, `Dummy ${xAssetDefinition.wSymbol} minter`, `DummyAssetMinter.sol`, dummyAssetMinter.address, quiet, false);
 
     // Establish minting over Asset by minter !!!
-    xAssetToken.setMinter(dummyAssetMinter.address, { from: deployerAccountAddress });
+    await xAssetToken.setMinter(dummyAssetMinter.address, { from: deployerAccountAddress });
 
     await ftsoManager.setFtsoAsset(ftso.address, xAssetToken.address);
 
