@@ -23,6 +23,8 @@ contract StateConnector {
     uint256 public constant TOTAL_STORED_BUFFERS = 3;
     // Store a proof for one week
     uint256 public constant TOTAL_STORED_PROOFS = (1 weeks) / BUFFER_WINDOW;
+    // Cold wallet address => Hot wallet address
+    mapping(address => address) public attestorAddressMapping;
 
     //=======================
     // VOTING DATA STRUCTURES
@@ -85,6 +87,10 @@ contract StateConnector {
 // Functions
 //====================================================================  
 
+    function updateAttestorAddressMapping(address _updatedAddress) external {
+        attestorAddressMapping[msg.sender] = _updatedAddress;
+    }
+
     function requestAttestations(bytes calldata _data) external {
         emit AttestationRequest(msg.sender, block.timestamp, _data); 
     }
@@ -115,13 +121,17 @@ contract StateConnector {
     }
 
     function getAttestation(uint256 _bufferNumber) external view returns (bytes32 _merkleRoot) {
+        address attestor = attestorAddressMapping[msg.sender];
+        if (attestor == address(0)) {
+            attestor = msg.sender;
+        }
         require(_bufferNumber > 1);
         uint256 prevBufferNumber = _bufferNumber - 1;
-        require(buffers[msg.sender].latestVote >= prevBufferNumber);
-        bytes32 commitHash = buffers[msg.sender].votes[(prevBufferNumber - 1) % TOTAL_STORED_BUFFERS].commitHash;
-        _merkleRoot = buffers[msg.sender].votes[prevBufferNumber % TOTAL_STORED_BUFFERS].merkleRoot;
-        bytes32 randomNumber = buffers[msg.sender].votes[prevBufferNumber % TOTAL_STORED_BUFFERS].randomNumber;
-        require(commitHash == keccak256(abi.encode(_merkleRoot, randomNumber, msg.sender)));
+        require(buffers[attestor].latestVote >= prevBufferNumber);
+        bytes32 commitHash = buffers[attestor].votes[(prevBufferNumber - 1) % TOTAL_STORED_BUFFERS].commitHash;
+        _merkleRoot = buffers[attestor].votes[prevBufferNumber % TOTAL_STORED_BUFFERS].merkleRoot;
+        bytes32 randomNumber = buffers[attestor].votes[prevBufferNumber % TOTAL_STORED_BUFFERS].randomNumber;
+        require(commitHash == keccak256(abi.encode(_merkleRoot, randomNumber, attestor)));
     }
 
     function finaliseRound(uint256 _bufferNumber, bytes32 _merkleRoot) external {
