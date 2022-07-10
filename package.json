@@ -90,12 +90,11 @@
     
     "-----------FLARE": "",
     "test_initial_airdrop_state_mainnet": "yarn test deployment/test/flare/initialVerificationTest.ts",
-    "create_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -d deployment/deploys/flare.json --deployment-config deployment/chain-config/flare.json --gas-price 25000000000 -i 16",
+    "create_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -d deployment/deploys/flare.json --deployment-config deployment/chain-config/flare.json --gas-price 50000000000 -i 16",
     "sign_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/signAirdropTransactions.ts -f airdrop/flare/files/trans/unsigned_call_transactions.json -o airdrop/flare/files/trans/signed_call_transactions.json",
     "send_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/sendAirdropTransactions.ts -f airdrop/flare/files/trans/signed_call_transactions.json",
     "test_final_airdrop_state_mainnet": "yarn test deployment/test/flare/airdropDataTest.ts",
     "flare_airdrop": "yarn test_initial_airdrop_state_mainnet && yarn create_airdrop_transactions_mainnet && yarn sign_airdrop_transactions_mainnet && yarn send_airdrop_transactions_mainnet && yarn test_final_airdrop_state_mainnet",
-    
 
     "---------DEPLOY---SCRIPTS": "",
     "deploy_local_scdev": "yarn deploy_contracts_local_scdev && yarn daemonize_contracts_local_scdev && yarn activate_managers_local_scdev && yarn switch_to_production_mode_local_scdev && yarn test_final_verification_local_scdev",
