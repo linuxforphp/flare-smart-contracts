@@ -10,8 +10,8 @@ import DistributionAbi from "../../../artifacts/contracts/tokenPools/implementat
 import { Distribution } from "../../../typechain-web3/Distribution";
 
 
-const AIRDROP_TRANSACTIONS_GAS_COST = "2076720000000000000000"
-const DISTRIBUTION_TRANSACTIONS_GAS_COST = "2076720000000000000000"
+const AIRDROP_TRANSACTIONS_GAS_COST = "407200000000000000000"
+const DISTRIBUTION_TRANSACTIONS_GAS_COST = "407200000000000000000"
 
 contract(`initialVerificationTest.ts: Airdrop validation pre-tests for flare deployment`, async accounts => {
   let web3Provider: string;
