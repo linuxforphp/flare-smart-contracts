@@ -220,8 +220,6 @@ export function createSetAirdropBalanceUnsignedTransactions(
   processedAccounts: ProcessedAccount[],
   initialAirdropContractAddress: string,
   distributionContractAddress: string,
-  initialAirdropStartTs: string,
-  distributionStartTs: string,
   initialAirdropSenderAddress: string,
   distributionSenderAddress: string,
   gasPrice: string,
@@ -253,7 +251,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
   let progress = 0
 
   console.log('Creating unsigned transactions for InitialAirdrop and Distribution');
-  bar1.start(Math.ceil(processedAccounts.length / batchSize) + 2, 0);
+  bar1.start(Math.ceil(processedAccounts.length / batchSize), 0);
   while (true) {
     const tempAddresses: string[] = [];
     const tempBalances = [];
@@ -310,36 +308,6 @@ export function createSetAirdropBalanceUnsignedTransactions(
       break;
     }
   }
- 
-  // create transaction to disable adding data to initial airdrop
-  const disableInitialAirdrop = InitialAirdropContract.methods.setAirdropStart(initialAirdropStartTs).encodeABI();
-  const disableAirdropTx = {
-    from: initialAirdropSenderAddress,
-    to: initialAirdropContractAddress,
-    data: disableInitialAirdrop,
-    gas: gas,
-    gasPrice: gasPrice,
-    nonce: initialAirdropNonce,
-    chainId: chainId,
-  };
-  rawTransactions.push(disableAirdropTx);
-
-  progress += 1
-  bar1.update(progress)
-
-  const disableDistribution = distributionContract.methods.setEntitlementStart(distributionStartTs).encodeABI();
-  const disableDistributionTx = {
-    from: distributionSenderAddress,
-    to: distributionContractAddress,
-    data: disableDistribution,
-    gas: gas,
-    gasPrice: gasPrice,
-    nonce: distributionNonce,
-    chainId: chainId,
-  };
-  rawTransactions.push(disableDistributionTx);
-  progress += 1
-  bar1.update(progress)
   bar1.stop();
 
   let totalGasPrice = new BigNumber(1);
