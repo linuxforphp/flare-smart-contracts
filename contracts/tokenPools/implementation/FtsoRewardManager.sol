@@ -304,6 +304,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      */    
     function setClaimExecutors(address[] memory _executors) external override {
         claimExecutorSet[msg.sender].replaceAll(_executors);
+        emit ClaimExecutorsChanged(msg.sender, _executors);
     }
     
     /**
@@ -314,6 +315,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      */    
     function setAllowedClaimRecipients(address[] memory _recipients) external override {
         allowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
+        emit AllowedClaimRecipientsChanged(msg.sender, _recipients);
     }
 
     /**

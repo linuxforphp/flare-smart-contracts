@@ -2231,6 +2231,18 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
                 "claim executor only");
         });
         
+        it("Executor change emits event", async () => {
+            const res = await ftsoRewardManager.setClaimExecutors([accounts[2], accounts[3], accounts[6]], { from: accounts[1] });
+            expectEvent(res, 'ClaimExecutorsChanged', { rewardOwner: accounts[1], executors: [accounts[2], accounts[3], accounts[6]] });
+            compareArrays(await ftsoRewardManager.claimExecutors(accounts[1]), [accounts[2], accounts[3], accounts[6]]);
+        });
+        
+        it("Recipient change emits event", async () => {
+            const res = await ftsoRewardManager.setAllowedClaimRecipients([accounts[2], accounts[3], accounts[6]], { from: accounts[1] });
+            expectEvent(res, 'AllowedClaimRecipientsChanged', { rewardOwner: accounts[1], recipients: [accounts[2], accounts[3], accounts[6]] });
+            compareArrays(await ftsoRewardManager.allowedClaimRecipients(accounts[1]), [accounts[2], accounts[3], accounts[6]]);
+        });
+        
         it("Can change executors multiple times", async() => {
             // deposit some wnats
             await wNat.deposit({ from: accounts[1], value: "100" });

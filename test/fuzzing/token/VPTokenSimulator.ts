@@ -205,15 +205,19 @@ export class VPTokenHistory {
             const msg = e instanceof Error ? e.message : '' + e;
             console.log(`  ${method.context ?? ''} ${method.name}: ${msg}`);
             // update error count
-            const cleanedMsg = (msg ?? '').replace(/VM Exception while processing transaction:/, '').trim();
+            let cleanedMsg = msg ?? '';
+            const match = cleanedMsg.match(/^VM Exception while processing transaction: reverted with reason string '(.*)'$/);
+            if (match) {
+                cleanedMsg = match[1];
+            }
             const errorKey = `${method.name}: ${cleanedMsg}`;
             this.errorCounts.set(errorKey, (this.errorCounts.get(errorKey) ?? 0) + 1);
             // methods must be explicitly allowed
             if (!method.allowedErrors[cleanedMsg]) {
                 console.log(method.allowedErrors);
                 throw e;
+            }
         }
-    }
     }
 }
 
@@ -237,42 +241,42 @@ export class VPTokenSimulator {
 
     withdraw(sender: string, amount: BNArg) {
         const allowedErrors = {
-            'revert Undelegated vote power too small': this.history.state.delegationModeOf(sender) === DelegationMode.AMOUNT,
-            'revert ERC20: transfer amount exceeds balance': this.history.state.balances.get(sender).lt(toBN(amount)),
+            'Undelegated vote power too small': this.history.state.delegationModeOf(sender) === DelegationMode.AMOUNT,
+            'ERC20: transfer amount exceeds balance': this.history.state.balances.get(sender).lt(toBN(amount)),
         };
         return this.history.run({ context: this.context, name: "withdraw", sender, amount: toBN(amount), allowedErrors });
     }
 
     depositTo(sender: string, recipient: string, amount: BNArg) {
         const allowedErrors = {
-            'revert Cannot deposit to zero address': recipient === constants.ZERO_ADDRESS,
+            'Cannot deposit to zero address': recipient === constants.ZERO_ADDRESS,
         };
         return this.history.run({ context: this.context, name: "depositTo", sender, recipient, amount: toBN(amount), allowedErrors });
     }
 
     withdrawFrom(sender: string, owner: string, amount: BNArg) {
         const allowedErrors = {
-            'revert ERC20: approve from the zero address': owner === constants.ZERO_ADDRESS,
-            'revert Undelegated vote power too small': this.history.state.delegationModeOf(owner) === DelegationMode.AMOUNT,
-            'revert allowance below zero': true,    // we do not track allowance (it's openzeppelin ERC20 functionality, no need to test it)
-            'revert ERC20: transfer amount exceeds balance': this.history.state.balances.get(owner).lt(toBN(amount)),
+            'ERC20: approve from the zero address': owner === constants.ZERO_ADDRESS,
+            'Undelegated vote power too small': this.history.state.delegationModeOf(owner) === DelegationMode.AMOUNT,
+            'allowance below zero': true,    // we do not track allowance (it's openzeppelin ERC20 functionality, no need to test it)
+            'ERC20: transfer amount exceeds balance': this.history.state.balances.get(owner).lt(toBN(amount)),
         };
         return this.history.run({ context: this.context, name: "withdrawFrom", sender, owner, amount: toBN(amount), allowedErrors });
     }
 
     approve(sender: string, spender: string, amount: BNArg) {
         const allowedErrors = {
-            'revert ERC20: approve to the zero address': spender === constants.ZERO_ADDRESS,
+            'ERC20: approve to the zero address': spender === constants.ZERO_ADDRESS,
         };
         return this.history.run({ context: this.context, name: "approve", sender, spender, amount: toBN(amount), allowedErrors });
     }
 
     transfer(sender: string, recipient: string, amount: BNArg) {
         const allowedErrors = {
-            'revert Cannot transfer to self': sender === recipient,
-            'revert ERC20: transfer amount exceeds balance': this.history.state.balances.get(sender).lt(toBN(amount)),
-            'revert ERC20: transfer to the zero address': recipient === constants.ZERO_ADDRESS,
-            'revert Undelegated vote power too small': this.history.state.delegationModeOf(sender) === DelegationMode.AMOUNT,
+            'Cannot transfer to self': sender === recipient,
+            'ERC20: transfer amount exceeds balance': this.history.state.balances.get(sender).lt(toBN(amount)),
+            'ERC20: transfer to the zero address': recipient === constants.ZERO_ADDRESS,
+            'Undelegated vote power too small': this.history.state.delegationModeOf(sender) === DelegationMode.AMOUNT,
         };
         return this.history.run({ context: this.context, name: "transfer", sender, recipient, amount: toBN(amount), allowedErrors });
     }
@@ -280,11 +284,11 @@ export class VPTokenSimulator {
     delegate(sender: string, to: string, bips: BNArg) {
         const delegations = this.history.state.bipsDelegations.row(sender);
         const allowedErrors = {
-            'revert Already delegated explicitly': this.history.state.delegationModeOf(sender) !== DelegationMode.PERCENTAGE,
-            'revert Cannot delegate to self': sender === to,
-            'revert Cannot delegate to zero': to === constants.ZERO_ADDRESS,
-            'revert Max delegates exceeded': delegations.countNonZero() >= MAX_BIPS_DELEGATIONS,
-            'revert Max delegation bips exceeded': delegations.total().add(toBN(bips)).gtn(MAX_BIPS),
+            'Already delegated explicitly': this.history.state.delegationModeOf(sender) !== DelegationMode.PERCENTAGE,
+            'Cannot delegate to self': sender === to,
+            'Cannot delegate to zero': to === constants.ZERO_ADDRESS,
+            'Max delegates exceeded': delegations.countNonZero() >= MAX_BIPS_DELEGATIONS,
+            'Max delegation bips exceeded': delegations.total().add(toBN(bips)).gtn(MAX_BIPS),
         };
         return this.history.run({ context: this.context, name: "delegate", sender, to, bips: toBN(bips), allowedErrors });
     }
@@ -292,46 +296,46 @@ export class VPTokenSimulator {
     delegateExplicit(sender: string, to: string, amount: BNArg) {
         const delegations = this.history.state.amountDelegations.row(sender);
         const allowedErrors = {
-            'revert Already delegated by percentage': this.history.state.delegationModeOf(sender) !== DelegationMode.AMOUNT,
-            'revert Cannot delegate to self': sender === to,
-            'revert Cannot delegate to zero': to === constants.ZERO_ADDRESS,
-            'revert Undelegated vote power too small': delegations.total().add(toBN(amount)).gt(this.history.state.balances.get(sender)),
+            'Already delegated by percentage': this.history.state.delegationModeOf(sender) !== DelegationMode.AMOUNT,
+            'Cannot delegate to self': sender === to,
+            'Cannot delegate to zero': to === constants.ZERO_ADDRESS,
+            'Undelegated vote power too small': delegations.total().add(toBN(amount)).gt(this.history.state.balances.get(sender)),
         };
         return this.history.run({ context: this.context, name: "delegateExplicit", sender, to, amount: toBN(amount), allowedErrors });
     }
 
     revokeDelegationAt(sender: string, who: string, checkpointId: string) {
         const allowedErrors = {
-            'revert Already revoked': true,                             // fuzzing system doesn't track revocations
-            'revert Delegatable: reading from cleaned-up block': true,  // fuzzing system doesn't track cleanup block
+            'Already revoked': true,                             // fuzzing system doesn't track revocations
+            'Delegatable: reading from cleaned-up block': true,  // fuzzing system doesn't track cleanup block
         };
         return this.history.run({ context: this.context, name: "revokeDelegationAt", sender, who, checkpointId, allowedErrors });
     }
 
     undelegateAll(sender: string) {
         const allowedErrors = {
-            'revert Already delegated explicitly': this.history.state.delegationModeOf(sender) !== DelegationMode.PERCENTAGE,
+            'Already delegated explicitly': this.history.state.delegationModeOf(sender) !== DelegationMode.PERCENTAGE,
         };
         return this.history.run({ context: this.context, name: "undelegateAll", sender, allowedErrors });
     }
 
     undelegateAllExplicit(sender: string, delegateAddresses: string[]) {
         const allowedErrors = {
-            'revert Already delegated by percentage': this.history.state.delegationModeOf(sender) !== DelegationMode.AMOUNT,
+            'Already delegated by percentage': this.history.state.delegationModeOf(sender) !== DelegationMode.AMOUNT,
         };
         return this.history.run({ context: this.context, name: "undelegateAllExplicit", sender, delegateAddresses, allowedErrors });
     }
 
     totalVotePowerAtCached(sender: string, checkpointId: string) {
         const allowedErrors = {
-            'revert Delegatable: reading from cleaned-up block': true,
+            'Delegatable: reading from cleaned-up block': true,
         };
         return this.history.run({ context: this.context, name: "votePowerAtCached", sender, checkpointId, allowedErrors });
     }
 
     votePowerOfAtCached(sender: string, who: string, checkpointId: string) {
         const allowedErrors = {
-            'revert Delegatable: reading from cleaned-up block': true,
+            'Delegatable: reading from cleaned-up block': true,
         };
         return this.history.run({ context: this.context, name: "votePowerOfAtCached", sender, who, checkpointId, allowedErrors });
     }
@@ -353,7 +357,7 @@ export class VPTokenSimulator {
 
     delegateGovernance(sender: string, to: string, bips: BNArg) {
         const allowedErrors = {
-            "revert can't delegate to yourself": sender === to
+            "can't delegate to yourself": sender === to
         };
         return this.history.run({ context: this.context, name: "delegateGovernance", sender, to, bips: toBN(bips), allowedErrors });
     }

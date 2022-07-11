@@ -46,9 +46,9 @@ contract(`GovernedAtGenesis.sol; ${getTestFile(__filename)};`, async accounts =>
     });
 
     it("Should not switch to production if not initialized to fixed address", async() => {
-      const promise1 = governedAtGenesis.switchToProductionMode(accounts[1]);
+      const promise1 = governedAtGenesis.switchToProductionMode();
       await expectRevert(promise1, ONLY_GOVERNANCE_MSG);
-      const promise2 = governedAtGenesis.switchToProductionMode(accounts[1], { from: GOVERNANCE_GENESIS_ADDRESS });
+      const promise2 = governedAtGenesis.switchToProductionMode({ from: GOVERNANCE_GENESIS_ADDRESS });
       await expectRevert(promise2, ONLY_GOVERNANCE_MSG);
     });
   });

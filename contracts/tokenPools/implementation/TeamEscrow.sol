@@ -55,6 +55,8 @@ contract TeamEscrow is Governed, IITokenPool, AddressUpdatable  {
     event AccountLocked(address indexed whoLocked, uint256 amountWei);
     event AccountClaimed(address indexed whoClaimed, address indexed sentTo, uint256 amountWei);
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
+    event ClaimExecutorsChanged(address owner, address[] executors);
+    event AllowedClaimRecipientsChanged(address owner, address[] recipients);
 
     modifier onlyExecutorAndAllowedRecipient(address _owner, address _recipient) {
         _checkExecutorAndAllowedRecipient(_owner, _recipient);
@@ -167,6 +169,7 @@ contract TeamEscrow is Governed, IITokenPool, AddressUpdatable  {
      */    
     function setClaimExecutors(address[] memory _executors) external {
         claimExecutorSet[msg.sender].replaceAll(_executors);
+        emit ClaimExecutorsChanged(msg.sender, _executors);
     }
     
     /**
@@ -176,6 +179,7 @@ contract TeamEscrow is Governed, IITokenPool, AddressUpdatable  {
      */    
     function setAllowedClaimRecipients(address[] memory _recipients) external {
         allowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
+        emit AllowedClaimRecipientsChanged(msg.sender, _recipients);
     }
 
     /**

@@ -12,6 +12,7 @@ import { Contracts } from "../../../../deployment/scripts/Contracts";
 import { expectEthersEvent, expectEthersEventNotEmitted } from "../../../utils/EventDecoder";
 import { InflationMock__factory, TestableFlareDaemon__factory } from "../../../../typechain";
 import { ethers, network } from "hardhat";
+import { testDeployGovernanceSettings } from "../../../utils/contract-test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 const GOVERNANCE_GENESIS_ADDRESS = require('../../../utils/constants').GOVERNANCE_GENESIS_ADDRESS;
 
@@ -461,9 +462,9 @@ contract(`FlareDaemon.sol; ${getTestFile(__filename)}; FlareDaemon unit tests`, 
     it("Should switch to production mode", async () => {
       // Assemble
       let initialProductionMode = await flareDaemon.productionMode();
-      const governanceSettings = await GovernanceSettings.new(accounts[1], 1, []);
       // Act
-      await flareDaemon.switchToProductionMode(governanceSettings.address, { from: GOVERNANCE_GENESIS_ADDRESS });
+      await testDeployGovernanceSettings(accounts[1], 1, []);
+      await flareDaemon.switchToProductionMode({ from: GOVERNANCE_GENESIS_ADDRESS });
       // Assert
       let newProductionMode = await flareDaemon.productionMode();
       let newGovernance = await flareDaemon.governance();

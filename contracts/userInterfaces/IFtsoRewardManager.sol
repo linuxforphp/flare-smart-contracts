@@ -36,6 +36,16 @@ interface IFtsoRewardManager {
     event RewardClaimsExpired(
         uint256 rewardEpochId
     );    
+    
+    event ClaimExecutorsChanged(
+        address rewardOwner,
+        address[] executors
+    );
+
+    event AllowedClaimRecipientsChanged(
+        address rewardOwner,
+        address[] recipients
+    );
 
     /**
      * @notice Allows a percentage delegator to claim rewards.

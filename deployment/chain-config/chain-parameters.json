@@ -131,6 +131,10 @@
             "description": "Governance public key (the key to which governance is transfered after deploy). \nOverriden if provided in `.env` file as `GOVERNANCE_PUBLIC_KEY`.",
             "type": "string"
         },
+        "governanceSettingsAddress": {
+            "description": "Governance settings contract address. It is deployed to the genesis block with the fixed address  \"0x1000000000000000000000000000000000000007\".",
+            "type": "string"
+        },
         "governanceTimelock": {
             "description": "The timelock in seconds to use for all governance operations (the time that has to pass before any governance operation is executed).\nIt safeguards the system against bad governance decisions or hijacked governance.",
             "type": "integer"
@@ -334,6 +338,7 @@
         "governanceExecutorPublicKey",
         "governancePrivateKey",
         "governancePublicKey",
+        "governanceSettingsAddress",
         "governanceTimelock",
         "highAssetThresholdUSDDec5",
         "highAssetTurnoutThresholdBIPS",

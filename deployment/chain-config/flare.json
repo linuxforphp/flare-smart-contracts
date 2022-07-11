@@ -9,6 +9,7 @@
     "distributionTreasuryAddress": "0x1000000000000000000000000000000000000004",
     "incentivePoolTreasuryAddress": "0x1000000000000000000000000000000000000005",
     "initialAirdropAddress": "0x1000000000000000000000000000000000000006",
+    "governanceSettingsAddress": "0x1000000000000000000000000000000000000007",
     "deployerPrivateKey": "<use .env: DEPLOYER_PRIVATE_KEY>",
     "genesisGovernancePrivateKey": "<use .env: GENESIS_GOVERNANCE_PRIVATE_KEY>",
     "governancePrivateKey": "<use .env: GOVERNANCE_PRIVATE_KEY>",
@@ -42,9 +43,9 @@
     "lowNatTurnoutThresholdBIPS": 500,
     "priceDeviationThresholdBIPS": 1500,
     "trustedAddresses": [
-        "0x021305Bb75B9D7F720fD328d137114C930917B62",
-        "0x651ccEBfA2C5aa1e6d9C6180d91079F120314080",
-        "0x96b83D3F73E44c9A96388CF1D116595551dAeB5A"
+        "0xf750071F7bFD781431dcC2f0c28D9F500A063eff",
+        "0xdcc5B7655a19fB13eEB4f9FE97B05f4f14cf2411",
+        "0x7d2BFEEE84d64A4E08A28A68Cd804AD0eAa6D432"
     ],
     "rewardFeePercentageUpdateOffsetEpochs": 3,
     "defaultRewardFeePercentageBIPS": 2000,

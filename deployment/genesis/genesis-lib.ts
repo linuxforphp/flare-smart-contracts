@@ -7,10 +7,12 @@ export interface GenesisAccount {
     balance?: BigNumber;
     initialEntryNat?: string;  // no decimals, can have thousands comma separator
     initialEntryWei?: string;  // integer, can have thousands comma separator 
+    isBalancing?: boolean; // balancing account if true
 }
 
 // Reads accounts, creates BigNumber balances and fills the accounts with 
 // id 2 and 3 with reminder to `targetTotalSupply`, each one half of it.
+// This was used for Songbird
 export function processGenesisAccountDefinitions(accounts: GenesisAccount[], targetTotalSupply: BigNumber) {
     let balancingAccount2: GenesisAccount;
     let balancingAccount3: GenesisAccount;
@@ -47,6 +49,56 @@ export function processGenesisAccountDefinitions(accounts: GenesisAccount[], tar
     return processedAccounts;
 }
 
+// Reads accounts, creates BigNumber balances and fills the accounts with 
+// id 2 and 3 with reminder to `targetTotalSupply`, each one half of it.
+// This was used for Songbird
+export function processGenesisAccountDefinitionsFlare(accounts: GenesisAccount[], targetTotalSupply: BigNumber) {
+    let balancingAccounts: GenesisAccount[] = [];
+    let total = BigNumber.from(0);
+    let processedAccounts: GenesisAccount[] = [];
+    let cnt = 0;
+    for (let account of accounts) {
+        let processed = {
+            ...account
+        } as GenesisAccount;
+        if(processed.isBalancing) {
+            balancingAccounts.push(processed)
+        }
+        // Read the proposed balance strings and create BigNumber representation
+        if (account.initialEntryNat) {
+            processed.balance = BigNumber.from(processed.initialEntryNat?.replace(/[, ]/g, "")).mul(ethers.utils.parseEther("1"))
+        }
+        if (account.initialEntryWei) { // Overrides `initialEntryNat` if both are present.
+            processed.balance = BigNumber.from(processed.initialEntryWei?.replace(/[,. ]/g, ""))
+        }
+        // Calculate running total balance
+        if (processed.balance) {
+            total = total.add(processed.balance)
+        }
+        if(!processed.address || processed.address.length === 0) {
+            
+            processed.address = ('' + cnt).padStart(42, ".");
+            cnt++;
+        }
+        processedAccounts.push(processed);
+    }
+    // Calculating balances for id 2 and 3
+    let remaining = targetTotalSupply.sub(total);
+    let n = balancingAccounts.length;
+    let share = remaining.div(BigNumber.from(n));
+    let shareSum = share.mul(BigNumber.from(n));
+    let dust = remaining.sub(shareSum);
+    for(let i = 0; i < balancingAccounts.length; i++) {
+        let account = balancingAccounts[i];
+        if(i === 0) {
+            account.balance = share.add(dust);
+        } else {
+            account.balance = share;
+        }
+    }
+    return processedAccounts;
+}
+
 // Creates textual printout
 export function accountsTextPrintout(accounts: GenesisAccount[], targetTotalSupply: BigNumber) {
     let stringOutput = "";
@@ -70,9 +122,21 @@ export function accountsGenesisCode(accounts: GenesisAccount[]) {
     return stringOutput;
 }
 
+// Creates JSON
+export function accountsGenesisJSON(accounts: GenesisAccount[]) {
+    let addressList = [];
+    for (let account of accounts) {
+        addressList.push({
+            address: account.address,
+            balance: `${account.balance?.toHexString()}`
+        }) 
+    }
+    return addressList;
+}
+
 // Creates CSV
 export function accountsCSV(accounts: GenesisAccount[]) {
-    let stringOutput = "RowNo,Address,SGB_balance_dec,SGB_balance_hex\n";
+    let stringOutput = "RowNo,Address,FLR_balance_dec,FLR_balance_hex\n";
     let rowNo = 2;
     for (let account of accounts) {
         while (account.id != rowNo) {
@@ -110,7 +174,13 @@ function calculateTotalSupplyFromAccounts(accounts: GenesisAccount[]) {
 ////////////////////////////////////////////////////////////////////////
 
 export function processGenesisAccounts(network: string, accountDefinitions: GenesisAccount[], totalSupply: BigNumber) {
-    let processedAccounts = processGenesisAccountDefinitions(accountDefinitions, totalSupply);
+    let processedAccounts: GenesisAccount[] = [];
+    if(network === "songbird") {
+        processedAccounts = processGenesisAccountDefinitions(accountDefinitions, totalSupply);
+    } else if(network === "flare") {
+        processedAccounts = processGenesisAccountDefinitionsFlare(accountDefinitions, totalSupply);
+    }
+
 
     let dir = `deployment/genesis/${network}/outputs`;
     if (!fs.existsSync(dir)) {
@@ -124,6 +194,9 @@ export function processGenesisAccounts(network: string, accountDefinitions: Gene
     let genesisCode = accountsGenesisCode(processedAccounts);
     fs.writeFileSync(`${dir}/${network}-genesis.txt`, genesisCode, "utf8");
 
+    let genesisCodeJSON = accountsGenesisJSON(processedAccounts);
+    fs.writeFileSync(`${dir}/${network}-genesis.json`, JSON.stringify(genesisCodeJSON, null, 2), "utf8");
+ 
     let csvData = accountsCSV(processedAccounts)
     fs.writeFileSync(`${dir}/${network}.csv`, csvData, "utf8");
 
@@ -165,18 +238,21 @@ export function processGenesisContracts(network: string) {
     return code;
 }
 
-export function genesisGenerate(network: string, accountDefinitions: GenesisAccount[], totalSupply: BigNumber, pathToTemplate: string, pathToTargetGenesisFile?: string) {
+export function genesisGenerate(network: string, accountDefinitions: GenesisAccount[], totalSupply: BigNumber, pathToTemplate?: string, pathToTargetGenesisFile?: string) {
     let dir = `deployment/genesis/${network}/outputs`;
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
     let genesisAccountsCode = processGenesisAccounts(network, accountDefinitions, totalSupply);
     let genesisContractCode = processGenesisContracts(network);
-    let template = fs.readFileSync(pathToTemplate).toString();
-    let genesisFileText = template.replace("<DATA>", genesisContractCode + "\n" + genesisAccountsCode.slice(0, -2));
-    fs.writeFileSync(`${dir}/genesis_${network}.go`, genesisFileText, "utf8");
-    if (pathToTargetGenesisFile) {
-        fs.writeFileSync(pathToTargetGenesisFile, genesisFileText, "utf8");
+    if (pathToTemplate) {
+        let template = fs.readFileSync(pathToTemplate).toString();
+        let genesisFileText = template.replace("<DATA>", genesisContractCode + "\n" + genesisAccountsCode.slice(0, -2));
+        fs.writeFileSync(`${dir}/genesis_${network}.go`, genesisFileText, "utf8");
+        if (pathToTargetGenesisFile) {
+            fs.writeFileSync(pathToTargetGenesisFile, genesisFileText, "utf8");
+        }    
     }
 }
+
 

@@ -9,15 +9,15 @@ import {
   FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
-  FtsoRewardManagerInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
+  FtsoRewardManagerInstance, GovernanceSettingsContract, GovernanceSettingsInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
   InflationInstance, InitialAirdropContract, InitialAirdropInstance, SupplyContract,
   SupplyInstance, TeamEscrowContract, TeamEscrowInstance, WNatContract, WNatInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
-import { findAssetFtso, findFtso, validateParameters } from '../scripts/deploy-utils';
+import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
 
-const parameters = validateParameters(require(`../chain-config/${process.env.CHAIN_CONFIG}.json`))
+const parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
 const BN = web3.utils.toBN;
 
 /**
@@ -31,6 +31,44 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
   before(async () => {
     contracts = new Contracts();
     await contracts.deserialize(process.stdin);
+  });
+
+  describe(Contracts.GOVERNANCE_SETTINGS, async () => {
+    let GovernanceSettings: GovernanceSettingsContract;
+    let governanceSettings: GovernanceSettingsInstance;
+
+    beforeEach(async () => {
+      GovernanceSettings = artifacts.require("GovernanceSettings");
+      governanceSettings = await GovernanceSettings.at(contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS));
+    });
+
+    it("Should have correct governance address", async () => {
+      // Assemble
+      // Act
+      const governance = await governanceSettings.getGovernanceAddress();
+      // Assert
+      assert.equal(governance, parameters.governancePublicKey);
+    });
+
+    it("Should have correct timelock", async () => {
+      // Assemble
+      // Act
+      const timelock = await governanceSettings.getTimelock();
+      // Assert
+      assert.equal(Number(timelock), parameters.governanceTimelock);
+    });
+
+    it("Should have correct initial executors", async () => {
+      // Assemble
+      // Act
+      const executors = await governanceSettings.getExecutors();
+      // Assert
+      assert.isTrue(executors.length === 1 || executors.length === 2);
+      assert.equal(executors[0], parameters.governancePublicKey);
+      if (executors.length === 2) {
+        assert.equal(executors[1], parameters.governanceExecutorPublicKey);
+      }
+    });
   });
 
   describe(Contracts.SUPPLY, async () => {
