@@ -65,10 +65,9 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     let totalGasPrice = new BigNumber(0);
 
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-    if(!quiet){
-        console.log("Sending sign Transactions")
-        bar1.start(rawTransactions.length, 0);
-    }
+    console.log("Sending sign Transactions")
+    bar1.start(rawTransactions.length, 0);
+
     let progress = 0;
     for(let tx of rawTransactions){
         let decoded = txDecoder.decodeTx(tx.raw);
@@ -82,9 +81,9 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
         ));
         await sleep(950);
         progress += 1;
-        if(!quiet) bar1.update(progress);
+        bar1.update(progress);
     }
-    if(!quiet) bar1.stop();
+    bar1.stop();
     logMessage(logFileName, `Total Gas upper limit                 : ${totalGasPrice.toFixed()}`, quiet);
     
     await Promise.all(promises);
