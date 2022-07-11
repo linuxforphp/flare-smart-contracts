@@ -17,12 +17,14 @@ abstract contract GovernedBase {
         bytes encodedCall;
     }
     
+    // solhint-disable-next-line const-name-snakecase
+    IGovernanceSettings public constant governanceSettings = 
+        IGovernanceSettings(0x1000000000000000000000000000000000000007);
+
     address private initialGovernance;
 
     bool private initialised;
     
-    IGovernanceSettings public governanceSettings;
-
     bool public productionMode;
     
     bool private executing;
@@ -91,17 +93,13 @@ abstract contract GovernedBase {
      * Enter the production mode after all the initial governance settings have been set.
      * This enables timelocks and the governance is afterwards obtained by calling 
      * governanceSettings.getGovernanceAddress(). 
-     * @param _governanceSettings The value for the governanceSettings contract address.
-     *    All governed contracts should have the same governanceSettings.
      */
-    function switchToProductionMode(IGovernanceSettings _governanceSettings) external {
+    function switchToProductionMode() external {
         _checkOnlyGovernance();
         require(!productionMode, "already in production mode");
-        require(address(_governanceSettings) != address(0), "invalid governance settings");
-        governanceSettings = _governanceSettings;
         initialGovernance = address(0);
         productionMode = true;
-        emit GovernedProductionModeEntered(address(_governanceSettings));
+        emit GovernedProductionModeEntered(address(governanceSettings));
     }
 
     /**

@@ -13,6 +13,7 @@ import {
   DelegationAccountManagerInstance, DistributionContract, DistributionToDelegatorsContract, DistributionToDelegatorsInstance,
   DistributionTreasuryContract, DistributionTreasuryInstance, FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagementContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, GovernanceSettingsContract,
+  GovernanceSettingsInstance,
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
@@ -234,13 +235,29 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   // GovernanceSettings (do not add it to AddressUpdater)
   // default executors are governancePublicKey and governanceExecutorPublicKey if set
+  let governanceSettings: GovernanceSettingsInstance;
+  
+  try {
+    governanceSettings = await GovernanceSettings.at(parameters.governanceSettingsAddress);
+  } catch (e) {
+    if (!quiet) {
+      console.error("GovernanceSettings not in genesis...creating new.")
+    }
+    // test only - fake deploy at genesis address
+    const hardhat: HardhatRuntimeEnvironment = require('hardhat');
+    const tempGovSettings = await GovernanceSettings.new();
+    const governanceSettingsCode = await web3.eth.getCode(tempGovSettings.address);   // get deployed code
+    await hardhat.network.provider.send("hardhat_setCode", [parameters.governanceSettingsAddress, governanceSettingsCode]);
+    governanceSettings = await GovernanceSettings.at(parameters.governanceSettingsAddress);
+  }
+
   const executors = [parameters.governancePublicKey];
   if (parameters.governanceExecutorPublicKey != "<use .env: GOVERNANCE_EXECUTOR_PUBLIC_KEY>") {
     console.error(`Adding ${parameters.governanceExecutorPublicKey} as governance executor.`)
     executors.push(parameters.governanceExecutorPublicKey);
   }
-  const governanceSettings = await GovernanceSettings.new(parameters.governancePublicKey,
-    parameters.governanceTimelock, executors);
+
+  await governanceSettings.initialise(parameters.governancePublicKey, parameters.governanceTimelock, executors, { from: genesisGovernance });
   spewNewContractInfo(contracts, null, GovernanceSettings.contractName, `GovernanceSettings.sol`, governanceSettings.address, quiet);
 
   // AddressUpdater

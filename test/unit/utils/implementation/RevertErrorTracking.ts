@@ -1,5 +1,5 @@
 import { 
-    RevertErrorTrackingInstance,
+    RevertErrorTrackingMockInstance,
     FlareDaemonInstance, 
     InflationMockInstance, 
     MockContractInstance } from "../../../../typechain-truffle";
@@ -8,19 +8,19 @@ import {
 
   const getTestFile = require('../../../utils/constants').getTestFile;
 
-  const RevertErrorTracking = artifacts.require("RevertErrorTracking");
+  const RevertErrorTrackingMock = artifacts.require("RevertErrorTrackingMock");
 
   const INDEX_TOO_HIGH = "start index high";
 
   contract(`RevertErrorTracking.sol; ${getTestFile(__filename)}; Revert Error Tracking unit tests`, async accounts => {
     // contains a fresh contract for each test
-  let revertErrorTracking: RevertErrorTrackingInstance;
+  let revertErrorTracking: RevertErrorTrackingMockInstance;
   let flareDaemon: FlareDaemonInstance;
   let mockInflation: InflationMockInstance;
   let mockContractToRevert: MockContractInstance;
 
   beforeEach(async() => {
-      revertErrorTracking = await RevertErrorTracking.new();
+      revertErrorTracking = await RevertErrorTrackingMock.new();
   });
 
     describe('unit tests', async() => {
@@ -30,14 +30,14 @@ import {
         })
 
         it("should add error and verify contract address,revert message", async()=>{
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
             let {2: errorStringArr, 3: errorContractArr, 4: totalRevertedErrors} = await revertErrorTracking.showLastRevertedError();
 
             assert.equal(errorStringArr[0],"error1")
             assert.equal(errorContractArr[0],accounts[0])
             assert.equal(totalRevertedErrors.toNumber(), 1);
 
-            await revertErrorTracking.addRevertError(accounts[1],"error2")
+            await revertErrorTracking.addRevertErrorMock(accounts[1],"error2")
             let {2: errorStringArr1, 3: errorContractArr1, 4: totalRevertedErrors1} = await revertErrorTracking.showLastRevertedError();
 
             assert.equal(errorStringArr1[0],"error2")
@@ -46,7 +46,7 @@ import {
         })
 
         it("Should create new entry for same error type but unique contract addresses",async()=>{
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
             let {
                 1: numErrorsArr,
                 2: errorStringArr,
@@ -59,7 +59,7 @@ import {
             assert.equal(errorContractArr[0],accounts[0])
             assert.equal(totalRevertedErrors.toNumber(), 1);
         
-            await revertErrorTracking.addRevertError(accounts[1],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[1],"error1")
             let {
                 1: numErrorsArr1,
                 2: errorStringArr1,
@@ -74,7 +74,7 @@ import {
         })
         
         it("Should add to existing entry for same error type and same contract addresses",async()=>{
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
             let {
                 1: numErrorsArr,
                 2: errorStringArr,
@@ -87,7 +87,7 @@ import {
             assert.equal(totalRevertedErrors.toNumber(), 1);
         
         
-            await revertErrorTracking.addRevertError(accounts[1],"error2")
+            await revertErrorTracking.addRevertErrorMock(accounts[1],"error2")
             let {
                 1: numErrorsArr1,
                 2: errorStringArr1,
@@ -100,7 +100,7 @@ import {
             assert.equal(errorContractArr1[1],accounts[1])
             assert.equal(totalRevertedErrors1.toNumber(), totalRevertedErrors.toNumber()+1);
         
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
             let {
                 1: numErrorsArr2,
                 4: totalRevertedErrors2
@@ -111,7 +111,7 @@ import {
         })
         
         it("Should show last reverted error data",async()=>{
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
             let {
                 1: numErrorsArr,
                 2: errorStringArr,
@@ -124,7 +124,7 @@ import {
             assert.equal(errorContractArr[0],accounts[0])
             assert.equal(totalRevertedErrors.toNumber(), 1);
         
-            await revertErrorTracking.addRevertError(accounts[1],"error2")
+            await revertErrorTracking.addRevertErrorMock(accounts[1],"error2")
             let {
                 1: numErrorsArr1,
                 2: errorStringArr1,
@@ -146,8 +146,8 @@ import {
         })
 
         it("Should show last revert error data for two strings", async() => {
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
-            await revertErrorTracking.addRevertError(accounts[1],"error2")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[1],"error2")
             let {
                 1: numErrorsArr,
                 2: errorStringArr,
@@ -163,7 +163,7 @@ import {
         });
 
         it("Should revert if start index is out of range", async() => {
-            await revertErrorTracking.addRevertError(accounts[0],"error1")
+            await revertErrorTracking.addRevertErrorMock(accounts[0],"error1")
             let {
                 2: errorStringArr,
                 3: errorContractArr,

@@ -1,6 +1,7 @@
 import { GovernanceSettingsInstance, GovernedInstance } from "../../../../typechain-truffle";
 
 import { constants, expectEvent, expectRevert } from '@openzeppelin/test-helpers';
+import { testDeployGovernanceSettings } from "../../../utils/contract-test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Governed = artifacts.require("Governed");
@@ -21,7 +22,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
     beforeEach(async () => {
         governed = await Governed.new(initialGovernance);
-        governanceSettings = await GovernanceSettings.new(productionGovernance, 10, [productionGovernance, productionExecutor]);
+        governanceSettings = await testDeployGovernanceSettings(productionGovernance, 10, [productionGovernance, productionExecutor]);
     });
 
     describe("initialise", async () => {
@@ -49,7 +50,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         it("Should switch to production", async () => {
             // Assemble
             // Act
-            const tx = await governed.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
+            const tx = await governed.switchToProductionMode({ from: initialGovernance });
             // Assert
             const currentGovernance = await governed.governance();
             assert.equal(currentGovernance, productionGovernance);
@@ -59,30 +60,22 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         it("Should reject switch if not from governed address", async () => {
             // Assemble
             // Act
-            const promiseTransfer = governed.switchToProductionMode(governanceSettings.address, { from: accounts[3] });
+            const promiseTransfer = governed.switchToProductionMode({ from: accounts[3] });
             // Assert
             await expectRevert(promiseTransfer, ONLY_GOVERNANCE_MSG);
         });
 
         it("Should not switch to production twice", async () => {
             // Assemble
-            await governed.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
+            await governed.switchToProductionMode({ from: initialGovernance });
             // Act
-            const promiseTransfer1 = governed.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
+            const promiseTransfer1 = governed.switchToProductionMode({ from: initialGovernance });
             // Assert
             await expectRevert(promiseTransfer1, ONLY_GOVERNANCE_MSG);
             // Act
-            const promiseTransfer2 = governed.switchToProductionMode(governanceSettings.address, { from: productionGovernance });
+            const promiseTransfer2 = governed.switchToProductionMode({ from: productionGovernance });
             // Assert
             await expectRevert(promiseTransfer2, "already in production mode");
-        });
-        
-        it("Should use valid governance pointer", async () => {
-            // Assemble
-            // Act
-            const promiseTransfer1 = governed.switchToProductionMode(constants.ZERO_ADDRESS, { from: initialGovernance });
-            // Assert
-            await expectRevert(promiseTransfer1, "invalid governance settings");
         });
         
         it("Should have new governance parameters after switching", async () => {
@@ -90,7 +83,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
             const startGovernance = await governed.governance();
             const startProductionMode = await governed.productionMode();
             // Act
-            const tx = await governed.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
+            const tx = await governed.switchToProductionMode({ from: initialGovernance });
             // Assert
             const newGovernance = await governed.governance();
             const newProductionMode = await governed.productionMode();

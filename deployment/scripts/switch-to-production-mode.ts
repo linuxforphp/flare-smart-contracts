@@ -92,30 +92,30 @@ export async function switchToProductionMode(
     const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
 
     // switch to production mode
-    await flareDaemon.switchToProductionMode(governanceSettings.address, { from: genesisGovernanceAccount.address });
-    await priceSubmitter.switchToProductionMode(governanceSettings.address, { from: genesisGovernanceAccount.address });
-    await distributionTreasury.switchToProductionMode(governanceSettings.address, { from: genesisGovernanceAccount.address });
-    await incentivePoolTreasury.switchToProductionMode(governanceSettings.address, { from: genesisGovernanceAccount.address });
-    await initialAirdrop.switchToProductionMode(governanceSettings.address, { from: genesisGovernanceAccount.address });
-    await addressUpdater.switchToProductionMode(governanceSettings.address);
-    await supply.switchToProductionMode(governanceSettings.address);
-    await inflation.switchToProductionMode(governanceSettings.address);
-    await inflationAllocation.switchToProductionMode(governanceSettings.address);
-    await ftsoRewardManager.switchToProductionMode(governanceSettings.address);
+    await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await priceSubmitter.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await distributionTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await incentivePoolTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await initialAirdrop.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await addressUpdater.switchToProductionMode();
+    await supply.switchToProductionMode();
+    await inflation.switchToProductionMode();
+    await inflationAllocation.switchToProductionMode();
+    await ftsoRewardManager.switchToProductionMode();
     if (distributionDeployed) {
         const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
         const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
-        await distribution.switchToProductionMode(governanceSettings.address);
-        await distributionToDelegators.switchToProductionMode(governanceSettings.address);
+        await distribution.switchToProductionMode();
+        await distributionToDelegators.switchToProductionMode();
         const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
-        await delegationAccountManager.switchToProductionMode(governanceSettings.address);
+        await delegationAccountManager.switchToProductionMode();
     }
-    await incentivePool.switchToProductionMode(governanceSettings.address);
-    await incentivePoolAllocation.switchToProductionMode(governanceSettings.address);
-    await ftsoManager.switchToProductionMode(governanceSettings.address);
-    await voterWhitelister.switchToProductionMode(governanceSettings.address);
-    await cleanupBlockNumberManager.switchToProductionMode(governanceSettings.address);
-    await ftsoRegistry.switchToProductionMode(governanceSettings.address);
-    await wNat.switchToProductionMode(governanceSettings.address);
-    await teamEscrow.switchToProductionMode(governanceSettings.address);
+    await incentivePool.switchToProductionMode();
+    await incentivePoolAllocation.switchToProductionMode();
+    await ftsoManager.switchToProductionMode();
+    await voterWhitelister.switchToProductionMode();
+    await cleanupBlockNumberManager.switchToProductionMode();
+    await ftsoRegistry.switchToProductionMode();
+    await wNat.switchToProductionMode();
+    await teamEscrow.switchToProductionMode();
 }

@@ -9,6 +9,7 @@
     "distributionTreasuryAddress": "0x1000000000000000000000000000000000000004",
     "incentivePoolTreasuryAddress": "0x1000000000000000000000000000000000000005",
     "initialAirdropAddress": "0x1000000000000000000000000000000000000006",
+    "governanceSettingsAddress": "0x1000000000000000000000000000000000000007",
     "deployerPrivateKey": "<use .env: DEPLOYER_PRIVATE_KEY>",
     "genesisGovernancePrivateKey": "<use .env: GENESIS_GOVERNANCE_PRIVATE_KEY>",
     "governancePrivateKey": "<use .env: GOVERNANCE_PRIVATE_KEY>",

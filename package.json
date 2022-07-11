@@ -90,7 +90,7 @@
     
     "-----------FLARE": "",
     "test_initial_airdrop_state_mainnet": "yarn test deployment/test/flare/initialVerificationTest.ts",
-    "create_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -d deployment/deploys/flare.json --deployment-config deployment/chain-config/flare.json --gas-price 50000000000 -i 16",
+    "create_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -d deployment/deploys/flare.json --deployment-config deployment/chain-config/flare.json --gas-price 50000000000 -i 14",
     "sign_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/signAirdropTransactions.ts -f airdrop/flare/files/trans/unsigned_call_transactions.json -o airdrop/flare/files/trans/signed_call_transactions.json",
     "send_airdrop_transactions_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/sendAirdropTransactions.ts -f airdrop/flare/files/trans/signed_call_transactions.json",
     "test_final_airdrop_state_mainnet": "yarn test deployment/test/flare/airdropDataTest.ts",
@@ -192,7 +192,9 @@
     "test_genesis_accounts_songbird": "env TEST_PATH=./deployment/genesis/songbird yarn hardhat test --network songbird deployment/genesis/songbird/songbird-genesis-accounts-test.ts",
     
     "---------GENESIS-FILE-GENERATION--SCRIPTS": "",
-    "genesis_json": "yarn ts-node deployment/genesis_gen/prepare-genesis-json.ts"
+    "genesis_json": "yarn ts-node deployment/genesis_gen/prepare-genesis-json.ts",
+    "genesis_json_flare": "yarn ts-node deployment/genesis_gen/prepare-genesis-json.ts -n flare",
+    "generate_genesis_flare": "yarn ts-node deployment/genesis/flare/flare-genesis-generate.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
@@ -206,7 +208,7 @@
     "eslint": "7.30.0",
     "ethereum-tx-decoder": "3.0.0",
     "got": "11.8.2",
-    "hardhat": "2.3.0",
+    "hardhat": "2.4.3",
     "solhint": "3.3.2",
     "solidity-coverage": "0.7.16",
     "typescript-json-schema": "0.54.0"

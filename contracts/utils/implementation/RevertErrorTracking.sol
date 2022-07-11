@@ -55,7 +55,7 @@ contract RevertErrorTracking {
      * @param revertedContract         Address of the reverting contract
      * @param message                  Reverte message
      */
-    function addRevertError(address revertedContract, string memory message) public {
+    function addRevertError(address revertedContract, string memory message) internal {
         bytes32 errorStringHash = keccak256(abi.encode(revertedContract, message));
 
         revertedErrors[errorStringHash].numErrors += 1;

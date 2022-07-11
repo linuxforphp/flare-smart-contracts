@@ -1,9 +1,11 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import { GovernedBaseInstance } from "../../typechain-truffle";
 import { findRequiredEvent, increaseTimeTo, toBN } from "./test-helpers";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
 const IGovernanceSettings = artifacts.require("IGovernanceSettings");
+const GovernanceSettings = artifacts.require("GovernanceSettings"); 
 
 export async function transferWithSuicide(amount: BN, from: string, to: string) {
     if (amount.lten(0)) throw new Error("Amount must be positive");
@@ -42,4 +44,17 @@ export async function executeTimelockedGovernanceCall(contract: Truffle.Contract
     const timelockArgs = findRequiredEvent(response, "GovernanceCallTimelocked").args;
     await increaseTimeTo(timelockArgs.allowedAfterTimestamp.toNumber() + 1, 'web3');
     await contractGoverned.executeGovernanceCall(timelockArgs.selector, { from: executor });
+}
+
+const GOVERNANCE_SETTINGS_ADDRESS = "0x1000000000000000000000000000000000000007";
+const GENESIS_GOVERNANCE_ADDRESS = "0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7";
+
+export async function testDeployGovernanceSettings(governance: string, timelock: number, executors: string[]) {
+    const tempGovSettings = await GovernanceSettings.new();
+    const governanceSettingsCode = await web3.eth.getCode(tempGovSettings.address);   // get deployed code
+    await network.provider.send("hardhat_setCode", [GOVERNANCE_SETTINGS_ADDRESS, governanceSettingsCode]);
+    await network.provider.send("hardhat_setStorageAt", [GOVERNANCE_SETTINGS_ADDRESS, "0x0", constants.ZERO_BYTES32]);  // clear initialisation
+    const governanceSettings = await GovernanceSettings.at(GOVERNANCE_SETTINGS_ADDRESS);
+    await governanceSettings.initialise(governance, timelock, executors, { from: GENESIS_GOVERNANCE_ADDRESS });
+    return governanceSettings;
 }

@@ -1,9 +1,9 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/constants";
+import { testDeployGovernanceSettings } from "../../../utils/contract-test-helpers";
 import { assertNumberEqual, findRequiredEvent } from "../../../utils/test-helpers";
 
-const GovernanceSettings = artifacts.require("GovernanceSettings"); 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
 
 contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTimelock unit tests`, async accounts => {
@@ -13,10 +13,13 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     
     let mock: GovernedWithTimelockMockInstance;
     
+    before(async() => {
+        await testDeployGovernanceSettings(governance, 3600, [governance, executor]);
+    });
+    
     beforeEach(async () => {
         mock = await GovernedWithTimelockMock.new(initialGovernance);
-        const governanceSettings = await GovernanceSettings.new(governance, 3600, [governance, executor]);
-        await mock.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
+        await mock.switchToProductionMode({ from: initialGovernance });
     });
 
     it("allow direct changes in deployment phase", async () => {

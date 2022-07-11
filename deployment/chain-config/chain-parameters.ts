@@ -67,6 +67,11 @@ export interface ChainParameters {
      */
     initialAirdropAddress: string;
 
+    /**
+     * Governance settings contract address. It is deployed to the genesis block with the fixed address  "0x1000000000000000000000000000000000000007".
+     */
+    governanceSettingsAddress: string;
+    
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Governance
 

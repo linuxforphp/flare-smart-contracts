@@ -18,11 +18,16 @@ contract GovernanceSettings is IGovernanceSettings {
 
     uint256 internal constant MAX_TIMELOCK = 365 days;
     
-    // governance address set by the validator (initialy set in cTor)
+    address internal constant GENESIS_GOVERNANCE = 0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7;
+    
+    // governance address set by the validator (set in initialise call, can be changed by fork)
     address private governanceAddress;
     
-    // global timelock setting (in seconds), also set by validator (initialy set in cTor)
+    // global timelock setting (in seconds), also set by validator (set in initialise call, can be changed by fork)
     uint64 private timelock;
+    
+    // prevent double initialisation
+    bool private initialised;
     
     // executor addresses, changeable anytime by the governance
     address[] private executors;
@@ -46,8 +51,16 @@ contract GovernanceSettings is IGovernanceSettings {
         address[] newExecutors
     );
 
-    constructor(address _governanceAddress, uint256 _timelock, address[] memory _executors) {
+    /**
+     * Perform initialisation, which cannot be done in constructor, since this is a genesis contract.
+     * Can only be called once.
+     */
+    function initialise(address _governanceAddress, uint256 _timelock, address[] memory _executors) external {
+        require(msg.sender == GENESIS_GOVERNANCE, "only genesis governance");
+        require(!initialised, "already initialised");
         require(_timelock < MAX_TIMELOCK, "timelock too large");
+        // set the field values
+        initialised = true;
         governanceAddress = _governanceAddress;
         timelock = uint64(_timelock);
         _setExecutors(_executors);

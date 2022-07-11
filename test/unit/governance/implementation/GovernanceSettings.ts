@@ -1,12 +1,16 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { constants, expectRevert } from "@openzeppelin/test-helpers";
+import { network } from "hardhat";
 import { GovernanceSettingsInstance, GovernedWithTimelockMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/constants";
+import { testDeployGovernanceSettings } from "../../../utils/contract-test-helpers";
 import { compareArrays, findRequiredEvent } from "../../../utils/test-helpers";
 
-const GovernanceSettings = artifacts.require("GovernanceSettings"); 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
 
 contract(`GovernanceSettings.sol; ${getTestFile(__filename)}; GovernanceSettings unit tests`, async accounts => {
+    const GOVERNANCE_SETTINGS_ADDRESS = "0x1000000000000000000000000000000000000007";
+    const GENESIS_GOVERNANCE_ADDRESS = "0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7";
+    
     const initialGovernance = accounts[10];
     const governance = accounts[11];
     const executor = accounts[12];
@@ -15,9 +19,9 @@ contract(`GovernanceSettings.sol; ${getTestFile(__filename)}; GovernanceSettings
     let mock: GovernedWithTimelockMockInstance;
     
     beforeEach(async () => {
-        governanceSettings = await GovernanceSettings.new(governance, 3600, [governance, executor]);
+        governanceSettings = await testDeployGovernanceSettings(governance, 3600, [governance, executor]);
         mock = await GovernedWithTimelockMock.new(initialGovernance);
-        await mock.switchToProductionMode(governanceSettings.address, { from: initialGovernance });
+        await mock.switchToProductionMode({ from: initialGovernance });
     });
     
     it("can change executors", async () => {
@@ -71,6 +75,23 @@ contract(`GovernanceSettings.sol; ${getTestFile(__filename)}; GovernanceSettings
     
     it("changing timelock should check size", async () => {
         await expectRevert(governanceSettings.setTimelock("1000000000000000"),
+            "timelock too large");
+    });
+
+    it("cannot initialise twice", async () => {
+        await expectRevert(governanceSettings.initialise(accounts[11], 3600, [governance, executor], { from: GENESIS_GOVERNANCE_ADDRESS }),
+            "already initialised");
+    });
+
+    it("only genesis governance can initialise", async () => {
+        await network.provider.send("hardhat_setStorageAt", [GOVERNANCE_SETTINGS_ADDRESS, "0x0", constants.ZERO_BYTES32]);  // clear initialisation
+        await expectRevert(governanceSettings.initialise(accounts[11], 3600, [governance, executor], { from: accounts[10] }),
+            "only genesis governance");
+    });
+
+    it("check timelock size in initialisation", async () => {
+        await network.provider.send("hardhat_setStorageAt", [GOVERNANCE_SETTINGS_ADDRESS, "0x0", constants.ZERO_BYTES32]);  // clear initialisation
+        await expectRevert(governanceSettings.initialise(accounts[11], "1000000000000000", [governance, executor], { from: GENESIS_GOVERNANCE_ADDRESS }),
             "timelock too large");
     });
 });

@@ -14,6 +14,7 @@ import "../../userInterfaces/IDistributionToDelegators.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 import "../interface/IITokenPool.sol";
 import "../../genesis/implementation/DistributionTreasury.sol";
+import "../../utils/implementation/AddressSet.sol";
 
 /**
  * @title Distribution to delegators
@@ -21,11 +22,13 @@ import "../../genesis/implementation/DistributionTreasury.sol";
  * The remaining amount is distributed by this contract, with a set rate every 30 days
  * @notice The balance that will be added to this contract must initially be a part of circulating supply
  **/
+//solhint-disable-next-line max-states-count
 contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     Governed, ReentrancyGuard, AddressUpdatable
 {
     using SafeMath for uint256;
     using SafePct for uint256;
+    using AddressSet for AddressSet.State;
 
     // constants
     uint256 internal constant WEEK = 7 days;
@@ -52,6 +55,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_TREASURY_ONLY = "treasury only";
     string internal constant ERR_ALREADY_STARTED = "already started";
     string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
+    string internal constant ERR_EXECUTOR_ONLY = "claim executor only";
+    string internal constant ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
 
     // storage
     uint256 public totalEntitlementWei;     // Total wei to be distributed (all but initial airdrop)
@@ -77,6 +82,12 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     address[] public optOutAddresses; // all opted out addresses (confirmed by governance)
     bool public stopped;
 
+    // mapping reward owner address => executor set
+    mapping(address => AddressSet.State) private claimExecutorSet;
+    
+    // mapping reward owner address => claim recipient address
+    mapping(address => AddressSet.State) private allowedClaimRecipientSet;
+
     // contracts
     IPriceSubmitter public immutable priceSubmitter;
     DistributionTreasury public immutable treasury;
@@ -90,6 +101,11 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     modifier mustBalance {
         _;
         require (_getExpectedBalance() <= address(this).balance, ERR_BALANCE_TOO_LOW);
+    }
+
+    modifier onlyRewardExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) {
+        _checkExecutorAndAllowedRecipient(_rewardOwner, _recipient);
+        _;
     }
 
     /**
@@ -182,16 +198,79 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     }
 
     /**
+     * Set the addresses of executors, who are allowed to call claimByExecutor, claimAndWrapByExecutor
+     * and claimToPersonalDelegationAccountByExecutor.
+     * @param _executors The new executors. All old executors will be deleted and replaced by these.
+     */    
+    function setClaimExecutors(address[] memory _executors) external override {
+        claimExecutorSet[msg.sender].replaceAll(_executors);
+        emit ClaimExecutorsChanged(msg.sender, _executors);
+    }
+    
+    /**
+     * Set the addresses of allowed recipients in the methods claimByExecutor and claimAndWrapByExecutor.
+     * Apart from these, the reward owner is always an allowed recipient.
+     * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
+     */    
+    function setAllowedClaimRecipients(address[] memory _recipients) external override {
+        allowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
+        emit AllowedClaimRecipientsChanged(msg.sender, _recipients);
+    }
+
+    /**
      * @notice Method for claiming unlocked airdrop amounts for specified month
      * @param _recipient address representing the recipient of the reward
      * @param _month month of interest
      * @return _amountWei claimed wei
      */
-    function claim(address payable _recipient, uint256 _month) external override 
+    function claim(address _recipient, uint256 _month) external override 
         entitlementStarted mustBalance nonReentrant
         returns(uint256 _amountWei)
     {
-        return _claim(msg.sender, _recipient, _month);
+        return _claimOrWrap(msg.sender, _recipient, _month, false);
+    }
+
+    /**
+     * @notice Method for claiming and wrapping unlocked airdrop amounts for specified month
+     * @param _recipient address representing the recipient of the reward
+     * @param _month month of interest
+     * @return _amountWei claimed wei
+     */
+    function claimAndWrap(address _recipient, uint256 _month) external override 
+        entitlementStarted mustBalance nonReentrant
+        returns(uint256 _amountWei)
+    {
+        return _claimOrWrap(msg.sender, _recipient, _month, true);
+    }
+
+    /**
+     * @notice Method for claiming unlocked airdrop amounts for specified month by executor
+     * @param _rewardOwner address of the reward owner
+     * @param _recipient address representing the recipient of the reward
+     * @param _month month of interest
+     * @return _amountWei claimed wei
+     */
+    function claimByExecutor(address _rewardOwner, address _recipient, uint256 _month) external override 
+        entitlementStarted mustBalance nonReentrant
+        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
+        returns(uint256 _amountWei)
+    {
+        return _claimOrWrap(_rewardOwner, _recipient, _month, false);
+    }
+
+    /**
+     * @notice Method for claiming and wrapping unlocked airdrop amounts for specified month by executor
+     * @param _rewardOwner address of the reward owner
+     * @param _recipient address representing the recipient of the reward
+     * @param _month month of interest
+     * @return _amountWei claimed wei
+     */
+    function claimAndWrapByExecutor(address _rewardOwner, address _recipient, uint256 _month) external override 
+        entitlementStarted mustBalance nonReentrant
+        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
+        returns(uint256 _amountWei)
+    {
+        return _claimOrWrap(_rewardOwner, _recipient, _month, true);
     }
 
     /**
@@ -205,7 +284,24 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     {
         address delegationAccount = delegationAccountManager.accountToDelegationAccount(msg.sender);
         require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
-        return _claim(msg.sender, payable(delegationAccount), _month);
+        return _claimOrWrap(msg.sender, delegationAccount, _month, false);
+    }
+
+    /**
+     * @notice Method for claiming unlocked airdrop amounts for rewardOwner and specified month
+     *         to personal delegation account by executor
+     * @param _rewardOwner address of the reward owner
+     * @param _month month of interest
+     * @return _amountWei claimed wei
+     */
+    function claimToPersonalDelegationAccountByExecutor(address _rewardOwner, uint256 _month) external override 
+        entitlementStarted mustBalance nonReentrant
+        returns(uint256 _amountWei)
+    {
+        require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, ERR_EXECUTOR_ONLY);
+        address delegationAccount = delegationAccountManager.accountToDelegationAccount(_rewardOwner);
+        require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
+        return _claimOrWrap(_rewardOwner, delegationAccount, _month, false);
     }
 
     /**
@@ -288,6 +384,22 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         require(block.timestamp.sub(entitlementStartTs).div(MONTH) < NUMBER_OF_MONTHS, ERR_ALREADY_FINISHED);
         return MONTH.sub(block.timestamp.sub(entitlementStartTs).mod(MONTH));
     }
+    
+    /**
+     * Get the addresses of executors, who are allowed to call claimByExecutor, claimAndWrapByExecutor
+     * and claimToPersonalDelegationAccountByExecutor.
+     */    
+    function claimExecutors(address _rewardOwner) external view override returns (address[] memory) {
+        return claimExecutorSet[_rewardOwner].list;
+    }
+
+    /**
+     * Get the addresses of allowed recipients in the methods claimByExecutor and claimAndWrapByExecutor.
+     * Apart from these, the reward owner is always an allowed recipient.
+     */    
+    function allowedClaimRecipients(address _rewardOwner) external view override returns (address[] memory) {
+        return allowedClaimRecipientSet[_rewardOwner].list;
+    }
 
     /**
      * @notice Returns the current month
@@ -336,7 +448,14 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @param _recipient address representing the recipient of the reward
      * @param _month month of interest
      */
-    function _claim(address _rewardOwner, address payable _recipient, uint256 _month) internal returns(uint256) {
+    function _claimOrWrap(
+        address _rewardOwner,
+        address _recipient,
+        uint256 _month,
+        bool _wrap
+    )
+        internal returns(uint256)
+    {
         (uint256 weight, uint256 claimableWei) = _getClaimableWei(_rewardOwner, _month);
         // Make sure we are not withdrawing 0 funds
         if (claimableWei > 0) {
@@ -345,16 +464,42 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
             totalClaimedWei = totalClaimedWei.add(claimableWei);
             totalUnclaimedAmount[_month] = totalUnclaimedAmount[_month].sub(claimableWei);
             totalUnclaimedWeight[_month] = totalUnclaimedWeight[_month].sub(weight);
-            // transfer funds
-            /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send          // amount always calculated by _getClaimableWei
-            (bool success, ) = _recipient.call{value: claimableWei}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, ERR_CLAIM_FAILED);
+
+            if (_wrap) {
+                _wrapFunds(_recipient, claimableWei);
+            } else {
+                _transferFunds(_recipient, claimableWei);
+            }
             // Emit the claim event
             emit AccountClaimed(_rewardOwner, _recipient, _month, claimableWei);
         }
         return claimableWei;
+    }
+
+    /**
+     * @notice Wrap (deposit) `_claimableAmount` to `_recipient` on WNat.
+     * @param _recipient            address representing the reward recipient
+     * @param _claimableAmount      number representing the amount to transfer
+     */
+    function _wrapFunds(address _recipient, uint256 _claimableAmount) internal {
+        // transfer total amount (state is updated and events are emitted in _claimOrWrap)
+        //slither-disable-next-line arbitrary-send          // amount always calculated by _claimOrWrap
+        wNat.depositTo{value: _claimableAmount}(_recipient);
+    }
+
+    /**
+     * @notice Transfers `_claimableAmount` to `_recipient`.
+     * @param _recipient            address representing the reward recipient
+     * @param _claimableAmount      number representing the amount to transfer
+     * @dev Uses low level call to transfer funds.
+     */
+    function _transferFunds(address _recipient, uint256 _claimableAmount) internal {
+        // transfer total amount (state is updated and events are emitted in _claimOrWrap)
+        /* solhint-disable avoid-low-level-calls */
+        //slither-disable-next-line arbitrary-send          // amount always calculated by _claimOrWrap
+        (bool success, ) = _recipient.call{value: _claimableAmount}("");
+        /* solhint-enable avoid-low-level-calls */
+        require(success, ERR_CLAIM_FAILED);
     }
 
     /**
@@ -514,6 +659,13 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         }
         assert(_weight < unclaimedWeight);
         return (_weight, unclaimedAmount.mulDiv(_weight, unclaimedWeight));
+    }
+
+    function _checkExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) private view {
+        require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, 
+            ERR_EXECUTOR_ONLY);
+        require(_recipient == _rewardOwner || allowedClaimRecipientSet[_rewardOwner].index[_recipient] != 0,
+            ERR_RECIPIENT_NOT_ALLOWED);
     }
 
     /**
