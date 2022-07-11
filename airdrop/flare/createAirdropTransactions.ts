@@ -299,8 +299,6 @@ if(healthy){
         convertedAirdropData.processedAccounts,
         InitialAirdropAddress?.address || '',
         DistributionAddress?.address || '',
-        airdropStart,
-        distributionStart,
         initialAirdropSenderAddress,
         distributionSenderAddress,
         gasPrice,

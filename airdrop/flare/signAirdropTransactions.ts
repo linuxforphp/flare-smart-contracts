@@ -85,9 +85,9 @@ async function main(transactionsFile:string, outputFile:string, logPath:string, 
     let totalGasInitialAirdrop = new BigNumber(0);
     let totalGasDistribution = new BigNumber(0);
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+    bar1.start(unsignedTransactions.length, 0);
     if(!quiet){
         console.log("Signing Transactions")
-        bar1.start(unsignedTransactions.length, 0);
     }
     let progress = 0;
     for(let tx of unsignedTransactions){
@@ -111,9 +111,9 @@ async function main(transactionsFile:string, outputFile:string, logPath:string, 
         }
         signedTransactions.push(newRawTx)
         progress += 1;
-        if(!quiet) bar1.update(progress);
+        bar1.update(progress);
     }
-    if(!quiet) bar1.stop();
+    bar1.stop();
     // logMessage(logFileName, `Total balance in signed transactions                 : ${totalBalance.toFixed()}`, quiet);
     logMessage(logFileName, `Total gas price in signed transactions for Initial Airdrop  : ${totalGasInitialAirdrop.toString(10)}`, quiet);
     logMessage(logFileName, `Total gas price in signed transactions for Distribution     : ${totalGasDistribution.toString(10)}`, quiet);
