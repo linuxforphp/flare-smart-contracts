@@ -361,7 +361,7 @@ export const flareGenesisAccountDefinitions: GenesisAccount[] = [
     },
     {
         id: 73,
-        address: "0xCFbB73026f415d0b4168232846caed3CD8e305CE",
+        address: "0x305811ECf33939b795F7b4595e926C8211058572",
         initialEntryNat: "1,000,000,000"
     },
     {

@@ -399,6 +399,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
       // increase time to enable claiming
       await time.increaseTo(now.addn(86400 * 31));
       // Act
+      await expectRevert(escrow.claimByExecutor(claimants[0], accounts[50], { from: executor }), "Recipient not allowed");
       let openingBalance = BN(await web3.eth.getBalance(claimants[0]));
       await escrow.claimByExecutor(claimants[0], claimants[0], { from: executor });
       // Assert
