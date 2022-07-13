@@ -81,17 +81,15 @@ test-contract-unit-1:
     <<: *yarn-setup
     script:
         - yarn c
-        - env TEST_PATH=./test/unit/ftso/lib yarn hardhat test --network hardhat
-        - env TEST_PATH=./test/unit/ftso/priceProviderDummyContracts yarn hardhat test --network hardhat
-        - yarn hardhat test --network hardhat test/unit/ftso/implementation/Ftso.ts
+        - env TEST_PATH=./test/unit/ftso yarn hardhat test --network hardhat
 
 test-contract-unit-2:
     stage: test
     <<: *yarn-setup
     script:
         - yarn c
-        - yarn hardhat test --network hardhat test/unit/ftso/implementation/FtsoManager.ts
-        - yarn hardhat test --network hardhat test/unit/ftso/implementation/FTSOMedian.ts
+        - env TEST_PATH=./test/unit/addressUpdater yarn hardhat test --network hardhat
+        - env TEST_PATH=./test/unit/personalDelegation yarn hardhat test --network hardhat
 
 test-contract-unit-3:
     stage: test

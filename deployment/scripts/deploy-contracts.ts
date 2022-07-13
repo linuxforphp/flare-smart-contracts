@@ -233,7 +233,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
   await initialAirdrop.setLatestAirdropStart(parameters.initialAirdropLatestStart, { from: genesisGovernance });
 
-  // GovernanceSettings (do not add it to AddressUpdater)
   // default executors are governancePublicKey and governanceExecutorPublicKey if set
   let governanceSettings: GovernanceSettingsInstance;
   
@@ -258,7 +257,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   }
 
   await governanceSettings.initialise(parameters.governancePublicKey, parameters.governanceTimelock, executors, { from: genesisGovernance });
-  spewNewContractInfo(contracts, null, GovernanceSettings.contractName, `GovernanceSettings.sol`, governanceSettings.address, quiet);
+  spewNewContractInfo(contracts, addressUpdaterContracts, GovernanceSettings.contractName, `GovernanceSettings.sol`, governanceSettings.address, quiet);
 
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);

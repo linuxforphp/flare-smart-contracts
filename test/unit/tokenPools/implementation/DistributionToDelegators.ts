@@ -34,6 +34,8 @@ const ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero"
 const ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
 const ERR_ALREADY_STARTED = "already started";
 const ERR_TREASURY_ONLY = "treasury only";
+const ERR_EXECUTOR_ONLY = "claim executor only";
+const ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
 
 let priceSubmitterMock: MockContractInstance;
 let wNatMock: MockContractInstance;
@@ -229,6 +231,48 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
         await network.provider.send('evm_setAutomine', [true]);
       }
     })
+    
+    it("Should add executors", async() => {
+      // Assemble
+      // Act
+      await distribution.setClaimExecutors([accounts[2], accounts[3]], { from: accounts[1] });
+      // Assert
+      const executors = await distribution.claimExecutors(accounts[1]);
+      expect(executors[0]).to.equals(accounts[2]);
+      expect(executors[1]).to.equals(accounts[3]);
+      expect(executors.length).to.equals(2);
+    });
+
+    it("Should remove executors", async() => {
+      // Assemble
+      await distribution.setClaimExecutors([accounts[2]], { from: accounts[1] });
+      // Act
+      await distribution.setClaimExecutors([], { from: accounts[1] });
+      // Assert
+      const executors = await distribution.claimExecutors(accounts[1]);
+      expect(executors.length).to.equals(0);
+    });
+
+    it("Should add recipients", async() => {
+      // Assemble
+      // Act
+      await distribution.setAllowedClaimRecipients([accounts[2], accounts[3]], { from: accounts[1] });
+      // Assert
+      const recipients = await distribution.allowedClaimRecipients(accounts[1]);
+      expect(recipients[0]).to.equals(accounts[2]);
+      expect(recipients[1]).to.equals(accounts[3]);
+      expect(recipients.length).to.equals(2);
+    });
+
+    it("Should remove recipients", async() => {
+      // Assemble
+      await distribution.setAllowedClaimRecipients([accounts[2]], { from: accounts[1] });
+      // Act
+      await distribution.setAllowedClaimRecipients([], { from: accounts[1] });
+      // Assert
+      const recipients = await distribution.allowedClaimRecipients(accounts[1]);
+      expect(recipients.length).to.equals(0);
+    });
   });
 
   describe("Claiming", async () => {
@@ -299,26 +343,33 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       const claimTx1 = await distribution.claim(accounts[5], 0, {from: accounts[1]});
       const endBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
 
+      const executor = accounts[55];
+      await distribution.setClaimExecutors([executor], { from: accounts[2] });
       const claimable2 = await distribution.getClaimableAmount(0, {from: accounts[2]});
-      const startBalance6 = toBN(await web3.eth.getBalance(accounts[6]));
-      const claimTx2 = await distribution.claim(accounts[6], 0, {from: accounts[2]});
-      const endBalance6 = toBN(await web3.eth.getBalance(accounts[6]));
+      const startBalance6 = toBN(await web3.eth.getBalance(accounts[2]));
+      await expectRevert(distribution.claimByExecutor(accounts[2], accounts[50], 0, { from: accounts[8] }), ERR_EXECUTOR_ONLY);
+      await expectRevert(distribution.claimByExecutor(accounts[2], accounts[50], 0, { from: executor }), ERR_RECIPIENT_NOT_ALLOWED);
+      const claimTx2 = await distribution.claimByExecutor(accounts[2], accounts[2], 0, {from: executor});
+      const endBalance6 = toBN(await web3.eth.getBalance(accounts[2]));
 
+      await distribution.setClaimExecutors([executor], { from: accounts[3] });
       const claimTx3Promise = distribution.claimToPersonalDelegationAccount(0, {from: accounts[3]});
       await expectRevert(claimTx3Promise, ERR_DELEGATION_ACCOUNT_ZERO);
+      await expectRevert(distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: accounts[2] }), ERR_EXECUTOR_ONLY);
+      await expectRevert(distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: executor }), ERR_DELEGATION_ACCOUNT_ZERO);
       const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
       const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[3]).encodeABI();
       await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
       const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
       const startBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
-      const claimTx3 = await distribution.claimToPersonalDelegationAccount(0, {from: accounts[3]});
+      const claimTx3 = await distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: executor })
       const endBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
       // Assert
       assert.equal(claimable1.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500 + 600 + 1000).divn(500 + 600 + 1000 + 2000 + 1800 + 800 + 1500 + 2000 + 2100).toNumber());
       expectEvent(claimTx1, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable1});
       expect(endBalance5.sub(startBalance5).toNumber()).to.equals(claimable1.toNumber());
       assert.equal(claimable2.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).muln(2000 + 1800 + 800).divn(2000 + 1800 + 800 + 1500 + 2000 + 2100).toNumber());
-      expectEvent(claimTx2, "AccountClaimed", {whoClaimed: accounts[2], sentTo: accounts[6], month: toBN(0), amountWei: claimable2});
+      expectEvent(claimTx2, "AccountClaimed", {whoClaimed: accounts[2], sentTo: accounts[2], month: toBN(0), amountWei: claimable2});
       expect(endBalance6.sub(startBalance6).toNumber()).to.equals(claimable2.toNumber());
       assert.equal(claimable3.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).sub(claimable2).toNumber());
       expectEvent(claimTx3, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
@@ -331,7 +382,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       expect((await distribution.totalUnclaimedWeight(0)).toNumber()).to.equals(0);
     });
 
-    it("Should not be able to claim after opt out - others can still claim 2.37% after day 30", async () => {
+    it("Should not be able to claim after opt out - others can still claim or wrap 2.37% after day 30", async () => {
       // Assemble
       const optOutTx = await distribution.optOutOfAirdrop({from: accounts[2]});
       expectEvent(optOutTx, "AccountOptOut", {theAccount: accounts[2], confirmed: false});
@@ -348,6 +399,9 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await distribution.setEntitlementStart(start, {from: GOVERNANCE_ADDRESS});
       await createSomeBlocksAndProceed(start, days);
       // Act
+      const executor = accounts[55];
+      await distribution.setClaimExecutors([executor], { from: accounts[3] });
+      await distribution.setAllowedClaimRecipients([accounts[7]], { from: accounts[3] });
       const claimable1 = await distribution.getClaimableAmount(0, {from: accounts[1]});
       const startBalance5 = toBN(await web3.eth.getBalance(accounts[5]));
       const claimTx1 = await distribution.claim(accounts[5], 0, {from: accounts[1]});
@@ -355,15 +409,14 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       const claimable1_after = await distribution.getClaimableAmountOf(accounts[1], 0);
       const claimed1 = await distribution.getClaimedAmountOf(accounts[1], 0, {from: accounts[1]});
       const claimable4_1 = await distribution.getClaimableAmountOf(accounts[4], 0);
-      const claimTx4 = await distribution.claim(accounts[6], 0, {from: accounts[4]});
+      const claimTx4 = await distribution.claimAndWrap(accounts[6], 0, {from: accounts[4]});
       const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
-      const startBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
-      const claimTx3_1 = await distribution.claim(accounts[7], 0, {from: accounts[3]});
-      const endBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
+      const claimTx3_1 = await distribution.claimAndWrapByExecutor(accounts[3], accounts[7], 0, {from: executor});
       const claimable3_after = await distribution.getClaimableAmountOf(accounts[3], 0, {from: accounts[3]});
       const claimed3 = await distribution.getClaimedAmount(0, {from: accounts[3]});
       const claimable4_2 = await distribution.getClaimableAmountOf(accounts[4], 0);
       const claimTx3_2 = await distribution.claim(accounts[7], 0, {from: accounts[3]});
+      const claimTx3_3 = await distribution.claimAndWrap(accounts[7], 0, {from: accounts[3]});
       // Assert
       assert.equal(claimable1.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500).divn(500 + 1500).toNumber());
       expectEvent(claimTx1, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable1});
@@ -374,11 +427,15 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       expectEvent.notEmitted(claimTx4, "AccountClaimed");
       assert.equal(claimable3.toNumber(), totalEntitlementWei.muln(237).divn(8500).sub(claimable1).toNumber());
       expectEvent(claimTx3_1, "AccountClaimed", {whoClaimed: accounts[3], sentTo: accounts[7], month: toBN(0), amountWei: claimable3});
-      expect(endBalance7.sub(startBalance7).toNumber()).to.equals(claimable3.toNumber());
+      const depositTo = wNatInterface.contract.methods.depositTo(accounts[7]).encodeABI();
+      const invocationCount1 = await wNatMock.invocationCountForCalldata.call(depositTo);
+      assert.equal(invocationCount1.toNumber(), 1);
+      expect(await web3.eth.getBalance(wNatMock.address)).to.equals(claimable3.toString());
       assert.equal(claimable3_after.toNumber(), 0);
       assert.equal(claimable3.toNumber(), claimed3.toNumber());
       assert.equal(claimable4_2.toNumber(), 0);
       expectEvent.notEmitted(claimTx3_2, "AccountClaimed");
+      expectEvent.notEmitted(claimTx3_3, "AccountClaimed");
       expect((await distribution.startBlockNumber(0)).toNumber()).to.be.gte(startBlockNumber);
       expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
       expect((await distribution.totalClaimedWei()).toNumber()).to.equals(claimable1.add(claimable3).toNumber());
@@ -410,12 +467,15 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       assert.equal(claimedWei1.toString(10), "0");
 
       // Act
+      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
+      const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[1]).encodeABI();
+      await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
       const claimable = await distribution.getClaimableAmount(0, {from: accounts[1]});
-      const startBalance = toBN(await web3.eth.getBalance(accounts[5]));
-      const claimTx = await distribution.claim(accounts[5], 0, {from: accounts[1]});
-      const endBalance = toBN(await web3.eth.getBalance(accounts[5]));
+      const startBalance = toBN(await web3.eth.getBalance(accounts[7]));
+      const claimTx = await distribution.claimToPersonalDelegationAccount(0, { from: accounts[1] })
+      const endBalance = toBN(await web3.eth.getBalance(accounts[7]));
       assert.equal(claimable.toNumber(), totalEntitlementWei.muln(237).divn(8500).muln(500).divn(500 + 2000 + 1500).toNumber());
-      expectEvent(claimTx, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[5], month: toBN(0), amountWei: claimable});
+      expectEvent(claimTx, "AccountClaimed", {whoClaimed: accounts[1], sentTo: accounts[7], month: toBN(0), amountWei: claimable});
       expect(endBalance.sub(startBalance).toNumber()).to.equals(claimable.toNumber());
       expect((await distribution.startBlockNumber(0)).toNumber()).to.be.gte(startBlockNumber);
       expect((await distribution.endBlockNumber(0)).toNumber()).to.be.lt(startBlockNumber + numberOfBlocks);
