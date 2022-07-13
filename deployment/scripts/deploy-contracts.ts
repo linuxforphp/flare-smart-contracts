@@ -308,7 +308,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
 
   // FtsoRewardManager contract (must link first)
-  FtsoRewardManager.link(await DataProviderFee.new());
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     addressUpdater.address,
@@ -401,7 +400,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   }
 
   // FtsoManager contract (must link with library first)
-  FtsoManager.link(await FtsoManagement.new() as any)
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     flareDaemon.address,

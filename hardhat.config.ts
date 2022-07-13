@@ -24,6 +24,7 @@ import { TASK_CONSOLE } from "hardhat/builtin-tasks/task-names";
 import "./type-extensions";
 import { deployContractsGovernance } from "./deployment/scripts/deploy-contracts-governance";
 import { switchToProductionMode } from "./deployment/scripts/switch-to-production-mode";
+import { linkContracts } from "./deployment/scripts/link-contracts";
 
 
 dotenv.config();
@@ -97,6 +98,11 @@ task("deploy-contracts", "Deploy all contracts")
     }
   });
 
+task("link-contracts", "Link contracts with external libraries")
+  .setAction(async (args, hre, runSuper) => {
+    await linkContracts(hre);
+  });
+  
 task("deploy-contracts-governance", "Deploy governance contracts")
   .addFlag("quiet", "Suppress console output")
   .setAction(async (args, hre, runSuper) => {

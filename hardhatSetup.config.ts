@@ -165,7 +165,8 @@ const config: HardhatUserConfig = {
       "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
         version: "0.6.12",
         settings: {}
-      }
+      },
+      // EXTRA_OVERRIDES
     }
   },
 

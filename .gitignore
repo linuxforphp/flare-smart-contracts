@@ -80,3 +80,4 @@ deployments
 airdrop/files
 airdrop/flare/files
 airdrop/songbird/files
+/hardhat-link.config.ts
