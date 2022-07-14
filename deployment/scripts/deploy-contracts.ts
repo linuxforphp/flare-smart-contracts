@@ -51,8 +51,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Check whether genesis governance account has some funds. If not, wire 1 NAT 
   let genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
   if (genesisGovernanceBalance == '0') {
-    console.error("Sending 415 NAT to genesis governance account ...");
-    const toTransfer = web3.utils.toWei("415")
+    console.error("Sending 515 NAT to genesis governance account ...");
+    const toTransfer = web3.utils.toWei("515")
     await waitFinalize3(hre, deployerAccount.address, () => web3.eth.sendTransaction({ from: deployerAccount.address, to: genesisGovernanceAccount.address, value: toTransfer }));
   }
   genesisGovernanceBalance = await web3.eth.getBalance(genesisGovernanceAccount.address);
@@ -308,7 +308,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
 
   // FtsoRewardManager contract (must link first)
-  FtsoRewardManager.link(await DataProviderFee.new());
   const ftsoRewardManager = await FtsoRewardManager.new(
     deployerAccount.address,
     addressUpdater.address,
@@ -401,7 +400,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   }
 
   // FtsoManager contract (must link with library first)
-  FtsoManager.link(await FtsoManagement.new() as any)
   const ftsoManager = await FtsoManager.new(
     deployerAccount.address,
     flareDaemon.address,
