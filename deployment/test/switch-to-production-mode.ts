@@ -192,9 +192,9 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.TEAM_ESCROW, async () => {
+  describe(Contracts.ESCROW, async () => {
     it(SHOULD_HAVE_TRANSERED_GOVERNANCE, async () => {
-      await checkProductionSwitch(Contracts.TEAM_ESCROW);
+      await checkProductionSwitch(Contracts.ESCROW);
     });
   });
 
