@@ -17,7 +17,7 @@ import {
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  TeamEscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -88,7 +88,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const IncentivePool: IncentivePoolContract = artifacts.require("IncentivePool");
   const IncentivePoolAllocation: IncentivePoolAllocationContract = artifacts.require("IncentivePoolAllocation");
   const InitialAirdrop: InitialAirdropContract = artifacts.require("InitialAirdrop");
-  const TeamEscrow: TeamEscrowContract = artifacts.require("TeamEscrow");
+  const Escrow: EscrowContract = artifacts.require("Escrow");
   const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
   const DelegationAccountClonable: DelegationAccountClonableContract = artifacts.require("DelegationAccountClonable");
   const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
@@ -325,8 +325,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
   // Team escrow contract
-  const teamEscrow = await TeamEscrow.new(deployerAccount.address, addressUpdater.address, parameters.distributionLatestEntitlementStart);
-  spewNewContractInfo(contracts, addressUpdaterContracts, TeamEscrow.contractName, `TeamEscrow.sol`, teamEscrow.address, quiet);
+  const escrow = await Escrow.new(deployerAccount.address, addressUpdater.address, parameters.distributionLatestEntitlementStart);
+  spewNewContractInfo(contracts, addressUpdaterContracts, Escrow.contractName, `Escrow.sol`, escrow.address, quiet);
 
   // Inflation allocation needs to know about reward managers
   let receiversAddresses = []
@@ -448,7 +448,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     supply.address,
     incentivePoolAllocation.address,
     incentivePool.address,
-    teamEscrow.address
+    escrow.address
   ];
   if (parameters.deployDistributionContract) {
     addressUpdatableContracts.push(delegationAccountManager!.address);
