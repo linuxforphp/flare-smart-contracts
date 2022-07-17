@@ -67,7 +67,7 @@ export async function switchToProductionMode(
     const InitialAirdrop = artifacts.require("InitialAirdrop");
     const FtsoRegistry = artifacts.require("FtsoRegistry");
     const WNat = artifacts.require("WNat");
-    const TeamEscrow = artifacts.require("TeamEscrow");
+    const Escrow = artifacts.require("Escrow");
     const DelegationAccountManager = artifacts.require("DelegationAccountManager");
 
     // Get deployed contracts
@@ -89,7 +89,7 @@ export async function switchToProductionMode(
     const initialAirdrop = await InitialAirdrop.at(contracts.getContractAddress(Contracts.INITIAL_AIRDROP));
     const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
     const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
-    const teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
+    const escrow = await Escrow.at(contracts.getContractAddress(Contracts.ESCROW));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
@@ -117,5 +117,5 @@ export async function switchToProductionMode(
     await cleanupBlockNumberManager.switchToProductionMode();
     await ftsoRegistry.switchToProductionMode();
     await wNat.switchToProductionMode();
-    await teamEscrow.switchToProductionMode();
+    await escrow.switchToProductionMode();
 }

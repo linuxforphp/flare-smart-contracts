@@ -65,9 +65,9 @@
     "address": "0xB5cC96c7831Db2b446eA5BD1b006020DD32B6d3a"
   },
   {
-    "name": "TeamEscrow",
-    "contractName": "TeamEscrow.sol",
-    "address": "0x9BADDa2FdE4AA263F3c84b647e51cd467A1BD360"
+    "name": "Escrow",
+    "contractName": "Escrow.sol",
+    "address": "0x42A362eE27e239c17d97DA5765D052779AcfDC94"
   },
   {
     "name": "FtsoRegistry",

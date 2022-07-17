@@ -12,7 +12,7 @@ import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/AddressSet.sol";
 
 
-contract TeamEscrow is Governed, IITokenPool, AddressUpdatable  {
+contract Escrow is Governed, IITokenPool, AddressUpdatable  {
     using SafeCast for uint256;
     using SafeMath for uint256;
     using SafePct for uint256;
