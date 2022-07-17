@@ -3,7 +3,7 @@ import { Contracts } from "../../../deployment/scripts/Contracts";
 import { 
   FlareDaemonMockInstance,
   InflationInstance,
-  TeamEscrowInstance, 
+  EscrowInstance, 
   SupplyInstance, 
   FtsoRewardManagerInstance, 
   PercentageProviderMockInstance } from "../../../typechain-truffle";
@@ -20,7 +20,7 @@ const FlareDaemonMock = artifacts.require("FlareDaemonMock");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
 const Supply = artifacts.require("Supply");
-const TeamEscrow = artifacts.require("TeamEscrow");
+const Escrow = artifacts.require("Escrow");
 
 const BN = web3.utils.toBN;
 
@@ -31,7 +31,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
   let mockFlareDaemon: FlareDaemonMockInstance;
   let supply: SupplyInstance;
   let ftsoRewardManager: FtsoRewardManagerInstance;
-  let teamEscrow: TeamEscrowInstance;
+  let escrow: EscrowInstance;
   const initialGenesisAmountWei = BN(15000000000).mul(BN(10).pow(BN(18)));
   const foundationSupplyWei = BN(2250000000).mul(BN(10).pow(BN(18)));
   const circulatingSupply = initialGenesisAmountWei.sub(foundationSupplyWei);
@@ -79,7 +79,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
 
     // Wire up escrow contract
     const latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
-    teamEscrow = await TeamEscrow.new(accounts[0], ADDRESS_UPDATER, latestStart);
+    escrow = await Escrow.new(accounts[0], ADDRESS_UPDATER, latestStart);
 
     // Tell supply about inflation
     await supply.updateContractAddresses(
@@ -96,12 +96,12 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
       [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
     // tell escrow about WNat contract
-    await teamEscrow.updateContractAddresses(
+    await escrow.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT]),
       [ADDRESS_UPDATER, (await MockContract.new()).address], {from: ADDRESS_UPDATER});
     // enable claiming
     await ftsoRewardManager.enableClaims();
-    await supply.addTokenPool(teamEscrow.address, 0, {from: accounts[0]});
+    await supply.addTokenPool(escrow.address, 0, {from: accounts[0]});
 
   });
 
@@ -206,11 +206,11 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     it("Should continue rolling and update according to claiming schedule from escrow contract", async() => {
       const base_amount = BN(10).pow(BN(9)).muln(100)
       const lockedAmount1 = BN(85).mul(base_amount).div(BN(100));
-      teamEscrow.lock({from: accounts[1], value: lockedAmount1});
+      escrow.lock({from: accounts[1], value: lockedAmount1});
       const lockedAmount2 = lockedAmount1.muln(2);
-      teamEscrow.lock({from: accounts[2], value: lockedAmount2});
+      escrow.lock({from: accounts[2], value: lockedAmount2});
       const lockedAmount3 = lockedAmount1.muln(3);
-      teamEscrow.lock({from: accounts[3], value: lockedAmount3});
+      escrow.lock({from: accounts[3], value: lockedAmount3});
 
       const fullLockedAmount = lockedAmount1.add(lockedAmount2).add(lockedAmount3);
 
@@ -229,7 +229,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       // Force a block in order to get most up to date time
       await time.advanceBlock();
       const now = (await time.latest()).addn(10);
-      await teamEscrow.setClaimingStartTs(now, {from: accounts[0]});
+      await escrow.setClaimingStartTs(now, {from: accounts[0]});
       await time.increaseTo(now.addn(24*60*60*30));
       await time.advanceBlock();
 
@@ -271,11 +271,11 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       await time.advanceBlock();
       const now2 = await time.latest()
 
-      await teamEscrow.claim({from: accounts[1]});
-      await teamEscrow.claim({from: accounts[3]});
+      await escrow.claim({from: accounts[1]});
+      await escrow.claim({from: accounts[3]});
 
-      const claimed1 = (await teamEscrow.lockedAmounts(accounts[1]))[1];
-      const claimed3 = (await teamEscrow.lockedAmounts(accounts[3]))[1];
+      const claimed1 = (await escrow.lockedAmounts(accounts[1]))[1];
+      const claimed3 = (await escrow.lockedAmounts(accounts[3]))[1];
       assert.equal(base_amount.muln(1).muln(237*2).divn(10000).toString(), claimed1.toString());
       assert.equal(base_amount.muln(3).muln(237*2).divn(10000).toString(), claimed3.toString());
 

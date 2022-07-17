@@ -12,7 +12,7 @@ import {
   FtsoRewardManagerInstance, GovernanceSettingsContract, GovernanceSettingsInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
   InflationInstance, InitialAirdropContract, InitialAirdropInstance, SupplyContract,
-  SupplyInstance, TeamEscrowContract, TeamEscrowInstance, WNatContract, WNatInstance
+  SupplyInstance, EscrowContract, EscrowInstance, WNatContract, WNatInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
@@ -307,15 +307,15 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.TEAM_ESCROW, async () => {
-    let TeamEscrow: TeamEscrowContract;
-    let teamEscrow: TeamEscrowInstance;
+  describe(Contracts.ESCROW, async () => {
+    let Escrow: EscrowContract;
+    let escrow: EscrowInstance;
     let WNat: WNatContract;
     let wNat: WNatInstance;
 
     beforeEach(async () => {
-      TeamEscrow = artifacts.require("TeamEscrow");
-      teamEscrow = await TeamEscrow.at(contracts.getContractAddress(Contracts.TEAM_ESCROW));
+      Escrow = artifacts.require("Escrow");
+      escrow = await Escrow.at(contracts.getContractAddress(Contracts.ESCROW));
       WNat = artifacts.require("WNat");
       wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
     });
@@ -323,7 +323,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about latest start", async () => {
       // Assemble
       // Act
-      const latestClaimStartTs = await teamEscrow.latestClaimStartTs();
+      const latestClaimStartTs = await escrow.latestClaimStartTs();
       // Assert
       assert.equal(latestClaimStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
     });
@@ -331,7 +331,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about start", async () => {
       // Assemble
       // Act
-      const claimStartTs = await teamEscrow.claimStartTs();
+      const claimStartTs = await escrow.claimStartTs();
       // Assert
       assert.equal(claimStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
     });
@@ -339,7 +339,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Should know about WNat contract", async () => {
         // Assemble
         // Act
-        const address = await teamEscrow.wNat();
+        const address = await escrow.wNat();
         // Assert
         assert.equal(address, wNat.address);
     });
@@ -841,7 +841,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
 
     it("Should know about all contracts", async () => {
       let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY,
-        Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.TEAM_ESCROW,
+        Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.ESCROW,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER,
         Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.GOVERNANCE_SETTINGS];
 
@@ -862,7 +862,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
         Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.TEAM_ESCROW];
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW];
 
       if (parameters.deployDistributionContract) {
         contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);

@@ -1,6 +1,6 @@
 import { balance, constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../../deployment/scripts/Contracts";
-import { SupplyInstance, TeamEscrowInstance, WNatInstance } from "../../../../typechain-truffle";
+import { SupplyInstance, EscrowInstance, WNatInstance } from "../../../../typechain-truffle";
 import { emptyAddressBalance } from '../../../utils/contract-test-helpers';
 import { encodeContractNames } from "../../../utils/test-helpers";
 
@@ -16,12 +16,12 @@ const burnAddress = "0x000000000000000000000000000000000000dEaD";
 
 const BN = web3.utils.toBN;
 
-const TeamEscrow = artifacts.require("TeamEscrow");
+const Escrow = artifacts.require("Escrow");
 const WNat = artifacts.require("WNat");
 const MockClaim = artifacts.require("GasConsumer2");
 
-contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, async accounts => {
-  let escrow: TeamEscrowInstance;
+contract(`Escrow.sol; ${getTestFile(__filename)}; Escrow unit tests`, async accounts => {
+  let escrow: EscrowInstance;
   let claimants: string[] = [];
   const GOVERNANCE_ADDRESS = accounts[0];
   const ADDRESS_UPDATER = accounts[16];
@@ -30,7 +30,7 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
 
   beforeEach(async () => {
     latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
-    escrow = await TeamEscrow.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, latestStart);
+    escrow = await Escrow.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, latestStart);
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
     // tell team escrow about WNat contract
     await escrow.updateContractAddresses(
@@ -46,9 +46,9 @@ contract(`TeamEscrow.sol; ${getTestFile(__filename)}; TeamEscrow unit tests`, as
     it("Should revert if latest start time in the past", async () => {
       // Assemble
       // Act
-      const teamEscrowPromise = TeamEscrow.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, (await time.latest()).subn(5));
+      const escrowPromise = Escrow.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, (await time.latest()).subn(5));
       // Assert
-      await expectRevert(teamEscrowPromise, "In the past");
+      await expectRevert(escrowPromise, "In the past");
     });
 
     it("Should add executors", async() => {
