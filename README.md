@@ -9,6 +9,13 @@
 ![Fuzzer_token](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadges.aflabs.org%2Fapi%2F0%2Fbadges%2Fgetlatest%3Fbadge_name%3DFlareSCFuzzerToken)
 ![Fuzzer_e2e](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadges.aflabs.org%2Fapi%2F0%2Fbadges%2Fgetlatest%3Fbadge_name%3DFlareSCE2EFuzzer)
 
+## Deployed contracts per chain
+Smart Contracts from this repository are deployed on 4 different chains. Per chain, the deployed are slightly different thus we have a protected branch per chain:
+- [Flare branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/flare_network_deployed_code)
+- [Songbird branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/songbird_network_deployed_code)
+- [Coston branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/coston_network_deployed_code)
+- Coston 2 branch (T.B.D)
+
 # Flare Network smart contracts repository
 
 Contracts cover the following *Flare network* building blocks:
