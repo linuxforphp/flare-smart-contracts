@@ -10,10 +10,10 @@
 ![Fuzzer_e2e](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadges.aflabs.org%2Fapi%2F0%2Fbadges%2Fgetlatest%3Fbadge_name%3DFlareSCE2EFuzzer)
 
 ## Deployed contracts per chain
-Smart Contracts from this repository are deployed on 4 different chains. Per chain, the deployed are slightly different thus we have a protected branch per chain:
-- [Flare branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/flare_network_deployed_code)
-- [Songbird branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/songbird_network_deployed_code)
-- [Coston branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/coston_network_deployed_code)
+Smart Contracts from this repository are deployed on 4 different chains. Per chain, contract versions are slightly different. Use the links below to view the deployed contracts source code and addresses.
+- [Flare branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/flare_network_deployed_code), [Flare Addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/flare_network_deployed_code/deployment/deploys/flare.json)
+- [Songbird branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/songbird_network_deployed_code), [Songbird addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/songbird_network_deployed_code/deployment/deploys/songbird.json)
+- [Coston branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/coston_network_deployed_code), [Coston addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/coston_network_deployed_code/deployment/deploys/coston.json)
 - Coston 2 branch (T.B.D)
 
 # Flare Network smart contracts repository
