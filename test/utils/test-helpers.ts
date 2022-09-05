@@ -303,7 +303,11 @@ export function resultTuple(obj: any): any[] {
 }
 
 export function encodeContractNames(names: string[]): string[] {
-    return names.map( name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])) );
+    return names.map( name => encodeString(name) );
+}
+
+export function encodeString(text: string): string {
+    return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [text]));
 }
 
 export function isNotNull<T>(x: T): x is NonNullable<T> {
