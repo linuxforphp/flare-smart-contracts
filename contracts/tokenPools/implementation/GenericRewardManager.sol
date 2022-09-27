@@ -27,7 +27,8 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     string internal constant ERR_OUT_OF_BALANCE = "out of balance";
     string internal constant ERR_CLAIM_FAILED = "claim failed";
     string internal constant ERR_REWARD_MANAGER_DEACTIVATED = "reward manager deactivated";
-    string internal constant ERR_EXECUTOR_ONLY = "claim executor only";
+    string internal constant ERR_RECIPIENT_ZERO = "recipient zero";
+    string internal constant ERR_ONLY_OWNER_OR_EXECUTOR = "only owner or executor";
     string internal constant ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
     string internal constant ERR_TOO_MUCH = "too much";
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
@@ -79,12 +80,17 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     }
 
     modifier onlyInflation {
-        require(msg.sender == inflation, ERR_INFLATION_ONLY);
+        _checkOnlyInflation();
         _;
     }
 
-    modifier onlyRewardExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) {
-        _checkExecutorAndAllowedRecipient(_rewardOwner, _recipient);
+    modifier onlyOwnerOrExecutor(address _rewardOwner) {
+        _checkOnlyOwnerOrExecutor(_rewardOwner);
+        _;
+    }
+
+    modifier onlyAllowedRecipient(address _rewardOwner, address _recipient) {
+        _checkOnlyAllowedRecipient(_rewardOwner, _recipient);
         _;
     }
 
@@ -99,67 +105,34 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     }
 
     /**
-     * @notice Allows a beneficiary to claim rewards.
-     * @notice This function is intended to be used to claim rewards.
-     * @param _recipient            address to transfer funds to
-     * @param _rewardAmount         amount of rewards to claim
-     */
-    function claimReward(
-        address payable _recipient,
-        uint256 _rewardAmount
-    ) 
-        external override
-        onlyIfActive
-        mustBalance
-        nonReentrant 
-    {
-        _claimOrWrapReward(msg.sender, _recipient, _rewardAmount, false);
-    }
-
-    /**
-     * @notice Allows a beneficiary to claim and wrap rewards.
-     * @notice This function is intended to be used to claim and wrap rewards.
-     * @param _recipient            address to transfer funds to
-     * @param _rewardAmount         amount of rewards to claim and wrap
-     */
-    function claimAndWrapReward(
-        address payable _recipient,
-        uint256 _rewardAmount
-    ) 
-        external override
-        onlyIfActive
-        mustBalance
-        nonReentrant 
-    {
-        _claimOrWrapReward(msg.sender, _recipient, _rewardAmount, true);
-    }
-
-    /**
-     * @notice Allows a beneficiary to claim and wrap rewards.
-     * @notice This function is intended to be used to claim and wrap rewards.
+     * @notice Allows the sender to claim or wrap rewards for reward owner.
      * @notice The caller does not have to be the owner, but must be approved by the owner to claim on his behalf.
-     *   this approval is done by calling `addClaimExecutor`.
+     *   this approval is done by calling `setClaimExecutors`.
      * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
      * @param _rewardOwner          address of the reward owner
-     * @param _rewardAmount         amount of rewards to claim and wrap
+     * @param _recipient            address to transfer funds to
+     * @param _rewardAmount         amount of rewards to claim
+     * @param _wrap                 should reward be wrapped immediatelly
      */
-    function claimAndWrapRewardByExecutor(
+    function claim(
         address _rewardOwner,
         address payable _recipient,
-        uint256 _rewardAmount
-    ) 
+        uint256 _rewardAmount,
+        bool _wrap
+    )
         external override
         onlyIfActive
         mustBalance
         nonReentrant
-        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
+        onlyOwnerOrExecutor(_rewardOwner)
+        onlyAllowedRecipient(_rewardOwner, _recipient)
     {
-        _claimOrWrapReward(_rewardOwner, _recipient, _rewardAmount, true);
+        _claimOrWrapReward(_rewardOwner, _recipient, _rewardAmount, _wrap);
     }
 
     /**
-     * Set the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor.
+     * Set the addresses of executors, who are allowed to call `claim`.
      * @param _executors The new executors. All old executors will be deleted and replaced by these.
      */    
     function setClaimExecutors(address[] memory _executors) external override {
@@ -168,10 +141,10 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     }
     
     /**
-     * Set the addresses of allowed recipients in the method claimAndWrapRewardByExecutor.
+     * Set the addresses of allowed recipients in the method `claim`.
      * Apart from these, the reward owner is always an allowed recipient.
      * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
-     */    
+     */
     function setAllowedClaimRecipients(address[] memory _recipients) external override {
         allowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
         emit AllowedClaimRecipientsChanged(msg.sender, _recipients);
@@ -181,7 +154,7 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
      * @notice Activates reward manager (allows claiming rewards)
      */
     function activate() external override onlyImmediateGovernance {
-        require(inflation != address(0) && address(rewardDistributor) != address(0) && address(wNat) != address(0),
+        require(inflation != address(0) && address(wNat) != address(0),
             "contract addresses not set");
         active = true;
     }
@@ -223,10 +196,13 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
         uint256 len = _addresses.length;
         require(len == _rewardAmounts.length, ERR_ARRAY_MISMATCH);
 
-        for(uint256 i = 0; i < len; i++) {
-            beneficiaryRewardAmount[_addresses[i]] += _rewardAmounts[i];
-            totalAwardedWei += _rewardAmounts[i];
+        uint256 totalRewardAmountsWei = 0;
+        for (uint256 i = 0; i < len; i++) {
+            beneficiaryRewardAmount[_addresses[i]] = beneficiaryRewardAmount[_addresses[i]].add(_rewardAmounts[i]);
+            totalRewardAmountsWei = totalRewardAmountsWei.add(_rewardAmounts[i]);
         }
+        // Update total awarded with amount distributed
+        totalAwardedWei = totalAwardedWei.add(totalRewardAmountsWei);
 
         require(totalAwardedWei <= totalInflationAuthorizedWei, ERR_TOO_MUCH);
 
@@ -239,11 +215,13 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
      */
     function setNewRewardManager(address _newRewardManager) external onlyGovernance {
         require(newRewardManager == address(0), "new reward manager already set");
+        require(_newRewardManager != address(0), "new reward manager zero");
         newRewardManager = _newRewardManager;
     }
 
     /**
      * @notice Sets new reward distributor which will take over distribution of rewards
+     * @dev Changing to address(0) actually disables distribution
      */
     function setRewardDistributor(address _rewardDistributor) external onlyGovernance {
         rewardDistributor = _rewardDistributor;
@@ -314,14 +292,14 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     }
     
     /**
-     * Get the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor.
+     * Get the addresses of executors, who are allowed to call `claim`.
      */    
     function claimExecutors(address _rewardOwner) external view override returns (address[] memory) {
         return claimExecutorSet[_rewardOwner].list;
     }
 
     /**
-     * Get the addresses of allowed recipients in the method claimAndWrapRewardByExecutor.
+     * Get the addresses of allowed recipients in the method `claim`.
      * Apart from these, the reward owner is always an allowed recipient.
      */    
     function allowedClaimRecipients(address _rewardOwner) external view override returns (address[] memory) {
@@ -343,6 +321,7 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     /**
      * @notice Allows a beneficiary to claim rewards.
      * @notice This function is intended to be used to claim or wrap rewards.
+     * @param _rewardOwner          address of the reward owner
      * @param _recipient            address to transfer funds to
      * @param _rewardAmount         amount of rewards to claim or wrap
      * @param _wrap                 indicates if reward should be wrapped
@@ -355,11 +334,13 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     ) 
         internal
     {
+        require(_recipient != address(0), ERR_RECIPIENT_ZERO);
+
         _handleSelfDestructProceeds();
 
-        beneficiaryClaimedRewardAmount[_rewardOwner] += _rewardAmount;
+        beneficiaryClaimedRewardAmount[_rewardOwner] = beneficiaryClaimedRewardAmount[_rewardOwner].add(_rewardAmount);
         require(beneficiaryClaimedRewardAmount[_rewardOwner] <= beneficiaryRewardAmount[_rewardOwner], ERR_TOO_MUCH);
-        totalClaimedWei += _rewardAmount;
+        totalClaimedWei = totalClaimedWei.add(_rewardAmount);
 
         if (_wrap) {
             _sendWrappedRewardTo(_recipient, _rewardAmount);
@@ -426,13 +407,20 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
             .sub(totalClaimedWei);
     }
 
-    function _checkExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) internal view {
-        require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, 
-            ERR_EXECUTOR_ONLY);
-        require(_recipient == _rewardOwner || allowedClaimRecipientSet[_rewardOwner].index[_recipient] != 0,
+    function _checkOnlyOwnerOrExecutor(address _rewardOwner) internal view {
+        require(_rewardOwner == msg.sender || claimExecutorSet[_rewardOwner].index[msg.sender] != 0, 
+            ERR_ONLY_OWNER_OR_EXECUTOR);
+    }
+
+    // recipient can be any address if msg.sender is reward owner
+    // reward owner is always allowed recipient (for executor)
+    // any other recipient must be allowed by reward owner
+    function _checkOnlyAllowedRecipient(address _rewardOwner, address _recipient) internal view {
+        require(msg.sender == _rewardOwner || _recipient == _rewardOwner ||
+            allowedClaimRecipientSet[_rewardOwner].index[_recipient] != 0,
             ERR_RECIPIENT_NOT_ALLOWED);
     }
-    
+
     function _checkMustBalance() internal view {
         require(address(this).balance == _getExpectedBalance(), ERR_OUT_OF_BALANCE);
     }
@@ -443,5 +431,9 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
 
     function _checkOnlyActive() internal view {
         require(active, ERR_REWARD_MANAGER_DEACTIVATED);
+    }
+
+    function _checkOnlyInflation() internal view {
+        require(msg.sender == inflation, ERR_INFLATION_ONLY);
     }
 }

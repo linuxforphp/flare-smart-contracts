@@ -81,7 +81,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
         it("Should deactivate and disable claiming rewards", async () => {
             await validatorRewardManager.deactivate();
 
-            await expectRevert(validatorRewardManager.claimReward(accounts[2], 100), "reward manager deactivated");
+            await expectRevert(validatorRewardManager.claim(accounts[2], accounts[2], 100, false), "reward manager deactivated");
         });
 
         it("Should revert calling deactivate if not from governance", async () => {
@@ -155,6 +155,10 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             await validatorRewardManager.setNewRewardManager(accounts[2]);
             await expectRevert(validatorRewardManager.setNewRewardManager(accounts[2]), "new reward manager already set");
         });
+        
+        it("Should revert calling setNewRewardManager with zero address", async () => {
+            await expectRevert(validatorRewardManager.setNewRewardManager(constants.ZERO_ADDRESS), "new reward manager zero");
+        });
 
         it("Should return contract name - ValidatorRewardManager", async () => {
             expect(await validatorRewardManager.getContractName()).to.equals(Contracts.VALIDATOR_REWARD_MANAGER);
@@ -219,22 +223,22 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
 
             await distributeRewards();
 
-            await validatorRewardManager.claimReward(accounts[1], 20, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, false, { from: accounts[1] });
 
             data = await validatorRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(2000000);
             expect(data[2].toNumber()).to.equals(20);
 
-            await validatorRewardManager.claimAndWrapReward(accounts[2], 40, { from: accounts[2] });
+            await validatorRewardManager.claim(accounts[2], accounts[2], 40, true, { from: accounts[2] });
 
             data = await validatorRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
             expect(data[1].toNumber()).to.equals(2000000);
             expect(data[2].toNumber()).to.equals(60);
 
-            await validatorRewardManager.claimReward(accounts[3], 0, { from: accounts[3] });
-            await validatorRewardManager.claimAndWrapReward(accounts[4], 0, { from: accounts[4] });
+            await validatorRewardManager.claim(accounts[3], accounts[3], 0, false, { from: accounts[3] });
+            await validatorRewardManager.claim(accounts[4], accounts[4], 0, true, { from: accounts[4] });
 
             data = await validatorRewardManager.getTokenPoolSupplyData();
             expect(data[0].toNumber()).to.equals(0);
@@ -253,12 +257,12 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             expect(data[0].toNumber()).to.equals(25);
             expect(data[1].toNumber()).to.equals(0);
 
-            await validatorRewardManager.claimReward(accounts[1], 20, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, false, { from: accounts[1] });
             data = await validatorRewardManager.getStateOfRewards(accounts[1]);
             expect(data[0].toNumber()).to.equals(25);
             expect(data[1].toNumber()).to.equals(20);
 
-            await validatorRewardManager.claimReward(accounts[1], 5, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 5, false, { from: accounts[1] });
             data = await validatorRewardManager.getStateOfRewards(accounts[1]);
             expect(data[0].toNumber()).to.equals(25);
             expect(data[1].toNumber()).to.equals(25);
@@ -269,7 +273,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             expect(data[0].toNumber()).to.equals(50);
             expect(data[1].toNumber()).to.equals(25);
 
-            await validatorRewardManager.claimReward(accounts[1], 10, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 10, false, { from: accounts[1] });
             data = await validatorRewardManager.getStateOfRewards(accounts[1]);
             expect(data[0].toNumber()).to.equals(50);
             expect(data[1].toNumber()).to.equals(35);
@@ -340,7 +344,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], 20, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[3], 20, false, { from: accounts[1] });
             // Assert
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 20);
@@ -358,7 +362,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // Claim reward to a3 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimReward(accounts[3], 40, { from: accounts[2] });
+            await validatorRewardManager.claim(accounts[2], accounts[3], 40, false, { from: accounts[2] });
             // Assert
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 40);
@@ -376,7 +380,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // Claim reward to a5 - test both 3rd party claim and avoid
             // having to calc gas fees            
             let natOpeningBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
-            await validatorRewardManager.claimReward(accounts[5], 25, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[5], 25, false, { from: accounts[1] });
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 25);
             const { 4: selfDestructProceeds1 } = await validatorRewardManager.getTotals();
@@ -388,21 +392,30 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
 
             // Act
             let consumer = await GasConsumer.new(3);
-            let tx = validatorRewardManager.claimReward(consumer.address, 20, { from: accounts[1] });
+            let tx = validatorRewardManager.claim(accounts[1], consumer.address, 20, false, { from: accounts[1] });
             // Assert
             await expectRevert(tx, "claim failed");
+        });
+
+        it("Should revert claiming rewards if zero address", async () => {
+            await distributeRewards();
+
+            // Act
+            let tx = validatorRewardManager.claim(accounts[1], constants.ZERO_ADDRESS, 20, false, { from: accounts[1] });
+            // Assert
+            await expectRevert(tx, "recipient zero");
         });
 
         it("Should revert claiming rewards if more than allowed", async () => {
             await distributeRewards();
 
             // Act
-            let tx = validatorRewardManager.claimReward(accounts[1], 30, { from: accounts[1] });
+            let tx = validatorRewardManager.claim(accounts[1], accounts[1], 30, false, { from: accounts[1] });
             // Assert
             await expectRevert(tx, "too much");
 
-            await validatorRewardManager.claimReward(accounts[1], 20, { from: accounts[1] });
-            let tx2 = validatorRewardManager.claimReward(accounts[1], 6, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, false, { from: accounts[1] });
+            let tx2 = validatorRewardManager.claim(accounts[1], accounts[1], 6, false, { from: accounts[1] });
             // Assert
             await expectRevert(tx2, "too much");
         });
@@ -412,7 +425,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             await distributeRewards();
 
             // Act
-            let tx = validatorRewardManager.claimReward(accounts[1], 150, { from: accounts[2] });
+            let tx = validatorRewardManager.claim(accounts[2], accounts[1], 150, false, { from: accounts[2] });
             // Assert
             await expectRevert(tx, "claim failed");
         });
@@ -422,7 +435,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             await distributeRewards();
 
             // Act
-            let tx = validatorRewardManager.claimAndWrapReward(accounts[1], 150, { from: accounts[2] });
+            let tx = validatorRewardManager.claim(accounts[2], accounts[1], 150, true, { from: accounts[2] });
             // Assert
             await expectRevert.unspecified(tx);
         });
@@ -435,12 +448,27 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // having to calc gas fees            
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            await validatorRewardManager.claimAndWrapReward(accounts[1], 20, { from: accounts[1] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[1] });
             // Assert
             let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 20);
             assert(natOpeningBalance.eq(natClosingBalance));
+        });
+
+        it("Should enable rewards to be claimed (by executor) once distributed", async () => {
+            await distributeRewards();
+            await validatorRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
+
+            // Act
+            let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
+            let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, false, { from: accounts[5] });
+            // Assert
+            let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
+            let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 20);
+            assert(wNatOpeningBalance.eq(wNatClosingBalance));
         });
 
         it("Should enable rewards to be claimed and wrapped (by executor) once distributed", async () => {
@@ -450,7 +478,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // Act
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
-            await validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], 20, { from: accounts[5] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[5] });
             // Assert
             let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[1]));
@@ -468,7 +496,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // claiming from first executor to first allowed recipient
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[7]);
             let natOpeningBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[7]));
-            await validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[7], 20, { from: accounts[5] });
+            await validatorRewardManager.claim(accounts[1], accounts[7], 20, true, { from: accounts[5] });
             // Assert
             let wNatClosingBalance = await wNat.votePowerOf(accounts[7]);
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[7]));
@@ -478,7 +506,7 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // claiming from second executor to second allowed recipient
             let wNatOpeningBalance1 = await wNat.votePowerOf(accounts[8]);
             let natOpeningBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]));
-            await validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[8], 5, { from: accounts[6] });
+            await validatorRewardManager.claim(accounts[1], accounts[8], 5, true, { from: accounts[6] });
             // Assert
             let wNatClosingBalance1 = await wNat.votePowerOf(accounts[8]);
             let natClosingBalance1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]));
@@ -497,20 +525,16 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // Assert
             
             // not an executor
-            await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[8], 20, { from: accounts[7] }),
-                "claim executor only");
-            
-            // owner is not an executor by default
-            await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[8], 20, { from: accounts[1] }),
-                "claim executor only");
+            await expectRevert(validatorRewardManager.claim(accounts[1], accounts[8], 20, true, { from: accounts[7] }),
+                "only owner or executor");
             
             // not a valid recipient
-            await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[6], 20, { from: accounts[5] }),
+            await expectRevert(validatorRewardManager.claim(accounts[1], accounts[6], 20, true, { from: accounts[5] }),
                 "recipient not allowed");
             
             // owner is always valid recipient
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
-            await validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], 20, { from: accounts[5] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[5] });
             let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
             assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 20);
         });
@@ -520,8 +544,10 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
 
             // Act
             // Assert
-            await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], 20, { from: accounts[5] }),
-                "claim executor only");
+            await expectRevert(validatorRewardManager.claim(accounts[1], accounts[1], 20, false, { from: accounts[5] }),
+                "only owner or executor");
+            await expectRevert(validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[5] }),
+                "only owner or executor");
         });
         
         it("Executor must not be removed to be able to claim for the reward owner", async () => {
@@ -532,8 +558,8 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             await validatorRewardManager.setClaimExecutors([], { from: accounts[1] });
             
             // Assert
-            await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], 20, { from: accounts[5] }),
-                "claim executor only");
+            await expectRevert(validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[5] }),
+                "only owner or executor");
         });
         
         it("Executor change emits event", async () => {
@@ -569,16 +595,16 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             
             // only last value should be used
             await validatorRewardManager.setClaimExecutors([accounts[5]], { from: accounts[1] });
-            // on other than 5 should succeed            
+            // all other than 1 and 5 should succeed            
             for (let i = 0; i < 10; i++) {
-                if (i !== 5) {
-                    await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], 20, { from: accounts[i] }),
-                        "claim executor only");
+                if (i !== 1 && i !== 5) {
+                    await expectRevert(validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[i] }),
+                        "only owner or executor");
                 }
             }
             // 5 should succeed
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[1]);
-            await validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[1], 20, { from: accounts[5] });
+            await validatorRewardManager.claim(accounts[1], accounts[1], 20, true, { from: accounts[5] });
             let wNatClosingBalance = await wNat.votePowerOf(accounts[1]);
             assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 20);
         });
@@ -605,16 +631,16 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
             // only last value should be used
             await validatorRewardManager.setClaimExecutors([accounts[2]], { from: accounts[1] });
             await validatorRewardManager.setAllowedClaimRecipients([accounts[5]], { from: accounts[1] });
-            // on other than 5 should succeed            
+            // all other than 1 and 5 should succeed            
             for (let i = 0; i < 10; i++) {
                 if (i !== 5 && i !== 1) {   // 5 is allowed, 1 is owner (always allowed)
-                    await expectRevert(validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[i], 20, { from: accounts[2] }),
+                    await expectRevert(validatorRewardManager.claim(accounts[1], accounts[i], 20, true, { from: accounts[2] }),
                         "recipient not allowed");
                 }
             }
             // 5 should succeed
             let wNatOpeningBalance = await wNat.votePowerOf(accounts[5]);
-            await validatorRewardManager.claimAndWrapRewardByExecutor(accounts[1], accounts[5], 20, { from: accounts[2] });
+            await validatorRewardManager.claim(accounts[1], accounts[5], 20, true, { from: accounts[2] });
             let wNatClosingBalance = await wNat.votePowerOf(accounts[5]);
             assert.equal(wNatClosingBalance.sub(wNatOpeningBalance).toNumber(), 20);
         });
