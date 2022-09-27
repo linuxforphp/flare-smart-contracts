@@ -25,45 +25,26 @@ interface IGenericRewardManager {
     );
 
     /**
-     * @notice Allows a beneficiary to claim rewards.
-     * @notice This function is intended to be used to claim rewards.
-     * @param _recipient            address to transfer funds to
-     * @param _rewardAmount         amount of rewards to claim
-     */
-    function claimReward(address payable _recipient, uint256 _rewardAmount) external;
-
-    /**
-     * @notice Allows a beneficiary to claim and wrap rewards.
-     * @notice This function is intended to be used to claim and wrap rewards.
-     * @param _recipient            address to transfer funds to
-     * @param _rewardAmount         amount of rewards to claim and wrap
-     */
-    function claimAndWrapReward(address payable _recipient, uint256 _rewardAmount) external;
-
-    /**
-     * @notice Allows a beneficiary to claim and wrap rewards.
-     * @notice This function is intended to be used to claim and wrap rewards.
+     * @notice Allows the sender to claim or wrap rewards for reward owner.
      * @notice The caller does not have to be the owner, but must be approved by the owner to claim on his behalf.
-     *   this approval is done by calling `addClaimExecutor`.
+     *   this approval is done by calling `setClaimExecutors`.
      * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
      * @param _rewardOwner          address of the reward owner
-     * @param _rewardAmount         amount of rewards to claim and wrap
+     * @param _recipient            address to transfer funds to
+     * @param _rewardAmount         amount of rewards to claim
+     * @param _wrap                 should reward be wrapped immediatelly
      */
-    function claimAndWrapRewardByExecutor(
-        address _rewardOwner,
-        address payable _recipient,
-        uint256 _rewardAmount
-    ) external;
+    function claim(address _rewardOwner, address payable _recipient, uint256 _rewardAmount, bool _wrap) external;
 
     /**
-     * Set the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor.
+     * Set the addresses of executors, who are allowed to call `claim`.
      * @param _executors The new executors. All old executors will be deleted and replaced by these.
      */    
     function setClaimExecutors(address[] memory _executors) external;
 
     /**
-     * Set the addresses of allowed recipients in the methods claimAndWrapRewardByExecutor.
+     * Set the addresses of allowed recipients in the methods `claim`.
      * Apart from these, the reward owner is always an allowed recipient.
      * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
      */    
@@ -90,14 +71,12 @@ interface IGenericRewardManager {
         );
 
     /**
-     * Get the addresses of executors, who are allowed to call claimAndWrapRewardByExecutor
-     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * Get the addresses of executors, who are allowed to call `claim`.
      */    
     function claimExecutors(address _rewardOwner) external view returns (address[] memory);
     
     /**
-     * Get the addresses of allowed recipients in the methods claimAndWrapRewardByExecutor
-     * and claimAndWrapRewardFromDataProvidersByExecutor.
+     * Get the addresses of allowed recipients in the methods `claim`.
      * Apart from these, the reward owner is always an allowed recipient.
      */    
     function allowedClaimRecipients(address _rewardOwner) external view returns (address[] memory);
