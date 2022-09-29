@@ -17,7 +17,7 @@ import {
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -93,6 +93,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const DelegationAccountClonable: DelegationAccountClonableContract = artifacts.require("DelegationAccountClonable");
   const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
   const SuicidalMock: SuicidalMockContract = artifacts.require("SuicidalMock");
+  const ValidatorRegistry: ValidatorRegistryContract = artifacts.require("ValidatorRegistry");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -324,7 +325,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, CleanupBlockNumberManager.contractName, `CleanupBlockNumberManager.sol`, cleanupBlockNumberManager.address, quiet);
 
-  // Team escrow contract
+  // Escrow contract
   const escrow = await Escrow.new(deployerAccount.address, addressUpdater.address, parameters.distributionLatestEntitlementStart);
   spewNewContractInfo(contracts, addressUpdaterContracts, Escrow.contractName, `Escrow.sol`, escrow.address, quiet);
 
@@ -389,6 +390,9 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   await incentivePoolTreasury.setIncentivePoolContract(incentivePool.address, { from: genesisGovernance });
   // Supply contract needs to know about token pool
   await supply.addTokenPool(incentivePool.address, 0);
+
+  const validatorRegistry = await ValidatorRegistry.new();
+  spewNewContractInfo(contracts, addressUpdaterContracts, ValidatorRegistry.contractName, `ValidatorRegistry.sol`, validatorRegistry.address, quiet);
 
   // Get the timestamp for the just mined block
   let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
