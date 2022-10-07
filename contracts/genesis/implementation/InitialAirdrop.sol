@@ -129,7 +129,7 @@ contract InitialAirdrop is GovernedAtGenesis, ReentrancyGuard {
             totalTransferredAirdropWei = totalTransferredAirdropWei.add(amountWei);
             // Send
             /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send
+            //slither-disable-next-line arbitrary-send-eth
             (bool success, ) = account.call{ value: amountWei, gas: 21000 }("");
             /* solhint-enable avoid-low-level-calls */
             if (!success) {

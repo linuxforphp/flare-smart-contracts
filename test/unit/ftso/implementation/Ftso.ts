@@ -1026,11 +1026,21 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
         { epochId: toBN(epochId), price: toBN(450), rewardedFtso: false, lowRewardPrice: toBN(0), highRewardPrice: toBN(0), finalizationType: toBN(2) });
       let priceData2 = await ftso.getCurrentPrice();
       let priceDataFromTP = await ftso.getCurrentPriceFromTrustedProviders();
+      let priceDataWithDecimals2 = await ftso.getCurrentPriceWithDecimals();
+      let priceDataWithDecimalsFromTP = await ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
+      let decimals = await ftso.ASSET_PRICE_USD_DECIMALS();
+
       
       expect(priceData2[1].toNumber()).to.be.gt(priceData[1].toNumber());
       expect(priceDataFromTP[0].toNumber()).to.equals(450);
       expect(priceData2[0].toNumber()).to.equals(priceDataFromTP[0].toNumber());
       expect(priceData2[1].toNumber()).to.equals(priceDataFromTP[1].toNumber());
+      expect(priceDataWithDecimals2[0].toNumber()).to.equals(priceDataFromTP[0].toNumber());
+      expect(priceDataWithDecimals2[1].toNumber()).to.equals(priceDataFromTP[1].toNumber());
+      expect(priceDataWithDecimals2[2].toNumber()).to.equals(decimals.toNumber());
+      expect(priceDataWithDecimalsFromTP[0].toNumber()).to.equals(priceDataFromTP[0].toNumber());
+      expect(priceDataWithDecimalsFromTP[1].toNumber()).to.equals(priceDataFromTP[1].toNumber());
+      expect(priceDataWithDecimalsFromTP[2].toNumber()).to.equals(decimals.toNumber());
     });
 
     it("Should finalize price epoch using trusted addresses votes if epoch has large price deviation", async () => {

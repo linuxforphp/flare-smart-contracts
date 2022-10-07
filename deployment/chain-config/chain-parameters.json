@@ -99,6 +99,18 @@
             "description": "Distribution treasury contract address. It is deployed to the genesis block with the fixed address  \"0x1000000000000000000000000000000000000004\".",
             "type": "string"
         },
+        "executorFeeValueUpdateOffsetEpochs": {
+            "description": "Executor fee value update timelock measured in reward epochs.\nThe parameter determines in how many reward epochs the new fee value submitted by an executor becomes effective. \nFor test purposes we recommend 3.",
+            "type": "integer"
+        },
+        "executorMaxFeeValueNAT": {
+            "description": "Max allowed executor fee value. In whole native units, not Wei.",
+            "type": "integer"
+        },
+        "executorRegisterFeeValueNAT": {
+            "description": "Executor registration fee value. In whole native units, not Wei.",
+            "type": "integer"
+        },
         "flareDaemonAddress": {
             "description": "Flare daemon contract address. It is deployed in the genesis block with the fixed address \"0x1000000000000000000000000000000000000002\".",
             "type": "string"
@@ -330,6 +342,9 @@
         "distributionLatestEntitlementStart",
         "distributionTotalEntitlementWei",
         "distributionTreasuryAddress",
+        "executorFeeValueUpdateOffsetEpochs",
+        "executorMaxFeeValueNAT",
+        "executorRegisterFeeValueNAT",
         "flareDaemonAddress",
         "flareDaemonGasExceededHoldoffBlocks",
         "ftsoManagerGasLimit",

@@ -53,4 +53,4 @@ From a delegator’s perspective, two factors can be used to predict its APY whe
 When distributing rewards, the Flare daemon will accredit each address balance automatically, so users will only have to call the claim function every once in a while. Unclaimed rewards will have an expiration time, set in the reward manager.
 
 [inflation]: ./Inflation.md "Inflation"
-[Ftso Reward Manager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "Ftso Reward Manager"
+[Ftso Reward Manager]: ../../contracts/tokenPools/implementation/FtsoRewardManager.sol "Ftso Reward Manager"

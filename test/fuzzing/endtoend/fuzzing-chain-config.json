@@ -49,6 +49,9 @@
         "0x92561f28ec438ee9831d00d1d59fbdc981b762b2",
         "0x2ffd013aaa7b5a7da93336c2251075202b33fb2b"
     ],
+    "executorFeeValueUpdateOffsetEpochs": 3,
+    "executorMaxFeeValueNAT": 100,
+    "executorRegisterFeeValueNAT": 100,
     "rewardFeePercentageUpdateOffsetEpochs": 3,
     "defaultRewardFeePercentageBIPS": 0,
     "ftsoRewardExpiryOffsetDays": 0.005,

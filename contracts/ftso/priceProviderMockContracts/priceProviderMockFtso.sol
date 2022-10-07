@@ -104,6 +104,22 @@ contract MockNpmFtso is IIFtso {
     }
 
     /**
+     * @notice Returns current asset price and number of decimals
+     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp               Time when price was updated for the last time
+     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimals() external view override
+        returns (
+            uint256 _price,
+            uint256 _timestamp,
+            uint256 _assetPriceUsdDecimals
+        )
+    {
+        // TODO
+    }
+
+    /**
      * @notice Returns current asset price calculated from trusted providers
      * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _timestamp           Time when price was updated for the last time
@@ -112,6 +128,22 @@ contract MockNpmFtso is IIFtso {
         returns (
             uint256 _price,
             uint256 _timestamp
+        )
+    {
+        // TODO
+    }
+
+    /**
+     * @notice Returns current asset price calculated from trusted providers and number of decimals
+     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp               Time when price was updated for the last time
+     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimalsFromTrustedProviders() external view override
+        returns (
+            uint256 _price,
+            uint256 _timestamp,
+            uint256 _assetPriceUsdDecimals
         )
     {
         // TODO

@@ -377,6 +377,26 @@ export interface ChainParameters {
     ftsoRewardExpiryOffsetDays: number;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Executors on PDA
+
+    /**
+     * Executor fee value update timelock measured in reward epochs.
+     * The parameter determines in how many reward epochs the new fee value submitted by an executor becomes effective. 
+     * For test purposes we recommend 3.
+     */
+    executorFeeValueUpdateOffsetEpochs: integer;
+
+    /**
+     * Max allowed executor fee value. In whole native units, not Wei.
+     */
+    executorMaxFeeValueNAT: integer;
+
+    /**
+     * Executor registration fee value. In whole native units, not Wei.
+     */
+     executorRegisterFeeValueNAT: integer;
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Other currency settings
 
     assets: AssetParameters[];

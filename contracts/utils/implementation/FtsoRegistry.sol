@@ -114,6 +114,7 @@ contract FtsoRegistry is IIFtsoRegistry, Governed, AddressUpdatable {
 
     /**
      * @notice Public view function to get the price of active FTSO for given asset index
+     * @param _assetIndex asset index
      * @dev Reverts if unsupported index is passed
      * @return _price current price of asset in USD
      * @return _timestamp timestamp for when this price was updated
@@ -124,12 +125,46 @@ contract FtsoRegistry is IIFtsoRegistry, Governed, AddressUpdatable {
         return _getFtso(_assetIndex).getCurrentPrice();
     }
 
+    /**
+     * @notice Public view function to get the price of active FTSO for given asset symbol
+     * @param _symbol asset symbol
+     * @dev Reverts if unsupported symbol is passed
+     * @return _price current price of asset in USD
+     * @return _timestamp timestamp for when this price was updated
+     */
     function getCurrentPrice(string memory _symbol) external view override 
         returns(uint256 _price, uint256 _timestamp) 
     {
         return _getFtso(_getFtsoIndex(_symbol)).getCurrentPrice();
     }
-    
+
+    /**
+     * @notice Public view function to get the price of active FTSO for given asset index
+     * @param _assetIndex asset index
+     * @dev Reverts if unsupported index is passed
+     * @return _price current price of asset in USD
+     * @return _timestamp timestamp for when this price was updated
+     * @return _assetPriceUsdDecimals number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimals(uint256 _assetIndex) external view override
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
+    {
+        return _getFtso(_assetIndex).getCurrentPriceWithDecimals();
+    }
+
+    /**
+     * @notice Public view function to get the price of active FTSO for given asset symbol
+     * @param _symbol asset symbol
+     * @dev Reverts if unsupported symbol is passed
+     * @return _price current price of asset in USD
+     * @return _timestamp timestamp for when this price was updated
+     * @return _assetPriceUsdDecimals number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimals(string memory _symbol) external view override
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
+    {
+        return _getFtso(_getFtsoIndex(_symbol)).getCurrentPriceWithDecimals();
+    }
 
     /**
      * @return _supportedIndices the array of all active FTSO indices in increasing order. 

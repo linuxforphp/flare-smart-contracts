@@ -103,9 +103,14 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     await XRPFtsoContractMock.updateInitialPrice(1256, 256, {from: MOCK_FTSO_MANAGER_ADDRESS});
     // Act
     const {0: price, 1: timestamp } = await ftsoRegistryContract.methods["getCurrentPrice(uint256)"](1);
+    const {0: price2, 1: timestamp2, 2: decimals2 } = await ftsoRegistryContract.methods["getCurrentPriceWithDecimals(uint256)"](1);
     // Assert
     assert.equal(price.toString(), "1256");
     assert.equal(timestamp.toString(), "256");
+
+    assert.equal(price2.toString(), "1256");
+    assert.equal(timestamp2.toString(), "256");
+    assert.equal(decimals2.toString(), "5");
   });
 
   it("Should get current price by symbol", async() => {
@@ -118,9 +123,14 @@ contract(`FtsoRegistry.sol; ${getTestFile(__filename)}; FtsoRegistry contract un
     await XRPFtsoContractMock.updateInitialPrice(1256, 256, {from: MOCK_FTSO_MANAGER_ADDRESS});
     // Act
     const {0: price, 1: timestamp } = await ftsoRegistryContract.methods["getCurrentPrice(string)"]("XRP");
+    const {0: price2, 1: timestamp2, 2: decimals2 } = await ftsoRegistryContract.methods["getCurrentPriceWithDecimals(string)"]("XRP");
     // Assert
     assert.equal(price.toString(), "1256");
     assert.equal(timestamp.toString(), "256");
+
+    assert.equal(price2.toString(), "1256");
+    assert.equal(timestamp2.toString(), "256");
+    assert.equal(decimals2.toString(), "5");
   });
 
   it("Should get all supported tokens ", async() => {

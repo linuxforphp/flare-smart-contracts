@@ -34,6 +34,7 @@ export class Contracts {
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";
   public static readonly INFLATION = "Inflation";
   public static readonly FTSO_REWARD_MANAGER = "FtsoRewardManager";
+  public static readonly VALIDATOR_REGISTRY = "ValidatorRegistry";
   public static readonly VALIDATOR_REWARD_MANAGER = "ValidatorRewardManager";
   public static readonly ATTESTATION_PROVIDER_REWARD_MANAGER = "AttestationProviderRewardManager";
   public static readonly PRICE_SUBMITTER = "PriceSubmitter";

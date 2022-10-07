@@ -30,6 +30,8 @@ interface IGenericRewardManager {
      *   this approval is done by calling `setClaimExecutors`.
      * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
      *   call, we allow the owner to control the timing of the calls.
+     * @notice Reward owner can claim to any `_recipient`, while the executor can only claim to the reward owner or
+     *   one of the addresses set by `setAllowedClaimRecipients`.
      * @param _rewardOwner          address of the reward owner
      * @param _recipient            address to transfer funds to
      * @param _rewardAmount         amount of rewards to claim
