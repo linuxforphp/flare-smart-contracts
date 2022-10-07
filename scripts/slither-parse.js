@@ -19,7 +19,7 @@ resultInfo = {
     "uninitialized-state": ["Uninitialized state variables", "https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-state-variables"],
     "uninitialized-storage": ["Uninitialized storage variables", "https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-storage-variables"],
     "unprotected-upgrade": ["Unprotected upgradeable contract", "https://github.com/crytic/slither/wiki/Detector-Documentation#unprotected-upgradeable-contract"],
-    "arbitrary-send": ["Functions that send Ether to arbitrary destinations", "https://github.com/crytic/slither/wiki/Detector-Documentation#functions-that-send-ether-to-arbitrary-destinations"],
+    "arbitrary-send-eth": ["Functions that send Ether to arbitrary destinations", "https://github.com/crytic/slither/wiki/Detector-Documentation#functions-that-send-ether-to-arbitrary-destinations"],
     "controlled-array-length": ["Tainted array length assignment", "https://github.com/crytic/slither/wiki/Detector-Documentation#array-length-assignment"],
     "controlled-delegatecall": ["Controlled delegatecall destination", "https://github.com/crytic/slither/wiki/Detector-Documentation#controlled-delegatecall"],
     "reentrancy-eth": ["Reentrancy vulnerabilities (theft of ethers)", "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities"],

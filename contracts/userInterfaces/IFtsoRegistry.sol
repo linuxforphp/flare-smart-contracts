@@ -16,6 +16,10 @@ interface IFtsoRegistry is IFtsoRegistryGenesis {
     function getFtsoSymbol(uint256 _ftsoIndex) external view returns (string memory _symbol);
     function getCurrentPrice(uint256 _ftsoIndex) external view returns(uint256 _price, uint256 _timestamp);
     function getCurrentPrice(string memory _symbol) external view returns(uint256 _price, uint256 _timestamp);
+    function getCurrentPriceWithDecimals(uint256 _assetIndex) external view
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals);
+    function getCurrentPriceWithDecimals(string memory _symbol) external view
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals);
 
     function getSupportedIndicesAndFtsos() external view 
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos);

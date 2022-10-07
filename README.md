@@ -14,7 +14,7 @@ Smart Contracts from this repository are deployed on 4 different chains. Per cha
 - [Flare branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/flare_network_deployed_code), [Flare Addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/flare_network_deployed_code/deployment/deploys/flare.json)
 - [Songbird branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/songbird_network_deployed_code), [Songbird addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/songbird_network_deployed_code/deployment/deploys/songbird.json)
 - [Coston branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/coston_network_deployed_code), [Coston addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/coston_network_deployed_code/deployment/deploys/coston.json)
-- Coston 2 branch (T.B.D)
+- [Coston 2 branch](https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/coston2_network_deployed_code), [Coston 2 addresses](https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/coston2_network_deployed_code/deployment/deploys/coston2.json)
 
 # Flare Network smart contracts repository
 
@@ -41,7 +41,7 @@ Enables price providers to supply USD prices for a list of assets. The FTSO dete
 
 Enable claiming of native token rewards.
 Users will be eligible to claim tokens through the following methods:
-- by supplying FTSO price feeds ([FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol)), 
+- by supplying FTSO price feeds ([FTSO Reward manager](contract/tokenPools/implementation/FtsoRewardManager.sol)), 
 - Providing external chain data (data availability proofs)
 
 ## Inflation

@@ -48,6 +48,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockVoterWhitelister: MockContractInstance;
     let mockSupply: MockContractInstance;
     let mockCleanupBlockNumberManager: MockContractInstance;
+    let mockDelegationAccountManager: MockContractInstance;
 
     before(async () => {
         FtsoManager.link(await FtsoManagement.new() as any);
@@ -94,6 +95,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         )
 
         mockVoterWhitelister = await MockContract.new();
+        mockDelegationAccountManager = await MockContract.new();
 
         mockSupply = await createMockSupplyContract(accounts[0], 10000);
         mockCleanupBlockNumberManager = await MockContract.new();
@@ -127,8 +129,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         await setDefaultVPContract(wNat, accounts[0]);
 
         await ftsoRewardManager.updateContractAddresses(
-            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
-            [ADDRESS_UPDATER, mockInflation.address, ftsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.DELEGATION_ACCOUNT_MANAGER]),
+            [ADDRESS_UPDATER, mockInflation.address, ftsoManager.address, wNat.address, mockDelegationAccountManager.address], {from: ADDRESS_UPDATER});
         
         await mockInflation.setDailyAuthorizedInflation(BN(2000000));
 

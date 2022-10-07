@@ -1,6 +1,6 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { Contracts } from "../../../deployment/scripts/Contracts";
-import { AssetTokenInstance, CleanupBlockNumberManagerInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetTokenInstance, CleanupBlockNumberManagerInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, MockContractInstance, PriceSubmitterInstance, SupplyInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
 import { encodeContractNames, getRandom, increaseTimeTo, submitHash, submitPriceHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
@@ -11,6 +11,7 @@ const Ftso = artifacts.require("Ftso");
 const FtsoRegistry = artifacts.require("FtsoRegistry");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const Supply = artifacts.require("Supply");
+const MockContract = artifacts.require("MockContract");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
 const AssetToken = artifacts.require("AssetToken");
@@ -238,12 +239,14 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
 
   describe("Ftso manager gas benchmarking", async () => {
     const ADDRESS_UPDATER = accounts[16];
+    let mockDelegationAccountManager: MockContractInstance;
 
     beforeEach(async () => {
       // create price submitter
       priceSubmitter = await PriceSubmitter.new();
       await priceSubmitter.initialiseFixedAddress();
       await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, { from: governance });
+      mockDelegationAccountManager = await MockContract.new();
 
       // create ftso reward manager
       ftsoRewardManager = await FtsoRewardManager.new(
@@ -305,8 +308,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
         [ADDRESS_UPDATER, ftsoRegistry.address, whitelist.address, ftsoManager.address], {from: ADDRESS_UPDATER});
       await ftsoRewardManager.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
-        [ADDRESS_UPDATER, inflation, ftsoManager.address, wNat.address, supplyInterface.address], {from: ADDRESS_UPDATER});
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.DELEGATION_ACCOUNT_MANAGER]),
+        [ADDRESS_UPDATER, inflation, ftsoManager.address, wNat.address, mockDelegationAccountManager.address], {from: ADDRESS_UPDATER});
       await ftsoRewardManager.activate({ from: governance });
 
       // set the daily authorized inflation...this proxies call to ftso reward manager

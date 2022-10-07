@@ -357,7 +357,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(claimTx3Promise, ERR_DELEGATION_ACCOUNT_ZERO);
       await expectRevert(distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: accounts[2] }), ERR_EXECUTOR_ONLY);
       await expectRevert(distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: executor }), ERR_DELEGATION_ACCOUNT_ZERO);
-      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
+      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 3, 100, 100);
       const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[3]).encodeABI();
       await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
       const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
@@ -467,7 +467,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       assert.equal(claimedWei1.toString(10), "0");
 
       // Act
-      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
+      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 3, 100, 100);
       const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[1]).encodeABI();
       await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
       const claimable = await distribution.getClaimableAmount(0, {from: accounts[1]});

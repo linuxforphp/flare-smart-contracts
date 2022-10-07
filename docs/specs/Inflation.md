@@ -161,5 +161,5 @@ Contracts that hold Flare Network balances (as of this writing, [FlareDaemon], [
 [RewardServices]: ../../contracts/inflation/lib/RewardServices.sol "RewardServices"
 [RewardService]: ../../contracts/inflation/lib/RewardService.sol "RewardService"
 [IIInflationReceiver]: ../../contracts/inflation/interface/IIInflationReceiver.sol "IIInflationReceiver"
-[FtsoRewardManager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "FtsoRewardManager"
+[FtsoRewardManager]: ../../contracts/tokenPools/implementation/FtsoRewardManager.sol "FtsoRewardManager"
 [FTSORewardManager.md]: ./FTSORewardManager.md "FTSORewardManager.md"

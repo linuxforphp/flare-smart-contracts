@@ -1,33 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../interface/IDelegationAccount.sol";
-import "./DelegationAccountManager.sol";
+import "../interface/IIDelegationAccount.sol";
+import "../interface/IIDelegationAccountManager.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 
-contract DelegationAccountClonable is IDelegationAccount {
 
-    string internal constant CLAIM_FAILURE = "unknown error when claiming";
-    string internal constant UNCLAIMED_EPOCHS_FAILURE = "unknown error when claiming";
+contract DelegationAccountClonable is IIDelegationAccount {
+
+    string internal constant ERR_TRANSFER_FAILURE = "transfer failed";
+    string internal constant ERR_CLAIM_FAILURE = "unknown error when claiming";
+    string internal constant ERR_CLAIMED_AMOUNT_TOO_SMALL = "claimed amount too small";
+    string internal constant ERR_MANAGER_ONLY = "only manager";
 
     address public owner;
-    DelegationAccountManager public manager;
-
-    mapping(address => bool) public isExecutor;
-
-    /**
-     * Some external methods in DelegationAccount contract can only be executed by the owner account.
-     */
-    modifier onlyOwner {
-        require(msg.sender == owner, "only owner account");
-        _;
-    }
+    bool public claimToDelegationAccount;
+    IIDelegationAccountManager public manager;
 
     /**
-     * Some external methods in DelegationAccount contract can only be executed by the owner 
-    or executor account.
+     * Some external methods in DelegationAccount contract can only be executed by the manager.
      */
-    modifier onlyOwnerOrExecutor {
-        require(msg.sender == owner || isExecutor[msg.sender], "only owner or executor account");
+    modifier onlyManager {
+        _checkOnlyManager();
         _;
     }
 
@@ -35,127 +29,150 @@ contract DelegationAccountClonable is IDelegationAccount {
         manager.wNat().deposit{value: msg.value}();
     }
 
-    function initialize(address _owner, DelegationAccountManager _manager) external {
+    /**
+     * Initialization of a new deployed contract
+     * @param _owner                        contract owner address
+     * @param _manager                      contract manager address
+     */
+    function initialize(
+        address _owner,
+        IIDelegationAccountManager _manager
+    )
+        external override
+    {
         require(address(owner) == address(0), "owner already set");
-        require(address(_owner) != address(0), "owner address missing");
+        require(address(_owner) != address(0), "owner address zero");
+        require(address(_manager) != address(0), "manager address zero");
         owner = _owner;
         manager = _manager;
         emit Initialize(owner, _manager);
     }
-    
+
     /**
-     * @notice Allows user to claim ftso rewards for his delegation contract account
-     * @param _epochs            epochs for which user wants to claim rewards
-     * @dev Reverts if `msg.sender` is not an owner or executor
-     */
-    function claimFtsoRewards(uint256[] memory _epochs) external override onlyOwnerOrExecutor returns(uint256) {
-        uint256 amount;
-        IIFtsoRewardManager[] memory rewardManagers = manager.getFtsoRewardManagers();
-        for(uint256 i=0; i < rewardManagers.length; i++) {
-            try rewardManagers[i].claimReward(address(this), _epochs) returns (uint256 _amount) {
-                amount += _amount;
-                emit ClaimFtsoRewards(address(this), _epochs, _amount, rewardManagers[i]);
-            } catch Error(string memory _err) {
-                emit ClaimFtsoFailure(_err, rewardManagers[i]);
-            } catch {
-                emit ClaimFtsoFailure(CLAIM_FAILURE, rewardManagers[i]);
-            }
-        }
-        return amount;
+     * @notice Enables this contract to be used as delegation account,
+     * i.e. all ftso rewards and airdrop funds will remain on delegation account and 
+     * will not be automatically transfered to owner's account.
+     */    
+    function enableClaimingToDelegationAccount() external override onlyManager {
+        claimToDelegationAccount = true;
     }
 
     /**
-     * @notice Allows user to claim all unclaimed ftso rewards for his delegation contract account
-     * @dev Reverts if `msg.sender` is not an owner or executor
+     * @notice Disables this contract to be used as delegation account,
+     * i.e. all ftso rewards and airdrop funds will not remain on delegation account but 
+     * will be automatically transfered to owner's account.
+     * @notice Automatic claiming will not claim ftso rewards and airdrop for delegation account anymore.
+     * @param _wNat                         WNat contract address
+     */ 
+    function disableClaimingToDelegationAccount(WNat _wNat) external override onlyManager {
+        claimToDelegationAccount = false;
+        _transferFundsToOwner(_wNat);
+    }
+
+    /**
+     * @notice Allows user or executor to claim ftso rewards for delegation and owner accounts
+     * @notice If called by `_executor` and `_executorFee` > 0, the fee is paid to executor
+     * @param _wNat                         WNat contract address
+     * @param _rewardManagers               array of ftso reward managers
+     * @param _epochs                       epochs for which to claim ftso rewards
+     * @param _claimForDelegationAccount    indicates if claiming for delegation account
+     * @param _claimForOwner                indicates if claiming for owner
+     * @param _executor                     the address of the executor
+     * @param _executorFee                  the fee that should be paid to the executor if not owner
      */
-    function claimAllFtsoRewards() external override onlyOwnerOrExecutor returns(uint256) {
-        uint256 amount;
-        IIFtsoRewardManager[] memory rewardManagers = manager.getFtsoRewardManagers();
-        for(uint256 i = 0; i < rewardManagers.length; i++) {
-            try rewardManagers[i].getEpochsWithUnclaimedRewards(address(this)) returns(uint256[] memory epochs) {
-                try rewardManagers[i].claimReward(address(this), epochs) returns (uint256 _amount) {
-                    amount += _amount;
-                    emit ClaimFtsoRewards(address(this), epochs, _amount, rewardManagers[i]);
-                } catch Error(string memory _err) {
-                    emit ClaimFtsoFailure(_err, rewardManagers[i]);
-                } catch {
-                    emit ClaimFtsoFailure(CLAIM_FAILURE, rewardManagers[i]);
-                }
-            } catch Error(string memory _err) {
-                    emit EpochsWithUnclaimedRewardsFailure(_err, rewardManagers[i]);
-            } catch {
-                    emit EpochsWithUnclaimedRewardsFailure(UNCLAIMED_EPOCHS_FAILURE, rewardManagers[i]);
+    function claimFtsoRewards(
+        WNat _wNat,
+        IFtsoRewardManager[] memory _rewardManagers,
+        uint256[] memory _epochs,
+        bool _claimForDelegationAccount,
+        bool _claimForOwner,
+        address _executor,
+        uint256 _executorFee
+    )
+        external override onlyManager
+        returns(uint256 _amount)
+    {
+        for (uint256 i = 0; i < _rewardManagers.length; i++) {
+            if (_claimForDelegationAccount) {
+                _amount += _claimDelegationAccountFtsoRewards(_rewardManagers[i], _epochs);
+            }
+            if (_claimForOwner) {
+                _amount += _claimOwnerFtsoRewards(_rewardManagers[i], _epochs);
             }
         }
-        return amount;
-    }
-
-    function claimAirdropDistribution(uint256 _month) external override onlyOwnerOrExecutor returns(uint256) {
-        uint256 amount;
-        IDistributionToDelegators[] memory distributions = manager.getDistributions();
-        for(uint256 i = 0; i < distributions.length; i++) {
-            try distributions[i].claim(address(this), _month) returns (uint256 _amount) {
-                if (_amount > 0) {
-                    amount += _amount;
-                    emit ClaimAirdrop(address(this), _amount, _month, distributions[i]);
-                }
-            } catch Error(string memory _err) {
-                emit ClaimDistributionFailure(_err, distributions[i]);
-            } catch {
-                emit ClaimDistributionFailure(CLAIM_FAILURE, distributions[i]);
-            }
+        if (_executor != owner && _executorFee > 0) {
+            _payFeeToExecutor(_wNat, _executor, _executorFee, _amount);
         }
-        return amount;
-    }
-
-    function claimAllUnclaimedAirdropDistribution() external onlyOwnerOrExecutor returns(uint256) {
-        uint256 amount;
-        IDistributionToDelegators[] memory distributions = manager.getDistributions();
-        for(uint256 i = 0; i < distributions.length; i++) {
-            uint256 _amount = _claimAirdrop(distributions[i]);
-            amount += _amount;
+        if (!claimToDelegationAccount) {
+            _transferFundsToOwner(_wNat);
         }
-        return amount;
     }
 
-    function delegate(address _to, uint256 _bips) external override onlyOwner { 
-        manager.wNat().delegate(_to, _bips);
+    /**
+     * @notice Allows user or executor to claim airdrop for delegation and owner accounts
+     * @notice If called by `_executor` and `_executorFee` > 0, the fee is paid to executor
+     * @param _wNat                         WNat contract address
+     * @param _distribution                 distribution contract address
+     * @param _month                        month for which to claim airdrop
+     * @param _claimForDelegationAccount    indicates if claiming for delegation account
+     * @param _claimForOwner                indicates if claiming for owner
+     * @param _executor                     the address of the executor
+     * @param _executorFee                  the fee that should be paid to the executor if not owner
+     */
+    function claimAirdropDistribution(
+        WNat _wNat,
+        IDistributionToDelegators _distribution,
+        uint256 _month,
+        bool _claimForDelegationAccount,
+        bool _claimForOwner,
+        address _executor,
+        uint256 _executorFee
+    )
+        external override onlyManager
+        returns(uint256 _amount)
+    {
+        if (_claimForDelegationAccount) {
+            _amount += _claimDelegationAccountAirdropDistribution(_distribution, _month);
+        }
+        if (_claimForOwner) {
+            _amount += _claimOwnerAirdropDistribution(_distribution, _month);
+        }
+        if (_executor != owner && _executorFee > 0) {
+            _payFeeToExecutor(_wNat, _executor, _executorFee, _amount);
+        }
+        if (!claimToDelegationAccount) {
+            _transferFundsToOwner(_wNat);
+        }
+    }
+
+    function delegate(WNat _wNat, address _to, uint256 _bips) external override onlyManager {
+        _wNat.delegate(_to, _bips);
         emit DelegateFtso(address(this), _to, _bips);
     }
 
-    function undelegateAll() external override onlyOwner {
-        manager.wNat().undelegateAll();
+    function undelegateAll(WNat _wNat) external override onlyManager {
+        _wNat.undelegateAll();
         emit UndelegateAllFtso(address(this));
     }
 
-    function revokeDelegationAt(address _who, uint256 _blockNumber) external override onlyOwner {
-        manager.wNat().revokeDelegationAt(_who, _blockNumber);
+    function revokeDelegationAt(WNat _wNat, address _who, uint256 _blockNumber) external override onlyManager {
+        _wNat.revokeDelegationAt(_who, _blockNumber);
     }
 
-    function delegateGovernance(address _to) external override onlyOwner { 
-        manager.governanceVP().delegate(_to);
-        emit DelegateGovernance(address(this), _to, manager.wNat().balanceOf(address(this)));
+    function delegateGovernance(IGovernanceVotePower _governanceVP, address _to) external override onlyManager {
+        _governanceVP.delegate(_to);
+        emit DelegateGovernance(address(this), _to);
     }
 
-    function undelegateGovernance() external override onlyOwner {
-        manager.governanceVP().undelegate();
+    function undelegateGovernance(IGovernanceVotePower _governanceVP) external override onlyManager {
+        _governanceVP.undelegate();
         emit UndelegateGovernance(address(this));
     }
 
-    function setExecutor(address _executor) external override onlyOwner {
-        isExecutor[_executor] = true;
-        emit SetExecutor(address(this), _executor);
-    }
-
-    function removeExecutor(address _executor) external override onlyOwner {
-        isExecutor[_executor] = false;
-        emit RemoveExecutor(address(this), _executor);
-    }
-
-    function withdraw(uint256 _amount) external override onlyOwner {
-        bool returnValue = manager.wNat().transfer(owner, _amount);
-        require(returnValue == true, "transfer failed");
-        emit WidthrawToOwner(address(this), _amount);
+    function withdraw(WNat _wNat, uint256 _amount) external override onlyManager {
+        bool success = _wNat.transfer(owner, _amount);
+        require(success, ERR_TRANSFER_FAILURE);
+        emit WithdrawToOwner(address(this), _amount);
     }
 
     /**
@@ -164,29 +181,87 @@ contract DelegationAccountClonable is IDelegationAccount {
      as participant in such airdrop.
      * @param _token            Target token contract address
      * @param _amount           Amount of tokens to transfer
-     * @dev Reverts if `msg.sender` is not an owner or the target token in WNat contract
+     * @dev Reverts if target token is WNat contract
      */
-    function transferExternalToken(IERC20 _token, uint256 _amount) external override onlyOwner {
-        require(address(_token) != address(manager.wNat()), "Transfer from wNat not allowed");
-        bool returnValue = _token.transfer(owner, _amount);
-        require(returnValue == true, "transfer failed");
+    function transferExternalToken(WNat _wNat, IERC20 _token, uint256 _amount) external override onlyManager {
+        require(address(_token) != address(_wNat), "Transfer from wNat not allowed");
+        bool success = _token.transfer(owner, _amount);
+        require(success, ERR_TRANSFER_FAILURE);
     }
-    
-    function _claimAirdrop(IDistributionToDelegators _distribution) internal returns (uint256) {
-        uint maxMonth = Math.min(_distribution.getCurrentMonth(), 36);
-        uint256 amount;
-        for (uint256 month = _distribution.getMonthToExpireNext(); month < maxMonth; month++) {
-            try _distribution.claim(address(this), month) returns (uint256 _amount) {
-                if (_amount > 0) {
-                    amount += _amount;
-                    emit ClaimAirdrop(address(this), _amount, month, _distribution);
-                }
-            } catch Error(string memory _err) {
-                emit ClaimDistributionFailure(_err, _distribution);
-            } catch {
-                emit ClaimDistributionFailure(CLAIM_FAILURE, _distribution);
-            }
+
+    function _claimDelegationAccountFtsoRewards(IFtsoRewardManager _rewardManager, uint256[] memory _epochs)
+        internal
+        returns(uint256 _amount)
+    {
+        try _rewardManager.claim(address(this), address(this), _epochs, false) returns (uint256 amount) {
+            emit ClaimFtsoRewards(address(this), _epochs, amount, _rewardManager, false);
+            return amount;
+        } catch Error(string memory _err) {
+            emit ClaimFtsoRewardsFailure(_err, _rewardManager, false);
+        } catch {
+            emit ClaimFtsoRewardsFailure(ERR_CLAIM_FAILURE, _rewardManager, false);
         }
-        return amount;
+    }
+
+    function _claimOwnerFtsoRewards(IFtsoRewardManager _rewardManager, uint256[] memory _epochs)
+        internal
+        returns(uint256 _amount)
+    {
+        try _rewardManager.claim(owner, address(this), _epochs, false) returns (uint256 amount) {
+            emit ClaimFtsoRewards(address(this), _epochs, amount, _rewardManager, true);
+            return amount;
+        } catch Error(string memory _err) {
+            emit ClaimFtsoRewardsFailure(_err, _rewardManager, true);
+        } catch {
+            emit ClaimFtsoRewardsFailure(ERR_CLAIM_FAILURE, _rewardManager, true);
+        }
+    }
+
+    function _claimDelegationAccountAirdropDistribution(IDistributionToDelegators _distribution, uint256 _month)
+        internal
+        returns(uint256 _amount)
+    {
+        try _distribution.claim(address(this), _month) returns (uint256 amount) {
+            emit ClaimAirdropDistribution(address(this), _month, amount, _distribution, false);
+            return amount;
+        } catch Error(string memory _err) {
+            emit ClaimAirdropDistributionFailure(_err, _distribution, false);
+        } catch {
+            emit ClaimAirdropDistributionFailure(ERR_CLAIM_FAILURE, _distribution, false);
+        }
+    }
+
+    function _claimOwnerAirdropDistribution(IDistributionToDelegators _distribution, uint256 _month)
+        internal
+        returns(uint256 _amount)
+    {
+        try _distribution.claimToPersonalDelegationAccountByExecutor(owner, _month) returns (uint256 amount) {
+            emit ClaimAirdropDistribution(address(this), _month, amount, _distribution, true);
+            return amount;
+        } catch Error(string memory _err) {
+            emit ClaimAirdropDistributionFailure(_err, _distribution, true);
+        } catch {
+            emit ClaimAirdropDistributionFailure(ERR_CLAIM_FAILURE, _distribution, true);
+        }
+    }
+
+    function _payFeeToExecutor(WNat _wNat, address _executor, uint256 _executorFee, uint256 _claimedAmount) internal {
+        require(_claimedAmount > _executorFee, ERR_CLAIMED_AMOUNT_TOO_SMALL);
+        bool success = _wNat.transfer(_executor, _executorFee);
+        require(success, ERR_TRANSFER_FAILURE);
+        emit ExecutorFeePaid(address(this), _executor, _executorFee);
+    }
+
+    function _transferFundsToOwner(WNat _wNat) internal {
+        uint256 balance = _wNat.balanceOf(address(this));
+        if (balance > 0) {
+            bool success = _wNat.transfer(owner, balance);
+            require(success, ERR_TRANSFER_FAILURE);
+            emit WithdrawToOwner(address(this), balance);
+        }
+    }
+
+    function _checkOnlyManager() internal view {
+        require(msg.sender == address(manager), ERR_MANAGER_ONLY);
     }
 }

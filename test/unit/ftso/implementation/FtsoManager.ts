@@ -719,6 +719,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       // should add new ftso to VoterWhitelister
       assert.equal(voterWhitelisterInvocationCount.toNumber(), 1);
 
+      let maxVotersForFtsoVoterWhitelister = web3.utils.sha3("maxVotersForFtso(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      await mockVoterWhitelister.givenMethodReturnUint(maxVotersForFtsoVoterWhitelister, 100);
+      
       // Act
       let tx = await ftsoManager.replaceFtso(mockFtso2.address, false, false);
 

@@ -111,6 +111,11 @@ const config: HardhatUserConfig = {
       timeout: 40000,
       accounts: accounts.map((x: any) => x.privateKey)
     },
+    coston2: {
+      url: process.env.COSTON2_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+      timeout: 40000,
+      accounts: accounts.map((x: any) => x.privateKey)
+    },
     hardhat: {
       accounts,
       initialDate: "2021-01-01",  // no time - get UTC @ 00:00:00

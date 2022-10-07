@@ -483,7 +483,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      */
     function _wrapFunds(address _recipient, uint256 _claimableAmount) internal {
         // transfer total amount (state is updated and events are emitted in _claimOrWrap)
-        //slither-disable-next-line arbitrary-send          // amount always calculated by _claimOrWrap
+        //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimOrWrap
         wNat.depositTo{value: _claimableAmount}(_recipient);
     }
 
@@ -496,7 +496,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     function _transferFunds(address _recipient, uint256 _claimableAmount) internal {
         // transfer total amount (state is updated and events are emitted in _claimOrWrap)
         /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send          // amount always calculated by _claimOrWrap
+        //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimOrWrap
         (bool success, ) = _recipient.call{value: _claimableAmount}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, ERR_CLAIM_FAILED);
@@ -543,7 +543,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
                 totalBurnedWei = totalBurnedWei.add(toBurnWei);
                 // Get the burn address; make it payable
                 address payable burnAddress = payable(supply.burnAddress());
-                //slither-disable-next-line arbitrary-send
+                //slither-disable-next-line arbitrary-send-eth
                 burnAddress.transfer(toBurnWei);
             }
         }

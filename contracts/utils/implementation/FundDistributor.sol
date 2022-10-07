@@ -25,15 +25,15 @@ contract FundDistributor {
     ) external payable {
         for (uint256 i = 0; i < addresses.length; i++) {
             if (amounts.length > i) { // could also be amounts.length > 0
-                //slither-disable-next-line arbitrary-send
+                //slither-disable-next-line arbitrary-send-eth
                 payable(addresses[i]).transfer(amounts[i]);
             }
             else {
-                //slither-disable-next-line arbitrary-send
+                //slither-disable-next-line arbitrary-send-eth
                 payable(addresses[i]).transfer(defaultAmount);
             }
         }
-        //slither-disable-next-line arbitrary-send
+        //slither-disable-next-line arbitrary-send-eth
         payable(msg.sender).transfer(address(this).balance); // send remaining funds to sender
     }
 
@@ -44,11 +44,11 @@ contract FundDistributor {
             address payable addr = payable(whitelisted[i]);
             uint256 balance = addr.balance;
             if (balance < topupAmount) {
-                //slither-disable-next-line arbitrary-send
+                //slither-disable-next-line arbitrary-send-eth
                 addr.transfer(topupAmount - balance);
             }
         }
-        //slither-disable-next-line arbitrary-send
+        //slither-disable-next-line arbitrary-send-eth
         payable(msg.sender).transfer(address(this).balance); // send remaining funds to sender
     }
 }
