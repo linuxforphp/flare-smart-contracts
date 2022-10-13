@@ -13,8 +13,9 @@ interface IDelegationAccount {
     event ClaimAirdropDistribution(address delegationAccount, uint256 month, uint256 amount,
         IDistributionToDelegators distribution, bool claimForOwner);
     event DelegateFtso(address delegationAccount, address to, uint256 bips);
-    event DelegateGovernance(address delegationAccount, address to);
+    event RevokeFtso(address delegationAccount, address to, uint256 blockNumber);
     event UndelegateAllFtso(address delegationAccount);
+    event DelegateGovernance(address delegationAccount, address to);
     event UndelegateGovernance(address delegationAccount);
     event WithdrawToOwner(address delegationAccount, uint256 amount);
     event ExecutorFeePaid(address delegationAccount, address executor, uint256 amount);

@@ -133,6 +133,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
         IIDelegationAccount delegationAccount = delegationAccountData.delegationAccount;
         delegationAccount.enableClaimingToDelegationAccount();
         delegationAccountData.enabled = true;
+        emit DelegationAccountUpdated(msg.sender, delegationAccount, true);
         return delegationAccount;
     }
 
@@ -149,6 +150,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
         require(address(delegationAccount) != address(0), ERR_NO_DELEGATION_ACCOUNT);
         delegationAccount.disableClaimingToDelegationAccount(wNat);
         delegationAccountData.enabled = false;
+        emit DelegationAccountUpdated(msg.sender, delegationAccount, false);
     }
 
     /**
@@ -312,7 +314,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     }
 
     /**
-     * @notice Delegate `_bips` of voting power to `_to` from `msg.sender`
+     * @notice Delegate `_bips` of voting power to `_to` from msg.sender's delegation account
      * @param _to The address of the recipient
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
@@ -322,25 +324,36 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     }
 
     /**
-     * @notice Undelegate all voting power for delegates of `msg.sender`
+     * @notice Undelegate all percentage delegations from the msg.sender's delegation account and then delegate 
+     *   corresponding `_bips` percentage of voting power to each member of `_delegatees`.
+     * @param _delegatees The addresses of the new recipients.
+     * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
+     *   Total of all `_bips` values must be at most 10000.
+     **/
+    function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external override {
+        _getDelegationAccount(msg.sender).batchDelegate(wNat, _delegatees, _bips);
+    }
+
+    /**
+     * @notice Undelegate all voting power for delegates of msg.sender's delegation account
      **/
     function undelegateAll() external override {
         _getDelegationAccount(msg.sender).undelegateAll(wNat);
     }
 
     /**
-    * @notice Revoke all delegation from sender to `_who` at given block. 
+    * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
     *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
     *    Block `_blockNumber` must be in the past. 
     *    This method should be used only to prevent rogue delegate voting in the current voting block.
-    *    To stop delegating use delegate/delegateExplicit with value of 0 or undelegateAll/undelegateAllExplicit.
+    *    To stop delegating use delegate with value of 0 or undelegateAll.
     */
     function revokeDelegationAt(address _who, uint256 _blockNumber) external override {
         _getDelegationAccount(msg.sender).revokeDelegationAt(wNat, _who, _blockNumber);
     }
 
     /**
-     * @notice Delegate all governance vote power of `msg.sender` to `_to`.
+     * @notice Delegate all governance vote power of msg.sender's delegation account to `_to`.
      * @param _to The address of the recipient
      **/
     function delegateGovernance(address _to) external override {
@@ -348,7 +361,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     }
 
     /**
-     * @notice Undelegate governance vote power.
+     * @notice Undelegate governance vote power for delegate of msg.sender's delegation account
      **/
     function undelegateGovernance() external override {
         _getDelegationAccount(msg.sender).undelegateGovernance(governanceVP);
@@ -571,7 +584,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
         IIDelegationAccount delegationAccount = IIDelegationAccount(payable(createClone(libraryAddress)));
         delegationAccount.initialize(msg.sender, this);
         delegationAccountData.delegationAccount = delegationAccount;
-        emit CreateDelegationAccount(msg.sender, address(delegationAccount));
+        emit DelegationAccountCreated(msg.sender, delegationAccount);
 
         return delegationAccountData;
     }

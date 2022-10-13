@@ -150,6 +150,20 @@ contract DelegationAccountClonable is IIDelegationAccount {
         emit DelegateFtso(address(this), _to, _bips);
     }
 
+    function batchDelegate(
+        WNat _wNat,
+        address[] memory _delegatees,
+        uint256[] memory _bips
+    )
+        external override onlyManager
+    {
+        _wNat.batchDelegate(_delegatees, _bips);
+        emit UndelegateAllFtso(address(this));
+        for (uint256 i = 0; i < _delegatees.length; i++) {
+            emit DelegateFtso(address(this), _delegatees[i], _bips[i]);
+        }
+    }
+
     function undelegateAll(WNat _wNat) external override onlyManager {
         _wNat.undelegateAll();
         emit UndelegateAllFtso(address(this));
@@ -157,6 +171,7 @@ contract DelegationAccountClonable is IIDelegationAccount {
 
     function revokeDelegationAt(WNat _wNat, address _who, uint256 _blockNumber) external override onlyManager {
         _wNat.revokeDelegationAt(_who, _blockNumber);
+        emit RevokeFtso(address(this), _who, _blockNumber);
     }
 
     function delegateGovernance(IGovernanceVotePower _governanceVP, address _to) external override onlyManager {

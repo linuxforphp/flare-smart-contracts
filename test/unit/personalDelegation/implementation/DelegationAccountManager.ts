@@ -43,7 +43,6 @@ let startTs: BN;
 let latestStart: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let mockInflation: InflationMockInstance;
-let mockSupply: MockContractInstance;
 let ADDRESS_UPDATER: string;
 let priceSubmitterMock: MockContractInstance;
 let supply: SupplyInstance;
@@ -133,12 +132,12 @@ export async function distributeRewards(
 export async function expireRewardEpoch(rewardEpoch: number, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string) {
   let currentFtsoManagerAddress = await ftsoRewardManager.ftsoManager();
   await ftsoRewardManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
-      [ADDRESS_UPDATER, mockInflation.address, deployer, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.DELEGATION_ACCOUNT_MANAGER]),
+      [ADDRESS_UPDATER, mockInflation.address, deployer, wNat.address, delegationAccountManager.address], {from: ADDRESS_UPDATER});
   await ftsoRewardManager.closeExpiredRewardEpoch(rewardEpoch);
   await ftsoRewardManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
-      [ADDRESS_UPDATER, mockInflation.address, currentFtsoManagerAddress, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.DELEGATION_ACCOUNT_MANAGER]),
+      [ADDRESS_UPDATER, mockInflation.address, currentFtsoManagerAddress, wNat.address, delegationAccountManager.address], {from: ADDRESS_UPDATER});
 }
 
 export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, startTs: BN, ftsoRewardManager: FtsoRewardManagerInstance, deployer: string, closeAsYouGo = false) {
@@ -255,7 +254,6 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     // ftso reward manager
     mockFtsoManager = await MockFtsoManager.new();
     mockInflation = await InflationMock.new();
-    mockSupply = await MockContract.new();
 
     ftsoRewardManager = await FtsoRewardManager.new(
         accounts[0],
@@ -334,24 +332,25 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     let create1 = await delegationAccountManager.enableDelegationAccount({ from: accounts[1] });
     delAcc1Address = await delegationAccountManager.accountToDelegationAccount(accounts[1]);
     delegationAccountClonable1 = await DelegationAccountClonable.at(delAcc1Address);
-    expectEvent(create1, "CreateDelegationAccount", { delegationAccount: delAcc1Address, owner: accounts[1]} );
+    expectEvent(create1, "DelegationAccountCreated", { delegationAccount: delAcc1Address, owner: accounts[1]} );
     await expectEvent.inTransaction(create1.tx, delegationAccountClonable1, "Initialize", { owner: accounts[1], 
       manager: delegationAccountManager.address });
 
     let create2 = await delegationAccountManager.enableDelegationAccount({ from: accounts[2] }); 
     delAcc2Address = await delegationAccountManager.accountToDelegationAccount(accounts[2]);
     delegationAccountClonable2 = await DelegationAccountClonable.at(delAcc2Address);
-    expectEvent(create2, "CreateDelegationAccount", { delegationAccount: delAcc2Address, owner: accounts[2]} );
+    expectEvent(create2, "DelegationAccountCreated", { delegationAccount: delAcc2Address, owner: accounts[2]} );
 
     let create3 = await delegationAccountManager.enableDelegationAccount({ from: accounts[3] }); 
     delAcc3Address = await delegationAccountManager.accountToDelegationAccount(accounts[3]);
     delegationAccountClonable3 = await DelegationAccountClonable.at(delAcc3Address);
-    expectEvent(create3, "CreateDelegationAccount", { delegationAccount: delAcc3Address, owner: accounts[3]} );
+    expectEvent(create3, "DelegationAccountCreated", { delegationAccount: delAcc3Address, owner: accounts[3]} );
 
-    let create99 = await delegationAccountManager.contract.methods.enableDelegationAccount().call({ from: accounts[99] }); //return value (address) of enableDelegationAccount function
-    await delegationAccountManager.enableDelegationAccount({ from: accounts[99] });
+    let da99 = await delegationAccountManager.contract.methods.setClaimExecutors([]).call({ from: accounts[99] }); //return value (address) of enableDelegationAccount function
+    let create99 = await delegationAccountManager.setClaimExecutors([], { from: accounts[99] });
     let delAcc99Address = await delegationAccountManager.accountToDelegationAccount(accounts[99]);
-    expect(create99).to.equals(delAcc99Address);
+    expectEvent(create99, "DelegationAccountCreated", { delegationAccount: da99, owner: accounts[99]} );
+    expect(da99).to.equals(delAcc99Address);
   });
 
   it("Should revert if zero value/address", async() => {
@@ -860,7 +859,8 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     await expectRevert(delegationAccountManager.disableDelegationAccount({ from: accounts[10] }), "no delegation account");
 
     const delAcc = await delegationAccountManager.enableDelegationAccount.call({ from: accounts[10] });
-    await delegationAccountManager.enableDelegationAccount({ from: accounts[10] });
+    const enable = await delegationAccountManager.enableDelegationAccount({ from: accounts[10] });
+    expectEvent(enable, "DelegationAccountUpdated", { delegationAccount: delAcc, owner: accounts[10], enabled: true });
     const delegationAccount = await DelegationAccountClonable.at(delAcc);
     compareArrays(await delegationAccountManager.claimExecutors(accounts[10]), []);
     expect(await delegationAccount.claimToDelegationAccount()).to.be.true;
@@ -875,7 +875,8 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     expect(data2[0]).to.be.equal(delAcc);
     expect(data2[1]).to.be.true;
 
-    await delegationAccountManager.disableDelegationAccount({ from: accounts[10] });
+    const disable = await delegationAccountManager.disableDelegationAccount({ from: accounts[10] });
+    expectEvent(disable, "DelegationAccountUpdated", { delegationAccount: delAcc, owner: accounts[10], enabled: false });
     compareArrays(await delegationAccountManager.claimExecutors(accounts[10]), [accounts[5]]);
     expect(await delegationAccount.claimToDelegationAccount()).to.be.false;
     const data3 = await delegationAccountManager.getDelegationAccountData(accounts[10]);
@@ -917,11 +918,56 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     const blockNumber = await web3.eth.getBlockNumber();
     await time.advanceBlock();
     const vpBefore = await wNat.votePowerOfAt(accounts[40], blockNumber);
-    await delegationAccountManager.revokeDelegationAt(accounts[40], blockNumber, { from: accounts[1] });
+    const tx = await delegationAccountManager.revokeDelegationAt(accounts[40], blockNumber, { from: accounts[1] });
     const vpAfter = await wNat.votePowerOfAt(accounts[40], blockNumber);
+    await expectEvent.inTransaction(tx.tx, delegationAccountClonable1, "RevokeFtso", { delegationAccount: delAcc1Address, to: accounts[40], blockNumber: toBN(blockNumber) })
 
     expect(vpBefore.gtn(0)).is.true;
     expect(vpAfter.eqn(0)).is.true;
+  });
+
+  it("Should batch delegate", async() => {
+    async function checkDelegations(from: string, expectDelegates: string[], expectBips: number[]) {
+      const { 0: delegates, 1: bips } = await wNat.delegatesOf(from);
+      compareArrays(delegates, expectDelegates);
+      compareArrays(bips.map(x => Number(x)), expectBips);
+    }
+    async function checkDelegationsAt(from: string, expectDelegates: string[], expectBips: number[], at: number) {
+      const { 0: delegates, 1: bips } = await wNat.delegatesOfAt(from, at);
+      compareArrays(delegates, expectDelegates);
+      compareArrays(bips.map(x => Number(x)), expectBips);
+    }
+    // Assemble
+    await web3.eth.sendTransaction({from: accounts[1], to: delAcc1Address, value: 100 });
+    // batch delegate to empty
+    const tx = await delegationAccountManager.batchDelegate([accounts[2], accounts[3]], [3000, 5000], { from: accounts[1] });
+    const blk1 = await web3.eth.getBlockNumber();
+    await expectEvent.inTransaction(tx.tx, delegationAccountClonable1, "UndelegateAllFtso");
+    await expectEvent.inTransaction(tx.tx, delegationAccountClonable1, "DelegateFtso", { delegationAccount: delAcc1Address, to: accounts[2], bips: toBN(3000) });
+    await expectEvent.inTransaction(tx.tx, delegationAccountClonable1, "DelegateFtso", { delegationAccount: delAcc1Address, to: accounts[3], bips: toBN(5000) });
+    await checkDelegations(delAcc1Address, [accounts[2], accounts[3]], [3000, 5000]);
+    // redelegate all
+    await delegationAccountManager.batchDelegate([accounts[4], accounts[5]], [2000, 4000], { from: accounts[1] });
+    const blk2 = await web3.eth.getBlockNumber();
+    await checkDelegations(delAcc1Address, [accounts[4], accounts[5]], [2000, 4000]);
+    // redelegate to one delegator
+    await delegationAccountManager.batchDelegate([accounts[6]], [5000], { from: accounts[1] });
+    const blk3 = await web3.eth.getBlockNumber();
+    await checkDelegations(delAcc1Address, [accounts[6]], [5000]);
+    // undelegate via batchDelegation
+    await delegationAccountManager.batchDelegate([], [], { from: accounts[1] });
+    const blk4 = await web3.eth.getBlockNumber();
+    await checkDelegations(delAcc1Address, [], []);
+    // batch delegate to empty again
+    await delegationAccountManager.batchDelegate([accounts[8], accounts[9]], [1000, 2000], { from: accounts[1] });
+    const blk5 = await web3.eth.getBlockNumber();
+    await checkDelegations(delAcc1Address, [accounts[8], accounts[9]], [1000, 2000]);
+    // historical delegations should be correct
+    await checkDelegationsAt(delAcc1Address, [accounts[2], accounts[3]], [3000, 5000], blk1);
+    await checkDelegationsAt(delAcc1Address, [accounts[4], accounts[5]], [2000, 4000], blk2);
+    await checkDelegationsAt(delAcc1Address, [accounts[6]], [5000], blk3);
+    await checkDelegationsAt(delAcc1Address, [], [], blk4);
+    await checkDelegationsAt(delAcc1Address, [accounts[8], accounts[9]], [1000, 2000], blk5);
   });
 
   it("Should delegate and undelegate", async() => {
