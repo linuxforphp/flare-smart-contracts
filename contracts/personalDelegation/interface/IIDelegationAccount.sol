@@ -75,6 +75,8 @@ interface IIDelegationAccount is IDelegationAccount {
 
     function delegate(WNat _wNat, address _to, uint256 _bips) external;
 
+    function batchDelegate(WNat _wNat, address[] memory _delegatees, uint256[] memory _bips) external;
+
     function undelegateAll(WNat _wNat) external;
 
     function revokeDelegationAt(WNat _wNat, address _who, uint256 _blockNumber) external;
