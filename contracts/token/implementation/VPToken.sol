@@ -125,7 +125,7 @@ contract VPToken is IIVPToken, ERC20, CheckPointable, Governed {
     }
 
     /**
-     * @notice Undelegate all percentage delegations from teh sender and then delegate corresponding 
+     * @notice Undelegate all percentage delegations from the sender and then delegate corresponding 
      *   `_bips` percentage of voting power from the sender to each member of `_delegatees`.
      * @param _delegatees The addresses of the new recipients.
      * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
