@@ -1,12 +1,14 @@
 const Web3Utils = require("web3-utils");
 const RippleAPI = require("ripple-lib").RippleAPI;
 const Web3 = require("web3");
-const cliProgress = require('cli-progress');
+const cliProgress = require("cli-progress");
 import BigNumber from "bignumber.js";
 import {
   airdropGenesisRes,
-  generateTransactionCallRes, LineItem,
-  ProcessedAccount, validateRes
+  generateTransactionCallRes,
+  LineItem,
+  ProcessedAccount,
+  validateRes,
 } from "./airdropTypes";
 import { isBaseTenNumber, logMessage } from "./utils";
 
@@ -151,7 +153,7 @@ export function createFlareAirdropGenesisData(
       accBalance = accBalance.multipliedBy(conversionFactor);
       let expectedBalance = new BigNumber(lineItem.FlareBalance);
       // To get from XRP to 6 decimal places to Wei (Flare to 18 decimal places)
-      accBalance = accBalance.multipliedBy(TEN.pow(12));     
+      accBalance = accBalance.multipliedBy(TEN.pow(12));
       // rounding down to 0 decimal places
       accBalance = accBalance.dp(0, BigNumber.ROUND_FLOOR);
       // Special case for RippleWorks
@@ -219,7 +221,9 @@ export function createFlareAirdropGenesisData(
 export function createSetAirdropBalanceUnsignedTransactions(
   processedAccounts: ProcessedAccount[],
   initialAirdropContractAddress: string,
+  createInitialAirdropTx: boolean,
   distributionContractAddress: string,
+  createDistributionTx: boolean,
   initialAirdropSenderAddress: string,
   distributionSenderAddress: string,
   gasPrice: string,
@@ -247,10 +251,15 @@ export function createSetAirdropBalanceUnsignedTransactions(
   let distributionNonce = initialDistributionNonceOffset;
   let shouldBreak = false;
 
-  const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  let progress = 0
+  const bar1 = new cliProgress.SingleBar(
+    {},
+    cliProgress.Presets.shades_classic
+  );
+  let progress = 0;
 
-  console.log('Creating unsigned transactions for InitialAirdrop and Distribution');
+  console.log(
+    "Creating unsigned transactions for InitialAirdrop and Distribution"
+  );
   bar1.start(Math.ceil(processedAccounts.length / batchSize), 0);
   while (true) {
     const tempAddresses: string[] = [];
@@ -260,9 +269,11 @@ export function createSetAirdropBalanceUnsignedTransactions(
       if (!(index < processedAccounts.length)) {
         shouldBreak = true;
         break;
-      }  
+      }
       tempAddresses.push(processedAccounts[index].NativeAddress);
-      tempBalances.push(web3.utils.toBN(processedAccounts[index].NativeBalance));
+      tempBalances.push(
+        web3.utils.toBN(processedAccounts[index].NativeBalance)
+      );
       index += 1;
     }
 
@@ -270,38 +281,41 @@ export function createSetAirdropBalanceUnsignedTransactions(
       tempAddresses.length > 0 &&
       tempAddresses.length === tempBalances.length
     ) {
-      const encodedCallInitialAirdrop = InitialAirdropContract.methods
-        .setAirdropBalances(tempAddresses, tempBalances)
-        .encodeABI();
-      const newTransaction = {
-        from: initialAirdropSenderAddress,
-        to: initialAirdropContractAddress,
-        data: encodedCallInitialAirdrop,
-        gas: gas,
-        gasPrice: gasPrice,
-        nonce: initialAirdropNonce,
-        chainId: chainId,
-      };
-      rawTransactions.push(newTransaction);
-      initialAirdropNonce += 1;
+      if (createInitialAirdropTx) {
+        const encodedCallInitialAirdrop = InitialAirdropContract.methods
+          .setAirdropBalances(tempAddresses, tempBalances)
+          .encodeABI();
+        const newTransaction = {
+          from: initialAirdropSenderAddress,
+          to: initialAirdropContractAddress,
+          data: encodedCallInitialAirdrop,
+          gas: gas,
+          gasPrice: gasPrice,
+          nonce: initialAirdropNonce,
+          chainId: chainId,
+        };
+        rawTransactions.push(newTransaction);
+        initialAirdropNonce += 1;
+      }
 
-      const encodedCallDistribution = distributionContract.methods
-        .setAirdropBalances(tempAddresses, tempBalances)
-        .encodeABI();
-      const newTransactionDistribution = {
-        from: distributionSenderAddress,
-        to: distributionContractAddress,
-        data: encodedCallDistribution,
-        gas: gas,
-        gasPrice: gasPrice,
-        nonce: distributionNonce,
-        chainId: chainId,
-      };
-      rawTransactions.push(newTransactionDistribution);
-      distributionNonce += 1;
-
-      progress += 1
-      bar1.update(progress)
+      if (createDistributionTx) {
+        const encodedCallDistribution = distributionContract.methods
+          .setAirdropBalances(tempAddresses, tempBalances)
+          .encodeABI();
+        const newTransactionDistribution = {
+          from: distributionSenderAddress,
+          to: distributionContractAddress,
+          data: encodedCallDistribution,
+          gas: gas,
+          gasPrice: gasPrice,
+          nonce: distributionNonce,
+          chainId: chainId,
+        };
+        rawTransactions.push(newTransactionDistribution);
+        distributionNonce += 1;
+      }
+      progress += 1;
+      bar1.update(progress);
     }
 
     if (shouldBreak) {

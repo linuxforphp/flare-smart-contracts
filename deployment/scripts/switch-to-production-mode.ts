@@ -96,7 +96,7 @@ export async function switchToProductionMode(
     await priceSubmitter.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await distributionTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await incentivePoolTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
-    await initialAirdrop.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await initialAirdrop.switchToProductionMode();
     await addressUpdater.switchToProductionMode();
     await supply.switchToProductionMode();
     await inflation.switchToProductionMode();

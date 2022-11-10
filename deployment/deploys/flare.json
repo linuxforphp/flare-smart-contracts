@@ -27,7 +27,7 @@
   {
     "name": "InitialAirdrop",
     "contractName": "InitialAirdrop.sol",
-    "address": "0x1000000000000000000000000000000000000006"
+    "address": "0x24f245f910c74f82447B8ebfF8B94275379e7E74"
   },
   {
     "name": "GovernanceSettings",

@@ -17,7 +17,9 @@ library AddressSet {
         uint256 position = _state.index[_address];
         if (position == 0) return;
         if (position < _state.list.length) {
-            _state.list[position - 1] = _state.list[_state.list.length - 1];
+            address addressToMove = _state.list[_state.list.length - 1];
+            _state.list[position - 1] = addressToMove;
+            _state.index[addressToMove] = position;
         }
         _state.list.pop();
         delete _state.index[_address];
