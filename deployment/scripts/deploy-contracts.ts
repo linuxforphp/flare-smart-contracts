@@ -210,30 +210,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolTreasury.contractName, `IncentivePoolTreasury.sol`, incentivePoolTreasury.address, quiet);
 
-  // Initialize the initial airdrop contract
-  let initialAirdrop: InitialAirdropInstance;
-  try {
-    initialAirdrop = await InitialAirdrop.at(parameters.initialAirdropAddress);
-  } catch (e) {
-    if (!quiet) {
-      console.error("InitialAirdrop not in genesis...creating new and sending funds.")
-    }
-    const initialAirdropWei = BN(parameters.initialAirdropWei.replace(/\s/g, ''));
-    initialAirdrop = await InitialAirdrop.new();
-    const suicidalMock = await SuicidalMock.new(initialAirdrop.address);
-    await web3.eth.sendTransaction({ to: suicidalMock.address, value: initialAirdropWei });
-    await suicidalMock.die();
-  }
-  // This has to be done always
-  try {
-    await initialAirdrop.initialiseFixedAddress();
-  } catch (e) {
-    console.error(`initialAirdrop.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
-  }
-
-  spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
-  await initialAirdrop.setLatestAirdropStart(parameters.initialAirdropLatestStart, { from: genesisGovernance });
-
   // default executors are governancePublicKey and governanceExecutorPublicKey if set
   let governanceSettings: GovernanceSettingsInstance;
   
@@ -263,6 +239,11 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // AddressUpdater
   const addressUpdater = await AddressUpdater.new(deployerAccount.address);
   spewNewContractInfo(contracts, addressUpdaterContracts, AddressUpdater.contractName, `AddressUpdater.sol`, addressUpdater.address, quiet);
+
+  // Initial airdrop contract
+  const initialAirdrop = await InitialAirdrop.new(deployerAccount.address);
+  spewNewContractInfo(contracts, addressUpdaterContracts, InitialAirdrop.contractName, `InitialAirdrop.sol`, initialAirdrop.address, quiet);
+  await initialAirdrop.setLatestAirdropStart(parameters.initialAirdropLatestStart, { from: deployerAccount.address });
 
   // Tell genesis contracts about address updater
   await flareDaemon.setAddressUpdater(addressUpdater.address, { from: genesisGovernance });
