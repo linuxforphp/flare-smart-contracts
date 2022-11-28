@@ -38,7 +38,8 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     string internal constant ERR_FEE_UPDATE_FAILED = "fee can not be updated";
     string internal constant ERR_NO_DELEGATION_ACCOUNT = "no delegation account";
     string internal constant ERR_LIBRARY_ADDRESS_NOT_SET_YET = "library address not set yet";
-
+    string internal constant ERR_CREATE_CLONE = "clone not successfully created";
+    
     address payable constant internal BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     uint256 public immutable feeValueUpdateOffset;      // fee value update timelock measured in reward epochs
@@ -84,7 +85,9 @@ contract DelegationAccountManager is IIDelegationAccountManager,
         require(_registerExecutorFeeValueWei > 0, ERR_VALUE_ZERO);
         feeValueUpdateOffset = _feeValueUpdateOffset;
         maxFeeValueWei = _maxFeeValueWei;
+        emit MaxFeeSet(_maxFeeValueWei); 
         registerExecutorFeeValueWei = _registerExecutorFeeValueWei;
+        emit RegisterExecutorFeeSet(_registerExecutorFeeValueWei);
     }
 
     /**
@@ -118,6 +121,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
             (bool success, ) = msg.sender.call{value: msg.value - totalExecutorsFee}(""); //nonReentrant
             /* solhint-enable avoid-low-level-calls */
             require(success, ERR_TRANSFER_FAILURE);
+            emit SetExecutorsExcessAmountRefunded(msg.sender, msg.value - totalExecutorsFee);
         }
         return delegationAccountData.delegationAccount;
     }
@@ -125,7 +129,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     /**
      * @notice Enables (creates) delegation account contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will remain on delegation account and 
-     * will not be automatically transfered to owner's account.
+     * will not be automatically transferred to owner's account.
      * @return Address of delegation account contract.
      */
     function enableDelegationAccount() external override returns (IDelegationAccount) {
@@ -140,7 +144,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     /**
      * @notice Disables delegation account contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will not remain on delegation account but 
-     * will be automatically transfered to owner's account.
+     * will be automatically transferred to owner's account.
      * @notice Automatic claiming will not claim ftso rewards and airdrop for delegation account anymore.
      * @dev Reverts if there is no delegation account
      */
@@ -189,7 +193,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
 
     /**
      * @notice Claim ftso rewards for delegation account and owner
-     * @notice If called by executor a fee is transfered to executor or transaction is reverted (claimed amount to low)
+     * @notice If called by executor a fee is transferred to executor or tx is reverted (claimed amount too small)
      * @param _owners       list of owner addresses
      * @param _epochs       list of epochs to claim for
      * @return              Array of claimed amounts
@@ -240,7 +244,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
 
     /**
      * @notice Claim airdrop distribution for delegation account and owner
-     * @notice If called by executor a fee is transfered to executor or transaction is reverted (claimed amount to low)
+     * @notice If called by executor a fee is transferred to executor or tx is reverted (claimed amount too small)
      * @param _owners       list of owner addresses
      * @param _month        month to claim for
      * @return              Array of claimed amounts
@@ -318,7 +322,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
      * @param _to The address of the recipient
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
-     **/
+     */
     function delegate(address _to, uint256 _bips) external override {
         _getDelegationAccount(msg.sender).delegate(wNat, _to, _bips);
     }
@@ -329,25 +333,25 @@ contract DelegationAccountManager is IIDelegationAccountManager,
      * @param _delegatees The addresses of the new recipients.
      * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Total of all `_bips` values must be at most 10000.
-     **/
+     */
     function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external override {
         _getDelegationAccount(msg.sender).batchDelegate(wNat, _delegatees, _bips);
     }
 
     /**
      * @notice Undelegate all voting power for delegates of msg.sender's delegation account
-     **/
+     */
     function undelegateAll() external override {
         _getDelegationAccount(msg.sender).undelegateAll(wNat);
     }
 
     /**
-    * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
-    *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
-    *    Block `_blockNumber` must be in the past. 
-    *    This method should be used only to prevent rogue delegate voting in the current voting block.
-    *    To stop delegating use delegate with value of 0 or undelegateAll.
-    */
+     * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
+     *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
+     *    Block `_blockNumber` must be in the past. 
+     *    This method should be used only to prevent rogue delegate voting in the current voting block.
+     *    To stop delegating use delegate with value of 0 or undelegateAll.
+     */
     function revokeDelegationAt(address _who, uint256 _blockNumber) external override {
         _getDelegationAccount(msg.sender).revokeDelegationAt(wNat, _who, _blockNumber);
     }
@@ -355,14 +359,14 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     /**
      * @notice Delegate all governance vote power of msg.sender's delegation account to `_to`.
      * @param _to The address of the recipient
-     **/
+     */
     function delegateGovernance(address _to) external override {
         _getDelegationAccount(msg.sender).delegateGovernance(governanceVP, _to);
     }
 
     /**
      * @notice Undelegate governance vote power for delegate of msg.sender's delegation account
-     **/
+     */
     function undelegateGovernance() external override {
         _getDelegationAccount(msg.sender).undelegateGovernance(governanceVP);
     }
@@ -394,6 +398,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     function setMaxFeeValueWei(uint256 _maxFeeValueWei) external override onlyGovernance {
         require(_maxFeeValueWei > 0, ERR_VALUE_ZERO);
         maxFeeValueWei = _maxFeeValueWei;
+        emit MaxFeeSet(_maxFeeValueWei);
     }
 
     /**
@@ -403,6 +408,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
     function setRegisterExecutorFeeValueWei(uint256 _registerExecutorFeeValueWei) external override onlyGovernance {
         require(_registerExecutorFeeValueWei > 0, ERR_VALUE_ZERO);
         registerExecutorFeeValueWei = _registerExecutorFeeValueWei;
+        emit RegisterExecutorFeeSet(_registerExecutorFeeValueWei);
     }
 
     /**
@@ -426,7 +432,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
             if (_ftsoRewardManager == ftsoRewardManagers[i]) {
                 ftsoRewardManagers[i] = ftsoRewardManagers[len -1];
                 ftsoRewardManagers.pop();
-                emit FtsoRewarManagerRemoved(address(_ftsoRewardManager));
+                emit FtsoRewardManagerRemoved(address(_ftsoRewardManager));
                 return;
             }
         }
@@ -582,6 +588,7 @@ contract DelegationAccountManager is IIDelegationAccountManager,
 
         // create delegation account
         IIDelegationAccount delegationAccount = IIDelegationAccount(payable(createClone(libraryAddress)));
+        require(_isContract(address(delegationAccount)), ERR_CREATE_CLONE);
         delegationAccount.initialize(msg.sender, this);
         delegationAccountData.delegationAccount = delegationAccount;
         emit DelegationAccountCreated(msg.sender, delegationAccount);
@@ -599,11 +606,15 @@ contract DelegationAccountManager is IIDelegationAccountManager,
         internal override
     {
         ftsoManager = IFtsoManager(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
-        wNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
+        WNat newWNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
+        if (address(wNat) == address(0)) {
+            wNat = newWNat;
+        } else if (newWNat != wNat) {
+            revert("wrong wNat address");
+        }
         governanceVP = wNat.governanceVotePower();
         distribution = IDistributionToDelegators(
             _getContractAddress(_contractNameHashes, _contractAddresses, "DistributionToDelegators"));
-
         IFtsoRewardManager ftsoRewardManager = IFtsoRewardManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRewardManager"));
         bool rewardManagersContain = false;
@@ -767,4 +778,13 @@ contract DelegationAccountManager is IIDelegationAccountManager,
                 "only owner or executor");
         }
     }
+
+    function _isContract(address _addr) private view returns (bool){
+        uint32 size;
+        // solhint-disable-next-line no-inline-assembly  
+        assembly {
+            size := extcodesize(_addr)
+        }
+        return (size > 0);
+    }       
 }

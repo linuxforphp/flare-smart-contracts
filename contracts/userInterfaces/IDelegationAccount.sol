@@ -18,6 +18,7 @@ interface IDelegationAccount {
     event DelegateGovernance(address delegationAccount, address to);
     event UndelegateGovernance(address delegationAccount);
     event WithdrawToOwner(address delegationAccount, uint256 amount);
+    event ExternalTokenTransferred(address delegationAccount, IERC20 token, uint256 amount);
     event ExecutorFeePaid(address delegationAccount, address executor, uint256 amount);
     event Initialize(address owner, IDelegationAccountManager manager);
     event ClaimFtsoRewardsFailure(string err, IFtsoRewardManager ftsoRewardManager, bool claimForOwner);

@@ -140,7 +140,7 @@
             "type": "string"
         },
         "governancePublicKey": {
-            "description": "Governance public key (the key to which governance is transfered after deploy). \nOverriden if provided in `.env` file as `GOVERNANCE_PUBLIC_KEY`.",
+            "description": "Governance public key (the key to which governance is transferred after deploy). \nOverriden if provided in `.env` file as `GOVERNANCE_PUBLIC_KEY`.",
             "type": "string"
         },
         "governanceSettingsAddress": {

@@ -303,11 +303,13 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     
     await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
 
-    await ftsoRewardManager.activate()
+    await ftsoRewardManager.activate();
 
+    expect(await delegationAccountManager.wNat()).to.equals(constants.ZERO_ADDRESS);
     await delegationAccountManager.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
         [ADDRESS_UPDATER, mockFtsoManager.address, wNat.address, ftsoRewardManager.address, distribution.address], {from: ADDRESS_UPDATER});
+    expect(await delegationAccountManager.wNat()).to.equals(wNat.address);
 
     // deploy library contract
     libraryContract = await DelegationAccountClonable.new();
@@ -366,8 +368,10 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
   it("Should update fees", async() => {
     expect((await delegationAccountManager.maxFeeValueWei()).toString()).to.be.equal(EXECUTOR_MAX_FEE);
     expect((await delegationAccountManager.registerExecutorFeeValueWei()).toString()).to.be.equal(EXECUTOR_REGISTER_FEE);
-    await delegationAccountManager.setMaxFeeValueWei(10000, { from: GOVERNANCE_ADDRESS });
-    await delegationAccountManager.setRegisterExecutorFeeValueWei(5000, { from: GOVERNANCE_ADDRESS });
+    let setMaxFee = await delegationAccountManager.setMaxFeeValueWei(10000, { from: GOVERNANCE_ADDRESS });
+    expectEvent(setMaxFee, "MaxFeeSet", { maxFeeValueWei: toBN(10000) });
+    let setExecutorFee = await delegationAccountManager.setRegisterExecutorFeeValueWei(5000, { from: GOVERNANCE_ADDRESS });
+    expectEvent(setExecutorFee, "RegisterExecutorFeeSet", { registerExecutorFeeValueWei: toBN(5000) });
     expect((await delegationAccountManager.maxFeeValueWei()).toString()).to.be.equal("10000");
     expect((await delegationAccountManager.registerExecutorFeeValueWei()).toString()).to.be.equal("5000");
   });
@@ -387,7 +391,7 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     expect(owner2).to.equals(accounts[2]);
   });
 
-  it("Should wrap transfered tokens and then withdraw it", async()=> {
+  it("Should wrap transferred tokens and then withdraw it", async()=> {
     // console.log(await web3.eth.getBalance(accounts[1]));
     expect((await web3.eth.getBalance(delAcc1Address)).toString()).to.equals("0");
     expect((await wNat.balanceOf(delAcc1Address)).toString()).to.equals("0");
@@ -407,12 +411,12 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     const current = wNat.contract.methods.transfer(accounts[1], 10).encodeABI();
     await mockWNAT.givenMethodReturnBool(current, false);
 
-    await delegationAccountManager.updateContractAddresses(
+    let update = delegationAccountManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
       [ADDRESS_UPDATER, mockFtsoManager.address, mockWNAT.address, ftsoRewardManager.address, distribution.address], {from: ADDRESS_UPDATER}
     );
-    let tx1 = delegationAccountManager.withdraw(10, { from:accounts[1] });
-    await expectRevert(tx1, "transfer failed");
+    // let tx1 = delegationAccountManager.withdraw(10, { from:accounts[1] });
+    await expectRevert(update, "wrong wNat address");
   });
 
   it("Should be able to register as executor, update fee value and unregister", async () => {
@@ -524,6 +528,30 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     expect(info6[1].toString()).to.be.equal("10");
   });
 
+  it("Should be able to register and unregister multiple executors", async () => {
+    await delegationAccountManager.registerExecutor(10, { value: EXECUTOR_REGISTER_FEE, from: accounts[6] });
+    await delegationAccountManager.registerExecutor(10, { value: EXECUTOR_REGISTER_FEE, from: accounts[7] });
+    await delegationAccountManager.registerExecutor(10, { value: EXECUTOR_REGISTER_FEE, from: accounts[8] });
+    let registeredExecutors = await delegationAccountManager.getRegisteredExecutors(0, 10);
+    compareArrays(registeredExecutors[0], [accounts[6], accounts[7], accounts[8]]);
+    expect(registeredExecutors[1].toString()).to.be.equal("3");
+
+    await delegationAccountManager.unregisterExecutor({ from: accounts[6] });
+    registeredExecutors = await delegationAccountManager.getRegisteredExecutors(0, 10);
+    compareArrays(registeredExecutors[0], [accounts[8], accounts[7]]);
+    expect(registeredExecutors[1].toString()).to.be.equal("2");
+
+    await delegationAccountManager.registerExecutor(10, { value: EXECUTOR_REGISTER_FEE, from: accounts[9] });
+    registeredExecutors = await delegationAccountManager.getRegisteredExecutors(0, 10);
+    compareArrays(registeredExecutors[0], [accounts[8], accounts[7], accounts[9]]);
+    expect(registeredExecutors[1].toString()).to.be.equal("3");
+
+    await delegationAccountManager.unregisterExecutor({ from: accounts[8] });
+    registeredExecutors = await delegationAccountManager.getRegisteredExecutors(0, 10);
+    compareArrays(registeredExecutors[0], [accounts[9], accounts[7]]);
+    expect(registeredExecutors[1].toString()).to.be.equal("2");
+  });
+
   it("Should be able to set and remove executors", async () => {
     const tx = await delegationAccountManager.setClaimExecutors([accounts[5], accounts[6]], { from: accounts[1] });
     expectEvent(tx, "ClaimExecutorsChanged", {owner: accounts[1], executors: [accounts[5], accounts[6]]});
@@ -531,6 +559,7 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
 
     const tx2 = await delegationAccountManager.setClaimExecutors([accounts[5]], { from: accounts[1], value: "100" });
     expectEvent(tx2, "ClaimExecutorsChanged", {owner: accounts[1], executors: [accounts[5]]});
+    expectEvent(tx2, "SetExecutorsExcessAmountRefunded", { owner: accounts[1], excessAmount: toBN(100) });
     compareArrays(await delegationAccountManager.claimExecutors(accounts[1]), [accounts[5]]);
 
     await delegationAccountManager.registerExecutor(10, { value: EXECUTOR_REGISTER_FEE, from: accounts[6] });
@@ -1096,7 +1125,8 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     await tokenMock.givenMethodReturnBool(transferMethod, true);
 
     // Should allow transfer
-    await delegationAccountManager.transferExternalToken(tokenMock.address, 70, {from: accounts[1]});
+    let transfer = await delegationAccountManager.transferExternalToken(tokenMock.address, 70, {from: accounts[1]});
+    await expectEvent.inTransaction(transfer.tx, delegationAccountClonable1, "ExternalTokenTransferred", { delegationAccount: delAcc1Address, token: tokenMock.address, amount: toBN(70) });
 
     // Should call exactly once
     const invocationCount = await tokenMock.invocationCountForMethod.call(transferMethod)
@@ -1131,5 +1161,16 @@ contract(`DelegationAccountManager.sol; ${getTestFile(__filename)}; Delegation a
     const tx = delegationAccountManager.transferExternalToken(ftsoRewardManager.address, 70, {from: accounts[1]});
     await expectRevert(tx, "Transaction reverted: function selector was not recognized and there's no fallback function");
   });
+
+  it("Should not update wNat if address changes", async() => {
+    expect(await delegationAccountManager.wNat()).to.equals(wNat.address);
+
+    let wNat2 = await WNat.new(accounts[0], "Wrapped NAT 2", "WNAT2");
+    let setAddresses = delegationAccountManager.updateContractAddresses(
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
+      [ADDRESS_UPDATER, mockFtsoManager.address, wNat2.address, ftsoRewardManager.address, distribution.address], {from: ADDRESS_UPDATER});
+    await expectRevert(setAddresses, "wrong wNat address");
+    expect(await delegationAccountManager.wNat()).to.equals(wNat.address);
+  })
 
 });
