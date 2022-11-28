@@ -196,7 +196,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
 
         await mockFtsoManager.setRewardManager(ftsoRewardManager.address);
 
-        await ftsoRewardManager.activate();
+        let activate = await ftsoRewardManager.activate();
+        expectEvent(activate, "FtsoRewardManagerActivated", { ftsoRewardManager: ftsoRewardManager.address });
     });
 
     describe("basic", async () => {
@@ -225,7 +226,8 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
         });
 
         it("Should deactivate and disable claiming rewards", async () => {
-            await ftsoRewardManager.deactivate();
+            let deactivate = await ftsoRewardManager.deactivate();
+            expectEvent(deactivate, "FtsoRewardManagerDeactivated", { ftsoRewardManager: ftsoRewardManager.address });
 
             await expectRevert(ftsoRewardManager.claimReward(accounts[2], [0]), "reward manager deactivated");
             await expectRevert(ftsoRewardManager.claimRewardFromDataProviders(accounts[2], [0], [accounts[1]]), "reward manager deactivated");
@@ -1380,9 +1382,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             await mockInflation.receiveInflation({ value: "1" });
             // Assert
-            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "2");
-            const { 7: selfDestructReceived } = await ftsoRewardManager.getTotals();
-            assert.equal(selfDestructReceived.toNumber(), 1);
+            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "1");
         });
 
         it("Should gracefully receive self-destruct proceeds - initial balance > 0", async () => {
@@ -1398,9 +1398,7 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // Act
             await mockInflation.receiveInflation({ value: "1" });
             // Assert
-            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "3");
-            const { 7: selfDestructReceived } = await ftsoRewardManager.getTotals();
-            assert.equal(selfDestructReceived.toNumber(), 1);
+            assert.equal(await web3.eth.getBalance(ftsoRewardManager.address), "2");
         });
 
         it("Should not accept NAT unless from inflation", async () => {
@@ -1509,8 +1507,6 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 99);
-            const { 7: selfDestructProceeds } = await ftsoRewardManager.getTotals();
-            assert.equal(selfDestructProceeds.toNumber(), 1);
 
             // Create another suicidal
             const anotherMockSuicidal = await SuicidalMock.new(ftsoRewardManager.address);
@@ -1527,8 +1523,6 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // a1 -> a5 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs / 2 (half vote pover was delegated) = 99
             let natClosingBalance2 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]));
             assert.equal(natClosingBalance2.sub(natOpeningBalance2).toNumber(), 99);
-            const { 7: selfDestructProceeds1 } = await ftsoRewardManager.getTotals();
-            assert.equal(selfDestructProceeds1.toNumber(), 2);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - percentage - should not claim twice", async () => {
@@ -1774,8 +1768,6 @@ contract(`FtsoRewardManager.sol; ${getTestFile(__filename)}; Ftso reward manager
             // a4 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 price epochs = 198
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
             assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), 198);
-            const { 7: selfDestructProceeds } = await ftsoRewardManager.getTotals();
-            assert.equal(selfDestructProceeds.toNumber(), 1);
         });
 
         it("Should enable rewards to be claimed by delegator and data provider once reward epoch finalized - explicit", async () => {

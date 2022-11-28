@@ -47,6 +47,9 @@ interface IFtsoRewardManager {
         address[] recipients
     );
 
+    event FtsoRewardManagerActivated(address ftsoRewardManager);
+    event FtsoRewardManagerDeactivated(address ftsoRewardManager);
+
     /**
      * @notice Allows a percentage delegator to claim rewards.
      * @notice This function is intended to be used to claim rewards in case of delegation by percentage.

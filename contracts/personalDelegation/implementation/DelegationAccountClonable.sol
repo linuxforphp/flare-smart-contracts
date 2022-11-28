@@ -51,7 +51,7 @@ contract DelegationAccountClonable is IIDelegationAccount {
     /**
      * @notice Enables this contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will remain on delegation account and 
-     * will not be automatically transfered to owner's account.
+     * will not be automatically transferred to owner's account.
      */    
     function enableClaimingToDelegationAccount() external override onlyManager {
         claimToDelegationAccount = true;
@@ -60,7 +60,7 @@ contract DelegationAccountClonable is IIDelegationAccount {
     /**
      * @notice Disables this contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will not remain on delegation account but 
-     * will be automatically transfered to owner's account.
+     * will be automatically transferred to owner's account.
      * @notice Automatic claiming will not claim ftso rewards and airdrop for delegation account anymore.
      * @param _wNat                         WNat contract address
      */ 
@@ -202,6 +202,7 @@ contract DelegationAccountClonable is IIDelegationAccount {
         require(address(_token) != address(_wNat), "Transfer from wNat not allowed");
         bool success = _token.transfer(owner, _amount);
         require(success, ERR_TRANSFER_FAILURE);
+        emit ExternalTokenTransferred(address(this), _token, _amount);
     }
 
     function _claimDelegationAccountFtsoRewards(IFtsoRewardManager _rewardManager, uint256[] memory _epochs)

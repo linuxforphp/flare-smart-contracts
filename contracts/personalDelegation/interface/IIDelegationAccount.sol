@@ -17,14 +17,14 @@ interface IIDelegationAccount is IDelegationAccount {
     /**
      * @notice Enables this contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will remain on delegation account and 
-     * will not be automatically transfered to owner's account.
+     * will not be automatically transferred to owner's account.
      */    
     function enableClaimingToDelegationAccount() external;
 
     /**
      * @notice Disables this contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will not remain on delegation account but 
-     * will be automatically transfered to owner's account.
+     * will be automatically transferred to owner's account.
      * @notice Automatic claiming will not claim ftso rewards and airdrop for delegation account anymore.
      * @param _wNat                         WNat contract address
      */ 

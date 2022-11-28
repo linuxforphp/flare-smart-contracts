@@ -80,7 +80,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     uint256 private totalBurnedWei;      // rewards that were unearned or expired and thus burned
     uint256 private totalInflationAuthorizedWei;
     uint256 private totalInflationReceivedWei;
-    uint256 private totalSelfDestructReceivedWei;
     uint256 private lastInflationAuthorizationReceivedTs;
     uint256 private dailyAuthorizedInflation;
 
@@ -283,6 +282,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         require(inflation != address(0) && address(ftsoManager) != address(0) && address(wNat) != address(0),
             "addresses not set");
         active = true;
+        emit FtsoRewardManagerActivated(address(this));
     }
 
     /**
@@ -299,6 +299,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      */
     function deactivate() external override onlyImmediateGovernance {
         active = false;
+        emit FtsoRewardManagerDeactivated(address(this));
     }
 
     function setDailyAuthorizedInflation(uint256 _toAuthorizeWei) external override onlyInflation {
@@ -731,7 +732,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             uint256 _totalBurnedWei,
             uint256 _totalInflationAuthorizedWei,
             uint256 _totalInflationReceivedWei,
-            uint256 _totalSelfDestructReceivedWei,
             uint256 _lastInflationAuthorizationReceivedTs,
             uint256 _dailyAuthorizedInflation
         )
@@ -744,7 +744,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             totalBurnedWei,
             totalInflationAuthorizedWei,
             totalInflationReceivedWei,
-            totalSelfDestructReceivedWei,
             lastInflationAuthorizationReceivedTs,
             dailyAuthorizedInflation
         );
@@ -799,8 +798,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         _expectedBalance = lastBalance.add(msg.value);
         _currentBalance = address(this).balance;
         if (_currentBalance > _expectedBalance) {
-            // Then assume extra were self-destruct proceeds
-            totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(_currentBalance).sub(_expectedBalance);
+            // Then assume extra were self-destruct proceeds and burn it
+            //slither-disable-next-line arbitrary-send-eth
+            BURN_ADDRESS.transfer(_currentBalance.sub(_expectedBalance));
         } else if (_currentBalance < _expectedBalance) {
             // This is a coding error
             assert(false);
@@ -1203,13 +1203,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @param _currentRewardEpoch   number of the current reward epoch
      */
     function _isRewardClaimable(uint256 _rewardEpoch, uint256 _currentRewardEpoch) internal view returns (bool) {
-        if (_rewardEpoch < nextRewardEpochToExpire || 
-            _rewardEpoch >= _currentRewardEpoch || 
-            _rewardEpoch < firstClaimableRewardEpoch) {
-            // reward expired and closed or current or future or before claming enabled
-            return false;
-        }
-        return true;
+        return _rewardEpoch >= firstClaimableRewardEpoch &&
+               _rewardEpoch >= nextRewardEpochToExpire &&
+               _rewardEpoch < _currentRewardEpoch;
     }
 
     /**
@@ -1362,7 +1358,6 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
 
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
         return totalInflationReceivedWei
-            .add(totalSelfDestructReceivedWei)
             .sub(totalClaimedWei)
             .sub(totalBurnedWei);
     }

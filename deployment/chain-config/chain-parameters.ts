@@ -87,7 +87,7 @@ export interface ChainParameters {
     genesisGovernancePrivateKey: string;
 
     /**
-     * Governance public key (the key to which governance is transfered after deploy). 
+     * Governance public key (the key to which governance is transferred after deploy). 
      * Overriden if provided in `.env` file as `GOVERNANCE_PUBLIC_KEY`.
      */
     governancePublicKey: string;

@@ -21,12 +21,11 @@ export async function getRewardTotals(ftsoRewardManager: FtsoRewardManagerInstan
     4: totalBurnedWei,
     5: totalInflationAuthorizedWei,
     6: totalInflationReceivedWei,
-    7: totalSelfDestructReceivedWei,
-    8: lastInflationAuthorizationReceivedTs,
-    9: dailyAuthorizedInflation
+    7: lastInflationAuthorizationReceivedTs,
+    8: dailyAuthorizedInflation
   } = await ftsoRewardManager.getTotals();
   return {
     totalAwardedWei, totalClaimedWei, totalExpiredWei, totalUnearnedWei, totalBurnedWei, totalInflationAuthorizedWei,
-    totalInflationReceivedWei, totalSelfDestructReceivedWei, lastInflationAuthorizationReceivedTs, dailyAuthorizedInflation
+    totalInflationReceivedWei, lastInflationAuthorizationReceivedTs, dailyAuthorizedInflation
   };
 }

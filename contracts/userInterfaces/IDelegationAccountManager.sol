@@ -16,7 +16,10 @@ interface IDelegationAccountManager {
     event ClaimExecutorFeeValueChanged(address executor, uint256 validFromRewardEpoch, uint256 feeValueWei);
     event ExecutorRegistered(address executor);
     event ExecutorUnregistered(address executor, uint256 validFromRewardEpoch);
-    event FtsoRewarManagerRemoved(address ftsoRewardManager);
+    event FtsoRewardManagerRemoved(address ftsoRewardManager);
+    event MaxFeeSet(uint256 maxFeeValueWei);
+    event RegisterExecutorFeeSet(uint256 registerExecutorFeeValueWei);
+    event SetExecutorsExcessAmountRefunded(address owner, uint256 excessAmount);
 
     /**
      * @notice Sets the addresses of executors and creates delegation account contract if it does not exist.
@@ -29,7 +32,7 @@ interface IDelegationAccountManager {
     /**
      * @notice Enables (creates) delegation account contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will remain on delegation account and 
-     * will not be automatically transfered to owner's account.
+     * will not be automatically transferred to owner's account.
      * @return Address of delegation account contract.
      */
     function enableDelegationAccount() external returns (IDelegationAccount);
@@ -37,7 +40,7 @@ interface IDelegationAccountManager {
     /**
      * @notice Disables delegation account contract to be used as delegation account,
      * i.e. all ftso rewards and airdrop funds will not remain on delegation account but 
-     * will be automatically transfered to owner's account.
+     * will be automatically transferred to owner's account.
      * @notice Automatic claiming will not claim ftso rewards and airdrop for delegation account anymore.
      * @dev Reverts if there is no delegation account
      */
@@ -73,7 +76,7 @@ interface IDelegationAccountManager {
 
     /**
      * @notice Claim ftso rewards for delegation account and owner
-     * @notice If called by executor a fee is transfered to executor or transaction is reverted (claimed amount to low)
+     * @notice If called by executor a fee is transferred to executor or tx is reverted (claimed amount too small)
      * @param _owners       list of owner addresses
      * @param _epochs       list of epochs to claim for
      * @return              Array of claimed amounts
@@ -115,7 +118,7 @@ interface IDelegationAccountManager {
 
     /**
      * @notice Claim airdrop distribution for delegation account and owner
-     * @notice If called by executor a fee is transfered to executor or transaction is reverted (claimed amount to low)
+     * @notice If called by executor a fee is transferred to executor or tx is reverted (claimed amount too small)
      * @param _owners       list of owner addresses
      * @param _month        month to claim for
      * @return              Array of claimed amounts
@@ -154,7 +157,7 @@ interface IDelegationAccountManager {
      * @param _to The address of the recipient
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
-     **/
+     */
     function delegate(address _to, uint256 _bips) external;
 
     /**
@@ -163,32 +166,32 @@ interface IDelegationAccountManager {
      * @param _delegatees The addresses of the new recipients.
      * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
      *   Total of all `_bips` values must be at most 10000.
-     **/
+     */
     function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external;
 
     /**
      * @notice Undelegate all voting power for delegates of msg.sender's delegation account
-     **/
+     */
     function undelegateAll() external;
 
     /**
-    * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
-    *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
-    *    Block `_blockNumber` must be in the past. 
-    *    This method should be used only to prevent rogue delegate voting in the current voting block.
-    *    To stop delegating use delegate with value of 0 or undelegateAll.
-    */
+     * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
+     *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
+     *    Block `_blockNumber` must be in the past. 
+     *    This method should be used only to prevent rogue delegate voting in the current voting block.
+     *    To stop delegating use delegate with value of 0 or undelegateAll.
+     */
     function revokeDelegationAt(address _who, uint256 _blockNumber) external;
 
     /**
      * @notice Delegate all governance vote power of msg.sender's delegation account to `_to`.
      * @param _to The address of the recipient
-     **/
+     */
     function delegateGovernance(address _to) external;
 
     /**
      * @notice Undelegate governance vote power for delegate of msg.sender's delegation account
-     **/
+     */
     function undelegateGovernance() external;
 
     /**
