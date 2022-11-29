@@ -400,6 +400,14 @@ export interface ChainParameters {
     // Other currency settings
 
     assets: AssetParameters[];
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Polling Foundation
+
+    /**
+     * Array of proposers that can create a proposal
+     */
+    proposers: string[];
 }
 
 export interface AssetParameters {

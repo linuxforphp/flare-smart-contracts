@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "./GovernorSettings.sol";
+import "../../userInterfaces/IGovernor.sol";
 
 abstract contract GovernorProposals {
 
@@ -10,17 +10,19 @@ abstract contract GovernorProposals {
      * @notice Struct holding the information about proposal properties
      */
     struct Proposal {
-        address proposer;           // address of the proposer
-        uint256 votePowerBlock;     // block number used for identifying vote power
-        uint256 voteStartTime;      // start time of voting window (in seconds from epoch)
-        uint256 voteEndTime;        // end time of voting window (in seconds from epoch)
-        uint256 execStartTime;      // start time of execution window (in seconds from epoch)
-        uint256 execEndTime;        // end time of execution window (in seconds from epoch)
-        bool executableOnChain;     // flag indicating if proposal is executable on chain (via execution parameters)
-        bool executed;              // flag indicating if proposal has been executed
-        uint256 absoluteThreshold;  // Percentage in BIPS of the total vote power required for proposal "quorum"
-        uint256 relativeThreshold;  // Percentage in BIPS of the proper relation between FOR and AGAINST votes
-        uint256 totalVP;            // total vote power at votePowerBlock
+        address proposer;               // address of the proposer
+        bool accept;                    // type of the proposal - accept or reject
+        bool executed;                  // flag indicating if proposal has been executed
+        bool canceled;                  // flag indicating if proposal has been canceled
+        bool executableOnChain;         // flag indicating if proposal is executable on chain (via execution params)
+        uint256 votePowerBlock;         // block number used for identifying vote power
+        uint256 voteStartTime;          // start time of voting window (in seconds from epoch)
+        uint256 voteEndTime;            // end time of voting window (in seconds from epoch)
+        uint256 execStartTime;          // start time of execution window (in seconds from epoch)
+        uint256 execEndTime;            // end time of execution window (in seconds from epoch)
+        uint256 thresholdConditionBIPS; // percentage in BIPS of the total vote power required for proposal "quorum"
+        uint256 majorityConditionBIPS;  // percentage in BIPS of the proper relation between FOR and AGAINST votes
+        uint256 circulatingSupply;      // circulating supply at votePowerBlock
     }
 
     uint256 internal nextExecutionStartTime;            // first available time for next proposal execution
@@ -47,7 +49,7 @@ abstract contract GovernorProposals {
      * @param _votePowerBlock       Block number used for identifying vote power
      * @param _minVPBlockTimestamp  Timestamp of a minimal vote power block
      * @param _settings             Address identifying the governance settings address
-     * @param _totalVP              Total vote power at vote power block
+     * @param _circulatingSupply    Total circulating supply (total vote power) at vote power block
      * @return Proposal id and proposal object
      */
     function _storeProposal(
@@ -58,8 +60,9 @@ abstract contract GovernorProposals {
         string memory _description,
         uint256 _votePowerBlock,
         uint256 _minVPBlockTimestamp,
-        GovernorSettings _settings,
-        uint256 _totalVP
+        IGovernor.GovernorSettings memory _settings,
+        uint256 _circulatingSupply,
+        uint256 _maxProposalDurationSeconds
     ) internal returns (uint256, Proposal storage) {
         require(_targets.length == _values.length, "invalid proposal length");
         require(_targets.length == _calldatas.length, "invalid proposal length");
@@ -70,24 +73,26 @@ abstract contract GovernorProposals {
         
         proposal.proposer = _proposer;
         proposal.votePowerBlock = _votePowerBlock;
-        proposal.voteStartTime = block.timestamp + _settings.votingDelay();
-        proposal.voteEndTime = proposal.voteStartTime + _settings.votingPeriod();
-        require(proposal.voteEndTime - _minVPBlockTimestamp < (_settings.getVotePowerLifeTimeDays() * 60 * 60 * 24),
+        proposal.accept = _settings.accept;
+        proposal.voteStartTime = block.timestamp + _settings.votingDelaySeconds;
+        proposal.voteEndTime = proposal.voteStartTime + _settings.votingPeriodSeconds;
+        
+        require(proposal.voteEndTime - _minVPBlockTimestamp < _maxProposalDurationSeconds,
             "vote power block is too far in the past");
 
         if (_targets.length > 0) {
             proposal.executableOnChain = true;
-            proposal.execStartTime = proposal.voteEndTime + _settings.executionDelay();
+            proposal.execStartTime = proposal.voteEndTime + _settings.executionDelaySeconds;
             if (proposal.execStartTime < nextExecutionStartTime) {
                 proposal.execStartTime = nextExecutionStartTime;
             }
-            proposal.execEndTime = proposal.execStartTime + _settings.executionPeriod();
+            proposal.execEndTime = proposal.execStartTime + _settings.executionPeriodSeconds;
             nextExecutionStartTime = proposal.execEndTime;
         }
 
-        proposal.absoluteThreshold = _settings.absoluteThreshold();
-        proposal.relativeThreshold = _settings.relativeThreshold();
-        proposal.totalVP = _totalVP;
+        proposal.thresholdConditionBIPS = _settings.thresholdConditionBIPS;
+        proposal.majorityConditionBIPS = _settings.majorityConditionBIPS;
+        proposal.circulatingSupply = _circulatingSupply;
 
         return (proposalId, proposal);
     }

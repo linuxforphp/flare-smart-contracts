@@ -271,6 +271,13 @@
             "description": "Price submiter contract address. It is deployed to the genesis block with the fixed address  \"0x1000000000000000000000000000000000000003\".",
             "type": "string"
         },
+        "proposers": {
+            "description": "Array of proposers that can create a proposal",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "revealEpochDurationSeconds": {
             "description": "Reveal epoch duration, in seconds. Usually, it should be at most half of `priceEpochDurationSeconds` (90 seconds).",
             "type": "integer"
@@ -382,6 +389,7 @@
         "priceEpochCyclicBufferSize",
         "priceEpochDurationSeconds",
         "priceSubmitterAddress",
+        "proposers",
         "revealEpochDurationSeconds",
         "rewardEpochDurationSeconds",
         "rewardEpochsStartDelayPriceEpochs",

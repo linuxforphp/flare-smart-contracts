@@ -167,5 +167,9 @@
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSDDec5": 0
         }
+    ],
+    "proposers": [
+        "0x1a16DC5ec4f48Ed769949855C3bC3a1d10c72A95",
+        "0x893baB99798BCF5e0faB09Ad5CE61872B951F0a5"
     ]
 }

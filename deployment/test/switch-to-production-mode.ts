@@ -198,6 +198,12 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.POLLING_FOUNDATION, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.POLLING_FOUNDATION);
+    });
+  });
+
   describe(Contracts.DELEGATION_ACCOUNT_MANAGER, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async function() {
       if (!parameters.deployDistributionContract) return this.skip();

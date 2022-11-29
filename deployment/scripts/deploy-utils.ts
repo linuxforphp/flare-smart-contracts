@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { pascalCase } from "pascal-case";
-import { AssetTokenContract, AssetTokenInstance, CleanupBlockNumberManagerInstance, DummyAssetMinterContract, DummyAssetMinterInstance, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance, StateConnectorInstance, SupplyInstance, TestableFlareDaemonInstance, WNatInstance, GovernanceVotePowerInstance, PollingRejectInstance,  } from "../../typechain-truffle";
+import { AssetTokenContract, AssetTokenInstance, CleanupBlockNumberManagerInstance, DummyAssetMinterContract, DummyAssetMinterInstance, FlareDaemonInstance, FtsoContract, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRewardManagerInstance, InflationAllocationInstance, PriceSubmitterInstance, StateConnectorInstance, SupplyInstance, TestableFlareDaemonInstance, WNatInstance, GovernanceVotePowerInstance,  } from "../../typechain-truffle";
 import { ChainParameters } from "../chain-config/chain-parameters";
 import { Contract, Contracts } from "./Contracts";
 import { readFileSync } from "fs";
@@ -34,12 +34,6 @@ export interface DeployedFlareContracts {
   stateConnector?: StateConnectorInstance,
   ftsoRegistry?: FtsoRegistryInstance,
   ftsoContracts?: AssetContracts[],
-  contracts?: Contracts,
-}
-
-export interface DeployedFlareGovernanceContracts {
-  governanceVP?: GovernanceVotePowerInstance,
-  pollingReject?: PollingRejectInstance,
   contracts?: Contracts,
 }
 

@@ -17,7 +17,7 @@ import {
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, PollingFoundationContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -94,6 +94,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
   const SuicidalMock: SuicidalMockContract = artifacts.require("SuicidalMock");
   const ValidatorRegistry: ValidatorRegistryContract = artifacts.require("ValidatorRegistry");
+  const PollingFoundation: PollingFoundationContract = artifacts.require("PollingFoundation");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -420,6 +421,16 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Tell wNat contract about governance vote power
   await wNat.setGovernanceVotePower(governanceVotePower.address);
 
+  // Deploy polling foundation
+  const pollingFoundation = await PollingFoundation.new(
+    deployerAccount.address,
+    parameters.priceSubmitterAddress,
+    addressUpdater.address,
+    parameters.proposers
+  );
+  spewNewContractInfo(contracts, addressUpdaterContracts, PollingFoundation.contractName, `PollingFoundation.sol`, pollingFoundation.address, quiet);
+
+  
   // Tell address updater about all contracts
   await addressUpdater.addOrUpdateContractNamesAndAddresses(
     addressUpdaterContracts, addressUpdaterContracts.map(name => contracts.getContractAddress(name))
@@ -439,7 +450,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     supply.address,
     incentivePoolAllocation.address,
     incentivePool.address,
-    escrow.address
+    escrow.address,
+    pollingFoundation.address
   ];
   if (parameters.deployDistributionContract) {
     addressUpdatableContracts.push(delegationAccountManager!.address);
