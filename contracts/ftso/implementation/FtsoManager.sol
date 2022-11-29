@@ -70,7 +70,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     uint256 internal rewardEpochsLength;
     uint256 public override currentRewardEpochEnds;
 
-    FtsoManagerSettings.State public settings;
+    FtsoManagerSettings.State public override settings;
     FtsoManagement.State public ftsoManagement;
 
     // price epoch data
@@ -473,7 +473,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     /**
      * @notice Gets governance parameters for FTSOs
      */
-    function getGovernanceParameters() external view 
+    function getGovernanceParameters() external view
         returns (
             uint256 _maxVotePowerNatThresholdFraction,
             uint256 _maxVotePowerAssetThresholdFraction,

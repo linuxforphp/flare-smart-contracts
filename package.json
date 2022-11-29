@@ -144,6 +144,8 @@
     "activate_managers_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost activate-managers && yarn test_activate_managers_hardhat",
     "daemonize_contracts_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost daemonize-contracts && yarn test_daemonize_hardhat",
     "deploy_contracts_local_hardhat": "yarn --silent hardhat --network localhost link-contracts && yarn hardhat compile --config hardhat-link.config.ts --force && env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json && yarn test_deploy_hardhat",
+
+    "deploy_contracts_network_flare_governance": "yarn compile && cat deployment/deploys/flare.json | env CHAIN_CONFIG=flare yarn --silent hardhat --network flare deploy-contracts-governance > ./deployment/deploys/flare_governance.json",
     
     "---------FAST---SCRIPTS---SKIP---DEPLOY---TESTS": "",
     "deploy_local_hardhat_commands_fast": "yarn deploy_contracts_local_hardhat_fast && yarn daemonize_contracts_local_hardhat_fast && yarn activate_managers_local_hardhat_fast && yarn switch_to_production_mode_local_hardhat_fast",

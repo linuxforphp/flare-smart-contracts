@@ -44,6 +44,7 @@ export class Contracts {
   public static readonly FLARE_DAEMON = "FlareDaemon";
   public static readonly WNAT = "WNat";
   public static readonly GOVERNANCE_VOTE_POWER = "GovernanceVotePower";
+  public static readonly POLLING_FOUNDATION = "PollingFoundation";
   public static readonly FTSO_WNAT = "FtsoWnat";
   public static readonly XRP = `${Contracts.WRAP_SYMBOL}XRP` 
   public static readonly DUMMY_XRP_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}XrpMinter`;

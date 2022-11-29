@@ -69,6 +69,7 @@ export async function switchToProductionMode(
     const WNat = artifacts.require("WNat");
     const Escrow = artifacts.require("Escrow");
     const DelegationAccountManager = artifacts.require("DelegationAccountManager");
+    const PollingFoundation = artifacts.require("PollingFoundation");
 
     // Get deployed contracts
     const governanceSettings = await GovernanceSettings.at(contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS));
@@ -90,6 +91,7 @@ export async function switchToProductionMode(
     const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
     const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
     const escrow = await Escrow.at(contracts.getContractAddress(Contracts.ESCROW));
+    const pollingFoundation = await PollingFoundation.at(contracts.getContractAddress(Contracts.POLLING_FOUNDATION));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
@@ -118,4 +120,5 @@ export async function switchToProductionMode(
     await ftsoRegistry.switchToProductionMode();
     await wNat.switchToProductionMode();
     await escrow.switchToProductionMode();
+    await pollingFoundation.switchToProductionMode();
 }

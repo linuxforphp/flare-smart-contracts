@@ -107,12 +107,14 @@ task("deploy-contracts-governance", "Deploy governance contracts")
   .addFlag("quiet", "Suppress console output")
   .setAction(async (args, hre, runSuper) => {
     const parameters = loadParameters(`deployment/chain-config/${process.env.CHAIN_CONFIG}.json`);
+    const contracts = new Contracts();
+    await contracts.deserialize(process.stdin);
     // inject private keys from .env, if they exist
     if (process.env.DEPLOYER_PRIVATE_KEY) {
       parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
     }
     if (parameters) {
-      await deployContractsGovernance(hre, parameters, args.quiet);
+      await deployContractsGovernance(hre, contracts, parameters, args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
     }
