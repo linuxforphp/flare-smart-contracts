@@ -32,6 +32,7 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     string internal constant ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
     string internal constant ERR_TOO_MUCH = "too much";
     string internal constant ERR_ARRAY_MISMATCH = "arrays lengths mismatch";
+    address payable constant internal BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
     
     bool public override active;
 
@@ -49,7 +50,6 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     uint256 internal totalClaimedWei;     // rewards that were claimed
     uint256 internal totalInflationAuthorizedWei;
     uint256 internal totalInflationReceivedWei;
-    uint256 internal totalSelfDestructReceivedWei;
     uint256 internal lastInflationAuthorizationReceivedTs;
     uint256 internal dailyAuthorizedInflation;
 
@@ -159,6 +159,7 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
         require(inflation != address(0) && address(wNat) != address(0),
             "contract addresses not set");
         active = true;
+        emit RewardManagerActivated(address(this));
     }
 
     /**
@@ -166,6 +167,7 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
      */
     function deactivate() external override onlyImmediateGovernance {
         active = false;
+        emit RewardManagerDeactivated(address(this));
     }
 
     function setDailyAuthorizedInflation(uint256 _toAuthorizeWei) external override onlyInflation {
@@ -277,7 +279,6 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
             uint256 _totalClaimedWei,
             uint256 _totalInflationAuthorizedWei,
             uint256 _totalInflationReceivedWei,
-            uint256 _totalSelfDestructReceivedWei,
             uint256 _lastInflationAuthorizationReceivedTs,
             uint256 _dailyAuthorizedInflation
         )
@@ -287,7 +288,6 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
             totalClaimedWei,
             totalInflationAuthorizedWei,
             totalInflationReceivedWei,
-            totalSelfDestructReceivedWei,
             lastInflationAuthorizationReceivedTs,
             dailyAuthorizedInflation
         );
@@ -312,8 +312,9 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
         _expectedBalance = lastBalance.add(msg.value);
         _currentBalance = address(this).balance;
         if (_currentBalance > _expectedBalance) {
-            // Then assume extra were self-destruct proceeds
-            totalSelfDestructReceivedWei = totalSelfDestructReceivedWei.add(_currentBalance).sub(_expectedBalance);
+            // Then assume extra were self-destruct proceeds and burn it
+            //slither-disable-next-line arbitrary-send-eth
+            BURN_ADDRESS.transfer(_currentBalance.sub(_expectedBalance));
         } else if (_currentBalance < _expectedBalance) {
             // This is a coding error
             assert(false);
@@ -405,7 +406,6 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
 
     function _getExpectedBalance() internal view returns(uint256 _balanceExpectedWei) {
         return totalInflationReceivedWei
-            .add(totalSelfDestructReceivedWei)
             .sub(totalClaimedWei);
     }
 
