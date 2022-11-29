@@ -25,7 +25,6 @@ interface IIGenericRewardManager is IGenericRewardManager, IIInflationReceiver, 
             uint256 _totalClaimedWei,
             uint256 _totalInflationAuthorizedWei,
             uint256 _totalInflationReceivedWei,
-            uint256 _totalSelfDestructReceivedWei,
             uint256 _lastInflationAuthorizationReceivedTs,
             uint256 _dailyAuthorizedInflation
         );

@@ -24,6 +24,10 @@ interface IGenericRewardManager {
         address[] recipients
     );
 
+    event RewardManagerActivated(address rewardManager);
+    event RewardManagerDeactivated(address rewardManager);
+
+
     /**
      * @notice Allows the sender to claim or wrap rewards for reward owner.
      * @notice The caller does not have to be the owner, but must be approved by the owner to claim on his behalf.
