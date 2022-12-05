@@ -179,9 +179,8 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     }
 
     function receiveInflation() external payable override mustBalance onlyInflation {
-        (uint256 currentBalance, ) = _handleSelfDestructProceeds();
+        lastBalance = _handleSelfDestructProceeds();
         totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
-        lastBalance = currentBalance;
 
         emit InflationReceived(msg.value);
     }
@@ -308,14 +307,14 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
         return allowedClaimRecipientSet[_rewardOwner].list;
     }
 
-    function _handleSelfDestructProceeds() internal returns (uint256 _currentBalance, uint256 _expectedBalance) {
+    function _handleSelfDestructProceeds() internal returns (uint256 _expectedBalance) {
         _expectedBalance = lastBalance.add(msg.value);
-        _currentBalance = address(this).balance;
-        if (_currentBalance > _expectedBalance) {
+        uint256 currentBalance = address(this).balance;
+        if (currentBalance > _expectedBalance) {
             // Then assume extra were self-destruct proceeds and burn it
             //slither-disable-next-line arbitrary-send-eth
-            BURN_ADDRESS.transfer(_currentBalance.sub(_expectedBalance));
-        } else if (_currentBalance < _expectedBalance) {
+            BURN_ADDRESS.transfer(currentBalance.sub(_expectedBalance));
+        } else if (currentBalance < _expectedBalance) {
             // This is a coding error
             assert(false);
         }
