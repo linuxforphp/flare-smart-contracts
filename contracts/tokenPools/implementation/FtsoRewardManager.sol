@@ -311,9 +311,8 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     }
 
     function receiveInflation() external payable override mustBalance onlyInflation {
-        (uint256 currentBalance, ) = _handleSelfDestructProceeds();
+        lastBalance = _handleSelfDestructProceeds();
         totalInflationReceivedWei = totalInflationReceivedWei.add(msg.value);
-        lastBalance = currentBalance;
         // If there are accrued rewards pending to burn, do so...
         _burnUnearnedRewards();
 
@@ -794,14 +793,14 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         (, _initialRewardEpoch) = initialRewardEpoch.trySub(1);
     }
 
-    function _handleSelfDestructProceeds() internal returns (uint256 _currentBalance, uint256 _expectedBalance) {
+    function _handleSelfDestructProceeds() internal returns (uint256 _expectedBalance) {
         _expectedBalance = lastBalance.add(msg.value);
-        _currentBalance = address(this).balance;
-        if (_currentBalance > _expectedBalance) {
+        uint256 currentBalance = address(this).balance;
+        if (currentBalance > _expectedBalance) {
             // Then assume extra were self-destruct proceeds and burn it
             //slither-disable-next-line arbitrary-send-eth
-            BURN_ADDRESS.transfer(_currentBalance.sub(_expectedBalance));
-        } else if (_currentBalance < _expectedBalance) {
+            BURN_ADDRESS.transfer(currentBalance.sub(_expectedBalance));
+        } else if (currentBalance < _expectedBalance) {
             // This is a coding error
             assert(false);
         }
@@ -834,8 +833,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
                 // Accumulate what we are about to burn
                 totalBurnedWei = totalBurnedWei.add(toBurnWei);
 
-                // Update lastBalance before transfer, to avoid reentrancy warning 
-                // (though there can not be any reentrancy due to transfer(0) or die() on known contract)
+                // Update lastBalance before transfer
                 lastBalance = lastBalance.sub(toBurnWei);
 
                 // Burn
