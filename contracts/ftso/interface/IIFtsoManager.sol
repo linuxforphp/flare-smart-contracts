@@ -39,6 +39,7 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external;
+    
 
     function addFtso(IIFtso _ftso) external;
 
@@ -89,17 +90,6 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
             uint256 _startBlock,
             uint256 _startTimestamp
         );
- 
-    function settings() external view 
-        returns (
-            uint256 _maxVotePowerNatThresholdFraction,
-            uint256 _maxVotePowerAssetThresholdFraction,
-            uint256 _lowAssetUSDThreshold,
-            uint256 _highAssetUSDThreshold,
-            uint256 _highAssetTurnoutThresholdBIPS,
-            uint256 _lowNatTurnoutThresholdBIPS,
-            uint256 _rewardExpiryOffsetSeconds,
-            bool _initialized,
-            bool _changed
-        );
+
+    function getRewardExpiryOffsetSeconds() external view returns (uint256);
 }

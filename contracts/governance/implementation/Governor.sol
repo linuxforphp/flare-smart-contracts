@@ -300,7 +300,7 @@ abstract contract Governor is
             "invalid majorityConditionBIPS");
 
         uint256 totalCirculatingSupply = supply.getCirculatingSupplyAt(votePowerBlock);
-        (,,,,,, uint256 rewardExpiryOffsetSeconds,,) = ftsoManager.settings();
+        uint256 rewardExpiryOffsetSeconds = ftsoManager.getRewardExpiryOffsetSeconds();
         
         (uint256 proposalId, Proposal storage proposal) = _storeProposal(
             msg.sender,
