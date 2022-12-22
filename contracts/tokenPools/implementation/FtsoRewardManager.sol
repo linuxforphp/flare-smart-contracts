@@ -887,7 +887,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
                 lastBalance = lastBalance.sub(toBurnWei);
 
                 // Burn
-                //slither-disable-next-line arbitrary-send
+                //slither-disable-next-line arbitrary-send-eth
                 burnAddress.transfer(toBurnWei);
 
                 // Emit event to signal what we did
@@ -1046,7 +1046,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         if (_rewardAmount > 0) {
             // transfer total amount (state is updated and events are emitted in _claimReward)
             /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send          // amount always calculated by _claimReward
+            //slither-disable-next-line arbitrary-send-eth      // amount always calculated by _claimReward
             (bool success, ) = _recipient.call{value: _rewardAmount}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, ERR_CLAIM_FAILED);
@@ -1061,7 +1061,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     function _sendWrappedRewardTo(address payable _recipient, uint256 _rewardAmount) internal {
         if (_rewardAmount > 0) {
             // transfer total amount (state is updated and events are emitted in _claimReward)
-            //slither-disable-next-line arbitrary-send          // amount always calculated by _claimReward
+            //slither-disable-next-line arbitrary-send-eth      // amount always calculated by _claimReward
             wNat.depositTo{value: _rewardAmount}(_recipient);
         }
     }
