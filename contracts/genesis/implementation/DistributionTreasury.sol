@@ -84,7 +84,7 @@ contract DistributionTreasury is GovernedAtGenesis {
 
     function _sendFunds(address _recipient, uint256 _amountWei) internal {
         /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send
+        //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = _recipient.call{value: _amountWei}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, ERR_SEND_FUNDS_FAILED);

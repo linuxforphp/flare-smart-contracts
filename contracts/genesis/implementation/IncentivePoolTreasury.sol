@@ -59,7 +59,7 @@ contract IncentivePoolTreasury is GovernedAtGenesis {
         require(_amountWei <= MAX_DAILY_PULL_AMOUNT_WEI, ERR_TOO_MUCH);
         lastPullTs = block.timestamp;
         /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send
+        //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = msg.sender.call{value: _amountWei}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, ERR_PULL_FAILED);
