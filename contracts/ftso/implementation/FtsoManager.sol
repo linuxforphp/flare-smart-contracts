@@ -48,10 +48,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO = "Vote power interval fraction 0";
     string internal constant ERR_REVEAL_PRICE_EPOCH_DURATION_ZERO = "Reveal price epoch 0";
     string internal constant ERR_REVEAL_PRICE_EPOCH_TOO_LONG = "Reveal price epoch too long";
-    string internal constant ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS = "Gov. params not initialized";
     string internal constant ERR_GOV_PARAMS_INVALID = "Gov. params invalid";
     string internal constant ERR_NOT_FOUND = "Not found";
-    string internal constant ERR_ALREADY_ADDED = "Already added";
     string internal constant ERR_ALREADY_ACTIVATED = "Already activated";
     string internal constant ERR_CLOSING_EXPIRED_REWARD_EPOCH_FAIL = "err close expired";
     string internal constant ERR_SET_CLEANUP_BLOCK_FAIL = "err set cleanup block";
@@ -210,7 +208,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Called if out of gas or any other unknown error occures in flare daemonize call
+     * @notice Called if out of gas or any other unknown error occurs in flare daemonize call
      */
     function switchToFallbackMode() external override onlyFlareDaemon returns (bool) {
         if (!fallbackMode) {

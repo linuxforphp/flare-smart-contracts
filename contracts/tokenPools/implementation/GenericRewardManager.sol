@@ -115,7 +115,7 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
      * @param _rewardOwner          address of the reward owner
      * @param _recipient            address to transfer funds to
      * @param _rewardAmount         amount of rewards to claim
-     * @param _wrap                 should reward be wrapped immediatelly
+     * @param _wrap                 should reward be wrapped immediately
      */
     function claim(
         address _rewardOwner,

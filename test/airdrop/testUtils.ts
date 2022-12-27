@@ -1,4 +1,4 @@
-let utils = require('../../airdrop/utils/utils');
+let utils = require('../../airdrop/songbird/utils/utils');
 
 // import {createFlareAirdropGenesisData, validateFile, LineItem} from "../scripts/utils/processFile";
 

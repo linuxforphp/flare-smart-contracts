@@ -49,6 +49,7 @@
         "0x4033582ab84e24752Bf633391D7Fbef2ef4cFd11"
     ],
     "executorFeeValueUpdateOffsetEpochs": 3,
+    "executorMinFeeValueNAT": 0,
     "executorMaxFeeValueNAT": 100,
     "executorRegisterFeeValueNAT": 100,
     "rewardFeePercentageUpdateOffsetEpochs": 3,

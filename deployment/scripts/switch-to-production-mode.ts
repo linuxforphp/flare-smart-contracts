@@ -68,7 +68,7 @@ export async function switchToProductionMode(
     const FtsoRegistry = artifacts.require("FtsoRegistry");
     const WNat = artifacts.require("WNat");
     const Escrow = artifacts.require("Escrow");
-    const DelegationAccountManager = artifacts.require("DelegationAccountManager");
+    const ClaimSetupManager = artifacts.require("ClaimSetupManager");
     const PollingFoundation = artifacts.require("PollingFoundation");
 
     // Get deployed contracts
@@ -109,8 +109,8 @@ export async function switchToProductionMode(
         const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
         await distribution.switchToProductionMode();
         await distributionToDelegators.switchToProductionMode();
-        const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
-        await delegationAccountManager.switchToProductionMode();
+        const claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
+        await claimSetupManager.switchToProductionMode();
     }
     await incentivePool.switchToProductionMode();
     await incentivePoolAllocation.switchToProductionMode();

@@ -80,13 +80,13 @@
     "address": "0x0F45493e4C321b238e1fA242692BFFf3f30fBdfD"
   },
   {
-    "name": "DelegationAccountManager",
-    "contractName": "DelegationAccountManager.sol",
+    "name": "ClaimSetupManager",
+    "contractName": "ClaimSetupManager.sol",
     "address": "0x0697cA6eA61eaf3E29D750241D31b43FCcFEE637"
   },
   {
-    "name": "DelegationAccountClonable",
-    "contractName": "DelegationAccountClonable.sol",
+    "name": "DelegationAccount",
+    "contractName": "DelegationAccount.sol",
     "address": "0xF1c996A48316d4A34bF44c54c0d296b47466d94B"
   },
   {

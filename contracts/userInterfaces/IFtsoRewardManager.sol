@@ -36,16 +36,6 @@ interface IFtsoRewardManager {
     event RewardClaimsExpired(
         uint256 rewardEpochId
     );    
-    
-    event ClaimExecutorsChanged(
-        address rewardOwner,
-        address[] executors
-    );
-
-    event AllowedClaimRecipientsChanged(
-        address rewardOwner,
-        address[] recipients
-    );
 
     event FtsoRewardManagerActivated(address ftsoRewardManager);
     event FtsoRewardManagerDeactivated(address ftsoRewardManager);
@@ -57,11 +47,13 @@ interface IFtsoRewardManager {
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Reverts if `msg.sender` is delegating by amount
+     * @dev Claims for all unclaimed reward epochs to the 'max(_rewardEpochs)'.
+     * @dev Retained for backward compatibility.
      * @dev This function is deprecated - use `claim` instead.
      */
     function claimReward(
         address payable _recipient,
-        uint256[] memory _rewardEpochs
+        uint256[] calldata _rewardEpochs
     )
         external returns (uint256 _rewardAmount);
 
@@ -76,15 +68,15 @@ interface IFtsoRewardManager {
      *   reward owners's personal delegation account or one of the addresses set by `setAllowedClaimRecipients`.
      * @param _rewardOwner          address of the reward owner
      * @param _recipient            address to transfer funds to
-     * @param _rewardEpochs         array of reward epoch numbers to claim for
-     * @param _wrap                 should reward be wrapped immediatelly
+     * @param _rewardEpoch          last reward epoch to claim for
+     * @param _wrap                 should reward be wrapped immediately
      * @return _rewardAmount        amount of total claimed rewards
      * @dev Reverts if `msg.sender` is delegating by amount
      */
     function claim(
         address _rewardOwner,
         address payable _recipient,
-        uint256[] memory _rewardEpochs,
+        uint256 _rewardEpoch,
         bool _wrap
     )
         external returns (uint256 _rewardAmount);
@@ -96,13 +88,13 @@ interface IFtsoRewardManager {
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @param _dataProviders        array of addresses representing data providers to claim the reward from
      * @return _rewardAmount        amount of total claimed rewards
-     * @dev Function can be used by a percentage delegator but is more gas consuming than `claimReward`.
+     * @dev Function can only be used for explicit delegations.
      * @dev This function is deprecated - use `claimFromDataProviders` instead.
      */
     function claimRewardFromDataProviders(
         address payable _recipient,
-        uint256[] memory _rewardEpochs,
-        address[] memory _dataProviders
+        uint256[] calldata _rewardEpochs,
+        address[] calldata _dataProviders
     )
         external returns (uint256 _rewardAmount);
 
@@ -119,31 +111,30 @@ interface IFtsoRewardManager {
      * @param _recipient            address to transfer funds to
      * @param _rewardEpochs         array of reward epoch numbers to claim for
      * @param _dataProviders        array of addresses representing data providers to claim the reward from
-     * @param _wrap                 should reward be wrapped immediatelly
+     * @param _wrap                 should reward be wrapped immediately
      * @return _rewardAmount        amount of total claimed rewards
-     * @dev Function can be used by a percentage delegator but is more gas consuming than `claim`.
+     * @dev Function can only be used for explicit delegations.
      */
     function claimFromDataProviders(
         address _rewardOwner,
         address payable _recipient,
-        uint256[] memory _rewardEpochs,
-        address[] memory _dataProviders,
+        uint256[] calldata _rewardEpochs,
+        address[] calldata _dataProviders,
         bool _wrap
     )
         external returns (uint256 _rewardAmount);
-        
-    /**
-     * Set the addresses of executors, who are allowed to call claim and claimFromDataProviders.
-     * @param _executors The new executors. All old executors will be deleted and replaced by these.
-     */    
-    function setClaimExecutors(address[] memory _executors) external;
 
     /**
-     * Set the addresses of allowed recipients in the methods claim and claimFromDataProviders.
-     * Apart from these, the reward owner is always an allowed recipient.
-     * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
-     */    
-    function setAllowedClaimRecipients(address[] memory _recipients) external;
+     * @notice Allows batch claiming for the list of '_rewardOwners' and for all unclaimed epochs <= '_rewardEpoch'.
+     * @notice If reward owner has enabled delegation account, rewards are also claimed for that delegation account and
+     *   total claimed amount is sent to that delegation account, otherwise claimed amount is sent to owner's account.
+     * @notice Claimed amount is automatically wrapped.
+     * @notice Method can be used by reward owner or executor. If executor is registered with fee > 0,
+     *   then fee is paid to executor for each claimed address from the list.
+     * @param _rewardOwners         list of reward owners to claim for
+     * @param _rewardEpoch          last reward epoch to claim for
+     */
+    function autoClaim(address[] calldata _rewardOwners, uint256 _rewardEpoch) external;
     
     /**
      * @notice Allows data provider to set (or update last) fee percentage.
@@ -181,7 +172,7 @@ interface IFtsoRewardManager {
      * @notice Returns the scheduled fee percentage changes of `_dataProvider`
      * @param _dataProvider         address representing data provider
      * @return _feePercentageBIPS   positional array of fee percentages in BIPS
-     * @return _validFromEpoch      positional array of block numbers the fee setings are effective from
+     * @return _validFromEpoch      positional array of block numbers the fee settings are effective from
      * @return _fixed               positional array of boolean values indicating if settings are subjected to change
      */
     function getDataProviderScheduledFeePercentageChanges(address _dataProvider) external view 
@@ -208,7 +199,7 @@ interface IFtsoRewardManager {
      * @return _rewardAmounts       positional array of reward amounts
      * @return _claimed             positional array of boolean values indicating if reward is claimed
      * @return _claimable           boolean value indicating if rewards are claimable
-     * @dev Reverts when queried with `_beneficary` delegating by amount
+     * @dev Reverts when queried with `_beneficiary` delegating by amount
      */
     function getStateOfRewards(
         address _beneficiary,
@@ -234,7 +225,7 @@ interface IFtsoRewardManager {
     function getStateOfRewardsFromDataProviders(
         address _beneficiary,
         uint256 _rewardEpoch,
-        address[] memory _dataProviders
+        address[] calldata _dataProviders
     )
         external view
         returns (
@@ -255,10 +246,16 @@ interface IFtsoRewardManager {
         );
 
     /**
+     * @notice Returns the next claimable reward epoch for '_rewardOwner'.
+     * @param _rewardOwner          address of the reward owner
+     */
+    function nextClaimableRewardEpoch(address _rewardOwner) external view returns (uint256);
+
+    /**
      * @notice Returns the array of claimable epoch ids for which the reward has not yet been claimed
      * @param _beneficiary          address of reward beneficiary
      * @return _epochIds            array of epoch ids
-     * @dev Reverts when queried with `_beneficary` delegating by amount
+     * @dev Reverts when queried with `_beneficiary` delegating by amount
      */
     function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (
         uint256[] memory _epochIds
@@ -321,15 +318,4 @@ interface IFtsoRewardManager {
             uint256 _rewardAmount,
             uint256 _votePowerIgnoringRevocation
         );
-
-    /**
-     * Get the addresses of executors, who are allowed to call claim and claimFromDataProviders.
-     */    
-    function claimExecutors(address _rewardOwner) external view returns (address[] memory);
-    
-    /**
-     * Get the addresses of allowed recipients in the methods claim and claimFromDataProviders.
-     * Apart from these, the reward owner is always an allowed recipient.
-     */    
-    function allowedClaimRecipients(address _rewardOwner) external view returns (address[] memory);
 }

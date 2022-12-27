@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../inflation/implementation/Supply.sol";
-import "../../personalDelegation/implementation/DelegationAccountManager.sol";
+import "../../claiming/implementation/ClaimSetupManager.sol";
 import "../../token/implementation/WNat.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/math/Math.sol";
@@ -93,7 +93,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     DistributionTreasury public immutable treasury;
     WNat public wNat;
     Supply public supply;
-    DelegationAccountManager public delegationAccountManager;
+    ClaimSetupManager public claimSetupManager;
 
     /**
      * @dev This modifier ensures that this contract's balance matches the expected balance.
@@ -282,7 +282,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         entitlementStarted mustBalance nonReentrant
         returns(uint256 _amountWei)
     {
-        address delegationAccount = delegationAccountManager.accountToDelegationAccount(msg.sender);
+        address delegationAccount = claimSetupManager.accountToDelegationAccount(msg.sender);
         require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
         return _claimOrWrap(msg.sender, delegationAccount, _month, false);
     }
@@ -299,7 +299,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         returns(uint256 _amountWei)
     {
         require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, ERR_EXECUTOR_ONLY);
-        address delegationAccount = delegationAccountManager.accountToDelegationAccount(_rewardOwner);
+        address delegationAccount = claimSetupManager.accountToDelegationAccount(_rewardOwner);
         require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
         return _claimOrWrap(_rewardOwner, delegationAccount, _month, false);
     }
@@ -435,8 +435,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     {
         wNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
         supply = Supply(_getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
-        delegationAccountManager = DelegationAccountManager(
-            _getContractAddress(_contractNameHashes, _contractAddresses, "DelegationAccountManager"));
+        claimSetupManager = ClaimSetupManager(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "ClaimSetupManager"));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@ import {
   AddressUpdatableContract,
   AddressUpdaterContract,
   AddressUpdaterInstance,
-  AssetTokenContract, AssetTokenInstance, DelegationAccountManagerContract, DelegationAccountManagerInstance, DistributionContract, DistributionInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
+  AssetTokenContract, AssetTokenInstance, ClaimSetupManagerContract, ClaimSetupManagerInstance, DistributionContract, DistributionInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
   FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
@@ -419,8 +419,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       let supply: SupplyInstance;
       let WNat: WNatContract;
       let wNat: WNatInstance;
-      let DelegationAccountManager: DelegationAccountManagerContract;
-      let delegationAccountManager: DelegationAccountManagerInstance;
+      let ClaimSetupManager: ClaimSetupManagerContract;
+      let claimSetupManager: ClaimSetupManagerInstance;
 
       beforeEach(async () => {
         DistributionToDelegators = artifacts.require("DistributionToDelegators");
@@ -431,8 +431,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
         WNat = artifacts.require("WNat");
         wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
-        DelegationAccountManager = artifacts.require("DelegationAccountManager");
-        delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+        ClaimSetupManager = artifacts.require("ClaimSetupManager");
+        claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
       });
 
       it("Should know about distribution treasury contract", async () => {
@@ -459,12 +459,12 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         assert.equal(address, wNat.address);
       });
 
-      it("Should know about delegation account manager contract", async () => {
+      it("Should know about claim setup manager contract", async () => {
         // Assemble
         // Act
-        const address = await distributionToDelegators.delegationAccountManager();
+        const address = await distributionToDelegators.claimSetupManager();
         // Assert
-        assert.equal(address, delegationAccountManager.address);
+        assert.equal(address, claimSetupManager.address);
       });
 
       it("Should have total entitlement set correctly", async () => {
@@ -847,7 +847,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION];
 
       if (parameters.deployDistributionContract) {
-        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
+        contractNames.push(Contracts.CLAIM_SETUP_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
@@ -867,7 +867,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         Contracts.POLLING_FOUNDATION];
 
       if (parameters.deployDistributionContract) {
-        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
+        contractNames.push(Contracts.CLAIM_SETUP_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
 
