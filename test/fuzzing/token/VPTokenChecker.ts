@@ -188,7 +188,7 @@ export class VPTokenChecker {
         const delegationsTo = await this.totalDelegationsTo(account);
         const calculated = undelegated.add(delegationsTo);
         const vp = await this.votePowerOf(account);
-        assert(calculated.eq(vp), `Sum of delegated and undelagated mismatch VP for account ${account}: ${calculated} != ${vp}`);
+        assert(calculated.eq(vp), `Sum of delegated and undelegated mismatch VP for account ${account}: ${calculated} != ${vp}`);
     }
 
     // account VP = balance + all delegations TO account - all delegations FROM account (including revoked)

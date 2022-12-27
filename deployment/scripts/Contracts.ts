@@ -28,7 +28,7 @@ export class Contracts {
   public static readonly INCENTIVE_POOL = "IncentivePool";
   public static readonly INCENTIVE_POOL_ALLOCATION = "IncentivePoolAllocation";
   public static readonly INITIAL_AIRDROP = "InitialAirdrop";
-  public static readonly DELEGATION_ACCOUNT_MANAGER = "DelegationAccountManager";
+  public static readonly CLAIM_SETUP_MANAGER = "ClaimSetupManager";
   public static readonly ESCROW = "Escrow";
   public static readonly SUPPLY = "Supply";
   public static readonly INFLATION_ALLOCATION = "InflationAllocation";

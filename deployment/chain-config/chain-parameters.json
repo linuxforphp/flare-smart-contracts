@@ -107,6 +107,10 @@
             "description": "Max allowed executor fee value. In whole native units, not Wei.",
             "type": "integer"
         },
+        "executorMinFeeValueNAT": {
+            "description": "Min allowed executor fee value. In whole native units, not Wei.",
+            "type": "integer"
+        },
         "executorRegisterFeeValueNAT": {
             "description": "Executor registration fee value. In whole native units, not Wei.",
             "type": "integer"
@@ -351,6 +355,7 @@
         "distributionTreasuryAddress",
         "executorFeeValueUpdateOffsetEpochs",
         "executorMaxFeeValueNAT",
+        "executorMinFeeValueNAT",
         "executorRegisterFeeValueNAT",
         "flareDaemonAddress",
         "flareDaemonGasExceededHoldoffBlocks",

@@ -674,6 +674,15 @@ contract Ftso is IIFtso {
     }
 
     /**
+     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
+     * @param _timestamp            Timestamp as seconds from unix epoch
+     * @dev Should never revert
+     */
+    function getEpochId(uint256 _timestamp) external view override returns (uint256) {
+        return _getEpochId(_timestamp);
+    }
+
+    /**
      * @notice Returns wNat vote power for the specified owner and the given epoch id
      * @param _owner                Owner address
      * @param _epochId              Id of the epoch
@@ -688,15 +697,6 @@ contract Ftso is IIFtso {
      */
     function getCurrentEpochId() public view override returns (uint256) {
         return _getEpochId(block.timestamp);
-    }
-
-    /**
-     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
-     * @param _timestamp            Timestamp as seconds from unix epoch
-     * @dev Should never revert
-     */
-    function getEpochId(uint256 _timestamp) public view override returns (uint256) {
-        return _getEpochId(_timestamp);
     }
 
     /**

@@ -67,7 +67,7 @@ library DataProviderFee {
      * @notice Returns the scheduled fee percentage changes of `_dataProvider`
      * @param _dataProvider         address representing data provider
      * @return _feePercentageBIPS   positional array of fee percentages in BIPS
-     * @return _validFromEpoch      positional array of block numbers the fee setings are effective from
+     * @return _validFromEpoch      positional array of block numbers the fee settings are effective from
      * @return _fixed               positional array of boolean values indicating if settings are subjected to change
      */
     function getDataProviderScheduledFeePercentageChanges(

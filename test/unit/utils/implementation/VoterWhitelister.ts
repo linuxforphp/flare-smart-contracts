@@ -1,6 +1,6 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { Contracts } from "../../../../deployment/scripts/Contracts";
-import { FtsoRegistryInstance, MockContractInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { FtsoRegistryInstance, FtsoRegistryProxyInstance, MockContractInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
 import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, encodeContractNames, toBN, toBNFixedPrecision } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
@@ -13,6 +13,7 @@ const FtsoRegistry = artifacts.require("FtsoRegistry");
 const Supply = artifacts.require("Supply");
 const MockContract = artifacts.require("MockContract");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
+const FtsoRegistryProxy = artifacts.require("FtsoRegistryProxy");
 
 const WHITELISTING_ERROR = "vote power too low";
 
@@ -41,12 +42,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     let natFtso: SimpleMockFtsoInstance;
 
     let ftsoRegistry: FtsoRegistryInstance;
+    let registry: FtsoRegistryInstance
+    let ftsoRegistryProxy: FtsoRegistryProxyInstance;
 
     let vpBlockNumber: number;
 
     async function createFtso(symbol: string, initialPriceUSDDec5: BN) {
         const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, 0, 120, 60, initialPriceUSDDec5, 1e10, defaultPriceEpochCyclicBufferSize);
-        await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
+        await registry.addFtso(ftso.address, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, [], { from: ftsoManager });
         await ftso.activateFtso(0, 120, 60, { from: ftsoManager });
@@ -56,7 +59,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     async function initializeEpochForReveal(vpBlock?: number, natSupply: number = 10_000) {
         // set votepower block
         vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
-        const ftsoAddrList = await ftsoRegistry.getAllFtsos();
+        const ftsoAddrList = await registry.getAllFtsos();
         const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
         for (const ftso of ftsoList) {
             await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
@@ -78,8 +81,11 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         beforeEach(async () => {
             priceSubmitter = await MockContract.new();
             // create registry
-            ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
-            await ftsoRegistry.updateContractAddresses(
+            ftsoRegistry = await FtsoRegistry.new();
+            ftsoRegistryProxy = await FtsoRegistryProxy.new(accounts[0], ftsoRegistry.address);
+            registry = await FtsoRegistry.at(ftsoRegistryProxy.address);
+            await registry.initialiseRegistry(ADDRESS_UPDATER);
+            await registry.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
                 [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
             // create assets
@@ -100,7 +106,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 5);
             await whitelist.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
-                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
+                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
             await whitelist.addFtso(0, { from: ftsoManager });
             await whitelist.addFtso(1, { from: ftsoManager });
             await whitelist.addFtso(2, { from: ftsoManager });
@@ -294,7 +300,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         it("add works for assetless ftsos", async () => {
             // Assemble
             const xyzFtso = await createFtso("XYZ", usd(2));
-            const ftsoIndex = await ftsoRegistry.getFtsoIndex(await xyzFtso.symbol());
+            const ftsoIndex = await registry.getFtsoIndex(await xyzFtso.symbol());
             const voters = accounts.slice(1, 11);
             const votePowers = [2, 8, 4, 5, 9, 1, 10, 3, 6, 7];
             for (let i = 0; i < 10; i++) {
@@ -472,9 +478,9 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         it("can change default whitelist size", async () => {
             // Assemble
             const xyzFtso = await createFtso("XYZ", usd(2));
-            const xyzFtsoIndex = await ftsoRegistry.getFtsoIndex(await xyzFtso.symbol());
+            const xyzFtsoIndex = await registry.getFtsoIndex(await xyzFtso.symbol());
             const abcFtso = await createFtso("ABC", usd(3));
-            const abcFtsoIndex = await ftsoRegistry.getFtsoIndex(await abcFtso.symbol());
+            const abcFtsoIndex = await registry.getFtsoIndex(await abcFtso.symbol());
             // Act
             await whitelist.setDefaultMaxVotersForFtso(15, { from: governance });
             await whitelist.addFtso(xyzFtsoIndex, { from: ftsoManager });
@@ -527,7 +533,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             // Assert
             await expectRevert(whitelist.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
-                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: accounts[1]}),
+                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: accounts[1]}),
                 "only address updater");
         });
 
@@ -714,8 +720,11 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         beforeEach(async () => {
             priceSubmitter = await MockContract.new();
             // create registry
-            ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
-            await ftsoRegistry.updateContractAddresses(
+            ftsoRegistry = await FtsoRegistry.new();
+            ftsoRegistryProxy = await FtsoRegistryProxy.new(accounts[0], ftsoRegistry.address);
+            registry = await FtsoRegistry.at(ftsoRegistryProxy.address);
+            await registry.initialiseRegistry(ADDRESS_UPDATER);
+            await registry.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
                 [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
             // create assets
@@ -742,7 +751,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 10);
             await whitelist.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
-                [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
+                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
         });
 
         async function addAccountsToWhitelist(ftsoIndex: number, maxWhitelistLength: number, votePowers: number[]) {

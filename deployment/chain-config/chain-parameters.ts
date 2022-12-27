@@ -387,6 +387,11 @@ export interface ChainParameters {
     executorFeeValueUpdateOffsetEpochs: integer;
 
     /**
+     * Min allowed executor fee value. In whole native units, not Wei.
+     */
+    executorMinFeeValueNAT: integer;
+
+    /**
      * Max allowed executor fee value. In whole native units, not Wei.
      */
     executorMaxFeeValueNAT: integer;

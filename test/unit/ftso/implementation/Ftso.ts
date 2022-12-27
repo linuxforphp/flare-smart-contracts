@@ -278,44 +278,31 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       expect(epochId4.toNumber()).to.equals(2);
     });
 
-    it("Should return correct epoch submit start time", async () => {
-      const startTime = await ftso.epochSubmitStartTime(0);
-      expect(startTime.toNumber()).to.equals(5);
-      const startTime1 = await ftso.epochSubmitStartTime(1);
-      expect(startTime1.toNumber()).to.equals(125);
-      const startTime2 = await ftso.epochSubmitStartTime(2);
-      expect(startTime2.toNumber()).to.equals(245);
-      const startTime3 = await ftso.epochSubmitStartTime(10);
-      expect(startTime3.toNumber()).to.equals(1205);
-      const startTime4 = await ftso.epochSubmitStartTime(500);
-      expect(startTime4.toNumber()).to.equals(60005);
-    });
-
-    it("Should return correct epoch submit end time", async () => {
-      const endTime = await ftso.epochSubmitEndTime(0);
-      expect(endTime.toNumber()).to.equals(125);
-      const endTime1 = await ftso.epochSubmitEndTime(1);
-      expect(endTime1.toNumber()).to.equals(245);
-      const endTime2 = await ftso.epochSubmitEndTime(2);
-      expect(endTime2.toNumber()).to.equals(365);
-      const endTime3 = await ftso.epochSubmitEndTime(10);
-      expect(endTime3.toNumber()).to.equals(1325);
-      const endTime4 = await ftso.epochSubmitEndTime(500);
-      expect(endTime4.toNumber()).to.equals(60125);
-    });
-
-    it("Should return correct epoch reveal end time", async () => {
-      const endTime = await ftso.epochRevealEndTime(0);
-      expect(endTime.toNumber()).to.equals(185);
-      const endTime1 = await ftso.epochRevealEndTime(1);
-      expect(endTime1.toNumber()).to.equals(305);
-      const endTime2 = await ftso.epochRevealEndTime(2);
-      expect(endTime2.toNumber()).to.equals(425);
-      const endTime3 = await ftso.epochRevealEndTime(10);
-      expect(endTime3.toNumber()).to.equals(1385);
-      const endTime4 = await ftso.epochRevealEndTime(500);
-      expect(endTime4.toNumber()).to.equals(60185);
-    });
+    it("Should return correct epoch submit start time, submit end time and reveal end time", async () => {
+      const epochTimes = await ftso.getEpochTimes(0);
+      const epochTimes1 = await ftso.getEpochTimes(1);
+      const epochTimes2 = await ftso.getEpochTimes(2);
+      const epochTimes3 = await ftso.getEpochTimes(10);
+      const epochTimes4 = await ftso.getEpochTimes(500);
+      // epoch submit start time
+      expect(epochTimes[0].toNumber()).to.equals(5);
+      expect(epochTimes1[0].toNumber()).to.equals(125);
+      expect(epochTimes2[0].toNumber()).to.equals(245);
+      expect(epochTimes3[0].toNumber()).to.equals(1205);
+      expect(epochTimes4[0].toNumber()).to.equals(60005);
+      // epoch submit end time
+      expect(epochTimes[1].toNumber()).to.equals(125);
+      expect(epochTimes1[1].toNumber()).to.equals(245);
+      expect(epochTimes2[1].toNumber()).to.equals(365);
+      expect(epochTimes3[1].toNumber()).to.equals(1325);
+      expect(epochTimes4[1].toNumber()).to.equals(60125);
+      // epoch reveal end time
+      expect(epochTimes[2].toNumber()).to.equals(185);
+      expect(epochTimes1[2].toNumber()).to.equals(305);
+      expect(epochTimes2[2].toNumber()).to.equals(425);
+      expect(epochTimes3[2].toNumber()).to.equals(1385);
+      expect(epochTimes4[2].toNumber()).to.equals(60185);
+  });
 
     it("Should return epoch reveal in process correctly", async () => {
       const revealInProcess = await ftso.epochRevealInProcess(10);
@@ -1860,11 +1847,11 @@ contract(`Ftso.sol; ${getTestFile(__filename)}; Ftso unit tests`, async accounts
       await setMockVotePowerOfAt(10, 1000, 10000, accounts[1]);
       await ftso.revealPrice(epochId, 500, 123, { from: accounts[1] });
       let price2 = ftso.getEpochPriceForVoter(epochId - 1, accounts[1]);
-      expectRevert(price2, "Epoch data not available");
+      await expectRevert(price2, "Epoch data not available");
       let price3 = await ftso.getEpochPriceForVoter(epochId, accounts[1]);
       expect(price3.toNumber()).to.equals(500);
       let price4 = ftso.getEpochPriceForVoter(epochId + 1, accounts[1]);
-      expectRevert(price4, "Epoch data not available");
+      await expectRevert(price4, "Epoch data not available");
 
       await setMockVotePowerOfAt(10, 5000, 0, accounts[2]);
       await ftso.revealPrice(epochId, 250, 124, { from: accounts[2] });

@@ -9,15 +9,15 @@
 
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import {
-  AddressUpdaterContract, CleanupBlockNumberManagerContract, DelegationAccountClonableContract, DelegationAccountManagerContract,
-  DelegationAccountManagerInstance, DistributionContract, DistributionToDelegatorsContract, DistributionToDelegatorsInstance,
+  AddressUpdaterContract, CleanupBlockNumberManagerContract, DelegationAccountContract, ClaimSetupManagerContract,
+  ClaimSetupManagerInstance, DistributionContract, DistributionToDelegatorsContract, DistributionToDelegatorsInstance,
   DistributionTreasuryContract, DistributionTreasuryInstance, FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagementContract, FtsoManagerContract, FtsoRegistryContract, FtsoRewardManagerContract, GovernanceSettingsContract,
   GovernanceSettingsInstance,
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
-  IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract, InitialAirdropInstance,
+  IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, PollingFoundationContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, PollingFoundationContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -90,10 +90,11 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const InitialAirdrop: InitialAirdropContract = artifacts.require("InitialAirdrop");
   const Escrow: EscrowContract = artifacts.require("Escrow");
   const GovernanceVotePower: GovernanceVotePowerContract = artifacts.require("GovernanceVotePower");
-  const DelegationAccountClonable: DelegationAccountClonableContract = artifacts.require("DelegationAccountClonable");
-  const DelegationAccountManager: DelegationAccountManagerContract = artifacts.require("DelegationAccountManager");
+  const DelegationAccount: DelegationAccountContract = artifacts.require("DelegationAccount");
+  const ClaimSetupManager: ClaimSetupManagerContract = artifacts.require("ClaimSetupManager");
   const SuicidalMock: SuicidalMockContract = artifacts.require("SuicidalMock");
   const ValidatorRegistry: ValidatorRegistryContract = artifacts.require("ValidatorRegistry");
+  const FtsoRegistryProxy: FtsoRegistryProxyContract = artifacts.require("FtsoRegistryProxy");
   const PollingFoundation: PollingFoundationContract = artifacts.require("PollingFoundation");
 
   // Initialize the state connector
@@ -327,30 +328,34 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   }
 
   // FtsoRegistryContract
-  const ftsoRegistry = await FtsoRegistry.new(deployerAccount.address, addressUpdater.address);
-  spewNewContractInfo(contracts, addressUpdaterContracts, FtsoRegistry.contractName, `FtsoRegistry.sol`, ftsoRegistry.address, quiet);
+  const ftsoRegistry = await FtsoRegistry.new();
+  const ftsoRegistryProxy = await FtsoRegistryProxy.new(deployerAccount.address, ftsoRegistry.address);
+  const registry = await FtsoRegistry.at(ftsoRegistryProxy.address);
+  await registry.initialiseRegistry(addressUpdater.address);
+  spewNewContractInfo(contracts, addressUpdaterContracts, FtsoRegistry.contractName, `FtsoRegistry.sol`, registry.address, quiet);
 
   // VoterWhitelisting
   const voterWhitelister = await VoterWhitelister.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, parameters.defaultVoterWhitelistSize);
   spewNewContractInfo(contracts, addressUpdaterContracts, VoterWhitelister.contractName, `VoterWhitelister.sol`, voterWhitelister.address, quiet);
 
-  let delegationAccountManager: DelegationAccountManagerInstance;
+  let claimSetupManager: ClaimSetupManagerInstance;
   let distributionToDelegators: DistributionToDelegatorsInstance;
   if (parameters.deployDistributionContract) {
-    // DelegationAccountManager
-    delegationAccountManager = await DelegationAccountManager.new(
+    // ClaimSetupManager
+    claimSetupManager = await ClaimSetupManager.new(
       deployerAccount.address,
       addressUpdater.address,
       parameters.executorFeeValueUpdateOffsetEpochs,
+      BN(parameters.executorMinFeeValueNAT).mul(BN(10).pow(BN(18))),
       BN(parameters.executorMaxFeeValueNAT).mul(BN(10).pow(BN(18))),
       BN(parameters.executorRegisterFeeValueNAT).mul(BN(10).pow(BN(18)))
     );
-    spewNewContractInfo(contracts, addressUpdaterContracts, DelegationAccountManager.contractName, `DelegationAccountManager.sol`, delegationAccountManager.address, quiet);
+    spewNewContractInfo(contracts, addressUpdaterContracts, ClaimSetupManager.contractName, `ClaimSetupManager.sol`, claimSetupManager.address, quiet);
 
-    const delegationAccountClonable = await DelegationAccountClonable.new();
-    spewNewContractInfo(contracts, null, DelegationAccountClonable.contractName, `DelegationAccountClonable.sol`, delegationAccountClonable.address, quiet);
-    await delegationAccountClonable.initialize(delegationAccountManager.address, delegationAccountManager.address);
-    await delegationAccountManager.setLibraryAddress(delegationAccountClonable.address);
+    const delegationAccount = await DelegationAccount.new();
+    spewNewContractInfo(contracts, null, DelegationAccount.contractName, `DelegationAccount.sol`, delegationAccount.address, quiet);
+    await delegationAccount.initialize(claimSetupManager.address, claimSetupManager.address);
+    await claimSetupManager.setLibraryAddress(delegationAccount.address);
 
     // Distribution contracts
     const distribution = await Distribution.new(deployerAccount.address, distributionTreasury.address, parameters.distributionLatestEntitlementStart);
@@ -441,7 +446,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     flareDaemon.address,
     inflationAllocation.address,
     inflation.address,
-    ftsoRegistry.address,
+    registry.address,
     cleanupBlockNumberManager.address,
     voterWhitelister.address,
     priceSubmitter.address,
@@ -454,7 +459,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     pollingFoundation.address
   ];
   if (parameters.deployDistributionContract) {
-    addressUpdatableContracts.push(delegationAccountManager!.address);
+    addressUpdatableContracts.push(claimSetupManager!.address);
     addressUpdatableContracts.push(distributionToDelegators!.address);
   }
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
@@ -555,7 +560,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     supply: supply,
     inflationAllocation: inflationAllocation,
     stateConnector: stateConnector,
-    ftsoRegistry: ftsoRegistry,
+    ftsoRegistry: registry,
     ftsoContracts: [
       ...(parameters.deployNATFtso ? [{ xAssetSymbol: 'WNAT' }] : []),
       ...parameters.assets
