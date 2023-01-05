@@ -198,7 +198,7 @@ contract Distribution is Governed, ReentrancyGuard, IDistribution, IITokenPool {
         emit AccountClaimed(msg.sender);
         // Send
         /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send-eth
+        //slither-disable-next-line arbitrary-send-eth   
         (bool success, ) = _recipient.call{value: _amountWei}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, "error");

@@ -6,7 +6,8 @@ import {
   EscrowInstance, 
   SupplyInstance, 
   FtsoRewardManagerInstance, 
-  PercentageProviderMockInstance } from "../../../typechain-truffle";
+  PercentageProviderMockInstance, 
+  MockContractInstance} from "../../../typechain-truffle";
 import { getRewardTotals } from "../../utils/RewardManagerTestUtils";
 import { encodeContractNames } from "../../utils/test-helpers";
 
@@ -31,6 +32,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
   let mockFlareDaemon: FlareDaemonMockInstance;
   let supply: SupplyInstance;
   let ftsoRewardManager: FtsoRewardManagerInstance;
+  let mockClaimSetupManager: MockContractInstance;
   let escrow: EscrowInstance;
   const initialGenesisAmountWei = BN(15000000000).mul(BN(10).pow(BN(18)));
   const foundationSupplyWei = BN(2250000000).mul(BN(10).pow(BN(18)));
@@ -59,6 +61,7 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     const sharingPercentages = [];
     sharingPercentages[0] = {inflationReceiver: ftsoRewardManager.address, percentBips: 10000};
     mockInflationPercentageProvider = await PercentageProviderMock.new(sharingPercentages, inflationBips);
+    mockClaimSetupManager = await MockContract.new();
     
     // Set up inflation...inflation sharing percentage provider will be reset.
     inflation = await Inflation.new(
@@ -93,8 +96,8 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     await mockFlareDaemon.registerToDaemonize(inflation.address);
     // Tell ftso reward manager about inflation
     await ftsoRewardManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
-      [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, supply.address], {from: ADDRESS_UPDATER});
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.CLAIM_SETUP_MANAGER]),
+      [ADDRESS_UPDATER, inflation.address, (await MockContract.new()).address, (await MockContract.new()).address, mockClaimSetupManager.address], {from: ADDRESS_UPDATER});
     // tell escrow about WNat contract
     await escrow.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT]),
@@ -206,11 +209,11 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
     it("Should continue rolling and update according to claiming schedule from escrow contract", async() => {
       const base_amount = BN(10).pow(BN(9)).muln(100)
       const lockedAmount1 = BN(85).mul(base_amount).div(BN(100));
-      escrow.lock({from: accounts[1], value: lockedAmount1});
+      await escrow.lock({from: accounts[1], value: lockedAmount1});
       const lockedAmount2 = lockedAmount1.muln(2);
-      escrow.lock({from: accounts[2], value: lockedAmount2});
+      await escrow.lock({from: accounts[2], value: lockedAmount2});
       const lockedAmount3 = lockedAmount1.muln(3);
-      escrow.lock({from: accounts[3], value: lockedAmount3});
+      await escrow.lock({from: accounts[3], value: lockedAmount3});
 
       const fullLockedAmount = lockedAmount1.add(lockedAmount2).add(lockedAmount3);
 

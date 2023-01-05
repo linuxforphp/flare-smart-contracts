@@ -13,6 +13,8 @@ import { InitialAirdrop } from "../../../typechain-web3/InitialAirdrop";
 
 import DistributionAbi from "../../../artifacts/contracts/tokenPools/implementation/Distribution.sol/Distribution.json";
 import { Distribution } from "../../../typechain-web3/Distribution";
+import { time } from "console";
+import { sleep } from "../../../test/utils/test-helpers";
 
 
 function parseAndProcessData(dataFile:string):ProcessedLineItem[] {
@@ -123,14 +125,19 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     bar1.start(parsedAirdrop.length, 0);
     let progress = 0;
-    for(let NativeItem of parsedAirdrop){
+    for(let i = progress; i < parsedAirdrop.length; i++){
+      const NativeItem = parsedAirdrop[i]
       if (IsAddress(NativeItem.NativeAddress)){
-        const initialAirdropBalance = await InitialAirdropContract.methods.airdropAmountsWei(NativeItem.NativeAddress).call()  
+        const initialAirdropBalance = await InitialAirdropContract.methods.airdropAmountsWei(NativeItem.NativeAddress).call()
+        if(initialAirdropBalance !== NativeItem.initialAirdropBalance.toString(10)){
+          console.log(NativeItem.NativeAddress);
+          console.log(initialAirdropBalance);
+          console.log(NativeItem.initialAirdropBalance.toString(10));
+        } 
         assert.equal(initialAirdropBalance,NativeItem.initialAirdropBalance.toString(10))
         airdropBalance = airdropBalance.add(NativeItem.initialAirdropBalance);
       }
-      progress += 1;
-      bar1.update(progress);
+      bar1.update(i);
     }
     bar1.stop();
     console.log(`Total InitialAirdrop balance: ${airdropBalance.toString(10)}`);

@@ -38,14 +38,17 @@ export async function activateManagers(
   // Get needed contract definitions
   const FtsoManager = artifacts.require("FtsoManager");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
+  const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
 
   // Fetch already deployed contracts
   const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
   const ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
-  
+  const validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+
   // Activate them
   await ftsoManager.activate();
   await ftsoRewardManager.activate();
+  await validatorRewardManager.activate();
 
   if (!quiet) {
     console.error("Managers activated.");

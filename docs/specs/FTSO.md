@@ -131,7 +131,7 @@ Example reward flow (this assumes that all the edge cases are selected, i.e. for
 
 In this particular case, the last point above means we will give rewards to 50% of submitted weight or more if required.
 
-[FTSO Reward Manager]: ../../contracts/ftso/implementation/FtsoRewardManager.sol "FTSO Reward Manager"
+[FTSO Reward Manager]: ../../contracts/tokenPools/implementation/FtsoRewardManager.sol "FTSO Reward Manager"
 [FTSO contract]: ../../contracts/ftso/implementation/Ftso.sol "FTSO"
 [FTSO Manager]: ../../contracts/ftso/implementation/FtsoManager.sol "FTSO Manager"
 [Flare Daemon]: ./flareDaemon.md "flare daemon"

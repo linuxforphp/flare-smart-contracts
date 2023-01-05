@@ -10,12 +10,12 @@ interface IVPToken is IERC20 {
      * @notice Delegate by percentage `_bips` of voting power to `_to` from `msg.sender`.
      * @param _to The address of the recipient
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
+     *   Not cumulative - every call resets the delegation value (and value of 0 undelegates `to`).
      **/
     function delegate(address _to, uint256 _bips) external;
     
     /**
-     * @notice Undelegate all percentage delegations from teh sender and then delegate corresponding 
+     * @notice Undelegate all percentage delegations from the sender and then delegate corresponding 
      *   `_bips` percentage of voting power from the sender to each member of `_delegatees`.
      * @param _delegatees The addresses of the new recipients.
      * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
@@ -27,7 +27,7 @@ interface IVPToken is IERC20 {
      * @notice Explicitly delegate `_amount` of voting power to `_to` from `msg.sender`.
      * @param _to The address of the recipient
      * @param _amount An explicit vote power amount to be delegated.
-     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
+     *   Not cumulative - every call resets the delegation value (and value of 0 undelegates `to`).
      **/    
     function delegateExplicit(address _to, uint _amount) external;
 

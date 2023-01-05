@@ -68,7 +68,9 @@ export async function switchToProductionMode(
     const FtsoRegistry = artifacts.require("FtsoRegistry");
     const WNat = artifacts.require("WNat");
     const Escrow = artifacts.require("Escrow");
-    const DelegationAccountManager = artifacts.require("DelegationAccountManager");
+    const ClaimSetupManager = artifacts.require("ClaimSetupManager");
+    const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+    const PollingFoundation = artifacts.require("PollingFoundation");
 
     // Get deployed contracts
     const governanceSettings = await GovernanceSettings.at(contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS));
@@ -90,13 +92,15 @@ export async function switchToProductionMode(
     const ftsoRegistry = await FtsoRegistry.at(contracts.getContractAddress(Contracts.FTSO_REGISTRY));
     const wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
     const escrow = await Escrow.at(contracts.getContractAddress(Contracts.ESCROW));
+    const validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+    const pollingFoundation = await PollingFoundation.at(contracts.getContractAddress(Contracts.POLLING_FOUNDATION));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await priceSubmitter.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await distributionTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await incentivePoolTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
-    await initialAirdrop.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await initialAirdrop.switchToProductionMode();
     await addressUpdater.switchToProductionMode();
     await supply.switchToProductionMode();
     await inflation.switchToProductionMode();
@@ -107,8 +111,8 @@ export async function switchToProductionMode(
         const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
         await distribution.switchToProductionMode();
         await distributionToDelegators.switchToProductionMode();
-        const delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
-        await delegationAccountManager.switchToProductionMode();
+        const claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
+        await claimSetupManager.switchToProductionMode();
     }
     await incentivePool.switchToProductionMode();
     await incentivePoolAllocation.switchToProductionMode();
@@ -118,4 +122,6 @@ export async function switchToProductionMode(
     await ftsoRegistry.switchToProductionMode();
     await wNat.switchToProductionMode();
     await escrow.switchToProductionMode();
+    await validatorRewardManager.switchToProductionMode();
+    await pollingFoundation.switchToProductionMode();
 }

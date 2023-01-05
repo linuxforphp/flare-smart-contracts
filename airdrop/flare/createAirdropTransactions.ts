@@ -83,6 +83,30 @@ const { argv } = require("yargs")
         demandOption: "Deployment name is required (-a or --deployment-config)",
         nargs: 1
     })
+    .option("b", {
+        alias: "batch-size",
+        describe: "Batch size",
+        type: "number",
+        default: 25,
+        demandOption: "Batch size is required (-b or --batch-size)",
+        nargs: 1
+    })
+    .option("ga", {
+        alias: "generate-airdrop",
+        describe: "Should transactions for initial airdrop be generated",
+        type: "boolean",
+        default: true,
+        demandOption: "Deployment name is required (-ga or --generate-airdrop)",
+        nargs: 1
+    })
+    .option("gd", {
+        alias: "generate-distribution",
+        describe: "Should transactions for distribution be generated",
+        type: "boolean",
+        default: true,
+        demandOption: "Deployment name is required (-gd or --generate-distribution)",
+        nargs: 1
+    })
     // .option("c", {
     //     alias: "contingent-percentage",
     //     describe: "contingent-percentage to be used at the airdrop, default to 100%",
@@ -119,6 +143,9 @@ async function main(
     chainId: number, 
     deploymentName: string, 
     deploymentConfig: string,
+    batchSize: number,
+    createInitial: boolean,
+    createDistribution: boolean
     ){
 
 const separatorLine = "--------------------------------------------------------------------------------\n"
@@ -209,6 +236,10 @@ const deploymentConfigJson = JSON.parse(fs.readFileSync(deploymentConfig, "utf8"
 const airdropStart = `${deploymentConfigJson.initialAirdropStart}`
 const distributionStart = `${deploymentConfigJson.distributionLatestEntitlementStart}`
 
+const accountPerBatch = batchSize
+const createInitialAirdropTransactions = createInitial
+const createDistributionTransactions = createDistribution
+
 const inputRepString = `Script run with 
 --snapshot-file                    (-f)     : ${snapshotFile}
 --transaction-file                 (-t)     : ${transactionFile}
@@ -217,7 +248,7 @@ const inputRepString = `Script run with
 --header                           (-h)     : ${header}
 --gas                              (-g)     : ${gas}
 --gas-price                        (-p)     : ${gasPrice}
---GENESIS_GOVERNANCE_PRIVATE_KEY   (.ENV)   : ${initialAirdropSenderAddress}
+--GENESIS_GOVERNANCE_PUBLIC_KEY    (.ENV)   : ${initialAirdropSenderAddress}
 --WEB3_PROVIDER_URL                (.ENV)   : ${web3Provider}
 --chain-id                         (-i)     : ${chainId}
 --deployment-name                  (-d)     : ${deploymentName}
@@ -229,6 +260,10 @@ Initial Airdrop signer Nonce                : ${initialAirdropNonce.toString(10)
 Initial Distribution signer Nonce           : ${distributionNonce.toString(10)}
 Initial Airdrop start ts                    : ${airdropStart}
 Distribution start ts                       : ${distributionStart}
+
+Account per batch for airdrop               : ${accountPerBatch}
+Generating Initial Airdrop Transactions     : ${createInitialAirdropTransactions}
+Generating Distribution Transactions        : ${createDistributionTransactions}
 `
 logMessage(logFileName, inputRepString, quiet)
 
@@ -298,7 +333,9 @@ if(healthy){
     const fileData = createSetAirdropBalanceUnsignedTransactions(
         convertedAirdropData.processedAccounts,
         InitialAirdropAddress?.address || '',
+        createInitialAirdropTransactions,
         DistributionAddress?.address || '',
+        createDistributionTransactions,
         initialAirdropSenderAddress,
         distributionSenderAddress,
         gasPrice,
@@ -306,7 +343,7 @@ if(healthy){
         chainId,
         parseInt(initialAirdropNonce),
         parseInt(distributionNonce),
-        35
+        accountPerBatch
         );
     let totalGas = new BigNumber(fileData.totalGasPrice)
     let totalCost = convertedAirdropData.processedWei.plus(totalGas);
@@ -324,8 +361,8 @@ if(healthy){
     logMessage(logFileName, "No transactions was created", quiet);
 }
 }
-const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig } = argv;
-main(snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig)
+const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig, batchSize, generateAirdrop, generateDistribution } = argv;
+main(snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig, batchSize, generateAirdrop, generateDistribution)
 .then(() => process.exit(0))
 .catch(error => {
     console.error(error);

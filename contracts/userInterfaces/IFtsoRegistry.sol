@@ -7,6 +7,13 @@ import "../genesis/interface/IFtsoRegistryGenesis.sol";
 
 interface IFtsoRegistry is IFtsoRegistryGenesis {
 
+    struct PriceInfo {
+        uint256 ftsoIndex;
+        uint256 price;
+        uint256 decimals;
+        uint256 timestamp;
+    }
+
     function getFtso(uint256 _ftsoIndex) external view returns(IIFtso _activeFtsoAddress);
     function getFtsoBySymbol(string memory _symbol) external view returns(IIFtso _activeFtsoAddress);
     function getSupportedIndices() external view returns(uint256[] memory _supportedIndices);
@@ -16,6 +23,14 @@ interface IFtsoRegistry is IFtsoRegistryGenesis {
     function getFtsoSymbol(uint256 _ftsoIndex) external view returns (string memory _symbol);
     function getCurrentPrice(uint256 _ftsoIndex) external view returns(uint256 _price, uint256 _timestamp);
     function getCurrentPrice(string memory _symbol) external view returns(uint256 _price, uint256 _timestamp);
+    function getCurrentPriceWithDecimals(uint256 _assetIndex) external view
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals);
+    function getCurrentPriceWithDecimals(string memory _symbol) external view
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals);
+
+    function getAllCurrentPrices() external view returns (PriceInfo[] memory);
+    function getCurrentPricesByIndices(uint256[] memory _indices) external view returns (PriceInfo[] memory);
+    function getCurrentPricesBySymbols(string[] memory _symbols) external view returns (PriceInfo[] memory);
 
     function getSupportedIndicesAndFtsos() external view 
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos);

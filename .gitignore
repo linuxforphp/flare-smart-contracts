@@ -20,6 +20,9 @@ build/
 bin/
 crytic-export/
 
+## Docs generated
+docs/api/
+
 ## Node packages etc
 node_modules/
 .yarn-cache/

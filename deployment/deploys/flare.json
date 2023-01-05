@@ -27,7 +27,7 @@
   {
     "name": "InitialAirdrop",
     "contractName": "InitialAirdrop.sol",
-    "address": "0x1000000000000000000000000000000000000006"
+    "address": "0x410d1879D06c1C38cD963AE3d33B309f796bac66"
   },
   {
     "name": "GovernanceSettings",
@@ -57,7 +57,7 @@
   {
     "name": "FtsoRewardManager",
     "contractName": "FtsoRewardManager.sol",
-    "address": "0x6D55E24Dc2d3bD2Fc5Ae1fcCD1A73bc5f18A8A30"
+    "address": "0x9EDCa806834e89cC928EF4951cE0506Be8416309"
   },
   {
     "name": "CleanupBlockNumberManager",
@@ -72,22 +72,12 @@
   {
     "name": "FtsoRegistry",
     "contractName": "FtsoRegistry.sol",
-    "address": "0xcD099A11ecd4b02aFF5F17eC46242a9a7cfdA527"
+    "address": "0x13DC2b5053857AE17a4f95aFF55530b267F3E040"
   },
   {
     "name": "VoterWhitelister",
     "contractName": "VoterWhitelister.sol",
     "address": "0x0F45493e4C321b238e1fA242692BFFf3f30fBdfD"
-  },
-  {
-    "name": "DelegationAccountManager",
-    "contractName": "DelegationAccountManager.sol",
-    "address": "0x0697cA6eA61eaf3E29D750241D31b43FCcFEE637"
-  },
-  {
-    "name": "DelegationAccountClonable",
-    "contractName": "DelegationAccountClonable.sol",
-    "address": "0xF1c996A48316d4A34bF44c54c0d296b47466d94B"
   },
   {
     "name": "Distribution",
@@ -117,7 +107,7 @@
   {
     "name": "FtsoManager",
     "contractName": "FtsoManager.sol",
-    "address": "0xAB7C7da1Ff2b25D0867908ddFa52827570e02894"
+    "address": "0x2F5107461D1BF7D4D6d3b2b577621b2071343166"
   },
   {
     "name": "WNat",
@@ -132,56 +122,81 @@
   {
     "name": "FtsoXrp",
     "contractName": "Ftso.sol",
-    "address": "0x05245A9818d87bA263bF99Cb7568062786C2538f"
+    "address": "0x2d433f7dF375C62c7831bf01b770eC8746c8F44f"
   },
   {
     "name": "FtsoLtc",
     "contractName": "Ftso.sol",
-    "address": "0xa5E8d263Ef1A0157b6442F73dee618F113E46651"
+    "address": "0x9A9E3981B6e0F23D71caa9986D11967FB95209cA"
   },
   {
     "name": "FtsoXlm",
     "contractName": "Ftso.sol",
-    "address": "0x689874d002eCb33cA6E3c0e09672CAf5BB1ECA4F"
+    "address": "0xCc56e4d0B64d350Ad495BCa859d8E4375458Ed55"
   },
   {
     "name": "FtsoDoge",
     "contractName": "Ftso.sol",
-    "address": "0x46C089d346B55d0649c5a1c38364D5f00a3370CE"
+    "address": "0x0cBD1657bfaC82daf26caCABE3c18620403158eB"
   },
   {
     "name": "FtsoAda",
     "contractName": "Ftso.sol",
-    "address": "0x5F695ED13863fD6b1E0fd66dfE775e1FEdf07D60"
+    "address": "0x83D539d9eB43eACAcb40D5aDDE506Fd63A45cbFc"
   },
   {
     "name": "FtsoAlgo",
     "contractName": "Ftso.sol",
-    "address": "0x2B00370ec81A2792eacdC697436D71f8894210c9"
+    "address": "0x8801FC5664A0334b767b6E662736F9e7B9e26403"
   },
   {
     "name": "FtsoBch",
     "contractName": "Ftso.sol",
-    "address": "0xa7e60ca839DF3B62A6B1843403B9727c39D12112"
+    "address": "0x22701D23dD2AC004c017ECA81505143ce6aa6B13"
   },
   {
     "name": "FtsoDgb",
     "contractName": "Ftso.sol",
-    "address": "0xBF0e57C2EDBA2391df9F5C845264c09FDfB4cc8c"
+    "address": "0xC79644093290AC7B700107a841562Cb1256b5e56"
   },
   {
     "name": "FtsoBtc",
     "contractName": "Ftso.sol",
-    "address": "0x95362265Ff0D4d3c1D89C3D66B2BCE18aEa4A000"
+    "address": "0xF0255d0Cc1282000efaED2f0d747cf236D64D352"
   },
   {
     "name": "FtsoEth",
     "contractName": "Ftso.sol",
-    "address": "0x9a693A622036dc85d438CdeaB1a1353D18d1B783"
+    "address": "0xA0D8aF011D407930740A9a142c63eb880C472d6f"
   },
   {
     "name": "FtsoFil",
     "contractName": "Ftso.sol",
-    "address": "0xCd270A5c6fD450e8a92191175202B85a7B0167A4"
+    "address": "0xe48eFe08557BBcCD0b834913319fE1fb7E82d28E"
+  },
+  {
+    "name": "FlareAssetRegistry",
+    "contractName": "FlareAssetRegistry.sol",
+    "address": "0x9a039B2677EDD9cbfAf65AF080b08749c6b59487"
+  },
+  {
+    "name": "ValidatorRewardManager",
+    "contractName": "ValidatorRewardManager.sol",
+    "address": "0xc0CF3Aaf93bd978C5BC662564Aa73E331f2eC0B5"
+  },
+  {
+    "name": "PollingFoundation",
+    "contractName": "PollingFoundation.sol",
+    "address": "0x258E20bdbb2d891521308d2af381B1BD962B67B5"
+  },
+  {
+    "name": "ClaimSetupManager",
+    "contractName": "ClaimSetupManager.sol",
+    "address": "0xD56c0Ea37B848939B59e6F5Cda119b3fA473b5eB"
+  },
+  {
+    "name": "DelegationAccount",
+    "contractName": "DelegationAccount.sol",
+    "address": "0x7fBc8623ac906bd3D636389b6D577E95B7D21Ef5"
   }
 ]

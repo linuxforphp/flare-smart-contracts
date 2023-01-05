@@ -127,7 +127,7 @@ contract VPContract is IIVPContract, Delegatable {
      * @param _to The address of the recipient
      * @param _balance The delegator's current balance
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Not cummulative - every call resets the delegation value (and value of 0 revokes delegation).
+     *   Not cumulative - every call resets the delegation value (and value of 0 revokes delegation).
      **/
     function delegate(
         address _from, 
@@ -152,7 +152,7 @@ contract VPContract is IIVPContract, Delegatable {
      * @param _to The address of the recipient
      * @param _balance The delegator's current balance
      * @param _amount An explicit vote power amount to be delegated.
-     *   Not cummulative - every call resets the delegation value (and value of 0 undelegates `to`).
+     *   Not cumulative - every call resets the delegation value (and value of 0 undelegates `to`).
      **/    
     function delegateExplicit(
         address _from, 

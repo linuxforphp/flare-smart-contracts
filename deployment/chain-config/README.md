@@ -31,8 +31,8 @@ All numeric parameter names have units appended at the end. Most unit names are 
     // TODO HOW TO OBTAIN IT.
 
 - `governancePrivateKey` - 
-    governance private key (the key to which governance is transfered after deploy). 
-    Overriden if provided in `.env` file as `GOVERNANCE_PRIVATE_KEY`. The key to which governance is transfered after deploy.
+    governance private key (the key to which governance is transferred after deploy). 
+    Overriden if provided in `.env` file as `GOVERNANCE_PRIVATE_KEY`. The key to which governance is transferred after deploy.
 
 ## Daemon settings
 

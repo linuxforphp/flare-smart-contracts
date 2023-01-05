@@ -8,7 +8,8 @@ import {
   FtsoRewardManagerInstance, MockContractInstance,
   MockVPTokenContract,
   MockVPTokenInstance,
-  MockUpdateValidatorsInstance
+  MockUpdateValidatorsInstance,
+  FtsoRegistryProxyInstance
 } from "../../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize } from "../../../utils/constants";
 import { createMockSupplyContract } from "../../../utils/FTSO-test-utils";
@@ -37,6 +38,7 @@ const MockFtso = artifacts.require("MockContract");
 const MockContract = artifacts.require("MockContract");
 const PriceSubmitter = artifacts.require("PriceSubmitter");
 const MockUpdateValidators = artifacts.require("MockUpdateValidators");
+const FtsoRegistryProxy = artifacts.require("FtsoRegistryProxy");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -75,6 +77,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
   let mockSupply: MockContractInstance;
   let mockUpdateValidator: MockContractInstance;
   let mockUpdateValidators: MockUpdateValidatorsInstance;
+  let registry: FtsoRegistryInstance
+  let ftsoRegistryProxy: FtsoRegistryProxyInstance;
 
   async function mockFtsoSymbol(symbol: string, mockContract: MockContractInstance, dummyInterface: FtsoInstance) {
     const encodedMethod = dummyInterface.contract.methods.symbol().encodeABI();
@@ -121,7 +125,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       0
     );
 
-    ftsoRegistry = await FtsoRegistry.new(accounts[0], ADDRESS_UPDATER);
+    ftsoRegistry = await FtsoRegistry.new();
+    ftsoRegistryProxy = await FtsoRegistryProxy.new(accounts[0], ftsoRegistry.address);
+    registry = await FtsoRegistry.at(ftsoRegistryProxy.address);
+    await registry.initialiseRegistry(ADDRESS_UPDATER);
 
     mockPriceSubmitter = await MockContract.new();
     await mockPriceSubmitter.givenMethodReturnUint(
@@ -160,9 +167,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     await ftsoManager.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-      [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+      [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-    await ftsoRegistry.updateContractAddresses(
+    await registry.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
       [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
   });
@@ -576,9 +583,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       await ftsoManager.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-        await ftsoRegistry.updateContractAddresses(
+        await registry.updateContractAddresses(
           encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
           [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
@@ -719,6 +726,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       // should add new ftso to VoterWhitelister
       assert.equal(voterWhitelisterInvocationCount.toNumber(), 1);
 
+      let maxVotersForFtsoVoterWhitelister = web3.utils.sha3("maxVotersForFtso(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      await mockVoterWhitelister.givenMethodReturnUint(maxVotersForFtsoVoterWhitelister, 100);
+      
       // Act
       let tx = await ftsoManager.replaceFtso(mockFtso2.address, false, false);
 
@@ -1332,8 +1342,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
     it("Should get correct registry", async () => {
       let contract = await ftsoManager.ftsoRegistry();
-      expect(contract).to.equals(ftsoRegistry.address);
-      assert.equal(contract, ftsoRegistry.address)
+      expect(contract).to.equals(registry.address);
+      assert.equal(contract, registry.address)
     });
 
     it("Should get correct voter whitelister", async () => {
@@ -1397,10 +1407,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       await ftsoManager2.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
       // set new ftso manager
-      await ftsoRegistry.updateContractAddresses(
+      await registry.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
         [ADDRESS_UPDATER, ftsoManager2.address], {from: ADDRESS_UPDATER});
 
@@ -1441,10 +1451,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       await ftsoManager2.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
       // set new ftso manager
-      await ftsoRegistry.updateContractAddresses(
+      await registry.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
         [ADDRESS_UPDATER, ftsoManager2.address], {from: ADDRESS_UPDATER});
 
@@ -2193,9 +2203,9 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       await ftsoManager.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
-        await ftsoRegistry.updateContractAddresses(
+        await registry.updateContractAddresses(
           encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
           [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
 
@@ -2305,7 +2315,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       await ftsoManager.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanUp.address], { from: ADDRESS_UPDATER });
+        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanUp.address], { from: ADDRESS_UPDATER });
 
       const setCleanUpBlockNumber = cleanupBlockNumberManager.contract.methods.setCleanUpBlockNumber(0).encodeABI();
       await cleanUp.givenMethodRunOutOfGas(setCleanUpBlockNumber);
@@ -2472,18 +2482,17 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let mockFtso2 = await MockFtso.new();
       let mockFtso3 = await MockFtso.new();
       let mockFtso4 = await MockFtso.new();
-      await ftsoManager.addFtso(mockFtso3.address);
-
-      const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
-      const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
-      await mockFtso.givenMethodReturn(symbol, symbolReturn);
-      await mockFtso2.givenMethodReturn(symbol, symbolReturn);
-
 
       const symbol1 = ftsoInterface.contract.methods.symbol().encodeABI();
       const symbolReturn1 = web3.eth.abi.encodeParameter('string', 'ATOK1');
       await mockFtso3.givenMethodReturn(symbol1, symbolReturn1);
       await mockFtso4.givenMethodReturn(symbol1, symbolReturn1);
+
+      await ftsoManager.addFtso(mockFtso3.address);
+      const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
+      const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
+      await mockFtso.givenMethodReturn(symbol, symbolReturn);
+      await mockFtso2.givenMethodReturn(symbol, symbolReturn);
 
       const deactivateFtso = ftsoInterface.contract.methods.deactivateFtso().encodeABI();
       await mockFtso.givenMethodRevertWithMessage(deactivateFtso, "err");
@@ -2492,8 +2501,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await mockFtso3.givenMethodRevertWithMessage(deactivateFtso3, "err");
 
       let tx = await ftsoManager.replaceFtsosBulk([mockFtso2.address, mockFtso4.address], false, false);
-      // console.log(tx.logs[1]);
-      // console.log(mockFtso.address, mockFtso2.address, mockFtso3.address, mockFtso4.address);
 
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso.address, add: false });
       expectEvent(tx, "FtsoAdded", { ftso: mockFtso2.address, add: true });
@@ -2504,18 +2511,18 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     });
 
     it("Should emit events if (bulk) replacing ftso with the same ftso", async () => {
-      await setDefaultGovernanceParameters(ftsoManager);
-      await ftsoManager.addFtso(mockFtso.address);
-      let mockFtso3 = await MockFtso.new();
-      await ftsoManager.addFtso(mockFtso3.address);
-
       const symbol = ftsoInterface.contract.methods.symbol().encodeABI();
       const symbolReturn = web3.eth.abi.encodeParameter('string', 'ATOK');
       await mockFtso.givenMethodReturn(symbol, symbolReturn);
 
+      let mockFtso3 = await MockFtso.new();
       const symbol1 = ftsoInterface.contract.methods.symbol().encodeABI();
       const symbolReturn1 = web3.eth.abi.encodeParameter('string', 'ATOK1');
       await mockFtso3.givenMethodReturn(symbol1, symbolReturn1);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+      await ftsoManager.addFtso(mockFtso.address);
+      await ftsoManager.addFtso(mockFtso3.address);
 
       let tx = await ftsoManager.replaceFtsosBulk([mockFtso.address, mockFtso3.address], false, false);
 
@@ -2695,7 +2702,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.activate();
 
       // Initialize
-      await time.increaseTo(startTs.addn(REVEAL_EPOCH_DURATION_S));
+      await time.increaseTo(startTs.addn(2 * REVEAL_EPOCH_DURATION_S));
       await ftsoManager.daemonize(); // intialize reward epoch
       await ftsoManager.daemonize(); // initialize price epoch
       // Act

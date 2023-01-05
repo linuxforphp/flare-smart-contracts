@@ -502,7 +502,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       spewClaimError("d1", e);
     }
     try {
-      const tx = await ftsoRewardManager.claimRewardFromDataProviders(d2, rewardEpochs, [p1, p2, p3], { from: d2 });
+      const tx = await ftsoRewardManager.claimReward(d2, rewardEpochs, { from: d2 });
       gasCost = gasCost.add(await calcGasCost(tx));
     } catch (e: unknown) {
       spewClaimError("d2", e);
@@ -691,7 +691,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       spewClaimError("d1", e);
     }
     try {
-      const tx = await ftsoRewardManager.claimRewardFromDataProviders(d2, day4rewardEpochsArray, [p1, p2, p3], { from: d2 });
+      const tx = await ftsoRewardManager.claimReward(d2, day4rewardEpochsArray, { from: d2 });
       day4gasCost = day4gasCost.add(await calcGasCost(tx));
     } catch (e: unknown) {
       spewClaimError("d2", e);

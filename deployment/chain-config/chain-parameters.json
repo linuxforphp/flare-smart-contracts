@@ -99,6 +99,22 @@
             "description": "Distribution treasury contract address. It is deployed to the genesis block with the fixed address  \"0x1000000000000000000000000000000000000004\".",
             "type": "string"
         },
+        "executorFeeValueUpdateOffsetEpochs": {
+            "description": "Executor fee value update timelock measured in reward epochs.\nThe parameter determines in how many reward epochs the new fee value submitted by an executor becomes effective. \nFor test purposes we recommend 3.",
+            "type": "integer"
+        },
+        "executorMaxFeeValueNAT": {
+            "description": "Max allowed executor fee value. In whole native units, not Wei.",
+            "type": "integer"
+        },
+        "executorMinFeeValueWei": {
+            "description": "Min allowed executor fee value, in natural currency Wei.\nBig integer, formatted as string.",
+            "type": "string"
+        },
+        "executorRegisterFeeValueNAT": {
+            "description": "Executor registration fee value. In whole native units, not Wei.",
+            "type": "integer"
+        },
         "flareDaemonAddress": {
             "description": "Flare daemon contract address. It is deployed in the genesis block with the fixed address \"0x1000000000000000000000000000000000000002\".",
             "type": "string"
@@ -128,7 +144,7 @@
             "type": "string"
         },
         "governancePublicKey": {
-            "description": "Governance public key (the key to which governance is transfered after deploy). \nOverriden if provided in `.env` file as `GOVERNANCE_PUBLIC_KEY`.",
+            "description": "Governance public key (the key to which governance is transferred after deploy). \nOverriden if provided in `.env` file as `GOVERNANCE_PUBLIC_KEY`.",
             "type": "string"
         },
         "governanceSettingsAddress": {
@@ -259,6 +275,13 @@
             "description": "Price submiter contract address. It is deployed to the genesis block with the fixed address  \"0x1000000000000000000000000000000000000003\".",
             "type": "string"
         },
+        "proposers": {
+            "description": "Array of proposers that can create a proposal",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "revealEpochDurationSeconds": {
             "description": "Reveal epoch duration, in seconds. Usually, it should be at most half of `priceEpochDurationSeconds` (90 seconds).",
             "type": "integer"
@@ -330,6 +353,10 @@
         "distributionLatestEntitlementStart",
         "distributionTotalEntitlementWei",
         "distributionTreasuryAddress",
+        "executorFeeValueUpdateOffsetEpochs",
+        "executorMaxFeeValueNAT",
+        "executorMinFeeValueWei",
+        "executorRegisterFeeValueNAT",
         "flareDaemonAddress",
         "flareDaemonGasExceededHoldoffBlocks",
         "ftsoManagerGasLimit",
@@ -367,6 +394,7 @@
         "priceEpochCyclicBufferSize",
         "priceEpochDurationSeconds",
         "priceSubmitterAddress",
+        "proposers",
         "revealEpochDurationSeconds",
         "rewardEpochDurationSeconds",
         "rewardEpochsStartDelayPriceEpochs",

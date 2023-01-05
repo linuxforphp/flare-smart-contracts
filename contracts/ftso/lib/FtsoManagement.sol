@@ -84,7 +84,7 @@ library FtsoManagement {
         uint256 ftsoIndex = _state.ftsoRegistry.addFtso(_ftso);
 
         // When a new ftso is added we also add it to the voter whitelister contract
-        if (_addNewFtso) {
+        if (_state.voterWhitelister.maxVotersForFtso(ftsoIndex) == 0) {
             _state.voterWhitelister.addFtso(ftsoIndex);
         }
         

@@ -41,7 +41,7 @@ Enables price providers to supply USD prices for a list of assets. The FTSO dete
 
 Enable claiming of native token rewards.
 Users will be eligible to claim tokens through the following methods:
-- by supplying FTSO price feeds ([FTSO Reward manager](contract/ftso/implementation/FtsoRewardManager.sol)), 
+- by supplying FTSO price feeds ([FTSO Reward manager](contract/tokenPools/implementation/FtsoRewardManager.sol)), 
 - Providing external chain data (data availability proofs)
 
 ## Inflation
