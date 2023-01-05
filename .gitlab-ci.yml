@@ -9,7 +9,7 @@ variables:
 
 
 include:
-  - remote: https://gitlab.com/gitlab-org/gitlab/-/raw/07a0843ad18ecb422cdc61bf3c2ef0a9dc58a209/lib/gitlab/ci/templates/Jobs/SAST.latest.gitlab-ci.yml
+  - template: Jobs/SAST.gitlab-ci.yml
 
 sast:
   needs:
