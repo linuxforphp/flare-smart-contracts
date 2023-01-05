@@ -495,6 +495,22 @@ contract Ftso is IIFtso {
     }
 
     /**
+     * @notice Returns current asset price and number of decimals
+     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp               Time when price was updated for the last time
+     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimals() external view override
+        returns (
+            uint256 _price,
+            uint256 _timestamp,
+            uint256 _assetPriceUsdDecimals
+        )
+    {
+        return (assetPriceUSD, assetPriceTimestamp, ASSET_PRICE_USD_DECIMALS);
+    }
+
+    /**
      * @notice Returns current asset price calculated from trusted providers
      * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _timestamp           Time when price was updated for the last time
@@ -506,6 +522,22 @@ contract Ftso is IIFtso {
         )
     {
         return (assetTrustedProvidersPriceUSD, assetTrustedProvidersPriceTimestamp);
+    }
+
+    /**
+     * @notice Returns current asset price calculated from trusted providers and number of decimals
+     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp               Time when price was updated for the last time
+     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimalsFromTrustedProviders() external view override
+        returns (
+            uint256 _price,
+            uint256 _timestamp,
+            uint256 _assetPriceUsdDecimals
+        )
+    {
+        return (assetTrustedProvidersPriceUSD, assetTrustedProvidersPriceTimestamp, ASSET_PRICE_USD_DECIMALS);
     }
 
     /**
@@ -642,6 +674,15 @@ contract Ftso is IIFtso {
     }
 
     /**
+     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
+     * @param _timestamp            Timestamp as seconds from unix epoch
+     * @dev Should never revert
+     */
+    function getEpochId(uint256 _timestamp) external view override returns (uint256) {
+        return _getEpochId(_timestamp);
+    }
+
+    /**
      * @notice Returns wNat vote power for the specified owner and the given epoch id
      * @param _owner                Owner address
      * @param _epochId              Id of the epoch
@@ -656,15 +697,6 @@ contract Ftso is IIFtso {
      */
     function getCurrentEpochId() public view override returns (uint256) {
         return _getEpochId(block.timestamp);
-    }
-
-    /**
-     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
-     * @param _timestamp            Timestamp as seconds from unix epoch
-     * @dev Should never revert
-     */
-    function getEpochId(uint256 _timestamp) public view override returns (uint256) {
-        return _getEpochId(_timestamp);
     }
 
     /**

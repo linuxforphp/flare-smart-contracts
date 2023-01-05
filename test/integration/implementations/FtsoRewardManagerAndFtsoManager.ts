@@ -2,6 +2,7 @@ import {
     FtsoInstance,
     FtsoManagerInstance,
     FtsoRegistryInstance,
+    FtsoRegistryProxyInstance,
     FtsoRewardManagerInstance,
     InflationMockInstance, MockContractInstance,
     WNatInstance
@@ -28,6 +29,7 @@ const Ftso = artifacts.require("Ftso");
 const MockContract = artifacts.require("MockContract");
 const WNAT = artifacts.require("WNat");
 const InflationMock = artifacts.require("InflationMock");
+const FtsoRegistryProxy = artifacts.require("FtsoRegistryProxy");
 
 const PRICE_EPOCH_DURATION_S = 120;   // 2 minutes
 const REVEAL_EPOCH_DURATION_S = 30;
@@ -48,6 +50,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     let mockVoterWhitelister: MockContractInstance;
     let mockSupply: MockContractInstance;
     let mockCleanupBlockNumberManager: MockContractInstance;
+    let mockClaimSetupManager: MockContractInstance;
+    var ftsoRegistryProxy: FtsoRegistryProxyInstance;
+    var registry: FtsoRegistryInstance;
 
     before(async () => {
         FtsoManager.link(await FtsoManagement.new() as any);
@@ -57,7 +62,11 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
     beforeEach(async () => {
         const ADDRESS_UPDATER = accounts[16];
         mockFtso = await MockContract.new();
-        ftsoRegistry = await FtsoRegistry.new(accounts[0], ADDRESS_UPDATER);
+        ftsoRegistry = await FtsoRegistry.new();
+        // proxy contract
+        ftsoRegistryProxy = await FtsoRegistryProxy.new(accounts[0], ftsoRegistry.address);
+        registry = await FtsoRegistry.at(ftsoRegistryProxy.address);
+        await registry.initialiseRegistry(ADDRESS_UPDATER);
         ftsoInterface = await Ftso.new(
             "NAT",
             5,
@@ -94,6 +103,7 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         )
 
         mockVoterWhitelister = await MockContract.new();
+        mockClaimSetupManager = await MockContract.new();
 
         mockSupply = await createMockSupplyContract(accounts[0], 10000);
         mockCleanupBlockNumberManager = await MockContract.new();
@@ -117,9 +127,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
 
         await ftsoManager.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-            [ADDRESS_UPDATER, ftsoRewardManager.address, ftsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, mockCleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
+            [ADDRESS_UPDATER, ftsoRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, mockCleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
         
-        await ftsoRegistry.updateContractAddresses(
+        await registry.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
             [ADDRESS_UPDATER, ftsoManager.address], {from: ADDRESS_UPDATER});
         
@@ -127,8 +137,8 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
         await setDefaultVPContract(wNat, accounts[0]);
 
         await ftsoRewardManager.updateContractAddresses(
-            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.SUPPLY]),
-            [ADDRESS_UPDATER, mockInflation.address, ftsoManager.address, wNat.address, mockSupply.address], {from: ADDRESS_UPDATER});
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.CLAIM_SETUP_MANAGER]),
+            [ADDRESS_UPDATER, mockInflation.address, ftsoManager.address, wNat.address, mockClaimSetupManager.address], {from: ADDRESS_UPDATER});
         
         await mockInflation.setDailyAuthorizedInflation(BN(2000000));
 

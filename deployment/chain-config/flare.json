@@ -14,14 +14,14 @@
     "genesisGovernancePrivateKey": "<use .env: GENESIS_GOVERNANCE_PRIVATE_KEY>",
     "governancePrivateKey": "<use .env: GOVERNANCE_PRIVATE_KEY>",
     "governancePublicKey": "<use .env: GOVERNANCE_PUBLIC_KEY>",
-    "governanceTimelock": 4233600,
+    "governanceTimelock": 3600,
     "governanceExecutorPublicKey": "<use .env: GOVERNANCE_EXECUTOR_PUBLIC_KEY>",
     "totalNativeSupplyNAT":  100000000000,
     "totalExcludedSupplyNAT": 68000000000,
     "systemStart": 1657911510,
-    "initialAirdropStart": 1663113600,
+    "initialAirdropStart": 1673308740,
     "incentivePoolStart": 1668384000,
-    "initialAirdropLatestStart": 1668384000,
+    "initialAirdropLatestStart": 1682942400,
     "distributionLatestEntitlementStart": 1684022400,
     "initialAirdropWei": "3 900 330 239 094 370 633 065 000 000",
     "incentivePoolWei": "20 000 000 000 000 000 000 000 000 000",
@@ -48,6 +48,10 @@
         "0x7d2BFEEE84d64A4E08A28A68Cd804AD0eAa6D432",
         "0x4033582ab84e24752Bf633391D7Fbef2ef4cFd11"
     ],
+    "executorFeeValueUpdateOffsetEpochs": 3,
+    "executorMinFeeValueWei": "100 000 000 000 000 000",
+    "executorMaxFeeValueNAT": 100,
+    "executorRegisterFeeValueNAT": 1000,
     "rewardFeePercentageUpdateOffsetEpochs": 3,
     "defaultRewardFeePercentageBIPS": 2000,
     "ftsoRewardExpiryOffsetDays": 90,
@@ -164,5 +168,8 @@
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSDDec5": 0
         }
+    ],
+    "proposers": [
+        "0xbe653c54df337f13fcb726101388f4a4803049f3"
     ]
 }

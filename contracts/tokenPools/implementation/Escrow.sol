@@ -278,7 +278,7 @@ contract Escrow is Governed, IITokenPool, AddressUpdatable  {
      */
     function _wrapFunds(address _recipient, uint256 _claimableAmount) internal {
         // transfer total amount (state is updated and events are emitted in _claimOrWrap)
-        //slither-disable-next-line arbitrary-send-eth      // amount always calculated by _claimOrWrap
+        //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimOrWrap
         wNat.depositTo{value: _claimableAmount}(_recipient);
     }
 
@@ -291,7 +291,7 @@ contract Escrow is Governed, IITokenPool, AddressUpdatable  {
     function _transferFunds(address _recipient, uint256 _claimableAmount) internal {
         // transfer total amount (state is updated and events are emitted in _claimOrWrap)
         /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send-eth      // amount always calculated by _claimOrWrap
+        //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimOrWrap
         (bool success, ) = _recipient.call{value: _claimableAmount}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, "Failed to call claiming contract");

@@ -118,6 +118,37 @@ interface IFtso {
     function getCurrentPrice() external view returns (uint256 _price, uint256 _timestamp);
 
     /**
+     * @notice Returns current asset price and number of decimals
+     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp               Time when price was updated for the last time
+     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimals() external view returns (
+        uint256 _price,
+        uint256 _timestamp,
+        uint256 _assetPriceUsdDecimals
+    );
+    
+    /**
+     * @notice Returns current asset price calculated from trusted providers
+     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp           Time when price was updated for the last time
+     */
+    function getCurrentPriceFromTrustedProviders() external view returns (uint256 _price, uint256 _timestamp);
+
+    /**
+     * @notice Returns current asset price calculated from trusted providers and number of decimals
+     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @return _timestamp               Time when price was updated for the last time
+     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     */
+    function getCurrentPriceWithDecimalsFromTrustedProviders() external view returns (
+        uint256 _price,
+        uint256 _timestamp,
+        uint256 _assetPriceUsdDecimals
+    );
+
+    /**
      * @notice Returns current asset price details
      * @return _price                                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
      * @return _priceTimestamp                          Time when price was updated for the last time

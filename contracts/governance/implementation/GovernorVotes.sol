@@ -6,19 +6,17 @@ abstract contract GovernorVotes {
 
     /**
      * @notice Enum that determines vote (support) type
-     * @dev 0 = Against, 1 = For, 2 = Abstain
+     * @dev 0 = Against, 1 = For
      */
     enum VoteType {
         Against,
-        For,
-        Abstain
+        For
     }
 
     /**
      * @notice Struct holding the information about proposal voting
      */
     struct ProposalVoting {
-        uint256 abstainVotePower;           // accumulated vote power abstained from voting
         uint256 againstVotePower;           // accumulated vote power against the proposal
         uint256 forVotePower;               // accumulated vote power for the proposal        
         mapping(address => bool) hasVoted;  // flag if a voter has cast a vote
@@ -38,18 +36,16 @@ abstract contract GovernorVotes {
         address _voter,
         uint8 _support,
         uint256 _votePower
-    ) internal {
-        ProposalVoting storage voting = proposalVotings[_proposalId];
+    ) internal returns (ProposalVoting storage _voting) {
+        _voting = proposalVotings[_proposalId];
 
-        require(!voting.hasVoted[_voter], "vote already cast");
-        voting.hasVoted[_voter] = true;
+        require(!_voting.hasVoted[_voter], "vote already cast");
+        _voting.hasVoted[_voter] = true;
 
         if (_support == uint8(VoteType.Against)) {
-            voting.againstVotePower += _votePower;
+            _voting.againstVotePower += _votePower;
         } else if (_support == uint8(VoteType.For)) {
-            voting.forVotePower += _votePower;
-        } else if (_support == uint8(VoteType.Abstain)) {
-            voting.abstainVotePower += _votePower;
+            _voting.forVotePower += _votePower;
         } else {
             revert("invalid value for enum VoteType");
         }

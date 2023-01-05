@@ -1,10 +1,9 @@
+import BigNumber from "bignumber.js";
 import * as fs from 'fs';
-import { signedTransaction } from './utils/airdropTypes';
 import { logMessage, sleep } from './utils/utils';
 const Web3 = require('web3');
 const web3Eth = require("web3-eth");
 let txDecoder = require('ethereum-tx-decoder');
-import BigNumber from "bignumber.js";
 const cliProgress = require('cli-progress');
 
 let { argv } = require("yargs")
@@ -23,6 +22,20 @@ let { argv } = require("yargs")
     default: "airdrop/flare/files/logs/",
     nargs: 1
 })
+.option("c", {
+    alias: "continue-from",
+    describe: "index with which we start",
+    type: "number",
+    default: 0,
+    nargs: 1
+})
+.option("s", {
+    alias: "sleep-ms",
+    describe: "how much to sleep between sending the transactions in ms",
+    type: "number",
+    default: 999,
+    nargs: 1
+})
 .option("q", {
     alias: "quiet",
     describe: "quiet",
@@ -38,7 +51,7 @@ let { argv } = require("yargs")
     process.exit(0);
 })
 
-async function main(transactionsFile:string, logPath:string, quiet:boolean = true) {
+async function main(transactionsFile:string, continueFrom:number, sleepMs:number, logPath:string, quiet:boolean = true) {
     let web3Provider = ""
     if (process.env.WEB3_PROVIDER_URL) {
         web3Provider = process.env.WEB3_PROVIDER_URL
@@ -54,6 +67,8 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     logMessage(logFileName, `Log file created at ${now.toISOString()} GMT(+0)`, quiet);
     logMessage(logFileName, `Script run with `, quiet);
     logMessage(logFileName, `--transactions-file        (-f)       : ${transactionsFile}`, quiet);
+    logMessage(logFileName, `--continue-from.           (-c)       : ${continueFrom}`, quiet);
+    logMessage(logFileName, `--sleep-ms                 (-s)       : ${sleepMs}`, quiet);
     logMessage(logFileName, `--log-path                 (-l)       : ${logPath}`, quiet);
     logMessage(logFileName, `web3 provider url          (.ENV)     : ${web3Provider}`, quiet);
     
@@ -68,8 +83,8 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     console.log("Sending sign Transactions")
     bar1.start(rawTransactions.length, 0);
 
-    let progress = 0;
-    for(let tx of rawTransactions){
+    for(let progressId = continueFrom; progressId < rawTransactions.length; progressId++ ){
+        const tx = rawTransactions[progressId]
         let decoded = txDecoder.decodeTx(tx.raw);
         let decodedGas = new BigNumber(decoded.gasLimit);
         totalGasPrice = totalGasPrice.plus(decodedGas.multipliedBy(decoded.gasPrice));
@@ -79,9 +94,9 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
             }
         ).catch((e:any) => console.log(e)
         ));
-        await sleep(950);
-        progress += 1;
-        bar1.update(progress);
+        await sleep(sleepMs);
+        // progressId += 1;
+        bar1.update(progressId);
     }
     bar1.stop();
     logMessage(logFileName, `Total Gas upper limit                 : ${totalGasPrice.toFixed()}`, quiet);
@@ -90,8 +105,8 @@ async function main(transactionsFile:string, logPath:string, quiet:boolean = tru
     logMessage(logFileName, `Complete`, quiet);
 }
   
-const { transactionsFile, quiet, logPath } = argv;
-main(transactionsFile, logPath, quiet )
+const { transactionsFile, quiet, logPath, continueFrom, sleepMs} = argv;
+main(transactionsFile, continueFrom, sleepMs, logPath, quiet )
 .then(() => process.exit(0))
 .catch(error => {
     console.error(error);

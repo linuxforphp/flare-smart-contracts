@@ -143,9 +143,10 @@ test-unit:
     matrix:
     - TEST_PATH:
       - ./test/unit/addressUpdater
-      - ./test/unit/personalDelegation
+      - ./test/unit/claiming
       - ./test/unit/genesis
       - ./test/unit/adversary
+      - ./test/unit/assetRegistry
       - ./test/unit/Xasset
       - ./test/unit/inflation
       - ./test/unit/token

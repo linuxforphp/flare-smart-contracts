@@ -134,16 +134,11 @@ contract SimpleMockFtso is Ftso {
         return FtsoEpoch._computeWeights(epoch, weightsNat, weightsAsset);
     }
     
-    function epochSubmitStartTime(uint256 _epochId) public view returns (uint256) {
-        return _getEpochSubmitStartTime(_epochId);
-    }
-
-    function epochSubmitEndTime(uint256 _epochId) public view returns (uint256) {
-        return _getEpochSubmitEndTime(_epochId);
-    }
-
-    function epochRevealEndTime( uint256 _epochId) public view returns (uint256) {
-        return _getEpochRevealEndTime(_epochId);
+    function getEpochTimes(uint256 _epochId) public view 
+        returns (uint256 _epochSubmitStartTime, uint256 _epochSubmitEndTime, uint256 _epochRevealEndTime) {
+        _epochSubmitStartTime = _getEpochSubmitStartTime(_epochId);
+        _epochSubmitEndTime = _getEpochSubmitEndTime(_epochId);
+        _epochRevealEndTime = _getEpochRevealEndTime(_epochId);
     }
 
     function epochRevealInProcess(uint256 _epochId) public view returns (bool) {

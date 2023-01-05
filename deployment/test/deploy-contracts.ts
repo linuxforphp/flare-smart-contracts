@@ -5,14 +5,14 @@ import {
   AddressUpdatableContract,
   AddressUpdaterContract,
   AddressUpdaterInstance,
-  AssetTokenContract, AssetTokenInstance, DelegationAccountManagerContract, DelegationAccountManagerInstance, DistributionContract, DistributionInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
+  AssetTokenContract, AssetTokenInstance, ClaimSetupManagerContract, ClaimSetupManagerInstance, DistributionContract, DistributionInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
   FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
   FtsoRewardManagerInstance, GovernanceSettingsContract, GovernanceSettingsInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
   InflationInstance, InitialAirdropContract, InitialAirdropInstance, SupplyContract,
-  SupplyInstance, EscrowContract, EscrowInstance, WNatContract, WNatInstance
+  SupplyInstance, EscrowContract, EscrowInstance, WNatContract, WNatInstance, ValidatorRewardManagerContract, ValidatorRewardManagerInstance
 } from "../../typechain-truffle";
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
@@ -94,6 +94,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     let inflationAllocation: InflationAllocationInstance;
     let FtsoRewardManager: FtsoRewardManagerContract;
     let ftsoRewardManager: FtsoRewardManagerInstance;
+    let ValidatorRewardManager: ValidatorRewardManagerContract;
+    let validatorRewardManager: ValidatorRewardManagerInstance;
 
     beforeEach(async () => {
       InflationAllocation = artifacts.require("InflationAllocation");
@@ -101,6 +103,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       if (parameters.inflationReceivers.indexOf("FtsoRewardManager") >= 0) {
         FtsoRewardManager = artifacts.require("FtsoRewardManager");
         ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
+      }
+      if (parameters.inflationReceivers.indexOf("ValidatorRewardManager") >= 0) {
+        ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+        validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
       }
     });
 
@@ -117,6 +123,9 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         switch (receiverName) {
           case "FtsoRewardManager":
             receiverAddress = ftsoRewardManager.address
+            break;
+          case "ValidatorRewardManager":
+            receiverAddress = validatorRewardManager.address
             break;
           default:
             throw Error(`Unknown inflation receiver name ${receiverName}`)
@@ -419,8 +428,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       let supply: SupplyInstance;
       let WNat: WNatContract;
       let wNat: WNatInstance;
-      let DelegationAccountManager: DelegationAccountManagerContract;
-      let delegationAccountManager: DelegationAccountManagerInstance;
+      let ClaimSetupManager: ClaimSetupManagerContract;
+      let claimSetupManager: ClaimSetupManagerInstance;
 
       beforeEach(async () => {
         DistributionToDelegators = artifacts.require("DistributionToDelegators");
@@ -431,8 +440,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
         WNat = artifacts.require("WNat");
         wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
-        DelegationAccountManager = artifacts.require("DelegationAccountManager");
-        delegationAccountManager = await DelegationAccountManager.at(contracts.getContractAddress(Contracts.DELEGATION_ACCOUNT_MANAGER));
+        ClaimSetupManager = artifacts.require("ClaimSetupManager");
+        claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
       });
 
       it("Should know about distribution treasury contract", async () => {
@@ -459,12 +468,12 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         assert.equal(address, wNat.address);
       });
 
-      it("Should know about delegation account manager contract", async () => {
+      it("Should know about claim setup manager contract", async () => {
         // Assemble
         // Act
-        const address = await distributionToDelegators.delegationAccountManager();
+        const address = await distributionToDelegators.claimSetupManager();
         // Assert
-        assert.equal(address, delegationAccountManager.address);
+        assert.equal(address, claimSetupManager.address);
       });
 
       it("Should have total entitlement set correctly", async () => {
@@ -576,6 +585,32 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       const ftsoManager = await ftsoRewardManager.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
+    });
+  });
+
+  describe(Contracts.VALIDATOR_REWARD_MANAGER, async () => {
+    let ValidatorRewardManager: ValidatorRewardManagerContract;
+    let validatorRewardManager: ValidatorRewardManagerInstance;
+
+    beforeEach(async () => {
+      ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+      validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+    });
+
+    it("Should know about Inflation", async () => {
+      // Assemble
+      // Act
+      const inflation = await validatorRewardManager.getInflationAddress();
+      // Assert
+      assert.equal(inflation, contracts.getContractAddress(Contracts.INFLATION));
+    });
+
+    it("Should have correct reward distributor address", async () => {
+      // Assemble
+      // Act
+      const rewardDistributor = await validatorRewardManager.rewardDistributor();
+      // Assert
+      assert.equal(rewardDistributor, parameters.governancePublicKey);
     });
   });
 
@@ -844,10 +879,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.ESCROW,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER,
         Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.GOVERNANCE_SETTINGS,
-        Contracts.VALIDATOR_REGISTRY];
+        Contracts.VALIDATOR_REGISTRY, Contracts.VALIDATOR_REWARD_MANAGER, Contracts.POLLING_FOUNDATION];
 
       if (parameters.deployDistributionContract) {
-        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
+        contractNames.push(Contracts.CLAIM_SETUP_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
@@ -863,10 +898,11 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
         Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW];
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW, Contracts.VALIDATOR_REWARD_MANAGER,
+        Contracts.POLLING_FOUNDATION];
 
       if (parameters.deployDistributionContract) {
-        contractNames.push(Contracts.DELEGATION_ACCOUNT_MANAGER);
+        contractNames.push(Contracts.CLAIM_SETUP_MANAGER);
         contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
       }
 

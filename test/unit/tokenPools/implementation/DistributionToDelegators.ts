@@ -10,7 +10,7 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 
 const BN = web3.utils.toBN;
 
-const DelegationAccountManager = artifacts.require("DelegationAccountManager");
+const ClaimSetupManager = artifacts.require("ClaimSetupManager");
 const DistributionTreasury = artifacts.require("DistributionTreasury");
 const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockContract = artifacts.require("MockContract");
@@ -40,7 +40,7 @@ const ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
 let priceSubmitterMock: MockContractInstance;
 let wNatMock: MockContractInstance;
 let supply: SupplyInstance;
-let delegationAccountManagerMock: MockContractInstance;
+let claimSetupManagerMock: MockContractInstance;
 let wNatInterface: WNatInstance;
 let distributionTreasury: DistributionTreasuryInstance;
 let distribution: DistributionToDelegatorsInstance;
@@ -104,7 +104,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     priceSubmitterMock = await MockContract.new();
     wNatMock = await MockContract.new();
     supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 10000000, 9000000, []);
-    delegationAccountManagerMock = await MockContract.new();
+    claimSetupManagerMock = await MockContract.new();
     distributionTreasury = await DistributionTreasury.new();
     await bestowClaimableBalance(totalEntitlementWei);
     await distributionTreasury.initialiseFixedAddress();
@@ -116,8 +116,8 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
 
     await distribution.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.SUPPLY, Contracts.DELEGATION_ACCOUNT_MANAGER]),
-      [ADDRESS_UPDATER, wNatMock.address, supply.address, delegationAccountManagerMock.address], {from: ADDRESS_UPDATER});
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.SUPPLY, Contracts.CLAIM_SETUP_MANAGER]),
+      [ADDRESS_UPDATER, wNatMock.address, supply.address, claimSetupManagerMock.address], {from: ADDRESS_UPDATER});
 
     await supply.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
@@ -357,9 +357,9 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       await expectRevert(claimTx3Promise, ERR_DELEGATION_ACCOUNT_ZERO);
       await expectRevert(distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: accounts[2] }), ERR_EXECUTOR_ONLY);
       await expectRevert(distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: executor }), ERR_DELEGATION_ACCOUNT_ZERO);
-      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
-      const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[3]).encodeABI();
-      await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
+      const claimSetupManagerInterface = await ClaimSetupManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 3, 0, 100, 100);
+      const accountToDelegationAccount = claimSetupManagerInterface.contract.methods.accountToDelegationAccount(accounts[3]).encodeABI();
+      await claimSetupManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
       const claimable3 = await distribution.getClaimableAmount(0, {from: accounts[3]});
       const startBalance7 = toBN(await web3.eth.getBalance(accounts[7]));
       const claimTx3 = await distribution.claimToPersonalDelegationAccountByExecutor(accounts[3], 0, { from: executor })
@@ -467,9 +467,9 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
       assert.equal(claimedWei1.toString(10), "0");
 
       // Act
-      const delegationAccountManagerInterface = await DelegationAccountManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER);
-      const accountToDelegationAccount = delegationAccountManagerInterface.contract.methods.accountToDelegationAccount(accounts[1]).encodeABI();
-      await delegationAccountManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
+      const claimSetupManagerInterface = await ClaimSetupManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 3, 0, 100, 100);
+      const accountToDelegationAccount = claimSetupManagerInterface.contract.methods.accountToDelegationAccount(accounts[1]).encodeABI();
+      await claimSetupManagerMock.givenCalldataReturnAddress(accountToDelegationAccount, accounts[7]);
       const claimable = await distribution.getClaimableAmount(0, {from: accounts[1]});
       const startBalance = toBN(await web3.eth.getBalance(accounts[7]));
       const claimTx = await distribution.claimToPersonalDelegationAccount(0, { from: accounts[1] })

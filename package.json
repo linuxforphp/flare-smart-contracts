@@ -28,6 +28,7 @@
     "test_airdrop_scdev": "concurrently -r -k --success first \"yarn run_validator_scdev\" \"wait-on -d 2000 tcp:127.0.0.1:9650 && env CHAIN_CONFIG=scdev yarn test test/scdev/Airdrop.ts --network scdev\"",
     "test_endtoend_hardhat": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && yarn deploy_local_hardhat_commands && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/EndToEnd.ts\"",
     "test_endtoend_hardhat_fast": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && yarn deploy_local_hardhat_commands_fast && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/EndToEnd.ts\"",
+    "test_redeploy_hardhat_fast": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && yarn deploy_local_hardhat_commands_fast && yarn redeploy_contracts_local_hardhat\"",
     "test_claim_topup_hardhat": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && env CHAIN_CONFIG=endToEndHardhat | yarn deploy_local_hardhat_commands && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/ClaimTopup.ts\"",
     "test_claim_topup_hardhat_fast": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && env CHAIN_CONFIG=endToEndHardhat | yarn deploy_local_hardhat_commands_fast && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/ClaimTopup.ts\"",
     "test_endtoend_gas_fast": "concurrently -r -k --success first \"yarn hardhat node > nul\" \"wait-on http://127.0.0.1:8545 && env CHAIN_CONFIG=endToEndHardhat | yarn deploy_local_hardhat_commands_fast && cat ./deployment/deploys/hardhat.json | env TEST_PATH=./test/hardhat/system yarn hardhat test --network localhost test/hardhat/system/ClaimingGasReport.ts\"",
@@ -98,6 +99,11 @@
     "test_final_airdrop_state_mainnet": "yarn test deployment/test/flare/airdropDataTest.ts",
     "flare_airdrop": "yarn test_initial_airdrop_state_mainnet && yarn create_airdrop_transactions_mainnet && yarn sign_airdrop_transactions_mainnet && yarn send_airdrop_transactions_mainnet && yarn test_middle_airdrop_state_mainnet && yarn disable_airdrop_distribution_mainnet && yarn test_final_airdrop_state_mainnet",
 
+    "create_initial_airdrop_transactions_update_mainnet": "yarn ts-node -r dotenv/config airdrop/flare/createAirdropTransactions.ts --snapshot-file airdrop/flare/data/export.csv --transaction-file airdrop/flare/files/trans/unsigned_call_transactions.json --override -h true -d deployment/deploys/flare.json --deployment-config deployment/chain-config/flare.json --gas-price 50000000000 -i 14 --generate-distribution false --batch-size 20",
+    "distribute_initial_airdrop": "yarn ts-node -r dotenv/config airdrop/flare/distributeInitialAirdrop.ts -d deployment/deploys/flare.json -i 14",
+
+    "flare_tde": "yarn ts-node -r dotenv/config airdrop/flare/distributeInitialAirdrop.ts -i 14",
+
     "---------DEPLOY---SCRIPTS": "",
     "deploy_local_scdev": "yarn deploy_contracts_local_scdev && yarn daemonize_contracts_local_scdev && yarn activate_managers_local_scdev && yarn switch_to_production_mode_local_scdev && yarn test_final_verification_local_scdev",
     "switch_to_production_mode_local_scdev": "cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev switch-to-production-mode && yarn test_switch_to_production_mode_local_scdev",
@@ -142,7 +148,15 @@
     "activate_managers_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost activate-managers && yarn test_activate_managers_hardhat",
     "daemonize_contracts_local_hardhat": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost daemonize-contracts && yarn test_daemonize_hardhat",
     "deploy_contracts_local_hardhat": "yarn --silent hardhat --network localhost link-contracts && yarn hardhat compile --config hardhat-link.config.ts --force && env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost deploy-contracts > ./deployment/deploys/hardhat.json && yarn test_deploy_hardhat",
+
+    "deploy_contracts_network_flare_governance": "yarn compile && cat deployment/deploys/flare.json | env CHAIN_CONFIG=flare yarn --silent hardhat --network flare deploy-contracts-governance > ./deployment/deploys/flare_governance.json",
     
+    "---------REDEPLOY---SCRIPTS": "",
+    "redeploy_contracts_local_hardhat": "yarn compile && yarn --silent hardhat --network localhost link-contracts && yarn hardhat compile --config hardhat-link.config.ts --force && cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost redeploy-contracts > ./deployment/deploys/hardhat_redeploy.json",
+    "redeploy_contracts_local_scdev": "yarn compile && yarn --silent hardhat --network scdev link-contracts && yarn hardhat compile --config hardhat-link.config.ts --force && cat deployment/deploys/scdev.json | env CHAIN_CONFIG=scdev yarn --silent hardhat --network scdev redeploy-contracts > ./deployment/deploys/scdev_redeploy.json",
+    "redeploy_contracts_network_flare": "yarn compile && yarn --silent hardhat --network flare link-contracts && yarn hardhat compile --config hardhat-link.config.ts --force && cat deployment/deploys/flare.json | env CHAIN_CONFIG=flare yarn --silent hardhat --network flare redeploy-contracts > ./deployment/deploys/flare_redeploy.json",
+    "redeploy_contracts_network_coston2": "yarn compile && yarn --silent hardhat --network coston2 link-contracts && yarn hardhat compile --config hardhat-link.config.ts --force && cat deployment/deploys/coston2.json | env CHAIN_CONFIG=coston2 yarn --silent hardhat --network coston2 redeploy-contracts > ./deployment/deploys/coston2_redeploy.json",
+
     "---------FAST---SCRIPTS---SKIP---DEPLOY---TESTS": "",
     "deploy_local_hardhat_commands_fast": "yarn deploy_contracts_local_hardhat_fast && yarn daemonize_contracts_local_hardhat_fast && yarn activate_managers_local_hardhat_fast && yarn switch_to_production_mode_local_hardhat_fast",
     "activate_managers_local_hardhat_fast": "cat deployment/deploys/hardhat.json | env CHAIN_CONFIG=endToEndHardhat yarn --silent hardhat --network localhost activate-managers",
@@ -213,6 +227,7 @@
     "hardhat": "2.4.3",
     "solhint": "3.3.2",
     "solidity-coverage": "0.7.16",
+    "solidity-docgen": "^0.6.0-beta.22",
     "typescript-json-schema": "0.54.0"
   },
   "devDependencies": {

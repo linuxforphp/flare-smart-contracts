@@ -1,7 +1,7 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import fs from "fs";
 import { Contracts } from "../../../deployment/scripts/Contracts";
-import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, PriceSubmitterInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetTokenContract, AssetTokenInstance, FtsoInstance, FtsoManagerInstance, FtsoRegistryInstance, FtsoRegistryProxyInstance, PriceSubmitterInstance, VoterWhitelisterInstance, WNatInstance } from "../../../typechain-truffle";
 import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../utils/constants";
 import { encodeContractNames, getRandom, increaseTimeTo, submitHash, toBN } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
@@ -14,6 +14,7 @@ const PriceSubmitter = artifacts.require("PriceSubmitter");
 const FtsoManager = artifacts.require("FtsoManager");
 const FtsoManagement = artifacts.require("FtsoManagement");
 const AssetToken = artifacts.require("AssetToken") as AssetTokenContract;
+const FtsoRegistryProxy = artifacts.require("FtsoRegistryProxy");
 
 function toBNFixed(x: number, decimals: number) {
   const prec = Math.min(decimals, 6);
@@ -56,6 +57,8 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   let natFtso: FtsoInstance;
 
   let ftsoRegistry: FtsoRegistryInstance;
+  let registry: FtsoRegistryInstance
+  let ftsoRegistryProxy: FtsoRegistryProxyInstance;
 
   let vpBlockNumber: number;
   let epochId: number;
@@ -66,9 +69,9 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
 
   async function createFtso(symbol: string, initialPrice: BN) {
     const ftso = await Ftso.new(symbol, 5, priceSubmitter.address, wNat.address, ftsoManager, startTs, epochDurationSec, revealDurationSec, initialPrice, 1e10, defaultPriceEpochCyclicBufferSize);
-    await ftsoRegistry.addFtso(ftso.address, { from: ftsoManager });
+    await registry.addFtso(ftso.address, { from: ftsoManager });
     // add ftso to price submitter and whitelist
-    const ftsoIndex = await ftsoRegistry.getFtsoIndex(symbol);
+    const ftsoIndex = await registry.getFtsoIndex(symbol);
     await whitelist.addFtso(ftsoIndex, { from: ftsoManager });
     // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
     const trustedVoters = accounts.slice(201, 201 + 5);
@@ -81,7 +84,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
     // set votepower block
     vpBlockNumber = vpBlock ?? await web3.eth.getBlockNumber();
     await time.advanceBlock();
-    const ftsoAddrList = await ftsoRegistry.getAllFtsos();
+    const ftsoAddrList = await registry.getAllFtsos();
     const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
     for (const ftso of ftsoList) {
       await ftso.setVotePowerBlock(vpBlockNumber, { from: ftsoManager });
@@ -105,7 +108,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
   }
 
   async function initializeForReveal() {
-    const ftsoAddrList = await ftsoRegistry.getAllFtsos();
+    const ftsoAddrList = await registry.getAllFtsos();
     const ftsoList = await Promise.all(ftsoAddrList.map(addr => Ftso.at(addr)));
     for (const ftso of ftsoList) {
       await ftso.initializeCurrentEpochStateForReveal(10000, false, { from: ftsoManager });
@@ -270,18 +273,21 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       );
 
       // create registry
-      ftsoRegistry = await FtsoRegistry.new(governance, ADDRESS_UPDATER);
-      await ftsoRegistry.updateContractAddresses(
+      ftsoRegistry = await FtsoRegistry.new();
+      ftsoRegistryProxy = await FtsoRegistryProxy.new(accounts[0], ftsoRegistry.address);
+            registry = await FtsoRegistry.at(ftsoRegistryProxy.address);
+            await registry.initialiseRegistry(ADDRESS_UPDATER);
+      await registry.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
         [ADDRESS_UPDATER, ftsoManager], {from: ADDRESS_UPDATER});
       // create whitelister
       whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 500);
       await whitelist.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
-        [ADDRESS_UPDATER, ftsoRegistry.address, ftsoManager], {from: ADDRESS_UPDATER});
+        [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
       await priceSubmitter.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),
-        [ADDRESS_UPDATER, ftsoRegistry.address, whitelist.address, mockFtsoManager.address], {from: ADDRESS_UPDATER});
+        [ADDRESS_UPDATER, registry.address, whitelist.address, mockFtsoManager.address], {from: ADDRESS_UPDATER});
       // create assets
       wNat = await WNat.new(governance, "Wrapped NAT", "WNAT");
       await setDefaultVPContract(wNat, governance);
@@ -355,7 +361,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
-        indices.push(await ftsoRegistry.getFtsoIndex(symbol));
+        indices.push(await registry.getFtsoIndex(symbol));
       }
       // whitelist
       await initializeForReveal();
@@ -429,7 +435,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
-        indices.push(await ftsoRegistry.getFtsoIndex(symbol));
+        indices.push(await registry.getFtsoIndex(symbol));
       }
       // whitelist
       await initializeForReveal();
@@ -480,7 +486,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
-        indices.push(await ftsoRegistry.getFtsoIndex(symbol));
+        indices.push(await registry.getFtsoIndex(symbol));
       }
       // whitelist
       await initializeForReveal();
@@ -532,7 +538,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
-        indices.push(await ftsoRegistry.getFtsoIndex(symbol));
+        indices.push(await registry.getFtsoIndex(symbol));
       }
       // whitelist
       await initializeForReveal();
@@ -587,7 +593,7 @@ contract(`a few contracts; ${getTestFile(__filename)}; gas consumption tests`, a
       const indices: BN[] = [];
       for (const ftso of allFtsos) {
         const symbol = await ftso.symbol();
-        indices.push(await ftsoRegistry.getFtsoIndex(symbol));
+        indices.push(await registry.getFtsoIndex(symbol));
       }
       // whitelist
       await initializeForReveal();
