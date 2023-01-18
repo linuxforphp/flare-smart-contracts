@@ -175,6 +175,11 @@
     "address": "0xe48eFe08557BBcCD0b834913319fE1fb7E82d28E"
   },
   {
+    "name": "FtsoWnat",
+    "contractName": "Ftso.sol",
+    "address": "0x6d318B71b74cF249211C06b85F7eaa561fd9BB2D"
+  },
+  {
     "name": "FlareAssetRegistry",
     "contractName": "FlareAssetRegistry.sol",
     "address": "0x9a039B2677EDD9cbfAf65AF080b08749c6b59487"
