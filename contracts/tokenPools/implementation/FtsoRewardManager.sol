@@ -270,6 +270,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
      * @param _rewardOwners         list of reward owners to claim for
      * @param _rewardEpoch          last reward epoch to claim for
      */
+    //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant
     function autoClaim(address[] calldata _rewardOwners, uint256 _rewardEpoch)
         external override
         onlyIfActive

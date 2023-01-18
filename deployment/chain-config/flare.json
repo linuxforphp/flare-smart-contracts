@@ -66,8 +66,8 @@
     "incentivePoolGasLimit": 3000000,
     "deployDistributionContract": true,
     "deployDummyXAssetTokensAndMinters": false,
-    "deployNATFtso": false,
-    "NATMultiAssets": [],
+    "deployNATFtso": true,
+    "NATMultiAssets": ["DOGE", "BTC", "XRP"],
     "assets": [
         {
             "assetSymbol": "XRP",
