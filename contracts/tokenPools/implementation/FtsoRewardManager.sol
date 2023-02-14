@@ -47,7 +47,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     }
     
     uint256 constant internal MAX_BIPS = 1e4;
-    uint256 constant internal ALMOST_SEVEN_FULL_DAYS_SEC = 7 days - 1;
+    uint256 constant internal ALMOST_FULL_DAY_SEC = 1 days - 1;
     uint256 constant internal MAX_BURNABLE_PCT = 20;
     uint256 constant internal FIRST_CLAIMABLE_EPOCH = uint(-1);
     address payable constant internal BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
@@ -478,7 +478,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     function closeExpiredRewardEpoch(uint256 _rewardEpoch) external override {
         require (msg.sender == address(ftsoManager) || msg.sender == newFtsoRewardManager, "only managers");
         require(nextRewardEpochToExpire == _rewardEpoch, "wrong epoch id");
-        if (oldFtsoRewardManager != address(0) && _rewardEpoch < initialRewardEpoch) {
+        if (oldFtsoRewardManager != address(0) && _rewardEpoch < initialRewardEpoch + 50) {
             IIFtsoRewardManager(oldFtsoRewardManager).closeExpiredRewardEpoch(_rewardEpoch);
         }
 
@@ -994,6 +994,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
 
             if (_explicitDelegation) {
                 RewardClaim storage rewardClaim = epochProviderClaimerReward[_rewardEpoch][dataProvider][_rewardOwner];
+                require (!rewardClaim.claimed, "already claimed");
                 rewardClaim.claimed = true;
                 rewardClaim.amount = rewardAmount;
             }
@@ -1025,7 +1026,9 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
             claimedRewardEpochRewards[epoch] += amount;
             _rewardAmount += amount;
         }
-        claimerNextClaimableEpoch[_rewardOwner] = _rewardEpoch + 1;
+        if (claimerNextClaimableEpoch[_rewardOwner] < _rewardEpoch + 1) {
+            claimerNextClaimableEpoch[_rewardOwner] = _rewardEpoch + 1;
+        }
     }
 
     /**
@@ -1111,7 +1114,7 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
         returns (uint256)
     {
         // Get the end of the daily period
-        uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_SEVEN_FULL_DAYS_SEC);
+        uint256 dailyPeriodEndTs = lastInflationAuthorizationReceivedTs.add(ALMOST_FULL_DAY_SEC);
         require(_fromThisTs <= dailyPeriodEndTs, "after daily cycle");
         return dailyPeriodEndTs.sub(_fromThisTs).div(_priceEpochDurationSeconds) + 1;
     }

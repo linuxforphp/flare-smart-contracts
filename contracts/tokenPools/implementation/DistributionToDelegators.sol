@@ -109,7 +109,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     }
 
     /**
-     * @dev This modifier ensures that the entitelment was already started
+     * @dev This modifier ensures that the entitlement was already started
      */
     modifier entitlementStarted {
         require (entitlementStartTs < block.timestamp, ERR_NOT_STARTED);
@@ -375,7 +375,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     }
 
     /**
-     * @notice Time till next Wei will be claimable (in secods)
+     * @notice Time till next Wei will be claimable (in seconds)
      * @return _timeTill (sec) Time till next claimable Wei in seconds
      */
     function secondsTillNextClaim() external view override entitlementStarted

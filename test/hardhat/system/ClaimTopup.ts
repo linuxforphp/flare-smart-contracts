@@ -528,7 +528,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
         .add(gasCost);
 
     // Compute what we should have distributed for one price epoch
-    const almost7FullDaysSec = BN(7 * 3600 * 24 - 1);
+    const almostFullDaySec = BN(3600 * 24 - 1);
     // Get the daily inflation authorized on ftso reward manager
     const totals1 = await getRewardTotals(ftsoRewardManager);
     day1_dailyAuthorizedInflation = totals1.dailyAuthorizedInflation;
@@ -536,7 +536,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     const authorizedInflationTimestamp = totals1.lastInflationAuthorizationReceivedTs;
 
     // use the same formula as in ftso reward manager to calculate claimable value
-    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almost7FullDaysSec);
+    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almostFullDaySec);
     const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (firstPriceEpoch + 1) * priceEpochDurationSeconds.toNumber() - 1);
     const shouldClaimed = day1_dailyAuthorizedInflation.div(
       (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSeconds).add(BN(1))
