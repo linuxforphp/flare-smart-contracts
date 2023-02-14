@@ -180,14 +180,14 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await ftsoManager.daemonize();
 
             // Assert
-            // a1 should be (2000000 / 5040) * 0.25 = 99
-            // a2 should be = (2000000 / 5040) * 0.75 = 297
+            // a1 should be (2000000 / 720) * 0.25 = 695
+            // a2 should be = (2000000 / 5040) * 0.75 = 2777 - 695 = 2082
             // There is a remainder. It is not being allocated. It should get progressively
             // smaller using a double declining balance allocation.
             let a1UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[1]);
             let a2UnclaimedReward = await ftsoRewardManager.getUnclaimedReward(0, accounts[2]);
-            assert.equal(a1UnclaimedReward[0].toString(), "99");
-            assert.equal(a2UnclaimedReward[0].toString(), "297");
+            assert.equal(a1UnclaimedReward[0].toString(), "695");
+            assert.equal(a2UnclaimedReward[0].toString(), "2082");
         });
     });
 
@@ -238,9 +238,9 @@ contract(`RewardManager.sol and FtsoManager.sol; ${ getTestFile(__filename) }; R
             await ftsoRewardManager.claimReward(accounts[3], [0], { from: accounts[1] });
 
             // Assert
-            // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 * 2 finalizations = 198
+            // a1 -> a3 claimed should be (2000000 / 720) * 0.25 * 2 finalizations = 695 * 2 = 1390
             let natClosingBalance = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), Math.floor(2000000 / 5040 * 0.25 * 2));
+            assert.equal(natClosingBalance.sub(natOpeningBalance).toNumber(), Math.ceil(2000000 / 720 * 0.25) * 2);
         });
     });
 });
