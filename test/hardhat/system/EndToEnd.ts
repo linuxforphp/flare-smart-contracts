@@ -395,7 +395,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   it("Should submit prices for first price epoch and claim for first reward epoch", async () => {
     rewardExpiryOffsetSeconds = (await ftsoManager.getGovernanceParameters())[6].toNumber();
 
-    // get the firs reward
+    // get the first reward
     while ((await (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds)) {
       let result = await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
       if (firstPriceEpoch < 0 && firstRewardEpochId < 0) {
@@ -479,14 +479,14 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
         .add(gasCost);
 
     // Compute what we should have distributed for one price epoch
-    const almost7FullDaysSec = BN(7 * 3600 * 24 - 1);
+    const almostFullDaySec = BN(3600 * 24 - 1);
     // Get the daily inflation authorized on ftso reward manager
     const totals = await getRewardTotals(ftsoRewardManager);
     const dailyAuthorizedInflation = totals.dailyAuthorizedInflation;
     const authorizedInflationTimestamp = totals.lastInflationAuthorizationReceivedTs;
 
     // use the same formula as in ftso reward manager to calculate claimable value
-    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almost7FullDaysSec);
+    const dailyPeriodEndTs = authorizedInflationTimestamp.add(almostFullDaySec);
     const priceEpochEndTime = BN(firstPriceEpochStartTs.toNumber() + (firstPriceEpoch + 1) * priceEpochDurationSeconds.toNumber() - 1);
     const shouldaClaimed = dailyAuthorizedInflation.div(
       (dailyPeriodEndTs.sub(priceEpochEndTime)).div(priceEpochDurationSeconds).add(BN(1))
