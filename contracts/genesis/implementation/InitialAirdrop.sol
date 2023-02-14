@@ -174,6 +174,7 @@ contract InitialAirdrop is Governed, ReentrancyGuard {
     /**
      * @notice Method for transferring initial airdrop amounts in batches of 50
      */
+    //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant
     function transferAirdrop() external airdropStarted mustBalance nonReentrant {
         uint256 upperBound = Math.min(nextAirdropAccountIndexToTransfer + 50, airdropAccounts.length);
         uint256 totalTransferredAirdropWeiTemp = 0;
