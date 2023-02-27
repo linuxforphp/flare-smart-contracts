@@ -66,7 +66,7 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
         await whitelist.addFtso(ftsoIndex, { from: ftsoManager });
         // both turnout thresholds are set to 0 to match whitelist vp calculation (which doesn't use turnout)
         const trustedVoters = accounts.slice(101, 101 + 10);
-        await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, trustedVoters, { from: ftsoManager });
+        await ftso.configureEpochs(1, 1, 1000, 10000, 0, 0, 0, 0, trustedVoters, { from: ftsoManager });
         await ftso.activateFtso(0, epochDurationSec, revealDurationSec, { from: ftsoManager });
         return ftso;
     }
@@ -133,7 +133,6 @@ contract(`FtsoBenchmark.sol; ${getTestFile(__filename)}; FTSO gas consumption te
                 governance,
                 governance,
                 ADDRESS_UPDATER,
-                priceSubmitter.address,
                 constants.ZERO_ADDRESS,
                 0,
                 epochDurationSec,

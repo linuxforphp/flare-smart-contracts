@@ -6,10 +6,6 @@ import "../implementation/Ftso.sol";
 
 contract SimpleMockFtso is Ftso {
     using FtsoEpoch for FtsoEpoch.State;
-    
-    string internal constant ERR_WRONG_EPOCH_ID = "Wrong epoch id";
-    string internal constant ERR_DUPLICATE_SUBMIT_IN_EPOCH = "Duplicate submit in epoch";
-    string internal constant ERR_PRICE_INVALID = "Price already revealed or not valid";
 
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
     mapping(uint256 => uint256) internal randoms;
@@ -54,8 +50,8 @@ contract SimpleMockFtso is Ftso {
      * @notice Emits PriceHashSubmitted event
      */
     function submitPriceHash(uint256 _epochId, bytes32 _hash) external whenActive {
-        require(_epochId == getCurrentEpochId(), ERR_WRONG_EPOCH_ID);
-        require(epochVoterHash[_epochId][msg.sender] == 0, ERR_DUPLICATE_SUBMIT_IN_EPOCH);
+        require(_epochId == getCurrentEpochId(), "Wrong epoch id");
+        require(epochVoterHash[_epochId][msg.sender] == 0, "Duplicate submit in epoch");
         epochVoterHash[_epochId][msg.sender] = _hash;
         emit PriceHashSubmitted(msg.sender, _epochId, _hash, block.timestamp);
     }
@@ -70,7 +66,7 @@ contract SimpleMockFtso is Ftso {
      */
     function revealPrice(uint256 _epochId, uint256 _price, uint256 _random) external whenActive {
         require(epochVoterHash[_epochId][msg.sender] == keccak256(abi.encode(_price, _random, msg.sender)), 
-            ERR_PRICE_INVALID);
+            "Price already revealed or not valid");
         _revealPrice(msg.sender, _epochId, _price, wNatVotePowerCached(msg.sender, _epochId));
         
         randoms[_epochId] += uint256(keccak256(abi.encode(_random, [_price])));

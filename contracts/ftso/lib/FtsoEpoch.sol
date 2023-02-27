@@ -32,6 +32,9 @@ library FtsoEpoch {
         uint256 lowNatTurnoutThresholdBIPS;     // threshold for low nat turnout (in BIPS)
         address[] trustedAddresses;             // trusted addresses - use their prices if low turnout is not achieved
         mapping(address => bool) trustedAddressesMapping; // for checking addresses in fallback mode
+        uint256 elasticBandRewardBIPS;          // hybrid reward band, where elasticBandRewardBIPS goes to the IQR
+                    // and 10000 - elasticBandRewardBIPS goes to all prices within elasticBandWidthPPM of the median
+        uint256 elasticBandWidthPPM;            // prices within elasticBandWidthPPM of median are rewarded
     }
 
     struct Instance {                           // struct holding epoch votes and results
@@ -56,6 +59,10 @@ library FtsoEpoch {
         uint256[] trustedVotes;                 // array of all votes from trusted providers in epoch
         uint256 price;                          // consented epoch asset price
         IFtso.PriceFinalizationType finalizationType; // finalization type
+        uint256 elasticBandRewardBIPS;          // hybrid reward band, where elasticBandRewardBIPS goes
+        // to all prices within elasticBandWidthPPM of the median
+        // and 10000 - elasticBandRewardBIPS to the IQR
+        uint256 elasticBandWidthPPM;            // prices within elasticBandWidthPPM of median are rewarded
     }
 
     uint256 internal constant BIPS100 = 1e4;                    // 100% in basis points
@@ -98,6 +105,8 @@ library FtsoEpoch {
         _instance.maxVotePowerAsset = 
             (_instance.votePowerAsset / _state.maxVotePowerAssetThresholdFraction).toUint128();
         _instance.initializedForReveal = true;
+        _instance.elasticBandRewardBIPS = _state.elasticBandRewardBIPS;
+        _instance.elasticBandWidthPPM = _state.elasticBandWidthPPM;
     }
 
     /**

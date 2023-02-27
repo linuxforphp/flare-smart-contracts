@@ -1,28 +1,13 @@
+import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Address } from 'hardhat-deploy/dist/types';
-import {
-  WNatInstance,
-  MockContractInstance,
-  ClaimSetupManagerInstance,
-  DelegationAccountInstance,
-  FtsoManagerMockInstance,
-  InflationMockInstance,
-  FtsoRewardManagerInstance,
-  FtsoManagerInstance,
-  FtsoManagerMockContract,
-  FtsoRewardManagerContract,
-  FtsoManagerContract,
-  DistributionTreasuryInstance,
-  GovernanceVotePowerInstance,
-  SupplyInstance,
-  DistributionToDelegatorsInstance,
-  CloneFactoryMockInstance
-} from "../../../../typechain-truffle";
-import { toBN, encodeContractNames, compareNumberArrays, compareArrays } from '../../../utils/test-helpers';
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { expectRevert, expectEvent, time, constants } from '@openzeppelin/test-helpers';
 import { Contracts } from '../../../../deployment/scripts/Contracts';
-import { GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
+import {
+  ClaimSetupManagerInstance, CloneFactoryMockInstance, DelegationAccountInstance, FtsoManagerContract, FtsoManagerInstance,
+  FtsoManagerMockContract, FtsoManagerMockInstance, FtsoRewardManagerContract, FtsoRewardManagerInstance, GovernanceVotePowerInstance, InflationMockInstance, WNatInstance
+} from "../../../../typechain-truffle";
 import { calcGasCost } from '../../../utils/eth';
+import { compareArrays, compareNumberArrays, encodeContractNames, toBN } from '../../../utils/test-helpers';
+import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
 let wNat: WNatInstance;
 let governanceVP: GovernanceVotePowerInstance;
@@ -32,22 +17,15 @@ let delegationAccount1: DelegationAccountInstance;
 let delAcc1Address: Address;
 let delegationAccount2: DelegationAccountInstance;
 let delAcc2Address: Address;
-let delegationAccount3: DelegationAccountInstance;
 let delAcc3Address: Address;
-let distribution: DistributionToDelegatorsInstance;
-let distributionTreasury: DistributionTreasuryInstance;
 
 let ftsoRewardManager: FtsoRewardManagerInstance;
 let ftsoManagerInterface: FtsoManagerInstance;
 let startTs: BN;
-let latestStart: BN;
 let mockFtsoManager: FtsoManagerMockInstance;
 let mockInflation: InflationMockInstance;
 let ADDRESS_UPDATER: string;
-let priceSubmitterMock: MockContractInstance;
-let supply: SupplyInstance;
 let INFLATION_ADDRESS: string;
-let wNatMock: MockContractInstance;
 let cloneFactoryMock: CloneFactoryMockInstance;
 
 const getTestFile = require('../../../utils/constants').getTestFile;
@@ -56,8 +34,6 @@ const WNat = artifacts.require("WNat");
 const MockContract = artifacts.require("MockContract");
 const ClaimSetupManager = artifacts.require("ClaimSetupManager");
 const DelegationAccount = artifacts.require("DelegationAccount");
-const DistributionTreasury = artifacts.require("DistributionTreasury");
-const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockFtsoManager = artifacts.require("FtsoManagerMock") as FtsoManagerMockContract;
 const FtsoRewardManager = artifacts.require("FtsoRewardManager") as FtsoRewardManagerContract;
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
@@ -65,7 +41,6 @@ const FtsoManager = artifacts.require("FtsoManager") as FtsoManagerContract;
 const FtsoManagement = artifacts.require("FtsoManagement");
 const InflationMock = artifacts.require("InflationMock");
 const GovernanceVotePower = artifacts.require("GovernanceVotePower");
-const Supply = artifacts.require("Supply");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const CloneFactoryMock = artifacts.require("CloneFactoryMock");
 const ERC20Mock = artifacts.require("ERC20Mock");
@@ -76,9 +51,6 @@ const REVEAL_EPOCH_DURATION_S = 30;
 const REWARD_EPOCH_DURATION_S = 2 * 24 * 60 * 60; // 2 days
 const VOTE_POWER_BOUNDARY_FRACTION = 7;
 
-const totalEntitlementWei = toBN(100000);
-
-const CLAIM_FAILURE = "unknown error when claiming";
 const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
 
 export async function distributeRewards(
@@ -173,50 +145,6 @@ export async function travelToAndSetNewRewardEpoch(newRewardEpoch: number, start
   await mockFtsoManager.givenMethodReturn(getCurrentRewardEpoch, getCurrentRewardEpochReturn);
 }
 
-async function bestowClaimableBalance(balance: BN) {
-  // Give the distribution contract the native token required to be in balance with entitlements
-  // Our subversive attacker will be suiciding some native token into flareDaemon
-  const suicidalMock = await SuicidalMock.new(distributionTreasury.address);
-  // Give suicidal some native token
-  await web3.eth.sendTransaction({ from: GOVERNANCE_GENESIS_ADDRESS, to: suicidalMock.address, value: balance });
-  // Attacker dies
-  await suicidalMock.die();
-}
-
-async function setMockBalances(startBlockNumber: number, numberOfBlocks: number, addresses: string[], wNatBalances: number[]) {
-  const len = addresses.length;
-  assert(len == wNatBalances.length, "addresses length does not match wNatBalances length");
-
-  for (let block = startBlockNumber; block < startBlockNumber + numberOfBlocks; block++) {
-    let totalSupply = 0;
-    for (let i = 0; i < len; i++) {
-      const balanceOfAt = wNat.contract.methods.balanceOfAt(addresses[i], block).encodeABI();
-      const balanceOfAtReturn = web3.eth.abi.encodeParameter('uint256', wNatBalances[i]);
-      await wNatMock.givenCalldataReturn(balanceOfAt, balanceOfAtReturn);
-      totalSupply += wNatBalances[i];
-    }
-
-    const totalSupplyAt = wNat.contract.methods.totalSupplyAt(block).encodeABI();
-    const totalSupplyAtReturn = web3.eth.abi.encodeParameter('uint256', totalSupply);
-    await wNatMock.givenCalldataReturn(totalSupplyAt, totalSupplyAtReturn);
-  }
-}
-
-async function createSomeBlocksAndProceed(now: BN, proceedDays: number) {
-  for (let i = 1; i <= proceedDays; i++) {
-    for (let j = 0; j < 5; j++) {
-      await time.increase(6000);
-    }
-    await supply.updateCirculatingSupply({from: INFLATION_ADDRESS});
-    for (let j = 0; j < 5; j++) {
-      await time.increase(6000);
-    }
-    await time.increaseTo(now.addn(i * 86400));
-  }
-  await time.advanceBlock();
-}
-
-
 contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager unit tests`, async accounts => {
   const EXECUTOR_MIN_FEE = "0";
   const EXECUTOR_MAX_FEE = "500";
@@ -236,21 +164,6 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
 
     governanceVP = await GovernanceVotePower.new(wNat.address);
     await wNat.setGovernanceVotePower(governanceVP.address);
-
-    wNatMock = await MockContract.new();
-    priceSubmitterMock = await MockContract.new();
-
-    distributionTreasury = await DistributionTreasury.new();
-    await distributionTreasury.initialiseFixedAddress();
-    await bestowClaimableBalance(totalEntitlementWei);
-    latestStart = (await time.latest()).addn(10 * 24 * 60 * 60); // in 10 days
-    distribution = await DistributionToDelegators.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, priceSubmitterMock.address, distributionTreasury.address, totalEntitlementWei, latestStart);
-    // set distribution contract
-    await distributionTreasury.setContracts((await MockContract.new()).address, distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
-    // select distribution contract
-    await distributionTreasury.selectDistributionContract(distribution.address, {from: GOVERNANCE_GENESIS_ADDRESS});
-
-    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 10000000, 9000000, []);
 
     // ftso reward manager
     mockFtsoManager = await MockFtsoManager.new();
@@ -273,7 +186,6 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -309,8 +221,8 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
 
     expect(await claimSetupManager.wNat()).to.equals(constants.ZERO_ADDRESS);
     await claimSetupManager.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
-        [ADDRESS_UPDATER, mockFtsoManager.address, wNat.address, ftsoRewardManager.address, distribution.address], {from: ADDRESS_UPDATER});
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT]),
+        [ADDRESS_UPDATER, mockFtsoManager.address, wNat.address], {from: ADDRESS_UPDATER});
     expect(await claimSetupManager.wNat()).to.equals(wNat.address);
 
     // deploy library contract
@@ -319,16 +231,6 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
 
     let create = claimSetupManager.enableDelegationAccount({ from: accounts[1] });
     await expectRevert(create, "library address not set yet");
-
-    await distribution.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.WNAT, Contracts.SUPPLY, Contracts.CLAIM_SETUP_MANAGER]),
-      [ADDRESS_UPDATER, wNatMock.address, supply.address, claimSetupManager.address], {from: ADDRESS_UPDATER});
-
-    await supply.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
-        [ADDRESS_UPDATER, INFLATION_ADDRESS], {from: ADDRESS_UPDATER});
-
-    await supply.addTokenPool(distribution.address, 0, {from: GOVERNANCE_ADDRESS});
 
     let setLibrary = await claimSetupManager.setLibraryAddress(libraryContract.address);
     expectEvent(setLibrary, "SetLibraryAddress", { libraryAddress: libraryContract.address});
@@ -347,14 +249,7 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
 
     let create3 = await claimSetupManager.enableDelegationAccount({ from: accounts[3] }); 
     delAcc3Address = await claimSetupManager.accountToDelegationAccount(accounts[3]);
-    delegationAccount3 = await DelegationAccount.at(delAcc3Address);
     expectEvent(create3, "DelegationAccountCreated", { delegationAccount: delAcc3Address, owner: accounts[3]} );
-
-    // let da99 = await claimSetupManager.contract.methods.setClaimExecutors([]).call({ from: accounts[99] }); //return value (address) of enableDelegationAccount function
-    // let create99 = await claimSetupManager.setClaimExecutors([], { from: accounts[99] });
-    // let delAcc99Address = await claimSetupManager.accountToDelegationAccount(accounts[99]);
-    // expectEvent(create99, "DelegationAccountCreated", { delegationAccount: da99, owner: accounts[99]} );
-    // expect(da99).to.equals(delAcc99Address);
   });
 
   it("Should revert if zero/invalid value/address", async() => {
@@ -414,8 +309,8 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     await mockWNAT.givenMethodReturnBool(current, false);
 
     let update = claimSetupManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
-      [ADDRESS_UPDATER, mockFtsoManager.address, mockWNAT.address, ftsoRewardManager.address, distribution.address], {from: ADDRESS_UPDATER}
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT]),
+      [ADDRESS_UPDATER, mockFtsoManager.address, mockWNAT.address], {from: ADDRESS_UPDATER}
     );
     // let tx1 = claimSetupManager.withdraw(10, { from:accounts[1] });
     await expectRevert(update, "wrong wNat address");
@@ -781,8 +676,8 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
 
     let wNat2 = await WNat.new(accounts[0], "Wrapped NAT 2", "WNAT2");
     let setAddresses = claimSetupManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT, Contracts.FTSO_REWARD_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS]),
-      [ADDRESS_UPDATER, mockFtsoManager.address, wNat2.address, ftsoRewardManager.address, distribution.address], {from: ADDRESS_UPDATER});
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.WNAT]),
+      [ADDRESS_UPDATER, mockFtsoManager.address, wNat2.address], {from: ADDRESS_UPDATER});
     await expectRevert(setAddresses, "wrong wNat address");
     expect(await claimSetupManager.wNat()).to.equals(wNat.address);
   })

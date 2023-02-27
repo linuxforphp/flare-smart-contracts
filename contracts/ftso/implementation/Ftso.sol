@@ -8,13 +8,21 @@ import "../lib/FtsoVote.sol";
 import "../lib/FtsoMedian.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 
-
 /**
  * @title A contract implementing Flare Time Series Oracle
  */
 contract Ftso is IIFtso {
     using FtsoEpoch for FtsoEpoch.State;
     using SafeCast for uint256;
+
+    struct RewardData {
+        uint256[] weightIQR;
+        uint256[] weightElasticBand;
+        uint256 weightsIQRSum;
+        uint256 weightsElasticBandSum;
+        uint256 numberOfVotes;
+        uint256 elasticBandRewardBIPS;
+    }
 
     // errors
     string internal constant ERR_NOT_ACTIVE = "FTSO not active";
@@ -27,8 +35,7 @@ contract Ftso is IIFtso {
     string internal constant ERR_EPOCH_NOT_INITIALIZED_FOR_REVEAL = "Epoch not initialized for reveal";
     string internal constant ERR_EPOCH_DATA_NOT_AVAILABLE = "Epoch data not available";
     string internal constant ERR_INVALID_PRICE_EPOCH_PARAMETERS = "Invalid price epoch parameters";
-    
-    
+
     // storage
     uint256 public immutable priceDeviationThresholdBIPS;   // threshold for price deviation between consecutive epochs
     uint256 public immutable priceEpochCyclicBufferSize;
@@ -183,7 +190,7 @@ contract Ftso is IIFtso {
         // compute weighted median and truncated quartiles
         uint256[] memory index;
         FtsoMedian.Data memory data;
-        (index, data) = FtsoMedian._computeWeighted(price, weight);
+        (index, data) = FtsoMedian._computeWeighted(price, weight, epoch.elasticBandWidthPPM);
 
         // check price deviation
         if (epochs._getPriceDeviation(_epochId, data.finalMedianPrice, priceEpochCyclicBufferSize)
@@ -218,7 +225,7 @@ contract Ftso is IIFtso {
         if (_returnRewardData) {
             uint256 random = _getRandom(_epochId);
             (_eligibleAddresses, _natWeights, _natWeightsSum) = 
-                _readRewardData(epoch, data, random, index, weightNat);
+                _readRewardData(epoch, data, random, price, weightNat);
             if (_eligibleAddresses.length > 0) {
                 rewardedFtso = true;
             }
@@ -229,8 +236,9 @@ contract Ftso is IIFtso {
 
         // inform about epoch result
         emit PriceFinalized(_epochId, epoch.price, rewardedFtso, 
-            data.quartile1Price, data.quartile3Price, epoch.finalizationType,
-            block.timestamp);
+            data.quartile1Price, data.quartile3Price,
+            data.lowElasticBandPrice, data.highElasticBandPrice,
+            epoch.finalizationType, block.timestamp);
 
         epoch.fallbackMode = false; // set back to false for next usage
     }
@@ -308,6 +316,10 @@ contract Ftso is IIFtso {
      * @param _highAssetUSDThreshold            threshold for high asset vote power
      * @param _highAssetTurnoutThresholdBIPS    threshold for high asset turnout
      * @param _lowNatTurnoutThresholdBIPS       threshold for low nat turnout
+     * @param _elasticBandRewardBIPS            hybrid reward band, where _elasticBandRewardBIPS goes to the 
+        elastic band (prices within _elasticBandWidthPPM of the median) 
+        and 10000 - elasticBandRewardBIPS to the IQR
+     * @param _elasticBandWidthPPM              prices within _elasticBandWidthPPM of median are rewarded
      * @param _trustedAddresses                 trusted addresses - use their prices if low nat turnout is not achieved
      * @dev Should never revert if called from ftso manager
      */
@@ -318,6 +330,8 @@ contract Ftso is IIFtso {
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
         uint256 _lowNatTurnoutThresholdBIPS,
+        uint256 _elasticBandRewardBIPS,
+        uint256 _elasticBandWidthPPM,
         address[] memory _trustedAddresses
     ) 
         external override
@@ -329,6 +343,8 @@ contract Ftso is IIFtso {
         epochs.highAssetUSDThreshold = _highAssetUSDThreshold;
         epochs.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
         epochs.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
+        epochs.elasticBandRewardBIPS = _elasticBandRewardBIPS;
+        epochs.elasticBandWidthPPM = _elasticBandWidthPPM;
 
         // remove old addresses mapping
         uint256 len = epochs.trustedAddresses.length;
@@ -453,6 +469,8 @@ contract Ftso is IIFtso {
             uint256 _highAssetUSDThreshold,
             uint256 _highAssetTurnoutThresholdBIPS,
             uint256 _lowNatTurnoutThresholdBIPS,
+            uint256 _elasticBandRewardBIPS,
+            uint256 _elasticBandWidthPPM,
             address[] memory _trustedAddresses
         )
     {
@@ -463,6 +481,8 @@ contract Ftso is IIFtso {
             epochs.highAssetUSDThreshold,
             epochs.highAssetTurnoutThresholdBIPS,
             epochs.lowNatTurnoutThresholdBIPS,
+            epochs.elasticBandRewardBIPS,
+            epochs.elasticBandWidthPPM,
             epochs.trustedAddresses
         );
     }
@@ -829,7 +849,7 @@ contract Ftso is IIFtso {
             _writeFallbackEpochPriceData(_epochId);
 
             // inform about epoch result
-            emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, _epoch.finalizationType, block.timestamp);
+            emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, 0, 0, _epoch.finalizationType, block.timestamp);
             _epoch.fallbackMode = false; // set back to false for next usage
         } else {
             // finalizationType = PriceFinalizationType.PREVIOUS_PRICE_COPIED
@@ -865,7 +885,7 @@ contract Ftso is IIFtso {
 
         _writeFallbackEpochPriceData(_epochId);
 
-        emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, _epoch.finalizationType, block.timestamp);
+        emit PriceFinalized(_epochId, _epoch.price, false, 0, 0, 0, 0, _epoch.finalizationType, block.timestamp);
         _epoch.fallbackMode = false; // set back to false for next usage
     }
 
@@ -1012,14 +1032,14 @@ contract Ftso is IIFtso {
      * @param _epoch                The epoch instance to read data from
      * @param _data                 Median computation data
      * @param _random               Random number
-     * @param _index                Array of vote indices
+     * @param _prices               Array of prices
      * @param _weightNat            Array of native token weights
      */
     function _readRewardData(
         FtsoEpoch.Instance storage _epoch,
         FtsoMedian.Data memory _data,
         uint256 _random,
-        uint256[] memory _index, 
+        uint256[] memory _prices, 
         uint256[] memory _weightNat
     ) 
         internal view
@@ -1029,35 +1049,47 @@ contract Ftso is IIFtso {
             uint256 _natWeightsSum
         )
     {
+        RewardData memory rewardData;
+        rewardData.elasticBandRewardBIPS = _epoch.elasticBandRewardBIPS;
+        rewardData.numberOfVotes = _epoch.nextVoteIndex;
+        rewardData.weightIQR = new uint256[](rewardData.numberOfVotes);
+        rewardData.weightElasticBand = new uint256[](rewardData.numberOfVotes);
         uint256 voteRewardCount = 0;
-        for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
-            uint256 idx = _index[i];
-            if (_weightNat[idx] > 0) {
-                uint128 price = _epoch.votes[idx].price;
-                if ((price == _data.quartile1Price || price == _data.quartile3Price) &&
-                    ! _isAddressEligible(_random, _epoch.votes[idx].voter)) {
-                        continue;
-                }
+        for (uint256 i = 0; i < rewardData.numberOfVotes; i++) {
+            uint256 weight = _weightNat[i];
+            uint256 price = _prices[i];
+            //IQR
+            if ((price > _data.quartile1Price && price < _data.quartile3Price) || 
+                ((price == _data.quartile1Price || price == _data.quartile3Price) &&
+                _isAddressEligible(_random, _epoch.votes[i].voter))) {
+                rewardData.weightIQR[i] = weight * (1e4 - rewardData.elasticBandRewardBIPS);
+                rewardData.weightsIQRSum += weight;
+            }
+            // elastic band
+            if (_data.lowElasticBandPrice < price && price < _data.highElasticBandPrice) { 
+                rewardData.weightElasticBand[i] = weight * rewardData.elasticBandRewardBIPS;
+                rewardData.weightsElasticBandSum += weight;
+            }
+
+            if (rewardData.weightIQR[i] > 0 || rewardData.weightElasticBand[i] > 0) {
                 voteRewardCount++;
             }
         }
 
         _eligibleAddresses = new address[](voteRewardCount);
         _natWeights = new uint256[](voteRewardCount);
-        uint256 cnt = 0;
-        for (uint256 i = _data.quartile1Index; i <= _data.quartile3Index; i++) {
-            uint256 idx = _index[i];
-            uint256 weight = _weightNat[idx];
-            if (weight > 0) {
-                uint128 price = _epoch.votes[idx].price;
-                if ((price == _data.quartile1Price || price == _data.quartile3Price) &&
-                    ! _isAddressEligible(_random, _epoch.votes[idx].voter)) {
-                    continue;
-                }
-                _eligibleAddresses[cnt] = _epoch.votes[idx].voter;
-                _natWeights[cnt] = weight;
-                _natWeightsSum += weight;
-                cnt++;
+        voteRewardCount = 0;
+        for (uint256 i = 0; i < rewardData.numberOfVotes; i++) {
+            if (rewardData.weightIQR[i] > 0 || rewardData.weightElasticBand[i] > 0) {
+                _natWeights[voteRewardCount] += rewardData.weightIQR[i] * 
+                    (rewardData.weightsElasticBandSum > 0 ? rewardData.weightsElasticBandSum : 1);
+
+                _natWeights[voteRewardCount] += rewardData.weightElasticBand[i] *
+                    (rewardData.weightsIQRSum > 0 ? rewardData.weightsIQRSum : 1);
+                
+                _eligibleAddresses[voteRewardCount] = _epoch.votes[i].voter;
+                _natWeightsSum += _natWeights[voteRewardCount];
+                voteRewardCount++;
             }
         }
     }

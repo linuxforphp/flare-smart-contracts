@@ -48,6 +48,9 @@ All numeric parameter names have units appended at the end. Most unit names are 
 - `incentivePoolGasLimit` -
     Gas limit for daemonize calls of on IncentivePool contract.
 
+- `distributionToDelegatorsGasLimit` -
+    Gas limit for daemonize calls of on DistributionToDelegators contract.
+
 ## Inflation settings
 
 - `inflationPercentageBIPS` - 
@@ -74,9 +77,6 @@ Should add up to 100 Percent
     non circulating supply that the foundation holds.
 
 ## Deployment options settings 
-
-- `deployDistributionContract` - 
-    Whether `Distribution` contract should be deployed
 
 - `deployDummyXAssetTokensAndMinters` -
     Whether dummy FAsset tokens should be deployed. Option with `true` is used for dev testing.

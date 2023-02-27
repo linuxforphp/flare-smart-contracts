@@ -1,5 +1,5 @@
-import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
-import { DelegationAccountInstance, DistributionToDelegatorsInstance, FtsoRewardManagerInstance, MockContractInstance, WNatInstance } from "../../../../typechain-truffle";
+import { constants, expectEvent, expectRevert } from '@openzeppelin/test-helpers';
+import { DelegationAccountInstance, MockContractInstance } from "../../../../typechain-truffle";
 import { toBN } from '../../../utils/test-helpers';
 
 const getTestFile = require('../../../utils/constants').getTestFile;
@@ -8,13 +8,9 @@ const DelegationAccount = artifacts.require("DelegationAccount");
 const MockContract = artifacts.require("MockContract");
 const FtsoRewardManager = artifacts.require("FtsoRewardManager");
 const DataProviderFee = artifacts.require("DataProviderFee" as any);
-const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const WNat = artifacts.require("WNat");
-const SuicidalMock = artifacts.require("SuicidalMock");
 
 const ERR_TRANSFER_FAILURE = "transfer failed";
-const ERR_CLAIM_FAILURE = "unknown error when claiming";
-const ERR_CLAIMED_AMOUNT_TOO_SMALL = "claimed amount too small";
 const ERR_MANAGER_ONLY = "only manager";
 
 contract(`DelegationAccount.sol; ${getTestFile(__filename)}; Delegation account unit tests`, async accounts => {
@@ -22,11 +18,6 @@ contract(`DelegationAccount.sol; ${getTestFile(__filename)}; Delegation account 
   const CLAIM_SETUP_MANAGER_ADDRESS = accounts[18];
   let delegationAccount: DelegationAccountInstance;
   let wNatMock: MockContractInstance;
-  let wNatInterface: WNatInstance;
-  let ftsoRewardManagerMock: MockContractInstance;
-  let distributionToDelegatorsMock: MockContractInstance;
-  let ftsoRewardManagerInterface: FtsoRewardManagerInstance;
-  let distributionToDelegatorsInterface: DistributionToDelegatorsInstance;
 
   before(async() => {
     FtsoRewardManager.link(await DataProviderFee.new() as any);
@@ -69,11 +60,6 @@ contract(`DelegationAccount.sol; ${getTestFile(__filename)}; Delegation account 
       delegationAccount = await DelegationAccount.new();
       await delegationAccount.initialize(OWNER_ADDRESS, CLAIM_SETUP_MANAGER_ADDRESS);
       wNatMock = await MockContract.new();
-      wNatInterface = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
-      ftsoRewardManagerMock = await MockContract.new();
-      distributionToDelegatorsMock = await MockContract.new();
-      ftsoRewardManagerInterface = await FtsoRewardManager.new(accounts[0], accounts[1], constants.ZERO_ADDRESS, 3, 2000);
-      distributionToDelegatorsInterface = await DistributionToDelegators.new(accounts[0], accounts[1], accounts[2], accounts[3], 500, (await time.latest()).addn(10));
     });
 
     it("Should enable/disable claiming to delegation account", async() => {

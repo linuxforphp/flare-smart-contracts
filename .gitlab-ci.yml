@@ -146,6 +146,7 @@ test-unit:
       - ./test/unit/claiming
       - ./test/unit/genesis
       - ./test/unit/adversary
+      - ./test/unit/assetRegistry
       - ./test/unit/Xasset
       - ./test/unit/inflation
       - ./test/unit/token
@@ -159,6 +160,10 @@ test-unit-heavy:
   extends:
     - test-unit
     - .run-on-selfhosted-runner
+  variables:
+    KUBERNETES_MEMORY_REQUEST: "7Gi"
+    KUBERNETES_MEMORY_LIMIT: "7Gi"
+    NODE_OPTIONS: "--max_old_space_size=6144"
   retry:
     when: script_failure
     max: 2

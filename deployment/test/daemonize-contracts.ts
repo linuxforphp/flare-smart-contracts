@@ -1,11 +1,9 @@
-import { Contracts } from "../scripts/Contracts";
 import {
-  FlareDaemonContract, 
+  FlareDaemonContract,
   FlareDaemonInstance
 } from "../../typechain-truffle";
-import { validateParameters } from "../scripts/deploy-utils";
+import { Contracts } from "../scripts/Contracts";
 
-const parameters = validateParameters(require(`../chain-config/${process.env.CHAIN_CONFIG}.json`))
 
 async function findDaemonizedContract(contracts: Contracts, address: string): Promise<boolean> {
   const FlareDaemon = artifacts.require("FlareDaemon");
@@ -55,6 +53,14 @@ contract(`daemonize-contracts.ts system tests`, async accounts => {
       // Assemble
       // Act
       const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+      // Assert
+      assert(found);
+    });
+
+    it("Should be daemonizing distribution to delegators", async () => {
+      // Assemble
+      // Act
+      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
       // Assert
       assert(found);
     });

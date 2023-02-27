@@ -46,19 +46,10 @@ let { argv } = require("yargs")
 
 async function main(transactionsFile:string, outputFile:string, logPath:string,  quiet:boolean = true) {
     let initialAirdropSigner: string
-    let distributionSigner: string
     let signedTransactions:signedTransaction[] = []
 
-    if (process.env.GENESIS_GOVERNANCE_PRIVATE_KEY) {
-        initialAirdropSigner = process.env.GENESIS_GOVERNANCE_PRIVATE_KEY
-    }
-    else {
-        console.error("No GENESIS_GOVERNANCE_PRIVATE_KEY provided in env");
-        throw new Error("No GENESIS_GOVERNANCE_PRIVATE_KEY provided in env");
-    }
-
     if (process.env.DEPLOYER_PRIVATE_KEY) {
-        distributionSigner = process.env.DEPLOYER_PRIVATE_KEY
+        initialAirdropSigner = process.env.DEPLOYER_PRIVATE_KEY
     }
     else {
         console.error("No DEPLOYER_PRIVATE_KEY provided in env");
@@ -78,12 +69,9 @@ async function main(transactionsFile:string, outputFile:string, logPath:string, 
 
     const unsignedTransactions = JSON.parse(fs.readFileSync(transactionsFile, "utf8"));
     const initialAirdropSignerWallet = web3.eth.accounts.privateKeyToAccount(initialAirdropSigner);
-    const distributionSignerWallet = web3.eth.accounts.privateKeyToAccount(distributionSigner);
-    logMessage(logFileName, `signer public key (from GENESIS_GOVERNANCE_PRIVATE_KEY in .env) : ${initialAirdropSignerWallet.address}`, quiet);
-    logMessage(logFileName, `signer public key (from DEPLOYER_PRIVATE_KEY in .env)           : ${distributionSignerWallet.address}`, quiet);
+    logMessage(logFileName, `signer public key (from DEPLOYER_PRIVATE_KEY in .env) : ${initialAirdropSignerWallet.address}`, quiet);
     // let totalBalance = new BigNumber(0);
     let totalGasInitialAirdrop = new BigNumber(0);
-    let totalGasDistribution = new BigNumber(0);
     const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     bar1.start(unsignedTransactions.length, 0);
     if(!quiet){
@@ -96,12 +84,9 @@ async function main(transactionsFile:string, outputFile:string, logPath:string, 
         if(tx.from.toLocaleLowerCase() === initialAirdropSignerWallet.address.toLocaleLowerCase()){  // intial airdrop trasnaction
             signedTx = await initialAirdropSignerWallet.signTransaction(tx);
             totalGasInitialAirdrop = totalGasInitialAirdrop.plus(tempGas.multipliedBy(tx.gasPrice));
-        } else if(tx.from.toLocaleLowerCase() === distributionSignerWallet.address.toLocaleLowerCase()){
-            signedTx = await distributionSignerWallet.signTransaction(tx);
-            totalGasDistribution = totalGasDistribution.plus(tempGas.multipliedBy(tx.gasPrice));
         } else {
-            console.error(`From address is neither of signers ${tx.from}`);
-            throw new Error(`From address is neither of signers ${tx.from}`);
+            console.error(`From address is unknown signer ${tx.from}`);
+            throw new Error(`From address is unknown signer ${tx.from}`);
         }
         // totalBalance = totalBalance.plus(tx.value);
         
@@ -116,7 +101,6 @@ async function main(transactionsFile:string, outputFile:string, logPath:string, 
     bar1.stop();
     // logMessage(logFileName, `Total balance in signed transactions                 : ${totalBalance.toFixed()}`, quiet);
     logMessage(logFileName, `Total gas price in signed transactions for Initial Airdrop  : ${totalGasInitialAirdrop.toString(10)}`, quiet);
-    logMessage(logFileName, `Total gas price in signed transactions for Distribution     : ${totalGasDistribution.toString(10)}`, quiet);
 
     fs.writeFileSync(outputFile, JSON.stringify(signedTransactions));
     logMessage(logFileName, `Complete`, quiet);

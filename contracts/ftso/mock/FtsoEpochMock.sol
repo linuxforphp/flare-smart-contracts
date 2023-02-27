@@ -81,6 +81,8 @@ contract FtsoEpochMock {
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
         uint256 _lowNatTurnoutThresholdBIPS,
+        uint256 _elasticBandRewardBIPS,
+        uint256 _elasticBandWidthPPM,
         address[] memory _trustedAddresses
     ) 
         public
@@ -91,6 +93,8 @@ contract FtsoEpochMock {
         state.highAssetUSDThreshold = _highAssetUSDThreshold;
         state.highAssetTurnoutThresholdBIPS = _highAssetTurnoutThresholdBIPS;
         state.lowNatTurnoutThresholdBIPS = _lowNatTurnoutThresholdBIPS;
+        state.elasticBandRewardBIPS = _elasticBandRewardBIPS;
+        state.elasticBandWidthPPM = _elasticBandWidthPPM;
         
         // remove old addresses mapping
         uint256 len = state.trustedAddresses.length;

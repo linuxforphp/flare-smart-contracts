@@ -25,6 +25,7 @@ import "./type-extensions";
 import { deployContractsGovernance } from "./deployment/scripts/deploy-contracts-governance";
 import { switchToProductionMode } from "./deployment/scripts/switch-to-production-mode";
 import { linkContracts } from "./deployment/scripts/link-contracts";
+import { redeployContracts } from "./deployment/scripts/redeploy-contracts";
 
 
 dotenv.config();
@@ -102,7 +103,20 @@ task("link-contracts", "Link contracts with external libraries")
   .setAction(async (args, hre, runSuper) => {
     await linkContracts(hre);
   });
-  
+
+task("redeploy-contracts", "Redeploy some contracts")
+  .addFlag("quiet", "Suppress console output")
+  .setAction(async (args, hre, runSuper) => {
+    const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
+    if (parameters) {
+      const contracts = new Contracts();
+      await contracts.deserialize(process.stdin);
+      await redeployContracts(hre, contracts, parameters, args.quiet);
+    } else {
+      throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
+    }
+  });
+
 task("deploy-contracts-governance", "Deploy governance contracts")
   .addFlag("quiet", "Suppress console output")
   .setAction(async (args, hre, runSuper) => {
@@ -129,13 +143,14 @@ task("daemonize-contracts", "Register contracts to be daemonized with the FlareD
       await contracts.deserialize(process.stdin);
       await daemonizeContracts(
         hre,
-        contracts, 
-        parameters.deployerPrivateKey, 
+        contracts,
+        parameters.deployerPrivateKey,
         parameters.genesisGovernancePrivateKey,
-        parameters.inflationReceivers, 
-        parameters.inflationGasLimit, 
-        parameters.ftsoManagerGasLimit, 
-        parameters.incentivePoolGasLimit, 
+        parameters.inflationReceivers,
+        parameters.inflationGasLimit,
+        parameters.ftsoManagerGasLimit,
+        parameters.incentivePoolGasLimit,
+        parameters.distributionToDelegatorsGasLimit,
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
@@ -151,8 +166,8 @@ task("activate-managers", "Activate all manager contracts.")
       await contracts.deserialize(process.stdin);
       await activateManagers(
         hre,
-        contracts, 
-        parameters.deployerPrivateKey, 
+        contracts,
+        parameters.deployerPrivateKey,
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
@@ -171,7 +186,6 @@ task("switch-to-production-mode", "Switch governed contracts to production mode.
         contracts,
         parameters.deployerPrivateKey,
         parameters.genesisGovernancePrivateKey,
-        parameters.deployDistributionContract,
         args.quiet
       );
     } else {
@@ -186,7 +200,7 @@ task("transfer-gov-working-balance", "Transfer working balance to multisig gover
     if (parameters) {
       await transferGovWorkingBalance(
         hre,
-        parameters.deployerPrivateKey, 
+        parameters.deployerPrivateKey,
         args.quiet);
     } else {
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
@@ -204,22 +218,22 @@ task("undaemonize-contracts", "Remove daemonized contracts from the FlareDaemon.
         // Try first with the deployer key
         await undaemonizeContracts(
           hre,
-          contracts, 
-          parameters.deployerPrivateKey, 
+          contracts,
+          parameters.deployerPrivateKey,
           args.quiet);
       } catch {
         try {
           // That did not work, so try with the genesis governance private key
           await undaemonizeContracts(
             hre,
-            contracts, 
-            parameters.genesisGovernancePrivateKey, 
-            args.quiet);  
+            contracts,
+            parameters.genesisGovernancePrivateKey,
+            args.quiet);
         } catch {
           // That did not work, so try with the governance private key, if it exists (won't work with Gnosis safe)
           await undaemonizeContracts(
             hre,
-            contracts, 
+            contracts,
             parameters.governancePrivateKey,
             args.quiet);
           // If this throws, let it...

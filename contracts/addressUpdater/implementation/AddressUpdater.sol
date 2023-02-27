@@ -4,9 +4,10 @@ pragma abicoder v2;
 
 import "../../governance/implementation/Governed.sol";
 import "../interface/IIAddressUpdatable.sol";
+import "../interface/IIAddressUpdater.sol";
 
 
-contract AddressUpdater is Governed {
+contract AddressUpdater is IIAddressUpdater, Governed {
 
     string internal constant ERR_ARRAY_LENGTHS = "array lengths do not match";
     string internal constant ERR_ADDRESS_ZERO = "address zero";
@@ -32,7 +33,7 @@ contract AddressUpdater is Governed {
         _addOrUpdateContractNamesAndAddresses(_contractNames, _contractAddresses);
         _updateContractAddresses(_contractsToUpdate);
     }
-    
+
     /**
      * @notice Updates contract addresses on all contracts implementing IIAddressUpdatable interface
      * @param _contractsToUpdate            contracts to be updated
@@ -53,16 +54,37 @@ contract AddressUpdater is Governed {
         string[] memory _contractNames,
         address[] memory _contractAddresses
     )
-        external
-        onlyGovernance
+        external onlyGovernance
     {
         _addOrUpdateContractNamesAndAddresses(_contractNames, _contractAddresses);
     }
 
     /**
-     * @notice Returns the contract names and the corresponding addresses
+     * @notice Remove contracts with given names
+     * @param _contractNames                contracts names
      */
-    function getContractNamesAndAddresses() external view returns(
+    function removeContracts(string[] memory _contractNames) external onlyGovernance {
+        for (uint256 i = 0; i < _contractNames.length; i++) {
+            string memory contractName = _contractNames[i];
+            bytes32 nameHash = _keccak256AbiEncode(contractName);
+            require(contractAddresses[nameHash] != address(0), ERR_ADDRESS_ZERO);
+            delete contractAddresses[nameHash];
+            uint256 index = contractNames.length;
+            while (index > 0) {
+                index--;
+                if (nameHash == _keccak256AbiEncode(contractNames[index])) {
+                    break;
+                }
+            }
+            contractNames[index] = contractNames[contractNames.length - 1];
+            contractNames.pop();
+        }
+    }
+
+    /**
+     * @notice Returns all contract names and corresponding addresses
+     */
+    function getContractNamesAndAddresses() external view override returns(
         string[] memory _contractNames,
         address[] memory _contractAddresses
     ) {
@@ -76,14 +98,49 @@ contract AddressUpdater is Governed {
     }
 
     /**
-     * @notice Returns contract address for the given name and reverts if address(0)
+     * @notice Returns contract address for the given name - might be address(0)
+     * @param _name             name of the contract
      */
-    function getContractAddress(string memory _name) external view returns(address) {
-        address a = contractAddresses[_keccak256AbiEncode(_name)];
-        require(a != address(0), ERR_ADDRESS_ZERO);
-        return a;
+    function getContractAddress(string calldata _name) external view override returns(address) {
+        return contractAddresses[_keccak256AbiEncode(_name)];
     }
-    
+
+    /**
+     * @notice Returns contract address for the given name hash - might be address(0)
+     * @param _nameHash         hash of the contract name (keccak256(abi.encode(name))
+     */
+    function getContractAddressByHash(bytes32 _nameHash) external view override returns(address) {
+        return contractAddresses[_nameHash];
+    }
+
+    /**
+     * @notice Returns contract addresses for the given names - might be address(0)
+     * @param _names            names of the contracts
+     */
+    function getContractAddresses(string[] calldata _names) external view override returns(address[] memory) {
+        address[] memory addresses = new address[](_names.length);
+        for (uint256 i = 0; i < _names.length; i++) {
+            addresses[i] = contractAddresses[_keccak256AbiEncode(_names[i])];
+        }
+        return addresses;
+    }
+
+    /**
+     * @notice Returns contract addresses for the given name hashes - might be address(0)
+     * @param _nameHashes       hashes of the contract names (keccak256(abi.encode(name))
+     */
+    function getContractAddressesByHash(
+        bytes32[] calldata _nameHashes
+    )
+        external view override returns(address[] memory)
+    {
+        address[] memory addresses = new address[](_nameHashes.length);
+        for (uint256 i = 0; i < _nameHashes.length; i++) {
+            addresses[i] = contractAddresses[_nameHashes[i]];
+        }
+        return addresses;
+    }
+
     /**
      * @notice Add or update contract names and addreses that are later used in updateContractAddresses calls
      * @param _contractNames                contracts names

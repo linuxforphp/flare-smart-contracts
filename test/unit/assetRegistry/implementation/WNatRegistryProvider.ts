@@ -49,7 +49,7 @@ contract(`FlareAssetRegistry.sol; ${getTestFile(__filename)}; Flare asset regist
         it("Should fail at getting attributes for non-wnat token", async () => {
             const prms = wNatRegistryProvider.getAttribute(
                 "0x0000000000000000000000000000000000000000", MAX_DELEGATES_BY_PERCENT);
-            expectRevert(prms, INVALID_TOKEN_MSG);
+            await expectRevert(prms, INVALID_TOKEN_MSG);
         });
 
         it("Should get attributes", async () => {

@@ -24,7 +24,7 @@ contract FtsoMedianMock {
             uint256[] memory
         )
     {
-        (_index, _d) = FtsoMedian._computeWeighted(_price, _weight);
+        (_index, _d) = FtsoMedian._computeWeighted(_price, _weight, 0);
         return (_index, _d, _price, _weight);
     }
     

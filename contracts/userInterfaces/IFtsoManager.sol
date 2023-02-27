@@ -15,6 +15,7 @@ interface IFtsoManager is IFtsoManagerGenesis {
     event FinalizingPriceEpochFailed(IIFtso ftso, uint256 epochId, IFtso.PriceFinalizationType failingType);
     event DistributingRewardsFailed(address ftso, uint256 epochId);
     event AccruingUnearnedRewardsFailed(uint256 epochId);
+    event UseGoodRandomSet(bool useGoodRandom, uint256 maxWaitForGoodRandomSeconds);
 
     function active() external view returns (bool);
 

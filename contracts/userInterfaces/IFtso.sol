@@ -24,8 +24,9 @@ interface IFtso {
 
     event PriceFinalized(
         uint256 indexed epochId, uint256 price, bool rewardedFtso,
-        uint256 lowRewardPrice, uint256 highRewardPrice, PriceFinalizationType finalizationType,
-        uint256 timestamp
+        uint256 lowIQRRewardPrice, uint256 highIQRRewardPrice,
+        uint256 lowElasticBandRewardPrice, uint256 highElasticBandRewardPrice, 
+        PriceFinalizationType finalizationType, uint256 timestamp
     );
 
     event PriceEpochInitializedOnFtso(

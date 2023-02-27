@@ -5,19 +5,20 @@ import {
   AddressUpdatableContract,
   AddressUpdaterContract,
   AddressUpdaterInstance,
-  AssetTokenContract, AssetTokenInstance, ClaimSetupManagerContract, ClaimSetupManagerInstance, DistributionContract, DistributionInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
+  AssetTokenContract, AssetTokenInstance, ClaimSetupManagerContract, ClaimSetupManagerInstance, DistributionToDelegatorsContract, DistributionToDelegatorsInstance, DistributionTreasuryContract, DistributionTreasuryInstance, DummyAssetMinterContract,
   FlareDaemonContract, FlareDaemonInstance, FtsoContract,
   FtsoInstance, FtsoManagerContract,
   FtsoManagerInstance, FtsoRewardManagerContract,
   FtsoRewardManagerInstance, GovernanceSettingsContract, GovernanceSettingsInstance, GovernanceVotePowerContract, GovernanceVotePowerInstance, IncentivePoolContract, IncentivePoolInstance, IncentivePoolTreasuryContract, IncentivePoolTreasuryInstance, InflationAllocationContract,
   InflationAllocationInstance, InflationContract,
   InflationInstance, InitialAirdropContract, InitialAirdropInstance, SupplyContract,
-  SupplyInstance, EscrowContract, EscrowInstance, WNatContract, WNatInstance
+  SupplyInstance, EscrowContract, EscrowInstance, WNatContract, WNatInstance, ValidatorRewardManagerContract, ValidatorRewardManagerInstance
 } from "../../typechain-truffle";
+import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "../scripts/Contracts";
 import { findAssetFtso, findFtso } from '../scripts/deploy-utils';
 
-const parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG);
+const parameters = require("hardhat").getChainConfigParameters(process.env.CHAIN_CONFIG) as ChainParameters;
 const BN = web3.utils.toBN;
 
 /**
@@ -94,6 +95,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     let inflationAllocation: InflationAllocationInstance;
     let FtsoRewardManager: FtsoRewardManagerContract;
     let ftsoRewardManager: FtsoRewardManagerInstance;
+    let ValidatorRewardManager: ValidatorRewardManagerContract;
+    let validatorRewardManager: ValidatorRewardManagerInstance;
 
     beforeEach(async () => {
       InflationAllocation = artifacts.require("InflationAllocation");
@@ -101,6 +104,10 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       if (parameters.inflationReceivers.indexOf("FtsoRewardManager") >= 0) {
         FtsoRewardManager = artifacts.require("FtsoRewardManager");
         ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
+      }
+      if (parameters.inflationReceivers.indexOf("ValidatorRewardManager") >= 0) {
+        ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+        validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
       }
     });
 
@@ -113,10 +120,13 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       for (let i = 0; i < parameters.inflationReceivers.length; i++) {
         let receiverName = parameters.inflationReceivers[i];
         let receiverSharingBIPS = parameters.inflationSharingBIPS[i];
-        let receiverAddress = "";        
+        let receiverAddress = "";
         switch (receiverName) {
           case "FtsoRewardManager":
             receiverAddress = ftsoRewardManager.address
+            break;
+          case "ValidatorRewardManager":
+            receiverAddress = validatorRewardManager.address
             break;
           default:
             throw Error(`Unknown inflation receiver name ${receiverName}`)
@@ -153,6 +163,14 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     beforeEach(async () => {
       FlareDaemon = artifacts.require("FlareDaemon") as FlareDaemonContract;
       flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
+    });
+
+    it("Should know about Inflation", async () => {
+      // Assemble
+      // Act
+      const address = await flareDaemon.inflation();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.INFLATION));
     });
 
     it("Should be daemonizing", async () => {
@@ -345,153 +363,109 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
   });
 
-  if (parameters.deployDistributionContract) {
-    describe(Contracts.DISTRIBUTION_TREASURY, async () => {
-      let DistributionTreasury: DistributionTreasuryContract;
-      let distributionTreasury: DistributionTreasuryInstance;
-      let Distribution: DistributionContract;
-      let distribution: DistributionInstance;
-      let DistributionToDelegators: DistributionToDelegatorsContract;
-      let distributionToDelegators: DistributionToDelegatorsInstance;
+  describe(Contracts.DISTRIBUTION_TREASURY, async () => {
+    let DistributionTreasury: DistributionTreasuryContract;
+    let distributionTreasury: DistributionTreasuryInstance;
+    let DistributionToDelegators: DistributionToDelegatorsContract;
+    let distributionToDelegators: DistributionToDelegatorsInstance;
 
-      beforeEach(async () => {
-        DistributionTreasury = artifacts.require("DistributionTreasury");
-        distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
-        Distribution = artifacts.require("Distribution");
-        distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
-        DistributionToDelegators = artifacts.require("DistributionToDelegators");
-        distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
-      });
-
-      it("Should know about distribution contract", async () => {
-        // Assemble
-        // Act
-        const address = await distributionTreasury.initialDistribution();
-        // Assert
-        assert.equal(address, distribution.address);
-      });
-
-      it("Should know about distribution to delegators contract", async () => {
-        // Assemble
-        // Act
-        const address = await distributionTreasury.distributionToDelegators();
-        // Assert
-        assert.equal(address, distributionToDelegators.address);
-      });
+    beforeEach(async () => {
+      DistributionTreasury = artifacts.require("DistributionTreasury");
+      distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+      DistributionToDelegators = artifacts.require("DistributionToDelegators");
+      distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
     });
 
-    describe(Contracts.DISTRIBUTION, async () => {
-      let Distribution: DistributionContract;
-      let distribution: DistributionInstance;
-      let DistributionTreasury: DistributionTreasuryContract;
-      let distributionTreasury: DistributionTreasuryInstance;
+    it("Should know about distribution to delegators contract", async () => {
+      // Assemble
+      // Act
+      const address = await distributionTreasury.distribution();
+      // Assert
+      assert.equal(address, distributionToDelegators.address);
+    });
+  });
 
-      beforeEach(async () => {
-        Distribution = artifacts.require("Distribution");
-        distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
-        DistributionTreasury = artifacts.require("DistributionTreasury");
-        distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
-      });
+  describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
+    let DistributionToDelegators: DistributionToDelegatorsContract;
+    let distributionToDelegators: DistributionToDelegatorsInstance;
+    let DistributionTreasury: DistributionTreasuryContract;
+    let distributionTreasury: DistributionTreasuryInstance;
+    let FlareDaemon: FlareDaemonContract;
+    let flareDaemon: FlareDaemonInstance;
+    let WNat: WNatContract;
+    let wNat: WNatInstance;
+    let ClaimSetupManager: ClaimSetupManagerContract;
+    let claimSetupManager: ClaimSetupManagerInstance;
 
-      it("Should know about distribution treasury contract", async () => {
-        // Assemble
-        // Act
-        const address = await distribution.treasury();
-        // Assert
-        assert.equal(address, distributionTreasury.address);
-      });
-
-      it("Should know about latest start", async () => {
-        // Assemble
-        // Act
-        const latestEntitlementStartTs = await distribution.latestEntitlementStartTs();
-        // Assert
-        assert.equal(latestEntitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
-      });
+    beforeEach(async () => {
+      DistributionToDelegators = artifacts.require("DistributionToDelegators");
+      distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+      DistributionTreasury = artifacts.require("DistributionTreasury");
+      distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
+      FlareDaemon = artifacts.require("FlareDaemon");
+      flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
+      WNat = artifacts.require("WNat");
+      wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
+      ClaimSetupManager = artifacts.require("ClaimSetupManager");
+      claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
     });
 
-    describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
-      let DistributionToDelegators: DistributionToDelegatorsContract;
-      let distributionToDelegators: DistributionToDelegatorsInstance;
-      let DistributionTreasury: DistributionTreasuryContract;
-      let distributionTreasury: DistributionTreasuryInstance;
-      let Supply: SupplyContract;
-      let supply: SupplyInstance;
-      let WNat: WNatContract;
-      let wNat: WNatInstance;
-      let ClaimSetupManager: ClaimSetupManagerContract;
-      let claimSetupManager: ClaimSetupManagerInstance;
-
-      beforeEach(async () => {
-        DistributionToDelegators = artifacts.require("DistributionToDelegators");
-        distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
-        DistributionTreasury = artifacts.require("DistributionTreasury");
-        distributionTreasury = await DistributionTreasury.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TREASURY));
-        Supply = artifacts.require("Supply");
-        supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
-        WNat = artifacts.require("WNat");
-        wNat = await WNat.at(contracts.getContractAddress(Contracts.WNAT));
-        ClaimSetupManager = artifacts.require("ClaimSetupManager");
-        claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
-      });
-
-      it("Should know about distribution treasury contract", async () => {
-        // Assemble
-        // Act
-        const address = await distributionToDelegators.treasury();
-        // Assert
-        assert.equal(address, distributionTreasury.address);
-      });
-
-      it("Should know about supply contract", async () => {
-        // Assemble
-        // Act
-        const address = await distributionToDelegators.supply();
-        // Assert
-        assert.equal(address, supply.address);
-      });
-
-      it("Should know about wNat contract", async () => {
-        // Assemble
-        // Act
-        const address = await distributionToDelegators.wNat();
-        // Assert
-        assert.equal(address, wNat.address);
-      });
-
-      it("Should know about claim setup manager contract", async () => {
-        // Assemble
-        // Act
-        const address = await distributionToDelegators.claimSetupManager();
-        // Assert
-        assert.equal(address, claimSetupManager.address);
-      });
-
-      it("Should have total entitlement set correctly", async () => {
-        // Assemble
-        // Act
-        const totalEntitlementWei = await distributionToDelegators.totalEntitlementWei();
-        // Assert
-        assert.equal(totalEntitlementWei.toString(), parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
-      });
-
-      it("Should know about latest start", async () => {
-        // Assemble
-        // Act
-        const latestEntitlementStartTs = await distributionToDelegators.latestEntitlementStartTs();
-        // Assert
-        assert.equal(latestEntitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
-      });
-
-      it("Should know about start", async () => {
-        // Assemble
-        // Act
-        const entitlementStartTs = await distributionToDelegators.entitlementStartTs();
-        // Assert
-        assert.equal(entitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
-      });
+    it("Should know about distribution treasury contract", async () => {
+      // Assemble
+      // Act
+      const address = await distributionToDelegators.treasury();
+      // Assert
+      assert.equal(address, distributionTreasury.address);
     });
-  }
+
+    it("Should know about flare daemon contract", async () => {
+      // Assemble
+      // Act
+      const address = await distributionToDelegators.flareDaemon();
+      // Assert
+      assert.equal(address, flareDaemon.address);
+    });
+
+    it("Should know about wNat contract", async () => {
+      // Assemble
+      // Act
+      const address = await distributionToDelegators.wNat();
+      // Assert
+      assert.equal(address, wNat.address);
+    });
+
+    it("Should know about claim setup manager contract", async () => {
+      // Assemble
+      // Act
+      const address = await distributionToDelegators.claimSetupManager();
+      // Assert
+      assert.equal(address, claimSetupManager.address);
+    });
+
+    it("Should have total entitlement set correctly", async () => {
+      // Assemble
+      // Act
+      const totalEntitlementWei = await distributionToDelegators.totalEntitlementWei();
+      // Assert
+      assert.equal(totalEntitlementWei.toString(), parameters.distributionTotalEntitlementWei.replace(/\s/g, ''));
+    });
+
+    it("Should know about latest start", async () => {
+      // Assemble
+      // Act
+      const latestEntitlementStartTs = await distributionToDelegators.latestEntitlementStartTs();
+      // Assert
+      assert.equal(latestEntitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
+    });
+
+    it("Should know about start", async () => {
+      // Assemble
+      // Act
+      const entitlementStartTs = await distributionToDelegators.entitlementStartTs();
+      // Assert
+      assert.equal(entitlementStartTs.toNumber(), parameters.distributionLatestEntitlementStart);
+    });
+  });
 
   describe(Contracts.INCENTIVE_POOL_TREASURY, async () => {
     let IncentivePoolTreasury: IncentivePoolTreasuryContract;
@@ -576,6 +550,32 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       const ftsoManager = await ftsoRewardManager.ftsoManager();
       // Assert
       assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
+    });
+  });
+
+  describe(Contracts.VALIDATOR_REWARD_MANAGER, async () => {
+    let ValidatorRewardManager: ValidatorRewardManagerContract;
+    let validatorRewardManager: ValidatorRewardManagerInstance;
+
+    beforeEach(async () => {
+      ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+      validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+    });
+
+    it("Should know about Inflation", async () => {
+      // Assemble
+      // Act
+      const inflation = await validatorRewardManager.getInflationAddress();
+      // Assert
+      assert.equal(inflation, contracts.getContractAddress(Contracts.INFLATION));
+    });
+
+    it("Should have correct reward distributor address", async () => {
+      // Assemble
+      // Act
+      const rewardDistributor = await validatorRewardManager.rewardDistributor();
+      // Assert
+      assert.equal(rewardDistributor, parameters.governancePublicKey);
     });
   });
 
@@ -710,7 +710,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         FtsoAsset = artifacts.require("Ftso");
         ftsoAsset = await FtsoAsset.at(contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
       });
-      
+
       it(`Should be on oracle for ${asset.assetSymbol}`, async () => {
         // Assemble
         // Act
@@ -727,7 +727,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         // Assemble
         // Act
         const ftsoManager = await ftsoAsset.ftsoManager();
-        // Assert 
+        // Assert
         assert.equal(ftsoManager, contracts.getContractAddress(Contracts.FTSO_MANAGER));
       });
 
@@ -796,6 +796,14 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         // Assert
         assert(found);
       });
+
+      it(`Should have correct elastic band width set for ${asset.assetSymbol} FTSO`, async () => {
+        // Assemble
+        // Act
+        const elasticBandWidthPPM = await ftsoManager.getElasticBandWidthPPMFtso(contracts.getContractAddress(`Ftso${pascalCase(asset.assetSymbol)}`));
+        // Assert
+        assert.equal(elasticBandWidthPPM.toNumber(), asset.elasticBandWidthPPM);
+      });
     }
 
     if (parameters.deployNATFtso) {
@@ -805,6 +813,14 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         const found = await findFtso(ftsoManager, contracts.getContractAddress(Contracts.FTSO_WNAT));
         // Assert
         assert(found);
+      });
+
+      it("Should have correct elastic band width set fro WNAT FTSO", async () => {
+        // Assemble
+        // Act
+        const elasticBandWidthPPM = await ftsoManager.getElasticBandWidthPPMFtso(contracts.getContractAddress(Contracts.FTSO_WNAT));
+        // Assert
+        assert.equal(elasticBandWidthPPM.toNumber(), parameters.nativeElasticBandWidthPPM);
       });
     }
 
@@ -818,6 +834,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       const highAssetThresholdUSDDec5 = settings[3];
       const highAssetTurnoutThresholdBIPS = settings[4];
       const lowNatTurnoutThresholdBIPS = settings[5];
+      const elasticBandRewardBIPS = settings[6];
       // Assert
       assert.equal(maxVotePowerNatThresholdFraction.toNumber(), parameters.maxVotePowerNatThresholdFraction);
       assert.equal(maxVotePowerAssetThresholdFraction.toNumber(), parameters.maxVotePowerAssetThresholdFraction);
@@ -825,6 +842,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       assert.equal(highAssetThresholdUSDDec5.toNumber(), parameters.highAssetThresholdUSDDec5);
       assert.equal(highAssetTurnoutThresholdBIPS.toNumber(), parameters.highAssetTurnoutThresholdBIPS);
       assert.equal(lowNatTurnoutThresholdBIPS.toNumber(), parameters.lowNatTurnoutThresholdBIPS);
+      assert.equal(elasticBandRewardBIPS.toNumber(), parameters.elasticBandRewardBIPS);
     });
   });
 
@@ -840,17 +858,11 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
 
     it("Should know about all contracts", async () => {
-      let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY,
-        Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.ESCROW,
-        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER,
+      let contractNames = [Contracts.STATE_CONNECTOR, Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER, Contracts.WNAT, Contracts.DISTRIBUTION_TREASURY, Contracts.DISTRIBUTION_TO_DELEGATORS,
+        Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.ESCROW, Contracts.CLAIM_SETUP_MANAGER,
+        Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER, Contracts.FLARE_CONTRACT_REGISTRY,
         Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.GOVERNANCE_SETTINGS,
-        Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION];
-
-      if (parameters.deployDistributionContract) {
-        contractNames.push(Contracts.CLAIM_SETUP_MANAGER);
-        contractNames.push(Contracts.DISTRIBUTION);
-        contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
-      }
+        Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.COMBINED_NAT, Contracts.FLARE_ASSET_REGISTRY, Contracts.VALIDATOR_REWARD_MANAGER];
 
       for (let name of contractNames) {
         // Act
@@ -861,15 +873,9 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     });
 
     it("Address updatable contracts should know about address updater", async () => {
-      let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, 
-        Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW,
-        Contracts.POLLING_FOUNDATION];
-
-      if (parameters.deployDistributionContract) {
-        contractNames.push(Contracts.CLAIM_SETUP_MANAGER);
-        contractNames.push(Contracts.DISTRIBUTION_TO_DELEGATORS);
-      }
+      let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.CLAIM_SETUP_MANAGER, Contracts.FLARE_CONTRACT_REGISTRY,
+        Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS,
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW, Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.VALIDATOR_REWARD_MANAGER];
 
       for (let name of contractNames) {
         // Act

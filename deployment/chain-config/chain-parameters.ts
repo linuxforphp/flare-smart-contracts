@@ -19,6 +19,11 @@ export interface ChainParameters {
     nativeFtsoDecimals: integer;
 
     /**
+     * Hybrid reward band, prices for native currency within nativeElasticBandWidthPPM of median are rewarded (in parts-per-million).
+     */
+    nativeElasticBandWidthPPM: integer;
+
+    /**
      * The name of the wrapped currency (e.g. Wrapped Flare / Wrapped Songbird).
      */
     wrappedNativeName: string;
@@ -182,6 +187,11 @@ export interface ChainParameters {
      */
     incentivePoolGasLimit: integer;
 
+    /**
+     * Gas limit for daemonize calls of on DistributionToDelegators contract.
+     */
+    distributionToDelegatorsGasLimit: integer;
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Inflation settings
 
@@ -227,11 +237,6 @@ export interface ChainParameters {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Deployment options settings
-
-    /**
-     * Whether `Distribution` contract should be deployed.
-     */
-    deployDistributionContract: boolean;
 
     /**
      * Whether dummy FAsset tokens should be deployed. Only `true` for dev testing deploys.
@@ -338,6 +343,12 @@ export interface ChainParameters {
     lowNatTurnoutThresholdBIPS: integer;
 
     /**
+    * Hybrid reward band, where elasticBandRewardBIPS goes to the elastic band and 10000 - elasticBandRewardBIPS to the IQR. 
+     * For test purposes we recommend 0.
+     */
+    elasticBandRewardBIPS: integer;
+
+    /**
      * The list of addresses used for voting when native token turnout is below *lowNatTurnoutThreshold* or when price deviation is too big.
      * The prices from trusted addresses are also used indepepndently in f-asset system for calculating a second threshold collateral ratio for agent liquidation.
      */
@@ -387,9 +398,10 @@ export interface ChainParameters {
     executorFeeValueUpdateOffsetEpochs: integer;
 
     /**
-     * Min allowed executor fee value. In whole native units, not Wei.
+     * Min allowed executor fee value, in natural currency Wei.
+     * Big integer, formatted as string.
      */
-    executorMinFeeValueNAT: integer;
+    executorMinFeeValueWei: string;
 
     /**
      * Max allowed executor fee value. In whole native units, not Wei.
@@ -430,6 +442,11 @@ export interface AssetParameters {
      * Number of decimals in FTSO USD price.
      */
     ftsoDecimals: integer;
+
+    /**
+     * Hybrid reward band, prices within elasticBandWidthPPM of median are rewarded (in parts-per-million).
+     */
+    elasticBandWidthPPM: integer;
 
     /**
      * The USD price of the asset at deploy time (in scaled USD: 1 USD = 10^5 USDDec5). 

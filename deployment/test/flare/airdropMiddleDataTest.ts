@@ -11,9 +11,6 @@ import {LineItem, ProcessedLineItem} from "../../../airdrop/flare/utils/airdropT
 import InitialAirdropAbi from "../../../artifacts/contracts/genesis/implementation/InitialAirdrop.sol/InitialAirdrop.json";
 import { InitialAirdrop } from "../../../typechain-web3/InitialAirdrop";
 
-import DistributionAbi from "../../../artifacts/contracts/tokenPools/implementation/Distribution.sol/Distribution.json";
-import { Distribution } from "../../../typechain-web3/Distribution";
-
 
 function parseAndProcessData(dataFile:string):{processedFile: ProcessedLineItem[], TotalInitialAirdrop: BN, TotalDistribution: BN} {
   let data = fs.readFileSync(dataFile, "utf8");
@@ -60,11 +57,8 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
   let web3Provider: string;
   let Web3: any;
   let initialAirdropSigner: string;
-  let distributionAirdropSigner: string;
   let InitialAirdropContract: InitialAirdrop;
-  let DistributionContract: Distribution;
   let totalInitialAirdrop: BN;
-  let totalDistribution: BN;
   const deploymentName = "deployment/deploys/flare.json"
 
   before(async() => {
@@ -72,7 +66,6 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
     const {processedFile, TotalInitialAirdrop, TotalDistribution} = parseAndProcessData(airdropExports);
     parsedAirdrop = processedFile
     totalInitialAirdrop = TotalInitialAirdrop
-    totalDistribution = TotalDistribution
     if (process.env.WEB3_PROVIDER_URL) {
       web3Provider = process.env.WEB3_PROVIDER_URL
       Web3 = new web3(web3Provider);
@@ -81,15 +74,8 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
         console.error("No WEB3_PROVIDER_URL provided in env");
         throw new Error("No WEB3_PROVIDER_URL provided in env");
     }
-    if (process.env.GENESIS_GOVERNANCE_PUBLIC_KEY) {
-      initialAirdropSigner = process.env.GENESIS_GOVERNANCE_PUBLIC_KEY
-    }
-    else {
-        console.error("No GENESIS_GOVERNANCE_PUBLIC_KEY provided in env");
-        throw new Error("No GENESIS_GOVERNANCE_PUBLIC_KEY provided in env");
-    }
     if (process.env.DEPLOYER_PUBLIC_KEY) {
-      distributionAirdropSigner = process.env.DEPLOYER_PUBLIC_KEY
+      initialAirdropSigner = process.env.DEPLOYER_PUBLIC_KEY
     }
     else {
         console.error("No DEPLOYER_PUBLIC_KEY provided in env");
@@ -104,7 +90,6 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
   const contractArray = JSON.parse(rawDeploy as any) as {name: string, contractName: string, address: string} []
 
   const InitialAirdropAddress = contractArray.find((elem) => elem.contractName === 'InitialAirdrop.sol')
-  const DistributionAddress = contractArray.find((elem) => elem.contractName === 'Distribution.sol')
 
     try{
       InitialAirdropContract = new Web3.eth.Contract(
@@ -113,15 +98,6 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
       ) as any as InitialAirdrop;
     } catch (e) {
       throw new Error(`Error initializing initial airdrop contract ${e}`);
-    }
-
-    try {
-      DistributionContract = new Web3.eth.Contract(
-        DistributionAbi.abi,
-        DistributionAddress?.address || ''
-      ) as any as Distribution;
-    } catch (e) {
-      throw new Error(`Error initializing distribution contract ${e}`);
     }
 
   });
@@ -142,23 +118,8 @@ contract(`Airdrop testing: Airdrop transactions validation tests tests for Flare
     assert.equal(totalAirdrop, totalInitialAirdrop.toString(10))
   })
 
-  it(`Distribution contract must not yet be started`,async () => {
-    const distributionStarted = await DistributionContract.methods.entitlementStartTs().call()
-    assert.equal(distributionStarted, "0")
-  })
-
-  it(`Distribution total balance`,async () => {
-    const totalDistributionRead = await DistributionContract.methods.totalEntitlementWei().call()
-    assert.equal(totalDistributionRead, totalDistribution.toString(10))
-  })
-
   it(`Testing initialAirdropSigner signer transaction count matches airdrops`, async function(){
     const signerTransactionCount = await Web3.eth.getTransactionCount(initialAirdropSigner);
-    assert.isAbove(signerTransactionCount,Math.ceil(parsedAirdrop.length/35));
-  });
-
-  it(`Testing distributionAirdropSigner signer transaction count matches airdrops`, async function(){
-    const signerTransactionCount = await Web3.eth.getTransactionCount(distributionAirdropSigner);
     assert.isAbove(signerTransactionCount,Math.ceil(parsedAirdrop.length/35));
   });
 });

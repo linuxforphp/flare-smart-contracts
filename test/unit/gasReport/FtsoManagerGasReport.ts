@@ -174,10 +174,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       if (updateGovernanceParameters) {
         if (i % 2 == 0) {
           trustedVoters = accounts.slice(0, 5);
-          await ftsoManager.setGovernanceParameters(9, 11, 1, 3000000001, 99, 1, 2, trustedVoters, { from: governance });
+          await ftsoManager.setGovernanceParameters(0, 9, 11, 1, 3000000001, 99, 1, 0, 2, trustedVoters, { from: governance });
         } else {
           trustedVoters = accounts.slice(1, 6);
-          await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });
+          await ftsoManager.setGovernanceParameters(0, 10, 10, 0, 3000000000, 100, 0, 0, 1, trustedVoters, { from: governance });
         }
       }
       let initializePriceEpochForRevealTx = await ftsoManager.daemonize({ from: flareDaemon });
@@ -280,7 +280,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
         governance,
         flareDaemon,
         ADDRESS_UPDATER,
-        priceSubmitter.address,
         constants.ZERO_ADDRESS,
         startTs,
         epochDurationSec,
@@ -291,12 +290,12 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; gas consumption tests`, a
       );
 
       await ftsoManager.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, ftsoRewardManager.address, registry.address, whitelist.address, supplyInterface.address, cleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, priceSubmitter.address, ftsoRewardManager.address, registry.address, whitelist.address, supplyInterface.address, cleanupBlockNumberManager.address], {from: ADDRESS_UPDATER});
     
 
       trustedVoters = accounts.slice(1, 6);
-      await ftsoManager.setGovernanceParameters(10, 10, 0, 3000000000, 100, 0, 1, trustedVoters, { from: governance });
+      await ftsoManager.setGovernanceParameters(0, 10, 10, 0, 3000000000, 100, 0, 0, 1, trustedVoters, { from: governance });
       await ftsoManager.activate({ from: governance });
 
       // create wNat

@@ -20,6 +20,7 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
     event CleanupBlockNumberManagerFailedForBlock(uint256 blockNumber);
     event UpdatingActiveValidatorsTriggerFailed(uint256 rewardEpoch);
     event FtsoDeactivationFailed(IIFtso ftso);
+    event ChillingNonrevealingDataProvidersFailed();
 
     function activate() external;
 
@@ -30,12 +31,14 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
     ) external;
 
     function setGovernanceParameters(
+        uint256 _updateTs,
         uint256 _maxVotePowerNatThresholdFraction,
         uint256 _maxVotePowerAssetThresholdFraction,
         uint256 _lowAssetUSDThreshold,
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
         uint256 _lowNatTurnoutThresholdBIPS,
+        uint256 _elasticBandRewardBIPS,
         uint256 _rewardExpiryOffsetSeconds,
         address[] memory _trustedAddresses
     ) external;
@@ -92,4 +95,9 @@ interface IIFtsoManager is IFtsoManager, IFlareDaemonize {
         );
 
     function getRewardExpiryOffsetSeconds() external view returns (uint256);
+
+    /**
+     * @notice Returns elastic band width in PPM (parts-per-million) for given ftso
+     */
+    function getElasticBandWidthPPMFtso(IIFtso _ftso) external view returns (uint256);
 }
