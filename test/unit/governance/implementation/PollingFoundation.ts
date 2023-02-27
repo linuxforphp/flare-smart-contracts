@@ -106,7 +106,6 @@ contract(`PollingFoundation.sol; ${getTestFile(__filename)}; PollingFoundation u
       accounts[0],
       accounts[0],
       ADDRESS_UPDATER,
-      priceSubmitter.address,
       constants.ZERO_ADDRESS,
       startTs,
       PRICE_EPOCH_DURATION_S,
@@ -117,11 +116,11 @@ contract(`PollingFoundation.sol; ${getTestFile(__filename)}; PollingFoundation u
     );
 
     // only second to last parameter is important for governor tests
-    await ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 30 * DAY, []);
+    await ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 5000, 0, 30 * DAY, []);
 
     await ftsoManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-      [ADDRESS_UPDATER, mockRewardManager.address, mockFtsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+      [ADDRESS_UPDATER, priceSubmitter.address, mockRewardManager.address, mockFtsoRegistry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
     await priceSubmitter.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),

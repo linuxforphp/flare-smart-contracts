@@ -153,7 +153,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       accounts[0],
       accounts[0],
       ADDRESS_UPDATER,
-      mockPriceSubmitter.address,
       constants.ZERO_ADDRESS,
       startTs,
       PRICE_EPOCH_DURATION_S,
@@ -166,8 +165,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     cleanupBlockNumberManager = await CleanupBlockNumberManager.new(accounts[0], ADDRESS_UPDATER, "FtsoManager");
 
     await ftsoManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-      [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+      [ADDRESS_UPDATER, mockPriceSubmitter.address, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
     await registry.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
@@ -180,7 +179,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         constants.ZERO_ADDRESS,
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -194,7 +192,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         0,
@@ -208,7 +205,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -222,7 +218,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -236,7 +231,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs.addn(500),
         PRICE_EPOCH_DURATION_S,
@@ -250,7 +244,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -264,7 +257,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -278,7 +270,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -292,7 +283,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -306,7 +296,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        accounts[7],
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -416,22 +405,72 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expect((await ftsoManager.getRewardEpochVotePowerBlock(0)).toNumber()).to.equals(block - 1);
     });
 
-    it("Should not set governance paramters if not from governance", async () => {
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10 * DAY, [], { from: accounts[2] }), "only governance");
+    it("Should switch use good random flag", async () => {
+      // Assemble
+      // Act
+      await ftsoManager.setUseGoodRandom(true, 1);
+      // Assert
+      assert.isTrue(await ftsoManager.useGoodRandom());
+      assert.equal((await ftsoManager.maxWaitForGoodRandomSeconds()).toNumber(), 1);
     });
 
-    it("Should not set governance paramters if not from governance", async () => {
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10 * DAY, [], { from: accounts[2] }), "only governance");
+    it("Should switch use good random flag 2", async () => {
+      // Assemble
+      await ftsoManager.setUseGoodRandom(true, 1);
+      // Act
+      await ftsoManager.setUseGoodRandom(false, 0);
+      // Assert
+      assert.isFalse(await ftsoManager.useGoodRandom());
+      assert.equal((await ftsoManager.maxWaitForGoodRandomSeconds()).toNumber(), 0);
+    });
+
+    it("Should revert switch to good random if invalid parameters", async () => {
+      // Assemble
+      // Act
+      // Assert
+      await expectRevert(ftsoManager.setUseGoodRandom(true, 0), "invalid parameters");
+      await expectRevert(ftsoManager.setUseGoodRandom(true, 3 * 24 * 3600 + 1), "invalid parameters"); // 3 days max
+      await expectRevert(ftsoManager.setUseGoodRandom(false, 1), "invalid parameters");
+    });
+
+    it("Should not switch to good random if not from governance", async () => {
+      // Assemble
+      // Act
+      const setUseGoodRandomPromise = ftsoManager.setUseGoodRandom(true, 1, {from: accounts[2]});
+      // Assert
+      await expectRevert(setUseGoodRandomPromise, "only governance");
+      assert.isFalse(await ftsoManager.useGoodRandom());
+    });
+
+    it("Should not update timestamp to some past ts", async () => {
+      await expectRevert(ftsoManager.setGovernanceParameters(1, 5, 5, 50, 500, 500, 5000, 0, 10 * DAY, []), "invalid update ts");
+    });
+
+    it("Should set update timestamp", async () => {
+      const updateTs = (await time.latest()).toNumber() + 500;
+      await ftsoManager.setGovernanceParameters(updateTs, 5, 5, 50, 500, 500, 5000, 0, 10 * DAY, []);
+      expect((await ftsoManager.getUpdateGovernanceParametersTs()).toNumber()).to.equals(updateTs);
+    });
+
+    it("Should set update timestamp 2", async () => {
+      const updateTs = (await time.latest()).toNumber() + 600;
+      await ftsoManager.setElasticBandWidthPPMFtsos(updateTs, [], []);
+      expect((await ftsoManager.getUpdateGovernanceParametersTs()).toNumber()).to.equals(updateTs);
+    });
+
+    it("Should not set governance parameters if not from governance", async () => {
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 5000, 0, 10 * DAY, [], { from: accounts[2] }), "only governance");
     });
 
     it("Should revert setting invalid governance parameters", async () => {
-      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 50, 500, 500, 5000, 10 * DAY, []), "Gov. params invalid");
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 0, 50, 500, 500, 5000, 10 * DAY, []), "Gov. params invalid");
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 500, 50, 500, 5000, 10 * DAY, []), "Gov. params invalid");
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 50000, 5000, 10 * DAY, []), "Gov. params invalid");
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 50000, 10 * DAY, []), "Gov. params invalid");
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 0, []), "Gov. params invalid");
-      await expectRevert(ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10 * DAY, [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 0, 5, 50, 500, 500, 5000, 0, 10 * DAY, []), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 0, 50, 500, 500, 5000, 0, 10 * DAY, []), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 500, 50, 500, 5000, 0, 10 * DAY, []), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 50000, 5000, 0, 10 * DAY, []), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 50000, 0, 10 * DAY, []), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 5000, 0, 0, []), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 5000, 0, 10 * DAY, [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]), "Gov. params invalid");
+      await expectRevert(ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 5000, 10001, 10 * DAY, []), "Gov. params invalid");
     });
 
     it("Should set votePowerIntervalFraction", async () => {
@@ -491,10 +530,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     });
 
     it("Should get governance parameters", async () => {
-      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10 * DAY];
+      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 0, 10 * DAY];
       let paramListBN = paramList.map(x => toBN(x));
       let trustedAddresses = [accounts[6], accounts[7]];
-      await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
+      await (ftsoManager.setGovernanceParameters as any)(0, ...paramListBN, trustedAddresses);
 
       let govPar = await ftsoManager.getGovernanceParameters();
       expect(govPar[0].toNumber()).to.equals(paramListBN[0].toNumber());
@@ -504,10 +543,13 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       expect(govPar[4].toNumber()).to.equals(paramListBN[4].toNumber());
       expect(govPar[5].toNumber()).to.equals(paramListBN[5].toNumber());
       expect(govPar[6].toNumber()).to.equals(paramListBN[6].toNumber());
-      expect(govPar[7][0]).to.equals(trustedAddresses[0]);
-      expect(govPar[7][1]).to.equals(trustedAddresses[1]);
-      assert(govPar[8]);
+      expect(govPar[7].toNumber()).to.equals(paramListBN[7].toNumber());
+      expect(govPar[8][0]).to.equals(trustedAddresses[0]);
+      expect(govPar[8][1]).to.equals(trustedAddresses[1]);
       assert(govPar[9]);
+      assert(govPar[10]);
+
+      expect((await ftsoManager.getRewardExpiryOffsetSeconds()).toNumber()).to.equals(paramListBN[7].toNumber());
 
       // changed = false; daemonize
       await ftsoManager.activate();
@@ -515,12 +557,12 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.daemonize(); // _initializeFirstRewardEpoch
       await ftsoManager.daemonize();
       govPar = await ftsoManager.getGovernanceParameters();
-      assert(!govPar[9]);
+      assert(!govPar[10]);
     });
 
     it("Should set governance parameters", async() => {
-      await ftsoManager.setGovernanceParameters(1, 5, 50, 500, 500, 500, 10 * DAY, [accounts[1], accounts[2]]);
-      await ftsoManager.setGovernanceParameters(5, 5, 60, 500, 600, 5000, 11 * DAY, [accounts[1], accounts[2]]);
+      await ftsoManager.setGovernanceParameters(0, 1, 5, 50, 500, 500, 500, 0, 10 * DAY, [accounts[1], accounts[2]]);
+      await ftsoManager.setGovernanceParameters(0, 5, 5, 60, 500, 600, 5000, 10, 11 * DAY, [accounts[1], accounts[2]]);
     });
   });
 
@@ -538,7 +580,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       const invocationCount = await mockFtso.invocationCountForMethod.call(activate);
       assert.equal(invocationCount.toNumber(), 1);
 
-      const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0, 10); // first 4 bytes is function selector
+      const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0, 10); // first 4 bytes is function selector
       const invocationCount2 = await mockFtso.invocationCountForMethod.call(configureEpochs);
       assert.equal(invocationCount2.toNumber(), 1);
 
@@ -560,6 +602,19 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await expectRevert(ftsoManager.addFtso(mockFtso.address), "Already added");
     });
 
+    it("Should revert adding an FTSO until governance settings can be updated on ftsos", async () => {
+      // Assemble
+      const updateTs = (await time.latest()).toNumber() + 500;
+      await ftsoManager.setGovernanceParameters(updateTs, 5, 5, 50, 500, 500, 5000, 0, 10 * DAY, []);
+      // Act
+      // Assert
+      await expectRevert(ftsoManager.addFtso(mockFtso.address), "Gov. params updated");
+      await time.increase(500);
+      let tx = await ftsoManager.addFtso(mockFtso.address);
+      expectEvent(tx, "FtsoAdded", { ftso: mockFtso.address, add: true });
+      assert.equal(mockFtso.address, (await ftsoManager.getFtsos())[0]);
+    });
+
     it("Should initialize reward epoch only after reward epoch start timestamp", async () => {
       mockPriceSubmitter = await MockContract.new();
       await mockPriceSubmitter.givenMethodReturnUint(
@@ -571,7 +626,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        mockPriceSubmitter.address,
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -582,8 +636,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       );
 
       await ftsoManager.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, mockPriceSubmitter.address, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
         await registry.updateContractAddresses(
           encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
@@ -643,7 +697,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       const invocationCount = await mockFtso.invocationCountForMethod.call(activate);
       assert.equal(invocationCount.toNumber(), 1);
 
-      const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0, 10); // first 4 bytes is function selector
+      const configureEpochs = web3.utils.sha3("configureEpochs(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[])")!.slice(0, 10); // first 4 bytes is function selector
       const invocationCount2 = await mockFtso.invocationCountForMethod.call(configureEpochs);
       assert.equal(invocationCount2.toNumber(), 1);
 
@@ -1147,14 +1201,14 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       // Setup 4 ftsos, ftso1 is multi asset, with reference to next 3 ftsos
       let [ftso1, ftso2, ftso3, ftso4] = await settingWithFourFTSOs(accounts, ftsoManager, true);
       // init reward epoch
-      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10 * DAY];
+      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 0, 10 * DAY];
       let paramListBN = paramList.map(x => toBN(x));
       let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
       let trustedAddresses = [accounts[8], accounts[9]]
 
       // setup governance parameters
-      await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
+      await (ftsoManager.setGovernanceParameters as any)(0, ...paramListBN, trustedAddresses);
 
       // add ftsos, parameters should be set by FTSOManager
       await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
@@ -1176,6 +1230,12 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let trustedAddresses3 = ftso3Params.pop();
       let trustedAddresses4 = ftso4Params.pop();
 
+      // elastic band width BIPS
+      assert.equal(ftso1Params.pop(), 0);
+      assert.equal(ftso2Params.pop(), 0);
+      assert.equal(ftso3Params.pop(), 0);
+      assert.equal(ftso4Params.pop(), 0);
+
       // numeric epoch configuration should match the set one
       assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
       assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
@@ -1194,10 +1254,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
 
       let priceSubmitterInterface = await PriceSubmitter.new();
       // init reward epoch
-      let defaultParamList = [1, 1, 1000, 10000, 50, 1500, 10 * DAY];
+      let defaultParamList = [1, 1, 1000, 10000, 50, 1500, 0, 10 * DAY];
       let defaultParamListBN = defaultParamList.map(x => toBN(x));
       let trustedAddresses = [accounts[6], accounts[7]];
-      await (ftsoManager.setGovernanceParameters as any)(...defaultParamListBN, trustedAddresses);
+      await (ftsoManager.setGovernanceParameters as any)(0, ...defaultParamListBN, trustedAddresses);
 
       await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
       await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
@@ -1252,12 +1312,12 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await submitSomePrices(epoch, ftso1, 10, accounts);
       await submitSomePrices(epoch, ftso2, 10, accounts);
 
-      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 10 * DAY];
+      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 0, 10 * DAY];
       let paramListBN = paramList.map(x => toBN(x));
       let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
 
       trustedAddresses = [accounts[8], accounts[9]];
-      await (ftsoManager.setGovernanceParameters as any)(...paramListBN, trustedAddresses);
+      await (ftsoManager.setGovernanceParameters as any)(0, ...paramListBN, trustedAddresses);
 
       await increaseTimeTo(startTs, 120 * 4);
       tx = await ftsoManager.daemonize();
@@ -1276,6 +1336,120 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       const invocationCount2 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses2);
       assert.equal(invocationCount2.toNumber(), 1);
 
+      let ftso1Params = numberedKeyedObjectToList(await ftso1.epochsConfiguration());
+      let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
+
+      let trustedAddresses1 = ftso1Params.pop();
+      let trustedAddresses2 = ftso2Params.pop();
+
+      // elastic band width BIPS
+      assert.equal(ftso1Params.pop(), 0);
+      assert.equal(ftso2Params.pop(), 0);
+
+      assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
+      assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
+      assert(!doBNListsMatch(paramListBN, defaultParamListBN), "Changed parameters should not match the default ones.");
+      compareArrays(trustedAddresses, trustedAddresses1 as string[]);
+      compareArrays(trustedAddresses, trustedAddresses2 as string[]);
+    });
+
+    it("Should update governance parameters only after two price finalizations", async () => {
+      let [ftso1, ftso2] = await settingWithFourFTSOs(accounts, ftsoManager, true);
+
+      let priceSubmitterInterface = await PriceSubmitter.new();
+      // init reward epoch
+      let defaultParamList = [1, 1, 1000, 10000, 50, 1500, 0, 10 * DAY];
+      let defaultParamListBN = defaultParamList.map(x => toBN(x));
+      let trustedAddresses = [accounts[6], accounts[7]];
+      await (ftsoManager.setGovernanceParameters as any)(0, ...defaultParamListBN, trustedAddresses);
+
+      await ftsoManager.addFtso(ftso1.address, { from: accounts[0] });
+      await ftsoManager.addFtso(ftso2.address, { from: accounts[0] });
+      
+      await ftsoManager.activate();
+      await ftsoManager.daemonize(); // initialize reward epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+
+      let paramList = [1, 1 + 2, 1000, 10001, 50, 1500, 0, 10 * DAY];
+      let paramListBN = paramList.map(x => toBN(x));
+      let paramListBNWithoutRewardExpiry = paramListBN.slice(0, -1)
+      let trustedAddressesNew = [accounts[8], accounts[9]];
+      let updateTs = startTs.addn(120 * 4 + 30);
+      await (ftsoManager.setGovernanceParameters as any)(updateTs, ...paramListBN, trustedAddressesNew);
+      assert.equal((await ftsoManager.getUpdateGovernanceParametersTs()).toNumber(), updateTs.toNumber());
+
+      // check price submitter trusted addresses
+      const setTrustedAddresses1 = priceSubmitterInterface.contract.methods.setTrustedAddresses(trustedAddresses).encodeABI();
+      const invocationCount1 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddresses1);
+      assert.equal(invocationCount1.toNumber(), 1);
+
+      await increaseTimeTo(startTs, 120 + 30);
+      await ftsoManager.daemonize(); // finalize price epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+
+      // check price submitter trusted addresses
+      const setTrustedAddressesNew = priceSubmitterInterface.contract.methods.setTrustedAddresses(trustedAddressesNew).encodeABI();
+      const invocationCount2 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddressesNew);
+      assert.equal(invocationCount2.toNumber(), 0);
+
+      let epoch = 1;
+
+      await submitSomePrices(epoch, ftso1, 10, accounts);
+      await submitSomePrices(epoch, ftso2, 10, accounts);
+
+      await increaseTimeTo(startTs, 120 * 2);
+      await ftsoManager.daemonize();
+
+      await revealSomePrices(ftso1, 10, epoch, accounts);
+      await revealSomePrices(ftso2, 10, epoch, accounts);
+
+      await increaseTimeTo(startTs, 120 * 2 + 30);
+      let tx = await ftsoManager.daemonize(); // finalize price epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+
+      const invocationCount3 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddressesNew);
+      assert.equal(invocationCount3.toNumber(), 0);
+
+      // Assert
+      expectEvent(tx, "PriceEpochFinalized");
+      epoch = 2;
+      await submitSomePrices(epoch, ftso1, 10, accounts);
+      await submitSomePrices(epoch, ftso2, 10, accounts);
+
+      await increaseTimeTo(startTs, 120 * 3);
+      tx = await ftsoManager.daemonize();
+
+      await revealSomePrices(ftso1, 10, epoch, accounts);
+      await revealSomePrices(ftso2, 10, epoch, accounts);
+
+      await increaseTimeTo(startTs, 120 * 3 + 30);
+      tx = await ftsoManager.daemonize(); // finalize price epoch
+      await ftsoManager.daemonize(); // initialize price epoch
+
+      expectEvent(tx, "PriceEpochFinalized");
+
+      const invocationCount4 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddressesNew);
+      assert.equal(invocationCount4.toNumber(), 0);
+
+      epoch = 3
+      await submitSomePrices(epoch, ftso1, 10, accounts);
+      await submitSomePrices(epoch, ftso2, 10, accounts);
+
+      await increaseTimeTo(startTs, 120 * 4);
+      tx = await ftsoManager.daemonize();
+
+      await revealSomePrices(ftso1, 10, epoch, accounts);
+      await revealSomePrices(ftso2, 10, epoch, accounts);
+
+      await increaseTimeTo(startTs, 120 * 4 + 30);
+      tx = await ftsoManager.daemonize(); // finalize price epoch
+      expectEvent(tx, "PriceEpochFinalized");
+
+      await ftsoManager.daemonize(); // initialize price epoch
+
+      // check price submitter trusted addresses
+      const invocationCount5 = await mockPriceSubmitter.invocationCountForCalldata.call(setTrustedAddressesNew);
+      assert.equal(invocationCount5.toNumber(), 1);
 
       let ftso1Params = numberedKeyedObjectToList(await ftso1.epochsConfiguration());
       let ftso2Params = numberedKeyedObjectToList(await ftso2.epochsConfiguration());
@@ -1283,11 +1457,15 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let trustedAddresses1 = ftso1Params.pop();
       let trustedAddresses2 = ftso2Params.pop();
 
+      // elastic band width BIPS
+      assert.equal(ftso1Params.pop(), 0);
+      assert.equal(ftso2Params.pop(), 0);
+
       assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso1Params as BN[]), "Wrong FTSO 1 governance parameters");
       assert(doBNListsMatch(paramListBNWithoutRewardExpiry, ftso2Params as BN[]), "Wrong FTSO 2 governance parameters");
       assert(!doBNListsMatch(paramListBN, defaultParamListBN), "Changed parameters should not match the default ones.");
-      compareArrays(trustedAddresses, trustedAddresses1 as string[]);
-      compareArrays(trustedAddresses, trustedAddresses2 as string[]);
+      compareArrays(trustedAddressesNew, trustedAddresses1 as string[]);
+      compareArrays(trustedAddressesNew, trustedAddresses2 as string[]);
     });
 
     it("Should emit event if initialize price epoch fails and catches reverted errors", async () => {
@@ -1395,7 +1573,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        mockPriceSubmitter.address,
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -1406,8 +1583,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       );
 
       await ftsoManager2.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, mockPriceSubmitter.address, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
       // set new ftso manager
       await registry.updateContractAddresses(
@@ -1439,7 +1616,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        mockPriceSubmitter.address,
         constants.ZERO_ADDRESS,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -1450,8 +1626,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       );
 
       await ftsoManager2.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, mockPriceSubmitter.address, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
       // set new ftso manager
       await registry.updateContractAddresses(
@@ -1488,7 +1664,57 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await mockFtsoSymbol("ATOK", mockFtso2, ftsoInterface);
 
       await ftsoManager.replaceFtso(mockFtso2.address, false, false);
+    });
 
+    it("Should set width of ftsos' elastic bands", async () => {
+      await setDefaultGovernanceParameters(ftsoManager);
+      let mockFtso1 = await MockFtso.new();
+      let mockFtso2 = await MockFtso.new();
+      await mockFtsoSymbol("ATOK1", mockFtso1, ftsoInterface);
+      await mockFtsoSymbol("ATOK2", mockFtso2, ftsoInterface);
+      await ftsoManager.addFtso(mockFtso1.address);
+      await ftsoManager.addFtso(mockFtso2.address);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso1.address)).toNumber()).to.equals(0);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso2.address)).toNumber()).to.equals(0);
+
+      await ftsoManager.setElasticBandWidthPPMFtsos(0, [mockFtso1.address, mockFtso2.address], [100, 200]);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso1.address)).toNumber()).to.equals(100);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso2.address)).toNumber()).to.equals(200);
+
+      let mockFtso3 = await MockFtso.new();
+      await mockFtsoSymbol("ATOK1", mockFtso3, ftsoInterface);
+      await ftsoManager.replaceFtso(mockFtso3.address, false, false);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso1.address)).toNumber()).to.equals(0);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso3.address)).toNumber()).to.equals(100);
+
+      await ftsoManager.removeFtso(mockFtso2.address);
+      expect((await ftsoManager.getElasticBandWidthPPMFtso(mockFtso2.address)).toNumber()).to.equals(0);
+    });
+
+    it("Should revert setting width of elastic bands if array lengts do not match", async () => {
+      await setDefaultGovernanceParameters(ftsoManager);
+      let mockFtso1 = await MockFtso.new();
+      let mockFtso2 = await MockFtso.new();
+      await mockFtsoSymbol("ATOK1", mockFtso1, ftsoInterface);
+      await mockFtsoSymbol("ATOK2", mockFtso2, ftsoInterface);
+      await ftsoManager.addFtso(mockFtso1.address);
+      await ftsoManager.addFtso(mockFtso2.address);
+
+      let set = ftsoManager.setElasticBandWidthPPMFtsos(0, [mockFtso1.address, mockFtso2.address], [100]);
+      await expectRevert(set, "array lengths do not match");
+    });
+
+    it("Should revert setting width of elastic bands if width exceeds 1000000 ppm", async () => {
+      await setDefaultGovernanceParameters(ftsoManager);
+      let mockFtso1 = await MockFtso.new();
+      let mockFtso2 = await MockFtso.new();
+      await mockFtsoSymbol("ATOK1", mockFtso1, ftsoInterface);
+      await mockFtsoSymbol("ATOK2", mockFtso2, ftsoInterface);
+      await ftsoManager.addFtso(mockFtso1.address);
+      await ftsoManager.addFtso(mockFtso2.address);
+
+      let set = ftsoManager.setElasticBandWidthPPMFtsos(0, [mockFtso1.address, mockFtso2.address], [1e7, 100]);
+      await expectRevert(set, "elastic band width invalid");
     });
 
   });
@@ -2154,9 +2380,311 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.daemonize();
 
       // Assert
+      const chillNonrevealingDataProviders = web3.utils.sha3("chillNonrevealingDataProviders(uint256,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      let invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+      assert.equal(invocationCount.toNumber(), 0);
       // Get the invocation count for setting new vote power block on mocked FTSO
       const setVotePowerBlock = web3.utils.sha3("setVotePowerBlock(uint256)")!.slice(0, 10); // first 4 bytes is function selector
-      const invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
+      invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
+      // Should be 2 invocations; 1 during initializing first reward epoch, 1 during reward epoch finalization - for 1 FTSO
+      assert.equal(invocationCount.toNumber(), 2);
+    });
+
+    it("Should postopone finalizing a reward epoch until getting a good random", async () => {
+      // Assemble
+      // stub finalizer
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[], [], '0']);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+
+      const chillNonrevealingDataProviders = web3.utils.sha3("chillNonrevealingDataProviders(uint256,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      const getCurrentRandomWithQuality = web3.utils.sha3("getCurrentRandomWithQuality()")!.slice(0, 10); // first 4 bytes is function selector
+      let getCurrentRandomWithQualityReturn = web3.eth.abi.encodeParameters(
+        ['uint256', 'bool'],
+        [100, false]);
+      await mockPriceSubmitter.givenMethodReturn(getCurrentRandomWithQuality, getCurrentRandomWithQualityReturn);
+      await ftsoManager.setUseGoodRandom(true, 86400);
+
+      // add fakey ftso
+      await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize();
+
+      const currentRewardEpoch = (await ftsoManager.getCurrentRewardEpoch()).toNumber();
+
+      // Act
+      for (let i = 1; i <= (172800 / 1200); i++) {
+        // Time travel to trigger a price epoch change
+        // Cheat and do every 20 mins to reduce test time
+        await increaseTimeTo(startTs, 1200 * i + REVEAL_EPOCH_DURATION_S);
+        // Mine at least a block
+        await time.advanceBlock();
+        const tx = await ftsoManager.daemonize();
+        const invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+        assert.equal(invocationCount.toNumber(), Math.floor(i / 2));
+        expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      }
+
+      expect(currentRewardEpoch).to.equals((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+
+      // should not finalize reward epoch yet
+      let tx = await ftsoManager.daemonize();
+      expectEvent.notEmitted(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      const waitingSinceTs = (await time.latest()).toNumber();
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), waitingSinceTs);
+
+      for (let i = 1; i < 10; i++) {
+        // Time travel to trigger a price epoch change
+        // Cheat and do every 20 mins to reduce test time
+        await increaseTimeTo(startTs, 1200 * (i + (172800 / 1200)) + REVEAL_EPOCH_DURATION_S);
+        // Mine at least a block
+        await time.advanceBlock();
+        tx = await ftsoManager.daemonize();
+        expectEvent.notEmitted(tx, "RewardEpochFinalized");
+        expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+
+        expect(currentRewardEpoch).to.equals((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+        const invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+        assert.equal(invocationCount.toNumber(), 72 + Math.ceil(i / 2));
+        assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), waitingSinceTs);
+      }
+
+      getCurrentRandomWithQualityReturn = web3.eth.abi.encodeParameters(
+        ['uint256', 'bool'],
+        [100, true]);
+      await mockPriceSubmitter.givenMethodReturn(getCurrentRandomWithQuality, getCurrentRandomWithQualityReturn);
+      let invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+      assert.equal(invocationCount.toNumber(), 77);
+
+      // should finalize reward epoch
+      tx = await ftsoManager.daemonize();
+      expectEvent(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), 0);
+
+      // Assert
+      invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+      assert.equal(invocationCount.toNumber(), 77);
+      // Get the invocation count for setting new vote power block on mocked FTSO
+      const setVotePowerBlock = web3.utils.sha3("setVotePowerBlock(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
+      // Should be 2 invocations; 1 during initializing first reward epoch, 1 during reward epoch finalization - for 1 FTSO
+      assert.equal(invocationCount.toNumber(), 2);
+    });
+
+    it("Should finalize a reward epoch after wait time even if no good random", async () => {
+      // Assemble
+      // stub finalizer
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[], [], '0']);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+
+      const chillNonrevealingDataProviders = web3.utils.sha3("chillNonrevealingDataProviders(uint256,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      const getCurrentRandomWithQuality = web3.utils.sha3("getCurrentRandomWithQuality()")!.slice(0, 10); // first 4 bytes is function selector
+      let getCurrentRandomWithQualityReturn = web3.eth.abi.encodeParameters(
+        ['uint256', 'bool'],
+        [100, false]);
+      await mockPriceSubmitter.givenMethodReturn(getCurrentRandomWithQuality, getCurrentRandomWithQualityReturn);
+      await ftsoManager.setUseGoodRandom(true, 10000);
+
+      // add fakey ftso
+      await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize();
+
+      const currentRewardEpoch = (await ftsoManager.getCurrentRewardEpoch()).toNumber();
+
+      // Act
+      for (let i = 1; i <= (172800 / 1200); i++) {
+        // Time travel to trigger a price epoch change
+        // Cheat and do every 20 mins to reduce test time
+        await increaseTimeTo(startTs, 1200 * i + REVEAL_EPOCH_DURATION_S);
+        // Mine at least a block
+        await time.advanceBlock();
+        const tx = await ftsoManager.daemonize();
+        const invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+        assert.equal(invocationCount.toNumber(), Math.floor(i / 2));
+        expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      }
+
+      expect(currentRewardEpoch).to.equals((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+
+      // should not finalize reward epoch yet
+      let tx = await ftsoManager.daemonize();
+      expectEvent.notEmitted(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      const waitingSinceTs = (await time.latest()).toNumber();
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), waitingSinceTs);
+
+      for (let i = 1; i < 10; i++) {
+        // Time travel to trigger a price epoch change
+        // Cheat and do every 20 mins to reduce test time
+        await increaseTimeTo(startTs, 1200 * (i + (172800 / 1200)) + REVEAL_EPOCH_DURATION_S);
+        // Mine at least a block
+        await time.advanceBlock();
+        tx = await ftsoManager.daemonize();
+        expectEvent.notEmitted(tx, "RewardEpochFinalized");
+        expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+
+        expect(currentRewardEpoch).to.equals((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+        const invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+        assert.equal(invocationCount.toNumber(), 72 + Math.ceil(i / 2));
+        assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), waitingSinceTs);
+      }
+
+      let invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+      assert.equal(invocationCount.toNumber(), 77);
+
+      // should finalize reward epoch after max wait time even if no good random
+      tx = await ftsoManager.daemonize();
+      expectEvent(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), 0);
+
+      // should initialize new price epoch
+      tx = await ftsoManager.daemonize();
+      expectEvent.notEmitted(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), 0);
+
+      // should finalize price epoch
+      await time.increase(1200);
+      tx = await ftsoManager.daemonize();
+      expectEvent.notEmitted(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), 0);
+      // Assert
+      invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+      assert.equal(invocationCount.toNumber(), 78);
+      // Get the invocation count for setting new vote power block on mocked FTSO
+      const setVotePowerBlock = web3.utils.sha3("setVotePowerBlock(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
+      // Should be 2 invocations; 1 during initializing first reward epoch, 1 during reward epoch finalization - for 1 FTSO
+      assert.equal(invocationCount.toNumber(), 2);
+    });
+
+    it("Should emit event if chilling nonrevealing data providers fails", async () => {
+      // Assemble
+      // stub finalizer
+      const finalizePriceEpoch = ftsoInterface.contract.methods.finalizePriceEpoch(0, true).encodeABI();
+      const finalizePriceEpochReturn = web3.eth.abi.encodeParameters(
+        ['address[]', 'uint256[]', 'uint256'],
+        [[], [], '0']);
+      await mockFtso.givenMethodReturn(finalizePriceEpoch, finalizePriceEpochReturn);
+
+      await setDefaultGovernanceParameters(ftsoManager);
+
+      const chillNonrevealingDataProviders = web3.utils.sha3("chillNonrevealingDataProviders(uint256,uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      const getCurrentRandomWithQuality = web3.utils.sha3("getCurrentRandomWithQuality()")!.slice(0, 10); // first 4 bytes is function selector
+      let getCurrentRandomWithQualityReturn = web3.eth.abi.encodeParameters(
+        ['uint256', 'bool'],
+        [100, false]);
+      await mockPriceSubmitter.givenMethodReturn(getCurrentRandomWithQuality, getCurrentRandomWithQualityReturn);
+      await mockPriceSubmitter.givenMethodRevertWithMessage(chillNonrevealingDataProviders, "chilling error");
+      await ftsoManager.setUseGoodRandom(true, 86400);
+
+      // add fakey ftso
+      await ftsoManager.addFtso(mockFtso.address, { from: accounts[0] });
+      await ftsoManager.activate();
+      await increaseTimeTo(startTs, REVEAL_EPOCH_DURATION_S);
+      await ftsoManager.daemonize();
+
+      const currentRewardEpoch = (await ftsoManager.getCurrentRewardEpoch()).toNumber();
+
+      // Act
+      for (let i = 1; i <= (172800 / 1200); i++) {
+        // Time travel to trigger a price epoch change
+        // Cheat and do every 20 mins to reduce test time
+        await increaseTimeTo(startTs, 1200 * i + REVEAL_EPOCH_DURATION_S);
+        // Mine at least a block
+        await time.advanceBlock();
+        const tx = await ftsoManager.daemonize();
+        if (i % 2 == 0) {
+          expectEvent(tx, "ChillingNonrevealingDataProvidersFailed");
+          const {
+            0: lastErrorBlock,
+            1: numErrors,
+            2: errorString,
+            3: errorContract,
+          } = await ftsoManager.showLastRevertedError();
+
+          assert.equal(lastErrorBlock[0].toNumber(), tx.logs[0].blockNumber);
+          assert.equal(numErrors[0].toNumber(), i / 2);
+          assert.equal(errorString[0], "chilling error");
+          assert.equal(errorContract[0], mockPriceSubmitter.address);
+        } else {
+          expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+        }
+      }
+
+      expect(currentRewardEpoch).to.equals((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+
+      await mockPriceSubmitter.givenMethodRunOutOfGas(chillNonrevealingDataProviders);
+
+      // should not finalize reward epoch yet
+      let tx = await ftsoManager.daemonize();
+      expectEvent.notEmitted(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      const waitingSinceTs = (await time.latest()).toNumber();
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), waitingSinceTs);
+
+      for (let i = 1; i < 10; i++) {
+        // Time travel to trigger a price epoch change
+        // Cheat and do every 20 mins to reduce test time
+        await increaseTimeTo(startTs, 1200 * (i + (172800 / 1200)) + REVEAL_EPOCH_DURATION_S);
+        // Mine at least a block
+        await time.advanceBlock();
+        tx = await ftsoManager.daemonize();
+        expectEvent.notEmitted(tx, "RewardEpochFinalized");
+        if (i % 2 == 1) {
+          expectEvent(tx, "ChillingNonrevealingDataProvidersFailed");
+          const {
+            0: lastErrorBlock,
+            1: numErrors,
+            2: errorString,
+            3: errorContract,
+          } = await ftsoManager.showLastRevertedError();
+
+          assert.equal(lastErrorBlock[0].toNumber(), tx.logs[0].blockNumber);
+          assert.equal(numErrors[0].toNumber(), Math.ceil(i / 2));
+          assert.equal(errorString[0], "err calling chillNonrevealingDataProviders");
+          assert.equal(errorContract[0], mockPriceSubmitter.address);
+        } else {
+          expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+        }
+
+        expect(currentRewardEpoch).to.equals((await ftsoManager.getCurrentRewardEpoch()).toNumber());
+        assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), waitingSinceTs);
+      }
+
+      getCurrentRandomWithQualityReturn = web3.eth.abi.encodeParameters(
+        ['uint256', 'bool'],
+        [100, true]);
+      await mockPriceSubmitter.givenMethodReturn(getCurrentRandomWithQuality, getCurrentRandomWithQualityReturn);
+
+      // should finalize reward epoch
+      tx = await ftsoManager.daemonize();
+      expectEvent(tx, "RewardEpochFinalized");
+      expectEvent.notEmitted(tx, "ChillingNonrevealingDataProvidersFailed");
+      assert.equal((await ftsoManager.waitingForGoodRandomSinceTs()).toNumber(), 0);
+
+      // Assert
+      let invocationCount = await mockPriceSubmitter.invocationCountForMethod.call(chillNonrevealingDataProviders);
+      assert.equal(invocationCount.toNumber(), 0);
+      // Get the invocation count for setting new vote power block on mocked FTSO
+      const setVotePowerBlock = web3.utils.sha3("setVotePowerBlock(uint256)")!.slice(0, 10); // first 4 bytes is function selector
+      invocationCount = await mockFtso.invocationCountForMethod.call(setVotePowerBlock);
       // Should be 2 invocations; 1 during initializing first reward epoch, 1 during reward epoch finalization - for 1 FTSO
       assert.equal(invocationCount.toNumber(), 2);
     });
@@ -2191,7 +2719,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        mockPriceSubmitter.address,
         constants.ZERO_ADDRESS,
         startTs,
         yearSeconds / 10,
@@ -2202,8 +2729,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       );
 
       await ftsoManager.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, mockPriceSubmitter.address, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
         await registry.updateContractAddresses(
           encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),
@@ -2314,8 +2841,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       let cleanUp = await MockContract.new();
 
       await ftsoManager.updateContractAddresses(
-        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-        [ADDRESS_UPDATER, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanUp.address], { from: ADDRESS_UPDATER });
+        encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+        [ADDRESS_UPDATER, mockPriceSubmitter.address, mockRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, cleanUp.address], { from: ADDRESS_UPDATER });
 
       const setCleanUpBlockNumber = cleanupBlockNumberManager.contract.methods.setCleanUpBlockNumber(0).encodeABI();
       await cleanUp.givenMethodRunOutOfGas(setCleanUpBlockNumber);
@@ -2326,6 +2853,8 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.daemonize(); // _initializeFirstRewardEpoch
       await increaseTimeTo(startTs, 172800 + REVEAL_EPOCH_DURATION_S);
       let tx = await ftsoManager.daemonize();
+      expectEvent(tx, "CleanupBlockNumberManagerFailedForBlock", {});
+      await expectEvent.notEmitted.inTransaction(tx.tx, cleanupBlockNumberManager, "CleanupBlockNumberSet")
     });
 
     it("Should emit event for a finalize price epoch catch statement without a message", async () => {
@@ -2461,7 +2990,7 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
     });
 
     it("Should emit event if added FTSO list to the list of rewarded FTSOs", async () => {
-      await ftsoManager.setGovernanceParameters(5, 5, 50, 500, 500, 5000, 10 * DAY, [], { from: accounts[0] });
+      await ftsoManager.setGovernanceParameters(0, 5, 5, 50, 500, 500, 5000, 0, 10 * DAY, [], { from: accounts[0] });
       let mockFtso2 = await MockFtso.new();
       let ftsos = [mockFtso.address, mockFtso2.address];
       let tx = await ftsoManager.addFtsosBulk(ftsos);
@@ -2538,7 +3067,6 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
         accounts[0],
         accounts[0],
         ADDRESS_UPDATER,
-        mockPriceSubmitter.address,
         oldFtsoManager.address,
         startTs,
         PRICE_EPOCH_DURATION_S,
@@ -2757,10 +3285,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.daemonize();
 
       let report1 = await ftso1.getFullEpochReport(epoch + 1);
-      expect(report1[12]).to.equals(true);
+      expect(report1[9]).to.equals(true);
 
       let report2 = await ftso2.getFullEpochReport(epoch + 1);
-      expect(report2[12]).to.equals(true);
+      expect(report2[9]).to.equals(true);
     });
 
     it("Should initialize epoch in fallback mode for first ftso", async () => {
@@ -2784,10 +3312,10 @@ contract(`FtsoManager.sol; ${getTestFile(__filename)}; Ftso manager unit tests`,
       await ftsoManager.daemonize();
 
       let report1 = await ftso1.getFullEpochReport(epoch + 1);
-      expect(report1[12]).to.equals(true);
+      expect(report1[9]).to.equals(true);
 
       let report2 = await ftso2.getFullEpochReport(epoch + 1);
-      expect(report2[12]).to.equals(false);
+      expect(report2[9]).to.equals(false);
     });
 
     it("Should switch to fallback mode", async () => {

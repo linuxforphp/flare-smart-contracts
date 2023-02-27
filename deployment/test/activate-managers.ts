@@ -36,4 +36,16 @@ contract(`activate-managers.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.VALIDATOR_REWARD_MANAGER, async () => {
+    it("Should be activated", async () => {
+      // Assemble
+      const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+      const validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+      // Act
+      const active = await validatorRewardManager.active();
+      // Assert
+      assert(active);
+    });
+  });
+
 });

@@ -2,19 +2,18 @@
 pragma solidity 0.7.6;
 
 import "../../addressUpdater/implementation/AddressUpdatable.sol";
-import "../../governance/implementation/Governed.sol";
-import "../../inflation/implementation/Supply.sol";
+import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../claiming/implementation/ClaimSetupManager.sol";
 import "../../token/implementation/WNat.sol";
-import "../../utils/implementation/SafePct.sol";
-import "@openzeppelin/contracts/math/Math.sol";
+import "../../token/lib/IICombinedNatBalance.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../userInterfaces/IDistributionToDelegators.sol";
-import "../../userInterfaces/IPriceSubmitter.sol";
+import "../../utils/interface/IIRandomProvider.sol";
 import "../interface/IITokenPool.sol";
 import "../../genesis/implementation/DistributionTreasury.sol";
 import "../../utils/implementation/AddressSet.sol";
+import "../../genesis/interface/IFlareDaemonize.sol";
 
 /**
  * @title Distribution to delegators
@@ -24,7 +23,7 @@ import "../../utils/implementation/AddressSet.sol";
  **/
 //solhint-disable-next-line max-states-count
 contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
-    Governed, ReentrancyGuard, AddressUpdatable
+    GovernedAndFlareDaemonized, IFlareDaemonize, ReentrancyGuard, AddressUpdatable
 {
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -38,6 +37,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     // 2.37% every 30 days (so total distribution takes 36 * 30 days =~ 3 years)
     uint256 internal constant MONTHLY_CLAIMABLE_BIPS = 237;
     uint256 internal constant NUMBER_OF_MONTHS = TOTAL_CLAIMABLE_BIPS / MONTHLY_CLAIMABLE_BIPS + 1; // 36
+    address payable internal constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // Errors
     string internal constant ERR_ADDRESS_ZERO = "address zero";
@@ -48,51 +48,55 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     string internal constant ERR_MONTH_EXPIRED = "month expired";
     string internal constant ERR_MONTH_NOT_CLAIMABLE = "month not claimable";
     string internal constant ERR_MONTH_NOT_CLAIMABLE_YET = "month not claimable yet";
+    string internal constant ERR_NO_MONTH_CLAIMABLE = "no month claimable";
     string internal constant ERR_CLAIM_FAILED = "claim failed";
     string internal constant ERR_OPT_OUT = "already opted out";
     string internal constant ERR_NOT_OPT_OUT = "not opted out";
-    string internal constant ERR_DELEGATION_ACCOUNT_ZERO = "delegation account zero";
     string internal constant ERR_TREASURY_ONLY = "treasury only";
     string internal constant ERR_ALREADY_STARTED = "already started";
     string internal constant ERR_WRONG_START_TIMESTAMP = "wrong start timestamp";
-    string internal constant ERR_EXECUTOR_ONLY = "claim executor only";
-    string internal constant ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
+    string internal constant ERR_CLAIMED_AMOUNT_TOO_SMALL = "claimed amount too small";
+    string internal constant ERR_RECIPIENT_ZERO = "recipient zero";
+    string internal constant ERR_INVALID_PARAMS = "invalid parameters";
+    string internal constant ERR_STOPPED = "stopped";
+    string internal constant ERR_NOT_STOPPED = "not stopped";
+    string internal constant ERR_SENDING_FUNDS_BACK = "sending funds back failed";
 
     // storage
     uint256 public totalEntitlementWei;     // Total wei to be distributed (all but initial airdrop)
     uint256 public immutable latestEntitlementStartTs;  // Latest day 0 when contract starts
     uint256 public totalClaimedWei;         // All wei already claimed
     uint256 public totalBurnedWei;          // Amounts that were not claimed in time and expired and was burned
-    uint256 public totalDistributableAmount;// Total amount that was pulled from Distribution treasury for 
+    uint256 public totalDistributableAmount;// Total amount that was pulled from Distribution treasury for
                                             // distribution. (sum of totalAvailableAmount)
     uint256 public entitlementStartTs;      // Day 0 when contract starts
-    // id of the first month to expire. Closed = expired and unclaimed amount will be redistributed
-    uint256 internal nextMonthToExpireCandidate;
+    // id of the first month to expire. Closed = expired and unclaimed amount will be burned
+    uint128 internal nextMonthToExpireCandidate;
+    // id of the next claimable month. Normally the same as current month - may be smaller if waiting for good random
+    uint128 internal nextMonthToClaimCandidate;
 
     mapping(uint256 => uint256) public startBlockNumber; // mapping from month to first block used in randomization
     mapping(uint256 => uint256) public endBlockNumber; // mapping from month to last block used in randomization
-    mapping(uint256 => uint256[]) public votePowerBlockNumbers; // mapping from month to blocks used in claiming 
+    mapping(uint256 => uint256[]) public votePowerBlockNumbers; // mapping from month to blocks used in claiming
     mapping(uint256 => uint256) public totalAvailableAmount; // mapping from month to total available amount
     mapping(uint256 => uint256) public totalUnclaimedAmount; // mapping from month to unclaimed amount
     mapping(uint256 => uint256) public totalUnclaimedWeight; // mapping from month to weight of unclaimed amount
-    mapping(address => mapping(uint256 => uint256)) internal claimed; // mapping from address to claimed amount / month
+    mapping(address => uint256) private ownerNextClaimableMonth; // mapping from owner to next claimable month
 
     mapping(address => bool) public optOutCandidate; // indicates if user has triggered to opt out of airdrop
     mapping(address => bool) public optOut; // indicates if user is opted out of airdrop (confirmed by governance)
     address[] public optOutAddresses; // all opted out addresses (confirmed by governance)
     bool public stopped;
-
-    // mapping reward owner address => executor set
-    mapping(address => AddressSet.State) private claimExecutorSet;
-    
-    // mapping reward owner address => claim recipient address
-    mapping(address => AddressSet.State) private allowedClaimRecipientSet;
+    bool public useGoodRandom;
+    // both are used only together with useGoodRandom flag - 0 otherwise
+    uint256 public maxWaitForGoodRandomSeconds;
+    uint256 public waitingForGoodRandomSinceTs;
 
     // contracts
-    IPriceSubmitter public immutable priceSubmitter;
     DistributionTreasury public immutable treasury;
+    IIRandomProvider public priceSubmitter;
+    IICombinedNatBalance public combinedNat;
     WNat public wNat;
-    Supply public supply;
     ClaimSetupManager public claimSetupManager;
 
     /**
@@ -103,7 +107,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         require (_getExpectedBalance() <= address(this).balance, ERR_BALANCE_TOO_LOW);
     }
 
-    modifier onlyRewardExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) {
+    modifier onlyExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) {
         _checkExecutorAndAllowedRecipient(_rewardOwner, _recipient);
         _;
     }
@@ -116,21 +120,26 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         _;
     }
 
+    /**
+     * @dev This modifier ensures that the contract is not stopped
+     */
+    modifier notStopped {
+        require (!stopped, ERR_STOPPED);
+        _;
+    }
+
     constructor(
         address _governance,
+        FlareDaemon _flareDaemon,
         address _addressUpdater,
-        IPriceSubmitter _priceSubmitter,
         DistributionTreasury _treasury,
         uint256 _totalEntitlementWei,
         uint256 _latestEntitlementStartTs
     )
-        Governed(_governance) AddressUpdatable(_addressUpdater)
+        GovernedAndFlareDaemonized(_governance, _flareDaemon) AddressUpdatable(_addressUpdater)
     {
-        require(address(_priceSubmitter) != address(0), ERR_ADDRESS_ZERO);
         require(address(_treasury) != address(0), ERR_ADDRESS_ZERO);
-        require(address(_treasury).balance >= _totalEntitlementWei, ERR_BALANCE_TOO_LOW);
         require(_latestEntitlementStartTs >= block.timestamp, ERR_IN_THE_PAST);
-        priceSubmitter = _priceSubmitter;
         treasury = _treasury;
         totalEntitlementWei = _totalEntitlementWei;
         latestEntitlementStartTs = _latestEntitlementStartTs;
@@ -145,14 +154,14 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         require(msg.sender == address(treasury), ERR_TREASURY_ONLY);
     }
 
-    function stop() external onlyGovernance {
+    function stop() external onlyImmediateGovernance {
         stopped = true;
     }
 
     /**
      * @notice Update the totalEntitlementWei
      */
-    function updateTotalEntitlementWei() external onlyGovernance {
+    function updateTotalEntitlementWei() external onlyImmediateGovernance {
         uint256 newTotalEntitlementWei = totalDistributableAmount.add(address(treasury).balance);
         assert(newTotalEntitlementWei >= totalEntitlementWei);
         totalEntitlementWei = newTotalEntitlementWei;
@@ -164,7 +173,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      */
     function setEntitlementStart(uint256 _entitlementStartTs) external onlyGovernance {
         require(entitlementStartTs > block.timestamp, ERR_ALREADY_STARTED);
-        require(_entitlementStartTs >= block.timestamp && _entitlementStartTs <= latestEntitlementStartTs,
+        require(_entitlementStartTs >= block.timestamp - 2 * WEEK && _entitlementStartTs <= latestEntitlementStartTs,
             ERR_WRONG_START_TIMESTAMP);
         entitlementStartTs = _entitlementStartTs;
         emit EntitlementStart(_entitlementStartTs);
@@ -189,7 +198,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         for (uint256 i = 0; i < len; i++) {
             address optOutAddress = _optOutAddresses[i];
             require(optOutCandidate[optOutAddress], ERR_NOT_OPT_OUT);
-            require(!optOut[optOutAddress], ERR_OPT_OUT);
+            _checkOptOut(optOutAddress);
             optOut[optOutAddress] = true;
             optOutAddresses.push(optOutAddress);
             // emit opt out event
@@ -198,111 +207,171 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     }
 
     /**
-     * Set the addresses of executors, who are allowed to call claimByExecutor, claimAndWrapByExecutor
-     * and claimToPersonalDelegationAccountByExecutor.
-     * @param _executors The new executors. All old executors will be deleted and replaced by these.
-     */    
-    function setClaimExecutors(address[] memory _executors) external override {
-        claimExecutorSet[msg.sender].replaceAll(_executors);
-        emit ClaimExecutorsChanged(msg.sender, _executors);
-    }
-    
-    /**
-     * Set the addresses of allowed recipients in the methods claimByExecutor and claimAndWrapByExecutor.
-     * Apart from these, the reward owner is always an allowed recipient.
-     * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
-     */    
-    function setAllowedClaimRecipients(address[] memory _recipients) external override {
-        allowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
-        emit AllowedClaimRecipientsChanged(msg.sender, _recipients);
+     * @notice Runs task triggered by Daemon.
+     * The tasks include the following
+     * - setting start block number for the month
+     * - setting end block number for the month
+     * - calculating random blocks and weight + polling funds from treasury contract
+     */
+    function daemonize() external override onlyFlareDaemon mustBalance nonReentrant returns(bool) {
+        if (entitlementStartTs > block.timestamp || nextMonthToExpireCandidate >= NUMBER_OF_MONTHS) return false;
+
+        uint256 diffSec = block.timestamp.sub(entitlementStartTs);
+        uint256 currentMonth = diffSec.div(MONTH);
+        uint256 remainingSec = diffSec - currentMonth * MONTH;
+        uint256 currentWeek = remainingSec.div(WEEK);
+
+        // if not the first week, which is left out for claiming, update start block
+        if (currentWeek > 0 && currentMonth < NUMBER_OF_MONTHS && startBlockNumber[currentMonth] == 0) {
+            startBlockNumber[currentMonth] = block.number;
+        }
+
+        // update ending block - sets to first block in new month
+        if (currentMonth > 0 && currentMonth <= NUMBER_OF_MONTHS && endBlockNumber[currentMonth - 1] == 0) {
+            endBlockNumber[currentMonth - 1] = block.number;
+        }
+
+        // expire old month
+        uint256 cleanupBlockNumber = wNat.cleanupBlockNumber();
+        uint256 blockNumber = startBlockNumber[nextMonthToExpireCandidate];
+        if (blockNumber > 0 && blockNumber < cleanupBlockNumber) {
+            uint256 toBurnWei = Math.min(totalUnclaimedAmount[nextMonthToExpireCandidate], address(this).balance);
+            nextMonthToExpireCandidate++;
+
+            // Any to burn?
+            if (toBurnWei > 0) {
+                // Accumulate what we are about to burn
+                totalBurnedWei = totalBurnedWei.add(toBurnWei);
+                //slither-disable-next-line arbitrary-send-eth
+                BURN_ADDRESS.transfer(toBurnWei);
+            }
+        }
+
+        // enable claiming for previous month
+        if (currentMonth > 0 && currentMonth <= NUMBER_OF_MONTHS &&
+            nextMonthToClaimCandidate == currentMonth - 1 && !stopped) {
+            if (_updateVotePowerBlocksAndWeight(currentMonth - 1)) {
+                _updateDistributableAmount(currentMonth - 1); // claim amount if random is ok
+            }
+        }
+        return true;
     }
 
     /**
-     * @notice Method for claiming unlocked airdrop amounts for specified month
-     * @param _recipient address representing the recipient of the reward
-     * @param _month month of interest
-     * @return _amountWei claimed wei
+     * @notice Allow governance to switch to good random only
+     * @param _useGoodRandom                    flag indicating using good random or not
+     * @param _maxWaitForGoodRandomSeconds      max time in seconds to wait for the good random
+            and if there is no after given time, distribution should proceed anyway
      */
-    function claim(address _recipient, uint256 _month) external override 
-        entitlementStarted mustBalance nonReentrant
-        returns(uint256 _amountWei)
-    {
-        return _claimOrWrap(msg.sender, _recipient, _month, false);
+    function setUseGoodRandom(bool _useGoodRandom, uint256 _maxWaitForGoodRandomSeconds) external onlyGovernance {
+        if (_useGoodRandom) {
+            require(_maxWaitForGoodRandomSeconds > 0 && _maxWaitForGoodRandomSeconds <= 7 days, ERR_INVALID_PARAMS);
+        } else {
+            require(_maxWaitForGoodRandomSeconds == 0, ERR_INVALID_PARAMS);
+            // reset start waiting timestamp
+            waitingForGoodRandomSinceTs = 0;
+        }
+        useGoodRandom = _useGoodRandom;
+        maxWaitForGoodRandomSeconds = _maxWaitForGoodRandomSeconds;
+        emit UseGoodRandomSet(_useGoodRandom, _maxWaitForGoodRandomSeconds);
     }
 
     /**
-     * @notice Method for claiming and wrapping unlocked airdrop amounts for specified month
-     * @param _recipient address representing the recipient of the reward
-     * @param _month month of interest
-     * @return _amountWei claimed wei
+     * Enable sending funds back to treasury contract in case distribution was stopped
      */
-    function claimAndWrap(address _recipient, uint256 _month) external override 
-        entitlementStarted mustBalance nonReentrant
-        returns(uint256 _amountWei)
-    {
-        return _claimOrWrap(msg.sender, _recipient, _month, true);
+    function sendFundsBackToTreasury() external onlyGovernance {
+        require(stopped, ERR_NOT_STOPPED);
+        /* solhint-disable avoid-low-level-calls */
+        //slither-disable-next-line arbitrary-send-eth
+        (bool success, ) = address(treasury).call{value: address(this).balance}("");
+        /* solhint-enable avoid-low-level-calls */
+        require(success, ERR_SENDING_FUNDS_BACK);
     }
 
     /**
-     * @notice Method for claiming unlocked airdrop amounts for specified month by executor
-     * @param _rewardOwner address of the reward owner
-     * @param _recipient address representing the recipient of the reward
-     * @param _month month of interest
-     * @return _amountWei claimed wei
+     * @notice Allows the sender to claim or wrap rewards for reward owner.
+     * @notice The caller does not have to be the owner, but must be approved by the owner to claim on his behalf,
+     *   this approval is done by calling `setClaimExecutors`.
+     * @notice It is actually safe for this to be called by anybody (nothing can be stolen), but by limiting who can
+     *   call, we allow the owner to control the timing of the calls.
+     * @notice Reward owner can claim to any `_recipient`, while the executor can only claim to the reward owner,
+     *   reward owners's personal delegation account or one of the addresses set by `setAllowedClaimRecipients`.
+     * @param _rewardOwner          address of the reward owner
+     * @param _recipient            address to transfer funds to
+     * @param _month                last month to claim for
+     * @param _wrap                 should reward be wrapped immediately
+     * @return _rewardAmount        amount of total claimed rewards
      */
-    function claimByExecutor(address _rewardOwner, address _recipient, uint256 _month) external override 
-        entitlementStarted mustBalance nonReentrant
-        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
-        returns(uint256 _amountWei)
+    function claim(
+        address _rewardOwner,
+        address _recipient,
+        uint256 _month,
+        bool _wrap
+    )
+        external override
+        entitlementStarted
+        notStopped
+        mustBalance
+        nonReentrant
+        onlyExecutorAndAllowedRecipient(_rewardOwner, _recipient)
+        returns (uint256 _rewardAmount)
     {
-        return _claimOrWrap(_rewardOwner, _recipient, _month, false);
+        _rewardAmount = _claimOrWrap(_rewardOwner, _recipient, _month, _wrap);
     }
 
     /**
-     * @notice Method for claiming and wrapping unlocked airdrop amounts for specified month by executor
-     * @param _rewardOwner address of the reward owner
-     * @param _recipient address representing the recipient of the reward
-     * @param _month month of interest
-     * @return _amountWei claimed wei
+     * @notice Allows batch claiming for the list of '_rewardOwners' up to given '_month'.
+     * @notice If reward owner has enabled delegation account, rewards are also claimed for that delegation account and
+     *   total claimed amount is sent to that delegation account, otherwise claimed amount is sent to owner's account.
+     * @notice Claimed amount is automatically wrapped.
+     * @notice Method can be used by reward owner or executor. If executor is registered with fee > 0,
+     *   then fee is paid to executor for each claimed address from the list.
+     * @param _rewardOwners         list of reward owners to claim for
+     * @param _month                last month to claim for
      */
-    function claimAndWrapByExecutor(address _rewardOwner, address _recipient, uint256 _month) external override 
-        entitlementStarted mustBalance nonReentrant
-        onlyRewardExecutorAndAllowedRecipient(_rewardOwner, _recipient)
-        returns(uint256 _amountWei)
+    //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant
+    function autoClaim(address[] calldata _rewardOwners, uint256 _month)
+        external override
+        entitlementStarted
+        notStopped
+        mustBalance
+        nonReentrant
     {
-        return _claimOrWrap(_rewardOwner, _recipient, _month, true);
+        for (uint256 i = 0; i < _rewardOwners.length; i++) {
+            _checkNonzeroRecipient(_rewardOwners[i]);
+        }
+
+        uint256 monthToExpireNext = getMonthToExpireNext();
+        _checkIsMonthClaimable(monthToExpireNext, _month);
+
+        (address[] memory claimAddresses, uint256 executorFeeValue) =
+            claimSetupManager.getAutoClaimAddressesAndExecutorFee(msg.sender, _rewardOwners);
+
+        uint256 totalClaimedWeiTemp;
+        for (uint256 i = 0; i < _rewardOwners.length; i++) {
+            address rewardOwner = _rewardOwners[i];
+            address claimAddress = claimAddresses[i];
+            uint256 rewardAmount = 0;
+
+            if (!optOut[rewardOwner]) {
+                // claim for owner
+                rewardAmount += _claim(rewardOwner, claimAddress, monthToExpireNext, _month);
+            }
+            if (rewardOwner != claimAddress) {
+                // claim for PDA - cannot be opt out
+                rewardAmount += _claim(claimAddress, claimAddress, monthToExpireNext, _month);
+            }
+            totalClaimedWeiTemp += rewardAmount;
+            rewardAmount = rewardAmount.sub(executorFeeValue, ERR_CLAIMED_AMOUNT_TOO_SMALL);
+            _transferOrWrap(claimAddress, rewardAmount, true);
+        }
+        // Update grand total claimed
+        totalClaimedWei = totalClaimedWei.add(totalClaimedWeiTemp);
+        // send fees to executor
+        _transferOrWrap(msg.sender, executorFeeValue.mul(_rewardOwners.length), false);
     }
 
-    /**
-     * @notice Method for claiming unlocked airdrop amounts for specified month to personal delegation account
-     * @param _month month of interest
-     * @return _amountWei claimed wei
-     */
-    function claimToPersonalDelegationAccount(uint256 _month) external override 
-        entitlementStarted mustBalance nonReentrant
-        returns(uint256 _amountWei)
-    {
-        address delegationAccount = claimSetupManager.accountToDelegationAccount(msg.sender);
-        require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
-        return _claimOrWrap(msg.sender, delegationAccount, _month, false);
-    }
 
-    /**
-     * @notice Method for claiming unlocked airdrop amounts for rewardOwner and specified month
-     *         to personal delegation account by executor
-     * @param _rewardOwner address of the reward owner
-     * @param _month month of interest
-     * @return _amountWei claimed wei
-     */
-    function claimToPersonalDelegationAccountByExecutor(address _rewardOwner, uint256 _month) external override 
-        entitlementStarted mustBalance nonReentrant
-        returns(uint256 _amountWei)
-    {
-        require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, ERR_EXECUTOR_ONLY);
-        address delegationAccount = claimSetupManager.accountToDelegationAccount(_rewardOwner);
-        require(delegationAccount != address(0), ERR_DELEGATION_ACCOUNT_ZERO);
-        return _claimOrWrap(_rewardOwner, delegationAccount, _month, false);
-    }
 
     /**
      * @notice Return token pool supply data
@@ -310,17 +379,12 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)
      * @return _totalClaimedWei                 Total claimed amount (wei)
      */
-    function getTokenPoolSupplyData() external override mustBalance nonReentrant
+    function getTokenPoolSupplyData() external view override
         returns (uint256 _lockedFundsWei, uint256 _totalInflationAuthorizedWei, uint256 _totalClaimedWei)
     {
-        // update only if called from supply
-        // update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
-        if (msg.sender == address(supply)) {
-            _updateMonthlyClaimData();
-        }
-
         // This is the total amount of tokens that are actually already in circulating supply
-        _lockedFundsWei = stopped ? totalDistributableAmount : totalEntitlementWei;
+        _lockedFundsWei =
+            stopped ? totalClaimedWei.add(totalBurnedWei).add(address(this).balance) : totalEntitlementWei;
         // We will never increase this balance since distribution funds are taken from genesis
         // amounts and not from inflation.
         _totalInflationAuthorizedWei = 0;
@@ -336,6 +400,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     function getClaimableAmount(uint256 _month) external view override entitlementStarted
         returns(uint256 _amountWei)
     {
+        _checkOptOut(msg.sender);
+        _checkIsMonthClaimable(getMonthToExpireNext(), _month);
         (, _amountWei) = _getClaimableWei(msg.sender, _month);
     }
 
@@ -348,57 +414,41 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     function getClaimableAmountOf(address _account, uint256 _month) external view override entitlementStarted
         returns(uint256 _amountWei)
     {
+        _checkOptOut(_account);
+        _checkIsMonthClaimable(getMonthToExpireNext(), _month);
         (, _amountWei) = _getClaimableWei(_account, _month);
     }
 
     /**
-     * @notice get claimable amount of wei for requesting account for specified month
-     * @param _month month of interest
-     * @return _amountWei amount of wei claimed for this account and provided month
+     * @notice Returns claimable months - reverts if none
+     * @return _startMonth first claimable month
+     * @return _endMonth last claimable month
      */
-    function getClaimedAmount(uint256 _month) external view override entitlementStarted
-        returns(uint256 _amountWei)
-    {
-        return claimed[msg.sender][_month];
+    function getClaimableMonths() external view override returns(uint256 _startMonth, uint256 _endMonth) {
+        require(nextMonthToClaimCandidate > 0, ERR_NO_MONTH_CLAIMABLE);
+        _startMonth = getMonthToExpireNext();
+        _endMonth = nextMonthToClaimCandidate - 1;
+        require(_startMonth <= _endMonth && _startMonth < NUMBER_OF_MONTHS, ERR_ALREADY_FINISHED);
     }
 
     /**
-     * @notice get claimed amount of wei for account for specified month
-     * @param _account the address of an account we want to get the claimable amount of wei
-     * @param _month month of interest
-     * @return _amountWei amount of wei claimed for provided account and month
+     * @notice Returns the next claimable month for '_rewardOwner'.
+     * @param _rewardOwner          address of the reward owner
      */
-    function getClaimedAmountOf(address _account, uint256 _month) external view override entitlementStarted
-        returns(uint256 _amountWei)
-    {
-        return claimed[_account][_month];
+    function nextClaimableMonth(address _rewardOwner) external view override returns (uint256) {
+        return _nextClaimableMonth(_rewardOwner, getMonthToExpireNext());
+    }
+
+    function switchToFallbackMode() external view override onlyFlareDaemon returns (bool) {
+        // do nothing - there is no fallback mode in DistributionToDelegators
+        return false;
     }
 
     /**
-     * @notice Time till next Wei will be claimable (in secods)
-     * @return _timeTill (sec) Time till next claimable Wei in seconds
+     * @notice Implement this function for updating daemonized contracts through AddressUpdater.
      */
-    function secondsTillNextClaim() external view override entitlementStarted
-        returns(uint256 _timeTill)
-    {
-        require(block.timestamp.sub(entitlementStartTs).div(MONTH) < NUMBER_OF_MONTHS, ERR_ALREADY_FINISHED);
-        return MONTH.sub(block.timestamp.sub(entitlementStartTs).mod(MONTH));
-    }
-    
-    /**
-     * Get the addresses of executors, who are allowed to call claimByExecutor, claimAndWrapByExecutor
-     * and claimToPersonalDelegationAccountByExecutor.
-     */    
-    function claimExecutors(address _rewardOwner) external view override returns (address[] memory) {
-        return claimExecutorSet[_rewardOwner].list;
-    }
-
-    /**
-     * Get the addresses of allowed recipients in the methods claimByExecutor and claimAndWrapByExecutor.
-     * Apart from these, the reward owner is always an allowed recipient.
-     */    
-    function allowedClaimRecipients(address _rewardOwner) external view override returns (address[] memory) {
-        return allowedClaimRecipientSet[_rewardOwner].list;
+    function getContractName() external pure override returns (string memory) {
+        return "DistributionToDelegators";
     }
 
     /**
@@ -434,9 +484,12 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         internal override
     {
         wNat = WNat(payable(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat")));
-        supply = Supply(_getContractAddress(_contractNameHashes, _contractAddresses, "Supply"));
         claimSetupManager = ClaimSetupManager(
             _getContractAddress(_contractNameHashes, _contractAddresses, "ClaimSetupManager"));
+        priceSubmitter = IIRandomProvider(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "PriceSubmitter"));
+        combinedNat = IICombinedNatBalance(
+            _getContractAddress(_contractNameHashes, _contractAddresses, "CombinedNat"));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -446,7 +499,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @notice Method for claiming unlocked airdrop amounts for specified month
      * @param _rewardOwner address of the owner of airdrop rewards
      * @param _recipient address representing the recipient of the reward
-     * @param _month month of interest
+     * @param _month last month of interest
+     * @return _claimedWei claimed amount
      */
     function _claimOrWrap(
         address _rewardOwner,
@@ -454,145 +508,98 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         uint256 _month,
         bool _wrap
     )
-        internal returns(uint256)
+        internal returns(uint256 _claimedWei)
     {
-        (uint256 weight, uint256 claimableWei) = _getClaimableWei(_rewardOwner, _month);
-        // Make sure we are not withdrawing 0 funds
-        if (claimableWei > 0) {
-            claimed[_rewardOwner][_month] = claimableWei;
-            // Update grand total claimed
-            totalClaimedWei = totalClaimedWei.add(claimableWei);
-            totalUnclaimedAmount[_month] = totalUnclaimedAmount[_month].sub(claimableWei);
-            totalUnclaimedWeight[_month] = totalUnclaimedWeight[_month].sub(weight);
-
-            if (_wrap) {
-                _wrapFunds(_recipient, claimableWei);
-            } else {
-                _transferFunds(_recipient, claimableWei);
-            }
-            // Emit the claim event
-            emit AccountClaimed(_rewardOwner, _recipient, _month, claimableWei);
-        }
-        return claimableWei;
+        _checkNonzeroRecipient(_recipient);
+        _checkOptOut(_rewardOwner);
+        uint256 monthToExpireNext = getMonthToExpireNext();
+        _checkIsMonthClaimable(monthToExpireNext, _month);
+        _claimedWei = _claim(_rewardOwner, _recipient, monthToExpireNext, _month);
+        // Update grand total claimed
+        totalClaimedWei = totalClaimedWei.add(_claimedWei);
+        _transferOrWrap(_recipient, _claimedWei, _wrap);
     }
 
     /**
-     * @notice Wrap (deposit) `_claimableAmount` to `_recipient` on WNat.
+     * @notice Transfers or wrap (deposit) `_rewardAmount` to `_recipient`.
      * @param _recipient            address representing the reward recipient
-     * @param _claimableAmount      number representing the amount to transfer
-     */
-    function _wrapFunds(address _recipient, uint256 _claimableAmount) internal {
-        // transfer total amount (state is updated and events are emitted in _claimOrWrap)
-        //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimOrWrap
-        wNat.depositTo{value: _claimableAmount}(_recipient);
-    }
-
-    /**
-     * @notice Transfers `_claimableAmount` to `_recipient`.
-     * @param _recipient            address representing the reward recipient
-     * @param _claimableAmount      number representing the amount to transfer
+     * @param _rewardAmount         number representing the amount to transfer
+     * @param _wrap                 should reward be wrapped immediately
      * @dev Uses low level call to transfer funds.
      */
-    function _transferFunds(address _recipient, uint256 _claimableAmount) internal {
-        // transfer total amount (state is updated and events are emitted in _claimOrWrap)
-        /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimOrWrap
-        (bool success, ) = _recipient.call{value: _claimableAmount}("");
-        /* solhint-enable avoid-low-level-calls */
-        require(success, ERR_CLAIM_FAILED);
-    }
-
-    /**
-     * @notice Update start and end block numbers, calculate random vote power blocks, expire too old month, pull funds
-     * @dev Only do some updates if distribution already started and not yet expired
-     */
-     //slither-disable-next-line reentrancy-eth          // guarded by nonReentrant in getTokenPoolSupplyData()
-    function _updateMonthlyClaimData() internal {
-        if (entitlementStartTs == 0 || entitlementStartTs > block.timestamp 
-            || nextMonthToExpireCandidate >= NUMBER_OF_MONTHS) return;
-
-        uint256 diffSec = block.timestamp.sub(entitlementStartTs);
-        uint256 currentMonth = diffSec.div(MONTH);
-        
-        // can be called multiple times per block - update only needed once
-        if (endBlockNumber[currentMonth] == block.number) return;
-
-        uint256 remainingSec = diffSec - currentMonth * MONTH;
-        uint256 currentWeek = remainingSec.div(WEEK);
-
-        // if not the first week, which is left out for claiming, update start/end blocks
-        if (currentWeek > 0 && currentMonth < NUMBER_OF_MONTHS) {
-            // set starting block if not set yet
-            if (startBlockNumber[currentMonth] == 0) {
-                startBlockNumber[currentMonth] = block.number;
-            }
-            // update ending block
-            endBlockNumber[currentMonth] = block.number;
-        }
-
-        // expire old month
-        uint256 cleanupBlockNumber = wNat.cleanupBlockNumber();
-        uint256 blockNumber = startBlockNumber[nextMonthToExpireCandidate];
-        if (blockNumber > 0 && blockNumber < cleanupBlockNumber) {
-            uint256 toBurnWei = totalUnclaimedAmount[nextMonthToExpireCandidate];
-            nextMonthToExpireCandidate++;
-
-            // Any to burn?
-            if (toBurnWei > 0) {
-                // Accumulate what we are about to burn
-                totalBurnedWei = totalBurnedWei.add(toBurnWei);
-                // Get the burn address; make it payable
-                address payable burnAddress = payable(supply.burnAddress());
-                //slither-disable-next-line arbitrary-send-eth
-                burnAddress.transfer(toBurnWei);
+    function _transferOrWrap(address _recipient, uint256 _rewardAmount, bool _wrap) internal {
+        if (_rewardAmount > 0) {
+            if (_wrap) {
+                // transfer total amount (state is updated and events are emitted in _claimReward)
+                //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimReward
+                wNat.depositTo{value: _rewardAmount}(_recipient);
+            } else {
+                // transfer total amount (state is updated and events are emitted in _claimReward)
+                /* solhint-disable avoid-low-level-calls */
+                //slither-disable-next-line arbitrary-send-eth          // amount always calculated by _claimReward
+                (bool success, ) = _recipient.call{value: _rewardAmount}("");
+                /* solhint-enable avoid-low-level-calls */
+                require(success, ERR_CLAIM_FAILED);
             }
         }
-
-        // if in the last week, calculate votePowerBlocks and pull amount
-        // it could be called twice - just to be sure it is called at least once
-        if (currentWeek == 4 && currentMonth < NUMBER_OF_MONTHS && !stopped) {
-            _updateVotePowerBlocksAndWeight(currentMonth);
-            _updateDistributableAmount(currentMonth);
-        }
     }
-    
+
     /**
      * @notice Calculate and pull the distributable amount for the specified month
      * @param _month month of interest
      * @dev Every 30 days from initial day 1/36 of the total amount is unlocked and becomes available for claiming
-     *      This method could be called more than once per month, so take care to only pull once
      */
     function _updateDistributableAmount(uint256 _month) internal {
-        if (_month < NUMBER_OF_MONTHS && totalAvailableAmount[_month] == 0) {
-            // maximal claimable bips for this month
-            uint256 claimBIPS = Math.min((_month + 1).mul(MONTHLY_CLAIMABLE_BIPS), TOTAL_CLAIMABLE_BIPS);
-            // what can be distributed minus what was already distributed till now
-            uint256 amountWei = Math.min(Math.min(
-                totalEntitlementWei.mulDiv(claimBIPS, TOTAL_CLAIMABLE_BIPS) - totalDistributableAmount,
-                treasury.MAX_PULL_AMOUNT_WEI()),
-                address(treasury).balance);
-            // update total values
-            totalAvailableAmount[_month] = amountWei;
-            totalUnclaimedAmount[_month] = amountWei;
-            totalDistributableAmount += amountWei;
-            // pull funds
-            treasury.pullFunds(amountWei);
-        }
+        // maximal claimable bips for this month
+        uint256 claimBIPS = Math.min((_month + 1).mul(MONTHLY_CLAIMABLE_BIPS), TOTAL_CLAIMABLE_BIPS);
+        // what can be distributed minus what was already distributed till now
+        uint256 amountWei = Math.min(Math.min(
+            totalEntitlementWei.mulDiv(claimBIPS, TOTAL_CLAIMABLE_BIPS) - totalDistributableAmount,
+            treasury.MAX_PULL_AMOUNT_WEI()),
+            address(treasury).balance);
+        // update total values
+        totalAvailableAmount[_month] = amountWei;
+        totalUnclaimedAmount[_month] = amountWei;
+        totalDistributableAmount += amountWei;
+        // enable claims for current month
+        nextMonthToClaimCandidate = uint128(_month + 1); // max _month is 35
+        // pull funds
+        treasury.pullFunds(amountWei);
     }
 
     /**
      * @notice Calculate random vote power blocks and weight for the specified month
      * @param _month month of interest
-     * @dev Can be called more than once per month, last call for specified month should apply
+     * @return info if successfully calculated - random ok
      */
-    function _updateVotePowerBlocksAndWeight(uint256 _month) internal {
+    function _updateVotePowerBlocksAndWeight(uint256 _month) internal returns (bool) {
+        uint256 random;
+        if (useGoodRandom) {
+            bool goodRandom;
+            (random, goodRandom) = priceSubmitter.getCurrentRandomWithQuality();
+            if (!goodRandom) {
+                if (waitingForGoodRandomSinceTs == 0) {
+                    // random is not good for the first time - set start waiting timestamp
+                    waitingForGoodRandomSinceTs = block.timestamp;
+                    return false; // wait
+                } else if (waitingForGoodRandomSinceTs + maxWaitForGoodRandomSeconds <= block.timestamp) {
+                    // we have waited long enough - reset start waiting timestamp and proceed
+                    waitingForGoodRandomSinceTs = 0;
+                } else {
+                    return false; // wait
+                }
+            } else {
+                waitingForGoodRandomSinceTs = 0; // we got a good random - reset start waiting timestamp
+            }
+        } else {
+            random = block.timestamp + priceSubmitter.getCurrentRandom();
+        }
+
         uint256 startBlock = startBlockNumber[_month];
         uint256 endBlock = endBlockNumber[_month];
-        // no underflow as both are set at the same time, only endBlock can be updated later
+        // no underflow as endBlock is set later as startBlock
         uint256 slotSize = (endBlock - startBlock) / NUMBER_OF_VOTE_POWER_BLOCKS;
-
         uint256[] memory votePowerBlocks = new uint256[](NUMBER_OF_VOTE_POWER_BLOCKS);
-        uint256 random = block.timestamp + priceSubmitter.getCurrentRandom();
         for (uint256 i = 0; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
             random = uint256(keccak256(abi.encode(random, i)));
             //slither-disable-next-line weak-prng
@@ -601,6 +608,42 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
         }
         votePowerBlockNumbers[_month] = votePowerBlocks;
         totalUnclaimedWeight[_month] = _calculateUnclaimedWeight(votePowerBlocks);
+        return true;
+    }
+
+    function _claim(
+        address _rewardOwner,
+        address _recipient,
+        uint256 _monthToExpireNext,
+        uint256 _month
+    )
+        internal returns (uint256 _claimedWei)
+    {
+        for (uint256 month = _nextClaimableMonth(_rewardOwner, _monthToExpireNext); month <= _month; month++) {
+            (uint256 weight, uint256 claimableWei) = _getClaimableWei(_rewardOwner, month);
+            if (claimableWei > 0) {
+                totalUnclaimedAmount[month] = totalUnclaimedAmount[month].sub(claimableWei);
+                totalUnclaimedWeight[month] = totalUnclaimedWeight[month].sub(weight);
+                _claimedWei += claimableWei;
+
+                // Emit the claim event
+                emit AccountClaimed(_rewardOwner, _recipient, month, claimableWei);
+            }
+        }
+        if (ownerNextClaimableMonth[_rewardOwner] < _month + 1) {
+            ownerNextClaimableMonth[_rewardOwner] = _month + 1;
+        }
+    }
+
+    function _checkIsMonthClaimable(uint256 _monthToExpireNext, uint256 _month) internal view {
+        require(_monthToExpireNext <= _month, ERR_MONTH_EXPIRED);
+        require(_month < NUMBER_OF_MONTHS, ERR_MONTH_NOT_CLAIMABLE);
+        // it may not be yet claimable if first block in new month or if waiting for good random
+        require(_month < nextMonthToClaimCandidate, ERR_MONTH_NOT_CLAIMABLE_YET);
+    }
+
+    function _checkOptOut(address _account) internal view {
+        require(!optOut[_account], ERR_OPT_OUT);
     }
 
     /**
@@ -610,16 +653,20 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      */
     function _calculateUnclaimedWeight(uint256[] memory _votePowerBlocks) internal view returns (uint256 _amountWei) {
         for (uint256 i = 0; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
-            _amountWei += wNat.totalSupplyAt(_votePowerBlocks[i]);
+            _amountWei += combinedNat.totalSupplyAt(_votePowerBlocks[i]);
         }
         uint256 len = optOutAddresses.length;
         while (len > 0) {
             len--;
             address optOutAddress = optOutAddresses[len];
             for (uint256 i = 0; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
-                _amountWei -= wNat.balanceOfAt(optOutAddress, _votePowerBlocks[i]);
+                _amountWei -= combinedNat.balanceOfAt(optOutAddress, _votePowerBlocks[i]);
             }
         }
+    }
+
+    function _nextClaimableMonth(address _owner, uint256 _monthToExpireNext) internal view returns (uint256) {
+        return Math.max(ownerNextClaimableMonth[_owner], _monthToExpireNext);
     }
 
     /**
@@ -628,15 +675,10 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @param _month month of interest
      * @dev Every 30 days from initial day 1/36 of the amount is released
      */
-    function _getClaimableWei(address _owner, uint256 _month) internal view entitlementStarted
+    function _getClaimableWei(address _owner, uint256 _month) internal view
         returns(uint256 _weight, uint256 _claimableWei)
     {
-        require(!optOut[_owner], ERR_OPT_OUT);
-        require(getMonthToExpireNext() <= _month, ERR_MONTH_EXPIRED);
-        require(_month < NUMBER_OF_MONTHS, ERR_MONTH_NOT_CLAIMABLE);
-        require(_month < getCurrentMonth(), ERR_MONTH_NOT_CLAIMABLE_YET);
-
-        if (claimed[_owner][_month] > 0) {
+        if (ownerNextClaimableMonth[_owner] > _month) {
             return (0, 0);
         }
 
@@ -647,7 +689,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
 
         uint256[] memory votePowerBlocks = votePowerBlockNumbers[_month];
         for (uint256 i = 0; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
-            _weight += wNat.balanceOfAt(_owner, votePowerBlocks[i]);
+            _weight += combinedNat.balanceOfAt(_owner, votePowerBlocks[i]);
         }
         if (_weight == 0) {
             return (0, 0);
@@ -662,10 +704,10 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
     }
 
     function _checkExecutorAndAllowedRecipient(address _rewardOwner, address _recipient) private view {
-        require(claimExecutorSet[_rewardOwner].index[msg.sender] != 0, 
-            ERR_EXECUTOR_ONLY);
-        require(_recipient == _rewardOwner || allowedClaimRecipientSet[_rewardOwner].index[_recipient] != 0,
-            ERR_RECIPIENT_NOT_ALLOWED);
+        if (msg.sender == _rewardOwner) {
+            return;
+        }
+        claimSetupManager.checkExecutorAndAllowedRecipient(msg.sender, _rewardOwner, _recipient);
     }
 
     /**
@@ -673,6 +715,10 @@ contract DistributionToDelegators is IDistributionToDelegators, IITokenPool,
      * @param _balanceExpectedWei The computed balance expected.
      */
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
-        return totalDistributableAmount.sub(totalClaimedWei).sub(totalBurnedWei);
+        return stopped ? 0 : totalDistributableAmount.sub(totalClaimedWei).sub(totalBurnedWei);
+    }
+
+    function _checkNonzeroRecipient(address _address) private pure {
+        require(_address != address(0), ERR_RECIPIENT_ZERO);
     }
 }

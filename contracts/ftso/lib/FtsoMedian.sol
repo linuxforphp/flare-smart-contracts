@@ -1,39 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-
 library FtsoMedian {
-
-    struct Data {                   // used for storing the results of weighted median calculation
-        uint256 medianIndex;        // index of the median price
-        uint256 quartile1Index;     // index of the first price corresponding to the first quartile price
-        uint256 quartile3Index;     // index of the last price corresponding to the third quartil price        
-        uint256 leftSum;            // auxiliary sum of weights left from the median price
-        uint256 rightSum;           // auxiliary sum of weights right from the median price
-        uint256 medianWeight;       // weight of the median price
-        uint256 lowWeightSum;       // sum of weights corresponding to the prices too low for reward
-        uint256 rewardedWeightSum;  // sum of weights corresponding to the prices eligible for reward
-        uint256 highWeightSum;      // sum of weights corresponding to the prices too high for reward
-        uint256 finalMedianPrice;   // median price
-        uint256 quartile1Price;     // first quartile price
-        uint256 quartile3Price;     // third quartile price
+    
+    struct Data {                       // used for storing the results of weighted median calculation
+        uint256 medianIndex;            // index of the median price
+        uint256 quartile1Index;         // index of the first price corresponding to the first quartile price
+        uint256 quartile3Index;         // index of the last price corresponding to the third quartil price        
+        uint256 leftSum;                // auxiliary sum of weights left from the median price
+        uint256 rightSum;               // auxiliary sum of weights right from the median price
+        uint256 medianWeight;           // weight of the median price
+        uint256 lowWeightSum;           // sum of weights corresponding to the prices too low for reward
+        uint256 rewardedWeightSum;      // sum of weights corresponding to the prices eligible for reward
+        uint256 highWeightSum;          // sum of weights corresponding to the prices too high for reward
+        uint256 finalMedianPrice;       // median price
+        uint256 quartile1Price;         // first quartile price
+        uint256 quartile3Price;         // third quartile price
+        uint256 lowElasticBandPrice;    // price between lowElasticBandPrice and median price is rewarded
+        uint256 highElasticBandPrice;   // price between median price and highElasticBandPrice is rewarded
     }
 
-    struct QSVariables {            // used for storing variables in quick select algorithm
-        uint256 leftSum;            // sum of values left to the current position
-        uint256 rightSum;           // sum of values right to the current position
-        uint256 newLeftSum;         // updated sum of values left to the current position
-        uint256 newRightSum;        // updated sum of values right to the current position
-        uint256 pivotWeight;        // weight associated with the pivot index
-        uint256 leftMedianWeight;   // sum of weights left to the median
-        uint256 rightMedianWeight;  // sum of weights right to the median
+    struct QSVariables {                // used for storing variables in quick select algorithm
+        uint256 leftSum;                // sum of values left to the current position
+        uint256 rightSum;               // sum of values right to the current position
+        uint256 newLeftSum;             // updated sum of values left to the current position
+        uint256 newRightSum;            // updated sum of values right to the current position
+        uint256 pivotWeight;            // weight associated with the pivot index
+        uint256 leftMedianWeight;       // sum of weights left to the median
+        uint256 rightMedianWeight;      // sum of weights right to the median
     }
 
-    struct QSPositions {            // used for storing positions in quick select algorithm
-        uint256 pos;                // position index
-        uint256 left;               // index left to the position index
-        uint256 right;              // index right to the position index
-        uint256 pivotId;            // pivot index
+    struct QSPositions {                // used for storing positions in quick select algorithm
+        uint256 pos;                    // position index
+        uint256 left;                   // index left to the position index
+        uint256 right;                  // index right to the position index
+        uint256 pivotId;                // pivot index
     }
 
     /**
@@ -45,7 +46,8 @@ library FtsoMedian {
      */
     function _computeWeighted(
         uint256[] memory _price,
-        uint256[] memory _weight
+        uint256[] memory _weight,
+        uint256 _elasticBandWidthPPM
     ) 
         internal view 
         returns (
@@ -137,6 +139,11 @@ library FtsoMedian {
 
         // reward weight sum
         _d.rewardedWeightSum = totalSum - _d.lowWeightSum - _d.highWeightSum;
+
+        // calculate low and high elastic band prices
+        uint256 elasticBandPriceDiff = _d.finalMedianPrice * _elasticBandWidthPPM / 1e6;
+        _d.lowElasticBandPrice = _d.finalMedianPrice - elasticBandPriceDiff;
+        _d.highElasticBandPrice = _d.finalMedianPrice + elasticBandPriceDiff;
     }
 
     /**

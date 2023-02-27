@@ -98,7 +98,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 GOVERNANCE_GENESIS_ADDRESS,
                 GOVERNANCE_GENESIS_ADDRESS,
                 ADDRESS_UPDATER,
-                priceSubmitter.address,
                 constants.ZERO_ADDRESS,
                 0,
                 120,
@@ -131,7 +130,7 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                     1e10,
                     defaultPriceEpochCyclicBufferSize
                 );
-                await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
+                await ftso.configureEpochs(1, 1, 1000, 10000, 50, 500, 0, 0, [accounts[5], accounts[6], accounts[7]], {from: accounts[10]});
                 await ftso.setVotePowerBlock(1, {from: accounts[10]});
                 await ftso.activateFtso(0, 120, 60, {from: accounts[10]});
 
@@ -898,7 +897,6 @@ contract(`PriceSubmitter.sol; ${getTestFile(__filename)}; PriceSubmitter unit te
                 GOVERNANCE_GENESIS_ADDRESS,
                 GOVERNANCE_GENESIS_ADDRESS,
                 ADDRESS_UPDATER,
-                priceSubmitter.address,
                 constants.ZERO_ADDRESS,
                 timestamp,
                 120,

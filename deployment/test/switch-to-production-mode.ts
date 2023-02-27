@@ -33,7 +33,7 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     // Assert
     assert.equal(governancePointer, governanceSettings.address);
   }
-  
+
   async function checkGovernance(contractName: string) {
     // Assemble
     const governedBase = await GovernedBase.at(contracts.getContractAddress(contractName));
@@ -57,13 +57,13 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     await checkGovernance(contractName);
     await checkGovernancePointerContract(contractName);
   }
-  
+
   describe(Contracts.ADDRESS_UPDATER, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.ADDRESS_UPDATER);
     });
   });
-  
+
   describe(Contracts.INFLATION_ALLOCATION, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.INFLATION_ALLOCATION);
@@ -92,19 +92,19 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.FTSO_REWARD_MANAGER);
     });
-  });    
+  });
 
   describe(Contracts.PRICE_SUBMITTER, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.PRICE_SUBMITTER);
     });
-  });      
+  });
 
   describe(Contracts.SUPPLY, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.SUPPLY);
     });
-  });      
+  });
 
   describe(Contracts.VOTER_WHITELISTER, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
@@ -124,38 +124,12 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     });
   });
 
-  describe(Contracts.DISTRIBUTION, async () => {
+  describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async function() {
-      if (!parameters.deployDistributionContract) return this.skip();
-      await checkProductionSwitch(Contracts.DISTRIBUTION);
-    });
-    it("Should not have deployed", async function () {
-      if (parameters.deployDistributionContract) return this.skip();
-      try {
-        await checkProductionSwitch(Contracts.DISTRIBUTION);
-        assert.fail('The expected Error was not thrown.');
-      } catch (err: any) {
-        assert.include(err.message, `${Contracts.DISTRIBUTION} not found`);
-      }
+      await checkProductionSwitch(Contracts.DISTRIBUTION_TO_DELEGATORS);
     });
   });
 
-  describe(Contracts.DISTRIBUTION_TO_DELEGATORS, async () => {
-    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async function() {
-      if (!parameters.deployDistributionContract) return this.skip();
-      await checkProductionSwitch(Contracts.DISTRIBUTION_TO_DELEGATORS);
-    });
-    it("Should not have deployed", async function () {
-      if (parameters.deployDistributionContract) return this.skip();
-      try {
-        await checkProductionSwitch(Contracts.DISTRIBUTION_TO_DELEGATORS);
-        assert.fail('The expected Error was not thrown.');
-      } catch (err: any) {
-        assert.include(err.message, `${Contracts.DISTRIBUTION_TO_DELEGATORS} not found`);
-      }
-    });
-  });
-  
   describe(Contracts.INCENTIVE_POOL_TREASURY, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.INCENTIVE_POOL_TREASURY);
@@ -198,25 +172,33 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.VALIDATOR_REGISTRY, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.VALIDATOR_REGISTRY);
+    });
+  });
+
+  describe(Contracts.VALIDATOR_REWARD_MANAGER, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.VALIDATOR_REWARD_MANAGER);
+    });
+  });
+
   describe(Contracts.POLLING_FOUNDATION, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
       await checkProductionSwitch(Contracts.POLLING_FOUNDATION);
     });
   });
 
+  describe(Contracts.FLARE_ASSET_REGISTRY, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.FLARE_ASSET_REGISTRY);
+    });
+  });
+
   describe(Contracts.CLAIM_SETUP_MANAGER, async () => {
     it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async function() {
-      if (!parameters.deployDistributionContract) return this.skip();
       await checkProductionSwitch(Contracts.CLAIM_SETUP_MANAGER);
     });
-    it("Should not have deployed", async function () {
-      if (parameters.deployDistributionContract) return this.skip();
-      try {
-        await checkGovernance(Contracts.CLAIM_SETUP_MANAGER);
-        assert.fail('The expected Error was not thrown.');
-      } catch (err: any) {
-        assert.include(err.message, `${Contracts.CLAIM_SETUP_MANAGER} not found`);
-      }
   });
-});
 });

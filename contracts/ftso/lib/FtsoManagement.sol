@@ -36,6 +36,7 @@ library FtsoManagement {
     string internal constant ERR_ALREADY_ADDED = "Already added";
     string internal constant ERR_FTSO_ASSET_FTSO_ZERO = "Asset ftsos list empty";
     string internal constant ERR_FTSO_EQUALS_ASSET_FTSO = "ftso equals asset ftso";
+    string internal constant ERR_GOV_PARAMS_UPDATED = "Gov. params updated";
     
     // libraries cannot emit event from interfaces, so we have to copy events here
     event FtsoAdded(IIFtso ftso, bool add);     // copied from IFtsoManager.sol
@@ -51,6 +52,7 @@ library FtsoManagement {
         public
     {
         require(_settings.initialized, ERR_GOV_PARAMS_NOT_INIT_FOR_FTSOS);
+        require(!_settings.changed || _settings.updateTs <= block.timestamp, ERR_GOV_PARAMS_UPDATED);
 
         _checkAssetFtsosAreManaged(_state, _ftso.getAssetFtsos());
 
@@ -65,6 +67,8 @@ library FtsoManagement {
                     revert(ERR_ALREADY_ADDED);
                 }
             }
+            // default value for elasticBandWidthPPM is 0
+            delete _settings.elasticBandWidthPPMFtso[_ftso]; 
         }
 
         // Configure 
@@ -75,6 +79,8 @@ library FtsoManagement {
             _settings.highAssetUSDThreshold,
             _settings.highAssetTurnoutThresholdBIPS,
             _settings.lowNatTurnoutThresholdBIPS,
+            _settings.elasticBandRewardBIPS,
+            _settings.elasticBandWidthPPMFtso[_ftso],
             _settings.trustedAddresses
         );
         
@@ -87,7 +93,7 @@ library FtsoManagement {
         if (_state.voterWhitelister.maxVotersForFtso(ftsoIndex) == 0) {
             _state.voterWhitelister.addFtso(ftsoIndex);
         }
-        
+
         emit FtsoAdded(_ftso, true);
     }
     
@@ -126,8 +132,10 @@ library FtsoManagement {
         }
 
         // Add without duplicate check
+        _settings.elasticBandWidthPPMFtso[_ftsoToAdd] = _settings.elasticBandWidthPPMFtso[ftsoToRemove];
+        delete _settings.elasticBandWidthPPMFtso[ftsoToRemove];
         addFtso(_state, _settings, _ftsoToAdd, false, _lastUnprocessedPriceEpochInitialized);
-        
+
         // replace old contract with the new one in multi asset ftsos
         IIFtso[] memory contracts = _state.ftsoRegistry.getSupportedFtsos();
 
@@ -193,7 +201,8 @@ library FtsoManagement {
      * @dev Deactivates _ftso
      */
     function removeFtso(
-        State storage _state, 
+        State storage _state,
+        FtsoManagerSettings.State storage _settings,
         IIFtso _ftso
     ) 
         public
@@ -202,6 +211,7 @@ library FtsoManagement {
         _state.voterWhitelister.removeFtso(ftsoIndex);
         _state.ftsoRegistry.removeFtso(_ftso);
         cleanFtso(_state, _ftso);
+        delete _settings.elasticBandWidthPPMFtso[_ftso];
     }
 
     function cleanFtso(

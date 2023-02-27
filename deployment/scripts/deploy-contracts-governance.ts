@@ -1,5 +1,5 @@
 /**
- * This script will deploy all contracts for the FTSO MVP.
+ * This script will deploy PollingFoundation contract.
  * It will output, on stdout, a json encoded list of contracts
  * that were deployed. It will write out to stderr, status info
  * as it executes.
@@ -17,13 +17,10 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
   const web3 = hre.web3;
   const artifacts = hre.artifacts;
 
-  // Define repository for created contracts
-  // Define address updater contracts names list
-  const addressUpdaterContracts: string[] = [];
   // Define accounts in play for the deployment process
   let deployerAccount: any;
 
-  
+
   try {
     deployerAccount = web3.eth.accounts.privateKeyToAccount(parameters.deployerPrivateKey);
   } catch (e) {
@@ -44,7 +41,7 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
     addressUpdater,
     parameters.proposers
   );
-  spewNewContractInfo(contracts, addressUpdaterContracts, PollingFoundation.contractName, `PollingFoundation.sol`, pollingFoundation.address, quiet);
+  spewNewContractInfo(contracts, null, PollingFoundation.contractName, `PollingFoundation.sol`, pollingFoundation.address, quiet);
 
   if (!quiet) {
     console.error("Contracts in JSON:");

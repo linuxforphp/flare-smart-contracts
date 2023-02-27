@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../interface/IIFtso.sol";
 
 /**
  * @title A library used for Ftso Manager settings management
  */
 library FtsoManagerSettings {
     struct State {
+        uint256 updateTs; // time when updated settings should be pushed to ftsos
         // struct holding settings related to FTSOs
         // configurable settings
         uint256 maxVotePowerNatThresholdFraction; // high threshold for native token vote power per voter
@@ -18,9 +20,18 @@ library FtsoManagerSettings {
         uint256 lowNatTurnoutThresholdBIPS;
         uint256 rewardExpiryOffsetSeconds; // Reward epoch closed earlier than 
                                            //block.timestamp - rewardExpiryOffsetSeconds expire
-        address[] trustedAddresses; //trusted addresses will be used as a fallback mechanism for setting the price
+        uint256 elasticBandRewardBIPS; // hybrid reward band, where elasticBandRewardBIPS goes to the 
+        // elastic band and 10000 - elasticBandRewardBIPS to the IQR          
+        address[] trustedAddresses; // trusted addresses will be used as a fallback mechanism for setting the price
         bool changed;
         bool initialized;
+        mapping(IIFtso => uint256) elasticBandWidthPPMFtso; // prices within elasticBandWidthPPMFtso 
+        // of median price are rewarded
+    }
+
+    function _setUpdateTs(State storage _state, uint256 _updateTs) internal {
+        require (_updateTs == 0 || _updateTs > block.timestamp, "invalid update ts");
+        _state.updateTs = _updateTs;
     }
 
     function _setState (
@@ -32,6 +43,7 @@ library FtsoManagerSettings {
         uint256 _highAssetTurnoutThresholdBIPS,
         uint256 _lowNatTurnoutThresholdBIPS,
         uint256 _rewardExpiryOffsetSeconds,
+        uint256 _elasticBandRewardBIPS,
         address[] memory _trustedAddresses
     ) 
         internal
@@ -63,6 +75,10 @@ library FtsoManagerSettings {
         if (_state.rewardExpiryOffsetSeconds != _rewardExpiryOffsetSeconds) {
             _state.changed = true;
             _state.rewardExpiryOffsetSeconds = _rewardExpiryOffsetSeconds;
+        }
+        if (_state.elasticBandRewardBIPS != _elasticBandRewardBIPS) {
+            _state.changed = true;
+            _state.elasticBandRewardBIPS = _elasticBandRewardBIPS;
         }
         if (_state.trustedAddresses.length != _trustedAddresses.length) {
             _state.trustedAddresses = _trustedAddresses;

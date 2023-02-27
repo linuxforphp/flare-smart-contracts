@@ -252,7 +252,6 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
       accounts[0],
       accounts[0],
       ADDRESS_UPDATER,
-      mockPriceSubmitter.address,
       constants.ZERO_ADDRESS,
       startTs,
       PRICE_EPOCH_DURATION_S,
@@ -266,8 +265,8 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     await mockInflation.setInflationReceiver(ftsoRewardManager.address);
 
     await ftsoManager.updateContractAddresses(
-      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-      [ADDRESS_UPDATER, ftsoRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, mockCleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
+      encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+      [ADDRESS_UPDATER, mockPriceSubmitter.address, ftsoRewardManager.address, registry.address, mockVoterWhitelister.address, mockSupply.address, mockCleanupBlockNumberManager.address], { from: ADDRESS_UPDATER });
 
     await registry.updateContractAddresses(
       encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER]),

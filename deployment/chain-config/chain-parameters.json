@@ -17,6 +17,10 @@
                     "description": "Only used in dev testing deploys - the max amount minted.",
                     "type": "integer"
                 },
+                "elasticBandWidthPPM": {
+                    "description": "Hybrid reward band, prices within elasticBandWidthPPM of median are rewarded (in parts-per-million).",
+                    "type": "integer"
+                },
                 "ftsoDecimals": {
                     "description": "Number of decimals in FTSO USD price.",
                     "type": "integer"
@@ -38,6 +42,7 @@
                 "assetDecimals",
                 "assetSymbol",
                 "dummyAssetMinterMax",
+                "elasticBandWidthPPM",
                 "ftsoDecimals",
                 "initialPriceUSDDec5",
                 "xAssetName",
@@ -71,10 +76,6 @@
             "description": "Inital size for voter whitelist for price submission. It can later be changed for each FTSO by the governance.",
             "type": "integer"
         },
-        "deployDistributionContract": {
-            "description": "Whether `Distribution` contract should be deployed.",
-            "type": "boolean"
-        },
         "deployDummyXAssetTokensAndMinters": {
             "description": "Whether dummy FAsset tokens should be deployed. Only `true` for dev testing deploys.",
             "type": "boolean"
@@ -91,6 +92,10 @@
             "description": "Unix timestamp of the latest distribution start.",
             "type": "integer"
         },
+        "distributionToDelegatorsGasLimit": {
+            "description": "Gas limit for daemonize calls of on DistributionToDelegators contract.",
+            "type": "integer"
+        },
         "distributionTotalEntitlementWei": {
             "description": "Distribution total entitlement, in natural currency Wei.\nBig integer, formatted as string.",
             "type": "string"
@@ -98,6 +103,10 @@
         "distributionTreasuryAddress": {
             "description": "Distribution treasury contract address. It is deployed to the genesis block with the fixed address  \"0x1000000000000000000000000000000000000004\".",
             "type": "string"
+        },
+        "elasticBandRewardBIPS": {
+            "description": "Hybrid reward band, where elasticBandRewardBIPS goes to the elastic band and 10000 - elasticBandRewardBIPS to the IQR. \n For test purposes we recommend 0.",
+            "type": "integer"
         },
         "executorFeeValueUpdateOffsetEpochs": {
             "description": "Executor fee value update timelock measured in reward epochs.\nThe parameter determines in how many reward epochs the new fee value submitted by an executor becomes effective. \nFor test purposes we recommend 3.",
@@ -107,9 +116,9 @@
             "description": "Max allowed executor fee value. In whole native units, not Wei.",
             "type": "integer"
         },
-        "executorMinFeeValueNAT": {
-            "description": "Min allowed executor fee value. In whole native units, not Wei.",
-            "type": "integer"
+        "executorMinFeeValueWei": {
+            "description": "Min allowed executor fee value, in natural currency Wei.\nBig integer, formatted as string.",
+            "type": "string"
         },
         "executorRegisterFeeValueNAT": {
             "description": "Executor registration fee value. In whole native units, not Wei.",
@@ -251,6 +260,10 @@
             "description": "Defines high threshold for native token vote power when revealing a price vote. The actual max threshold is calculated as \n`total_NAT_vote_power / maxVotePowerNatThresholdFraction`. \nAny provider's native token vote power is capped to this max threshold when revealing a price vote.",
             "type": "integer"
         },
+        "nativeElasticBandWidthPPM": {
+            "description": "Hybrid reward band, prices for native currency within nativeElasticBandWidthPPM of median are rewarded (in parts-per-million).",
+            "type": "integer"
+        },
         "nativeFtsoDecimals": {
             "description": "The number of decimals for USD price of the native currency.",
             "type": "integer"
@@ -346,16 +359,17 @@
         "assets",
         "defaultRewardFeePercentageBIPS",
         "defaultVoterWhitelistSize",
-        "deployDistributionContract",
         "deployDummyXAssetTokensAndMinters",
         "deployNATFtso",
         "deployerPrivateKey",
         "distributionLatestEntitlementStart",
+        "distributionToDelegatorsGasLimit",
         "distributionTotalEntitlementWei",
         "distributionTreasuryAddress",
+        "elasticBandRewardBIPS",
         "executorFeeValueUpdateOffsetEpochs",
         "executorMaxFeeValueNAT",
-        "executorMinFeeValueNAT",
+        "executorMinFeeValueWei",
         "executorRegisterFeeValueNAT",
         "flareDaemonAddress",
         "flareDaemonGasExceededHoldoffBlocks",
@@ -388,6 +402,7 @@
         "lowNatTurnoutThresholdBIPS",
         "maxVotePowerAssetThresholdFraction",
         "maxVotePowerNatThresholdFraction",
+        "nativeElasticBandWidthPPM",
         "nativeFtsoDecimals",
         "nativeSymbol",
         "priceDeviationThresholdBIPS",

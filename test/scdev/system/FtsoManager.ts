@@ -94,7 +94,6 @@ const MockContract = artifacts.require("MockContract");
               GOVERNANCE_GENESIS_ADDRESS,
               flareDaemon.address,
               ADDRESS_UPDATER,
-              priceSubmitter.address,
               constants.ZERO_ADDRESS,
               startTs,
               60,
@@ -105,11 +104,11 @@ const MockContract = artifacts.require("MockContract");
             );
 
             await ftsoManager.updateContractAddresses(
-              encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
-              [ADDRESS_UPDATER, rewardManagerMock.address, ftsoRegistryMock.address, voterWhitelisterMock.address, supplyMock.address, cleanupBlockNumberManagerMock.address], {from: ADDRESS_UPDATER});
+              encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER, Contracts.FTSO_REWARD_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER]),
+              [ADDRESS_UPDATER, priceSubmitter.address, rewardManagerMock.address, ftsoRegistryMock.address, voterWhitelisterMock.address, supplyMock.address, cleanupBlockNumberManagerMock.address], {from: ADDRESS_UPDATER});
         
 
-            await ftsoManager.setGovernanceParameters(10, 10, 500, 100000, 5000, 300, 50000, [], {from: GOVERNANCE_GENESIS_ADDRESS});
+            await ftsoManager.setGovernanceParameters(0, 10, 10, 500, 100000, 5000, 300, 0, 50000, [], {from: GOVERNANCE_GENESIS_ADDRESS});
 
             await priceSubmitter.updateContractAddresses(
               encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.FTSO_MANAGER]),

@@ -21,7 +21,7 @@ contract(`IncentivePoolTreasury.sol; ${getTestFile(__filename)}; Incentive pool 
   describe("Treasury", async () => {
     beforeEach(async () => {
       incentivePoolTreasury = await IncentivePoolTreasury.new();
-      incentivePoolTreasury.initialiseFixedAddress()
+      await incentivePoolTreasury.initialiseFixedAddress()
     })
 
     it("should set IncentivePool", async() => {
@@ -55,8 +55,8 @@ contract(`IncentivePoolTreasury.sol; ${getTestFile(__filename)}; Incentive pool 
     
     beforeEach(async () => {
       incentivePoolTreasury = await IncentivePoolTreasury.new();
-      incentivePoolTreasury.initialiseFixedAddress()
-      incentivePoolTreasury.setIncentivePoolContract(accounts[15], {from: governance});
+      await incentivePoolTreasury.initialiseFixedAddress()
+      await incentivePoolTreasury.setIncentivePoolContract(accounts[15], {from: governance});
 
     })
 

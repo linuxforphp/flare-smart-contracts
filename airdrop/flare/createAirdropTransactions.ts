@@ -99,14 +99,6 @@ const { argv } = require("yargs")
         demandOption: "Deployment name is required (-ga or --generate-airdrop)",
         nargs: 1
     })
-    .option("gd", {
-        alias: "generate-distribution",
-        describe: "Should transactions for distribution be generated",
-        type: "boolean",
-        default: true,
-        demandOption: "Deployment name is required (-gd or --generate-distribution)",
-        nargs: 1
-    })
     // .option("c", {
     //     alias: "contingent-percentage",
     //     describe: "contingent-percentage to be used at the airdrop, default to 100%",
@@ -144,8 +136,7 @@ async function main(
     deploymentName: string, 
     deploymentConfig: string,
     batchSize: number,
-    createInitial: boolean,
-    createDistribution: boolean
+    createInitial: boolean
     ){
 
 const separatorLine = "--------------------------------------------------------------------------------\n"
@@ -173,22 +164,14 @@ if (fs.existsSync(transactionFile)) {
   }
 
 let initialAirdropSenderAddress: string;
-if (process.env.GENESIS_GOVERNANCE_PUBLIC_KEY) {
-    initialAirdropSenderAddress = process.env.GENESIS_GOVERNANCE_PUBLIC_KEY
-}
-else {
-    console.error("No GENESIS_GOVERNANCE_PUBLIC_KEY provided in env");
-    throw new Error("No GENESIS_GOVERNANCE_PUBLIC_KEY provided in env");
-}
-
-let distributionSenderAddress: string
 if (process.env.DEPLOYER_PUBLIC_KEY) {
-    distributionSenderAddress = process.env.DEPLOYER_PUBLIC_KEY
+    initialAirdropSenderAddress = process.env.DEPLOYER_PUBLIC_KEY
 }
 else {
     console.error("No DEPLOYER_PUBLIC_KEY provided in env");
     throw new Error("No DEPLOYER_PUBLIC_KEY provided in env");
 }
+
 if(!fs.existsSync(logPath)){
     fs.mkdirSync(logPath, {recursive: true});
 }
@@ -210,7 +193,6 @@ const rawDeploy = fs.readFileSync(deploymentName)
 const contractArray = JSON.parse(rawDeploy as any) as {name: string, contractName: string, address: string} []
 
 const InitialAirdropAddress = contractArray.find((elem) => elem.contractName === 'InitialAirdrop.sol')
-const DistributionAddress = contractArray.find((elem) => elem.contractName === 'Distribution.sol')
 
 const now = new Date()
 const logFileName = logPath+`${now.toISOString()}_createAirdropTransactions_log.txt`;
@@ -229,16 +211,13 @@ else {
 // Get initial nonce of sender
 const web3 = new Web3(web3Provider);
 const initialAirdropNonce = await web3.eth.getTransactionCount(initialAirdropSenderAddress);
-const distributionNonce = await web3.eth.getTransactionCount(distributionSenderAddress);
 
 // deployment parameters
 const deploymentConfigJson = JSON.parse(fs.readFileSync(deploymentConfig, "utf8"))
 const airdropStart = `${deploymentConfigJson.initialAirdropStart}`
-const distributionStart = `${deploymentConfigJson.distributionLatestEntitlementStart}`
 
 const accountPerBatch = batchSize
 const createInitialAirdropTransactions = createInitial
-const createDistributionTransactions = createDistribution
 
 const inputRepString = `Script run with 
 --snapshot-file                    (-f)     : ${snapshotFile}
@@ -248,22 +227,18 @@ const inputRepString = `Script run with
 --header                           (-h)     : ${header}
 --gas                              (-g)     : ${gas}
 --gas-price                        (-p)     : ${gasPrice}
---GENESIS_GOVERNANCE_PRIVATE_KEY   (.ENV)   : ${initialAirdropSenderAddress}
+--DEPLOYER_PRIVATE_KEY             (.ENV)   : ${initialAirdropSenderAddress}
 --WEB3_PROVIDER_URL                (.ENV)   : ${web3Provider}
 --chain-id                         (-i)     : ${chainId}
 --deployment-name                  (-d)     : ${deploymentName}
 --deployment-config                (-a)     : ${deploymentConfig}
 
 Initial airdrop address                     : ${InitialAirdropAddress?.address}
-Distribution address                        : ${DistributionAddress?.address}
 Initial Airdrop signer Nonce                : ${initialAirdropNonce.toString(10)}
-Initial Distribution signer Nonce           : ${distributionNonce.toString(10)}
 Initial Airdrop start ts                    : ${airdropStart}
-Distribution start ts                       : ${distributionStart}
 
 Account per batch for airdrop               : ${accountPerBatch}
 Generating Initial Airdrop Transactions     : ${createInitialAirdropTransactions}
-Generating Distribution Transactions        : ${createDistributionTransactions}
 `
 logMessage(logFileName, inputRepString, quiet)
 
@@ -334,15 +309,11 @@ if(healthy){
         convertedAirdropData.processedAccounts,
         InitialAirdropAddress?.address || '',
         createInitialAirdropTransactions,
-        DistributionAddress?.address || '',
-        createDistributionTransactions,
         initialAirdropSenderAddress,
-        distributionSenderAddress,
         gasPrice,
         gas,
         chainId,
         parseInt(initialAirdropNonce),
-        parseInt(distributionNonce),
         accountPerBatch
         );
     let totalGas = new BigNumber(fileData.totalGasPrice)
@@ -361,8 +332,8 @@ if(healthy){
     logMessage(logFileName, "No transactions was created", quiet);
 }
 }
-const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig, batchSize, generateAirdrop, generateDistribution } = argv;
-main(snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig, batchSize, generateAirdrop, generateDistribution)
+const { snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig, batchSize, generateAirdrop } = argv;
+main(snapshotFile, transactionFile, override, logPath, header, gas, gasPrice, quiet, chainId, deploymentName, deploymentConfig, batchSize, generateAirdrop)
 .then(() => process.exit(0))
 .catch(error => {
     console.error(error);

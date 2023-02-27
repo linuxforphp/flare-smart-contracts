@@ -27,7 +27,7 @@
   {
     "name": "InitialAirdrop",
     "contractName": "InitialAirdrop.sol",
-    "address": "0x410d1879D06c1C38cD963AE3d33B309f796bac66"
+    "address": "0x8fB61aAbd150D2A236202Acc3F2CAFbf0aB41166"
   },
   {
     "name": "GovernanceSettings",
@@ -37,171 +37,176 @@
   {
     "name": "AddressUpdater",
     "contractName": "AddressUpdater.sol",
-    "address": "0xbAF89d873d198FF78E72D2745B01cBA3c6e5BE6B"
+    "address": "0x248a75c6a7EB5280c75599014f88a9539c9beE48"
   },
   {
     "name": "InflationAllocation",
     "contractName": "InflationAllocation.sol",
-    "address": "0x260371e0CF561887C6Da270CC3Be84C2FaB5444f"
+    "address": "0xfa1903401A0cf7048A94C63D5dc5B4f36ff7b176"
   },
   {
     "name": "Inflation",
     "contractName": "Inflation.sol",
-    "address": "0xEfd7a680Db05F1dCD86EB5a074897F502C8601A0"
+    "address": "0x98B8e9B5830F04Fe3b8d56A2f8455E337037ba28"
   },
   {
     "name": "Supply",
     "contractName": "Supply.sol",
-    "address": "0x8577D2D50827bCE2EC1dc9Cf9F1199826781D5AF"
+    "address": "0x0496dcb45cDf498e3b797050f0469a0DE24F02e9"
   },
   {
     "name": "FtsoRewardManager",
     "contractName": "FtsoRewardManager.sol",
-    "address": "0x85627d71921AE25769f5370E482AdA5E1e418d37"
+    "address": "0x16E6A0b7a26518c336Bca0E935782C22A9EE07Fd"
   },
   {
     "name": "CleanupBlockNumberManager",
     "contractName": "CleanupBlockNumberManager.sol",
-    "address": "0xB5cC96c7831Db2b446eA5BD1b006020DD32B6d3a"
+    "address": "0xEaA8968E9B70dd2559066E3e801Df1596a4CFA23"
   },
   {
     "name": "Escrow",
     "contractName": "Escrow.sol",
-    "address": "0x42A362eE27e239c17d97DA5765D052779AcfDC94"
-  },
-  {
-    "name": "FtsoRegistry",
-    "contractName": "FtsoRegistry.sol",
-    "address": "0x13DC2b5053857AE17a4f95aFF55530b267F3E040"
-  },
-  {
-    "name": "VoterWhitelister",
-    "contractName": "VoterWhitelister.sol",
-    "address": "0x0F45493e4C321b238e1fA242692BFFf3f30fBdfD"
-  },
-  {
-    "name": "DistributionToDelegators",
-    "contractName": "DistributionToDelegators.sol",
-    "address": "0x32c6379B2978A9aB75993cA82e3ADc77dd50010C"
-  },
-  {
-    "name": "IncentivePoolAllocation",
-    "contractName": "IncentivePoolAllocation.sol",
-    "address": "0xa071b43060DaA8eaA0d14DBE5Ea03ed18c9ed1d6"
-  },
-  {
-    "name": "IncentivePool",
-    "contractName": "IncentivePool.sol",
-    "address": "0xbcE1972De5d1598a948A36186eCeBFD4690F3a5C"
-  },
-  {
-    "name": "ValidatorRegistry",
-    "contractName": "ValidatorRegistry.sol",
-    "address": "0x9907886ceF3DfDE3D679e1083fb0F610e9A527a0"
-  },
-  {
-    "name": "FtsoManager",
-    "contractName": "FtsoManager.sol",
-    "address": "0x2F5107461D1BF7D4D6d3b2b577621b2071343166"
-  },
-  {
-    "name": "WNat",
-    "contractName": "WNat.sol",
-    "address": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d"
-  },
-  {
-    "name": "CombinedNat",
-    "contractName": "WNat.sol",
-    "address": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d"
-  },
-  {
-    "name": "GovernanceVotePower",
-    "contractName": "GovernanceVotePower.sol",
-    "address": "0x47dD40deDCda8B4EFDEf5101999Af33B7cF787D7"
-  },
-  {
-    "name": "FtsoXrp",
-    "contractName": "Ftso.sol",
-    "address": "0x2d433f7dF375C62c7831bf01b770eC8746c8F44f"
-  },
-  {
-    "name": "FtsoLtc",
-    "contractName": "Ftso.sol",
-    "address": "0x9A9E3981B6e0F23D71caa9986D11967FB95209cA"
-  },
-  {
-    "name": "FtsoXlm",
-    "contractName": "Ftso.sol",
-    "address": "0xCc56e4d0B64d350Ad495BCa859d8E4375458Ed55"
-  },
-  {
-    "name": "FtsoDoge",
-    "contractName": "Ftso.sol",
-    "address": "0x0cBD1657bfaC82daf26caCABE3c18620403158eB"
-  },
-  {
-    "name": "FtsoAda",
-    "contractName": "Ftso.sol",
-    "address": "0x83D539d9eB43eACAcb40D5aDDE506Fd63A45cbFc"
-  },
-  {
-    "name": "FtsoAlgo",
-    "contractName": "Ftso.sol",
-    "address": "0x8801FC5664A0334b767b6E662736F9e7B9e26403"
-  },
-  {
-    "name": "FtsoBch",
-    "contractName": "Ftso.sol",
-    "address": "0x22701D23dD2AC004c017ECA81505143ce6aa6B13"
-  },
-  {
-    "name": "FtsoDgb",
-    "contractName": "Ftso.sol",
-    "address": "0xC79644093290AC7B700107a841562Cb1256b5e56"
-  },
-  {
-    "name": "FtsoBtc",
-    "contractName": "Ftso.sol",
-    "address": "0xF0255d0Cc1282000efaED2f0d747cf236D64D352"
-  },
-  {
-    "name": "FtsoEth",
-    "contractName": "Ftso.sol",
-    "address": "0xA0D8aF011D407930740A9a142c63eb880C472d6f"
-  },
-  {
-    "name": "FtsoFil",
-    "contractName": "Ftso.sol",
-    "address": "0xe48eFe08557BBcCD0b834913319fE1fb7E82d28E"
-  },
-  {
-    "name": "FtsoWnat",
-    "contractName": "Ftso.sol",
-    "address": "0x6d318B71b74cF249211C06b85F7eaa561fd9BB2D"
-  },
-  {
-    "name": "FlareAssetRegistry",
-    "contractName": "FlareAssetRegistry.sol",
-    "address": "0x9a039B2677EDD9cbfAf65AF080b08749c6b59487"
+    "address": "0x05ad5ABCA6738f94C7b6CdFd9Da7E47F34966F01"
   },
   {
     "name": "ValidatorRewardManager",
     "contractName": "ValidatorRewardManager.sol",
-    "address": "0xc0CF3Aaf93bd978C5BC662564Aa73E331f2eC0B5"
+    "address": "0x33913AcE907F682E305f36d7538D3cCd37E2cA5B"
+  },
+  {
+    "name": "FtsoRegistry",
+    "contractName": "FtsoRegistry.sol",
+    "address": "0x48Da21ce34966A64E267CeFb78012C0282D0Ac87"
+  },
+  {
+    "name": "VoterWhitelister",
+    "contractName": "VoterWhitelister.sol",
+    "address": "0xDFc2C5C636b73a9F2814B5AE821bE5a08cD25453"
+  },
+  {
+    "name": "DistributionToDelegators",
+    "contractName": "DistributionToDelegators.sol",
+    "address": "0x965AC495BeB5bb3c91C70Aa5af132cD41058C16c"
+  },
+  {
+    "name": "IncentivePoolAllocation",
+    "contractName": "IncentivePoolAllocation.sol",
+    "address": "0xfaf3bDB0c455ef633A0B61E9424bcbC75FfaE29a"
+  },
+  {
+    "name": "IncentivePool",
+    "contractName": "IncentivePool.sol",
+    "address": "0x6892bDbBb14e1c9bD46Bf31E7BaC94d038fc82a6"
+  },
+  {
+    "name": "ValidatorRegistry",
+    "contractName": "ValidatorRegistry.sol",
+    "address": "0x4CDEBD06352B3eB6e3Eec31Be70aB8931De46Ffe"
+  },
+  {
+    "name": "FtsoManager",
+    "contractName": "FtsoManager.sol",
+    "address": "0xBb6d2b7db567Bb65b93570e5BeBF34A2B4a90cEA"
+  },
+  {
+    "name": "WNat",
+    "contractName": "WNat.sol",
+    "address": "0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273"
+  },
+  {
+    "name": "CombinedNat",
+    "contractName": "WNat.sol",
+    "address": "0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273"
+  },
+  {
+    "name": "GovernanceVotePower",
+    "contractName": "GovernanceVotePower.sol",
+    "address": "0xa821fDf6E157fdf52dDe6a1B6dEDaE28dC35053C"
+  },
+  {
+    "name": "FtsoWnat",
+    "contractName": "Ftso.sol",
+    "address": "0xf25C6619B38330EF3bB2a90261Bb21B30a07A246"
+  },
+  {
+    "name": "FtsoTestXrp",
+    "contractName": "Ftso.sol",
+    "address": "0x684A1413910AF0Fabe047E896eB2B9e30cE27f86"
+  },
+  {
+    "name": "FtsoTestLtc",
+    "contractName": "Ftso.sol",
+    "address": "0x39D3aBC4465eA44618642eb353A4af7522BfFBd9"
+  },
+  {
+    "name": "FtsoTestXlm",
+    "contractName": "Ftso.sol",
+    "address": "0x010279F40cbEaE04E747a30832a74A79B5853cCb"
+  },
+  {
+    "name": "FtsoTestDoge",
+    "contractName": "Ftso.sol",
+    "address": "0x15dA4ff09C64EA4ABb2CA7B24b414c20469Db1BE"
+  },
+  {
+    "name": "FtsoTestAda",
+    "contractName": "Ftso.sol",
+    "address": "0x603f146aAC7546C1a1D99065DBc5725D95d703B7"
+  },
+  {
+    "name": "FtsoTestAlgo",
+    "contractName": "Ftso.sol",
+    "address": "0xFa8B594Ae19CeD7b2B0a8F347B363A73ce093D4B"
+  },
+  {
+    "name": "FtsoTestBch",
+    "contractName": "Ftso.sol",
+    "address": "0x5870535484e684056fEE3D203d258895b298C5ED"
+  },
+  {
+    "name": "FtsoTestDgb",
+    "contractName": "Ftso.sol",
+    "address": "0x3596D3ef13b16d80D75a1532c6F0145B53176A20"
+  },
+  {
+    "name": "FtsoTestBtc",
+    "contractName": "Ftso.sol",
+    "address": "0x5123e699A8a4d0903Be1Ef39d27b35CB25ba80DF"
+  },
+  {
+    "name": "FtsoTestEth",
+    "contractName": "Ftso.sol",
+    "address": "0x591EB76844CC11Dc5bb876f4EfE3Fa0e10c29f1D"
+  },
+  {
+    "name": "FtsoTestFil",
+    "contractName": "Ftso.sol",
+    "address": "0x05640ef0E5eA50B62aFD3c6E5EF51B28E340046c"
   },
   {
     "name": "PollingFoundation",
     "contractName": "PollingFoundation.sol",
-    "address": "0x258E20bdbb2d891521308d2af381B1BD962B67B5"
+    "address": "0x48a59E8F8f29dA3dD1C2C2Fe54209f219535BFBA"
+  },
+  {
+    "name": "FlareAssetRegistry",
+    "contractName": "FlareAssetRegistry.sol",
+    "address": "0xC79E6Dc1817DddcB4206a0aDbb56832F476F4b67"
+  },
+  {
+    "name": "WNatRegistryProvider",
+    "contractName": "WNatRegistryProvider.sol",
+    "address": "0x8F438C5Fe273ac88085f5A7813b03cAfb3cAB129"
   },
   {
     "name": "ClaimSetupManager",
     "contractName": "ClaimSetupManager.sol",
-    "address": "0xD56c0Ea37B848939B59e6F5Cda119b3fA473b5eB"
+    "address": "0x5Ddb590530EF66775E6225671eaBD94959e9AE0e"
   },
   {
     "name": "DelegationAccount",
     "contractName": "DelegationAccount.sol",
-    "address": "0x7fBc8623ac906bd3D636389b6D577E95B7D21Ef5"
+    "address": "0xA46ae6f0b180862236e5A309B1463EA02D3aD307"
   }
 ]

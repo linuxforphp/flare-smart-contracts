@@ -1,5 +1,6 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { Contracts } from "../../../../deployment/scripts/Contracts";
 import { MockContractInstance, PriceSubmitterInstance, ValidatorRegistryInstance } from "../../../../typechain-truffle";
 import { getTestFile, PRICE_SUBMITTER_ADDRESS } from "../../../utils/constants";
 import { encodeContractNames, encodeString } from "../../../utils/test-helpers";
@@ -19,6 +20,9 @@ contract(`ValidatorRegistry.sol; ${getTestFile(__filename)}; Validator registry 
     let priceSubmitterInterface: PriceSubmitterInstance;
     let validatorRegistry: ValidatorRegistryInstance;
 
+    const GOVERNANCE = accounts[100];
+    const ADDRESS_UPDATER = accounts[16];
+
     before(async () => {
         priceSubmitterInterface = await PriceSubmitter.new()
         // test only - fake deploy at genesis address
@@ -28,13 +32,17 @@ contract(`ValidatorRegistry.sol; ${getTestFile(__filename)}; Validator registry 
         mockPriceSubmitter = await MockContract.at(PRICE_SUBMITTER_ADDRESS);
 
         for (let i = 0; i < dataProviders.length; i++) {
-            const voterWhitelistBitmap = priceSubmitterInterface.contract.methods.voterWhitelistBitmap(dataProviders[i]).encodeABI()
+            const voterWhitelistBitmap = priceSubmitterInterface.contract.methods.voterWhitelistBitmap(dataProviders[i]).encodeABI();
             await mockPriceSubmitter.givenCalldataReturnUint(voterWhitelistBitmap, 100);
         }
     });
 
     beforeEach(async () => {
-        validatorRegistry = await ValidatorRegistry.new();
+        validatorRegistry = await ValidatorRegistry.new(GOVERNANCE, ADDRESS_UPDATER);
+
+        await validatorRegistry.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.PRICE_SUBMITTER]),
+            [ADDRESS_UPDATER, mockPriceSubmitter.address], {from: ADDRESS_UPDATER});
     });
 
     it("should register and get correct data back", async () => {
@@ -48,7 +56,7 @@ contract(`ValidatorRegistry.sol; ${getTestFile(__filename)}; Validator registry 
     });
 
     it("should revert at registration if not whitelisted", async () => {
-        const voterWhitelistBitmap = priceSubmitterInterface.contract.methods.voterWhitelistBitmap(accounts[10]).encodeABI()
+        const voterWhitelistBitmap = priceSubmitterInterface.contract.methods.voterWhitelistBitmap(accounts[10]).encodeABI();
         await mockPriceSubmitter.givenCalldataReturnUint(voterWhitelistBitmap, 0);
         const registerPromise = validatorRegistry.registerDataProvider(nodeIds[0], pChainPublicKeys[0], { from: accounts[10] });
         await expectRevert(registerPromise, "not whitelisted");
@@ -57,7 +65,7 @@ contract(`ValidatorRegistry.sol; ${getTestFile(__filename)}; Validator registry 
     it("should unregister", async () => {
         await validatorRegistry.registerDataProvider(nodeIds[0], pChainPublicKeys[0], { from: dataProviders[0] });
         const tx = await validatorRegistry.unregisterDataProvider({ from: dataProviders[0] });
-        expectEvent(tx, "DataProviderUnregistered");
+        expectEvent(tx, "DataProviderUnregistered", {dataProvider: dataProviders[0] });
         let data = await validatorRegistry.getDataProviderInfo(dataProviders[0]);
         expect(data[0]).to.be.equal("");
         expect(data[1]).to.be.equal("");
@@ -112,5 +120,30 @@ contract(`ValidatorRegistry.sol; ${getTestFile(__filename)}; Validator registry 
         await validatorRegistry.registerDataProvider(nodeIds[1], pChainPublicKeys[1], { from: dataProviders[1] });
         const registerPromise = validatorRegistry.registerDataProvider(nodeIds[2], pChainPublicKeys[1], { from: dataProviders[0] });
         await expectRevert(registerPromise, "pChainPublicKey already in use");
+    });
+
+    it("should revert if not called by governance", async () => {
+        const changePromise = validatorRegistry.changeDataProviders(dataProviders, [], { from: dataProviders[0] });
+        await expectRevert(changePromise, "only governance");
+    });
+
+    it("should change data providers", async () => {
+        await validatorRegistry.registerDataProvider(nodeIds[0], pChainPublicKeys[0], { from: dataProviders[0] });
+        const dataProvidersToRegister = [];
+        dataProvidersToRegister.push({dataProvider: dataProviders[1], nodeId: nodeIds[1], pChainPublicKey: pChainPublicKeys[1]});
+        dataProvidersToRegister.push({dataProvider: dataProviders[2], nodeId: nodeIds[2], pChainPublicKey: pChainPublicKeys[2]});
+        const tx = await validatorRegistry.changeDataProviders([dataProviders[0]], dataProvidersToRegister, { from: GOVERNANCE });
+        expectEvent(tx, "DataProviderUnregistered", {dataProvider: dataProviders[0] });
+        let data0 = await validatorRegistry.getDataProviderInfo(dataProviders[0]);
+        expect(data0[0]).to.be.equal("");
+        expect(data0[1]).to.be.equal("");
+        expectEvent(tx, "DataProviderRegistered", {dataProvider: dataProviders[1], nodeId: nodeIds[1], pChainPublicKey: pChainPublicKeys[1]});
+        let data1 = await validatorRegistry.getDataProviderInfo(dataProviders[1]);
+        expect(data1[0]).to.be.equal(nodeIds[1]);
+        expect(data1[1]).to.be.equal(pChainPublicKeys[1]);
+        expectEvent(tx, "DataProviderRegistered", {dataProvider: dataProviders[2], nodeId: nodeIds[2], pChainPublicKey: pChainPublicKeys[2]});
+        let data2 = await validatorRegistry.getDataProviderInfo(dataProviders[2]);
+        expect(data2[0]).to.be.equal(nodeIds[2]);
+        expect(data2[1]).to.be.equal(pChainPublicKeys[2]);
     });
 });

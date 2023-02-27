@@ -331,6 +331,8 @@ contract MockNpmFtso is IIFtso {
         uint256,
         uint256,
         uint256,
+        uint256,
+        uint256,
         address[] memory
     )
         external pure override
@@ -383,11 +385,13 @@ contract MockNpmFtso is IIFtso {
             uint256,
             uint256,
             uint256,
+            uint256,
+            uint256,
             address[] memory
         )
     {
         require(false, UNAVAILABLE);
-        return (0, 0, 0, 0, 0, 0, new address[](0));
+        return (0, 0, 0, 0, 0, 0, 0, 0, new address[](0));
     }
 
     function getCurrentEpochId() external view override returns (uint256) {

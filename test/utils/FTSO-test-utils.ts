@@ -56,9 +56,6 @@ export interface VoteInfo {
  * Auxiliary interface for JSON returned by FTSO function `getFullEpochReport`
  */
 export interface EpochResultRaw {
-    _epochSubmitStartTime: BigNumber;
-    _epochSubmitEndTime: BigNumber;
-    _epochRevealEndTime: BigNumber;
     _epochFinalizedTimestamp: BigNumber;
     _price: BigNumber;
     _lowRewardPrice: BigNumber;
@@ -536,7 +533,7 @@ export function resultsFromTestData(data: TestExample, addresses: string[], natS
                     continue;
                 }
             }
-            rewardedVotes.push({ weightNat: voteInfo.weightNat, address: voteInfo.address! } as RewardedVoteInfo);
+            rewardedVotes.push({ weightNat: voteInfo.weightNat * 10000, address: voteInfo.address! } as RewardedVoteInfo);
         }
     }
     logger.log("Done filtering the reward addresses");

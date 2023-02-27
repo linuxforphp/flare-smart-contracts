@@ -15,9 +15,6 @@ import { isBaseTenNumber, logMessage } from "./utils";
 import InitialAirdropAbi from "../../../artifacts/contracts/genesis/implementation/InitialAirdrop.sol/InitialAirdrop.json";
 import { InitialAirdrop } from "../../../typechain-web3/InitialAirdrop";
 
-import DistributionAbi from "../../../artifacts/contracts/tokenPools/implementation/Distribution.sol/Distribution.json";
-import { Distribution } from "../../../typechain-web3/Distribution";
-
 const TEN = new BigNumber(10);
 const MAX_FLARE_BALANCE = new BigNumber(1).multipliedBy(TEN.pow(27));
 const indexOffset = 2;
@@ -222,15 +219,11 @@ export function createSetAirdropBalanceUnsignedTransactions(
   processedAccounts: ProcessedAccount[],
   initialAirdropContractAddress: string,
   createInitialAirdropTx: boolean,
-  distributionContractAddress: string,
-  createDistributionTx: boolean,
   initialAirdropSenderAddress: string,
-  distributionSenderAddress: string,
   gasPrice: string,
   gas: string,
   chainId: number,
   initialAirdropNonceOffset: number = 0,
-  initialDistributionNonceOffset: number = 0,
   batchSize: number = 900
 ): generateTransactionCallRes {
   const rawTransactions = [];
@@ -241,14 +234,8 @@ export function createSetAirdropBalanceUnsignedTransactions(
     initialAirdropContractAddress
   ) as any as InitialAirdrop;
 
-  const distributionContract = new web3.eth.Contract(
-    DistributionAbi.abi,
-    distributionContractAddress
-  ) as any as Distribution;
-
   let index = 0;
   let initialAirdropNonce = initialAirdropNonceOffset;
-  let distributionNonce = initialDistributionNonceOffset;
   let shouldBreak = false;
 
   const bar1 = new cliProgress.SingleBar(
@@ -258,7 +245,7 @@ export function createSetAirdropBalanceUnsignedTransactions(
   let progress = 0;
 
   console.log(
-    "Creating unsigned transactions for InitialAirdrop and Distribution"
+    "Creating unsigned transactions for InitialAirdrop"
   );
   bar1.start(Math.ceil(processedAccounts.length / batchSize), 0);
   while (true) {
@@ -298,22 +285,6 @@ export function createSetAirdropBalanceUnsignedTransactions(
         initialAirdropNonce += 1;
       }
 
-      if (createDistributionTx) {
-        const encodedCallDistribution = distributionContract.methods
-          .setAirdropBalances(tempAddresses, tempBalances)
-          .encodeABI();
-        const newTransactionDistribution = {
-          from: distributionSenderAddress,
-          to: distributionContractAddress,
-          data: encodedCallDistribution,
-          gas: gas,
-          gasPrice: gasPrice,
-          nonce: distributionNonce,
-          chainId: chainId,
-        };
-        rawTransactions.push(newTransactionDistribution);
-        distributionNonce += 1;
-      }
       progress += 1;
       bar1.update(progress);
     }
