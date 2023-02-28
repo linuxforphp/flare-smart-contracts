@@ -11,7 +11,7 @@ import * as dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import 'hardhat-deploy';
 import "hardhat-gas-reporter";
-import { extendEnvironment, task } from "hardhat/config";
+import { extendEnvironment, task, types } from "hardhat/config";
 import 'solidity-coverage';
 import { activateManagers } from "./deployment/scripts/activate-managers";
 import { Contracts } from "./deployment/scripts/Contracts";
@@ -25,6 +25,7 @@ import "./type-extensions";
 import { deployContractsGovernance } from "./deployment/scripts/deploy-contracts-governance";
 import { switchToProductionMode } from "./deployment/scripts/switch-to-production-mode";
 import { linkContracts } from "./deployment/scripts/link-contracts";
+import { validatorRewards } from "./scripts/validatorRewards";
 import { redeployContracts } from "./deployment/scripts/redeploy-contracts";
 
 
@@ -243,5 +244,14 @@ task("undaemonize-contracts", "Remove daemonized contracts from the FlareDaemon.
       throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
     }
   });
+
+task("calculate-validator-rewards", "Calculate validator rewards\n example usage: yarn hardhat calculate-validator-rewards  --input validator_data/validator_data.csv --network flare")
+  .addFlag("quiet", "Suppress console output")
+  .addParam("input", "Report File")
+  .addOptionalParam<string | undefined>("output", "Output file or empty for stdout", undefined)
+  .setAction(async (args, hre, runSuper) => {
+    await validatorRewards(hre, args.input, args.output, args.quiet);
+  });
+
 
 export default config;
