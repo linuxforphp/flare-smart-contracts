@@ -53,10 +53,9 @@ export async function internalFullDeploy(parameters: ChainParameters, quiet: boo
     const deployed = await deployContracts(hre, parameters, quiet);
     const contracts = deployed.contracts!;
     await daemonizeContracts(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey,
-        parameters.inflationReceivers, parameters.inflationGasLimit, parameters.ftsoManagerGasLimit, parameters.incentivePoolGasLimit, quiet);
+        parameters.inflationReceivers, parameters.inflationGasLimit, parameters.ftsoManagerGasLimit, parameters.incentivePoolGasLimit, parameters.distributionToDelegatorsGasLimit, quiet);
     await activateManagers(hre, contracts, parameters.deployerPrivateKey, quiet);
-    await switchToProductionMode(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey, 
-        parameters.deployDistributionContract, quiet);
+    await switchToProductionMode(hre, contracts, parameters.deployerPrivateKey, parameters.genesisGovernancePrivateKey, quiet);
     return deployed;
 }
 

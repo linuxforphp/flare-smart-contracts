@@ -18,6 +18,7 @@ export async function daemonizeContracts(
   inflationGasLimit: number,
   ftsoManagerGasLimit: number,
   incentivePoolGasLimit: number,
+  distributionToDelegatorsGasLimit: number,
   quiet: boolean = false) {
 
   const web3 = hre.web3;
@@ -56,6 +57,7 @@ export async function daemonizeContracts(
   const FtsoManager = artifacts.require("FtsoManager");
   const Inflation = artifacts.require("Inflation");
   const IncentivePool = artifacts.require("IncentivePool");
+  const DistributionToDelegators = artifacts.require("DistributionToDelegators");
   const IIInflationReceiver = artifacts.require("IIInflationReceiver");
 
   // Fetch already deployed contracts
@@ -63,6 +65,7 @@ export async function daemonizeContracts(
   const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
   const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
   const incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
+  const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
 
   // Do inflation receivers know about inflation?
   for (let inflationReceiverName of inflationReceivers) {
@@ -78,11 +81,13 @@ export async function daemonizeContracts(
     console.error(`Registering Inflation with gas limit ${inflationGasLimit}`);
     console.error(`Registering FtsoManager with gas limit ${ftsoManagerGasLimit}`);
     console.error(`Registering IncentivePool with gas limit ${incentivePoolGasLimit}`);
+    console.error(`Registering DistributionToDelegators with gas limit ${distributionToDelegatorsGasLimit}`);
   }
   const registrations = [
     { daemonizedContract: inflation.address, gasLimit: inflationGasLimit },
     { daemonizedContract: ftsoManager.address, gasLimit: ftsoManagerGasLimit },
-    { daemonizedContract: incentivePool.address, gasLimit: incentivePoolGasLimit }
+    { daemonizedContract: incentivePool.address, gasLimit: incentivePoolGasLimit },
+    { daemonizedContract: distributionToDelegators.address, gasLimit: distributionToDelegatorsGasLimit }
   ];
   await flareDaemon.registerToDaemonize(registrations, { from: genesisGovernanceAccount.address }); 
 }

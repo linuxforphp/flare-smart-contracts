@@ -21,7 +21,6 @@ export class Contracts {
   public static readonly ADDRESS_UPDATER = "AddressUpdater";
   public static readonly CLEANUP_BLOCK_NUMBER_MANAGER = "CleanupBlockNumberManager";
   public static readonly FTSO_REGISTRY = "FtsoRegistry";
-  public static readonly DISTRIBUTION = "Distribution";
   public static readonly DISTRIBUTION_TREASURY = "DistributionTreasury";
   public static readonly DISTRIBUTION_TO_DELEGATORS = "DistributionToDelegators";
   public static readonly INCENTIVE_POOL_TREASURY = "IncentivePoolTreasury";
@@ -43,8 +42,11 @@ export class Contracts {
   public static readonly VOTER_WHITELISTER = "VoterWhitelister";
   public static readonly FLARE_DAEMON = "FlareDaemon";
   public static readonly WNAT = "WNat";
+  public static readonly COMBINED_NAT = "CombinedNat";
   public static readonly GOVERNANCE_VOTE_POWER = "GovernanceVotePower";
   public static readonly POLLING_FOUNDATION = "PollingFoundation";
+  public static readonly FLARE_ASSET_REGISTRY = "FlareAssetRegistry";
+  public static readonly FLARE_CONTRACT_REGISTRY = "FlareContractRegistry";
   public static readonly FTSO_WNAT = "FtsoWnat";
   public static readonly XRP = `${Contracts.WRAP_SYMBOL}XRP` 
   public static readonly DUMMY_XRP_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}XrpMinter`;

@@ -82,7 +82,7 @@ export async function submitPricePriceSubmitter(ftsos: FtsoInstance[], ftsoIndic
 
   // console.log(`Submitting prices ${preparedPrices} by ${by} for epoch ${epochId}`);
   // await priceSubmitter.submitPriceHash(hash!, {from: by});
-  const random = await getRandom();
+  const random = getRandom();
   const hash = submitHash(ftsoIndices, preparedPrices, random, by);
   await priceSubmitter.submitHash(epochId, hash, { from: by })
   for (let i = 0; i < ftsos.length; i++) {
@@ -327,7 +327,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Supply contract - inflatable balance should not be updated (nothing was claimed yet)
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
-    const totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    const totalFoundationSupplyWei = (await supply.totalExcludedSupplyWei()).sub(await supply.distributedExcludedSupplyWei());
     const totalLockedWei = await supply.totalLockedWei();
     const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
@@ -373,14 +373,14 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let algoPrices = [1.00, 1.33, 1.35];
     let bchPrices = [1100, 1203, 1210];
     let dgbPrices = [0.08, 0.11, 0.13];
-    ftsos = [ftsoWnat, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFada, ftsoFalgo, ftsoFbch, ftsoFdgb];
+    ftsos = [ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFada, ftsoFalgo, ftsoFbch, ftsoFdgb, ftsoWnat];
 
     // get the indices of all ftsos
     for (let ftso of ftsos) {
       ftsoIndices.push(await registry.getFtsoIndex(await ftso.symbol()));
     }
 
-    let pricesMatrix = [natPrices, xrpPrices, ltcPrices, xdgPrices, adaPrices, algoPrices, bchPrices, dgbPrices];
+    let pricesMatrix = [xrpPrices, ltcPrices, xdgPrices, adaPrices, algoPrices, bchPrices, dgbPrices, natPrices];
     // transpose
     priceSeries = pricesMatrix[0].map((_, colIndex) => pricesMatrix.map(row => row[colIndex]));
     submitters = [p1, p2, p3];
@@ -393,10 +393,10 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
   });
 
   it("Should submit prices for first price epoch and claim for first reward epoch", async () => {
-    rewardExpiryOffsetSeconds = (await ftsoManager.getGovernanceParameters())[6].toNumber();
+    rewardExpiryOffsetSeconds = (await ftsoManager.getRewardExpiryOffsetSeconds()).toNumber();
 
     // get the first reward
-    while ((await (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds)) {
+    while ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds) {
       let result = await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
       if (firstPriceEpoch < 0 && firstRewardEpochId < 0) {
         firstPriceEpoch = result.firstPriceEpoch;
@@ -504,7 +504,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
 
     // make sure to expire reward epoch
-    while ((await (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds)) {
+    while ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds) {
       await FinalizeRewardEpochs(1);
     }
 

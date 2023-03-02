@@ -20,7 +20,7 @@ export async function deployContractsGovernance(hre: HardhatRuntimeEnvironment, 
   // Define accounts in play for the deployment process
   let deployerAccount: any;
 
-  
+
   try {
     deployerAccount = web3.eth.accounts.privateKeyToAccount(parameters.deployerPrivateKey);
   } catch (e) {

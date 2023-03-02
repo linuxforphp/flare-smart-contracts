@@ -8,7 +8,6 @@ export async function switchToProductionMode(
     contracts: Contracts,
     deployerPrivateKey: string,
     genesisGovernancePrivateKey: string,
-    distributionDeployed: boolean,
     quiet: boolean = false
 ) {
     const web3 = hre.web3;
@@ -47,7 +46,6 @@ export async function switchToProductionMode(
     web3.eth.defaultAccount = deployerAccount.address;
 
     // Contract definitions
-    const GovernanceSettings = artifacts.require("GovernanceSettings");
     const AddressUpdater = artifacts.require("AddressUpdater");
     const InflationAllocation = artifacts.require("InflationAllocation");
     const FlareDaemon = artifacts.require("FlareDaemon");
@@ -59,7 +57,6 @@ export async function switchToProductionMode(
     const VoterWhitelister = artifacts.require("VoterWhitelister");
     const CleanupBlockNumberManager = artifacts.require("CleanupBlockNumberManager");
     const DistributionTreasury = artifacts.require("DistributionTreasury");
-    const Distribution = artifacts.require("Distribution");
     const DistributionToDelegators = artifacts.require("DistributionToDelegators");
     const IncentivePoolTreasury = artifacts.require("IncentivePoolTreasury");
     const IncentivePool = artifacts.require("IncentivePool");
@@ -71,9 +68,9 @@ export async function switchToProductionMode(
     const ClaimSetupManager = artifacts.require("ClaimSetupManager");
     const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
     const PollingFoundation = artifacts.require("PollingFoundation");
+    const FlareAssetRegistry = artifacts.require("FlareAssetRegistry");
 
     // Get deployed contracts
-    const governanceSettings = await GovernanceSettings.at(contracts.getContractAddress(Contracts.GOVERNANCE_SETTINGS));
     const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
     const supply = await Supply.at(contracts.getContractAddress(Contracts.SUPPLY));
     const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
@@ -94,26 +91,23 @@ export async function switchToProductionMode(
     const escrow = await Escrow.at(contracts.getContractAddress(Contracts.ESCROW));
     const validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
     const pollingFoundation = await PollingFoundation.at(contracts.getContractAddress(Contracts.POLLING_FOUNDATION));
+    const flareAssetRegistry = await FlareAssetRegistry.at(contracts.getContractAddress(Contracts.FLARE_ASSET_REGISTRY));
+    const claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
+    const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await priceSubmitter.switchToProductionMode({ from: genesisGovernanceAccount.address });
-    await distributionTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await incentivePoolTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await initialAirdrop.switchToProductionMode();
+    await distributionTreasury.switchToProductionMode();
     await addressUpdater.switchToProductionMode();
     await supply.switchToProductionMode();
     await inflation.switchToProductionMode();
     await inflationAllocation.switchToProductionMode();
     await ftsoRewardManager.switchToProductionMode();
-    if (distributionDeployed) {
-        const distribution = await Distribution.at(contracts.getContractAddress(Contracts.DISTRIBUTION));
-        const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
-        await distribution.switchToProductionMode();
-        await distributionToDelegators.switchToProductionMode();
-        const claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
-        await claimSetupManager.switchToProductionMode();
-    }
+    await claimSetupManager.switchToProductionMode();
+    await distributionToDelegators.switchToProductionMode();
     await incentivePool.switchToProductionMode();
     await incentivePoolAllocation.switchToProductionMode();
     await ftsoManager.switchToProductionMode();
@@ -124,4 +118,5 @@ export async function switchToProductionMode(
     await escrow.switchToProductionMode();
     await validatorRewardManager.switchToProductionMode();
     await pollingFoundation.switchToProductionMode();
+    await flareAssetRegistry.switchToProductionMode();
 }

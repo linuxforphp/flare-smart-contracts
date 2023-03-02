@@ -182,6 +182,11 @@ export interface ChainParameters {
      */
     incentivePoolGasLimit: integer;
 
+    /**
+     * Gas limit for daemonize calls of on DistributionToDelegators contract.
+     */
+    distributionToDelegatorsGasLimit: integer;
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Inflation settings
 
@@ -227,11 +232,6 @@ export interface ChainParameters {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Deployment options settings
-
-    /**
-     * Whether `Distribution` contract should be deployed.
-     */
-    deployDistributionContract: boolean;
 
     /**
      * Whether dummy FAsset tokens should be deployed. Only `true` for dev testing deploys.
