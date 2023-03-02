@@ -1,9 +1,11 @@
 import * as fs from "fs";
-import { logMessage, sleep } from "./utils/utils";
+import { logMessage, sleep } from "../flare/utils/utils";
 const Web3 = require("web3");
+const web3Eth = require("web3-eth");
 const cliProgress = require("cli-progress");
 
 import InitialAirdropAbi from "../../artifacts/contracts/genesis/implementation/InitialAirdrop.sol/InitialAirdrop.json";
+import { toBN } from "../../test/utils/test-helpers";
 import { InitialAirdrop } from "../../typechain-web3/InitialAirdrop";
 
 // Uses 0.12 per call for gas, makes 2850 calls => 342 native tokens are burned
@@ -70,8 +72,8 @@ async function main(
   chainIdRaw: number
 ) {
   let airdropTransferKey: string;
-  const gas = "0x" + Web3.utils.toBN(gasRaw).toString(16);
-  const gasPrice = "0x" + Web3.utils.toBN(gasPriceRaw).toString(16);
+  const gas = "0x" + toBN(gasRaw).toString(16);
+  const gasPrice = "0x" + toBN(gasPriceRaw).toString(16);
   const chainId = "0x" + chainIdRaw.toString(16);
 
   if (process.env.AIRDROP_TRANSFER_PRIVATE_KEY) {
@@ -137,7 +139,7 @@ async function main(
     quiet
   );
 
-  const numOfAcc = Web3.utils.toBN(await InitialAirdropContract.methods.airdropAccountsLength().call());;
+  const numOfAcc = toBN(await InitialAirdropContract.methods.airdropAccountsLength().call());;
   const initialAirdropBatchSize = 50;
 
   const numOfCalls = numOfAcc.divn(initialAirdropBatchSize).addn(1).toNumber();

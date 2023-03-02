@@ -362,7 +362,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Supply contract - inflatable balance should not be updated (nothing was claimed yet)
     const initialGenesisAmountWei = await supply.initialGenesisAmountWei();
-    const totalFoundationSupplyWei = await supply.totalExcludedSupplyWei();
+    const totalFoundationSupplyWei = (await supply.totalExcludedSupplyWei()).sub(await supply.distributedExcludedSupplyWei());
     const totalLockedWei = await supply.totalLockedWei();
     const totalInflationAuthorizedWei = await supply.totalInflationAuthorizedWei();
     const inflatableBalanceWei = await supply.getInflatableBalance();
@@ -404,14 +404,14 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     let xdgPrices = [0.40, 0.45, 0.45, 0.50];  // 1 and 2
     let adaPrices = [1.70, 1.90, 1.80, 1.80];  // 1 and 3
     let dgbPrices = [0.05, 0.10, 0.15, 0.10];  // 2 and 3
-    let ftsos = [ftsoWnat, ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFada, ftsoFdgb];
+    let ftsos = [ftsoFxrp, ftsoFltc, ftsoFxdg, ftsoFada, ftsoFdgb, ftsoWnat];
     let ftsoIndices = [];
 
     for(let ftso of ftsos){
       ftsoIndices.push(await registry.getFtsoIndex( await ftso.symbol()));
     }
 
-    let pricesMatrix = [natPrices, xrpPrices, ltcPrices, xdgPrices, adaPrices, dgbPrices];
+    let pricesMatrix = [xrpPrices, ltcPrices, xdgPrices, adaPrices, dgbPrices, natPrices];
     // transpose
     let priceSeries = pricesMatrix[0].map((_, colIndex) => pricesMatrix.map(row => row[colIndex]));
     let submitters = [p1, p2, p3, p4];

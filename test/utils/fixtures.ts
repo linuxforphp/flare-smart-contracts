@@ -1,6 +1,7 @@
 import { deployments } from "hardhat";
 import { deployContracts } from "../../deployment/scripts/deploy-contracts";
 import fs from "fs";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const BN = web3.utils.toBN;
 
@@ -30,9 +31,9 @@ export function readDeploymentParametersForConfiguration(configName: string) {
 }
 
 // Returns full deployment fixture
-export function fullDeploymentFixture(deploymentParameters: any) {
+export function fullDeploymentFixture(hre: HardhatRuntimeEnvironment, deploymentParameters: any) {
     return deployments.createFixture(async (env, options) => {
-        let contracts = await deployContracts(deploymentParameters, true);
+        let contracts = await deployContracts(hre, deploymentParameters, true);
         return contracts;
     });
 }

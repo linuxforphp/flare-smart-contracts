@@ -62,10 +62,10 @@
     "inflationSharingBIPS": [10000],
     "inflationTopUpTypes": [0],
     "inflationTopUpFactorsx100": [300],
-    "inflationGasLimit": 2000000,
+    "inflationGasLimit": 3000000,
     "ftsoManagerGasLimit": 40000000,
     "incentivePoolGasLimit": 3000000,
-    "deployDistributionContract": true,
+    "distributionToDelegatorsGasLimit": 25000000,
     "deployDummyXAssetTokensAndMinters": false,
     "deployNATFtso": false,
     "NATMultiAssets": ["XRP", "LTC", "DOGE"],
@@ -75,7 +75,7 @@
             "assetDecimals": 6,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset XRP",
-            "xAssetSymbol": "sXRP",            
+            "xAssetSymbol": "sXRP",
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSDDec5": 0
         },
@@ -84,7 +84,7 @@
             "assetDecimals": 8,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset Litecoin",
-            "xAssetSymbol": "sLTC",            
+            "xAssetSymbol": "sLTC",
             "dummyAssetMinterMax": 4000000000,
             "initialPriceUSDDec5": 0
         },
@@ -93,7 +93,7 @@
             "assetDecimals": 6,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset XLM (Lumen)",
-            "xAssetSymbol": "sXLM",            
+            "xAssetSymbol": "sXLM",
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSDDec5": 0
         },
@@ -102,7 +102,7 @@
             "assetDecimals": 8,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset Dogecoin",
-            "xAssetSymbol": "sDOGE",            
+            "xAssetSymbol": "sDOGE",
             "dummyAssetMinterMax": 13000000000000,
             "initialPriceUSDDec5": 0
         },
@@ -111,7 +111,7 @@
             "assetDecimals": 8,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset ADA (Cardano)",
-            "xAssetSymbol": "sADA",            
+            "xAssetSymbol": "sADA",
             "dummyAssetMinterMax": 45000000000,
             "initialPriceUSDDec5": 0
         },
@@ -120,7 +120,7 @@
             "assetDecimals": 8,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset Algorand",
-            "xAssetSymbol": "sALGO",         
+            "xAssetSymbol": "sALGO",
             "dummyAssetMinterMax": 5000000000,
             "initialPriceUSDDec5": 0
         },
@@ -129,7 +129,7 @@
             "assetDecimals": 8,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset Bitcoin Cash",
-            "xAssetSymbol": "sBCH",            
+            "xAssetSymbol": "sBCH",
             "dummyAssetMinterMax": 21000000000,
             "initialPriceUSDDec5": 0
         },
@@ -138,7 +138,7 @@
             "assetDecimals": 8,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset Digibyte",
-            "xAssetSymbol": "sDGB",         
+            "xAssetSymbol": "sDGB",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSDDec5": 0
         },
@@ -147,7 +147,7 @@
             "assetDecimals": 6,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset BTC",
-            "xAssetSymbol": "sBTC",            
+            "xAssetSymbol": "sBTC",
             "dummyAssetMinterMax": 7000000000,
             "initialPriceUSDDec5": 0
         },
@@ -156,7 +156,7 @@
             "assetDecimals": 18,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset ETH",
-            "xAssetSymbol": "sETH",            
+            "xAssetSymbol": "sETH",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSDDec5": 0
         },
@@ -165,7 +165,7 @@
             "assetDecimals": 18,
             "ftsoDecimals": 5,
             "xAssetName": "sAsset FIL",
-            "xAssetSymbol": "sFIL",            
+            "xAssetSymbol": "sFIL",
             "dummyAssetMinterMax": 10000000000,
             "initialPriceUSDDec5": 0
         }

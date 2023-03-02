@@ -1,4 +1,4 @@
-import { constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import { DistributionTreasuryInstance, SuicidalMockInstance } from "../../../../typechain-truffle";
 import { toBN } from '../../../utils/test-helpers';
 
@@ -7,125 +7,70 @@ const getTestFile = require('../../../utils/constants').getTestFile;
 const DistributionTreasury = artifacts.require("DistributionTreasury");
 const SuicidalMock = artifacts.require("SuicidalMock");
 const DistributionToDelegatorsMock = artifacts.require("DistributionToDelegatorsMock");
-const GasConsumer = artifacts.require("GasConsumer");
 
 const ONLY_GOVERNANCE_MSG = "only governance";
+const ERR_ONLY_GOVERNANCE_OR_DISTRIBUTION = "only governance or distribution";
 const ERR_DISTRIBUTION_ONLY = "distribution only";
 const ERR_TOO_OFTEN = "too often";
 const ERR_TOO_MUCH = "too much";
 const ERR_SEND_FUNDS_FAILED = "send funds failed";
-const ERR_ALREADY_SET = "already set";
-const ERR_WRONG_ADDRESS = "wrong address";
 const ERR_ADDRESS_ZERO = "address zero";
 
 contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTreasury unit tests`, async accounts => {
     let treasury: DistributionTreasuryInstance;
     let mockSuicidal: SuicidalMockInstance;
+    const governance = accounts[10];
 
     beforeEach(async() => {
-        treasury = await DistributionTreasury.new();
+        treasury = await DistributionTreasury.new(governance);
         mockSuicidal = await SuicidalMock.new(treasury.address);
     });
 
     describe("methods", async() => {
 
-        it("Should initialize governance", async() => {
-            let tx = await treasury.initialiseFixedAddress();
-            expectEvent(tx, "GovernanceInitialised");
-        });
+        it("Should only receive funds from governance or distribution", async () => {
+            // Assemble
+            expect((await web3.eth.getBalance(treasury.address)).toString()).to.equals("0");
+            await treasury.setDistributionContract(accounts[100], { from: governance });
+            // Act
+            await web3.eth.sendTransaction({ from: governance, to: treasury.address, value: toBN(1000) });
+            await web3.eth.sendTransaction({ from: accounts[100], to: treasury.address, value: toBN(500) });
+            const tx = web3.eth.sendTransaction({ from: accounts[0], to: treasury.address, value: toBN(1500) });
+            // Assert
+            expect((await web3.eth.getBalance(treasury.address)).toString()).to.equals("1500");
+            await expectRevert(tx, ERR_ONLY_GOVERNANCE_OR_DISTRIBUTION);
+          });
 
-        it("Should fail calling setContracts from non-governance", async() => {
-            let tx = treasury.setContracts(accounts[100], accounts[101]);
+        it("Should fail calling setDistributionContract from non-governance", async() => {
+            let tx = treasury.setDistributionContract(accounts[100]);
             await expectRevert(tx, ONLY_GOVERNANCE_MSG);
         });
 
-        it("Should fail calling setContracts twice", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-            await treasury.setContracts(accounts[100], accounts[101], { from: governance });
-            let tx = treasury.setContracts(accounts[100], accounts[101], { from: governance });
-            await expectRevert(tx, ERR_ALREADY_SET);
+        it("Should update distribution contract", async() => {
+            await treasury.setDistributionContract(accounts[100], { from: governance });
+            expect(await treasury.distribution()).to.equals(accounts[100]);
+            await treasury.setDistributionContract( accounts[101], { from: governance });
+            expect(await treasury.distribution()).to.equals(accounts[101]);
         });
 
-        it("Should fail calling setContracts to zero address", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-            let tx = treasury.setContracts(constants.ZERO_ADDRESS, accounts[101], { from: governance });
+        it("Should fail calling setDistributionContract with zero address", async() => {
+            let tx = treasury.setDistributionContract(constants.ZERO_ADDRESS, { from: governance });
             await expectRevert(tx, ERR_ADDRESS_ZERO);
-            tx = treasury.setContracts(accounts[100], constants.ZERO_ADDRESS, { from: governance });
-            await expectRevert(tx, ERR_ADDRESS_ZERO);
-        });
-
-        it("Should fail calling selectDistributionContract with wrong address", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-            await treasury.setContracts(accounts[100], accounts[101], { from: governance });
-            let tx = treasury.selectDistributionContract(accounts[102], { from: governance });
-            await expectRevert(tx, ERR_WRONG_ADDRESS);
-        });
-
-        it("Should fail calling selectDistributionContract if already selected", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-            await treasury.setContracts(accounts[100], accounts[101], { from: governance });
-            treasury.selectDistributionContract(accounts[101], { from: governance });
-            let tx = treasury.selectDistributionContract(accounts[100], { from: governance });
-            await expectRevert(tx, ERR_ALREADY_SET);
-        });
-
-        it("Should fail calling selectDistributionContract from non-governance", async() => {
-            let tx = treasury.selectDistributionContract(accounts[100]);
-            await expectRevert(tx, ONLY_GOVERNANCE_MSG);
         });
 
         it("Should fail calling pullFunds from non-distribution address", async() => {
             let tx = treasury.pullFunds(100);
             await expectRevert(tx, ERR_DISTRIBUTION_ONLY);
         });
-        
-        it("Should correctly select distribution contract", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-
-            let newaddress = accounts[100];
-
-            await treasury.setContracts(newaddress, accounts[101], { from: governance });
-            await treasury.selectDistributionContract(newaddress, { from: governance });
-
-            let distribution = await treasury.selectedDistribution();
-
-            expect(distribution).to.equal(newaddress);
-        });
-
-        it("Should send funds if initial distribution is selected", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-
-            // sneak wei into DistributionTreasury
-            await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
-            await mockSuicidal.die();
-
-            let distribution = accounts[100];
-            await treasury.setContracts(distribution, accounts[101], { from: governance });
-            const startBalance = toBN(await web3.eth.getBalance(distribution));
-            await treasury.selectDistributionContract(distribution, { from: governance });
-            const endBalance = toBN(await web3.eth.getBalance(distribution));
-            
-            expect(endBalance.sub(startBalance).toNumber()).to.equal(10**6);
-        });
 
         it("Should test cases for pullFunds function - distribution to delegators", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-
             // sneak wei into DistributionTreasury
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
             await mockSuicidal.die();
 
             let distribution = accounts[100];
             let maxpull = 10**6;
-            await treasury.setContracts(accounts[99], distribution, { from: governance });
-            await treasury.selectDistributionContract(distribution, { from: governance });
+            await treasury.setDistributionContract(distribution, { from: governance });
 
             // pull too much funds
             const MAX_PULL_AMOUNT_WEI = await treasury.MAX_PULL_AMOUNT_WEI();
@@ -151,16 +96,12 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
         });
 
         it("Should update lastPull timestamp even if pulling 0 funds", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-
             // sneak wei into DistributionTreasury
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
             await mockSuicidal.die();
 
             let distribution = accounts[101];
-            await treasury.setContracts(accounts[100], distribution, { from: governance });
-            await treasury.selectDistributionContract(distribution, { from: governance });
+            await treasury.setDistributionContract(distribution, { from: governance });
 
             // pull 0 funds
             await treasury.pullFunds(0, { from: distribution });
@@ -169,32 +110,14 @@ contract(`DistributionTreasury.sol; ${getTestFile(__filename)}; DistributionTrea
             expect(lastPull.toNumber()).to.equal(now.toNumber());
         });
 
-        it("Should revert at selectDistributionContract (_sendFunds) if receive method is not implemented", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-
-            // sneak wei into DistributionTreasury
-            await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
-            await mockSuicidal.die();
-
-            let distribution = await GasConsumer.new();
-            await treasury.setContracts(distribution.address, accounts[101], { from: governance });
-
-            await expectRevert(treasury.selectDistributionContract(distribution.address, { from: governance }), ERR_SEND_FUNDS_FAILED);
-        });
-
         it("Should revert at pullFunds if receive method is not implemented", async() => {
-            await treasury.initialiseFixedAddress();
-            let governance = await treasury.governance();
-
             // sneak wei into DistributionTreasury
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 10**6 });
             await mockSuicidal.die();
 
             let distribution = await DistributionToDelegatorsMock.new(treasury.address);
             let maxpull = 10**6;
-            await treasury.setContracts(accounts[100], distribution.address, { from: governance });
-            await treasury.selectDistributionContract(distribution.address, { from: governance });
+            await treasury.setDistributionContract(distribution.address, { from: governance });
 
             await expectRevert(distribution.pullFunds(maxpull), ERR_SEND_FUNDS_FAILED);
         });

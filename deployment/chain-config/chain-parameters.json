@@ -71,10 +71,6 @@
             "description": "Inital size for voter whitelist for price submission. It can later be changed for each FTSO by the governance.",
             "type": "integer"
         },
-        "deployDistributionContract": {
-            "description": "Whether `Distribution` contract should be deployed.",
-            "type": "boolean"
-        },
         "deployDummyXAssetTokensAndMinters": {
             "description": "Whether dummy FAsset tokens should be deployed. Only `true` for dev testing deploys.",
             "type": "boolean"
@@ -89,6 +85,10 @@
         },
         "distributionLatestEntitlementStart": {
             "description": "Unix timestamp of the latest distribution start.",
+            "type": "integer"
+        },
+        "distributionToDelegatorsGasLimit": {
+            "description": "Gas limit for daemonize calls of on DistributionToDelegators contract.",
             "type": "integer"
         },
         "distributionTotalEntitlementWei": {
@@ -346,11 +346,11 @@
         "assets",
         "defaultRewardFeePercentageBIPS",
         "defaultVoterWhitelistSize",
-        "deployDistributionContract",
         "deployDummyXAssetTokensAndMinters",
         "deployNATFtso",
         "deployerPrivateKey",
         "distributionLatestEntitlementStart",
+        "distributionToDelegatorsGasLimit",
         "distributionTotalEntitlementWei",
         "distributionTreasuryAddress",
         "executorFeeValueUpdateOffsetEpochs",

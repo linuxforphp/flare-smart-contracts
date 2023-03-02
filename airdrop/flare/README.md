@@ -27,8 +27,6 @@ Make sure .env file has all parameters you will need
 ```
 DEPLOYER_PRIVATE_KEY=<DeployerPrivateKey>
 DEPLOYER_PUBLIC_KEY=<DeployerPublicKey>
-GENESIS_GOVERNANCE_PRIVATE_KEY=<GenesisGovernancePrivateKey>
-GENESIS_GOVERNANCE_PUBLIC_KEY=<GenesisGovernancePublicKey>
 WEB3_PROVIDER_URL=<link to web3 rpc endpoint>
 ```
 
