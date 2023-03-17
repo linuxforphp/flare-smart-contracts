@@ -430,6 +430,12 @@ contract MockVoterWhitelister is IVoterWhitelister {
     uint256 public override defaultMaxVotersForFtso = 1;
     mapping (uint256 => uint256) public override maxVotersForFtso;
     
+    /**
+     * In case of providing bad prices (e.g. collusion), the voter can be chilled for a few reward epochs.
+     * A voter can whitelist again from a returned reward epoch onwards.
+     */
+    mapping (address => uint256) public override chilledUntilRewardEpoch;
+
     // mapping: ftsoIndex => array of whitelisted voters for this ftso
     mapping (uint256 => address) internal whitelist;
     

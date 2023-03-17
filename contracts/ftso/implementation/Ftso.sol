@@ -668,7 +668,7 @@ contract Ftso is IIFtso {
      * @return _assetWeightRatio        ratio of combined asset vp vs. native token vp (in BIPS)
      * @return _votePowerBlock          vote powewr block for given epoch
      */
-    function getVoteWeightingParameters() external view virtual override 
+    function getVoteWeightingParameters() external view virtual override
         returns (
             IIVPToken[] memory _assets,
             uint256[] memory _assetMultipliers,

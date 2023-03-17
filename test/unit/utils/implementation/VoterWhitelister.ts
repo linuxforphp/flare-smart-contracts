@@ -1,7 +1,8 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { Contracts } from "../../../../deployment/scripts/Contracts";
-import { FtsoRegistryInstance, FtsoRegistryProxyInstance, MockContractInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { defaultPriceEpochCyclicBufferSize, getTestFile } from "../../../utils/constants";
+import { FtsoRegistryInstance, FtsoRegistryProxyInstance, MockContractInstance, PriceSubmitterInstance, SimpleMockFtsoInstance, VoterWhitelisterMockInstance, VPTokenMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { defaultPriceEpochCyclicBufferSize, getTestFile, GOVERNANCE_GENESIS_ADDRESS } from "../../../utils/constants";
+import { calcGasCost } from "../../../utils/eth";
 import { assertNumberEqual, compareArrays, compareNumberArrays, compareSets, encodeContractNames, toBN, toBNFixedPrecision } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 
@@ -35,8 +36,9 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
     const ADDRESS_UPDATER = accounts[16];
     const ftsoManager = accounts[33];
 
+    let ftsoManagerMock: MockContractInstance;
     let whitelist: VoterWhitelisterMockInstance;
-    let priceSubmitter: MockContractInstance;
+    let priceSubmitter: any;
 
     let wNat: WNatInstance;
     let natFtso: SimpleMockFtsoInstance;
@@ -104,12 +106,19 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await natFtso.setAssetFtsos([xrpFtso.address, btcFtso.address], { from: ftsoManager });
             // create whitelist
             whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 5);
+            // update ftso manager to some account
             await whitelist.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
                 [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
             await whitelist.addFtso(0, { from: ftsoManager });
             await whitelist.addFtso(1, { from: ftsoManager });
             await whitelist.addFtso(2, { from: ftsoManager });
+
+            ftsoManagerMock = await MockContract.new();
+            // update ftso manager to contract
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, registry.address, ftsoManagerMock.address], {from: ADDRESS_UPDATER});
         });
 
         it("get correct parameters", async () => {
@@ -130,6 +139,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             assert.equal(totalVotePowerNat, '4.500e+21');
             assert.equal(totalVotePowerAsset, '2.250e+8');
             assert.equal(assetWeightRatio, '5000');
+            assert.isFalse(await whitelist.copyMode());
         });
 
         async function calculateCorrectVotePowers(ftso: SimpleMockFtsoInstance) {
@@ -477,6 +487,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("can change default whitelist size", async () => {
             // Assemble
+            // update ftso manager to some account
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
             const xyzFtso = await createFtso("XYZ", usd(2));
             const xyzFtsoIndex = await registry.getFtsoIndex(await xyzFtso.symbol());
             const abcFtso = await createFtso("ABC", usd(3));
@@ -501,7 +515,14 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
                 await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
             }
             assertNumberEqual(await whitelist.maxVotersForFtso(ftsoIndex), 10);
+            // update ftso manager temporary
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
             await whitelist.removeFtso(ftsoIndex, { from: ftsoManager });
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, registry.address, ftsoManagerMock.address], {from: ADDRESS_UPDATER});
             // Assert
             await expectRevert(whitelist.getFtsoWhitelistedPriceProviders(ftsoIndex), "FTSO index not supported");
             // whitelist must be empty now
@@ -539,6 +560,10 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
 
         it("Should not add ftso twice", async () => {
             await createFtso("MOCK", usd(2));
+            // update ftso manager to some account
+            await whitelist.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
+                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
             await whitelist.addFtso(3, {from: ftsoManager});
             let tx = whitelist.addFtso(3, {from: ftsoManager});
             await expectRevert(tx, "whitelist already exist");
@@ -703,6 +728,113 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             expectEvent(tx, "VoterRemovedFromWhitelist", { voter: voters[6], ftsoIndex: eth(ftsoIndex) });
 
         });
+
+        it("only governance can copy whitelist", async () => {
+            // Assert
+            await expectRevert(whitelist.copyWhitelist(1, { from: accounts[1] }), "only governance");
+            await expectRevert(whitelist.turnOffCopyMode( { from: accounts[1] }), "only governance");
+        });
+
+        it("should only copy whitelisted voters when in copy mode", async () => {
+            // Assemble
+            const ftsoIndex = 0;    // nat
+            const voters = await init10Voters();
+            // Act
+            for (const voter of voters) {
+                try {
+                    await whitelist.requestWhitelistingVoter(voter, ftsoIndex);
+                } catch (error: any) {
+                    expect(error.message).to.contain(WHITELISTING_ERROR);
+                }
+            }
+            
+            const VoterWhitelister = artifacts.require("VoterWhitelister");
+            const voterWhitelister = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 10, whitelist.address);
+            assert.equal(await voterWhitelister.oldVoterWhitelister(), whitelist.address);
+            assert.isTrue(await voterWhitelister.copyMode());
+            let wl1 = await voterWhitelister.getFtsoWhitelistedPriceProviders(ftsoIndex);
+            let wlind1 = wl1.map(x => voters.indexOf(x));
+            compareArrays(wlind1, [6, 1, 8, 9, 4]);
+            await voterWhitelister.copyWhitelist(ftsoIndex, { from: governance });
+            await expectRevert(voterWhitelister.requestWhitelistingVoter(voters[0], ftsoIndex), "copy mode");
+            await expectRevert(voterWhitelister.copyWhitelist(ftsoIndex, { from: governance }), "already copied");
+            let wl2 = await voterWhitelister.getFtsoWhitelistedPriceProviders(ftsoIndex);
+            let wlind2 = wl2.map(x => voters.indexOf(x));
+            compareArrays(wlind2, [6, 1, 8, 9, 4]);
+
+            await voterWhitelister.turnOffCopyMode({from: governance});
+            await expectRevert(voterWhitelister.copyWhitelist(ftsoIndex, { from: governance }), "not in copy mode");
+            await expectRevert(voterWhitelister.turnOffCopyMode({ from: governance }), "not in copy mode");
+            assert.isFalse(await voterWhitelister.copyMode());
+            
+            // Assert
+            assert.equal((await voterWhitelister.maxVotersForFtso(ftsoIndex)).toNumber(), 5);
+            let wl3 = await voterWhitelister.getFtsoWhitelistedPriceProviders(ftsoIndex);
+            let wlind3 = wl3.map(x => voters.indexOf(x));
+            // console.log(wlind);
+            compareArrays(wlind3, [6, 1, 8, 9, 4]);
+        });
+
+        it("only governance can chill voter", async () => {
+            // Assert
+            await expectRevert(whitelist.chillVoter(accounts[0], 1, [0], { from: accounts[1] }),
+                "only governance");
+        });
+
+        it("should chill voter for one reward epoch", async () => {
+            const ftsoIndex = 0;    // nat
+            const votePowers = [15, 8, 14, 10, 12, 11, 13];
+            const voters = accounts.slice(1, votePowers.length + 1);
+            for (let i = 0; i < voters.length; i++) {
+                // Give each one some voting
+                await wNat.deposit({ from: voters[i], value: eth(votePowers[i]) });
+                await fxrp.mint(voters[i], eth(votePowers[i]));
+            }
+            await initializeEpochForReveal();
+            
+            let trustedAddress = accounts[20];
+            let priceSubmitterInterface = await PriceSubmitter.new();
+            const getTrustedAddresses = priceSubmitterInterface.contract.methods.getTrustedAddresses().encodeABI();
+            const getTrustedAddressesReturn = web3.eth.abi.encodeParameter('address[]', [trustedAddress]);
+            await priceSubmitter.givenCalldataReturn(getTrustedAddresses, getTrustedAddressesReturn);
+
+            // Act
+            await whitelist.setMaxVotersForFtso(0, 7, { from: governance });
+
+            for (let i = 0; i < 7; ++i) {
+                const tx = await whitelist.requestWhitelistingVoter(voters[i], ftsoIndex);
+                expectEvent(tx, "VoterWhitelisted", { voter: voters[i], ftsoIndex: eth(ftsoIndex) });
+            }
+
+            let wl = await whitelist.getFtsoWhitelistedPriceProviders(ftsoIndex);
+            let wlind = wl.map(x => voters.indexOf(x));
+            compareArrays(wlind, [0, 1, 2, 3, 4, 5, 6]);
+
+            const getCurrentRewardEpoch = web3.utils.sha3("getCurrentRewardEpoch()")!.slice(0, 10); // first 4 bytes is function selector
+            await ftsoManagerMock.givenMethodReturnUint(getCurrentRewardEpoch, 1);
+            let tx = await whitelist.chillVoter(voters[0], 0, [ftsoIndex], { from: governance });
+            expectEvent.notEmitted(tx, "VoterRemovedFromWhitelist");
+            expectEvent(tx, "VoterChilled", { voter: voters[0], untilRewardEpoch: toBN(1)});
+            let tx1 = await whitelist.chillVoter(voters[1], 1, [ftsoIndex], { from: governance });
+            expectEvent(tx1, "VoterRemovedFromWhitelist", { voter: voters[1], ftsoIndex: eth(ftsoIndex) });
+            expectEvent(tx1, "VoterChilled", { voter: voters[1], untilRewardEpoch: toBN(2)});
+            assert.equal((await whitelist.chilledUntilRewardEpoch(voters[1])).toNumber(), 2);
+
+            let wl2 = await whitelist.getFtsoWhitelistedPriceProviders(ftsoIndex);
+            let wlind2 = wl2.map(x => voters.indexOf(x));
+            compareArrays(wlind2, [0, 6, 2, 3, 4, 5]);
+
+            const promise = whitelist.chillVoter(trustedAddress, 1, [ftsoIndex], { from: governance });
+            await expectRevert(promise, "trusted address");
+            const promise1 = whitelist.requestWhitelistingVoter(voters[1], ftsoIndex);
+            await expectRevert(promise1, "voter chilled");
+            const promise2 = whitelist.requestFullVoterWhitelisting(voters[1]);
+            await expectRevert(promise2, "voter chilled");
+
+            await ftsoManagerMock.givenMethodReturnUint(getCurrentRewardEpoch, 2);
+            const tx2 = await whitelist.requestWhitelistingVoter(voters[1], ftsoIndex);
+            expectEvent(tx2, "VoterWhitelisted", { voter: voters[1], ftsoIndex: eth(ftsoIndex) });
+        });
     });
 
     describe.skip("Benchmarking nat with 5 ftso tests", async () => {
@@ -718,7 +850,7 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
         let ftsos: SimpleMockFtsoInstance[];
 
         beforeEach(async () => {
-            priceSubmitter = await MockContract.new();
+            priceSubmitter = await PriceSubmitter.new();
             // create registry
             ftsoRegistry = await FtsoRegistry.new();
             ftsoRegistryProxy = await FtsoRegistryProxy.new(accounts[0], ftsoRegistry.address);
@@ -749,9 +881,15 @@ contract(`VoterWhitelister.sol; ${getTestFile(__filename)}; Voter whitelist unit
             await natFtso.setAssetFtsos(ftsos.map(f => f.address), { from: ftsoManager });
             // create whitelist
             whitelist = await VoterWhitelister.new(governance, ADDRESS_UPDATER, priceSubmitter.address, 10);
+            ftsoManagerMock = await MockContract.new();
             await whitelist.updateContractAddresses(
                 encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER]),
-                [ADDRESS_UPDATER, registry.address, ftsoManager], {from: ADDRESS_UPDATER});
+                [ADDRESS_UPDATER, registry.address, ftsoManagerMock.address], {from: ADDRESS_UPDATER});
+            await priceSubmitter.initialiseFixedAddress();
+            await priceSubmitter.setAddressUpdater(ADDRESS_UPDATER, { from: GOVERNANCE_GENESIS_ADDRESS});
+            await priceSubmitter.updateContractAddresses(
+                encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.FTSO_REGISTRY, Contracts.FTSO_MANAGER, Contracts.VOTER_WHITELISTER]),
+                [ADDRESS_UPDATER, registry.address, ftsoManager, whitelist.address], {from: ADDRESS_UPDATER});
         });
 
         async function addAccountsToWhitelist(ftsoIndex: number, maxWhitelistLength: number, votePowers: number[]) {

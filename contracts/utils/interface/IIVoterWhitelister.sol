@@ -6,6 +6,21 @@ import "../../userInterfaces/IVoterWhitelister.sol";
 
 interface IIVoterWhitelister is IVoterWhitelister {
     /**
+     * @notice Used to chill voter - remove from whitelist for a specified number of reward epochs
+     * @dev Only governance can call this method.
+     */
+    function chillVoter(
+        address _voter,
+        uint256 _noOfRewardEpochs,
+        uint256[] memory _ftsoIndices
+    ) 
+        external
+        returns(
+            bool[] memory _removed,
+            uint256 _untilRewardEpoch
+        );
+
+    /**
      * Set the maximum number of voters in the whitelist for FTSO at index `_ftsoIndex`.
      * Possibly removes several voters with the least votepower from the whitelist.
      * Only governance can call this method.
