@@ -862,7 +862,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.ESCROW, Contracts.CLAIM_SETUP_MANAGER,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER, Contracts.FLARE_CONTRACT_REGISTRY,
         Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.GOVERNANCE_SETTINGS,
-        Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.COMBINED_NAT, Contracts.FLARE_ASSET_REGISTRY, Contracts.VALIDATOR_REWARD_MANAGER];
+        Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.COMBINED_NAT, Contracts.FLARE_ASSET_REGISTRY, Contracts.VALIDATOR_REWARD_MANAGER, Contracts.POLLING_FTSO];
 
       for (let name of contractNames) {
         // Act
@@ -875,7 +875,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.CLAIM_SETUP_MANAGER, Contracts.FLARE_CONTRACT_REGISTRY,
         Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW, Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.VALIDATOR_REWARD_MANAGER];
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW, Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.VALIDATOR_REWARD_MANAGER,  Contracts.POLLING_FTSO];
 
       for (let name of contractNames) {
         // Act

@@ -47,6 +47,7 @@ export class Contracts {
   public static readonly POLLING_FOUNDATION = "PollingFoundation";
   public static readonly FLARE_ASSET_REGISTRY = "FlareAssetRegistry";
   public static readonly FLARE_CONTRACT_REGISTRY = "FlareContractRegistry";
+  public static readonly POLLING_FTSO = "PollingFtso";
   public static readonly FTSO_WNAT = "FtsoWnat";
   public static readonly XRP = `${Contracts.WRAP_SYMBOL}XRP` 
   public static readonly DUMMY_XRP_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}XrpMinter`;

@@ -425,6 +425,68 @@ export interface ChainParameters {
      * Array of proposers that can create a proposal
      */
     proposers: string[];
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Polling Ftso
+
+    /**
+     * Address of maintainer of PollingFtso contract.
+     */
+    maintainer: string;
+
+    /**
+     * Period (in seconds) between creation of proposal and voting start time.
+     */
+    votingDelaySeconds: integer;
+
+    /**
+     * Length (in seconds) of voting period.
+     */
+    votingPeriodSeconds: integer;
+
+    /**
+     * Threshold (in BIPS) for proposal to potentially be accepted. If less than thresholdConditionBIPS of total vote power participates in vote, proposal can't be accepted.
+     */
+    thresholdConditionBIPS: integer;
+
+    /**
+     * Majority condition (in BIPS) for proposal to be accepted. If less than majorityConditionBIPS votes in favor, proposal can't be accepted.
+     */
+    majorityConditionBIPS: integer;
+
+    /**
+     * Cost of creating proposal (in NAT). It is paid by the proposer.
+     */
+    proposalFeeValueNAT: integer;
+
+    /**
+     * Number of last consecutive epochs in which data provider needs to earn rewards in order to be accepted to the management group.
+     */
+    addAfterRewardedEpochs: integer;
+
+    /**
+     * Number of last consecutive epochs in which data provider should not be chilled in order to be accepted to the management group.
+     */
+    addAfterNotChilledEpochs: integer;
+
+    /**
+     * Number of last consecutive epochs in which data provider should not earn rewards in order to be eligible for removal from the management group.
+     */
+    removeAfterNotRewardedEpochs: integer;
+
+    /**
+     * Number of last relevant proposals to check for not voting. Proposal is relevant if quorum was achieved and voting has ended.
+     */
+    removeAfterEligibleProposals: integer;
+    /**
+     * In how many of removeAfterEligibleProposals proposals should data provider not participate (vote) in order to be eligible for removal from the management group.
+     */
+    removeAfterNonParticipatingProposals: integer;
+
+    /**
+     * Number of days for which member is removed from the management group.
+     */
+    removeForDays: integer;
 }
 
 export interface AssetParameters {

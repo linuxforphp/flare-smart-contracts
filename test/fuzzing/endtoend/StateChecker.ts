@@ -126,7 +126,7 @@ export class PriceAndRewardChecker implements EventStateChecker {
             const min = prices.reduce((x, y) => x.lte(y) ? x : y);
             assert(min.lte(args.price) && args.price.lte(max), `PriceFinalized: price ${args.price} not between ${min} and ${max}, priceEpochId=${this.priceEpochId}`);
             if (args.rewardedFtso) {
-                this.rewarded = { ftso: ftsoAddress, lowPrice: args.lowRewardPrice, highPrice: args.highRewardPrice };
+                this.rewarded = { ftso: ftsoAddress, lowPrice: args.lowIQRRewardPrice, highPrice: args.highIQRRewardPrice };
             }
         }
     }

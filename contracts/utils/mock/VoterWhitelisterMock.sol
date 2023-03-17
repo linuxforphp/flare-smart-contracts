@@ -10,7 +10,7 @@ contract VoterWhitelisterMock is VoterWhitelister {
         IIPriceSubmitter _priceSubmitter, 
         uint256 _defaultMaxVotersForFtso
     )
-        VoterWhitelister(_governance, _addressUpdater, _priceSubmitter, _defaultMaxVotersForFtso)
+        VoterWhitelister(_governance, _addressUpdater, _priceSubmitter, _defaultMaxVotersForFtso, IVoterWhitelister(0))
     {
     }
     

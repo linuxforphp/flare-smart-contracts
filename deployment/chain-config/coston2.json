@@ -183,5 +183,17 @@
         "0xC83Ec6a4aFf2099942836860A28C7e248Fabc32C",
         "0x1a16DC5ec4f48Ed769949855C3bC3a1d10c72A95",
         "0x893baB99798BCF5e0faB09Ad5CE61872B951F0a5"
-    ]
+    ],
+    "maintainer": "0xC83Ec6a4aFf2099942836860A28C7e248Fabc32C",
+    "votingDelaySeconds": 0,
+    "votingPeriodSeconds": 172800,
+    "thresholdConditionBIPS": 6600,
+    "majorityConditionBIPS": 5000,
+    "proposalFeeValueNAT": 100,
+    "addAfterRewardedEpochs": 20,
+    "addAfterNotChilledEpochs": 20,
+    "removeAfterNotRewardedEpochs": 2,
+    "removeAfterEligibleProposals": 4,
+    "removeAfterNonParticipatingProposals": 2,
+    "removeForDays": 7
 }

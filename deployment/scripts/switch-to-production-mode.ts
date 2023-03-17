@@ -8,6 +8,7 @@ export async function switchToProductionMode(
     contracts: Contracts,
     deployerPrivateKey: string,
     genesisGovernancePrivateKey: string,
+    distributionDeployed: boolean,
     quiet: boolean = false
 ) {
     const web3 = hre.web3;
@@ -70,6 +71,7 @@ export async function switchToProductionMode(
     const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
     const PollingFoundation = artifacts.require("PollingFoundation");
     const FlareAssetRegistry = artifacts.require("FlareAssetRegistry");
+    const PollingFtso = artifacts.require("PollingFtso");
 
     // Get deployed contracts
     const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
@@ -96,6 +98,7 @@ export async function switchToProductionMode(
     const flareAssetRegistry = await FlareAssetRegistry.at(contracts.getContractAddress(Contracts.FLARE_ASSET_REGISTRY));
     const claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
     const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+    const pollingFtso = await PollingFtso.at(contracts.getContractAddress(Contracts.POLLING_FTSO));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
@@ -122,4 +125,5 @@ export async function switchToProductionMode(
     await validatorRewardManager.switchToProductionMode();
     await pollingFoundation.switchToProductionMode();
     await flareAssetRegistry.switchToProductionMode();
+    await pollingFtso.switchToProductionMode();
 }

@@ -7,6 +7,7 @@ import "../../genesis/interface/IIPriceSubmitter.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../token/interface/IIVPToken.sol";
 import "../../userInterfaces/IFtsoRegistry.sol";
+import "../../userInterfaces/IFtsoManager.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -26,17 +27,35 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
      */
     mapping (uint256 => uint256) public override maxVotersForFtso;
     
+    /**
+     * In case of providing bad prices (e.g. collusion), the voter can be chilled for a few reward epochs.
+     * A voter can whitelist again from a returned reward epoch onwards.
+     */
+    mapping (address => uint256) public override chilledUntilRewardEpoch;
+    
     // mapping: ftsoIndex => array of whitelisted voters for this ftso
     mapping (uint256 => address[]) internal whitelist;
     
     IIPriceSubmitter public immutable priceSubmitter;
-    
     IFtsoRegistry public ftsoRegistry;
+    IFtsoManager public ftsoManager;
 
-    address public ftsoManager;
+    IVoterWhitelister public immutable oldVoterWhitelister;
+    bool public copyMode;
 
     modifier onlyFtsoManager {
-        require(msg.sender == ftsoManager, "only ftso manager");
+        require(msg.sender == address(ftsoManager), "only ftso manager");
+        _;
+    }
+
+    modifier voterNotChilled(address _voter) {
+        uint256 untilRewardEpoch = chilledUntilRewardEpoch[_voter];
+        require(untilRewardEpoch == 0 || untilRewardEpoch <= ftsoManager.getCurrentRewardEpoch(), "voter chilled");
+        _;
+    }
+
+    modifier notInCopyMode {
+        require(!copyMode, "copy mode");
         _;
     }
     
@@ -44,12 +63,15 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         address _governance,
         address _addressUpdater,
         IIPriceSubmitter _priceSubmitter,
-        uint256 _defaultMaxVotersForFtso
+        uint256 _defaultMaxVotersForFtso,
+        IVoterWhitelister _oldVoterWhitelister
     )
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
         priceSubmitter = _priceSubmitter;
         defaultMaxVotersForFtso = _defaultMaxVotersForFtso;
+        oldVoterWhitelister = _oldVoterWhitelister;
+        copyMode = address(_oldVoterWhitelister) != address(0);
     }
     
     /**
@@ -60,7 +82,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     function requestFullVoterWhitelisting(
         address _voter
     ) 
-        external override 
+        external override notInCopyMode voterNotChilled(_voter)
         returns (
             uint256[] memory _supportedIndices,
             bool[] memory _success
@@ -82,7 +104,12 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
      * Request to whitelist `_voter` account to ftso at `_ftsoIndex`. Will revert if vote power too low.
      * May be called by any address.
      */
-    function requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) external override {
+    function requestWhitelistingVoter(
+        address _voter,
+        uint256 _ftsoIndex
+    )
+        external override notInCopyMode voterNotChilled(_voter)
+    {
         if (_isTrustedAddress(_voter)) {
             revert("trusted address");
         }
@@ -92,10 +119,49 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
+     * @notice Used to chill voter - remove from whitelist for a specified number of reward epochs
+     * @dev Only governance can call this method.
+     */
+    function chillVoter(
+        address _voter,
+        uint256 _noOfRewardEpochs,
+        uint256[] memory _ftsoIndices
+    ) 
+        external override notInCopyMode onlyGovernance
+        returns(
+            bool[] memory _removed,
+            uint256 _untilRewardEpoch
+        )
+    {
+        if (_isTrustedAddress(_voter)) {
+            revert("trusted address");
+        }
+
+        _untilRewardEpoch = ftsoManager.getCurrentRewardEpoch().add(_noOfRewardEpochs);
+        chilledUntilRewardEpoch[_voter] = _untilRewardEpoch;
+        emit VoterChilled(_voter, _untilRewardEpoch);
+
+        uint256 len = _ftsoIndices.length;
+        _removed = new bool[](len);
+
+        // only remove if actually chilled
+        if (_noOfRewardEpochs > 0) {
+            for (uint256 i = 0; i < len; i++) {
+                _removed[i] = _removeAddressFromList(_voter, _ftsoIndices[i]);
+            }
+        }
+    }
+
+    /**
      * Set the maximum number of voters in the whitelist for FTSO at index `_ftsoIndex`.
      * Calling this function might remove several voters with the least votepower from the whitelist.
      */
-    function setMaxVotersForFtso(uint256 _ftsoIndex, uint256 _newMaxVoters) external override onlyGovernance {
+    function setMaxVotersForFtso(
+        uint256 _ftsoIndex,
+        uint256 _newMaxVoters
+    )
+        external override notInCopyMode onlyGovernance
+    {
         maxVotersForFtso[_ftsoIndex] = _newMaxVoters;
         // need to remove any?
         address[] storage addressesForFtso = whitelist[_ftsoIndex];
@@ -131,7 +197,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     /**
      * Create whitelist with default size for ftso.
      */
-    function addFtso(uint256 _ftsoIndex) external override onlyFtsoManager {
+    function addFtso(uint256 _ftsoIndex) external override notInCopyMode onlyFtsoManager {
         require(maxVotersForFtso[_ftsoIndex] == 0, "whitelist already exist");
         maxVotersForFtso[_ftsoIndex] = defaultMaxVotersForFtso;
     }
@@ -139,38 +205,43 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     /**
      * Clear whitelist for ftso at `_ftsoIndex`.
      */
-    function removeFtso(uint256 _ftsoIndex) external override onlyFtsoManager {
+    function removeFtso(uint256 _ftsoIndex) external override notInCopyMode onlyFtsoManager {
         _votersRemovedFromWhitelist(whitelist[_ftsoIndex], _ftsoIndex);
         delete whitelist[_ftsoIndex];
         delete maxVotersForFtso[_ftsoIndex];
     }
 
     /**
+     * Enable governance address to copy old whitelist data
+     */
+    function copyWhitelist(uint256 _ftsoIndex) external onlyImmediateGovernance {
+        require(copyMode, "not in copy mode");
+        require(maxVotersForFtso[_ftsoIndex] == 0, "already copied");
+        maxVotersForFtso[_ftsoIndex] = oldVoterWhitelister.maxVotersForFtso(_ftsoIndex);
+        whitelist[_ftsoIndex] = oldVoterWhitelister.getFtsoWhitelistedPriceProviders(_ftsoIndex);
+    }
+
+    /**
+     * Enable governance address to turn off copy mode
+     */
+    function turnOffCopyMode() external onlyImmediateGovernance {
+        require(copyMode, "not in copy mode");
+        copyMode = false;
+    }
+
+    /**
      * Remove `_trustedAddress` from whitelist for ftso at `_ftsoIndex`.
      */
-    function removeTrustedAddressFromWhitelist(address _trustedAddress, uint256 _ftsoIndex) external override {
+    function removeTrustedAddressFromWhitelist(
+        address _trustedAddress,
+        uint256 _ftsoIndex
+    )
+        external override notInCopyMode
+    {
         if (!_isTrustedAddress(_trustedAddress)) {
             revert("not trusted address");
         }
-        address[] storage addressesForFtso = whitelist[_ftsoIndex];
-        uint256 length = addressesForFtso.length;
-
-        // find index of _trustedAddress
-        uint256 index = 0;
-        for ( ; index < length; index++) {
-            if (addressesForFtso[index] == _trustedAddress) {
-                break;
-            }
-        }
-
-        require(index < length, "trusted address not whitelisted");
-        
-        // kick the index out and replace it with the last one
-        address[] memory removedVoters = new address[](1);
-        removedVoters[0] = addressesForFtso[index];
-        addressesForFtso[index] = addressesForFtso[length - 1];
-        addressesForFtso.pop();
-        _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
+        require(_removeAddressFromList(_trustedAddress, _ftsoIndex), "trusted address not whitelisted");
     }
 
     /**
@@ -192,9 +263,40 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
      * Get whitelisted price providers for ftso at `_ftsoIndex`
      */
     function getFtsoWhitelistedPriceProviders(uint256 _ftsoIndex) public view override returns (address[] memory) {
+        if (copyMode) {
+            return oldVoterWhitelister.getFtsoWhitelistedPriceProviders(_ftsoIndex);
+        }
         uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
         require(maxVoters > 0, "FTSO index not supported");
         return whitelist[_ftsoIndex];
+    }
+
+    /**
+     * Remove `_voter` address from ftso index
+     */
+    function _removeAddressFromList(address _voter, uint256 _ftsoIndex) internal returns(bool _removed) {
+        address[] storage addressesForFtso = whitelist[_ftsoIndex];
+        uint256 length = addressesForFtso.length;
+
+        // find index of _voter
+        uint256 index = 0;
+        for ( ; index < length; index++) {
+            if (addressesForFtso[index] == _voter) {
+                break;
+            }
+        }
+
+        if (index == length) {
+            return false;
+        }
+        
+        // kick the index out and replace it with the last one
+        address[] memory removedVoters = new address[](1);
+        removedVoters[0] = addressesForFtso[index];
+        addressesForFtso[index] = addressesForFtso[length - 1];
+        addressesForFtso.pop();
+        _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
+        return true;
     }
 
     /**
@@ -207,7 +309,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         internal override
     {
         ftsoRegistry = IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
-        ftsoManager = _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager");
+        ftsoManager = IFtsoManager(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoManager"));
     }
 
     /**

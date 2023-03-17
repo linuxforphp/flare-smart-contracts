@@ -17,7 +17,7 @@ import {
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, ValidatorRewardManagerContract, PollingFoundationContract, FlareAssetRegistryContract, FlareContractRegistryContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, ValidatorRewardManagerContract, PollingFoundationContract, FlareAssetRegistryContract, FlareContractRegistryContract, PollingFtsoContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -98,6 +98,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const ValidatorRewardManager: ValidatorRewardManagerContract = artifacts.require("ValidatorRewardManager");
   const PollingFoundation: PollingFoundationContract = artifacts.require("PollingFoundation");
   const FlareAssetRegistry: FlareAssetRegistryContract = artifacts.require("FlareAssetRegistry");
+  const PollingFtso: PollingFtsoContract = artifacts.require("PollingFtso");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -332,7 +333,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   spewNewContractInfo(contracts, addressUpdaterContracts, FtsoRegistry.contractName, `FtsoRegistry.sol`, registry.address, quiet);
 
   // VoterWhitelisting
-  const voterWhitelister = await VoterWhitelister.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, parameters.defaultVoterWhitelistSize);
+  const voterWhitelister = await VoterWhitelister.new(deployerAccount.address, addressUpdater.address, priceSubmitter.address, parameters.defaultVoterWhitelistSize, "0x0000000000000000000000000000000000000000");
   spewNewContractInfo(contracts, addressUpdaterContracts, VoterWhitelister.contractName, `VoterWhitelister.sol`, voterWhitelister.address, quiet);
 
   // ClaimSetupManager
@@ -431,6 +432,27 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Deploy Flare asset registry
   const flareAssetRegistry = await FlareAssetRegistry.new(deployerAccount.address);
   spewNewContractInfo(contracts, addressUpdaterContracts, FlareAssetRegistry.contractName, `FlareAssetRegistry.sol`, flareAssetRegistry.address, quiet);
+  // Deploy polling ftso
+  const pollingFtso = await PollingFtso.new(
+      deployerAccount.address,
+      addressUpdater.address
+  );
+  await pollingFtso.setMaintainer(deployerAccount.address);
+  await pollingFtso.setParameters( // can be called only from maintainer address
+    parameters.votingDelaySeconds,
+    parameters.votingPeriodSeconds,
+    parameters.thresholdConditionBIPS,
+    parameters.majorityConditionBIPS,
+    BN(parameters.proposalFeeValueNAT).mul(BN(10).pow(BN(18))),
+    parameters.addAfterRewardedEpochs,
+    parameters.addAfterNotChilledEpochs,
+    parameters.removeAfterNotRewardedEpochs,
+    parameters.removeAfterEligibleProposals,
+    parameters.removeAfterNonParticipatingProposals,
+    parameters.removeForDays
+  );
+  await pollingFtso.setMaintainer(parameters.maintainer);
+  spewNewContractInfo(contracts, addressUpdaterContracts, PollingFtso.contractName, `PollingFtso.sol`, pollingFtso.address, quiet);
 
   // Tell address updater about all contracts
   await addressUpdater.addOrUpdateContractNamesAndAddresses(
@@ -457,6 +479,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     pollingFoundation.address,
     claimSetupManager.address,
     distributionToDelegators.address,
+    pollingFtso.address
   ];
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
 

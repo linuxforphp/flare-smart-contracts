@@ -183,6 +183,19 @@
         }
     ],
     "proposers": [
-        "0xbe653c54df337f13fcb726101388f4a4803049f3"
-    ]
+        "0xbe653c54df337f13fcb726101388f4a4803049f3",
+        "0xb5Dd6cA7b14bd7d2B6E296983D0AA0D373979CFE"
+    ],
+    "maintainer": "0xbe653c54df337f13fcb726101388f4a4803049f3",
+    "votingDelaySeconds": 0,
+    "votingPeriodSeconds": 172800,
+    "thresholdConditionBIPS": 6600,
+    "majorityConditionBIPS": 5000,
+    "proposalFeeValueNAT": 100,
+    "addAfterRewardedEpochs": 20,
+    "addAfterNotChilledEpochs": 20,
+    "removeAfterNotRewardedEpochs": 2,
+    "removeAfterEligibleProposals": 4,
+    "removeAfterNonParticipatingProposals": 2,
+    "removeForDays": 7
 }

@@ -201,4 +201,11 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
       await checkProductionSwitch(Contracts.CLAIM_SETUP_MANAGER);
     });
   });
+
+  describe(Contracts.POLLING_FTSO, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.POLLING_FTSO);
+    });
+  });
+
 });
