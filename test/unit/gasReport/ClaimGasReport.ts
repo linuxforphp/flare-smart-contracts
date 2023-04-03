@@ -140,6 +140,7 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
 
     ////
     let startTs2 = await time.latest();
+    await mockInflation.setDailyAuthorizedInflation(BN(2000000));
     await mockInflation.receiveInflation({ value: "2000000" });
     await time.increaseTo(startTs2.addn(REVEAL_EPOCH_DURATION_S + 160));
     await ftsoManager.daemonize(); // initialize reward epoch
@@ -392,14 +393,14 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     // having to calc gas fees
     let balanceBefore = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
     let txClaim = await ftsoRewardManager.claim(accounts[11], accounts[3], 0, false, { from: accounts[11] });
-    // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 finalizations = 99
+    // a1 -> a3 claimed should be (2000000 / 720) * 0.25 finalizations = 695
     let balanceAfter = web3.utils.toBN(await web3.eth.getBalance(accounts[3]));
-    assert.equal(balanceAfter.sub(balanceBefore).toNumber(), Math.floor(2000000 / 5040 * 0.25));
+    assert.equal(balanceAfter.sub(balanceBefore).toNumber(), 695);
     console.log(`claim reward and send to another account (0): ${txClaim.receipt.gasUsed}`);
 
     // claim and wrap
     let txClaimWrap = await ftsoRewardManager.claim(accounts[12], accounts[3], 0, true, { from: accounts[12] });
-    assert.equal((await wNat.balanceOf(accounts[3])).toNumber(), Math.floor(2000000 / 5040 * 0.25));
+    assert.equal((await wNat.balanceOf(accounts[3])).toNumber(), 695);
     console.log(`claim, wrap reward and send to another account (0): ${txClaimWrap.receipt.gasUsed}`);
 
 
@@ -511,12 +512,12 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     // Claim reward to a3 - test both 3rd party claim and avoid
     // having to calc gas fees
     let txClaim = await ftsoRewardManager.claim(accounts[11], accounts[11], 0, false, { from: accounts[11] });
-    // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 finalizations = 99
+    // a1 -> a3 claimed should be (2000000 / 720) * 0.25 finalizations = 695
     console.log(`claim reward (0): ${txClaim.receipt.gasUsed}`);
 
     // claim and wrap
     let txClaimWrap = await ftsoRewardManager.claim(accounts[12], accounts[12], 0, true, { from: accounts[12] });
-    assert.equal((await wNat.balanceOf(accounts[12])).toNumber(), Math.floor(2000000 / 5040 * 0.25) + 100);
+    assert.equal((await wNat.balanceOf(accounts[12])).toNumber(), 695 + 100);
     console.log(`claim and wrap reward (0): ${txClaimWrap.receipt.gasUsed}`);
 
 
@@ -524,7 +525,7 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     // Claim reward to a3 - test both 3rd party claim and avoid
     // having to calc gas fees
     let txClaim1 = await ftsoRewardManager.claim(accounts[11], accounts[11], 1, false, { from: accounts[11] });
-    // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 finalizations = 99
+    // a1 -> a3 claimed should be (2000000 / 720) * 0.25 finalizations = 695
     console.log(`claim reward (1): ${txClaim1.receipt.gasUsed}`);
 
     // claim and wrap
@@ -537,7 +538,7 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     // Claim reward to a3 - test both 3rd party claim and avoid
     // having to calc gas fees
     let txClaim2 = await ftsoRewardManager.claim(accounts[11], accounts[11], 2, false, { from: accounts[11] });
-    // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 finalizations = 99
+    // a1 -> a3 claimed should be (2000000 / 720) * 0.25 finalizations = 695
     console.log(`claim reward (2): ${txClaim2.receipt.gasUsed}`);
 
     // claim and wrap
@@ -615,12 +616,12 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     // Claim reward to a3 - test both 3rd party claim and avoid
     // having to calc gas fees
     let txClaim = await ftsoRewardManager.claim(accounts[11], accounts[11], 0, false, { from: accounts[4] });
-    // a1 -> a3 claimed should be (2000000 / 5040) * 0.25 finalizations = 99
+    // a1 -> a3 claimed should be (2000000 / 720) * 0.25 finalizations = 695
     console.log(`executor claims reward to user (0): ${txClaim.receipt.gasUsed}`);
 
     // claim and wrap
     let txClaimWrap = await ftsoRewardManager.claim(accounts[12], accounts[12], 0, true, { from: accounts[4] });
-    assert.equal((await wNat.balanceOf(accounts[12])).toNumber(), Math.floor(2000000 / 5040 * 0.25) + 100);
+    assert.equal((await wNat.balanceOf(accounts[12])).toNumber(), 695 + 100);
     console.log(`executor claims and sends wrapped reward to user (0): ${txClaimWrap.receipt.gasUsed}`);
 
     // Act
