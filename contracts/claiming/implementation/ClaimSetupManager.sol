@@ -67,6 +67,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     mapping(address => AddressSet.State) private ownerAllowedClaimRecipientSet;
 
     // mapping executor address => executor fees
+    //slither-disable-next-line uninitialized-state
     mapping(address => ExecutorFee[]) private claimExecutorFees;
 
     AddressSet.State private registeredExecutors;
