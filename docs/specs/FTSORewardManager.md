@@ -21,6 +21,8 @@ Price epochs are rather rapid, and rewarding involves many addresses. That being
 
 The aggregation will be done by using the same vote power block for all price epochs inside a reward epoch.
 
+Because reward epoch length may change, it is advised to use API `getCurrentRewardEpoch` from [Ftso Manager](../../contracts/Ftso/implementation/FtsoManager.sol) contract for fetching the current reward epoch index. For fetching start and end timestamps of the current reward epoch it is advised to use APIs `rewardEpochs(currentRewardEpochId)` and `currentRewardEpochEnds` (from [Ftso Manager](../../contracts/Ftso/implementation/FtsoManager.sol) contract) respectively.
+
 # Rewarding
 The FTSO rewarding process is implemented in the [Ftso Reward Manager] contract.
 
@@ -39,7 +41,7 @@ Each price provider will define a fee percentage for its delegators; if a price 
 *   Provider rewards for this epoch: 1000
 *   fee percentage 20%.
 
-From the above, 20000 vote power are entitled for 1000 reward units thus each vote power unit is entitled to 0.05 reward units. 
+From the above, 20000 vote power are entitled for 1000 reward units thus each vote power unit is entitled to 0.05 reward units.
 
 The price provider is entitled to 0.05 * 1000, which is 50 reward units for its own balance of 1000. The rest of the reward (950 units) should be split between delegators and the provider. Out of 950 units, the provider takes 20% and the rest is split between all delegators according to the vote power they delegated to this provider in this epoch.
 
