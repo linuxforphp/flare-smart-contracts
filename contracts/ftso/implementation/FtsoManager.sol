@@ -427,6 +427,10 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         );
     }
 
+    /**
+     * @dev If the reward epoch is very short and the expiry offset is very long, the list of reward epochs
+    to be checked becomes very long. Therefore reward epoch time has to be capped by expiry offset.
+     */
     function setRewardEpochDurationSeconds(uint256 _rewardEpochDurationSeconds) external onlyGovernance {
         require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
         require(_rewardEpochDurationSeconds % priceEpochDurationSeconds == 0,
@@ -518,7 +522,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         return nextRewardEpochToExpire;
     }
 
-    /*
+    /**
      * @notice Returns the list of FTSOs
      */
     function getFtsos() external view override returns (IIFtso[] memory _ftsos) {
