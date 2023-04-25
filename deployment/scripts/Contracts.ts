@@ -46,6 +46,7 @@ export class Contracts {
   public static readonly GOVERNANCE_VOTE_POWER = "GovernanceVotePower";
   public static readonly POLLING_FOUNDATION = "PollingFoundation";
   public static readonly FLARE_ASSET_REGISTRY = "FlareAssetRegistry";
+  public static readonly WNAT_REGISTRY_PROVIDER = "WNatRegistryProvider";
   public static readonly FLARE_CONTRACT_REGISTRY = "FlareContractRegistry";
   public static readonly POLLING_FTSO = "PollingFtso";
   public static readonly FTSO_WNAT = "FtsoWnat";

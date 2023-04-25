@@ -17,7 +17,7 @@ import {
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, ValidatorRewardManagerContract, PollingFoundationContract, FlareAssetRegistryContract, FlareContractRegistryContract, PollingFtsoContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, ValidatorRewardManagerContract, PollingFoundationContract, FlareAssetRegistryContract, FlareContractRegistryContract, PollingFtsoContract, WNatRegistryProviderContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -98,6 +98,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const ValidatorRewardManager: ValidatorRewardManagerContract = artifacts.require("ValidatorRewardManager");
   const PollingFoundation: PollingFoundationContract = artifacts.require("PollingFoundation");
   const FlareAssetRegistry: FlareAssetRegistryContract = artifacts.require("FlareAssetRegistry");
+  const WNatRegistryProvider: WNatRegistryProviderContract = artifacts.require("WNatRegistryProvider");
   const PollingFtso: PollingFtsoContract = artifacts.require("PollingFtso");
 
   // Initialize the state connector
@@ -482,6 +483,11 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     pollingFtso.address
   ];
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
+
+  // WNatRegistryProvider contract - should be deployed after adding WNat to address updater
+  const wNatRegistryProvider = await WNatRegistryProvider.new(addressUpdater.address, flareAssetRegistry.address);
+  await flareAssetRegistry.registerProvider(wNatRegistryProvider.address, true);
+  spewNewContractInfo(contracts, null, WNatRegistryProvider.contractName, `WNatRegistryProvider.sol`, wNatRegistryProvider.address, quiet);
 
   let assetToContracts = new Map<string, AssetContracts>();
 
