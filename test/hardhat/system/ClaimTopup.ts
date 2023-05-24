@@ -436,9 +436,9 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
 
     // Assert
     // Recognized inflation should be correct
-    const firstInflationAnnum = await inflation.getAnnum(0);
-    const firstAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
-    assert.equal(firstInflationAnnum.recognizedInflationWei.toString(), firstAnnumInflationWei.toString());
+    const firstInflationTimeSlot = await inflation.getTimeSlot(0);
+    const firstTimeSlotInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    assert.equal(firstInflationTimeSlot.recognizedInflationWei.toString(), firstTimeSlotInflationWei.toString());
   });
 
   it("Test claiming from reward manager on first day ", async function () {
@@ -889,12 +889,12 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await time.advanceBlock();
 
     // Inflation is 30 days long
-    const firstInflationAnnum = await inflation.getAnnum(0);
-    console.log(firstInflationAnnum.startTimeStamp);
-    const firstAnnumStart = toBN(firstInflationAnnum.startTimeStamp);
-    assert(firstAnnumStart.add(BN(30 * 24 * 60 * 60 - 1)).eq(toBN(firstInflationAnnum.endTimeStamp)));
+    const firstInflationTimeSlot = await inflation.getTimeSlot(0);
+    console.log(firstInflationTimeSlot.startTimeStamp);
+    const firstTimeSlotStart = toBN(firstInflationTimeSlot.startTimeStamp);
+    assert(firstTimeSlotStart.add(BN(30 * 24 * 60 * 60 - 1)).eq(toBN(firstInflationTimeSlot.endTimeStamp)));
 
-    const target = toBN(firstInflationAnnum.endTimeStamp)
+    const target = toBN(firstInflationTimeSlot.endTimeStamp)
 
     // Wait for a month
     const difference = BN(24 * 60 * 60)
@@ -908,22 +908,22 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
       console.log((await time.latest()).toString(), (await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toString());
     }
 
-    const secondAnnum = await inflation.getCurrentAnnum();
-    // Should create a new annum
-    // Second annum should start later then the first
-    assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
+    const secondTimeSlot = await inflation.getCurrentTimeSlot();
+    // Should create a new timeSlot
+    // Second time slot should start later then the first
+    assert.isTrue(firstTimeSlotStart.lt(BN(secondTimeSlot.startTimeStamp.toString())));
     
     // Recognized inflation should be updated
     const totalBurnedWei = (await getRewardTotals(ftsoRewardManager)).totalBurnedWei; // burned amount is part of inflatable balance
-    const secondAnnumInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
+    const secondTimeSlotInflationWei = initialGenesisAmountWei.sub(totalFoundationSupplyWei).sub(totalLockedWei).add(totalClaimedWei).add(totalBurnedWei).muln(inflationBips).divn(10000).divn(12); // 5 percent of circulating supply (monthly)
     assert.isTrue(totalClaimedWei.eq((await getRewardTotals(ftsoRewardManager)).totalClaimedWei));
-    assert.equal(secondAnnum.recognizedInflationWei.toString(), secondAnnumInflationWei.toString());
+    assert.equal(secondTimeSlot.recognizedInflationWei.toString(), secondTimeSlotInflationWei.toString());
       
 
     // Check that the next daily authorized amount set on reward manager, after the month-end roll, contains the correct amount.
     assert.equal(
       ((await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation).toString(),
-      secondAnnumInflationWei.divn(30).toString() // 100 percent is shared to reward manager
+      secondTimeSlotInflationWei.divn(30).toString() // 100 percent is shared to reward manager
     )
 
   });

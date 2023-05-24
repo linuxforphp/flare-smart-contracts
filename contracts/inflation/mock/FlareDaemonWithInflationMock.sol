@@ -26,6 +26,7 @@ contract FlareDaemonWithInflationMock is GovernedAtGenesis {
 
     Inflation public inflation;
     uint256 public totalMintingRequestedWei;
+    uint256 public totalMintingReceivedWei;
     uint256 public maxMintingRequestWei;
     uint256 public lastMintRequestTs;
     uint256 public lastUpdateMaxMintRequestTs;
@@ -52,6 +53,7 @@ contract FlareDaemonWithInflationMock is GovernedAtGenesis {
     }
 
     function triggerReceiveMinting(uint256 _toMint) external {
+        totalMintingReceivedWei = totalMintingReceivedWei.add(_toMint);
         inflation.receiveMinting{ value: _toMint }();
     }
 

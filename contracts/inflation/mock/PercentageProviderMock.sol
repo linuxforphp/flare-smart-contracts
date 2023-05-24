@@ -6,14 +6,14 @@ import "../interface/IIInflationAllocation.sol";
 
 
 contract PercentageProviderMock is IIInflationAllocation {
-    uint256 public annualPercentageBips;
+    uint256 public timeSlotPercentageBips;
     SharingPercentage[] public sharingPercentages;
 
-    constructor(SharingPercentage[] memory _sharingPercentages, uint256 _annualPercentageBips) {
-        annualPercentageBips = _annualPercentageBips;
+    constructor(SharingPercentage[] memory _sharingPercentages, uint256 _timeSlotPercentageBips) {
+        timeSlotPercentageBips = _timeSlotPercentageBips;
         // Add to storage
-        for (uint256 i; i < _sharingPercentages.length; i++) {
-            sharingPercentages.push(_sharingPercentages[i]);            
+        for (uint256 i = 0; i < _sharingPercentages.length; i++) {
+            sharingPercentages.push(_sharingPercentages[i]);
         }
     }
 
@@ -21,7 +21,7 @@ contract PercentageProviderMock is IIInflationAllocation {
         return sharingPercentages;
     }
 
-    function getAnnualPercentageBips() external view override returns(uint256) {
-        return annualPercentageBips;
+    function getTimeSlotPercentageBips() external view override returns(uint256) {
+        return timeSlotPercentageBips;
     }
 }

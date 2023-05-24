@@ -22,9 +22,9 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     string internal constant ERR_LENGTH_MISMATCH = "length mismatch";
     string internal constant ERR_HIGH_SHARING_PERCENTAGE = "high sharing percentage";
     string internal constant ERR_SUM_SHARING_PERCENTAGE = "sum sharing percentage not 100%";
-    string internal constant ERR_IS_ZERO = "address is 0"; 
-    string internal constant ANNUAL_INFLATION_OUT_OF_BOUNDS = "annual inflation out of bounds";
-    string internal constant ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY = "annual inflation schedule empty";
+    string internal constant ERR_IS_ZERO = "address is 0";
+    string internal constant ERR_TIME_SLOT_INFLATION_OUT_OF_BOUNDS = "time slot inflation out of bounds";
+    string internal constant ERR_TIME_SLOT_INFLATION_SCHEDULE_EMPTY = "time slot inflation schedule empty";
     string internal constant ERR_TOO_MANY = "too many";
     string internal constant ERR_ONLY_INFLATION = "only inflation";
 
@@ -35,14 +35,14 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
 
     InflationReceiver[] public inflationReceivers;
     Inflation public inflation;
-    uint256 public lastAnnualInflationPercentageBips;
-    uint256[] public annualInflationPercentagesBips;
+    uint256 public lastTimeSlotInflationPercentageBips;
+    uint256[] public timeSlotInflationPercentagesBips;
 
     event InflationSet(address oldAddress, address newAddress);
-    event AnnualInflationPercentageYielded(uint256 percentageBips);
-    event AnnualInflationPercentageScheduleSet(uint256[] annualInflationPercentagesBips);
+    event TimeSlotInflationPercentageYielded(uint256 percentageBips);
+    event TimeSlotInflationPercentageScheduleSet(uint256[] timeSlotInflationPercentagesBips);
     event InflationSharingPercentagesSet(
-        IIInflationReceiver[] inflationReceivers, 
+        IIInflationReceiver[] inflationReceivers,
         uint256[] percentagePerReceiverBips
     );
 
@@ -57,21 +57,21 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     }
 
     /**
-     * @dev _inflation contract need not be set here, but must be set at the point that
-     *   annual inflation percentages are to be retrieved from the schedule.
+     * @dev Inflation contract need not be set here, but must be set at the point that
+     *   time slot inflation percentages are to be retrieved from the schedule.
      */
     constructor(
         address _governance,
         address _addressUpdater,
-        uint256[] memory _annualInflationScheduleBips
-    ) 
+        uint256[] memory _timeSlotInflationScheduleBips
+    )
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
-        require(_annualInflationScheduleBips.length > 0, ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY);
+        require(_timeSlotInflationScheduleBips.length > 0, ERR_TIME_SLOT_INFLATION_SCHEDULE_EMPTY);
 
-        // validity is checked in _setAnnualInflationSchedule
-        lastAnnualInflationPercentageBips = _annualInflationScheduleBips[0];
-        _setAnnualInflationSchedule(_annualInflationScheduleBips);
+        // validity is checked in _setTimeSlotInflationSchedule
+        lastTimeSlotInflationPercentageBips = _timeSlotInflationScheduleBips[0];
+        _setTimeSlotInflationSchedule(_timeSlotInflationScheduleBips);
     }
 
     /**
@@ -81,57 +81,57 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function setSharingPercentages(
-        IIInflationReceiver[] memory _inflationReceivers, 
+        IIInflationReceiver[] memory _inflationReceivers,
         uint256[] memory _percentagePerReceiverBips
     )
         external
-        onlyGovernance 
+        onlyGovernance
     {
         _setSharingPercentages(_inflationReceivers, _percentagePerReceiverBips);
     }
 
     /**
-     * @notice Set the annual inflation percentage schedule. This schedule is meant to be set for recognition
+     * @notice Set the time slot inflation percentage schedule. This schedule is meant to be set for recognition
      *   a per-annum basis.
-     * @param _annualInflationScheduleBips  An array of inflation percentages in bips.
+     * @param _timeSlotInflationScheduleBips  An array of inflation percentages in bips.
      * @dev The schedule must be a decaying schedule. Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
-    function setAnnualInflation(uint256[] memory _annualInflationScheduleBips) external onlyGovernance {
+    function setTimeSlotInflation(uint256[] memory _timeSlotInflationScheduleBips) external onlyGovernance {
         // Clear the existing schedule
-        uint256 lenExistingSchedule = annualInflationPercentagesBips.length;
+        uint256 lenExistingSchedule = timeSlotInflationPercentagesBips.length;
         for (uint256 i = 0; i < lenExistingSchedule; i++) {
-            annualInflationPercentagesBips.pop();
+            timeSlotInflationPercentagesBips.pop();
         }
 
         // Set new schedule
-        _setAnnualInflationSchedule(_annualInflationScheduleBips);
+        _setTimeSlotInflationSchedule(_timeSlotInflationScheduleBips);
 
-        emit AnnualInflationPercentageScheduleSet(_annualInflationScheduleBips);
+        emit TimeSlotInflationPercentageScheduleSet(_timeSlotInflationScheduleBips);
     }
 
     /**
-     * @notice Get the next annual inflation percentage from the schedule and pop it off the schedule.
+     * @notice Get the next time slot inflation percentage from the schedule and pop it off the schedule.
      *   If there are no percentages remaining within the schedule, yield the last percentage known.
-     * @return The annual inflation percentage.
-     * @dev Note that it is up to the caller to call this function at the appropriate annum interval.
+     * @return The time slot inflation percentage.
+     * @dev Note that it is up to the caller to call this function at the appropriate time slot interval.
      */
-    function getAnnualPercentageBips() external override notZero(address(inflation)) onlyInflation returns(uint256) {
+    function getTimeSlotPercentageBips() external override notZero(address(inflation)) onlyInflation returns(uint256) {
         // If there is not a schedule of percentages, return the last one given (or set).
-        if (annualInflationPercentagesBips.length > 0) {
+        if (timeSlotInflationPercentagesBips.length > 0) {
             // Since there is a schedule, get the next percentage.
-            lastAnnualInflationPercentageBips = annualInflationPercentagesBips[0];
+            lastTimeSlotInflationPercentageBips = timeSlotInflationPercentagesBips[0];
             // Iterate over the schedule, shifting each down an index
-            uint256 len = annualInflationPercentagesBips.length;
+            uint256 len = timeSlotInflationPercentagesBips.length;
             if (len > 1) {
                 for (uint256 i = 0; i < len - 1; i++) {
-                    annualInflationPercentagesBips[i] = annualInflationPercentagesBips[i+1];
+                    timeSlotInflationPercentagesBips[i] = timeSlotInflationPercentagesBips[i+1];
                 }
             }
-            annualInflationPercentagesBips.pop();
+            timeSlotInflationPercentagesBips.pop();
         }
-        emit AnnualInflationPercentageYielded(lastAnnualInflationPercentageBips);
-        return lastAnnualInflationPercentageBips;
+        emit TimeSlotInflationPercentageYielded(lastTimeSlotInflationPercentageBips);
+        return lastTimeSlotInflationPercentageBips;
     }
 
     /**
@@ -156,7 +156,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function _setSharingPercentages(
-        IIInflationReceiver[] memory _inflationReceivers, 
+        IIInflationReceiver[] memory _inflationReceivers,
         uint256[] memory _percentagePerReceiverBips
     )
         internal
@@ -188,7 +188,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     }
 
     /**
-     * @notice Implementation of the AddressUpdatable abstract method - updates Inflation 
+     * @notice Implementation of the AddressUpdatable abstract method - updates Inflation
      * and inflation receivers contracts.
      */
     function _updateContractAddresses(
@@ -211,7 +211,7 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
         for (uint256 i = 0; i < len; i++) {
             InflationReceiver memory inflationReceiver = inflationReceivers[i];
             receivers[i] = IIInflationReceiver(
-                _getContractAddress(_contractNameHashes, _contractAddresses, 
+                _getContractAddress(_contractNameHashes, _contractAddresses,
                 inflationReceiver.receiverContract.getContractName()));
             percentages[i] = inflationReceiver.percentageBips;
         }
@@ -220,28 +220,28 @@ contract InflationAllocation is IIInflationAllocation, Governed, AddressUpdatabl
     }
 
      /**
-     * @notice Set the annual inflation percentage schedule. This schedule is meant to be set for recognition
+     * @notice Set the time slot inflation percentage schedule. This schedule is meant to be set for recognition
      *   a per-annum basis.
-     * @param _annualInflationScheduleBips  An array of inflation percentages in bips.
+     * @param _timeSlotInflationScheduleBips  An array of inflation percentages in bips.
      * @dev The schedule must be a decaying schedule. Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
-    function _setAnnualInflationSchedule(uint256[] memory _annualInflationScheduleBips) internal {
-        require(_annualInflationScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
-        uint256 len = _annualInflationScheduleBips.length;
-        uint256 lastOne = lastAnnualInflationPercentageBips;
+    function _setTimeSlotInflationSchedule(uint256[] memory _timeSlotInflationScheduleBips) internal {
+        require(_timeSlotInflationScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
+        uint256 len = _timeSlotInflationScheduleBips.length;
+        uint256 lastOne = lastTimeSlotInflationPercentageBips;
 
         for (uint256 i = 0; i < len; i++) {
             // Validate the schedule...percentages must be the same or decay, and cannot be greater than last given.
             require(
-                _annualInflationScheduleBips[i] <= lastOne && 
-                _annualInflationScheduleBips[i] > 0 &&
-                _annualInflationScheduleBips[i] <= MAX_INFLATION_PERCENTAGE_BIPS,
-                ANNUAL_INFLATION_OUT_OF_BOUNDS);
-                lastOne = _annualInflationScheduleBips[i];
+                _timeSlotInflationScheduleBips[i] <= lastOne &&
+                _timeSlotInflationScheduleBips[i] > 0 &&
+                _timeSlotInflationScheduleBips[i] <= MAX_INFLATION_PERCENTAGE_BIPS,
+                ERR_TIME_SLOT_INFLATION_OUT_OF_BOUNDS);
+                lastOne = _timeSlotInflationScheduleBips[i];
 
             // Push in the new schedule
-            annualInflationPercentagesBips.push(_annualInflationScheduleBips[i]);
+            timeSlotInflationPercentagesBips.push(_timeSlotInflationScheduleBips[i]);
         }
     }
 }

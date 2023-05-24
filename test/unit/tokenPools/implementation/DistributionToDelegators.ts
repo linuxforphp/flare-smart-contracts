@@ -105,7 +105,7 @@ contract(`DistributionToDelegators.sol; ${getTestFile(__filename)}; Distribution
     wNatInterface = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
     priceSubmitterMock = await MockContract.new();
     wNatMock = await MockContract.new();
-    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 10000000, 9000000, []);
+    supply = await Supply.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 10000000, 9000000, [], [], constants.ZERO_ADDRESS);
     claimSetupManager = await ClaimSetupManager.new(GOVERNANCE_ADDRESS, ADDRESS_UPDATER, 3, 0, 100, 1000);
     const delegationAccount = await DelegationAccount.new()
     const ftsoManagerMock = await MockContract.new();

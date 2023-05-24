@@ -514,6 +514,13 @@ contract FtsoRewardManager is IIFtsoRewardManager, Governed, ReentrancyGuard, Ad
     }
 
     /**
+     * @notice Return expected balance of reward manager ignoring sent self-destruct funds
+     */
+    function getExpectedBalance() external view override returns(uint256) {
+        return _getExpectedBalance();
+    }
+
+    /**
      * @notice Returns the state of rewards for `_beneficiary` at `_rewardEpoch`
      * @param _beneficiary          address of reward beneficiary
      * @param _rewardEpoch          reward epoch number

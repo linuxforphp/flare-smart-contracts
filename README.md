@@ -1,4 +1,4 @@
-![coverage](https://gitlab.com/flarenetwork/flare-smart-contracts/badges/master/coverage.svg?job=coverage:on-schedule) 
+![coverage](https://gitlab.com/flarenetwork/flare-smart-contracts/badges/master/coverage.svg?job=coverage:on-schedule)
 ![pipeline](https://gitlab.com/flarenetwork/flare-smart-contracts/badges/master/pipeline.svg)
 
 ![licence](https://img.shields.io/badge/Licence-MIT-green?style=plastic)
@@ -29,7 +29,7 @@ Contracts cover the following *Flare network* building blocks:
 - [Flare Inflation](contracts/inflation/implementation/Inflation.sol) tracking and [allocation](contracts/inflation/implementation/InflationAllocation.sol).
 - [Supply accounting system](contracts/inflation/implementation/Supply.sol) of FLR tokens.
 
-## Token contracts 
+## Token contracts
 
 Are used for wrapped native tokens ([WNAT](contracts/token/implementation/WNat.sol)) and [xAssets](contracts/token/implementation/VPToken.sol) minted on *Flare network*. These tokens expose delegate API and query votePower API. Vote power is checkpointed, meaning votePower for previous blocks can be queried.
 
@@ -41,7 +41,7 @@ Enables price providers to supply USD prices for a list of assets. The FTSO dete
 
 Enable claiming of native token rewards.
 Users will be eligible to claim tokens through the following methods:
-- by supplying FTSO price feeds ([FTSO Reward manager](contract/tokenPools/implementation/FtsoRewardManager.sol)), 
+- by supplying FTSO price feeds ([FTSO Reward manager](contract/tokenPools/implementation/FtsoRewardManager.sol)),
 - Providing external chain data (data availability proofs)
 
 ## Inflation
@@ -69,7 +69,7 @@ The air dropped native tokens will be distributed gradually through a dedicated 
 
 ## Testing
 
-Note: be sure to compile (`yarn c`) after any solidity code changes or if starting a clean project as Typescript stubs need to be generated as part of the compilation. 
+Note: be sure to compile (`yarn c`) after any solidity code changes or if starting a clean project as Typescript stubs need to be generated as part of the compilation.
 
 Then one can run different types of tests.
 
@@ -94,7 +94,7 @@ For running tests against a local Flare chain.
    - `scdev.sh` - smart contract dev chain, 4 validator nodes.
    - others are less relevant.
 
-## Deployment of smart contaracts on `scdev` network
+## Deployment of smart contracts on `scdev` network
 
 see [deployment](deployment/README.md)
 

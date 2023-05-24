@@ -10,8 +10,8 @@ const MockContract = artifacts.require("MockContract");
 
 const BN = web3.utils.toBN;
 
-const ERR_OUT_OF_BOUNDS = "annual inflation out of bounds";
-const ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY = "annual inflation schedule empty";
+const ERR_OUT_OF_BOUNDS = "time slot inflation out of bounds";
+const ERR_TIME_SLOT_INFLATION_SCHEDULE_EMPTY = "time slot inflation schedule empty";
 const ERR_TOO_MANY = "too many";
 const ERR_NOT_100_PCT = "sum sharing percentage not 100%";
 const ERR_ONLY_GOVERNANCE = "only governance";
@@ -47,7 +47,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       // Act
       const promise = InflationAllocation.new(accounts[0], ADDRESS_UPDATER, []);
       // Assert
-      await expectRevert(promise, ERR_ANNUAL_INFLATION_SCHEDULE_EMPTY);
+      await expectRevert(promise, ERR_TIME_SLOT_INFLATION_SCHEDULE_EMPTY);
     });
 
     it("Should accept initial inflation percentage schedule", async() => {
@@ -56,44 +56,44 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       // Act
       inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, schedule);
       // Assert
-      const percentage0 = await inflationAllocation.annualInflationPercentagesBips(0);
-      const percentage1 = await inflationAllocation.annualInflationPercentagesBips(1);
-      const percentage2 = await inflationAllocation.annualInflationPercentagesBips(2);
+      const percentage0 = await inflationAllocation.timeSlotInflationPercentagesBips(0);
+      const percentage1 = await inflationAllocation.timeSlotInflationPercentagesBips(1);
+      const percentage2 = await inflationAllocation.timeSlotInflationPercentagesBips(2);
       assert.equal(percentage0.toNumber(), 1000);
       assert.equal(percentage1.toNumber(), 900);
       assert.equal(percentage2.toNumber(), 800);
     });
   });
 
-  describe("annual inflation percentage schedule", async() => {
+  describe("time slot inflation percentage schedule", async() => {
     beforeEach(async() => {
       inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [1000]);
       await inflationAllocation.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
         [ADDRESS_UPDATER, accounts[0]], {from: ADDRESS_UPDATER});
     });
-    
-    it("Should get the initial annual percentage if no schedule", async() => {
+
+    it("Should get the initial time slot percentage if no schedule", async() => {
       // Assemble
       // Act
-      const percentage = await inflationAllocation.getAnnualPercentageBips.call();
+      const percentage = await inflationAllocation.getTimeSlotPercentageBips.call();
       // Assert
       assert.equal(percentage.toNumber(), 1000);
     });
 
-    it("Should not get the initial annual percentage if inflation not set", async() => {
+    it("Should not get the initial time slot percentage if inflation not set", async() => {
       // Assemble
       inflationAllocation = await InflationAllocation.new(accounts[0], ADDRESS_UPDATER, [1000]);
       // Act
-      const promise = inflationAllocation.getAnnualPercentageBips({from: accounts[1]});
+      const promise = inflationAllocation.getTimeSlotPercentageBips({from: accounts[1]});
       // Assert
       await expectRevert(promise, ERR_ZERO_ADDRESS);
     });
 
-    it("Should not get the initial annual percentage if not from inflation", async() => {
+    it("Should not get the initial time slot percentage if not from inflation", async() => {
       // Assemble
       // Act
-      const promise = inflationAllocation.getAnnualPercentageBips({from: accounts[1]});
+      const promise = inflationAllocation.getTimeSlotPercentageBips({from: accounts[1]});
       // Assert
       await expectRevert(promise, ERR_ONLY_INFLATION);
     });
@@ -102,11 +102,11 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       // Assemble
       const schedule: BN[] = [BN(1000), BN(900), BN(800)];
       // Act
-      await inflationAllocation.setAnnualInflation(schedule);
+      await inflationAllocation.setTimeSlotInflation(schedule);
       // Assert
-      const percentage0 = await inflationAllocation.annualInflationPercentagesBips(0);
-      const percentage1 = await inflationAllocation.annualInflationPercentagesBips(1);
-      const percentage2 = await inflationAllocation.annualInflationPercentagesBips(2);
+      const percentage0 = await inflationAllocation.timeSlotInflationPercentagesBips(0);
+      const percentage1 = await inflationAllocation.timeSlotInflationPercentagesBips(1);
+      const percentage2 = await inflationAllocation.timeSlotInflationPercentagesBips(2);
       assert.equal(percentage0.toNumber(), 1000);
       assert.equal(percentage1.toNumber(), 900);
       assert.equal(percentage2.toNumber(), 800);
@@ -115,25 +115,25 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should yield each inflation percentage from schedule", async() => {
       // Assemble
       const schedule: BN[] = [BN(1000), BN(900), BN(800)];
-      await inflationAllocation.setAnnualInflation(schedule);
+      await inflationAllocation.setTimeSlotInflation(schedule);
       // Act
-      let percentage = await inflationAllocation.getAnnualPercentageBips.call();
-      await inflationAllocation.getAnnualPercentageBips();
+      let percentage = await inflationAllocation.getTimeSlotPercentageBips.call();
+      await inflationAllocation.getTimeSlotPercentageBips();
       // Assert
       assert.equal(percentage.toNumber(), 1000);
       // Act
-      percentage = await inflationAllocation.getAnnualPercentageBips.call();
-      await inflationAllocation.getAnnualPercentageBips();
+      percentage = await inflationAllocation.getTimeSlotPercentageBips.call();
+      await inflationAllocation.getTimeSlotPercentageBips();
       // Assert
       assert.equal(percentage.toNumber(), 900);
       // Act
-      percentage = await inflationAllocation.getAnnualPercentageBips.call();
-      await inflationAllocation.getAnnualPercentageBips();
+      percentage = await inflationAllocation.getTimeSlotPercentageBips.call();
+      await inflationAllocation.getTimeSlotPercentageBips();
       // Assert
       assert.equal(percentage.toNumber(), 800);
       // Act
-      percentage = await inflationAllocation.getAnnualPercentageBips.call();
-      await inflationAllocation.getAnnualPercentageBips();
+      percentage = await inflationAllocation.getTimeSlotPercentageBips.call();
+      await inflationAllocation.getTimeSlotPercentageBips();
       // Assert
       assert.equal(percentage.toNumber(), 800);
     });
@@ -142,16 +142,16 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       // Assemble
       const schedule: BN[] = [BN(1001)];
       // Act
-      const promise = inflationAllocation.setAnnualInflation(schedule);
+      const promise = inflationAllocation.setTimeSlotInflation(schedule);
       // Assert
-      await expectRevert(promise, ERR_OUT_OF_BOUNDS);        
+      await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
 
     it("Should not take a schedule with an embeded higher percentage", async() => {
       // Assemble
       const schedule: BN[] = [BN(900), BN(800), BN(900)];
       // Act
-      const promise = inflationAllocation.setAnnualInflation(schedule);
+      const promise = inflationAllocation.setTimeSlotInflation(schedule);
       // Assert
       await expectRevert(promise, ERR_OUT_OF_BOUNDS);
     });
@@ -162,7 +162,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
         BN(989), BN(988), BN(987), BN(986), BN(985), BN(984), BN(983), BN(982), BN(981), BN(980),
         BN(979), BN(978), BN(977), BN(976), BN(975), BN(974)];
       // Act
-      const promise = inflationAllocation.setAnnualInflation(schedule);
+      const promise = inflationAllocation.setTimeSlotInflation(schedule);
       // Assert
       await expectRevert(promise, ERR_TOO_MANY);
     });
@@ -170,24 +170,24 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should make available last inflation percentage yielded from schedule", async() => {
       // Assemble
       const schedule: BN[] = [BN(900), BN(800)];
-      await inflationAllocation.setAnnualInflation(schedule);
+      await inflationAllocation.setTimeSlotInflation(schedule);
       // Act
-      await inflationAllocation.getAnnualPercentageBips();
+      await inflationAllocation.getTimeSlotPercentageBips();
       // Assert
-      const percentage = await inflationAllocation.lastAnnualInflationPercentageBips();
+      const percentage = await inflationAllocation.lastTimeSlotInflationPercentageBips();
       assert.equal(percentage.toNumber(), 900);
     });
 
     it("Should take a schedule with no percents and yield last percentage given", async() => {
       // Assemble
       const schedule: BN[] = [BN(900), BN(800)];
-      await inflationAllocation.setAnnualInflation(schedule);
-      await inflationAllocation.getAnnualPercentageBips();
+      await inflationAllocation.setTimeSlotInflation(schedule);
+      await inflationAllocation.getTimeSlotPercentageBips();
       // Act
       const newSchedule: BN[] = [];
-      await inflationAllocation.setAnnualInflation(schedule);
+      await inflationAllocation.setTimeSlotInflation(schedule);
       // Assert
-      const percentage = await inflationAllocation.lastAnnualInflationPercentageBips();
+      const percentage = await inflationAllocation.lastTimeSlotInflationPercentageBips();
       assert.equal(percentage.toNumber(), 900);
     });
   });
@@ -286,7 +286,7 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
       const inflationReceivers: string[] = [mockContractToReceiveInflation.address];
       const percentages: BN[] = [BN(10000)];
       await inflationAllocation.setSharingPercentages(inflationReceivers, percentages);
-      
+
       // Act
       await inflationAllocation.updateContractAddresses(
         encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION, "SOME_CONTRACT_NAME"]),
@@ -321,29 +321,29 @@ contract(`InflationAllocation.sol; ${getTestFile(__filename)}; InflationAllocati
     it("Should not set sharing percentages if too many", async() => {
       // Assemble
       const inflationReceivers: string[] = [
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
-        (await MockContract.new()).address, 
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
+        (await MockContract.new()).address,
         (await MockContract.new()).address
       ];
       const percentages: BN[] = [
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(1000), 
-        BN(500), 
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(1000),
+        BN(500),
         BN(500)];
       // Act
       const promise = inflationAllocation.setSharingPercentages(inflationReceivers, percentages);

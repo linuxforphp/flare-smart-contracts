@@ -54,7 +54,7 @@ sast:
 
 .test-node:
   stage: test
-  image: node:latest
+  image: node:18
   timeout: 3h
   rules:
   - !reference [.rules, always]
@@ -99,7 +99,7 @@ run-tests:
 build-smart-contracts:
   stage: build
   needs: []
-  image: node:latest
+  image: node:18
   before_script:
     - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
   script:

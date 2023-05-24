@@ -1,8 +1,8 @@
-import { balance, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
+import { balance, constants, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers';
 import { Contracts } from "../../../../deployment/scripts/Contracts";
 import { MockContractInstance, SupplyInstance } from "../../../../typechain-truffle";
 import { emptyAddressBalance } from "../../../utils/contract-test-helpers";
-import { encodeContractNames, increaseTimeTo, toBN } from "../../../utils/test-helpers";
+import { encodeContractNames, getAddressWithZeroBalance, increaseTimeTo, toBN } from "../../../utils/test-helpers";
 const getTestFile = require('../../../utils/constants').getTestFile;
 
 const Supply = artifacts.require("Supply");
@@ -14,6 +14,8 @@ const initialGenesisAmountWei = 10000;
 const totalFoundationSupplyWei =  7500;
 const circulatingSupply       =  initialGenesisAmountWei - totalFoundationSupplyWei;
 const burnAddress = "0x000000000000000000000000000000000000dEaD";
+const burnAddressSongbirdTxFee = "0x0100000000000000000000000000000000000000";
+
 
 const getTokenPoolSupplyData = web3.utils.sha3("getTokenPoolSupplyData()")!.slice(0,10);
 
@@ -41,22 +43,23 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     const ADDRESS_UPDATER = accounts[16];
     const governanceAddress = accounts[10];
     const inflationAddress = accounts[9];
-    // contains a fresh contract for each test 
+    // contains a fresh contract for each test
     let supply: SupplyInstance;
+    let newSupply: SupplyInstance;
 
     beforeEach(async() => {
         // clean up burnAddress
         await emptyAddressBalance(burnAddress, accounts[0]);
         assert.equal(Number(await balance.current(burnAddress)), 0);
         //
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], constants.ZERO_ADDRESS);
         await supply.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
             [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
     });
 
     it("Should revert deploying supply - initial genesis amount zero", async() => {
-        await expectRevert(Supply.new(governanceAddress, ADDRESS_UPDATER, 0, totalFoundationSupplyWei, []), "initial genesis amount zero");
+        await expectRevert(Supply.new(governanceAddress, ADDRESS_UPDATER, 0, totalFoundationSupplyWei, [], [], constants.ZERO_ADDRESS), "initial genesis amount zero");
     });
 
     it("Should know about inflation", async() => {
@@ -194,15 +197,57 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
         await expectRevert(supply.addTokenPool(accounts[1], 100, {from: accounts[0]}), "only governance");
     });
 
+    it("Should deploy supply with Foundation addresses", async() => {
+        const foundationAddress1 = await getAddressWithZeroBalance();
+        await web3.eth.sendTransaction({ to: foundationAddress1, value: toBN(100), from: accounts[1] });
+        const foundationAddress2 = await getAddressWithZeroBalance();
+        await web3.eth.sendTransaction({ to: foundationAddress2, value: toBN(200), from: accounts[1] });
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [foundationAddress1, foundationAddress2], constants.ZERO_ADDRESS);
+        const addresses = await supply.getFoundationAddresses();
+        expect(addresses.length).to.equals(2);
+        expect(addresses[0]).to.equals(foundationAddress1);
+        expect(addresses[1]).to.equals(foundationAddress2);
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100 - 200);
+    });
+
+    it("Should change Foundation addresses", async() => {
+        const foundationAddress1 = await getAddressWithZeroBalance();
+        await web3.eth.sendTransaction({ to: foundationAddress1, value: toBN(100), from: accounts[1] });
+        const foundationAddress2 = await getAddressWithZeroBalance();
+        await web3.eth.sendTransaction({ to: foundationAddress2, value: toBN(200), from: accounts[1] });
+        let tx = await supply.changeFoundationAddresses([foundationAddress1, foundationAddress2], [], {from: governanceAddress});
+        expectEvent(tx, "FoundationAddressesChanged", {addedFoundationAddresses: [foundationAddress1, foundationAddress2], removedFoundationAddresses: []});
+
+        const addresses = await supply.getFoundationAddresses();
+        expect(addresses.length).to.equals(2);
+        expect(addresses[0]).to.equals(foundationAddress1);
+        expect(addresses[1]).to.equals(foundationAddress2);
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100 - 200);
+
+        await web3.eth.sendTransaction({ to: foundationAddress2, value: toBN(50), from: accounts[1] });
+
+        tx = await supply.changeFoundationAddresses([foundationAddress2], [foundationAddress1], {from: governanceAddress});
+        expectEvent(tx, "FoundationAddressesChanged", {addedFoundationAddresses: [foundationAddress2], removedFoundationAddresses: [foundationAddress1]});
+
+        const addresses2 = await supply.getFoundationAddresses();
+        expect(addresses2.length).to.equals(1);
+        expect(addresses2[0]).to.equals(foundationAddress2);
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 250);
+    });
+
+    it("Should revert updating Foundation addresses if not from governance", async() => {
+        await expectRevert(supply.changeFoundationAddresses([accounts[1]], [], {from: accounts[0]}), "only governance");
+    });
+
     it("Should deploy supply with token pools", async() => {
         await createTokenPools([500, 1000], [0, 0], [200, 50]);
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address));
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, mockTokenPools.map(rp => rp.address), [], constants.ZERO_ADDRESS);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 500 - 1000 + 200 + 50);
     });
 
     it("Should deploy supply with some burn address balance", async() => {
         await web3.eth.sendTransaction({ to: burnAddress, value: toBN(100), from: accounts[1] });
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], constants.ZERO_ADDRESS);
         expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply - 100);
     });
 
@@ -260,4 +305,108 @@ contract(`Supply.sol; ${getTestFile(__filename)}; Supply unit tests`, async acco
     it("Should revert decreasing distributed supply if not enough founds", async() => {
         await expectRevert(supply.decreaseDistributedSupply(500, {from: governanceAddress}), "SafeMath: subtraction overflow");
     });
+
+    it("Should know about songbird tx fee burn address", async() => {
+        expect((await supply.burnAddressSongbirdTxFee())).to.equals(burnAddressSongbirdTxFee);
+    });
+
+    it("Should set old supply contract", async() => {
+        // deploy new supply contract
+        newSupply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], supply.address);
+        await newSupply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
+
+        expect((await supply.switchOverBlock()).toString()).to.equals("0");
+        expect(await newSupply.oldSupply()).to.equals(supply.address);
+        expect((await newSupply.switchOverBlock()).toString()).to.not.equals("0");
+    });
+
+    it("Should read circulating supply from old contract until switchover", async() => {
+        await supply.increaseDistributedSupply(5000, {from: governanceAddress});
+        expect((await supply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 5000);
+
+        newSupply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], supply.address);
+        await newSupply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
+
+        // reading data from old supply contract
+        let block = await web3.eth.getBlockNumber();
+        expect((await newSupply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply + 5000);
+
+        // update circulating supply (switchover)
+        await newSupply.updateCirculatingSupply({ from: inflationAddress });
+        let switchOverBlock = await web3.eth.getBlockNumber();
+        await time.advanceBlock();
+        expect((await newSupply.switchOverBlock()).toString()).to.equals(switchOverBlock.toString());
+        // reading data from new supply contract
+        expect((await newSupply.getCirculatingSupplyAt(await web3.eth.getBlockNumber())).toNumber()).to.equals(circulatingSupply);
+        // block before switchover -> read from old contract
+        expect((await newSupply.getCirculatingSupplyAt(block)).toNumber()).to.equals(circulatingSupply + 5000);
+
+        // should not update switchover block again
+        await newSupply.updateCirculatingSupply({ from: inflationAddress });
+        expect((await newSupply.switchOverBlock()).toString()).to.equals(switchOverBlock.toString());
+    });
+
+    it("Should read circulating supply from old contract until switchover", async() => {
+        expect((await supply.getInflatableBalance()).toNumber()).to.equals(circulatingSupply);
+
+        newSupply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], supply.address);
+        await newSupply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
+
+        await newSupply.increaseDistributedSupply(5000, {from: governanceAddress});
+
+        // reading data from old supply contract
+        expect((await newSupply.getInflatableBalance()).toNumber()).to.equals(circulatingSupply);
+        // switchover
+        await newSupply.updateCirculatingSupply({ from: inflationAddress });
+        // reading data from new supply contract
+        expect((await newSupply.getInflatableBalance()).toNumber()).to.equals(circulatingSupply + 5000);
+    });
+
+    it("Should read cached circulating supply from old contract until switchover", async() => {
+        await supply.increaseDistributedSupply(5000, {from: governanceAddress});
+
+        let block = await web3.eth.getBlockNumber();
+        await time.advanceBlock();
+        await supply.getCirculatingSupplyAtCached(block);
+        expect(await supply.contract.methods.getCirculatingSupplyAtCached(block).call()).to.equals((circulatingSupply + 5000).toString());
+
+        newSupply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], supply.address);
+        await newSupply.updateContractAddresses(
+            encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
+            [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});
+
+        // reading data from old supply contract
+        await newSupply.getCirculatingSupplyAtCached(block);
+        expect(await newSupply.contract.methods.getCirculatingSupplyAtCached(block).call()).to.equals((circulatingSupply + 5000).toString());
+
+        // update circulating supply (switchover)
+        await newSupply.updateCirculatingSupply({ from: inflationAddress });
+
+        // block before switchover -> read from old contract
+        await newSupply.getCirculatingSupplyAtCached(block);
+        expect(await newSupply.contract.methods.getCirculatingSupplyAtCached(block).call()).to.equals((circulatingSupply + 5000).toString());
+
+        await time.advanceBlock();
+        // reading from new supply contract
+        await newSupply.getCirculatingSupplyAtCached(await web3.eth.getBlockNumber() - 1);
+        expect(await newSupply.contract.methods.getCirculatingSupplyAtCached(await web3.eth.getBlockNumber() - 1).call()).to.equals((circulatingSupply).toString());
+    });
+
+    it("Should unlock 2 wei", async() => {
+        await createTokenPools([67, 0, 1000, 500], [100, 5000, 0, 0], [50, 1000, 200, 100]);
+        await supply.addTokenPool(mockTokenPools[0].address, 20, {from: governanceAddress});
+        await updateTokenPoolReturnData(mockTokenPools[0], 65, 200, 150);
+        let totalLockedBeforeUpdate = (await supply.totalLockedWei()).toNumber();
+        await supply.updateCirculatingSupply( { from: inflationAddress });
+        let totalLockedAfterUpdate = (await supply.totalLockedWei()).toNumber();
+        expect(totalLockedBeforeUpdate - totalLockedAfterUpdate).to.equals(67 - 65);
+    });
+
+
 });

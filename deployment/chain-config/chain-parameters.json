@@ -140,6 +140,13 @@
             "description": "The number of blocks a daemon called contract is skipped if it consumes more than its alloted amount of gas.",
             "type": "integer"
         },
+        "foundationAddresses": {
+            "description": "List of Foundation addresses whose balance should be excluded from circulating supply.",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "ftsoManagerGasLimit": {
             "description": "Gas limit for daemonize calls of on FtsoManager contract.",
             "type": "integer"
@@ -185,7 +192,7 @@
             "type": "integer"
         },
         "incentivePoolStart": {
-            "description": "Unix timestamp of the incentive pool start (first annum).",
+            "description": "Unix timestamp of the incentive pool start (first time slot).",
             "type": "integer"
         },
         "incentivePoolTreasuryAddress": {
@@ -215,7 +222,7 @@
             "type": "array"
         },
         "inflationStartDelaySeconds": {
-            "description": "Offset of the start of the first inflation annum from the time of deploy (system start parameter), in seconds.",
+            "description": "Offset of the start of the first inflation time slot from the time of deploy (system start parameter), in seconds.",
             "type": "integer"
         },
         "inflationTopUpFactorsx100": {
@@ -359,7 +366,7 @@
             "type": "string"
         },
         "systemStart": {
-            "description": "Unix timestamp of the system's start (inflation - first annum).\nUsed for calculating various delayed timestamps (e.g. first reward epoch start timestamp).\nIf set to 0, current timestamp at deploy is used.",
+            "description": "Unix timestamp of the system's start (inflation - first time slot).\nUsed for calculating various delayed timestamps (e.g. first reward epoch start timestamp).\nIf set to 0, current timestamp at deploy is used.",
             "type": "integer"
         },
         "thresholdConditionBIPS": {
@@ -367,7 +374,7 @@
             "type": "integer"
         },
         "totalExcludedSupplyNAT": {
-            "description": "Non circulating supply that the foundation holds. In whole native units, not Wei.",
+            "description": "Non circulating supply that is temporary excluded (escrow, distribution). In whole native units, not Wei.",
             "type": "integer"
         },
         "totalNativeSupplyNAT": {
@@ -423,6 +430,7 @@
         "executorRegisterFeeValueNAT",
         "flareDaemonAddress",
         "flareDaemonGasExceededHoldoffBlocks",
+        "foundationAddresses",
         "ftsoManagerGasLimit",
         "ftsoRewardExpiryOffsetDays",
         "genesisGovernancePrivateKey",

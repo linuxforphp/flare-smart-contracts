@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "../../governance/implementation/GovernedAtGenesis.sol";
+import "../../governance/implementation/Governed.sol";
+import "../../utils/implementation/SafePct.sol";
 
 
 /**
@@ -9,22 +10,34 @@ import "../../governance/implementation/GovernedAtGenesis.sol";
  * @notice A genesis contract which holds the entire treasury for the incentive pool.
  *         It enables limited flow of funds to the incentive pool.
  */
-contract IncentivePoolTreasury is GovernedAtGenesis {
+contract IncentivePoolTreasury is Governed {
+    using SafePct for uint256;
 
     // How often can incentive pool pull funds - 23 hours constant
     uint256 internal constant MAX_PULL_FREQUENCY_SEC = 23 hours;
-    uint256 public constant MAX_DAILY_PULL_AMOUNT_WEI = 25000000 ether;
+    // Initial max pull request - 25 million native token
+    uint256 internal constant MAX_DAILY_PULL_AMOUNT_WEI = 25000000 ether;
+    // How often can the maximal pull request amount be updated
+    uint256 internal constant MAX_PULL_REQUEST_FREQUENCY_SEC = 7 days;
+    // By how much can the maximum be increased (as a percentage of the previous maximum)
+    uint256 internal constant MAX_PULL_REQUEST_INCREASE_PERCENT = 110;
 
     // Errors
     string internal constant ERR_INCENTIVE_POOL_ONLY = "incentive pool only";
     string internal constant ERR_TOO_OFTEN = "too often";
     string internal constant ERR_TOO_MUCH = "too much";
     string internal constant ERR_PULL_FAILED = "pull failed";
-    string internal constant ERR_ALREADY_SET = "already set";
+    string internal constant ERR_ADDRESS_ZERO = "address zero";
+    string internal constant ERR_ONLY_GOVERNANCE = "only governance";
+    string internal constant ERR_UPDATE_GAP_TOO_SHORT = "time gap too short";
+    string internal constant ERR_MAX_PULL_TOO_HIGH = "max pull too high";
+    string internal constant ERR_MAX_PULL_IS_ZERO = "max pull is zero";
 
     // Storage
     address public incentivePool;
+    uint256 public maxPullRequestWei;
     uint256 public lastPullTs;
+    uint256 public lastUpdateMaxPullRequestTs;
 
 
     modifier onlyIncentivePool {
@@ -32,12 +45,15 @@ contract IncentivePoolTreasury is GovernedAtGenesis {
         _;
     }
 
+    constructor(address _governance) Governed(_governance) {
+        maxPullRequestWei = MAX_DAILY_PULL_AMOUNT_WEI;
+    }
+
     /**
-     * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
-     *   The super constructor is called for testing convenience.
+     * @notice Needed in order to receive funds from governance address
      */
-    constructor() GovernedAtGenesis(address(0)) {
-        /* empty block */
+    receive() external payable {
+        require(msg.sender == governance(), ERR_ONLY_GOVERNANCE);
     }
 
     /**
@@ -45,7 +61,7 @@ contract IncentivePoolTreasury is GovernedAtGenesis {
      * @param _incentivePool            Incentive pool contract address.
      */
     function setIncentivePoolContract(address _incentivePool) external onlyGovernance {
-        require(incentivePool == address(0), ERR_ALREADY_SET);
+        require(_incentivePool != address(0), ERR_ADDRESS_ZERO);
         incentivePool = _incentivePool;
     }
 
@@ -63,5 +79,27 @@ contract IncentivePoolTreasury is GovernedAtGenesis {
         (bool success, ) = msg.sender.call{value: _amountWei}("");
         /* solhint-enable avoid-low-level-calls */
         require(success, ERR_PULL_FAILED);
+    }
+
+    /**
+     * @notice Set limit on how much can be pulled per request.
+     * @param _maxPullRequestWei    The request maximum in wei.
+     * @notice this number can't be updated too often
+     */
+    function setMaxPullRequest(uint256 _maxPullRequestWei) external onlyGovernance {
+        // make sure increase amount is reasonable
+        require(
+            _maxPullRequestWei <= (maxPullRequestWei.mulDiv(MAX_PULL_REQUEST_INCREASE_PERCENT, 100)),
+            ERR_MAX_PULL_TOO_HIGH
+        );
+        require(_maxPullRequestWei > 0, ERR_MAX_PULL_IS_ZERO);
+        // make sure enough time since last update
+        require(
+            block.timestamp > lastUpdateMaxPullRequestTs + MAX_PULL_REQUEST_FREQUENCY_SEC,
+            ERR_UPDATE_GAP_TOO_SHORT
+        );
+
+        maxPullRequestWei = _maxPullRequestWei;
+        lastUpdateMaxPullRequestTs = block.timestamp;
     }
 }
