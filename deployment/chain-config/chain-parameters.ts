@@ -120,7 +120,7 @@ export interface ChainParameters {
     // System start and initial airdrop
 
     /**
-     * Unix timestamp of the system's start (inflation - first annum).
+     * Unix timestamp of the system's start (inflation - first time slot).
      * Used for calculating various delayed timestamps (e.g. first reward epoch start timestamp).
      * If set to 0, current timestamp at deploy is used.
      */
@@ -132,7 +132,7 @@ export interface ChainParameters {
     initialAirdropStart: integer;
 
     /**
-     * Unix timestamp of the incentive pool start (first annum).
+     * Unix timestamp of the incentive pool start (first time slot).
      */
     incentivePoolStart: integer;
 
@@ -231,9 +231,14 @@ export interface ChainParameters {
     totalNativeSupplyNAT: integer;
 
     /**
-     * Non circulating supply that the foundation holds. In whole native units, not Wei.
+     * Non circulating supply that is temporary excluded (escrow, distribution). In whole native units, not Wei.
      */
     totalExcludedSupplyNAT: integer;
+
+    /**
+     * List of Foundation addresses whose balance should be excluded from circulating supply.
+     */
+    foundationAddresses: string[];
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Deployment options settings
@@ -272,7 +277,7 @@ export interface ChainParameters {
     revealEpochDurationSeconds: integer;
 
     /**
-     * Offset of the start of the first inflation annum from the time of deploy (system start parameter), in seconds.
+     * Offset of the start of the first inflation time slot from the time of deploy (system start parameter), in seconds.
      */
     inflationStartDelaySeconds: integer;
 

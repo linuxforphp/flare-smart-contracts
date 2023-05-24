@@ -170,29 +170,6 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
 
   spewNewContractInfo(contracts, addressUpdaterContracts, PriceSubmitter.contractName, "PriceSubmitter.sol", priceSubmitter.address, quiet);
 
-  // Initialize the incentive pool treasury
-  let incentivePoolTreasury: IncentivePoolTreasuryInstance;
-  try {
-    incentivePoolTreasury = await IncentivePoolTreasury.at(parameters.incentivePoolTreasuryAddress);
-  } catch (e) {
-    if (!quiet) {
-      console.error("IncentivePoolTreasury not in genesis...creating new and sending funds.")
-    }
-    const incentivePoolWei = BN(parameters.incentivePoolWei.replace(/\s/g, ''));
-    incentivePoolTreasury = await IncentivePoolTreasury.new();
-    const suicidalMock = await SuicidalMock.new(incentivePoolTreasury.address);
-    await web3.eth.sendTransaction({ to: suicidalMock.address, value: incentivePoolWei });
-    await suicidalMock.die();
-  }
-  // This has to be done always
-  try {
-    await incentivePoolTreasury.initialiseFixedAddress();
-  } catch (e) {
-    console.error(`incentivePoolTreasury.initialiseFixedAddress() failed. Ignore if redeploy. Error = ${e}`);
-  }
-
-  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolTreasury.contractName, `IncentivePoolTreasury.sol`, incentivePoolTreasury.address, quiet);
-
   // default executors are governancePublicKey and governanceExecutorPublicKey if set
   let governanceSettings: GovernanceSettingsInstance;
 
@@ -226,6 +203,10 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Flare contract registry
   const flareContractRegistry = await FlareContractRegistry.new(addressUpdater.address);
   spewNewContractInfo(contracts, addressUpdaterContracts, FlareContractRegistry.contractName, `FlareContractRegistry.sol`, flareContractRegistry.address, quiet);
+
+  // Incentive pool treasury contract
+  const incentivePoolTreasury = await IncentivePoolTreasury.new(deployerAccount.address);
+  spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePoolTreasury.contractName, `IncentivePoolTreasury.sol`, incentivePoolTreasury.address, quiet);
 
   // Initial airdrop contract
   const initialAirdrop = await InitialAirdrop.new(deployerAccount.address);
@@ -276,7 +257,9 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     addressUpdater.address,
     BN(parameters.totalNativeSupplyNAT).mul(BN(10).pow(BN(18))),
     BN(parameters.totalExcludedSupplyNAT).mul(BN(10).pow(BN(18))),
-    []
+    [],
+    parameters.foundationAddresses,
+    "0x0000000000000000000000000000000000000000" // old supply
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, Supply.contractName, `Supply.sol`, supply.address, quiet);
 
@@ -375,7 +358,7 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     parameters.incentivePoolStart
   );
   spewNewContractInfo(contracts, addressUpdaterContracts, IncentivePool.contractName, `IncentivePool.sol`, incentivePool.address, quiet);
-  await incentivePoolTreasury.setIncentivePoolContract(incentivePool.address, { from: genesisGovernance });
+  await incentivePoolTreasury.setIncentivePoolContract(incentivePool.address);
   // Supply contract needs to know about token pool
   await supply.addTokenPool(incentivePool.address, 0);
 

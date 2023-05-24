@@ -182,14 +182,14 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
         return result;
     }
 
-    let annualInflationWei: BigNumber = BIG_NUMBER_ZERO;
+    let timeSlotInflationWei: BigNumber = BIG_NUMBER_ZERO;
     let maxAuthorizedInflationWei: BigNumber = BIG_NUMBER_ZERO;
 
     async function increaseMaxMintingRequest() {
         try {
             const maxMintingRequestWei = await flareDaemon.maxMintingRequestWei();
             const newMaxMintingRequestWei = maxMintingRequestWei.mul(110).div(100);   // multiply by 1.1 - max allowed per day
-            if (newMaxMintingRequestWei.gt(annualInflationWei)) return;
+            if (newMaxMintingRequestWei.gt(timeSlotInflationWei)) return;
             // setMaxMintingRequest (possibly with timelock)
             const response = await transactionRunner.runMethod(flareDaemon, f => f.setMaxMintingRequest(newMaxMintingRequestWei, { gasLimit: 1_000_000 }),
                 { signer: governance, method: "flareDaemon.setMaxMintingRequest()", comment: `Increasing maxMintingRequest to ${formatBN(newMaxMintingRequestWei)}` });
@@ -209,8 +209,8 @@ contract(`EndToEndFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing te
             const event = events[i];
             // make sure topup request grows soon enough as we are limited per day
             // for that, increase maxMintingRequest every time authorized inflation grows
-            if (ethersEventIs(event, inflation, 'NewAnnumInitialized')) {
-                annualInflationWei = event.args.recognizedInflationWei;
+            if (ethersEventIs(event, inflation, 'NewTimeSlotInitialized')) {
+                timeSlotInflationWei = event.args.recognizedInflationWei;
             }
             if (ethersEventIs(event, inflation, 'InflationAuthorized')) {
                 if (event.args.amountWei.gt(maxAuthorizedInflationWei)) {

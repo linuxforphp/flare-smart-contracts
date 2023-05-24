@@ -256,6 +256,13 @@ abstract contract GenericRewardManager is IIGenericRewardManager, Governed, Reen
     }
 
     /**
+     * @notice Return expected balance of reward manager ignoring sent self-destruct funds
+     */
+    function getExpectedBalance() external view override returns(uint256) {
+        return _getExpectedBalance();
+    }
+
+    /**
      * @notice Return token pool supply data
      * @return _lockedFundsWei                  Foundation locked funds (wei)
      * @return _totalInflationAuthorizedWei     Total inflation authorized amount (wei)

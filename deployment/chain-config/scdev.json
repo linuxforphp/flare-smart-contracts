@@ -19,6 +19,7 @@
     "governanceExecutorPublicKey": "<use .env: GOVERNANCE_EXECUTOR_PUBLIC_KEY>",
     "totalNativeSupplyNAT":  100000000000,
     "totalExcludedSupplyNAT": 68000000000,
+    "foundationAddresses": [],
     "systemStart": 0,
     "initialAirdropStart": 1654430400,
     "incentivePoolStart": 16684524000,

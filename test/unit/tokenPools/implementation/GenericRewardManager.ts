@@ -319,20 +319,24 @@ contract(`GenericRewardManager.sol; ${getTestFile(__filename)}; Generic reward m
         });
 
         it("Should gracefully receive self-destruct proceeds - initial balance > 0", async () => {
+            assert.equal((await validatorRewardManager.getExpectedBalance()).toString(), "100");
             // Add some initial balance (inflation)
             let balanceBefore = await web3.eth.getBalance(burnAddress);
             await mockInflation.receiveInflation({ value: "1" });
             assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "101");
+            assert.equal((await validatorRewardManager.getExpectedBalance()).toString(), "101");
             // Assemble
             // Give suicidal some NAT
             await web3.eth.sendTransaction({ from: accounts[0], to: mockSuicidal.address, value: 1 });
             // Sneak it into reward manager
             await mockSuicidal.die();
             assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "102");
+            assert.equal((await validatorRewardManager.getExpectedBalance()).toString(), "101");
             // Act
             await mockInflation.receiveInflation({ value: "1" });
             // Assert
             assert.equal(await web3.eth.getBalance(validatorRewardManager.address), "102");
+            assert.equal((await validatorRewardManager.getExpectedBalance()).toString(), "102");
             let balanceAfter = await web3.eth.getBalance(burnAddress);
             assert.equal(parseInt(balanceAfter) - parseInt(balanceBefore), 1);
         });

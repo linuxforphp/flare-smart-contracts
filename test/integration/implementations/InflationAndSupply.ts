@@ -77,7 +77,9 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       ADDRESS_UPDATER,
       initialGenesisAmountWei,
       foundationSupplyWei,
-      [ftsoRewardManager.address]
+      [ftsoRewardManager.address],
+      [],
+      constants.ZERO_ADDRESS
     );
 
     // Wire up escrow contract
@@ -160,8 +162,8 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       // Total inflation authorized over 1 month + 1 day
       const expectedInflationAuthorizedWei = firstMonthInflationAuthorized.add(firstDayMonth2InflationAuthorized);
 
-      let firstAnnumStart: BN = BN(0);
-      let firstAnnum: any = null;
+      let firstTimeSlotStart: BN = BN(0);
+      let firstTimeSlot: any = null;
 
       // Act
       // Force a block in order to get most up to date time
@@ -178,19 +180,19 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
         await mockFlareDaemon.trigger();
         progressBar.update(i);
         if(i == 0){
-          firstAnnum = await inflation.getCurrentAnnum();
-          firstAnnumStart = BN(firstAnnum.startTimeStamp.toString());
+          firstTimeSlot = await inflation.getCurrentTimeSlot();
+          firstTimeSlotStart = BN(firstTimeSlot.startTimeStamp.toString());
         }
       }
       progressBar.stop();
 
-      const secondAnnum = await inflation.getCurrentAnnum();
+      const secondTimeSlot = await inflation.getCurrentTimeSlot();
 
-      // New annum should be initialized
-      assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
+      // New time slot should be initialized
+      assert.isTrue(firstTimeSlotStart.lt(BN(secondTimeSlot.startTimeStamp.toString())));
       // Should recognize more inflation
       assert.equal(
-        secondAnnum.recognizedInflationWei.toString(), 
+        secondTimeSlot.recognizedInflationWei.toString(), 
         circulatingSupply.mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()) // 10 percent of initial
 
       assert.equal(
@@ -225,8 +227,8 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
       // Total inflation authorized over 1 month + 1 day
       const expectedInflationAuthorizedWei = firstMonthInflationAuthorized.add(firstDayMonth2InflationAuthorized).addn(0);
 
-      let firstAnnumStart: BN = BN(0);
-      let firstAnnum: any = null;
+      let firstTimeSlotStart: BN = BN(0);
+      let firstTimeSlot: any = null;
       
       // Act
       // Force a block in order to get most up to date time
@@ -245,17 +247,17 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
         // Pulse inflation for that day by calling daemon
         await mockFlareDaemon.trigger();
         if(i == 0){
-          firstAnnum = await inflation.getCurrentAnnum();
-          firstAnnumStart = BN(firstAnnum.startTimeStamp.toString());
+          firstTimeSlot = await inflation.getCurrentTimeSlot();
+          firstTimeSlotStart = BN(firstTimeSlot.startTimeStamp.toString());
         }
       }
-      const secondAnnum = await inflation.getCurrentAnnum();
+      const secondTimeSlot = await inflation.getCurrentTimeSlot();
       
-      // New annum should be initialized
-      assert.isTrue(firstAnnumStart.lt(BN(secondAnnum.startTimeStamp.toString())));
+      // New time slot should be initialized
+      assert.isTrue(firstTimeSlotStart.lt(BN(secondTimeSlot.startTimeStamp.toString())));
       // Should recognize more inflation
       assert.equal(
-        secondAnnum.recognizedInflationWei.toString(), 
+        secondTimeSlot.recognizedInflationWei.toString(), 
         circulatingSupply.sub(fullLockedAmount).mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()) // 10 percent of initial ()
 
       assert.equal(
@@ -292,16 +294,16 @@ contract(`Inflation.sol and Supply.sol and Escrow.sol; ${getTestFile(__filename)
         await mockFlareDaemon.trigger();
       }
 
-      const thirdAnnum = await inflation.getCurrentAnnum();
+      const thirdTimeSlot = await inflation.getCurrentTimeSlot();
       
-      // New annum should be initialized
-      assert.isTrue(BN(secondAnnum.startTimeStamp.toString()).lt(BN(thirdAnnum.startTimeStamp.toString())));
+      // New time slot should be initialized
+      assert.isTrue(BN(secondTimeSlot.startTimeStamp.toString()).lt(BN(thirdTimeSlot.startTimeStamp.toString())));
       // Should recognize more inflation
       assert.equal(
-        thirdAnnum.recognizedInflationWei.toString(), 
+        thirdTimeSlot.recognizedInflationWei.toString(), 
         circulatingSupply.sub(fullLockedAmount).add(claimed1).add(claimed3).mul(BN(inflationBips)).div(BN(10000)).divn(12).toString()
         )
-         // recognized in annum3 (smaller base with some claims)
+         // recognized in timeSlot3 (smaller base with some claims)
 
       assert.equal(
         ((await getRewardTotals(ftsoRewardManager)).dailyAuthorizedInflation).toString(), 

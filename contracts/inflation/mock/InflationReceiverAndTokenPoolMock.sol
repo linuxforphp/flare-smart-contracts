@@ -92,7 +92,7 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
         lastBalance = address(this).balance;
     }
 
-    function getTokenPoolSupplyData() external view override 
+    function getTokenPoolSupplyData() external view override
         returns (
             uint256 _foundationAllocatedFundsWei,
             uint256 _totalInflationAuthorizedWei,
@@ -101,9 +101,13 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
     {
         return (foundationAllocatedFundsWei, totalInflationAuthorizedWei, totalClaimedWei);
     }
-    
+
     function getInflationAddress() external view override returns(address) {
         return inflation;
+    }
+
+    function getExpectedBalance() external view override returns(uint256) {
+        return _getExpectedBalance();
     }
 
     function getContractName() external pure override returns (string memory) {
@@ -132,7 +136,7 @@ contract InflationReceiverAndTokenPoolMock is IIInflationReceiver, IITokenPool, 
             assert(false);
         }
     }
-    
+
     function _getExpectedBalance() private view returns(uint256 _balanceExpectedWei) {
         return foundationAllocatedFundsWei
             .add(totalInflationReceivedWei)

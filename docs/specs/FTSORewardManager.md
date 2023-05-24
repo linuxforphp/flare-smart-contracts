@@ -4,7 +4,7 @@
 
 ## Background
 
-The native token token will launch with planned annual inflation of 10%. A large part of that inflation will be awarded to native token holders providing “Good” price feeds to the FTSO (Flare Time Series Oracle). Native token holders can participate by either providing prices themselves or by delegating vote power to other price providers. Per price epoch, all good price provider addresses from a single FTSO are awarded a portion of that inflation. The reward system will enable any holder that delegated his vote power to a “good” price provider to claim part of the rewards this provider earned. Each delegator's share of the rewards will be proportional to the vote power they delegated to a winning price provider.
+The native token token will launch with planned time slot inflation of 10%. A large part of that inflation will be awarded to native token holders providing “Good” price feeds to the FTSO (Flare Time Series Oracle). Native token holders can participate by either providing prices themselves or by delegating vote power to other price providers. Per price epoch, all good price provider addresses from a single FTSO are awarded a portion of that inflation. The reward system will enable any holder that delegated his vote power to a “good” price provider to claim part of the rewards this provider earned. Each delegator's share of the rewards will be proportional to the vote power they delegated to a winning price provider.
 
 ## Handling Inflation 
 

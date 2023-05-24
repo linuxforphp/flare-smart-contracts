@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
-pragma abicoder v2;
 
-import "../interface/IIIncentivePoolReceiver.sol";
+import "../implementation/IncentivePoolReceiver.sol";
 
-contract IncentivePoolReceiverMock is IIIncentivePoolReceiver {
-    function setDailyAuthorizedIncentive(uint256 toAuthorizeWei) external override {}
-    function receiveIncentive() external payable override {}
-    function getIncentivePoolAddress() external override returns(address) {}
+
+contract IncentivePoolReceiverMock is IncentivePoolReceiver {
+
+    constructor(address _addressUpdater) IncentivePoolReceiver(_addressUpdater) {}
 
     function getContractName() external pure override returns (string memory) {
         return "IncentivePoolReceiverMock";

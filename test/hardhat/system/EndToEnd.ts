@@ -396,7 +396,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     rewardExpiryOffsetSeconds = (await ftsoManager.getRewardExpiryOffsetSeconds()).toNumber();
 
     // get the first reward
-    while ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds) {
+    while ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp as number < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds) {
       let result = await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
       if (firstPriceEpoch < 0 && firstRewardEpochId < 0) {
         firstPriceEpoch = result.firstPriceEpoch;
@@ -504,7 +504,7 @@ contract(`RewardManager.sol; ${getTestFile(__filename)}; Delegation, price submi
     await submitRevealAndFinalizeRewardEpoch(submitters, ftsos, ftsoIndices, priceSeries);
 
     // make sure to expire reward epoch
-    while ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds) {
+    while ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp as number < rewardEpochsStartTs.toNumber() + rewardExpiryOffsetSeconds) {
       await FinalizeRewardEpochs(1);
     }
 

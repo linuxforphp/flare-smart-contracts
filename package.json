@@ -7,6 +7,9 @@
     "type": "git",
     "url": "git+https://gitlab.com/flarenetwork/flare_smart_contracts.git"
   },
+  "engines": {
+    "node": ">=12 <20"
+  },
   "author": "Flare SC team",
   "license": "MIT",
   "directories": {},
@@ -17,7 +20,7 @@
     "test-full-coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --solcoverjs ./.solcover.js --testfiles \"test\"",
     "cov": "yarn test-with-coverage && yarn coverage_reporter",
     "cov-int": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --testfiles \"test/integration\"",
-    "testHH": "yarn test_unit_hh && yarn test_integration_hh && yarn test_performance_hh && yarn test_endtoend_hardhat",
+    "testHH": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn test_unit_hh && yarn test_integration_hh && yarn test_performance_hh && yarn test_endtoend_hardhat",
     "test_unit_hh": "env TEST_PATH=./test/unit yarn hardhat test --network hardhat",
     "test_integration_hh": "env TEST_PATH=./test/integration yarn hardhat test --network hardhat",
     "test_system_scdev": "concurrently -r -k --success first \"yarn run_validator_scdev\" \"wait-on -d 2000 tcp:127.0.0.1:9650 && env TEST_PATH=./test/scdev/system yarn hardhat test --network scdev\"",

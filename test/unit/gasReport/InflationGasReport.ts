@@ -85,14 +85,14 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
 
     await increaseTimeTo(startTs.toNumber(), 'web3');
 
-    // initialize first annum
-    await expectRevert(inflation.getCurrentAnnum(), "no annum");
-    await expectRevert(inflation.getAnnum(0), "no annum");
+    // initialize first timeSlot
+    await expectRevert(inflation.getCurrentTimeSlot(), "no time slot");
+    await expectRevert(inflation.getTimeSlot(0), "no time slot");
     let oldMintingRequest = await flareDaemon.totalMintingRequestedWei();
-    let initializeFirstAnnumTx = await flareDaemon.triggerDaemonize();
-    await expectEvent.notEmitted.inTransaction(initializeFirstAnnumTx.tx, supply, "AuthorizedInflationUpdateError");
-    await inflation.getCurrentAnnum(); // should not revert
-    console.log(`initialize first annum: ${initializeFirstAnnumTx.receipt.gasUsed}`);
+    let initializeFirstTimeSlotTx = await flareDaemon.triggerDaemonize();
+    await expectEvent.notEmitted.inTransaction(initializeFirstTimeSlotTx.tx, supply, "AuthorizedInflationUpdateError");
+    await inflation.getCurrentTimeSlot(); // should not revert
+    console.log(`initialize first timeSlot: ${initializeFirstTimeSlotTx.receipt.gasUsed}`);
     await flareDaemon.triggerReceiveMinting((await flareDaemon.totalMintingRequestedWei()).sub(oldMintingRequest));
 
     let currentDay = await getCurrentDay();
@@ -131,11 +131,11 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
       await suicidalContract.die();
     }
 
-    // finalize first annum
+    // finalize first timeSlot
     await increaseTimeTo(startTs.toNumber() + monthDurationSec, 'web3');
     oldMintingRequest = await flareDaemon.totalMintingRequestedWei();
-    let finalizeAnnumTx = await flareDaemon.triggerDaemonize();
-    console.log(`finalize annum: ${finalizeAnnumTx.receipt.gasUsed}`);
+    let finalizeTimeSlotTx = await flareDaemon.triggerDaemonize();
+    console.log(`finalize timeSlot: ${finalizeTimeSlotTx.receipt.gasUsed}`);
     await flareDaemon.triggerReceiveMinting((await flareDaemon.totalMintingRequestedWei()).sub(oldMintingRequest));
   }
 
@@ -160,7 +160,9 @@ contract(`Inflation.sol; ${getTestFile(__filename)}; gas consumption tests`, asy
         ADDRESS_UPDATER,
         10_000_000,
         0,
-        []
+        [],
+        [],
+        constants.ZERO_ADDRESS
       );
 
       // set contract addresses

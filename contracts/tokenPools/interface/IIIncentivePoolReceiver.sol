@@ -7,19 +7,25 @@ interface IIIncentivePoolReceiver {
      * @param _toAuthorizeWei the amount of incentive that can be awarded in the coming day
      */
     function setDailyAuthorizedIncentive(uint256 _toAuthorizeWei) external;
-    
+
     /**
-     * Receive native tokens from incentivePool.
+     * Receive native tokens from incentive pool.
      */
     function receiveIncentive() external payable;
 
     /**
-     * IncentivePool receivers have a reference to the IncentivePool contract.
+     * Incentive pool receivers have a reference to the IncentivePool contract.
      */
     function getIncentivePoolAddress() external returns(address);
-    
+
     /**
-     * Implement this function for updating incentivePool receiver contracts through AddressUpdater.
+     * Incentive pool receivers have a method to get their expected balance
+     * (actual balance can be higher due to self-destruct funds)
+     */
+    function getExpectedBalance() external view returns(uint256);
+
+    /**
+     * Implement this function for updating incentive pool receiver contracts through AddressUpdater.
      */
     function getContractName() external view returns (string memory);
 }

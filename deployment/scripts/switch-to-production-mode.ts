@@ -8,7 +8,6 @@ export async function switchToProductionMode(
     contracts: Contracts,
     deployerPrivateKey: string,
     genesisGovernancePrivateKey: string,
-    distributionDeployed: boolean,
     quiet: boolean = false
 ) {
     const web3 = hre.web3;
@@ -103,7 +102,7 @@ export async function switchToProductionMode(
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
     await priceSubmitter.switchToProductionMode({ from: genesisGovernanceAccount.address });
-    await incentivePoolTreasury.switchToProductionMode({ from: genesisGovernanceAccount.address });
+    await incentivePoolTreasury.switchToProductionMode();
     await initialAirdrop.switchToProductionMode();
     await distributionTreasury.switchToProductionMode();
     await addressUpdater.switchToProductionMode();

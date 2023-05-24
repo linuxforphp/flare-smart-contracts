@@ -22,11 +22,11 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     string internal constant ERR_LENGTH_MISMATCH = "length mismatch";
     string internal constant ERR_HIGH_SHARING_PERCENTAGE = "high sharing percentage";
     string internal constant ERR_SUM_SHARING_PERCENTAGE = "sum sharing percentage not 100%";
-    string internal constant ERR_IS_ZERO = "address is 0"; 
-    string internal constant ANNUAL_INCENTIVE_POOL_OUT_OF_BOUNDS = "annual incentivePool out of bounds";
-    string internal constant ERR_ANNUAL_INCENTIVE_POOL_SCHEDULE_EMPTY = "annual incentivePool schedule empty";
+    string internal constant ERR_IS_ZERO = "address is 0";
+    string internal constant ERR_TIME_SLOT_INCENTIVE_POOL_OUT_OF_BOUNDS = "time slot incentive pool out of bounds";
+    string internal constant ERR_TIME_SLOT_INCENTIVE_POOL_SCHEDULE_EMPTY = "time slot incentive pool schedule empty";
     string internal constant ERR_TOO_MANY = "too many";
-    string internal constant ERR_ONLY_INCENTIVE_POOL = "only incentivePool";
+    string internal constant ERR_ONLY_INCENTIVE_POOL = "only incentive pool";
 
     uint256 internal constant BIPS100 = 1e4;                            // 100% in basis points
     uint256 internal constant MAX_SCHEDULE_COUNT = 25;
@@ -35,14 +35,14 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
 
     IncentivePoolReceiver[] public incentivePoolReceivers;
     IncentivePool public incentivePool;
-    uint256 public lastAnnualIncentivePoolPercentageBips;
-    uint256[] public annualIncentivePoolPercentagesBips;
+    uint256 public lastTimeSlotIncentivePoolPercentageBips;
+    uint256[] public timeSlotIncentivePoolPercentagesBips;
 
     event IncentivePoolSet(address oldAddress, address newAddress);
-    event AnnualIncentivePoolPercentageYielded(uint256 percentageBips);
-    event AnnualIncentivePoolPercentageScheduleSet(uint256[] annualIncentivePoolPercentagesBips);
+    event TimeSlotIncentivePoolPercentageYielded(uint256 percentageBips);
+    event TimeSlotIncentivePoolPercentageScheduleSet(uint256[] timeSlotIncentivePoolPercentagesBips);
     event IncentivePoolSharingPercentagesSet(
-        IIIncentivePoolReceiver[] incentivePoolReceivers, 
+        IIIncentivePoolReceiver[] incentivePoolReceivers,
         uint256[] percentagePerReceiverBips
     );
 
@@ -57,92 +57,92 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     }
 
     /**
-     * @dev _incentivePool contract need not be set here, but must be set at the point that
-     *   annual incentivePool percentages are to be retrieved from the schedule.
+     * @dev IncentivePool contract need not be set here, but must be set at the point that
+     *   time slot incentive pool percentages are to be retrieved from the schedule.
      */
     constructor(
         address _governance,
         address _addressUpdater,
-        uint256[] memory _annualIncentivePoolScheduleBips
-    ) 
+        uint256[] memory _timeSlotIncentivePoolScheduleBips
+    )
         Governed(_governance) AddressUpdatable(_addressUpdater)
     {
-        require(_annualIncentivePoolScheduleBips.length > 0, ERR_ANNUAL_INCENTIVE_POOL_SCHEDULE_EMPTY);
+        require(_timeSlotIncentivePoolScheduleBips.length > 0, ERR_TIME_SLOT_INCENTIVE_POOL_SCHEDULE_EMPTY);
 
-        // validity is checked in _setAnnualIncentivePoolSchedule
-        lastAnnualIncentivePoolPercentageBips = _annualIncentivePoolScheduleBips[0];
-        _setAnnualIncentivePoolSchedule(_annualIncentivePoolScheduleBips);
+        // validity is checked in _setTimeSlotIncentivePoolSchedule
+        lastTimeSlotIncentivePoolPercentageBips = _timeSlotIncentivePoolScheduleBips[0];
+        _setTimeSlotIncentivePoolSchedule(_timeSlotIncentivePoolScheduleBips);
     }
 
     /**
-     * @notice Set the sharing percentages between incentivePool receiver contracts. Percentages must sum
+     * @notice Set the sharing percentages between incentive pool receiver contracts. Percentages must sum
      *   to 100%.
-     * @param _incentivePoolReceivers   An array of contracts to receive incentivePool rewards for distribution.
+     * @param _incentivePoolReceivers   An array of contracts to receive incentive pool rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function setSharingPercentages(
-        IIIncentivePoolReceiver[] memory _incentivePoolReceivers, 
+        IIIncentivePoolReceiver[] memory _incentivePoolReceivers,
         uint256[] memory _percentagePerReceiverBips
     )
         external
-        onlyGovernance 
+        onlyGovernance
     {
         _setSharingPercentages(_incentivePoolReceivers, _percentagePerReceiverBips);
     }
 
     /**
-     * @notice Set the annual incentivePool percentage schedule. This schedule is meant to be set for recognition
+     * @notice Set the time slot incentive pool percentage schedule. This schedule is meant to be set for recognition
      *   a per-annum basis.
-     * @param _annualIncentivePoolScheduleBips  An array of incentivePool percentages in bips.
+     * @param _timeSlotIncentivePoolScheduleBips  An array of incentive pool percentages in bips.
      * @dev Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
-    function setAnnualIncentivePool(uint256[] memory _annualIncentivePoolScheduleBips) external onlyGovernance {
+    function setTimeSlotIncentivePool(uint256[] memory _timeSlotIncentivePoolScheduleBips) external onlyGovernance {
         // Clear the existing schedule
-        uint256 lenExistingSchedule = annualIncentivePoolPercentagesBips.length;
+        uint256 lenExistingSchedule = timeSlotIncentivePoolPercentagesBips.length;
         for (uint256 i = 0; i < lenExistingSchedule; i++) {
-            annualIncentivePoolPercentagesBips.pop();
+            timeSlotIncentivePoolPercentagesBips.pop();
         }
 
         // Set new schedule
-        _setAnnualIncentivePoolSchedule(_annualIncentivePoolScheduleBips);
+        _setTimeSlotIncentivePoolSchedule(_timeSlotIncentivePoolScheduleBips);
 
-        emit AnnualIncentivePoolPercentageScheduleSet(_annualIncentivePoolScheduleBips);
+        emit TimeSlotIncentivePoolPercentageScheduleSet(_timeSlotIncentivePoolScheduleBips);
     }
 
     /**
-     * @notice Get the next annual incentivePool percentage from the schedule and pop it off the schedule.
+     * @notice Get the next time slot incentive pool percentage from the schedule and pop it off the schedule.
      *   If there are no percentages remaining within the schedule, yield the last percentage known.
-     * @return The annual incentivePool percentage.
-     * @dev Note that it is up to the caller to call this function at the appropriate annum interval.
+     * @return The time slot incentive pool percentage.
+     * @dev Note that it is up to the caller to call this function at the appropriate time slot interval.
      */
-    function getAnnualPercentageBips() 
-        external override 
-        notZero(address(incentivePool)) 
-        onlyIncentivePool 
+    function getTimeSlotPercentageBips()
+        external override
+        notZero(address(incentivePool))
+        onlyIncentivePool
         returns(
             uint256
         )
     {
         // If there is not a schedule of percentages, return the last one given (or set).
-        if (annualIncentivePoolPercentagesBips.length > 0) {
+        if (timeSlotIncentivePoolPercentagesBips.length > 0) {
             // Since there is a schedule, get the next percentage.
-            lastAnnualIncentivePoolPercentageBips = annualIncentivePoolPercentagesBips[0];
+            lastTimeSlotIncentivePoolPercentageBips = timeSlotIncentivePoolPercentagesBips[0];
             // Iterate over the schedule, shifting each down an index
-            uint256 len = annualIncentivePoolPercentagesBips.length;
+            uint256 len = timeSlotIncentivePoolPercentagesBips.length;
             if (len > 1) {
                 for (uint256 i = 0; i < len - 1; i++) {
-                    annualIncentivePoolPercentagesBips[i] = annualIncentivePoolPercentagesBips[i+1];
+                    timeSlotIncentivePoolPercentagesBips[i] = timeSlotIncentivePoolPercentagesBips[i+1];
                 }
             }
-            annualIncentivePoolPercentagesBips.pop();
+            timeSlotIncentivePoolPercentagesBips.pop();
         }
-        emit AnnualIncentivePoolPercentageYielded(lastAnnualIncentivePoolPercentageBips);
-        return lastAnnualIncentivePoolPercentageBips;
+        emit TimeSlotIncentivePoolPercentageYielded(lastTimeSlotIncentivePoolPercentageBips);
+        return lastTimeSlotIncentivePoolPercentageBips;
     }
 
     /**
-     * @notice Get the incentivePool receiver contracts and the current sharing percentages.
+     * @notice Get the incentive pool receiver contracts and the current sharing percentages.
      * @return _sharingPercentages An array of SharingPercentage.
      */
     function getSharingPercentages() external view override returns(SharingPercentage[] memory _sharingPercentages) {
@@ -157,13 +157,13 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     }
 
     /**
-     * @notice Set the sharing percentages between incentivePool receiver contracts. Percentages must sum
+     * @notice Set the sharing percentages between incentive pool receiver contracts. Percentages must sum
      *   to 100%.
-     * @param _incentivePoolReceivers   An array of contracts to receive incentivePool rewards for distribution.
+     * @param _incentivePoolReceivers   An array of contracts to receive incentive pool rewards for distribution.
      * @param _percentagePerReceiverBips    An array of sharing percentages in bips.
      */
     function _setSharingPercentages(
-        IIIncentivePoolReceiver[] memory _incentivePoolReceivers, 
+        IIIncentivePoolReceiver[] memory _incentivePoolReceivers,
         uint256[] memory _percentagePerReceiverBips
     )
         internal
@@ -195,8 +195,8 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     }
 
     /**
-     * @notice Implementation of the AddressUpdatable abstract method - updates IncentivePool 
-     * and incentivePool receivers contracts.
+     * @notice Implementation of the AddressUpdatable abstract method - updates IncentivePool
+     * and incentive pool receivers contracts.
      */
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
@@ -220,7 +220,7 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
         for (uint256 i = 0; i < len; i++) {
             IncentivePoolReceiver memory incentivePoolReceiver = incentivePoolReceivers[i];
             receivers[i] = IIIncentivePoolReceiver(
-                _getContractAddress(_contractNameHashes, _contractAddresses, 
+                _getContractAddress(_contractNameHashes, _contractAddresses,
                 incentivePoolReceiver.receiverContract.getContractName()));
             percentages[i] = incentivePoolReceiver.percentageBips;
         }
@@ -229,24 +229,24 @@ contract IncentivePoolAllocation is IIIncentivePoolAllocation, Governed, Address
     }
 
      /**
-     * @notice Set the annual incentivePool percentage schedule. This schedule is meant to be set for recognition
+     * @notice Set the time slot incentive pool percentage schedule. This schedule is meant to be set for recognition
      *   a per-annum basis.
-     * @param _annualIncentivePoolScheduleBips  An array of incentivePool percentages in bips.
+     * @param _timeSlotIncentivePoolScheduleBips  An array of incentive pool percentages in bips.
      * @dev Once the schedule has been used up, the last percentage
      *   yielded will be the percentage that will continue to be yielded.
      */
-    function _setAnnualIncentivePoolSchedule(uint256[] memory _annualIncentivePoolScheduleBips) internal {
-        require(_annualIncentivePoolScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
-        uint256 len = _annualIncentivePoolScheduleBips.length;
+    function _setTimeSlotIncentivePoolSchedule(uint256[] memory _timeSlotIncentivePoolScheduleBips) internal {
+        require(_timeSlotIncentivePoolScheduleBips.length <= MAX_SCHEDULE_COUNT, ERR_TOO_MANY);
+        uint256 len = _timeSlotIncentivePoolScheduleBips.length;
 
         for (uint256 i = 0; i < len; i++) {
             // Validate the schedule...
             require(
-                _annualIncentivePoolScheduleBips[i] <= MAX_INCENTIVE_POOL_PERCENTAGE_BIPS,
-                ANNUAL_INCENTIVE_POOL_OUT_OF_BOUNDS);
+                _timeSlotIncentivePoolScheduleBips[i] <= MAX_INCENTIVE_POOL_PERCENTAGE_BIPS,
+                ERR_TIME_SLOT_INCENTIVE_POOL_OUT_OF_BOUNDS);
 
             // Push in the new schedule
-            annualIncentivePoolPercentagesBips.push(_annualIncentivePoolScheduleBips[i]);
+            timeSlotIncentivePoolPercentagesBips.push(_timeSlotIncentivePoolScheduleBips[i]);
         }
     }
 }

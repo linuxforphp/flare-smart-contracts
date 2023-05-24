@@ -614,7 +614,7 @@ contract(`Escrow.sol; ${getTestFile(__filename)}; Escrow unit tests`, async acco
         await emptyAddressBalance(burnAddress, accounts[0]);
         assert.equal(Number(await balance.current(burnAddress)), 0);
         //
-        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, []);
+        supply = await Supply.new(governanceAddress, ADDRESS_UPDATER, initialGenesisAmountWei, totalFoundationSupplyWei, [], [], constants.ZERO_ADDRESS);
         await supply.updateContractAddresses(
             encodeContractNames([Contracts.ADDRESS_UPDATER, Contracts.INFLATION]),
             [ADDRESS_UPDATER, inflationAddress], {from: ADDRESS_UPDATER});

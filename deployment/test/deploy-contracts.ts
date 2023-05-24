@@ -137,19 +137,19 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       }
     });
 
-    it("Should fetch an ftso annual inflation percentage", async () => {
+    it("Should fetch last time slot inflation percentage", async () => {
       // Assemble
       // Act
-      const percentage = await inflationAllocation.lastAnnualInflationPercentageBips();
+      const percentage = await inflationAllocation.lastTimeSlotInflationPercentageBips();
       // Assert
       assert(percentage.gt(BN(0)));
     });
 
-    it("Should new annual inflation percentage be correct", async () => {
+    it("Should new time slot inflation percentage be correct", async () => {
       // Assemble
       // Act
-      const percentage = await inflationAllocation.annualInflationPercentagesBips(0);
-      const percentage2 = await inflationAllocation.lastAnnualInflationPercentageBips();
+      const percentage = await inflationAllocation.timeSlotInflationPercentagesBips(0);
+      const percentage2 = await inflationAllocation.lastTimeSlotInflationPercentageBips();
       // Assert
       assert(percentage.eq(BN(parameters.scheduledInflationPercentageBIPS[0])));
       assert(percentage2.eq(BN(parameters.scheduledInflationPercentageBIPS[0])));
