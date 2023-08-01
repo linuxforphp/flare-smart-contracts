@@ -4,8 +4,7 @@
 
 {{h}} {{typeTitle}}
 
-{{#each items}}
-{{#ifIsNodeType ../typeName}}
+{{#each (allItems typeName)}}
 {{#hsection}}
 
 <div class="api-node" markdown>
@@ -15,7 +14,6 @@
 </div>
 
 {{/hsection}}
-{{/ifIsNodeType}}
 {{/each}}
 
 </div>

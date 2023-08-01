@@ -159,10 +159,9 @@ test-unit:
 test-unit-heavy:
   extends:
     - test-unit
-    - .run-on-selfhosted-runner
+  tags:
+    - flarenetwork-md
   variables:
-    KUBERNETES_MEMORY_REQUEST: "7Gi"
-    KUBERNETES_MEMORY_LIMIT: "7Gi"
     NODE_OPTIONS: "--max_old_space_size=6144"
   retry:
     when: script_failure
@@ -219,15 +218,9 @@ test-contract-end-to-end:
 
 test-contract-end-to-end_2:
   extends:
-    - .run-on-selfhosted-runner
     - .test-node-sc
-  variables:
-    KUBERNETES_MEMORY_REQUEST: "8Gi"
-    KUBERNETES_MEMORY_LIMIT: "8Gi"
-    KUBERNETES_EPHEMERAL_STORAGE_REQUEST: "4Gi"
-    KUBERNETES_EPHEMERAL_STORAGE_LIMIT: 4Gi
-    KUBERNETES_CPU_REQUEST: "4"
-    KUBERNETES_CPU_LIMIT: "4"
+  tags:
+    - flarenetwork-md
   script:
     - yarn test_claim_topup_hardhat_fast
 
@@ -236,7 +229,7 @@ test-slither-check:
   before_script:
     - apt update
     - apt install -y python3-pip
-    - pip3 install slither-analyzer
+    - pip3 install --break-system-packages slither-analyzer
     - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
   script:
     - yarn slither
