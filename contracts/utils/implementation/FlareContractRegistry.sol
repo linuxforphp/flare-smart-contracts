@@ -8,8 +8,9 @@ import "../../addressUpdater/interface/IIAddressUpdater.sol";
 
 
 /**
- * Flare contract registry
- * Entry point for all external dapps that need the latest contract addresses deployed by Flare
+ * The Flare contract registry.
+ *
+ * Entry point for all external dapps that need the latest contract addresses deployed by Flare.
  */
 contract FlareContractRegistry is IFlareContractRegistry, AddressUpdatable {
 
@@ -18,32 +19,28 @@ contract FlareContractRegistry is IFlareContractRegistry, AddressUpdatable {
     }
 
     /**
-     * @notice Returns contract address for the given name - might be address(0)
-     * @param _name             name of the contract
+     * @inheritdoc IFlareContractRegistry
      */
     function getContractAddressByName(string calldata _name) external view override returns(address) {
         return IIAddressUpdater(getAddressUpdater()).getContractAddress(_name);
     }
 
     /**
-     * @notice Returns contract address for the given name hash - might be address(0)
-     * @param _nameHash         hash of the contract name (keccak256(abi.encode(name))
+     * @inheritdoc IFlareContractRegistry
      */
     function getContractAddressByHash(bytes32 _nameHash) external view override returns(address) {
         return IIAddressUpdater(getAddressUpdater()).getContractAddressByHash(_nameHash);
     }
 
     /**
-     * @notice Returns contract addresses for the given names - might be address(0)
-     * @param _names            names of the contracts
+     * @inheritdoc IFlareContractRegistry
      */
     function getContractAddressesByName(string[] calldata _names) external view override returns(address[] memory) {
         return IIAddressUpdater(getAddressUpdater()).getContractAddresses(_names);
     }
 
     /**
-     * @notice Returns contract addresses for the given name hashes - might be address(0)
-     * @param _nameHashes       hashes of the contract names (keccak256(abi.encode(name))
+     * @inheritdoc IFlareContractRegistry
      */
     function getContractAddressesByHash(
         bytes32[] calldata _nameHashes
@@ -54,14 +51,14 @@ contract FlareContractRegistry is IFlareContractRegistry, AddressUpdatable {
     }
 
     /**
-     * @notice Returns all contract names and corresponding addresses
+     * @inheritdoc IFlareContractRegistry
      */
-    function getAllContracts() external view override returns(string[] memory, address[] memory) {
+    function getAllContracts() external view override returns(string[] memory _names, address[] memory _addresses) {
         return IIAddressUpdater(getAddressUpdater()).getContractNamesAndAddresses();
     }
 
     /**
-     * @notice Implementation of the AddressUpdatable abstract method.
+     * Implementation of the AddressUpdatable abstract method.
      */
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,

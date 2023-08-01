@@ -10,11 +10,11 @@ import "../lib/VotePowerCache.sol";
 import "../../userInterfaces/IVPContractEvents.sol";
 
 /**
- * @title Delegateable ERC20 behavior
- * @notice An ERC20 Delegateable behavior to delegate voting power
- *  of a token to delegates. This contract orchestrates interaction between
- *  managing a delegation and the vote power allocations that result.
- **/
+ * Delegatable ERC20 behavior.
+ *
+ * Adds delegation capabilities to tokens. This contract orchestrates interaction between
+ * managing a delegation and the vote power allocations that result.
+ */
 contract Delegatable is IVPContractEvents {
     using PercentageDelegation for PercentageDelegation.DelegationState;
     using ExplicitDelegation for ExplicitDelegation.DelegationState;
@@ -23,17 +23,24 @@ contract Delegatable is IVPContractEvents {
     using VotePower for VotePower.VotePowerState;
     using VotePowerCache for VotePowerCache.CacheState;
 
-    enum DelegationMode { 
-        NOTSET, 
-        PERCENTAGE, 
+    /**
+     * Delegation mode of an account. Once set, it cannot be changed.
+     *
+     * * `NOTSET`: Delegation mode not set yet.
+     * * `PERCENTAGE`: Delegation by percentage.
+     * * `AMOUNT`: Delegation by amount (explicit).
+     */
+    enum DelegationMode {
+        NOTSET,
+        PERCENTAGE,
         AMOUNT
     }
 
     // The number of history cleanup steps executed for every write operation.
     // It is more than 1 to make as certain as possible that all history gets cleaned eventually.
     uint256 private constant CLEANUP_COUNT = 2;
-    
-    string constant private UNDELEGATED_VP_TOO_SMALL_MSG = 
+
+    string constant private UNDELEGATED_VP_TOO_SMALL_MSG =
         "Undelegated vote power too small";
 
     // Map that tracks delegation mode of each address.
@@ -42,7 +49,7 @@ contract Delegatable is IVPContractEvents {
     // `percentageDelegations` is the map that tracks the percentage voting power delegation of each address.
     // Explicit delegations are tracked directly through votePower.
     mapping(address => PercentageDelegation.DelegationState) private percentageDelegations;
-    
+
     mapping(address => ExplicitDelegation.DelegationState) private explicitDelegations;
 
     // `votePower` tracks all voting power balances
@@ -54,21 +61,23 @@ contract Delegatable is IVPContractEvents {
     // Historic data for the blocks before `cleanupBlockNumber` can be erased,
     // history before that block should never be used since it can be inconsistent.
     uint256 private cleanupBlockNumber;
-    
-    // Address of the contract that is allowed to call methods for history cleaning.
+
+    /// Address of the contract that is allowed to call methods for history cleaning.
     address public cleanerContract;
-    
+
     /**
      * Emitted when a vote power cache entry is created.
      * Allows history cleaners to track vote power cache cleanup opportunities off-chain.
+     * @param _owner The address whose vote power has just been cached.
+     * @param _blockNumber The block number at which the vote power has been cached.
      */
     event CreatedVotePowerCache(address _owner, uint256 _blockNumber);
-    
+
     // Most history cleanup opportunities can be deduced from standard events:
     // Transfer(from, to, amount):
     //  - vote power checkpoints for `from` (if nonzero) and `to` (if nonzero)
     //  - vote power checkpoints for percentage delegatees of `from` and `to` are also created,
-    //    but they don't have to be checked since Delegate events are also emitted in case of 
+    //    but they don't have to be checked since Delegate events are also emitted in case of
     //    percentage delegation vote power change due to delegators balance change
     //  - Note: Transfer event is emitted from VPToken but vote power checkpoint delegationModes
     //    must be called on its writeVotePowerContract
@@ -79,18 +88,19 @@ contract Delegatable is IVPContractEvents {
     // Revoke(from, to, vp, block):
     //  - vote power cache for `from` and `to` at `block`
     //  - revocation cache block from `from` to `to` at `block`
-    
+
     /**
      * Reading from history is not allowed before `cleanupBlockNumber`, since data before that
      * might have been deleted and is thus unreliable.
-     */    
+     * @param _blockNumber The block number being checked for validity.
+     */
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "Delegatable: reading from cleaned-up block");
         _;
     }
-    
+
     /**
-     * History cleaning methods can be called only from the cleaner address.
+     * History cleaning methods can be called only from `cleanerContract`.
      */
     modifier onlyCleaner {
         require(msg.sender == cleanerContract, "Only cleaner contract");
@@ -98,7 +108,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice (Un)Allocate `_owner` vote power of `_amount` across owner delegate
+     * (Un)Allocate `_owner` vote power of `_amount` across owner delegate
      *  vote power percentages.
      * @param _owner The address of the vote power owner.
      * @param _priorBalance The owner's balance before change.
@@ -112,7 +122,7 @@ contract Delegatable is IVPContractEvents {
         uint256 ownerVpAdd = _newBalance;
         uint256 ownerVpSub = _priorBalance;
         // Iterate over the delegates
-        (uint256 length, mapping(uint256 => DelegationHistory.Delegation) storage delegations) = 
+        (uint256 length, mapping(uint256 => DelegationHistory.Delegation) storage delegations) =
             delegation.getDelegationsRaw();
         for (uint256 i = 0; i < length; i++) {
             DelegationHistory.Delegation storage dlg = delegations[i];
@@ -132,12 +142,12 @@ contract Delegatable is IVPContractEvents {
         // (ownerVpAdd - ownerVpSub) is how much the owner vp changes - will be 0 if delegation is 100%
         if (ownerVpAdd != ownerVpSub) {
             votePower.changeValue(_owner, ownerVpAdd, ownerVpSub);
-            votePower.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);    
+            votePower.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
         }
     }
 
     /**
-     * @notice Burn `_amount` of vote power for `_owner`.
+     * Burn `_amount` of vote power for `_owner`.
      * @param _owner The address of the _owner vote power to burn.
      * @param _ownerCurrentBalance The current token balance of the owner (which is their allocatable vote power).
      * @param _amount The amount of vote power to burn.
@@ -158,7 +168,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Get whether `_owner` current delegation can be delegated by percentage.
+     * Get whether `_owner` current delegation can be delegated by percentage.
      * @param _owner Address of delegation to check.
      * @return True if delegation can be delegated by percentage.
      */
@@ -171,7 +181,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Get whether `_owner` current delegation can be delegated by amount.
+     * Get whether `_owner` current delegation can be delegated by amount.
      * @param _owner Address of delegation to check.
      * @return True if delegation can be delegated by amount.
      */
@@ -184,30 +194,30 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Delegate `_amount` of voting power to `_to` from `_from`
+     * Delegate `_amount` of voting power to `_to` from `_from`
      * @param _from The address of the delegator
      * @param _to The address of the recipient
      * @param _senderCurrentBalance The senders current balance (not their voting power)
      * @param _amount The amount of voting power to be delegated
-     **/
+     */
     function _delegateByAmount(
-        address _from, 
-        address _to, 
-        uint256 _senderCurrentBalance, 
+        address _from,
+        address _to,
+        uint256 _senderCurrentBalance,
         uint256 _amount
     )
-        internal virtual 
+        internal virtual
     {
         require (_to != address(0), "Cannot delegate to zero");
         require (_to != _from, "Cannot delegate to self");
         require (_canDelegateByAmount(_from), "Cannot delegate by amount");
-        
+
         // Get the vote power delegation for the sender
         ExplicitDelegation.DelegationState storage delegation = explicitDelegations[_from];
-        
+
         // the prior value
         uint256 priorAmount = delegation.getDelegatedValue(_to);
-        
+
         // Delegate new power
         if (_amount < priorAmount) {
             // Prior amount is greater, just reduce the delegated amount.
@@ -223,7 +233,7 @@ contract Delegatable is IVPContractEvents {
         }
         votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
         votePower.cleanupOldCheckpoints(_to, CLEANUP_COUNT, cleanupBlockNumber);
-        
+
         // Add/replace delegate
         delegation.addReplaceDelegate(_to, _amount);
         delegation.cleanupOldCheckpoints(_to, CLEANUP_COUNT, cleanupBlockNumber);
@@ -232,22 +242,22 @@ contract Delegatable is IVPContractEvents {
         if (delegationModes[_from] != DelegationMode.AMOUNT) {
             delegationModes[_from] = DelegationMode.AMOUNT;
         }
-        
+
         // emit event for delegation change
         emit Delegate(_from, _to, priorAmount, _amount);
     }
 
     /**
-     * @notice Delegate `_bips` of voting power to `_to` from `_from`
+     * Delegate `_bips` of voting power to `_to` from `_from`
      * @param _from The address of the delegator
      * @param _to The address of the recipient
      * @param _senderCurrentBalance The senders current balance (not their voting power)
      * @param _bips The percentage of voting power in basis points (1/100 of 1 percent) to be delegated
-     **/
+     */
     function _delegateByPercentage(
-        address _from, 
-        address _to, 
-        uint256 _senderCurrentBalance, 
+        address _from,
+        address _to,
+        uint256 _senderCurrentBalance,
         uint256 _bips
     )
         internal virtual
@@ -255,7 +265,7 @@ contract Delegatable is IVPContractEvents {
         require (_to != address(0), "Cannot delegate to zero");
         require (_to != _from, "Cannot delegate to self");
         require (_canDelegateByPct(_from), "Cannot delegate by percentage");
-        
+
         // Get the vote power delegation for the sender
         PercentageDelegation.DelegationState storage delegation = percentageDelegations[_from];
 
@@ -267,7 +277,7 @@ contract Delegatable is IVPContractEvents {
         // Add/replace delegate
         delegation.addReplaceDelegate(_to, _bips);
         delegation.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
-        
+
         // First, back out old voting power percentage, if not zero
         if (priorBips != 0) {
             reverseVotePower = _senderCurrentBalance.mulDiv(priorBips, PercentageDelegation.MAX_BIPS);
@@ -288,7 +298,7 @@ contract Delegatable is IVPContractEvents {
         }
         votePower.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
         votePower.cleanupOldCheckpoints(_to, CLEANUP_COUNT, cleanupBlockNumber);
-        
+
         // update mode if needed
         if (delegationModes[_from] != DelegationMode.PERCENTAGE) {
             delegationModes[_from] = DelegationMode.PERCENTAGE;
@@ -309,19 +319,19 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-    * @notice Get the vote power delegation `delegationAddresses` 
-    *  and `_bips` of an `_owner`. Returned in two separate positional arrays.
-    * @param _owner The address to get delegations.
-    * @param _blockNumber The block for which we want to know the delegations.
-    * @return _delegateAddresses Positional array of delegation addresses.
-    * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
-    */
+     * Get the vote power delegation `delegationAddresses`
+     *  and `_bips` of an `_owner`. Returned in two separate positional arrays.
+     * @param _owner The address to get delegations.
+     * @param _blockNumber The block for which we want to know the delegations.
+     * @return _delegateAddresses Positional array of delegation addresses.
+     * @return _bips Positional array of delegation percents specified in basis points (1/100 or 1 percent)
+     */
     function _percentageDelegatesOfAt(
         address _owner,
         uint256 _blockNumber
     )
         internal view
-        notBeforeCleanupBlock(_blockNumber) 
+        notBeforeCleanupBlock(_blockNumber)
         returns (
             address[] memory _delegateAddresses, 
             uint256[] memory _bips
@@ -354,7 +364,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Checks if enough undelegated vote power exists to allow a token
+     * Checks if enough undelegated vote power exists to allow a token
      *  transfer to occur if vote power is explicitly delegated.
      * @param _owner The address of transmittable vote power to check.
      * @param _ownerCurrentBalance The current balance of `_owner`.
@@ -362,8 +372,8 @@ contract Delegatable is IVPContractEvents {
      * @return True is `_amount` is transmittable.
      */
     function _isTransmittable(
-        address _owner, 
-        uint256 _ownerCurrentBalance, 
+        address _owner,
+        uint256 _ownerCurrentBalance,
         uint256 _amount
     )
         private view returns(bool)
@@ -379,7 +389,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Mint `_amount` of vote power for `_owner`.
+     * Mint `_amount` of vote power for `_owner`.
      * @param _owner The address of the owner to receive new vote power.
      * @param _amount The amount of vote power to mint.
      */
@@ -392,28 +402,28 @@ contract Delegatable is IVPContractEvents {
             votePower.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
         }
     }
-    
+
     /**
-    * @notice Revoke the vote power of `_to` at block `_blockNumber`
-    * @param _from The address of the delegator
-    * @param _to The delegatee address of vote power to revoke.
-    * @param _senderBalanceAt The sender's balance at the block to be revoked.
-    * @param _blockNumber The block number at which to revoke.
-    */
+     * Revoke the vote power of `_to` at block `_blockNumber`
+     * @param _from The address of the delegator
+     * @param _to The delegatee address of vote power to revoke.
+     * @param _senderBalanceAt The sender's balance at the block to be revoked.
+     * @param _blockNumber The block number at which to revoke.
+     */
     function _revokeDelegationAt(
-        address _from, 
-        address _to, 
-        uint256 _senderBalanceAt, 
+        address _from,
+        address _to,
+        uint256 _senderBalanceAt,
         uint256 _blockNumber
     )
-        internal 
+        internal
         notBeforeCleanupBlock(_blockNumber)
     {
         require(_blockNumber < block.number, "Revoke is only for the past, use undelegate for the present");
-        
+
         // Get amount revoked
         uint256 votePowerRevoked = _votePowerFromToAtNoRevokeCheck(_from, _to, _senderBalanceAt, _blockNumber);
-        
+
         // Revoke vote power
         votePowerCache.revokeAt(votePower, _from, _to, votePowerRevoked, _blockNumber);
 
@@ -422,17 +432,17 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-    * @notice Transmit `_amount` of vote power `_from` address `_to` address.
-    * @param _from The address of the sender.
-    * @param _to The address of the receiver.
-    * @param _fromCurrentBalance The current token balance of the transmitter.
-    * @param _toCurrentBalance The current token balance of the receiver.
-    * @param _amount The amount of vote power to transmit.
-    */
+     * Transmit `_amount` of vote power `_from` address `_to` address.
+     * @param _from The address of the sender.
+     * @param _to The address of the receiver.
+     * @param _fromCurrentBalance The current token balance of the transmitter.
+     * @param _toCurrentBalance The current token balance of the receiver.
+     * @param _amount The amount of vote power to transmit.
+     */
     function _transmitVotePower(
-        address _from, 
-        address _to, 
-        uint256 _fromCurrentBalance, 
+        address _from,
+        address _to,
+        uint256 _fromCurrentBalance,
         uint256 _toCurrentBalance,
         uint256 _amount
     )
@@ -443,7 +453,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Undelegate all vote power by percentage for `delegation` of `_who`.
+     * Undelegate all vote power by percentage for `delegation` of `_who`.
      * @param _from The address of the delegator
      * @param _senderCurrentBalance The current balance of message sender.
      * precondition: delegationModes[_who] == DelegationMode.PERCENTAGE
@@ -453,9 +463,9 @@ contract Delegatable is IVPContractEvents {
         if (delegationMode == DelegationMode.NOTSET) return;
         require(delegationMode == DelegationMode.PERCENTAGE,
             "undelegateAll can only be used in percentage delegation mode");
-            
+
         PercentageDelegation.DelegationState storage delegation = percentageDelegations[_from];
-        
+
         // Iterate over the delegates
         (address[] memory delegates, uint256[] memory _bips) = delegation.getDelegations();
         for (uint256 i = 0; i < delegates.length; i++) {
@@ -476,25 +486,25 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Undelegate all vote power by amount delegates for `_from`.
+     * Undelegate all vote power by amount delegates for `_from`.
      * @param _from The address of the delegator
-     * @param _delegateAddresses Explicit delegation does not store delegatees' addresses, 
-     *   so the caller must supply them.
+     * @param _delegateAddresses Explicit delegation does not store delegatees' addresses,
+     * so the caller must supply them.
      */
     function _undelegateAllByAmount(
         address _from,
         address[] memory _delegateAddresses
-    ) 
-        internal 
+    )
+        internal
         returns (uint256 _remainingDelegation)
     {
         DelegationMode delegationMode = delegationModes[_from];
         if (delegationMode == DelegationMode.NOTSET) return 0;
         require(delegationMode == DelegationMode.AMOUNT,
             "undelegateAllExplicit can only be used in explicit delegation mode");
-            
+
         ExplicitDelegation.DelegationState storage delegation = explicitDelegations[_from];
-        
+
         // Iterate over the delegates
         for (uint256 i = 0; i < _delegateAddresses.length; i++) {
             address to = _delegateAddresses[i];
@@ -511,10 +521,10 @@ contract Delegatable is IVPContractEvents {
             // Emit vote power reversal event
             emit Delegate(_from, to, reverseVotePower, 0);
         }
-        
+
         return delegation.getDelegatedTotal();
     }
-    
+
     /**
      * @notice Check if the `_owner` has made any delegations.
      * @param _owner The address of owner to get delegated vote power.
@@ -532,17 +542,17 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Get the total delegated vote power of `_owner` at some block.
+     * Get the total delegated vote power of `_owner` at some block.
      * @param _owner The address of owner to get delegated vote power.
      * @param _ownerBalanceAt The balance of the owner at that block (not their vote power).
      * @param _blockNumber The block number at which to fetch.
      * @return _votePower The total delegated vote power at block.
      */
     function _delegatedVotePowerOfAt(
-        address _owner, 
+        address _owner,
         uint256 _ownerBalanceAt,
         uint256 _blockNumber
-    ) 
+    )
         internal view
         notBeforeCleanupBlock(_blockNumber)
         returns(uint256 _votePower)
@@ -559,19 +569,19 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Get the undelegated vote power of `_owner` at some block.
+     * Get the undelegated vote power of `_owner` at some block.
      * @param _owner The address of owner to get undelegated vote power.
      * @param _ownerBalanceAt The balance of the owner at that block (not their vote power).
      * @param _blockNumber The block number at which to fetch.
      * @return _votePower The undelegated vote power at block.
      */
     function _undelegatedVotePowerOfAt(
-        address _owner, 
+        address _owner,
         uint256 _ownerBalanceAt,
         uint256 _blockNumber
-    ) 
-        internal view 
-        notBeforeCleanupBlock(_blockNumber) 
+    )
+        internal view
+        notBeforeCleanupBlock(_blockNumber)
         returns(uint256 _votePower)
     {
         // Return the current balance less delegations or zero if negative
@@ -583,33 +593,33 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Get the undelegated vote power of `_owner`.
+     * Get the undelegated vote power of `_owner`.
      * @param _owner The address of owner to get undelegated vote power.
      * @param _ownerCurrentBalance The current balance of the owner (not their vote power).
      * @return _votePower The undelegated vote power.
      */
     function _undelegatedVotePowerOf(
-        address _owner, 
+        address _owner,
         uint256 _ownerCurrentBalance
-    ) 
-        internal view 
+    )
+        internal view
         returns(uint256 _votePower)
     {
         return _undelegatedVotePowerOfAt(_owner, _ownerCurrentBalance, block.number);
     }
-    
+
     /**
-    * @notice Get current delegated vote power `_from` delegator delegated `_to` delegatee.
+    * Get current delegated vote power `_from` delegator delegated `_to` delegatee.
     * @param _from Address of delegator
     * @param _to Address of delegatee
     * @return _votePower The delegated vote power.
     */
     function _votePowerFromTo(
-        address _from, 
-        address _to, 
+        address _from,
+        address _to,
         uint256 _currentFromBalance
-    ) 
-        internal view 
+    )
+        internal view
         returns(uint256 _votePower)
     {
         DelegationMode delegationMode = delegationModes[_from];
@@ -624,7 +634,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-    * @notice Get delegated the vote power `_from` delegator delegated `_to` delegatee at `_blockNumber`.
+    * Get delegated the vote power `_from` delegator delegated `_to` delegatee at `_blockNumber`.
     * @param _from Address of delegator
     * @param _to Address of delegatee
     * @param _fromBalanceAt From's balance at the block `_blockNumber`.
@@ -632,14 +642,14 @@ contract Delegatable is IVPContractEvents {
     * @return _votePower The delegated vote power.
     */
     function _votePowerFromToAt(
-        address _from, 
-        address _to, 
-        uint256 _fromBalanceAt, 
+        address _from,
+        address _to,
+        uint256 _fromBalanceAt,
         uint256 _blockNumber
-    ) 
-        internal view 
-        notBeforeCleanupBlock(_blockNumber) 
-        returns(uint256 _votePower) 
+    )
+        internal view
+        notBeforeCleanupBlock(_blockNumber)
+        returns(uint256 _votePower)
     {
         // if revoked, return 0
         if (votePowerCache.revokedFromToAt(_from, _to, _blockNumber)) return 0;
@@ -647,21 +657,21 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-    * @notice Get delegated the vote power `_from` delegator delegated `_to` delegatee at `_blockNumber`.
-    *   Private use only - ignores revocations.
-    * @param _from Address of delegator
-    * @param _to Address of delegatee
-    * @param _fromBalanceAt From's balance at the block `_blockNumber`.
-    * @param _blockNumber The block number at which to fetch.
-    * @return _votePower The delegated vote power.
-    */
+     * Get delegated the vote power `_from` delegator delegated `_to` delegatee at `_blockNumber`.
+     * Private use only - ignores revocations.
+     * @param _from Address of delegator
+     * @param _to Address of delegatee
+     * @param _fromBalanceAt From's balance at the block `_blockNumber`.
+     * @param _blockNumber The block number at which to fetch.
+     * @return _votePower The delegated vote power.
+     */
     function _votePowerFromToAtNoRevokeCheck(
-        address _from, 
-        address _to, 
-        uint256 _fromBalanceAt, 
+        address _from,
+        address _to,
+        uint256 _fromBalanceAt,
         uint256 _blockNumber
     )
-        private view 
+        private view
         returns(uint256 _votePower)
     {
         // assumed: notBeforeCleanupBlock(_blockNumber)
@@ -677,7 +687,7 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-     * @notice Get the current vote power of `_who`.
+     * Get the current vote power of `_who`.
      * @param _who The address to get voting power.
      * @return Current vote power of `_who`.
      */
@@ -686,17 +696,17 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-    * @notice Get the vote power of `_who` at block `_blockNumber`
-    * @param _who The address to get voting power.
-    * @param _blockNumber The block number at which to fetch.
-    * @return Vote power of `_who` at `_blockNumber`.
-    */
+     * Get the vote power of `_who` at block `_blockNumber`
+     * @param _who The address to get voting power.
+     * @param _blockNumber The block number at which to fetch.
+     * @return Vote power of `_who` at `_blockNumber`.
+     */
     function _votePowerOfAt(
-        address _who, 
+        address _who,
         uint256 _blockNumber
     )
-        internal view 
-        notBeforeCleanupBlock(_blockNumber) 
+        internal view
+        notBeforeCleanupBlock(_blockNumber)
         returns(uint256)
     {
         // read cached value for past blocks to respect revocations (and possibly get a cache speedup)
@@ -708,17 +718,17 @@ contract Delegatable is IVPContractEvents {
     }
 
     /**
-    * @notice Get the vote power of `_who` at block `_blockNumber`, ignoring revocation information (and cache).
-    * @param _who The address to get voting power.
-    * @param _blockNumber The block number at which to fetch.
-    * @return Vote power of `_who` at `_blockNumber`. Result doesn't change if vote power is revoked.
-    */
+     * Get the vote power of `_who` at block `_blockNumber`, ignoring revocation information (and cache).
+     * @param _who The address to get voting power.
+     * @param _blockNumber The block number at which to fetch.
+     * @return Vote power of `_who` at `_blockNumber`. Result doesn't change if vote power is revoked.
+     */
     function _votePowerOfAtIgnoringRevocation(
-        address _who, 
+        address _who,
         uint256 _blockNumber
     )
-        internal view 
-        notBeforeCleanupBlock(_blockNumber) 
+        internal view
+        notBeforeCleanupBlock(_blockNumber)
         returns(uint256)
     {
         return votePower.votePowerOfAt(_who, _blockNumber);
@@ -730,13 +740,13 @@ contract Delegatable is IVPContractEvents {
      * @param _owners The list of addresses to fetch vote power of.
      * @param _blockNumber The block number at which to fetch.
      * @return _votePowers A list of vote powers corresponding to _owners.
-     */    
+     */
     function _batchVotePowerOfAt(
-        address[] memory _owners, 
+        address[] memory _owners,
         uint256 _blockNumber
-    ) 
-        internal view 
-        notBeforeCleanupBlock(_blockNumber) 
+    )
+        internal view
+        notBeforeCleanupBlock(_blockNumber)
         returns(uint256[] memory _votePowers)
     {
         require(_blockNumber < block.number, "Can only be used for past blocks");
@@ -746,28 +756,28 @@ contract Delegatable is IVPContractEvents {
             _votePowers[i] = votePowerCache.valueOfAtReadonly(votePower, _owners[i], _blockNumber);
         }
     }
-    
+
     /**
-    * @notice Get the vote power of `_who` at block `_blockNumber`
-    *   Reads/updates cache and upholds revocations.
-    * @param _who The address to get voting power.
-    * @param _blockNumber The block number at which to fetch.
-    * @return Vote power of `_who` at `_blockNumber`.
-    */
+     * Get the vote power of `_who` at block `_blockNumber`
+     *   Reads/updates cache and upholds revocations.
+     * @param _who The address to get voting power.
+     * @param _blockNumber The block number at which to fetch.
+     * @return Vote power of `_who` at `_blockNumber`.
+     */
     function _votePowerOfAtCached(
-        address _who, 
+        address _who,
         uint256 _blockNumber
     )
-        internal 
+        internal
         notBeforeCleanupBlock(_blockNumber)
-        returns(uint256) 
+        returns(uint256)
     {
         require(_blockNumber < block.number, "Can only be used for past blocks");
         (uint256 vp, bool createdCache) = votePowerCache.valueOfAt(votePower, _who, _blockNumber);
         if (createdCache) emit CreatedVotePowerCache(_who, _blockNumber);
         return vp;
     }
-    
+
     /**
      * Set the cleanup block number.
      */
@@ -783,23 +793,23 @@ contract Delegatable is IVPContractEvents {
     function _cleanupBlockNumber() internal view returns (uint256) {
         return cleanupBlockNumber;
     }
-    
+
     /**
      * Set the contract that is allowed to call history cleaning methods.
      */
     function _setCleanerContract(address _cleanerContract) internal {
         cleanerContract = _cleanerContract;
     }
-    
+
     // history cleanup methods
-    
+
     /**
      * Delete vote power checkpoints that expired (i.e. are before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _owner vote power owner account address
-     * @param _count maximum number of checkpoints to delete
-     * @return the number of checkpoints deleted
-     */    
+     * @param _owner Vote power owner account address.
+     * @param _count Maximum number of checkpoints to delete.
+     * @return Number of deleted checkpoints.
+     */
     function votePowerHistoryCleanup(address _owner, uint256 _count) external onlyCleaner returns (uint256) {
         return votePower.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
     }
@@ -807,10 +817,10 @@ contract Delegatable is IVPContractEvents {
     /**
      * Delete vote power cache entry that expired (i.e. is before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _owner vote power owner account address
-     * @param _blockNumber the block number for which total supply value was cached
-     * @return the number of cache entries deleted (always 0 or 1)
-     */    
+     * @param _owner Vote power owner account address.
+     * @param _blockNumber Block number for which total supply value was cached.
+     * @return Number of deleted cache entries (always 0 or 1).
+     */
     function votePowerCacheCleanup(address _owner, uint256 _blockNumber) external onlyCleaner returns (uint256) {
         require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
         return votePowerCache.deleteValueAt(_owner, _blockNumber);
@@ -819,48 +829,48 @@ contract Delegatable is IVPContractEvents {
     /**
      * Delete revocation entry that expired (i.e. is before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _from the delegator address
-     * @param _to the delegatee address
-     * @param _blockNumber the block number for which total supply value was cached
-     * @return the number of revocation entries deleted (always 0 or 1)
-     */    
+     * @param _from Delegator address.
+     * @param _to Delegatee address.
+     * @param _blockNumber Block number for which total supply value was cached.
+     * @return Number of revocation entries deleted (always 0 or 1).
+     */
     function revocationCleanup(
-        address _from, 
-        address _to, 
+        address _from,
+        address _to,
         uint256 _blockNumber
     )
-        external onlyCleaner 
+        external onlyCleaner
         returns (uint256)
     {
         require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
         return votePowerCache.deleteRevocationAt(_from, _to, _blockNumber);
     }
-    
+
     /**
      * Delete percentage delegation checkpoints that expired (i.e. are before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _owner balance owner account address
-     * @param _count maximum number of checkpoints to delete
-     * @return the number of checkpoints deleted
-     */    
+     * @param _owner Balance owner account address.
+     * @param _count Maximum number of checkpoints to delete.
+     * @return Number of deleted checkpoints.
+     */
     function percentageDelegationHistoryCleanup(address _owner, uint256 _count)
-        external onlyCleaner 
+        external onlyCleaner
         returns (uint256)
     {
         return percentageDelegations[_owner].cleanupOldCheckpoints(_count, cleanupBlockNumber);
     }
-    
+
     /**
      * Delete explicit delegation checkpoints that expired (i.e. are before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _from the delegator address
-     * @param _to the delegatee address
-     * @param _count maximum number of checkpoints to delete
-     * @return the number of checkpoints deleted
-     */    
+     * @param _from Delegator address.
+     * @param _to Delegatee address.
+     * @param _count Maximum number of checkpoints to delete.
+     * @return Number of checkpoints deleted.
+     */
     function explicitDelegationHistoryCleanup(address _from, address _to, uint256 _count)
         external
-        onlyCleaner 
+        onlyCleaner
         returns (uint256)
     {
         return explicitDelegations[_from].cleanupOldCheckpoints(_to, _count, cleanupBlockNumber);

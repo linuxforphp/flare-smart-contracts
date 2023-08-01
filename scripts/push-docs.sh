@@ -7,8 +7,31 @@
 # Run from the repo root!
 
 contracts="
+addressUpdater/implementation/AddressUpdatable.md
+addressUpdater/implementation/AddressUpdater.md
+token/implementation/CheckPointable.md
+token/implementation/CleanupBlockNumberManager.md
+token/implementation/Delegatable.md
+utils/implementation/FlareContractRegistry.md
+genesis/implementation/GovernanceSettings.md
+token/implementation/GovernanceVotePower.md
+governance/implementation/Governed.md
+governance/implementation/GovernedBase.md
+token/implementation/VPContract.md
+token/implementation/VPToken.md
 token/implementation/WNat.md
-genesis/implementation/StateConnector.md
+userInterfaces/IFlareContractRegistry.md
+userInterfaces/IGovernanceSettings.md
+userInterfaces/IGovernanceVotePower.md
+userInterfaces/IVPContractEvents.md
+userInterfaces/IVPToken.md
+userInterfaces/IWNat.md
+addressUpdater/interface/IIAddressUpdatable.md
+addressUpdater/interface/IIAddressUpdater.md
+token/interface/IICleanable.md
+token/interface/IIGovernanceVotePower.md
+token/interface/IIVPContract.md
+token/interface/IIVPToken.md
 "
 docs=docs-repo/docs/apis/smart-contracts
 
@@ -36,7 +59,7 @@ do
     description=$(sed '15q;d' $f)
     # If the description starts with <, the contract has no description.
     [[ $description = "</div>" ]] && description=""
-    echo "| [$name](./$name.md) | $description |" >> $docs/index.md
+    echo "| [\`$name\`](./$name.md) | $description |" >> $docs/index.md
 done
 echo >> $docs/index.md
 echo "<style>td:first-child {white-space: nowrap;}</style>" >> $docs/index.md

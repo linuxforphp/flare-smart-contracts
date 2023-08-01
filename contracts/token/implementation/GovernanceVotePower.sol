@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../lib/CheckPointsByAddress.sol";
 import "../lib/DelegateCheckPointsByAddress.sol";
 
+/**
+ * Contract managing governance vote power and its delegation.
+ */
 contract GovernanceVotePower is IIGovernanceVotePower {
     using SafeMath for uint256;
     using SafeCast for uint256;
@@ -22,8 +25,9 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     /**
      * The VPToken (or some other contract) that owns this GovernanceVotePower.
      * All state changing methods may be called only from this address.
-     * This is because original msg.sender is sent in `_from` parameter
-     * and we must be sure that it cannot be faked by directly calling GovernanceVotePower.
+     * This is because original `msg.sender` is typically sent in a parameter
+     * and we must make sure that it cannot be faked by directly calling
+     * GovernanceVotePower methods.
      */
     IVPToken public immutable override ownerToken;
 
@@ -35,12 +39,9 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     // history before that block should never be used since it can be inconsistent.
     uint256 private cleanupBlockNumber;
 
-    // Address of the contract that is allowed to call methods for history cleaning.
+    /// Address of the contract that is allowed to call methods for history cleaning.
+    /// Set with `setCleanerContract()`.
     address public cleanerContract;
-
-    // A record of each account's delegate
-    // can delegate to only one address
-    // mapping(address => address) public delegates;
 
     /**
      * All external methods in GovernanceVotePower can only be executed by the owner token.
@@ -67,12 +68,11 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     }
 
     /**
-     * @notice Delegate all governance vote power of `msg.sender` to `_to`.
-     * @param _to The address of the recipient
-     **/
+     * @inheritdoc IGovernanceVotePower
+     */
     function delegate(address _to) public override {
         require(_to != msg.sender, "can't delegate to yourself");
-        
+
         uint256 senderBalance = ownerToken.balanceOf(msg.sender);
 
         address currentTo = getDelegateOfAtNow(msg.sender);
@@ -81,7 +81,7 @@ contract GovernanceVotePower is IIGovernanceVotePower {
         if (currentTo != address(0)) {
             subVP(msg.sender, currentTo, senderBalance);
         }
-        
+
         // write delegate's address to checkpoint
         delegatesHistory.writeAddress(msg.sender, _to);
         // cleanup checkpoints
@@ -95,24 +95,24 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     }
 
     /**
-     * Undelegate governance vote power.
-     **/
+     * @inheritdoc IGovernanceVotePower
+     */
     function undelegate() public override {
         delegate(address(0));
     }
 
     /**
-     * Update governance vote powers when tokens are transfered.
-     **/
+     * @inheritdoc IIGovernanceVotePower
+     */
     function updateAtTokenTransfer(
-        address _from, 
-        address _to, 
+        address _from,
+        address _to,
         uint256 /* fromBalance */,
-        uint256 /* toBalance */, 
+        uint256 /* toBalance */,
         uint256 _amount
     )
         external override onlyOwnerToken
-    {   
+    {
         require(_from != _to, "Can't transfer to yourself"); // should already revert in _beforeTokenTransfer
         require(_from != address(0) || _to != address(0));
         // require(_amount > 0, "Cannot transfer zero amount");
@@ -134,16 +134,14 @@ contract GovernanceVotePower is IIGovernanceVotePower {
             }
             if (toDelegate != address(0)) {
                 addVP(_to, toDelegate, _amount);
-            } 
+            }
         }
     }
 
     /**
-     * Set the cleanup block number.
-     * Historic data for the blocks before `cleanupBlockNumber` can be erased,
-     * history before that block should never be used since it can be inconsistent.
-     * In particular, cleanup block number must be before current vote power block.
-     * @param _blockNumber The new cleanup block number.
+     * @inheritdoc IIGovernanceVotePower
+     *
+     * @dev This method can be called by the ownerToken only.
      */
     function setCleanupBlockNumber(uint256 _blockNumber) external override onlyOwnerToken {
         require(_blockNumber >= cleanupBlockNumber, "cleanup block number must never decrease");
@@ -151,13 +149,17 @@ contract GovernanceVotePower is IIGovernanceVotePower {
         cleanupBlockNumber = _blockNumber;
     }
 
+    /**
+     * @inheritdoc IIGovernanceVotePower
+     */
     function getCleanupBlockNumber() external view override returns(uint256) {
         return cleanupBlockNumber;
     }
 
     /**
-     * Set the contract that is allowed to call history cleaning methods.
-     * The method can be called by the owner token.
+     * @inheritdoc IIGovernanceVotePower
+     *
+     * @dev This method can be called by the ownerToken only.
      */
     function setCleanerContract(address _cleanerContract) external override onlyOwnerToken {
         cleanerContract = _cleanerContract;
@@ -166,10 +168,10 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     /**
      * Delete governance vote power checkpoints that expired (i.e. are before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _owner vote power owner account address
-     * @param _count maximum number of checkpoints to delete
-     * @return the number of checkpoints deleted
-     */    
+     * @param _owner Vote power owner account address.
+     * @param _count Maximum number of checkpoints to delete.
+     * @return The number of deleted checkpoints.
+     */
     function delegatedGovernanceVotePowerHistoryCleanup(
         address _owner,
         uint256 _count
@@ -180,26 +182,23 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     /**
      * Delete delegates checkpoints that expired (i.e. are before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _owner vote power owner account address
-     * @param _count maximum number of checkpoints to delete
-     * @return the number of checkpoints deleted
-     */    
+     * @param _owner Vote power owner account address.
+     * @param _count Maximum number of checkpoints to delete.
+     * @return The number of deleted checkpoints.
+     */
     function delegatesHistoryCleanup(
         address _owner,
         uint256 _count
     ) external onlyCleaner returns (uint256) {
         return delegatesHistory.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
     }
-    
+
     /**
-    * @notice Get the governance vote power of `_who` at block `_blockNumber`
-    * @param _who The address to get voting power.
-    * @param _blockNumber The block number at which to fetch.
-    * @return Vote power of `_who` at `_blockNumber`.
-    */
+     * @inheritdoc IGovernanceVotePower
+     */
     function votePowerOfAt(address _who, uint256 _blockNumber) public override view returns (uint256) {
         uint256 votePower = votePowerFromDelegationsHistory.valueOfAt(_who, _blockNumber);
-    
+
         address to = getDelegateOfAt(_who, _blockNumber);
         if (to == address(0)) { // _who didn't delegate at _blockNumber
             uint256 balance = ownerToken.balanceOfAt(_who, _blockNumber);
@@ -210,37 +209,30 @@ contract GovernanceVotePower is IIGovernanceVotePower {
     }
 
     /**
-    * @notice Get the governance vote power of `account` at the current block.
-    * @param _who The address to get voting power.
-    * @return Vote power of `account` at the current block number.
-    */    
+     * @inheritdoc IGovernanceVotePower
+     */
     function getVotes(address _who) public override view returns (uint256) {
         return votePowerOfAt(_who, block.number);
     }
 
     /**
-    * @notice Get the delegate of `_who` at block `_blockNumber`
-    * @param _who The address to get delegate's address.
-    * @param _blockNumber The block number at which to fetch.
-    * @return Delegate of `_who` at `_blockNumber`.
-    */
+     * @inheritdoc IGovernanceVotePower
+     */
     function getDelegateOfAt(address _who, uint256 _blockNumber) public override view returns (address) {
         return delegatesHistory.delegateAddressOfAt(_who, _blockNumber);
     }
 
     /**
-    * @notice Get the delegate of `_who` at the current block.
-    * @param _who The address to get delegate's address.
-    * @return Delegate of `_who` at the current block number.
-    */    
+     * @inheritdoc IGovernanceVotePower
+     */
     function getDelegateOfAtNow(address _who) public override view returns (address) {
         return delegatesHistory.delegateAddressOfAtNow(_who);
     }
-       
+
     function addVP(address /* _from */, address _to, uint256 _amount) internal {
         uint256 toOldVP = votePowerFromDelegationsHistory.valueOfAtNow(_to);
         uint256 toNewVP = toOldVP.add(_amount);
-        
+
         votePowerFromDelegationsHistory.writeValue(_to, toNewVP);
         votePowerFromDelegationsHistory.cleanupOldCheckpoints(_to, CLEANUP_COUNT, cleanupBlockNumber);
 

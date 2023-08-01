@@ -7,6 +7,14 @@ import "../interface/IIAddressUpdatable.sol";
 import "../interface/IIAddressUpdater.sol";
 
 
+/**
+ * Keeps track of the current address for all unique and special platform contracts.
+ *
+ * This contract keeps a list of addresses that gets updated by governance every time
+ * any of the tracked contracts is redeployed.
+ * This list is then used by the `FlareContractRegistry`, and also by `AddressUpdatable`
+ * to inform all dependent contracts of any address change.
+ */
 contract AddressUpdater is IIAddressUpdater, Governed {
 
     string internal constant ERR_ARRAY_LENGTHS = "array lengths do not match";
@@ -18,10 +26,13 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     constructor(address _governance) Governed(_governance) {}
 
     /**
-     * @notice set/update contract names/addresses and then apply changes to other contracts
-     * @param _contractNames                contracts names
-     * @param _contractAddresses            addresses of corresponding contracts names
-     * @param _contractsToUpdate            contracts to be updated
+     * Set or update contract names and addresses, and then apply changes to specific contracts.
+     *
+     * This is a combination of `addOrUpdateContractNamesAndAddresses` and `updateContractAddresses`.
+     * Can only be called by governance.
+     * @param _contractNames Contracts names.
+     * @param _contractAddresses Addresses of corresponding contracts names.
+     * @param _contractsToUpdate Contracts to be updated.
      */
     function update(
         string[] memory _contractNames,
@@ -35,8 +46,11 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Updates contract addresses on all contracts implementing IIAddressUpdatable interface
-     * @param _contractsToUpdate            contracts to be updated
+     * Updates contract addresses on specific contracts.
+     *
+     * Can only be called by governance.
+     * @param _contractsToUpdate Contracts to be updated, which must implement the
+     * `IIAddressUpdatable` interface.
      */
     function updateContractAddresses(IIAddressUpdatable[] memory _contractsToUpdate)
         external
@@ -46,9 +60,11 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Add or update contract names and addreses that are later used in updateContractAddresses calls
-     * @param _contractNames                contracts names
-     * @param _contractAddresses            addresses of corresponding contracts names
+     * Add or update contract names and addresses that are later used in `updateContractAddresses` calls.
+     *
+     * Can only be called by governance.
+     * @param _contractNames Contracts names.
+     * @param _contractAddresses Addresses of corresponding contracts names.
      */
     function addOrUpdateContractNamesAndAddresses(
         string[] memory _contractNames,
@@ -60,8 +76,10 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Remove contracts with given names
-     * @param _contractNames                contracts names
+     * Remove contracts with given names.
+     *
+     * Can only be called by governance.
+     * @param _contractNames Contract names.
      */
     function removeContracts(string[] memory _contractNames) external onlyGovernance {
         for (uint256 i = 0; i < _contractNames.length; i++) {
@@ -82,7 +100,7 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Returns all contract names and corresponding addresses
+     * @inheritdoc IIAddressUpdater
      */
     function getContractNamesAndAddresses() external view override returns(
         string[] memory _contractNames,
@@ -98,24 +116,21 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Returns contract address for the given name - might be address(0)
-     * @param _name             name of the contract
+     * @inheritdoc IIAddressUpdater
      */
     function getContractAddress(string calldata _name) external view override returns(address) {
         return contractAddresses[_keccak256AbiEncode(_name)];
     }
 
     /**
-     * @notice Returns contract address for the given name hash - might be address(0)
-     * @param _nameHash         hash of the contract name (keccak256(abi.encode(name))
+     * @inheritdoc IIAddressUpdater
      */
     function getContractAddressByHash(bytes32 _nameHash) external view override returns(address) {
         return contractAddresses[_nameHash];
     }
 
     /**
-     * @notice Returns contract addresses for the given names - might be address(0)
-     * @param _names            names of the contracts
+     * @inheritdoc IIAddressUpdater
      */
     function getContractAddresses(string[] calldata _names) external view override returns(address[] memory) {
         address[] memory addresses = new address[](_names.length);
@@ -126,8 +141,7 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Returns contract addresses for the given name hashes - might be address(0)
-     * @param _nameHashes       hashes of the contract names (keccak256(abi.encode(name))
+     * @inheritdoc IIAddressUpdater
      */
     function getContractAddressesByHash(
         bytes32[] calldata _nameHashes
@@ -142,7 +156,7 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Add or update contract names and addreses that are later used in updateContractAddresses calls
+     * Add or update contract names and addresses that are later used in updateContractAddresses calls
      * @param _contractNames                contracts names
      * @param _contractAddresses            addresses of corresponding contracts names
      */
@@ -168,7 +182,7 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Updates contract addresses on all contracts implementing IIAddressUpdatable interface
+     * Updates contract addresses on all contracts implementing IIAddressUpdatable interface
      * @param _contractsToUpdate            contracts to be updated
      */
     function _updateContractAddresses(IIAddressUpdatable[] memory _contractsToUpdate) internal {
@@ -187,7 +201,7 @@ contract AddressUpdater is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Returns hash from string value
+     * Returns hash from string value.
      */
     function _keccak256AbiEncode(string memory _value) internal pure returns(bytes32) {
         return keccak256(abi.encode(_value));
