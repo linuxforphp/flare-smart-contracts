@@ -1,4 +1,15 @@
-{{h}} {{name}}
+{{h}} `{{name}}` { #{{anchor}} }
+
+<div class="api-node-source" markdown>
+{{#ifIsNodeType "ContractDefinition"}}
+[Source]({{sourceFile}})
+{{~#ifHasParents}} | Inherits from {{parents}}{{/ifHasParents}}
+{{else}}
+Defined in `{{parentContractName}}` ({{parentContractLinks}}).
+{{/ifIsNodeType}}
+</div>
+
+<div class="api-node-internal" markdown>
 
 {{#if signature}}
 ```solidity
@@ -6,28 +17,25 @@
 ```
 {{/if}}
 
-{{{natspec.notice}}}
+{{{linkify natspec.notice false}}}
 
 {{#if natspec.dev}}
-_{{{natspec.dev}}}_
+{{{linkify natspec.dev false}}}
 {{/if}}
 
 {{#if natspec.params}}
-*Parameters*
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Parameters | Type | Description |
+| ---------- | ---- | ----------- |
 {{#each params}}
-| {{name}} | {{type}} | {{{joinLines natspec}}} |
+| `{{name}}` | `{{type}}` | {{{linkify natspec true}}} |
 {{/each}}
 {{/if}}
 
 {{#if natspec.returns}}
-*Returns*
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Returns | Type | Description |
+| ------- | ---- | ----------- |
 {{#each returns}}
-| {{#if name}}{{name}}{{else}}[{{@index}}]{{/if}} | {{type}} | {{{joinLines natspec}}} |
+| {{#if name}}`{{name}}`{{else}}[{{@index}}]{{/if}} | `{{type}}` | {{{linkify natspec true}}} |
 {{/each}}
 {{/if}}
+</div>

@@ -1,6 +1,28 @@
 import { HelperOptions, Utils } from 'handlebars';
 import { DocItemWithContext } from 'solidity-docgen/src/site';
-import { ContractDefinition, VariableDeclaration } from "solidity-ast";
+import {
+  ContractDefinition, EnumDefinition, ErrorDefinition, EventDefinition,
+  FunctionDefinition, ModifierDefinition, StructDefinition, UserDefinedValueTypeDefinition,
+  VariableDeclaration } from "solidity-ast";
+
+const flareRepoURL = 'https://gitlab.com/flarenetwork/flare-smart-contracts/-/tree/master';
+const openzeppelinRepoURL = 'https://github.com/OpenZeppelin/openzeppelin-contracts/tree/release-v3.4';
+
+const anchorPrefixes: Map<string, string> = new Map([
+  ["ContractDefinition", 'ct_'],
+  ["EnumDefinition", 'en_'],
+  ["ErrorDefinition", 'er_'],
+  ["EventDefinition", 'ev_'],
+  ["FunctionDefinition", 'fn_'],
+  ["ModifierDefinition", 'md_'],
+  ["StructDefinition", 'st_'],
+  ["UserDefinedValueTypeDefinition", 'ud_'],
+  ["UsingForDirective", 'uf_'],
+  ["VariableDeclaration", 'va_'],
+]);
+
+var globalContractTable = new Set<String>();
+var globalEnumTable = new Map<string, string>();
 
 /**
  * Returns a Markdown heading marker. An optional number increases the heading level.
@@ -51,12 +73,6 @@ function getHLevel(hsublevel: number | HelperOptions, opts?: HelperOptions) {
 export function trim(text: string) {
   if (typeof text === 'string') {
     return text.trim();
-  }
-}
-
-export function joinLines(text?: string) {
-  if (typeof text === 'string') {
-    return text.replace(/\n+/g, ' ');
   }
 }
 
@@ -111,6 +127,9 @@ export function pretty_signature(this: DocItemWithContext): string | undefined {
       if (this.virtual) {
         res.push('virtual');
       }
+      this.modifiers.forEach(m => {
+        res.push(m.modifierName.name);
+      });
       if (returns.length > 0) {
         res.push(`returns (\n${returns.map(formatVariable).join(',\n')})`);
       }
@@ -134,5 +153,161 @@ export function pretty_signature(this: DocItemWithContext): string | undefined {
 
     case 'VariableDeclaration':
       return formatVariable(this);
+  }
+}
+
+function anchorName(type: string, name: string): string {
+  return anchorPrefixes.get(type) + name.toLowerCase();
+}
+
+export function anchor(this: DocItemWithContext) {
+  return anchorName(this.nodeType, this.name);
+}
+
+function createGlobalSymbolTables(ctx: DocItemWithContext) {
+  for (var path in ctx.__item_context.build.output.sources) {
+    if (path.startsWith('@')) continue;
+    const contractName = path.split('/').pop()?.split('.')[0];
+    if (!contractName) continue;
+    globalContractTable.add(contractName);
+
+    // Workaround for enums, which are not supported on solc prior to 0.8.20
+    const content = ctx.__item_context.build.input.sources[path].content;
+    if (!content) continue;
+    // Search for the natspec comment before "enum".
+    var re = /\/\*\*([^/]*?)\*\/\s*enum ([^ {]*)/g;
+    var match;
+    while ((match = re.exec(content)) !== null) {
+      var text = match[1].replace(/\n\s*\* ?/g, '\n'); // Remove heading *
+      text = text.replace(/\s*$/g, ''); // Remove trailing whitespace
+      var enumName = match[2];
+      globalEnumTable.set(`${contractName}.${enumName}`, text);
+    };
+  }
+}
+
+export function linkify(this: DocItemWithContext, text?: string, joinLines?: boolean) {
+  if (globalContractTable.size == 0)
+    createGlobalSymbolTables(this);
+  const contract = (this.nodeType === 'ContractDefinition') ? this : this.__item_context?.contract;
+  let ret = text || '';
+  if (contract && typeof text === 'string') {
+    // Cleanup non-markdown syntax
+    ret = ret.replace(/\{([^}]*)\}/g, '$1');
+    // Look for references to field names (in this contract or any of its parents) and replace them with markdown links
+    const { deref } = this.__item_context.build;
+    const allParents = contract.linearizedBaseContracts.map(deref('ContractDefinition'));
+    allParents.forEach(p => {
+      p.nodes.forEach(node => {
+        // Only add links to public and external fields
+        if ('visibility' in node && node.visibility != 'public' && node.visibility != 'external') return;
+        // Only document actual fields
+        if (node.nodeType == 'UsingForDirective') return;
+        // Search for node.name as an isolated word, optionally enclosed in backticks or followed by (), as long
+        // as it's not a markdown link already (enclosed in square brackets).
+        // It's not foolproof, results still need to be reviewed.
+        ret = ret.replace(new RegExp(`\`?\\b${node.name}\\b(\\(\\))*\`?(?![^\\[]*])`, 'g'),
+          `[\`${node.name}\`](#${anchorName(node.nodeType, node.name)})`);
+      });
+    });
+  }
+  // Look for references to other contract names
+  globalContractTable.forEach(s => {
+    ret = ret.replace(new RegExp(`\`?\\b${s}\\b(\\(\\))*\`?(?![^\\[]*])`, 'g'),
+      `[\`${s}\`](./${s}.md)`);
+  });
+  if (joinLines)
+    ret = ret.replace(/\n+/g, ' ')
+  return ret;
+}
+
+export function allItems(this: DocItemWithContext, nodeTypeName: string) {
+  if (this.nodeType == 'ContractDefinition') {
+
+    const { deref } = this.__item_context.build;
+    const allParents = this.linearizedBaseContracts.map(deref('ContractDefinition'));
+    let items: (EnumDefinition | ErrorDefinition | EventDefinition | FunctionDefinition | ModifierDefinition
+      | StructDefinition | UserDefinedValueTypeDefinition | VariableDeclaration)[] = [];
+    allParents.forEach(p => {
+      p.nodes.forEach(n => {
+        // Filter out other types
+        if (n.nodeType == 'UsingForDirective' || n.nodeType != nodeTypeName) return;
+        // Filter out private fields
+        if ((n.nodeType == 'VariableDeclaration' || n.nodeType == 'FunctionDefinition') &&
+          (n.visibility != 'public' && n.visibility != 'external')) return;
+        if (n.nodeType == 'FunctionDefinition' && n.virtual) return;
+        // If this item already exists do not add it again.
+        // linearizedBaseContracts returned the children first and then the parents, so if the item
+        // already exists it means that it is an override, and we want to keep those (if they had any docs).
+        const prev = items.find(i => i.name == n.name);
+        const prevDocs = prev && (
+          prev.nodeType == 'ErrorDefinition' ||
+          prev.nodeType == 'EventDefinition' ||
+          prev.nodeType == 'FunctionDefinition') ? prev.documentation : null;
+        if (!prev || !prevDocs)
+          items.push(n);
+      });
+    });
+
+    items.sort((a, b) => a.name < b.name ? -1 : 1);
+    return items;
+  }
+}
+
+export function sourceFile(this: DocItemWithContext) {
+  return flareRepoURL + '/' + this.__item_context.file.absolutePath;
+}
+
+export function ifHasParents(this: DocItemWithContext, opts: HelperOptions) {
+  if (this.nodeType != 'ContractDefinition') return;
+  let fn = (this.baseContracts.length != 0) ? opts.fn : opts.inverse;
+  if (fn) return fn(this as unknown, opts);
+}
+
+function RepoURLfromPath(path: string): string {
+  if (path.startsWith('@openzeppelin'))
+    return path.replace('@openzeppelin', openzeppelinRepoURL)
+  else
+    return flareRepoURL + '/' + path;
+}
+
+export function parentContractName(this: DocItemWithContext) {
+  if (this.__item_context.contract) {
+    const { deref } = this.__item_context.build;
+    const contract = deref('ContractDefinition', this.__item_context.contract?.id)
+    return contract.name;
+  }
+}
+
+export function parentContractLinks(this: DocItemWithContext) {
+  if (this.__item_context.contract) {
+    const { deref } = this.__item_context.build;
+    const contract = deref('ContractDefinition', this.__item_context.contract?.id)
+    const scope = deref('SourceUnit', contract.scope);
+    let ret = '';
+    if (!scope.absolutePath.startsWith('@'))
+      ret = `[Docs](./${contract.name}.md), `;
+    return ret + `[Source](${RepoURLfromPath(scope.absolutePath)})`;
+  }
+}
+
+export function parents(this: DocItemWithContext) {
+  if (this.nodeType != 'ContractDefinition') return;
+  const { deref } = this.__item_context.build;
+  const parents = this.baseContracts.map(is => deref('InheritanceSpecifier', is.id));
+  return parents.map(is => {
+    const parent = deref('ContractDefinition', is.baseName.referencedDeclaration)
+    const scope = deref('SourceUnit', parent.scope);
+    if (scope.absolutePath.startsWith('@'))
+      return is.baseName.name;
+    return `[${is.baseName.name}](./${is.baseName.name}.md)`
+  }).join(', ');
+}
+
+export function enumDocs(this: DocItemWithContext): string | undefined {
+  if (this.__item_context.contract) {
+    const { deref } = this.__item_context.build;
+    const contract = deref('ContractDefinition', this.__item_context.contract?.id);
+    return globalEnumTable.get(`${contract.name}.${this.name}`);
   }
 }
