@@ -8,43 +8,64 @@ import "../../userInterfaces/IGovernanceSettings.sol";
 
 
 /**
- * A special contract that holds Flare governance address.
- * This contract enables updating governance address and timelock only by hard forking the network,
- * meaning only by updating validator code.
+ * A special contract that holds the Flare governance address and its timelock.
+ *
+ * All governance calls are delayed by the timelock specified in this contract.
+ *
+ * This contract enables updating governance address and timelock only by hard-forking the network,
+ * this is, only by updating validator code.
  */
 contract GovernanceSettings is IGovernanceSettings {
 
     address public constant SIGNAL_COINBASE = address(0x00000000000000000000000000000000000dEAD0);
 
     uint256 internal constant MAX_TIMELOCK = 365 days;
-    
+
     address internal constant GENESIS_GOVERNANCE = 0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7;
-    
+
     // governance address set by the validator (set in initialise call, can be changed by fork)
     address private governanceAddress;
-    
+
     // global timelock setting (in seconds), also set by validator (set in initialise call, can be changed by fork)
     uint64 private timelock;
-    
+
     // prevent double initialisation
     bool private initialised;
-    
+
     // executor addresses, changeable anytime by the governance
     address[] private executors;
     mapping (address => bool) private executorMap;
 
+    /**
+     * Emitted when the governance address has been changed.
+     * @param timestamp Timestamp of the block where the change happened, in seconds from UNIX epoch.
+     * @param oldGovernanceAddress Governance address before the change.
+     * @param newGovernanceAddress Governance address after the change.
+     */
     event GovernanceAddressUpdated(
         uint256 timestamp,
         address oldGovernanceAddress,
         address newGovernanceAddress
     );
 
+    /**
+     * Emitted when the timelock has been changed.
+     * @param timestamp Timestamp of the block where the change happened, in seconds from UNIX epoch.
+     * @param oldTimelock Timelock before the change (in seconds).
+     * @param newTimelock Timelock after the change (in seconds).
+     */
     event GovernanceTimelockUpdated(
         uint256 timestamp,
         uint256 oldTimelock,
         uint256 newTimelock
     );
 
+    /**
+     * The list of addresses that are allowed to perform governance calls has been changed.
+     * @param timestamp Timestamp of the block where the change happened, in seconds from UNIX epoch.
+     * @param oldExecutors Array of executor addresses before the change.
+     * @param newExecutors Array of executor addresses after the change.
+     */
     event GovernanceExecutorsUpdated(
         uint256 timestamp,
         address[] oldExecutors,
@@ -52,8 +73,11 @@ contract GovernanceSettings is IGovernanceSettings {
     );
 
     /**
-     * Perform initialisation, which cannot be done in constructor, since this is a genesis contract.
+     * Perform initialization, which cannot be done in constructor, since this is a genesis contract.
      * Can only be called once.
+     * @param _governanceAddress Initial governance address.
+     * @param _timelock Initial timelock value, in seconds.
+     * @param _executors Initial list of addresses allowed to perform governance calls.
      */
     function initialise(address _governanceAddress, uint256 _timelock, address[] memory _executors) external {
         require(msg.sender == GENESIS_GOVERNANCE, "only genesis governance");
@@ -69,6 +93,7 @@ contract GovernanceSettings is IGovernanceSettings {
     /**
      * Change the governance address.
      * Can only be called by validators via fork.
+     * @param _newGovernance New governance address.
      */
     function setGovernanceAddress(address _newGovernance) external {
         require(governanceAddress != _newGovernance, "governanceAddress == _newGovernance");
@@ -79,8 +104,10 @@ contract GovernanceSettings is IGovernanceSettings {
     }
 
     /**
-     * Change the timelock.
+     * Change the timelock, this is, the amount of time between a governance call and
+     * its execution.
      * Can only be called by validators via fork.
+     * @param _newTimelock New timelock value, in seconds.
      */
     function setTimelock(uint256 _newTimelock) external {
         require(timelock != _newTimelock, "timelock == _newTimelock");
@@ -90,43 +117,43 @@ contract GovernanceSettings is IGovernanceSettings {
             timelock = uint64(_newTimelock);
         }
     }
-    
+
     /**
      * Set the addresses of the accounts that are allowed to execute the timelocked governance calls
      * once the timelock period expires.
      * It isn't very dangerous to allow for anyone to execute timelocked calls, but we reserve the right to
      * make sure the timing of the execution is under control.
      * Can only be called by the governance.
+     * @param _newExecutors New list of allowed executors. The previous list is replaced.
      */
     function setExecutors(address[] memory _newExecutors) external {
         require(msg.sender == governanceAddress, "only governance");
         _setExecutors(_newExecutors);
     }
-    
+
     /**
-     * Get the governance account address.
+     * @inheritdoc IGovernanceSettings
      */
     function getGovernanceAddress() external view override returns (address) {
         return governanceAddress;
     }
-    
+
     /**
-     * Get the time that must pass between a governance call and execution.
+     * @inheritdoc IGovernanceSettings
      */
     function getTimelock() external view override returns (uint256) {
         return timelock;
     }
-    
+
     /**
-     * Get the addresses of the accounts that are allowed to execute the timelocked governance calls
-     * once the timelock period expires.
+     * @inheritdoc IGovernanceSettings
      */
     function getExecutors() external view override returns (address[] memory) {
         return executors;
     }
-    
+
     /**
-     * Check whether an address is allowed to execute an governance call after timelock expires.
+     * @inheritdoc IGovernanceSettings
      */
     function isExecutor(address _address) external view override returns (bool) {
         return executorMap[_address];

@@ -4,10 +4,11 @@ import "../lib/CheckPointHistory.sol";
 import "../lib/CheckPointsByAddress.sol";
 import "../lib/CheckPointHistoryCache.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
- 
+
 /**
- * @title Check Pointable ERC20 Behavior
- * @notice ERC20 behavior which adds balance check point features.
+ * Check-Pointable ERC20 Behavior.
+ *
+ * ERC20 behavior that adds balance check-point features.
  **/
 abstract contract CheckPointable {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
@@ -18,7 +19,7 @@ abstract contract CheckPointable {
     // The number of history cleanup steps executed for every write operation.
     // It is more than 1 to make as certain as possible that all history gets cleaned eventually.
     uint256 private constant CLEANUP_COUNT = 2;
-    
+
     // Private member variables
     CheckPointsByAddress.CheckPointsByAddressState private balanceHistory;
     CheckPointHistory.CheckPointHistoryState private totalSupply;
@@ -27,47 +28,49 @@ abstract contract CheckPointable {
     // Historic data for the blocks before `cleanupBlockNumber` can be erased,
     // history before that block should never be used since it can be inconsistent.
     uint256 private cleanupBlockNumber;
-    
-    // Address of the contract that is allowed to call methods for history cleaning.
+
+    /// Address of the contract that is allowed to call methods for history cleaning.
     address public cleanerContract;
-    
+
     /**
      * Emitted when a total supply cache entry is created.
      * Allows history cleaners to track total supply cache cleanup opportunities off-chain.
      */
     event CreatedTotalSupplyCache(uint256 _blockNumber);
-    
-    // Most cleanup opportunities can be deduced from standard event 
+
+    // Most cleanup opportunities can be deduced from standard event
     // Transfer(from, to, amount):
     //   - balance history for `from` (if nonzero) and `to` (if nonzero)
     //   - total supply history when either `from` or `to` is zero
-    
+
+    /// This method cannot be called for `_blockNumber` lower than the current cleanup block number.
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
         require(_blockNumber >= cleanupBlockNumber, "CheckPointable: reading from cleaned-up block");
         _;
     }
-    
+
+    /// Only the `cleanerContract` can call this method.
     modifier onlyCleaner {
         require(msg.sender == cleanerContract, "Only cleaner contract");
         _;
     }
-    
+
     /**
-     * @dev Queries the token balance of `_owner` at a specific `_blockNumber`.
+     * Queries the token balance of `_owner` at a specific `_blockNumber`.
      * @param _owner The address from which the balance will be retrieved.
-     * @param _blockNumber The block number when the balance is queried.
+     * @param _blockNumber The block number to query.
      * @return _balance The balance at `_blockNumber`.
      **/
     function balanceOfAt(address _owner, uint256 _blockNumber)
-        public virtual view 
-        notBeforeCleanupBlock(_blockNumber) 
+        public virtual view
+        notBeforeCleanupBlock(_blockNumber)
         returns (uint256 _balance)
     {
         return balanceHistory.valueOfAt(_owner, _blockNumber);
     }
 
     /**
-     * @notice Burn current token `amount` for `owner` of checkpoints at current block.
+     * Burn current token `amount` for `owner` of checkpoints at current block.
      * @param _owner The address of the owner to burn tokens.
      * @param _amount The amount to burn.
      */
@@ -80,7 +83,7 @@ abstract contract CheckPointable {
     }
 
     /**
-     * @notice Mint current token `amount` for `owner` of checkpoints at current block.
+     * Mint current token `amount` for `owner` of checkpoints at current block.
      * @param _owner The address of the owner to burn tokens.
      * @param _amount The amount to burn.
      */
@@ -93,12 +96,12 @@ abstract contract CheckPointable {
     }
 
     /**
-     * @notice Total amount of tokens at a specific `_blockNumber`.
+     * Total amount of tokens at a specific `_blockNumber`.
      * @param _blockNumber The block number when the _totalSupply is queried
      * @return _totalSupply The total amount of tokens at `_blockNumber`
      **/
     function totalSupplyAt(uint256 _blockNumber)
-        public virtual view 
+        public virtual view
         notBeforeCleanupBlock(_blockNumber)
         returns(uint256 _totalSupply)
     {
@@ -106,11 +109,11 @@ abstract contract CheckPointable {
     }
 
     /**
-     * @notice Total amount of tokens at a specific `_blockNumber`.
+     * Total amount of tokens at a specific `_blockNumber`.
      * @param _blockNumber The block number when the _totalSupply is queried
      * @return _totalSupply The total amount of tokens at `_blockNumber`
      **/
-    function _totalSupplyAtCached(uint256 _blockNumber) internal 
+    function _totalSupplyAtCached(uint256 _blockNumber) internal
         notBeforeCleanupBlock(_blockNumber)
         returns(uint256 _totalSupply)
     {
@@ -122,7 +125,7 @@ abstract contract CheckPointable {
     }
 
     /**
-     * @notice Transmit token `_amount` `_from` address `_to` address of checkpoints at current block.
+     * Transmit token `_amount` `_from` address `_to` address of checkpoints at current block.
      * @param _from The address of the sender.
      * @param _to The address of the receiver.
      * @param _amount The amount to transmit.
@@ -132,7 +135,7 @@ abstract contract CheckPointable {
         balanceHistory.cleanupOldCheckpoints(_from, CLEANUP_COUNT, cleanupBlockNumber);
         balanceHistory.cleanupOldCheckpoints(_to, CLEANUP_COUNT, cleanupBlockNumber);
     }
-    
+
     /**
      * Set the cleanup block number.
      */
@@ -148,9 +151,9 @@ abstract contract CheckPointable {
     function _cleanupBlockNumber() internal view returns (uint256) {
         return cleanupBlockNumber;
     }
-    
+
     /**
-     * @notice Update history at token transfer, the CheckPointable part of `_beforeTokenTransfer` hook.
+     * Update history at token transfer, the CheckPointable part of `_beforeTokenTransfer` hook.
      * @param _from The address of the sender.
      * @param _to The address of the receiver.
      * @param _amount The amount to transmit.
@@ -183,27 +186,27 @@ abstract contract CheckPointable {
      * @param _owner balance owner account address
      * @param _count maximum number of checkpoints to delete
      * @return the number of checkpoints deleted
-     */    
+     */
     function balanceHistoryCleanup(address _owner, uint256 _count) external onlyCleaner returns (uint256) {
         return balanceHistory.cleanupOldCheckpoints(_owner, _count, cleanupBlockNumber);
     }
-    
+
     /**
      * Delete total supply checkpoints that expired (i.e. are before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
      * @param _count maximum number of checkpoints to delete
      * @return the number of checkpoints deleted
-     */    
+     */
     function totalSupplyHistoryCleanup(uint256 _count) external onlyCleaner returns (uint256) {
         return totalSupply.cleanupOldCheckpoints(_count, cleanupBlockNumber);
     }
-    
+
     /**
      * Delete total supply cache entry that expired (i.e. is before `cleanupBlockNumber`).
      * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
      * @param _blockNumber the block number for which total supply value was cached
      * @return the number of cache entries deleted (always 0 or 1)
-     */    
+     */
     function totalSupplyCacheCleanup(uint256 _blockNumber) external onlyCleaner returns (uint256) {
         require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
         return totalSupplyCache.deleteAt(_blockNumber);

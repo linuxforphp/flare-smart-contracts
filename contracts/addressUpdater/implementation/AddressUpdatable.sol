@@ -4,13 +4,25 @@ pragma solidity 0.7.6;
 import "../interface/IIAddressUpdatable.sol";
 
 
+/**
+ * Abstract base class for contracts that depend on other contracts whose addresses can change.
+ *
+ * The `AddressUpdater` contract keeps a list of addresses for all unique and special
+ * platform contracts. By inheriting from `AddressUpdatable` a contract will receive updates
+ * if any of the platform contract addresses change.
+ *
+ * A contract's address changes when it is redeployed, so `AddressUpdatable` offers a way
+ * to keep up to date with the latest address for all dependencies.
+ */
 abstract contract AddressUpdatable is IIAddressUpdatable {
 
     // https://docs.soliditylang.org/en/v0.8.7/contracts.html#constant-and-immutable-state-variables
     // No storage slot is allocated
-    bytes32 internal constant ADDRESS_STORAGE_POSITION = 
+    bytes32 internal constant ADDRESS_STORAGE_POSITION =
         keccak256("flare.diamond.AddressUpdatable.ADDRESS_STORAGE_POSITION");
 
+    /// Only the `AdressUpdater` contract can call this method.
+    /// Its address is set at construction time but it can also update itself.
     modifier onlyAddressUpdater() {
         require (msg.sender == getAddressUpdater(), "only address updater");
         _;
@@ -20,6 +32,11 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
         setAddressUpdaterValue(_addressUpdater);
     }
 
+    /**
+     * Returns the configured address updater.
+     * @return _addressUpdater The `AddresUpdater` contract that can update our
+     * contract address list, as a response to a governance call.
+     */
     function getAddressUpdater() public view returns (address _addressUpdater) {
         // Only direct constants are allowed in inline assembly, so we assign it here
         bytes32 position = ADDRESS_STORAGE_POSITION;
@@ -30,7 +47,7 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
     }
 
     /**
-     * @notice external method called from AddressUpdater only
+     * External method called from AddressUpdater only.
      */
     function updateContractAddresses(
         bytes32[] memory _contractNameHashes,
@@ -46,7 +63,8 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
     }
 
     /**
-     * @notice virtual method that a contract extending AddressUpdatable must implement
+     * Informs contracts extending `AddressUpdatable` that some contract addresses have changed.
+     * This is a virtual method that must be implemented.
      */
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
@@ -54,8 +72,8 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
     ) internal virtual;
 
     /**
-     * @notice helper method to get contract address
-     * @dev it reverts if contract name does not exist
+     * Helper method to get a contract's address.
+     * It reverts if contract name does not exist.
      */
     function _getContractAddress(
         bytes32[] memory _nameHashes,
@@ -80,7 +98,7 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
     function setAddressUpdaterValue(address _addressUpdater) internal {
         // Only direct constants are allowed in inline assembly, so we assign it here
         bytes32 position = ADDRESS_STORAGE_POSITION;
-        // solhint-disable-next-line no-inline-assembly  
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(position, _addressUpdater)
         }

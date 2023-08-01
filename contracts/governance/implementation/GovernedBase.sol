@@ -5,39 +5,50 @@ import "../../userInterfaces/IGovernanceSettings.sol";
 
 
 /**
- * @title Governed Base
- * @notice This abstract base class defines behaviors for a governed contract.
- * @dev This class is abstract so that specific behaviors can be defined for the constructor.
- *   Contracts should not be left ungoverned, but not all contract will have a constructor
- *   (for example those pre-defined in genesis).
- **/
+ * Abstract base class that defines behaviors for governed contracts.
+ *
+ * This class is abstract so that specific behaviors can be defined for the constructor.
+ * Contracts should not be left ungoverned, but not all contract will have a constructor
+ * (for example those pre-defined in genesis).
+ */
 abstract contract GovernedBase {
     struct TimelockedCall {
         uint256 allowedAfterTimestamp;
         bytes encodedCall;
     }
-    
+
+    /// Governance Settings.
     // solhint-disable-next-line const-name-snakecase
-    IGovernanceSettings public constant governanceSettings = 
+    IGovernanceSettings public constant governanceSettings =
         IGovernanceSettings(0x1000000000000000000000000000000000000007);
 
     address private initialGovernance;
 
     bool private initialised;
-    
+
+    /// When true, governance is enabled and cannot be disabled. See `switchToProductionMode`.
     bool public productionMode;
-    
+
     bool private executing;
-    
+
+    /// List of pending timelocked governance calls.
     mapping(bytes4 => TimelockedCall) public timelockedCalls;
-    
+
+    /// Emitted when a new governance call has been recorded and is now waiting for the time lock to expire.
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
+    /// Emitted when a timelocked governance call is executed.
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
+    /// Emitted when a timelocked governance call is canceled before execution.
     event TimelockedGovernanceCallCanceled(bytes4 selector, uint256 timestamp);
-    
+
+    /// Emitted when the governance address is initialized.
+    /// This address will be used until production mode is entered (see `GovernedProductionModeEntered`).
+    /// At that point the governance address is taken from `GovernanceSettings`.
     event GovernanceInitialised(address initialGovernance);
+    /// Emitted when governance is enabled and the governance address cannot be changed anymore
+    /// (only through a network fork).
     event GovernedProductionModeEntered(address governanceSettings);
-    
+
     modifier onlyGovernance {
         if (executing || !productionMode) {
             _beforeExecute();
@@ -46,7 +57,7 @@ abstract contract GovernedBase {
             _recordTimelockedCall(msg.data);
         }
     }
-    
+
     modifier onlyImmediateGovernance () {
         _checkOnlyGovernance();
         _;
@@ -59,7 +70,7 @@ abstract contract GovernedBase {
     }
 
     /**
-     * @notice Execute the timelocked governance calls once the timelock period expires.
+     * Execute the timelocked governance calls once the timelock period expires.
      * @dev Only executor can call this method.
      * @param _selector The method selector (only one timelocked call per method is stored).
      */
@@ -77,7 +88,7 @@ abstract contract GovernedBase {
         emit TimelockedGovernanceCallExecuted(_selector, block.timestamp);
         _passReturnOrRevert(success);
     }
-    
+
     /**
      * Cancel a timelocked governance call before it has been executed.
      * @dev Only governance can call this method.
@@ -88,11 +99,12 @@ abstract contract GovernedBase {
         emit TimelockedGovernanceCallCanceled(_selector, block.timestamp);
         delete timelockedCalls[_selector];
     }
-    
+
     /**
      * Enter the production mode after all the initial governance settings have been set.
-     * This enables timelocks and the governance is afterwards obtained by calling 
-     * governanceSettings.getGovernanceAddress(). 
+     * This enables timelocks and the governance can be obtained afterward by calling
+     * governanceSettings.getGovernanceAddress().
+     * Emits `GovernedProductionModeEntered`.
      */
     function switchToProductionMode() external {
         _checkOnlyGovernance();
@@ -103,7 +115,11 @@ abstract contract GovernedBase {
     }
 
     /**
-     * @notice Initialize the governance address if not first initialized.
+     * Sets the initial governance address if it has not been set already.
+     * This will be the governance address until production mode is entered and
+     * `GovernanceSettings` take effect.
+     * Emits `GovernanceInitialised`.
+     * @param _initialGovernance Initial governance address.
      */
     function initialise(address _initialGovernance) public virtual {
         require(initialised == false, "initialised != false");
@@ -111,7 +127,7 @@ abstract contract GovernedBase {
         initialGovernance = _initialGovernance;
         emit GovernanceInitialised(_initialGovernance);
     }
-    
+
     /**
      * Returns the current effective governance address.
      */
@@ -147,11 +163,11 @@ abstract contract GovernedBase {
         });
         emit GovernanceCallTimelocked(selector, allowedAt, _data);
     }
-    
+
     function _checkOnlyGovernance() private view {
         require(msg.sender == governance(), "only governance");
     }
-    
+
     function _passReturnOrRevert(bool _success) private pure {
         // pass exact return or revert data - needs to be done in assembly
         //solhint-disable-next-line no-inline-assembly

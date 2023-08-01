@@ -7,63 +7,83 @@ import "../../userInterfaces/IWNat.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
- * @title Wrapped Native token
- * @notice Accept native token deposits and mint ERC20 WNAT (wrapped native) tokens 1-1.
- * @dev Attribution: https://rinkeby.etherscan.io/address/0xc778417e063141139fce010982780140aa0cd5ab#code 
+ * Wrapped native token.
+ *
+ * This contract converts native tokens into `WNAT` (wrapped native) tokens and vice versa.
+ * `WNAT` tokens are a one-to-one [ERC20](https://ethereum.org/en/developers/docs/standards/tokens/erc-20/)
+ * representation of native tokens, which are minted and burned as needed by this contract.
+ *
+ * The wrapped versions of the native `FLR` and `SGB` tokens are called `WFLR` and `WSGB` respectively.
+ *
+ * Besides the standard ERC20 operations, this contract supports
+ * [FTSO delegation](https://docs.flare.network/tech/ftso/#delegation) and
+ * [governance vote delegation](https://docs.flare.network/tech/governance/#vote-transfer).
+ *
+ * Code attribution: WETH9.
  */
 contract WNat is VPToken, IWNat {
     using SafeMath for uint256;
-    event  Deposit(address indexed dst, uint amount);
-    event  Withdrawal(address indexed src, uint amount);
+    /**
+     * Emitted when tokens have been wrapped.
+     * @param dst The account that received the wrapped tokens.
+     * @param amount The amount that was wrapped.
+     */
+    event Deposit(address indexed dst, uint amount);
+    /**
+     * Emitted when tokens have been unwrapped.
+     * @param src The account that received the unwrapped tokens.
+     * @param amount The amount that was unwrapped.
+     */
+    event Withdrawal(address indexed src, uint amount);
 
     /**
      * Construct an ERC20 token.
      */
-    constructor(address _governance, string memory _name, string memory _symbol) 
-        VPToken(_governance, _name, _symbol) 
+    constructor(address _governance, string memory _name, string memory _symbol)
+        VPToken(_governance, _name, _symbol)
     {
     }
 
+    /**
+     * A proxy for the deposit method.
+     */
     receive() external payable {
         deposit();
     }
 
     /**
-     * @notice Withdraw WNAT from an owner and send native tokens to msg.sender given an allowance.
-     * @param owner An address spending the Native tokens.
-     * @param amount The amount to spend.
+     * @inheritdoc IWNat
      *
-     * Requirements:
-     *
-     * - `owner` must have a balance of at least `amount`.
-     * - the caller must have allowance for `owners`'s tokens of at least
-     * `amount`.
+     * @dev Emits a Withdrawal event.
      */
-    function withdrawFrom(address owner, uint256 amount) external override {
+    function withdrawFrom(address _owner, uint256 _amount) external override {
         // Reduce senders allowance
-        _approve(owner, msg.sender, allowance(owner, msg.sender).sub(amount, "allowance below zero"));
+        _approve(_owner, msg.sender, allowance(_owner, msg.sender).sub(_amount, "allowance below zero"));
         // Burn the owners balance
-        _burn(owner, amount);
+        _burn(_owner, _amount);
         // Emit withdraw event
-        emit Withdrawal(owner, amount);
+        emit Withdrawal(_owner, _amount);
         // Move value to sender (last statement, to prevent reentrancy)
-        msg.sender.transfer(amount);
+        msg.sender.transfer(_amount);
     }
 
     /**
-     * @notice Deposit Native from msg.sender and mints WNAT ERC20 to recipient address.
-     * @param recipient An address to receive minted WNAT.
+     * @inheritdoc IWNat
+     *
+     * @dev Emits a Deposit event.
      */
-    function depositTo(address recipient) external payable override {
-        require(recipient != address(0), "Cannot deposit to zero address");
+    function depositTo(address _recipient) external payable override {
+        require(_recipient != address(0), "Cannot deposit to zero address");
         // Mint WNAT
-        _mint(recipient, msg.value);
+        _mint(_recipient, msg.value);
         // Emit deposit event
-        emit Deposit(recipient, msg.value);
+        emit Deposit(_recipient, msg.value);
     }
 
     /**
-     * @notice Deposit Native and mint wNat ERC20.
+     * @inheritdoc IWNat
+     *
+     * @dev Emits a Deposit event.
      */
     function deposit() public payable override {
         // Mint WNAT
@@ -73,15 +93,16 @@ contract WNat is VPToken, IWNat {
     }
 
     /**
-     * @notice Withdraw Native and burn WNAT ERC20.
-     * @param amount The amount to withdraw.
+     * @inheritdoc IWNat
+     *
+     * @dev Emits a Withdrawal event.
      */
-    function withdraw(uint256 amount) external override {
+    function withdraw(uint256 _amount) external override {
         // Burn WNAT tokens
-        _burn(msg.sender, amount);
+        _burn(msg.sender, _amount);
         // Emit withdrawal event
-        emit Withdrawal(msg.sender, amount);
+        emit Withdrawal(msg.sender, _amount);
         // Send Native to sender (last statement, to prevent reentrancy)
-        msg.sender.transfer(amount);
+        msg.sender.transfer(_amount);
     }
 }
