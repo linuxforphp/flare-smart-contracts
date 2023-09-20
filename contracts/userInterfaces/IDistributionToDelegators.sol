@@ -2,6 +2,15 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
+/**
+* Manages the ongoing distribution of tokens from the Delegation Incentive Pool (the "Flaredrop").
+*
+* The approval of [FIP.01](https://proposals.flare.network/FIP/FIP_1) created this pool,
+* that releases its tokens every 30 days, over a period of 36 months, to all accounts holding Wrapped FLR.
+*
+* Rewards accumulate, but
+* [expire after two months and a week if unclaimed](https://docs.flare.network/tech/the-flaredrop/).
+*/
 interface IDistributionToDelegators {
     // Events
     event UseGoodRandomSet(bool useGoodRandom, uint256 maxWaitForGoodRandomSeconds);

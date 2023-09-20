@@ -204,20 +204,23 @@ export function linkify(this: DocItemWithContext, text?: string, joinLines?: boo
         // Only document actual fields
         if (node.nodeType == 'UsingForDirective') return;
         // Search for node.name as an isolated word, optionally enclosed in backticks or followed by (), as long
-        // as it's not a markdown link already (enclosed in square brackets).
+        // as it's not part of a markdown link already (enclosed in square brackets or in parenthesis after square
+        // brackets).
         // It's not foolproof, results still need to be reviewed.
-        ret = ret.replace(new RegExp(`\`?\\b${node.name}\\b(\\(\\))*\`?(?![^\\[]*])`, 'g'),
+        ret = ret.replace(new RegExp(`\`?\\b${node.name}\\b(\\(\\))*\`?(?![^\\[]*])(?<!]\\([^)]*)`, 'g'),
           `[\`${node.name}\`](#${anchorName(node.nodeType, node.name)})`);
       });
     });
   }
-  // Look for references to other contract names
+  // Look for references to other contract names. Same regex as before, same comments.
   globalContractTable.forEach(s => {
-    ret = ret.replace(new RegExp(`\`?\\b${s}\\b(\\(\\))*\`?(?![^\\[]*])`, 'g'),
+    ret = ret.replace(new RegExp(`\`?\\b${s}\\b(\\(\\))*\`?(?![^\\[]*])(?<!]\\([^)]*)`, 'g'),
       `[\`${s}\`](./${s}.md)`);
   });
-  if (joinLines)
-    ret = ret.replace(/\n+/g, ' ')
+  if (joinLines) {
+    ret = ret.replace(/\n\n/g, '<br>');
+    ret = ret.replace(/\n+/g, ' ');
+  }
   return ret;
 }
 

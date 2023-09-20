@@ -12,7 +12,7 @@ interface IIERC20WithMetadata is IERC20 {
     /**
      * Returns the name of the token.
      */
-    function name() external view returns (string memory);    
+    function name() external view returns (string memory);
 
     /**
      * Returns the symbol of the token, usually a shorter version of the name.
@@ -25,7 +25,7 @@ interface IIERC20WithMetadata is IERC20 {
      * be displayed to a user as `5,05` (`505 / 10 ** 2`).
      *
      * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei.
+     * Ether and wei.
      *
      * NOTE: This information is only used for _display_ purposes: the methods
      * of the contract should always work with the smallest unit (e.g. wei).

@@ -9,7 +9,12 @@ import "../lib/FtsoMedian.sol";
 import "../../userInterfaces/IPriceSubmitter.sol";
 
 /**
- * @title A contract implementing Flare Time Series Oracle
+ * [Flare Time Series Oracle](https://docs.flare.network/tech/ftso) contract.
+ *
+ * An instance of this contract is created for each tracked asset, and typically
+ * accessed through the `FtsoRegistry`.
+ * Data providers do not access the `Ftso` instances directly either, and use the
+ * `PriceSubmitter` contract instead.
  */
 contract Ftso is IIFtso {
     using FtsoEpoch for FtsoEpoch.State;
@@ -37,13 +42,17 @@ contract Ftso is IIFtso {
     string internal constant ERR_INVALID_PRICE_EPOCH_PARAMETERS = "Invalid price epoch parameters";
 
     // storage
-    uint256 public immutable priceDeviationThresholdBIPS;   // threshold for price deviation between consecutive epochs
+    /// Threshold for price deviation between consecutive epochs.
+    uint256 public immutable priceDeviationThresholdBIPS;
+    /// Amount of stored prices for past epochs, set at construction time.
     uint256 public immutable priceEpochCyclicBufferSize;
-    bool public override active;                    // activation status of FTSO
-    string public override symbol;                  // asset symbol that identifies FTSO
+    /// Activation status of this FTSO.
+    bool public override active;
+    /// Asset symbol that identifies this FTSO.
+    string public override symbol;
 
-    // number of decimal places in Asset USD price
-    // note that the actual USD price is the integer value divided by 10^ASSET_PRICE_USD_DECIMALS
+    /// Number of decimal places in an asset's USD price.
+    /// Actual USD price is the integer value divided by 10^`ASSET_PRICE_USD_DECIMALS`
     // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable ASSET_PRICE_USD_DECIMALS;
 
@@ -62,15 +71,21 @@ contract Ftso is IIFtso {
     uint256 private immutable revealPeriodSeconds;  // duration of price reveal for an epoch instance
 
     // external contracts
-    IIVPToken public immutable override wNat;       // wrapped native token
-    address immutable public override ftsoManager;  // FTSO manager contract
-    IPriceSubmitter public immutable priceSubmitter;// Price submitter contract
+    /// Address of the wrapped native token (`WNat`) contract.
+    IIVPToken public immutable override wNat;
+    /// Address of the `FtsoManager` contract.
+    address immutable public override ftsoManager;
+    /// Address of the `PriceSubmitter` contract.
+    IPriceSubmitter public immutable priceSubmitter;
 
-    IIVPToken[] public assets;                      // array of assets
-    IIFtso[] public assetFtsos;                     // FTSOs for assets (for a multi-asset FTSO)
+    /// Array of addresses of the tracked assets.
+    IIVPToken[] public assets;
+    /// Array of addresses of other `Ftso` contracts tracked by this multi-asset FTSO.
+    IIFtso[] public assetFtsos;
 
     // Revert strings get inlined and take a lot of contract space
     // Calling them from auxiliary functions removes used space
+    /// This method can only be called when the FTSO is active.
     modifier whenActive {
         if (!active) {
             revertNotActive();
@@ -78,6 +93,7 @@ contract Ftso is IIFtso {
         _;
     }
 
+    /// Only the `ftsoManager` can call this method.
     modifier onlyFtsoManager {
         if (msg.sender != ftsoManager) {
             revertNoAccess();
@@ -85,6 +101,7 @@ contract Ftso is IIFtso {
         _;
     }
 
+    /// Only the `priceSubmitter` can call this method.
     modifier onlyPriceSubmitter {
         if (msg.sender != address(priceSubmitter)) {
             revertNoAccess();
@@ -121,19 +138,16 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Reveals submitted price during epoch reveal period
-     * @param _voter                Voter address
-     * @param _epochId              Id of the epoch in which the price hash was submitted
-     * @param _price                Submitted price in USD
-     * @notice The hash of _price and _random must be equal to the submitted hash
-     * @notice Emits PriceRevealed event
+     * @inheritdoc IFtsoGenesis
+     * @dev Emits a `PriceRevealed` event.
+     * @dev Can only be called by the `priceSubmitter`.
      */
     function revealPriceSubmitter(
         address _voter,
         uint256 _epochId,
         uint256 _price,
         uint256 _voterWNatVP
-    ) 
+    )
         external override
         whenActive
         onlyPriceSubmitter
@@ -142,24 +156,20 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Computes epoch price based on gathered votes
-     * @param _epochId              Id of the epoch
-     * @param _returnRewardData     Parameter that determines if the reward data is returned
-     * @return _eligibleAddresses   List of addresses eligible for reward
-     * @return _natWeights          List of native token weights corresponding to the eligible addresses
-     * @return _natWeightsSum       Sum of weights in _natWeights
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`, and only at the correct time.
      */
     function finalizePriceEpoch(
         uint256 _epochId,
         bool _returnRewardData
-    ) 
+    )
         external override
-        onlyFtsoManager 
+        onlyFtsoManager
         returns (
             address[] memory _eligibleAddresses,
             uint256[] memory _natWeights,
             uint256 _natWeightsSum
-        ) 
+        )
     {
         FtsoEpoch.Instance storage epoch = _getEpochForFinalization(_epochId);
         epoch.initializedForReveal = false; // set back to false for next usage
@@ -194,7 +204,7 @@ contract Ftso is IIFtso {
 
         // check price deviation
         if (epochs._getPriceDeviation(_epochId, data.finalMedianPrice, priceEpochCyclicBufferSize)
-            > 
+            >
             priceDeviationThresholdBIPS)
         {
             // revert to median price calculation
@@ -205,8 +215,8 @@ contract Ftso is IIFtso {
 
         // store epoch results
         epoch.finalizationType = PriceFinalizationType.WEIGHTED_MEDIAN;
-        epoch.price = data.finalMedianPrice; 
-        
+        epoch.price = data.finalMedianPrice;
+
         // update price
         assetPriceUSD = uint128(data.finalMedianPrice); // no overflow
         assetPriceTimestamp = uint128(block.timestamp); // no overflow
@@ -219,12 +229,12 @@ contract Ftso is IIFtso {
             assetTrustedProvidersPriceUSD = uint128(FtsoMedian._computeSimple(epoch.trustedVotes)); // no overflow
             assetTrustedProvidersPriceTimestamp = uint128(block.timestamp); // no overflow
         }
-        
+
         // return reward data if requested
         bool rewardedFtso = false;
         if (_returnRewardData) {
             uint256 random = _getRandom(_epochId);
-            (_eligibleAddresses, _natWeights, _natWeightsSum) = 
+            (_eligibleAddresses, _natWeights, _natWeightsSum) =
                 _readRewardData(epoch, data, random, price, weightNat);
             if (_eligibleAddresses.length > 0) {
                 rewardedFtso = true;
@@ -235,7 +245,7 @@ contract Ftso is IIFtso {
         _writeEpochPriceData(_epochId, data, index, rewardedFtso);
 
         // inform about epoch result
-        emit PriceFinalized(_epochId, epoch.price, rewardedFtso, 
+        emit PriceFinalized(_epochId, epoch.price, rewardedFtso,
             data.quartile1Price, data.quartile3Price,
             data.lowElasticBandPrice, data.highElasticBandPrice,
             epoch.finalizationType, block.timestamp);
@@ -244,9 +254,8 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Forces finalization of price epoch calculating median price from trusted addresses
-     * @param _epochId              Id of the epoch to finalize
-     * @dev Used as a fallback method if epoch finalization is failing
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function fallbackFinalizePriceEpoch(uint256 _epochId) external override onlyFtsoManager {
         FtsoEpoch.Instance storage epoch = _getEpochForFinalization(_epochId);
@@ -255,9 +264,8 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Forces finalization of price epoch - only called when exception happened
-     * @param _epochId              Id of the epoch to finalize
-     * @dev Used as a fallback method if epoch finalization is failing
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function forceFinalizePriceEpoch(uint256 _epochId) external override onlyFtsoManager {
         FtsoEpoch.Instance storage epoch = _getEpochForFinalization(_epochId);
@@ -266,16 +274,14 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Initializes ftso immutable settings and activates oracle
-     * @param _firstEpochStartTs    Timestamp of the first epoch as seconds from unix epoch
-     * @param _submitPeriodSeconds  Duration of epoch submission period in seconds
-     * @param _revealPeriodSeconds  Duration of epoch reveal period in seconds
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function activateFtso(
         uint256 _firstEpochStartTs,
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds
-    ) 
+    )
         external override
         onlyFtsoManager
     {
@@ -287,19 +293,21 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Deactivates oracle
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function deactivateFtso() external override whenActive onlyFtsoManager {
         active = false;
     }
 
     /**
-     * Updates initial/current Asset price, but only if not active
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function updateInitialPrice(
         uint256 _initialPriceUSD,
         uint256 _initialPriceTimestamp
-    ) 
+    )
         external override
         onlyFtsoManager
     {
@@ -309,19 +317,9 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Sets configurable settings related to epochs
-     * @param _maxVotePowerNatThresholdFraction         high threshold for native token vote power per voter
-     * @param _maxVotePowerAssetThresholdFraction       high threshold for asset vote power per voter
-     * @param _lowAssetUSDThreshold             threshold for low asset vote power
-     * @param _highAssetUSDThreshold            threshold for high asset vote power
-     * @param _highAssetTurnoutThresholdBIPS    threshold for high asset turnout
-     * @param _lowNatTurnoutThresholdBIPS       threshold for low nat turnout
-     * @param _elasticBandRewardBIPS            hybrid reward band, where _elasticBandRewardBIPS goes to the 
-        elastic band (prices within _elasticBandWidthPPM of the median) 
-        and 10000 - elasticBandRewardBIPS to the IQR
-     * @param _elasticBandWidthPPM              prices within _elasticBandWidthPPM of median are rewarded
-     * @param _trustedAddresses                 trusted addresses - use their prices if low nat turnout is not achieved
-     * @dev Should never revert if called from ftso manager
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
+     * Should never revert if called from `ftsoManager`.
      */
     function configureEpochs(
         uint256 _maxVotePowerNatThresholdFraction,
@@ -333,7 +331,7 @@ contract Ftso is IIFtso {
         uint256 _elasticBandRewardBIPS,
         uint256 _elasticBandWidthPPM,
         address[] memory _trustedAddresses
-    ) 
+    )
         external override
         onlyFtsoManager
     {
@@ -360,8 +358,8 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Sets current vote power block
-     * @param _votePowerBlock       Vote power block
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function setVotePowerBlock(uint256 _votePowerBlock) external override onlyFtsoManager {
         // votePowerBlock must be in the past to prevent flash loan attacks
@@ -371,8 +369,8 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Sets asset for FTSO to operate as single-asset oracle
-     * @param _asset               Asset
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function setAsset(IIVPToken _asset) external override onlyFtsoManager {
         assetFtsos = [ IIFtso(this) ];
@@ -381,9 +379,8 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Sets an array of FTSOs for FTSO to operate as multi-asset oracle
-     * @param _assetFtsos          Array of FTSOs
-     * @dev FTSOs implicitly determine the FTSO assets
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function setAssetFtsos(IIFtso[] memory _assetFtsos) external override onlyFtsoManager {
         assert(_assetFtsos.length > 0);
@@ -394,9 +391,8 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Initializes current epoch instance for reveal
-     * @param _circulatingSupplyNat     Epoch native token circulating supply
-     * @param _fallbackMode             Current epoch in fallback mode
+     * @inheritdoc IIFtso
+     * @dev Can only be called by the `ftsoManager`.
      */
     function initializeCurrentEpochStateForReveal(
         uint256 _circulatingSupplyNat,
@@ -409,7 +405,7 @@ contract Ftso is IIFtso {
         //slither-disable-next-line weak-prng // not used for random
         FtsoEpoch.Instance storage epoch = epochs.instance[epochId % priceEpochCyclicBufferSize];
 
-        // reset values for current epoch 
+        // reset values for current epoch
         epoch.finalizationType = IFtso.PriceFinalizationType.NOT_FINALIZED;
         epoch.accumulatedVotePowerNat = 0;
         epoch.nextVoteIndex = 0;
@@ -437,14 +433,11 @@ contract Ftso is IIFtso {
 
         emit PriceEpochInitializedOnFtso(epochId, _getEpochSubmitEndTime(epochId), block.timestamp);
     }
-    
+
     /**
-     * @notice Returns current epoch data
-     * @return _firstEpochStartTs           First epoch start timestamp
-     * @return _submitPeriodSeconds         Submit period in seconds
-     * @return _revealPeriodSeconds         Reveal period in seconds
+     * @inheritdoc IFtso
      */
-    function getPriceEpochConfiguration() external view override 
+    function getPriceEpochConfiguration() external view override
         returns (
             uint256 _firstEpochStartTs,
             uint256 _submitPeriodSeconds,
@@ -452,16 +445,16 @@ contract Ftso is IIFtso {
         )
     {
         return (
-            firstEpochStartTs, 
+            firstEpochStartTs,
             submitPeriodSeconds,
             revealPeriodSeconds
         );
     }
 
     /**
-     * @notice Returns current configuration of epoch state
+     * @inheritdoc IIFtso
      */
-    function epochsConfiguration() external view override 
+    function epochsConfiguration() external view override
         returns (
             uint256 _maxVotePowerNatThresholdFraction,
             uint256 _maxVotePowerAssetThresholdFraction,
@@ -488,8 +481,7 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns the FTSO asset
-     * @dev asset is null in case of multi-asset FTSO
+     * @inheritdoc IIFtso
      */
     function getAsset() external view override returns (IIVPToken) {
         return assets.length == 1 && assetFtsos.length == 1 && assetFtsos[0] == this ?
@@ -497,8 +489,7 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns the asset FTSOs
-     * @dev AssetFtsos is not null only in case of multi-asset FTSO
+     * @inheritdoc IIFtso
      */
     function getAssetFtsos() external view override returns (IIFtso[] memory) {
         return assets.length == 1 && assetFtsos.length == 1 && assetFtsos[0] == this ?
@@ -506,19 +497,14 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns current asset price
-     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
-     * @return _timestamp           Time when price was updated for the last time
+     * @inheritdoc IFtso
      */
     function getCurrentPrice() external view override returns (uint256 _price, uint256 _timestamp) {
         return (assetPriceUSD, assetPriceTimestamp);
     }
 
     /**
-     * @notice Returns current asset price and number of decimals
-     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
-     * @return _timestamp               Time when price was updated for the last time
-     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     * @inheritdoc IFtso
      */
     function getCurrentPriceWithDecimals() external view override
         returns (
@@ -531,11 +517,9 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns current asset price calculated from trusted providers
-     * @return _price               Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
-     * @return _timestamp           Time when price was updated for the last time
+     * @inheritdoc IFtso
      */
-    function getCurrentPriceFromTrustedProviders() external view override 
+    function getCurrentPriceFromTrustedProviders() external view override
         returns (
             uint256 _price,
             uint256 _timestamp
@@ -545,10 +529,7 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns current asset price calculated from trusted providers and number of decimals
-     * @return _price                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
-     * @return _timestamp               Time when price was updated for the last time
-     * @return _assetPriceUsdDecimals   Number of decimals used for USD price
+     * @inheritdoc IFtso
      */
     function getCurrentPriceWithDecimalsFromTrustedProviders() external view override
         returns (
@@ -561,14 +542,9 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns current asset price details
-     * @return _price                                   Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
-     * @return _priceTimestamp                          Time when price was updated for the last time
-     * @return _priceFinalizationType                   Finalization type when price was updated for the last time
-     * @return _lastPriceEpochFinalizationTimestamp     Time when last price epoch was finalized
-     * @return _lastPriceEpochFinalizationType          Finalization type of last finalized price epoch
+     * @inheritdoc IFtso
      */
-    function getCurrentPriceDetails() external view override 
+    function getCurrentPriceDetails() external view override
         returns (
             uint256 _price,
             uint256 _priceTimestamp,
@@ -587,19 +563,14 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns asset price consented in specific epoch
-     * @param _epochId              Id of the epoch
-     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @inheritdoc IFtso
      */
     function getEpochPrice(uint256 _epochId) external view override returns (uint256) {
         return _getEpochInstance(_epochId).price;
     }
 
     /**
-     * @notice Returns asset price submitted by voter in specific epoch
-     * @param _epochId              Id of the epoch
-     * @param _voter                Address of the voter
-     * @return Price in USD multiplied by ASSET_PRICE_USD_DECIMALS
+     * @inheritdoc IFtso
      */
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view override returns (uint256) {
         FtsoEpoch.Instance storage epoch = _getEpochInstance(_epochId);
@@ -608,11 +579,10 @@ contract Ftso is IIFtso {
         if (voteInd == 0) return 0;  // no vote from _voter
         return epoch.votes[voteInd - 1].price;
     }
-    
+
     /**
-     * @notice Returns current random number
-     * @return Random number
-     * @dev Should never revert
+     * @inheritdoc IFtso
+     * @dev It never reverts.
      */
     function getCurrentRandom() external view override returns (uint256) {
         uint256 currentEpochId = getCurrentEpochId();
@@ -623,24 +593,16 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns random number of the specified epoch
-     * @param _epochId Id of the epoch
-     * @return Random number
+     * @inheritdoc IFtso
      */
     function getRandom(uint256 _epochId) external view override returns (uint256) {
         return _getRandom(_epochId);
     }
 
     /**
-     * @notice Returns current epoch data
-     * @return _epochId                 Current epoch id
-     * @return _epochSubmitEndTime      End time of the current epoch price submission as seconds from unix epoch
-     * @return _epochRevealEndTime      End time of the current epoch price reveal as seconds from unix epoch
-     * @return _votePowerBlock          Vote power block for the current epoch
-     * @return _fallbackMode            Current epoch in fallback mode - only votes from trusted addresses will be used
-     * @dev half-closed intervals - end time not included
+     * @inheritdoc IFtso
      */
-    function getPriceEpochData() external view override 
+    function getPriceEpochData() external view override
         returns (
             uint256 _epochId,
             uint256 _epochSubmitEndTime,
@@ -660,13 +622,7 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns parameters necessary for replicating vote weighting (used in VoterWhitelister).
-     * @return _assets                  the list of assets that are accounted in vote
-     * @return _assetMultipliers        weight multiplier of each asset in (multiasset) ftso
-     * @return _totalVotePowerNat       total native token vote power at block
-     * @return _totalVotePowerAsset     total combined asset vote power at block
-     * @return _assetWeightRatio        ratio of combined asset vp vs. native token vp (in BIPS)
-     * @return _votePowerBlock          vote powewr block for given epoch
+     * @inheritdoc IIFtso
      */
     function getVoteWeightingParameters() external view virtual override
         returns (
@@ -694,26 +650,23 @@ contract Ftso is IIFtso {
     }
 
     /**
-     * @notice Returns id of the epoch which was opened for price submission at the specified timestamp
-     * @param _timestamp            Timestamp as seconds from unix epoch
-     * @dev Should never revert
+     * @inheritdoc IFtso
+     * @dev It never reverts.
      */
     function getEpochId(uint256 _timestamp) external view override returns (uint256) {
         return _getEpochId(_timestamp);
     }
 
     /**
-     * @notice Returns wNat vote power for the specified owner and the given epoch id
-     * @param _owner                Owner address
-     * @param _epochId              Id of the epoch
+     * @inheritdoc IFtsoGenesis
      */
     function wNatVotePowerCached(address _owner, uint256 _epochId) public override returns (uint256) {
         return _getVotePowerOfAt(wNat, _owner, _getEpochInstance(_epochId).votePowerBlock);
     }
 
     /**
-     * @notice Returns current epoch id
-     * @dev Should never revert
+     * @inheritdoc IFtso
+     * @dev It never reverts.
      */
     function getCurrentEpochId() public view override returns (uint256) {
         return _getEpochId(block.timestamp);
@@ -728,11 +681,11 @@ contract Ftso is IIFtso {
      * @notice Emits PriceRevealed event
      */
     function _revealPrice(
-        address _voter, 
-        uint256 _epochId, 
-        uint256 _price, 
+        address _voter,
+        uint256 _epochId,
+        uint256 _price,
         uint256 _voterWNatVP
-    ) 
+    )
         internal
     {
         require(_price < 2**128, ERR_PRICE_TOO_HIGH);
@@ -775,7 +728,7 @@ contract Ftso is IIFtso {
      * @return _votePowers          List of vote powers
      * @return _prices              List of asset prices
      */
-    function _getAssetData() internal 
+    function _getAssetData() internal
         returns (
             IIVPToken[] memory _assets,
             uint256[] memory _votePowers,
@@ -793,7 +746,7 @@ contract Ftso is IIFtso {
             (_prices[i], ) = assetFtsos[i].getCurrentPrice();
         }
     }
-    
+
     /**
      * @notice Refreshes epoch state assets if FTSO is in multi-asset mode
      * @dev Assets are determined by other single-asset FTSOs on which the asset may change at any time
@@ -826,7 +779,7 @@ contract Ftso is IIFtso {
         uint256 _epochId,
         FtsoEpoch.Instance storage _epoch,
         bool _exception
-    ) 
+    )
         internal
     {
         if (_epoch.trustedVotes.length > 0) {
@@ -841,11 +794,11 @@ contract Ftso is IIFtso {
             assetPriceFinalizationType = _epoch.finalizationType;
             lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
             lastPriceEpochFinalizationType = _epoch.finalizationType;
-            
+
             // update trusted providers price
             assetTrustedProvidersPriceUSD = uint128(_epoch.price); // no overflow
             assetTrustedProvidersPriceTimestamp = uint128(block.timestamp); // no overflow
-            
+
             _writeFallbackEpochPriceData(_epochId);
 
             // inform about epoch result
@@ -868,7 +821,7 @@ contract Ftso is IIFtso {
         uint256 _epochId,
         FtsoEpoch.Instance storage _epoch,
         bool _exception
-    ) 
+    )
         internal
     {
         if (_epochId > 0) {
@@ -876,8 +829,8 @@ contract Ftso is IIFtso {
         } else {
             _epoch.price = 0;
         }
-        
-        _epoch.finalizationType = _exception ? 
+
+        _epoch.finalizationType = _exception ?
             PriceFinalizationType.PREVIOUS_PRICE_COPIED_EXCEPTION : PriceFinalizationType.PREVIOUS_PRICE_COPIED;
 
         lastPriceEpochFinalizationTimestamp = uint240(block.timestamp); // no overflow
@@ -895,10 +848,10 @@ contract Ftso is IIFtso {
      */
     function _writeEpochPriceData(
         uint256 /*_epochId*/,
-        FtsoMedian.Data memory /*_data*/, 
+        FtsoMedian.Data memory /*_data*/,
         uint256[] memory /*_index*/,
         bool /*rewardedFtso*/
-    ) 
+    )
         internal virtual
     {
         /* empty block */
@@ -926,7 +879,7 @@ contract Ftso is IIFtso {
         bool _fallbackMode,
         uint256 _votePowerBlock
     )
-        internal 
+        internal
         returns (
             uint256 _votePowerNat,
             uint256 _votePowerAsset
@@ -981,8 +934,8 @@ contract Ftso is IIFtso {
         }
     }
 
-    function _calculateAssetVotePower(FtsoEpoch.Instance storage _epoch, address _owner, uint256 _votePowerBlock) 
-        internal 
+    function _calculateAssetVotePower(FtsoEpoch.Instance storage _epoch, address _owner, uint256 _votePowerBlock)
+        internal
         returns (uint256 _votePowerAsset)
     {
         uint256[] memory votePowersAsset = new uint256[](_epoch.assets.length);
@@ -1003,7 +956,7 @@ contract Ftso is IIFtso {
      * @notice Extract vote data from epoch
      * @param _epoch                Epoch instance
      */
-    function _readVotes(FtsoEpoch.Instance storage _epoch) internal view 
+    function _readVotes(FtsoEpoch.Instance storage _epoch) internal view
         returns (
             uint256[] memory _price,
             uint256[] memory _weight,
@@ -1039,12 +992,12 @@ contract Ftso is IIFtso {
         FtsoEpoch.Instance storage _epoch,
         FtsoMedian.Data memory _data,
         uint256 _random,
-        uint256[] memory _prices, 
+        uint256[] memory _prices,
         uint256[] memory _weightNat
-    ) 
+    )
         internal view
         returns (
-            address[] memory _eligibleAddresses, 
+            address[] memory _eligibleAddresses,
             uint256[] memory _natWeights,
             uint256 _natWeightsSum
         )
@@ -1059,14 +1012,14 @@ contract Ftso is IIFtso {
             uint256 weight = _weightNat[i];
             uint256 price = _prices[i];
             //IQR
-            if ((price > _data.quartile1Price && price < _data.quartile3Price) || 
+            if ((price > _data.quartile1Price && price < _data.quartile3Price) ||
                 ((price == _data.quartile1Price || price == _data.quartile3Price) &&
                 _isAddressEligible(_random, _epoch.votes[i].voter))) {
                 rewardData.weightIQR[i] = weight * (1e4 - rewardData.elasticBandRewardBIPS);
                 rewardData.weightsIQRSum += weight;
             }
             // elastic band
-            if (_data.lowElasticBandPrice < price && price < _data.highElasticBandPrice) { 
+            if (_data.lowElasticBandPrice < price && price < _data.highElasticBandPrice) {
                 rewardData.weightElasticBand[i] = weight * rewardData.elasticBandRewardBIPS;
                 rewardData.weightsElasticBandSum += weight;
             }
@@ -1081,12 +1034,12 @@ contract Ftso is IIFtso {
         voteRewardCount = 0;
         for (uint256 i = 0; i < rewardData.numberOfVotes; i++) {
             if (rewardData.weightIQR[i] > 0 || rewardData.weightElasticBand[i] > 0) {
-                _natWeights[voteRewardCount] += rewardData.weightIQR[i] * 
+                _natWeights[voteRewardCount] += rewardData.weightIQR[i] *
                     (rewardData.weightsElasticBandSum > 0 ? rewardData.weightsElasticBandSum : 1);
 
                 _natWeights[voteRewardCount] += rewardData.weightElasticBand[i] *
                     (rewardData.weightsIQRSum > 0 ? rewardData.weightsIQRSum : 1);
-                
+
                 _eligibleAddresses[voteRewardCount] = _epoch.votes[i].voter;
                 _natWeightsSum += _natWeights[voteRewardCount];
                 voteRewardCount++;
@@ -1115,7 +1068,7 @@ contract Ftso is IIFtso {
         require(_epochId == _epoch.epochId, ERR_EPOCH_DATA_NOT_AVAILABLE);
     }
 
-    
+
     /**
      * @notice Returns the id of the epoch opened for price submission at the given timestamp
      * @param _timestamp            Timestamp as seconds since unix epoch

@@ -4,11 +4,13 @@ pragma abicoder v2;
 
 
 /**
- * @title Revert Error Tracking
- * @notice A contract to track and store revert errors
+ * Revert error tracking contract.
+ *
+ * A contract to track and store revert errors.
  **/
 contract RevertErrorTracking {
 
+    /// A logged error.
     struct RevertedError {
         uint192 lastErrorBlock;
         uint64 numErrors;
@@ -17,6 +19,7 @@ contract RevertErrorTracking {
         string errorMessage;
     }
 
+    /// Current error state.
     struct LastErrorData {
         uint192 totalRevertedErrors;
         uint64 lastErrorTypeIndex;
@@ -26,19 +29,26 @@ contract RevertErrorTracking {
 
     mapping(bytes32 => RevertedError) internal revertedErrors;
     bytes32 [] internal revertErrorHashes;
+    /// Most recent error information.
     LastErrorData public errorData;
 
+    /**
+     * Emitted when a contract reverts.
+     * @param theContract The culprit's address.
+     * @param atBlock Block number where the error happened.
+     * @param theMessage Reason for the revert, as reported by the contract.
+     */
     event ContractRevertError(address theContract, uint256 atBlock, string theMessage);
 
     /**
-     * @notice Returns latest reverted error
-     * @return _lastErrorBlock         Block number of last reverted error
-     * @return _numErrors              Number of times same error with same contract address has been reverted
-     * @return _errorString            Revert error message
-     * @return _erroringContract       Array of addresses of the reverting contracts
-     * @return _totalRevertedErrors    Total number of revert errors across all contracts
+     * Returns latest error information. All arrays will contain only one entry.
+     * @return _lastErrorBlock Array of block numbers where the errors occurred.
+     * @return _numErrors Array of number of times same error with same contract address has been reverted.
+     * @return _errorString Array of revert error messages.
+     * @return _erroringContract Array of addresses of the reverting contracts.
+     * @return _totalRevertedErrors Total number of revert errors across all contracts.
      */
-    function showLastRevertedError () external view 
+    function showLastRevertedError () external view
         returns(
             uint256[] memory _lastErrorBlock,
             uint256[] memory _numErrors,
@@ -49,7 +59,7 @@ contract RevertErrorTracking {
     {
         return showRevertedErrors(errorData.lastErrorTypeIndex, 1);
     }
-    
+
     /**
      * @notice Adds caught error to reverted errors mapping
      * @param revertedContract         Address of the reverting contract
@@ -62,7 +72,7 @@ contract RevertErrorTracking {
         revertedErrors[errorStringHash].lastErrorBlock = uint192(block.number);
         emit ContractRevertError(revertedContract, block.number, message);
         errorData.totalRevertedErrors += 1;
-        
+
         if (revertedErrors[errorStringHash].numErrors > 1) {
             // not first time this errors
             return;
@@ -74,20 +84,20 @@ contract RevertErrorTracking {
         revertedErrors[errorStringHash].errorMessage = message;
         revertedErrors[errorStringHash].errorTypeIndex = uint64(revertErrorHashes.length - 1);
 
-        errorData.lastErrorTypeIndex = revertedErrors[errorStringHash].errorTypeIndex;        
+        errorData.lastErrorTypeIndex = revertedErrors[errorStringHash].errorTypeIndex;
     }
 
     /**
-     * @notice Returns latest reverted error
-     * @param startIndex               Starting index in the error list array
-     * @param numErrorTypesToShow      Number of error types to show
-     * @return _lastErrorBlock         Array of last block number this error reverted
-     * @return _numErrors              Number of times the same error with same contract address has been tracked
-     * @return _errorString            Array of revert error messages
-     * @return _erroringContract       Array of addresses of the reverting contracts
-     * @return _totalRevertedErrors    Total number of errors reverted across all contracts
+     * Returns latest errors.
+     * @param startIndex Starting index in the error list array.
+     * @param numErrorTypesToShow Number of errors to show. The total amount can be found in `errorData`.
+     * @return _lastErrorBlock Array of block numbers where the errors occurred.
+     * @return _numErrors Array of number of times same error with same contract address has been reverted.
+     * @return _errorString Array of revert error messages.
+     * @return _erroringContract Array of addresses of the reverting contracts.
+     * @return _totalRevertedErrors Total number of revert errors across all contracts.
      */
-    function showRevertedErrors (uint startIndex, uint numErrorTypesToShow) public view 
+    function showRevertedErrors (uint startIndex, uint numErrorTypesToShow) public view
         returns(
             uint256[] memory _lastErrorBlock,
             uint256[] memory _numErrors,
@@ -97,7 +107,7 @@ contract RevertErrorTracking {
         )
     {
         require(startIndex < revertErrorHashes.length, INDEX_TOO_HIGH);
-        uint256 numReportElements = 
+        uint256 numReportElements =
             revertErrorHashes.length >= startIndex + numErrorTypesToShow ?
             numErrorTypesToShow :
             revertErrorHashes.length - startIndex;

@@ -17,10 +17,10 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/implementation/SafePct.sol";
 
 /**
- * @title Inflation
- * @notice A contract to manage the process of recognizing, authorizing, minting, and funding
- *   native tokens for Flare services that are rewardable by inflation.
- * @dev Please see docs/specs/Inflation.md to better understand this terminology.
+ * Recognizes, authorizes, mints, and funds native tokens to Flare services that are rewardable through inflation.
+ *
+ * See the [technical specification](
+ * https://gitlab.com/flarenetwork/flare-smart-contracts/-/blob/master/docs/specs/Inflation.md).
  **/
 contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemonize, AddressUpdatable {
     using InflationTimeSlots for InflationTimeSlots.InflationTimeSlotsState;
@@ -46,12 +46,16 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     uint256 private totalInflationTopupDistributedWei;
 
     // Instance vars
-    uint256 public lastAuthorizationTs;                             // The last time inflation was authorized
+
+    /// The last time inflation was authorized.
+    uint256 public lastAuthorizationTs;
+    // A topup configuration for a contract receiving inflation.
     mapping(IIInflationReceiver => TopupConfiguration)
-        internal topupConfigurations;                               // A topup configuration for a contract
-                                                                    //   receiving inflation.
-    uint256 immutable public rewardEpochStartTs;                    // Do not start inflation time slots before this
-    uint256 public rewardEpochStartedTs;                            // When the first reward epoch was started
+        internal topupConfigurations;
+    /// Do not start inflation time slots before this, in seconds after UNIX epoch.
+    uint256 immutable public rewardEpochStartTs;
+    /// When the first reward epoch was started, in seconds after UNIX epoch.
+    uint256 public rewardEpochStartedTs;
 
     // Constants
     string internal constant ERR_IS_ZERO = "address is 0";
@@ -100,9 +104,11 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Used to copy data from old inflation contract
-     * @param _oldInflation     Address of old inflation
-     * @param _noOfAnnums       Number of annums in old inflation
+     * Used to copy data from old inflation contract.
+     *
+     * Only governance can call.
+     * @param _oldInflation Address of old inflation.
+     * @param _noOfAnnums Number of annums in old inflation.
      */
     function setInitialData(
         IIInflationV1 _oldInflation,
@@ -153,11 +159,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Receive newly minted native tokens from the FlareDaemon.
-     * @dev Assume that the amount received will be >= last topup requested across all services.
-     *   If there is not enough balance sent to cover the topup request, expect library method will revert.
-     *   Also assume that any balance received greater than the topup request calculated
-     *   came from self-destructor sending a balance to this contract.
+     * @inheritdoc IInflationGenesis
      */
     function receiveMinting() external override payable onlyFlareDaemon {
         uint256 amountPostedWei = rewardServices.receiveTopupRequest();
@@ -178,7 +180,9 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Set the topup configuration for a reward service.
+     * Set the topup configuration for a reward service.
+     *
+     * Only governance can call.
      * @param _inflationReceiver    The reward service to receive the inflation funds for distribution.
      * @param _topupType            The type to signal how the topup amounts are to be calculated.
      *                              FACTOROFDAILYAUTHORIZED = Use a factor of last daily authorized to set a
@@ -213,7 +217,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Pulsed by the FlareDaemon to trigger timing-based events for the inflation process.
+     * Pulsed by the FlareDaemon to trigger timing-based events for the inflation process.
      * @dev There are two events:
      *   1) a time slot event to recognize inflation for a new time slot
      *   2) a daily event to:
@@ -308,15 +312,16 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Set contract that should be triggered before new inflation is calculated (it can be address(0))
-     * @dev only governance can update the address
+     * Set contract that should be triggered before new inflation is calculated (it can be address(0))
+     *
+     * Only governance can call.
      */
     function setPreInflationCalculation(IIPreInflationCalculation _preInflationCalculation) external onlyGovernance {
         preInflationCalculation = _preInflationCalculation;
     }
 
     /**
-     * @notice Get a tuple of totals across inflation time slots.
+     * Get a tuple of totals across inflation time slots.
      * @return _totalAuthorizedInflationWei         Total inflation authorized to be mintable
      * @return _totalInflationTopupRequestedWei     Total inflation requested to be topped up for rewarding
      * @return _totalInflationTopupDistributedWei   Total inflation received for funding reward services
@@ -338,7 +343,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Given an index, return the time slot at that index.
+     * Given an index, return the time slot at that index.
      * @param _index    The index of the time slot to fetch.
      * @return          The inflation time slot state.
      * @dev Expect library to revert if index not found.
@@ -348,7 +353,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Return the current time slot.
+     * Return the current time slot.
      * @return The inflation time slot state of the current time slot.
      * @dev Expect library to revert if there is no current time slot.
      */
@@ -357,7 +362,7 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Return current time slot id.
+     * Return current time slot id.
      * @return Id of the current time slot.
      * @dev Expect library to revert if there is no current time slot.
      */
@@ -373,13 +378,16 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
         return rewardServices.rewardServices;
     }
 
+    /**
+     * @inheritdoc IFlareDaemonize
+     */
     function switchToFallbackMode() external view override onlyFlareDaemon returns (bool) {
         // do nothing - there is no fallback mode in Inflation
         return false;
     }
 
     /**
-     * @notice Given an inflation receiver, get the topup configuration.
+     * Given an inflation receiver, get the topup configuration.
      * @param _inflationReceiver    The reward service.
      * @return _topupConfiguration  The configuration of how the topup requests are calculated for a given
      *                              reward service.
@@ -399,17 +407,17 @@ contract Inflation is IInflationGenesis, GovernedAndFlareDaemonized, IFlareDaemo
     }
 
     /**
-     * @notice Returns next expected inflation topup time stamp which is also inflation authorization time.
-     *     The returned time from this API is actually the time of the block in which the topup is requested.
-     *     The Actual topup will take place in the next block.
-     *     Expected diff is up to a few seconds (max is less then a minute).
+     * Returns next expected inflation topup time stamp which is also inflation authorization time.
+     * The returned time from this API is actually the time of the block in which the topup is requested.
+     * The Actual topup will take place in the next block.
+     * Expected diff is up to a few seconds (max is less then a minute).
      */
     function getNextExpectedTopupTs() external view returns (uint256 _nextTopupTs) {
         _nextTopupTs = lastAuthorizationTs.add(AUTHORIZE_TIME_FRAME_SEC);
     }
 
     /**
-     * @notice Implement this function for updating daemonized contracts through AddressUpdater.
+     * @inheritdoc IFlareDaemonize
      */
     function getContractName() external pure override returns (string memory) {
         return "Inflation";

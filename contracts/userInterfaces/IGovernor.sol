@@ -16,7 +16,15 @@ interface IGovernor {
     }
 
     /**
-     * @notice Enum describing a proposal state
+     * Enum describing a proposal state.
+
+     * A proposal is:
+     * * `Pending` when first created,
+     * * `Active` when it’s being voted on,
+     * * `Defeated` or `Succeeded` as a result of the vote,
+     * * `Queued` when in the process of executing,
+     * * `Expired` when it times out or fails to execute upon a certain date, and
+     * * `Executed` when it goes live.
      */
     enum ProposalState {
         Pending,
