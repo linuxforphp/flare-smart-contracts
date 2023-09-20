@@ -7,8 +7,11 @@ import "../interface/IIPriceSubmitter.sol";
 
 
 /**
- * @title Price submitter
- * @notice A contract used to submit/reveal prices to multiple Flare Time Series Oracles in one transaction
+ * Receives prices from [FTSO data providers](https://docs.flare.network/tech/ftso).
+ *
+ * It then forwards the submissions to the appropriate FTSO contract,
+ * allowing data providers to perform all required operations in a single transaction
+ * per price epoch.
  */
 contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable {
 
@@ -23,10 +26,13 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
     string internal constant ERR_RANDOM_TOO_SMALL = "Too small random number";
     string internal constant ERR_FTSO_INDICES_NOT_INCREASING = "FTSO indices not increasing";
 
-    uint256 public constant MINIMAL_RANDOM = 2**128;    // minimal random value for price submission
+    /// Minimal random value accepted along price submissions.
+    /// Submitted random values below this threshold will revert.
+    uint256 public constant MINIMAL_RANDOM = 2**128;
+    /// Number of past random numbers remembered.
     uint256 public constant RANDOM_EPOCH_CYCLIC_BUFFER_SIZE = 50;
 
-    IFtsoRegistryGenesis internal ftsoRegistry; 
+    IFtsoRegistryGenesis internal ftsoRegistry;
     IFtsoManagerGenesis internal ftsoManager;
     address internal voterWhitelister;
 
@@ -40,12 +46,13 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
     mapping(uint256 => mapping(address => bytes32)) internal epochVoterHash;
     uint256[RANDOM_EPOCH_CYCLIC_BUFFER_SIZE] internal randoms;
 
-
+    /// Only the `ftsoManager` can call this method.
     modifier onlyFtsoManager {
         require(msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
         _;
     }
 
+    /// Only the `voterWhitelister` can call this method.
     modifier onlyWhitelister {
         require(msg.sender == voterWhitelister, ERR_WHITELISTER_ONLY);
         _;
@@ -53,25 +60,29 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
 
     /**
      * @dev This constructor should contain no code as this contract is pre-loaded into the genesis block.
-     *   The super constructor is called for testing convenience.
+     *   The super constructors are called for testing convenience.
      */
     constructor() GovernedAtGenesis(address(0)) AddressUpdatable(address(0)) {
         /* empty block */
     }
 
-    
+
     /**
-     * @notice Sets the address udpater contract.
-     * @param _addressUpdater   The address updater contract.
+     * Sets the address updater contract.
+     * Only governance cal call this method.
+     * @param _addressUpdater Address of the `AddressUpdater` contract.
      */
     function setAddressUpdater(address _addressUpdater) external onlyGovernance {
         require(getAddressUpdater() == address(0), ERR_ALREADY_SET);
         setAddressUpdaterValue(_addressUpdater);
     }
-    
+
     /**
-     * Set trusted addresses that are always allowed to submit and reveal.
-     * Only ftso manager can call this method.
+     * Set the trusted addresses that are always allowed to submit and reveal.
+     * Trusted addresses are used, for example, in fallback mode.
+     * Only FTSO Manager can call this method.
+     * @param _trustedAddresses Array of FTSO data provider addresses (voters).
+     * The previous list of trusted addresses is discarded.
      */
     function setTrustedAddresses(address[] memory _trustedAddresses) external override onlyFtsoManager {
         // remove old addresses mapping
@@ -86,34 +97,33 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
         }
         trustedAddresses = _trustedAddresses;
     }
-    
+
     /**
-     * Called from whitelister when new voter has been whitelisted.
+     * @inheritdoc IIPriceSubmitter
+     * @dev Only the `VoterWhitelister` contract can call this method.
      */
     function voterWhitelisted(address _voter, uint256 _ftsoIndex) external override onlyWhitelister {
         whitelistedFtsoBitmap[_voter] |= 1 << _ftsoIndex;
     }
-    
+
     /**
-     * Called from whitelister when one or more voters have been removed.
+     * @inheritdoc IIPriceSubmitter
+     * @dev Only the `VoterWhitelister` contract can call this method.
      */
-    function votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex) 
-        external override 
+    function votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex)
+        external override
         onlyWhitelister
     {
         for (uint256 i = 0; i < _removedVoters.length; i++) {
             whitelistedFtsoBitmap[_removedVoters[i]]  &= ~(1 << _ftsoIndex);
         }
     }
-    
+
     /**
-     * @notice Submits hash for current epoch
-     * @param _epochId              Target epoch id to which hash is submitted
-     * @param _hash                 Hash of ftso indices, prices, random number and voter address
-     * @notice Emits HashSubmitted event
+     * @inheritdoc IPriceSubmitter
      */
     function submitHash(
-        uint256 _epochId, 
+        uint256 _epochId,
         bytes32 _hash
     )
         external override
@@ -127,13 +137,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
     }
 
     /**
-     * @notice Reveals submitted prices during epoch reveal period
-     * @param _epochId              Id of the epoch in which the price hashes was submitted
-     * @param _ftsoIndices          List of increasing ftso indices
-     * @param _prices               List of submitted prices in USD
-     * @param _random               Submitted random number
-     * @notice The hash of ftso indices, prices, random number and voter address must be equal to the submitted hash
-     * @notice Emits PricesRevealed event
+     * @inheritdoc IPriceSubmitter
      */
     function revealPrices(
         uint256 _epochId,
@@ -146,8 +150,8 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
         uint256 length  = _ftsoIndices.length;
         require(length == _prices.length, ERR_ARRAY_LENGTHS);
         require(_random >= MINIMAL_RANDOM, ERR_RANDOM_TOO_SMALL);
-        require(epochVoterHash[_epochId][msg.sender] == 
-            keccak256(abi.encode(_ftsoIndices, _prices, _random, msg.sender)), 
+        require(epochVoterHash[_epochId][msg.sender] ==
+            keccak256(abi.encode(_ftsoIndices, _prices, _random, msg.sender)),
             ERR_PRICE_INVALID);
 
         IFtsoGenesis[] memory ftsos = ftsoRegistry.getFtsos(_ftsoIndices);
@@ -172,7 +176,7 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
                     }
                 }
             }
-            
+
             // call reveal price on ftso
             ftsos[i].revealPriceSubmitter(msg.sender, _epochId, _prices[i], wNatVP);
         }
@@ -187,9 +191,8 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
     }
 
     /**
-     * @notice Returns current random number
-     * @return Random number
-     * @dev Should never revert
+     * @inheritdoc IPriceSubmitter
+     * @dev It never reverts.
      */
     function getCurrentRandom() external view override returns (uint256) {
         uint256 currentEpochId = ftsoManager.getCurrentPriceEpochId();
@@ -201,36 +204,44 @@ contract PriceSubmitter is IIPriceSubmitter, GovernedAtGenesis, AddressUpdatable
     }
 
     /**
-     * @notice Returns random number of the specified epoch
-     * @param _epochId Id of the epoch
-     * @return Random number
+     * @inheritdoc IPriceSubmitter
      */
     function getRandom(uint256 _epochId) external view override returns (uint256) {
         //slither-disable-next-line weak-prng // not used for random
         return randoms[_epochId % RANDOM_EPOCH_CYCLIC_BUFFER_SIZE];
     }
-    
+
     /**
-     * Returns bitmap of all ftso's for which `_voter` is allowed to submit prices/hashes.
-     * If voter is allowed to vote for ftso at index (see *_FTSO_INDEX), the corrsponding
-     * bit in the result will be 1.
-     */    
+     * @inheritdoc IPriceSubmitter
+     */
     function voterWhitelistBitmap(address _voter) external view override returns (uint256) {
         return whitelistedFtsoBitmap[_voter];
     }
-    
+
+    /**
+     * @inheritdoc IIPriceSubmitter
+     */
     function getTrustedAddresses() external view override returns (address[] memory) {
         return trustedAddresses;
     }
 
+    /**
+     * @inheritdoc IPriceSubmitter
+     */
     function getVoterWhitelister() external view override returns (address) {
         return voterWhitelister;
     }
 
+    /**
+     * @inheritdoc IPriceSubmitter
+     */
     function getFtsoRegistry() external view override returns (IFtsoRegistryGenesis) {
         return ftsoRegistry;
     }
-    
+
+    /**
+     * @inheritdoc IPriceSubmitter
+     */
     function getFtsoManager() external view override returns (IFtsoManagerGenesis) {
         return ftsoManager;
     }

@@ -9,9 +9,9 @@ import "../../ftso/interface/IIFtsoManager.sol";
 import "../../governance/implementation/GovernedBase.sol";
 
 /**
- * @title A contract for FTSO registry
+ * Handles registration of assets to the [FTSO system](https://docs.flare.network/tech/ftso).
  */
-contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase { 
+contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
 
     // constants
     uint256 internal constant MAX_HISTORY_LENGTH = 5;
@@ -21,13 +21,15 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     string internal constant ERR_TOKEN_NOT_SUPPORTED = "FTSO index not supported";
     string internal constant ERR_FTSO_MANAGER_ONLY = "FTSO manager only";
 
-    // storage 
+    // storage
     IIFtso[MAX_HISTORY_LENGTH][] internal ftsoHistory;
     mapping(string => uint256) internal ftsoIndex;
 
     // addresses
+    /// `FtsoManager` contract that can add and remove assets to the registry.
     IIFtsoManager public ftsoManager;
 
+    /// Only the `ftsoManager` can call this method.
     modifier onlyFtsoManager () {
         require (msg.sender == address(ftsoManager), ERR_FTSO_MANAGER_ONLY);
         _;
@@ -45,8 +47,8 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Update current active FTSO contracts mapping
-     * @param _ftsoContract new target FTSO contract
+     * @inheritdoc IIFtsoRegistry
+     * @dev Only the ftsoManager can call this method.
      */
     function addFtso(IIFtso _ftsoContract) external override onlyFtsoManager returns(uint256 _assetIndex) {
         string memory symbol = _ftsoContract.symbol();
@@ -65,9 +67,8 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * Removes the ftso at specified index and keeps part of the history
-     * @dev Reverts if the provided index is unsupported
-     * @param _ftso ftso to remove
+     * @inheritdoc IIFtsoRegistry
+     * @dev Only the ftsoManager can call this method.
      */
     function removeFtso(IIFtso _ftso) external override onlyFtsoManager {
         string memory symbol = _ftso.symbol();
@@ -84,54 +85,39 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @dev Reverts if unsupported index is passed
-     * @return _activeFtso FTSO contract for provided index
+     * @inheritdoc IFtsoRegistry
      */
     function getFtso(uint256 _assetIndex) external view override returns(IIFtso _activeFtso) {
         return _getFtso(_assetIndex);
     }
 
     /**
-     * @dev Reverts if unsupported symbol is passed
-     * @return _activeFtso FTSO contract for provided symbol
+     * @inheritdoc IFtsoRegistry
      */
     function getFtsoBySymbol(string memory _symbol) external view override returns(IIFtso _activeFtso) {
         return _getFtsoBySymbol(_symbol);
     }
 
     /**
-     * @notice Public view function to get the price of active FTSO for given asset index
-     * @param _assetIndex asset index
-     * @dev Reverts if unsupported index is passed
-     * @return _price current price of asset in USD
-     * @return _timestamp timestamp for when this price was updated
+     * @inheritdoc IFtsoRegistry
      */
-    function getCurrentPrice(uint256 _assetIndex) external view override 
-        returns(uint256 _price, uint256 _timestamp) 
+    function getCurrentPrice(uint256 _assetIndex) external view override
+        returns(uint256 _price, uint256 _timestamp)
     {
         return _getFtso(_assetIndex).getCurrentPrice();
     }
 
     /**
-     * @notice Public view function to get the price of active FTSO for given asset symbol
-     * @param _symbol asset symbol
-     * @dev Reverts if unsupported symbol is passed
-     * @return _price current price of asset in USD
-     * @return _timestamp timestamp for when this price was updated
+     * @inheritdoc IFtsoRegistry
      */
-    function getCurrentPrice(string memory _symbol) external view override 
-        returns(uint256 _price, uint256 _timestamp) 
+    function getCurrentPrice(string memory _symbol) external view override
+        returns(uint256 _price, uint256 _timestamp)
     {
         return _getFtsoBySymbol(_symbol).getCurrentPrice();
     }
 
     /**
-     * @notice Public view function to get the price of active FTSO for given asset index
-     * @param _assetIndex asset index
-     * @dev Reverts if unsupported index is passed
-     * @return _price current price of asset in USD
-     * @return _timestamp timestamp for when this price was updated
-     * @return _assetPriceUsdDecimals number of decimals used for USD price
+     * @inheritdoc IFtsoRegistry
      */
     function getCurrentPriceWithDecimals(uint256 _assetIndex) external view override
         returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
@@ -140,12 +126,7 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Public view function to get the price of active FTSO for given asset symbol
-     * @param _symbol asset symbol
-     * @dev Reverts if unsupported symbol is passed
-     * @return _price current price of asset in USD
-     * @return _timestamp timestamp for when this price was updated
-     * @return _assetPriceUsdDecimals number of decimals used for USD price
+     * @inheritdoc IFtsoRegistry
      */
     function getCurrentPriceWithDecimals(string memory _symbol) external view override
         returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
@@ -154,16 +135,14 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @return _supportedIndices the array of all active FTSO indices in increasing order. 
-     * Active FTSOs are ones that currently receive price feeds.
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedIndices() external view override returns(uint256[] memory _supportedIndices) {
         (_supportedIndices, ) = _getSupportedIndicesAndFtsos();
     }
 
     /**
-     * @return _supportedSymbols the array of all active FTSO symbols in increasing order. 
-     * Active FTSOs are ones that currently receive price feeds.
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedSymbols() external view override returns(string[] memory _supportedSymbols) {
         (, IIFtso[] memory ftsos) = _getSupportedIndicesAndFtsos();
@@ -176,9 +155,7 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get array of all supported indices and corresponding FTSOs
-     * @return _supportedIndices the array of all supported indices
-     * @return _ftsos the array of all supported ftsos
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedIndicesAndFtsos() external view override
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos)
@@ -187,9 +164,7 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get array of all supported symbols and corresponding FTSOs
-     * @return _supportedSymbols the array of all supported symbols
-     * @return _ftsos the array of all supported ftsos
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedSymbolsAndFtsos() external view override
         returns(string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
@@ -204,12 +179,10 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get array of all supported indices and corresponding symbols
-     * @return _supportedIndices the array of all supported indices
-     * @return _supportedSymbols the array of all supported symbols
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedIndicesAndSymbols() external view override
-        returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols) 
+        returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols)
     {
         IIFtso[] memory ftsos;
         (_supportedIndices, ftsos) = _getSupportedIndicesAndFtsos();
@@ -222,10 +195,7 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get array of all supported indices, corresponding symbols and FTSOs
-     * @return _supportedIndices the array of all supported indices
-     * @return _supportedSymbols the array of all supported symbols
-     * @return _ftsos the array of all supported ftsos
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedIndicesSymbolsAndFtsos() external view override
         returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols, IIFtso[] memory _ftsos)
@@ -240,20 +210,14 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get array of all FTSO contracts for all supported asset indices. 
-     * The index of FTSO in returned array does not necessarily correspond to _assetIndex
-     * Due to deletion, some indices might be unsupported. 
-     * @dev See `getSupportedIndicesAndFtsos` for pair of correct indices and `getAllFtsos` 
-     * for FTSOs at valid indices but with possible "null" holes.
-     * @return _ftsos the array of all supported FTSOs
+     * @inheritdoc IFtsoRegistry
      */
     function getSupportedFtsos() external view override returns(IIFtso[] memory _ftsos) {
         (, _ftsos) = _getSupportedIndicesAndFtsos();
     }
 
     /**
-     * @notice Get the active FTSOs for given indices
-     * @return _ftsos the array of FTSOs
+     * @inheritdoc IFtsoRegistryGenesis
      */
     function getFtsos(uint256[] memory _assetIndices) external view override returns(IFtsoGenesis[] memory _ftsos) {
         uint256 ftsoLength = ftsoHistory.length;
@@ -272,9 +236,8 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get array of all FTSO contracts for all supported asset indices
-     * @return _ftsos the array of all FTSOs
-     * @dev Return value might contain uninitialized FTSOS at zero address. 
+     * Return all currently supported FTSO contracts.
+     * @return _ftsos Array of FTSO contract addresses.
      */
     function getAllFtsos() external view returns(IIFtso[] memory _ftsos) {
         uint256 len = ftsoHistory.length;
@@ -287,41 +250,57 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get the history of FTSOs for given index
-     * @dev If there are less then MAX_HISTORY_LENGTH the remaining addresses will be 0 addresses
-     * @param _assetIndex asset index
-     * @return _ftsoAddressHistory the history of FTSOs contract for provided index
+     * Get the history of FTSOs for given index.
+     * If there are less then MAX_HISTORY_LENGTH the remaining addresses will be 0 addresses.
+     * Reverts if index is not supported.
+     * @param _assetIndex Asset index to query.
+     * @return _ftsoAddressHistory History of FTSOs contract for provided index.
      */
-    function getFtsoHistory(uint256 _assetIndex) external view 
-        returns(IIFtso[MAX_HISTORY_LENGTH] memory _ftsoAddressHistory) 
+    function getFtsoHistory(uint256 _assetIndex) external view
+        returns(IIFtso[MAX_HISTORY_LENGTH] memory _ftsoAddressHistory)
     {
-        require(_assetIndex < ftsoHistory.length && 
+        require(_assetIndex < ftsoHistory.length &&
                 address(ftsoHistory[_assetIndex][0]) != address(0), ERR_TOKEN_NOT_SUPPORTED);
         return ftsoHistory[_assetIndex];
     }
 
+    /**
+     * @inheritdoc IFtsoRegistry
+     */
     function getFtsoIndex(string memory _symbol) external view override returns (uint256 _assetIndex) {
         return _getFtsoIndex(_symbol);
     }
 
+    /**
+     * @inheritdoc IFtsoRegistry
+     */
     function getFtsoSymbol(uint256 _assetIndex) external view override returns (string memory _symbol) {
         return _getFtso(_assetIndex).symbol();
     }
 
+    /**
+     * @inheritdoc IFtsoRegistry
+     */
     function getAllCurrentPrices() external view override returns (PriceInfo[] memory) {
         (uint256[] memory indices, IIFtso[] memory ftsos) = _getSupportedIndicesAndFtsos();
         return _getCurrentPrices(indices, ftsos);
     }
 
+    /**
+     * @inheritdoc IFtsoRegistry
+     */
     function getCurrentPricesByIndices(uint256[] memory _indices) external view override returns (PriceInfo[] memory) {
         IIFtso[] memory ftsos = new IIFtso[](_indices.length);
-        
+
         for (uint256 i = 0; i < _indices.length; i++) {
             ftsos[i] = _getFtso(_indices[i]);
         }
         return _getCurrentPrices(_indices, ftsos);
     }
 
+    /**
+     * @inheritdoc IFtsoRegistry
+     */
     function getCurrentPricesBySymbols(string[] memory _symbols) external view override returns (PriceInfo[] memory) {
         uint256[] memory indices = new uint256[](_symbols.length);
         IIFtso[] memory ftsos = new IIFtso[](_symbols.length);
@@ -334,7 +313,7 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Implementation of the AddressUpdatable abstract method.
+     * Implementation of the AddressUpdatable abstract method.
      */
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
@@ -346,8 +325,8 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Shift the FTSOs history by one so the FTSO at index 0 can be overwritten
-     * @dev Internal helper function
+     * Shift the FTSOs history by one so the FTSO at index 0 can be overwritten.
+     * Internal helper function.
      */
     function _shiftHistory(uint256 _assetIndex) internal {
         for (uint256 i = MAX_HISTORY_LENGTH-1; i > 0; i--) {
@@ -358,8 +337,8 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     function _getCurrentPrices(
         uint256[] memory indices,
         IIFtso[] memory ftsos
-    ) 
-        internal view 
+    )
+        internal view
         returns (PriceInfo[] memory _result)
     {
         uint256 length = ftsos.length;
@@ -378,8 +357,8 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get the active FTSO for given index
-     * @dev Internal get ftso function so it can be used within other methods
+     * Get the active FTSO for given index.
+     * Internal get ftso function so it can be used within other methods.
      */
     function _getFtso(uint256 _assetIndex) internal view returns(IIFtso _activeFtso) {
         require(_assetIndex < ftsoHistory.length, ERR_TOKEN_NOT_SUPPORTED);
@@ -393,16 +372,16 @@ contract FtsoRegistry is IIFtsoRegistry, AddressUpdatable, GovernedBase {
     }
 
     /**
-     * @notice Get the active FTSO for given symbol
-     * @dev Internal get ftso function so it can be used within other methods
+     * Get the active FTSO for given symbol.
+     * Internal get ftso function so it can be used within other methods.
      */
     function _getFtsoBySymbol(string memory _symbol) internal view returns(IIFtso _activeFtso) {
         uint256 assetIndex = _getFtsoIndex(_symbol);
         _activeFtso = ftsoHistory[assetIndex][0];
     }
 
-    function _getSupportedIndicesAndFtsos() internal view 
-        returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos) 
+    function _getSupportedIndicesAndFtsos() internal view
+        returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos)
     {
         uint256 len = ftsoHistory.length;
         uint256[] memory supportedIndices = new uint256[](len);

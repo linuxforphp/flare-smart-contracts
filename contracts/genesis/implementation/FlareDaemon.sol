@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // WARNING, WARNING, WARNING
-// If you modify this contract, you need to re-install the binary into the validator 
+// If you modify this contract, you need to re-install the binary into the validator
 // genesis file for the chain you wish to run. See ./docs/CompilingContracts.md for more information.
 // You have been warned. That is all.
 pragma solidity 0.7.6;
@@ -15,10 +15,11 @@ import "../../utils/implementation/SafePct.sol";
 
 
 /**
- * @title Flare Daemon contract
- * @notice This contract exists to coordinate regular daemon-like polling of contracts
- *   that are registered to receive said polling. The trigger method is called by the 
- *   validator right at the end of block state transition.
+ * Flare Daemon contract.
+ *
+ * This contract exists to coordinate regular daemon-like polling of contracts
+ * that are registered to receive said polling. The trigger method is called by the
+ * validator right at the end of block state transition.
  */
 contract FlareDaemon is GovernedAtGenesis, AddressUpdatable {
     using SafeMath for uint256;

@@ -23,20 +23,24 @@ import "../../utils/interface/IIRandomProvider.sol";
 
 
 /**
- * FtsoManager is in charge of:
- * - defining reward epochs (few days)
- * - per reward epoch choose a single block that represents vote power of this epoch.
- * - keep track of all FTSO contracts
- * - per price epoch (few minutes)
- *    - randomly choose one FTSO for rewarding.
- *    - trigger finalize price reveal epoch
- *    - determines addresses and reward weights and triggers rewardDistribution
- */    
+ * FTSO Manager contract.
+ *
+ * It is in charge of:
+ *
+ * - Defining reward epochs (few days).
+ * - Choosing a single block each reward epoch that represents vote power of this epoch.
+ * - Keeping track of all FTSO contracts.
+ * - Every price epoch (few minutes):
+ *     - Randomly choose one FTSO for rewarding calculations.
+ *     - Trigger finalize price reveal epoch.
+ *     - Determine addresses and reward weights and triggers reward distribution.
+ */
 //solhint-disable-next-line max-states-count
 contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdatable, RevertErrorTracking {
     using FtsoManagerSettings for FtsoManagerSettings.State;
     using FtsoManagement for FtsoManagement.State;
 
+    /// Maximum number of trusted addresses allowed.
     uint256 public constant MAX_TRUSTED_ADDRESSES_LENGTH = 5;
 
     string internal constant ERR_FIRST_EPOCH_START_TS_IN_FUTURE = "First epoch start ts in future";
@@ -66,10 +70,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     string internal constant ERR_BAND_INVALID = "elastic band width invalid";
     string internal constant ERR_INVALID_PARAMS = "invalid parameters";
 
+    /// Whether the FTSO Manager is active or not.
     bool public override active;
     mapping(uint256 => RewardEpochData) internal rewardEpochsMapping;
+    /// Address of the FTSO contract that was last chosen for reward calculations.
     address public lastRewardedFtsoAddress;
     uint256 internal rewardEpochsLength;
+    /// Timestamp when the current reward epoch finishes, in seconds since UNIX epoch.
     uint256 public override currentRewardEpochEnds;
 
     FtsoManagerSettings.State private settings;
@@ -84,27 +91,35 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     // indicates if lastUnprocessedPriceEpoch is initialized for reveal
     // it has to be finalized before new reward epoch can start
     bool internal lastUnprocessedPriceEpochInitialized;
+    /// Whether use of good random numbers is enforced. See IFtsoManager.UseGoodRandomSet.
     bool public useGoodRandom;
-    // both are used only together with useGoodRandom flag - 0 otherwise
+    /// Used only when useGoodRandom flag is set.
     uint256 public maxWaitForGoodRandomSeconds;
+    /// Used only when useGoodRandom flag is set.
     uint256 public waitingForGoodRandomSinceTs;
 
-    // reward Epoch data
+    /// Timestamp when the first reward epoch started, in seconds since UNIX epoch.
     uint256 public immutable override rewardEpochsStartTs;
+    /// Duration of reward epochs, in seconds.
     uint256 public override rewardEpochDurationSeconds;
     uint256 internal votePowerIntervalFraction;
     uint256 internal nextRewardEpochToExpire;
 
+    /// Address of the `PriceSubmitter` contract.
     IIPriceSubmitter public priceSubmitter;
+    /// Address of the `RewardManager` contract.
     IIFtsoRewardManager public rewardManager;
+    // Address of the `Supply` contract.
     IISupply public supply;
+    /// Address of the `CleanupBlockNumberManager` contract.
     CleanupBlockNumberManager public cleanupBlockNumberManager;
+    /// Unused.
     IUpdateValidators public updateOnRewardEpochSwitchover;
 
     // fallback mode
     bool internal fallbackMode; // all ftsos in fallback mode
 
-    // for redeploy
+    /// Previous FTSO Manager, in case of a redeployment.
     IIFtsoManagerV1 public immutable oldFtsoManager;
 
     constructor(
@@ -118,7 +133,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         uint256 _firstRewardEpochStartTs,
         uint256 _rewardEpochDurationSeconds,
         uint256 _votePowerIntervalFraction
-    ) 
+    )
         GovernedAndFlareDaemonized(_governance, _flareDaemon) AddressUpdatable(_addressUpdater)
     {
         require(block.timestamp >= _firstPriceEpochStartTs, ERR_FIRST_EPOCH_START_TS_IN_FUTURE);
@@ -128,7 +143,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         require(_votePowerIntervalFraction > 0, ERR_VOTE_POWER_INTERVAL_FRACTION_ZERO);
 
         require(_revealEpochDurationSeconds < _priceEpochDurationSeconds, ERR_REVEAL_PRICE_EPOCH_TOO_LONG);
-        require(_firstPriceEpochStartTs + _revealEpochDurationSeconds <= _firstRewardEpochStartTs, 
+        require(_firstPriceEpochStartTs + _revealEpochDurationSeconds <= _firstRewardEpochStartTs,
             ERR_REWARD_EPOCH_START_TOO_SOON);
         require((_firstRewardEpochStartTs - _revealEpochDurationSeconds - _firstPriceEpochStartTs) %
             _priceEpochDurationSeconds == 0, ERR_REWARD_EPOCH_START_CONDITION_INVALID);
@@ -151,14 +166,14 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Set reward data to values from old ftso manager
-     * @dev Can be called only before activation
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function setInitialRewardData(
         uint256 _nextRewardEpochToExpire,
         uint256 _rewardEpochsLength,
         uint256 _currentRewardEpochEnds
-    ) 
+    )
         external override
         onlyGovernance
     {
@@ -167,20 +182,18 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         rewardEpochsLength = _rewardEpochsLength;
         currentRewardEpochEnds = _currentRewardEpochEnds;
     }
-    
+
     /**
-     * @notice Activates FTSO manager (daemonize() runs jobs)
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function activate() external override onlyGovernance {
         active = true;
     }
 
     /**
-     * @notice Runs task triggered by Daemon.
-     * The tasks include the following by priority
-     * - finalizePriceEpoch     
-     * - Set governance parameters and initialize epochs
-     * - finalizeRewardEpoch 
+     * @inheritdoc IFlareDaemonize
+     * @dev Only `flareDaemon` can call this method.
      */
     function daemonize() external override onlyFlareDaemon returns (bool) {
         // flare daemon trigger. once every block
@@ -257,7 +270,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Called if out of gas or any other unknown error occurs in flare daemonize call
+     * @inheritdoc IFlareDaemonize
+     * @dev Only `flareDaemon` can call this method.
      */
     function switchToFallbackMode() external override onlyFlareDaemon returns (bool) {
         if (!fallbackMode) {
@@ -269,10 +283,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Allow governance to switch to good random only
-     * @param _useGoodRandom                    flag indicating using good random or not
-     * @param _maxWaitForGoodRandomSeconds      max time in seconds to wait for the good random
-            and if there is no after given time, reward epoch finalization should proceed anyway
+     * Allow governance to switch to good random numbers only.
+     * Only governance can call this method.
+     *
+     * See `IFtsoManager.UseGoodRandomSet`.
+     * @param _useGoodRandom Whether good random numbers should be used or not.
+     * @param _maxWaitForGoodRandomSeconds Max time in seconds to wait for the good random.
+     * If there is none after given time, reward epoch finalization should proceed anyway.
      */
     function setUseGoodRandom(bool _useGoodRandom, uint256 _maxWaitForGoodRandomSeconds) external onlyGovernance {
         if (_useGoodRandom) {
@@ -287,17 +304,17 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         emit UseGoodRandomSet(_useGoodRandom, _maxWaitForGoodRandomSeconds);
     }
 
-     /**
-     * @notice Adds FTSO to the list of rewarded FTSOs
-     * All ftsos in multi asset ftso must be managed by this ftso manager
+    /**
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function addFtso(IIFtso _ftso) external override onlyGovernance {
         _addFtso(_ftso, true);
     }
 
     /**
-     * @notice Adds FTSO list to the list of rewarded FTSOs
-     * All ftsos in multi asset ftso must be managed by this ftso manager
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function addFtsosBulk(IIFtso[] memory _ftsos) external override onlyGovernance {
         for (uint256 i = 0; i < _ftsos.length; i++) {
@@ -306,17 +323,16 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Removes FTSO from the list of the rewarded FTSOs - revert if ftso is used in multi asset ftso
-     * @dev Deactivates _ftso
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function removeFtso(IIFtso _ftso) external override onlyGovernance {
         ftsoManagement.removeFtso(settings, _ftso);
     }
-    
+
     /**
-     * @notice Replaces one ftso with another
-     * All ftsos in multi asset ftso must be managed by this ftso manager
-     * @dev Deactivates old ftso
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function replaceFtso(
         IIFtso _ftsoToAdd,
@@ -330,9 +346,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Bulk replaces one ftso with another
-     * All ftsos in multi asset ftso must be managed by this ftso manager
-     * @dev Deactivates old ftsos
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function replaceFtsosBulk(
         IIFtso[] memory _ftsosToAdd,
@@ -348,28 +363,33 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Deactivates ftsos that are no longer used on ftso registry
+     * Deactivates FTSOs that are no longer used on FTSO registry.
+     * Only governance can call this method.
+     * @param _ftsos Array of FTSO contract addresses to deactivate.
      */
     function deactivateFtsos(IIFtso[] memory _ftsos) external onlyGovernance {
         ftsoManagement.deactivateFtsos(_ftsos);
     }
-    
+
     /**
-     * @notice Set asset for FTSO
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function setFtsoAsset(IIFtso _ftso, IIVPToken _asset) external override onlyGovernance {
         _ftso.setAsset(_asset);
     }
 
     /**
-     * @notice Set asset FTSOs for FTSO - all ftsos should already be managed by this ftso manager
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function setFtsoAssetFtsos(IIFtso _ftso, IIFtso[] memory _assetFtsos) external override onlyGovernance {
         ftsoManagement.setFtsoAssetFtsos(_ftso, _assetFtsos);
     }
 
     /**
-     * @notice Set fallback mode
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function setFallbackMode(bool _fallbackMode) external override onlyImmediateGovernance {
         fallbackMode = _fallbackMode;
@@ -377,7 +397,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Set fallback mode for ftso
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function setFtsoFallbackMode(IIFtso _ftso, bool _fallbackMode) external override onlyImmediateGovernance {
         require(ftsoManagement.managedFtsos[_ftso], ERR_NOT_FOUND);
@@ -386,7 +407,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Sets governance parameters for FTSOs
+     * @inheritdoc IIFtsoManager
+     * @dev Only governance can call this method.
      */
     function setGovernanceParameters(
         uint256 _updateTs,
@@ -428,8 +450,11 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @dev If the reward epoch is very short and the expiry offset is very long, the list of reward epochs
-    to be checked becomes very long. Therefore reward epoch time has to be capped by expiry offset.
+     * Sets the reward epoch duration.
+     * Only governance can call this method.
+     *
+     * If the reward epoch is very short and the expiry offset is very long, the list of reward epochs
+     * to be checked becomes very long. Therefore reward epoch time has to be capped to expiry offset.
      */
     function setRewardEpochDurationSeconds(uint256 _rewardEpochDurationSeconds) external onlyGovernance {
         require(_rewardEpochDurationSeconds > 0, ERR_REWARD_EPOCH_DURATION_ZERO);
@@ -438,12 +463,18 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         rewardEpochDurationSeconds = _rewardEpochDurationSeconds;
     }
 
+    /// Unused.
     function setUpdateOnRewardEpochSwitchover(IUpdateValidators _updateValidators) external onlyGovernance {
         updateOnRewardEpochSwitchover = _updateValidators;
     }
 
     /**
-     * @notice Sets elastic band widths in PPM (parts-per-million) for given ftsos
+     * Sets elastic band widths in PPM (parts-per-million) for given FTSOs.
+     * Only governance can call this method.
+     * @param _updateTs Timestamp when the changes will take effect, in seconds from UNIX epoch.
+     * @param _ftsos Array of FTSO contract addresses to update.
+     * @param _widths Array of secondary band widths in PPM. To obtain the actual band width,
+     * this number is divided by 10^6 and multiplied by the price median value.
      */
     function setElasticBandWidthPPMFtsos(
         uint256 _updateTs,
@@ -472,18 +503,22 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         return votePowerIntervalFraction;
     }
 
+    /// Returns the `PriceSubmitter` contract.
     function getPriceSubmitter() external view returns (IIPriceSubmitter) {
         return priceSubmitter;
     }
 
+    /**
+     * @inheritdoc IFtsoManagerGenesis
+     */
     function getCurrentPriceEpochId() external view override returns (uint256 _priceEpochId) {
         return _getCurrentPriceEpochId();
     }
 
     /**
-     * @dev half-closed intervals - end time not included
+     * @inheritdoc IFtsoManager
      */
-    function getCurrentPriceEpochData() external view override 
+    function getCurrentPriceEpochData() external view override
         returns (
             uint256 _priceEpochId,
             uint256 _priceEpochStartTimestamp,
@@ -501,10 +536,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             block.timestamp
         );
     }
-    
+
     /**
-     * @notice Gets vote power block of the specified reward epoch
-     * @param _rewardEpoch          Reward epoch sequence number
+     * @inheritdoc IFtsoManager
      */
     function getRewardEpochVotePowerBlock(uint256 _rewardEpoch) external view override 
         returns (
@@ -515,21 +549,23 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Return reward epoch that will expire, when new reward epoch is initialized
-     * @return Reward epoch id that will expire next
+     * @inheritdoc IFtsoManager
      */
     function getRewardEpochToExpireNext() external view override returns (uint256) {
         return nextRewardEpochToExpire;
     }
 
     /**
-     * @notice Returns the list of FTSOs
+     * @inheritdoc IFtsoManager
      */
     function getFtsos() external view override returns (IIFtso[] memory _ftsos) {
         return _getFtsos();
     }
 
-    function getPriceEpochConfiguration() external view override 
+    /**
+     * @inheritdoc IFtsoManager
+     */
+    function getPriceEpochConfiguration() external view override
         returns (
             uint256 _firstPriceEpochStartTs,
             uint256 _priceEpochDurationSeconds,
@@ -539,6 +575,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         return (firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
     }
 
+    /**
+     * @inheritdoc IFtsoManager
+     */
     function getRewardEpochConfiguration() external view override
         returns (
             uint256 _firstRewardEpochStartTs,
@@ -548,6 +587,9 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         return (rewardEpochsStartTs, rewardEpochDurationSeconds);
     }
 
+    /**
+     * @inheritdoc IFtsoManager
+     */
     function getFallbackMode() external view override
         returns (
             bool _fallbackMode,
@@ -559,14 +601,25 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         _ftsos = _getFtsos();
         uint256 len = _ftsos.length;
         _ftsoInFallbackMode = new bool[](len);
-        
+
         for (uint256 i = 0; i < len; i++) {
             _ftsoInFallbackMode[i] = ftsoManagement.ftsoInFallbackMode[_ftsos[i]];
         }
     }
 
     /**
-     * @notice Gets governance parameters for FTSOs
+     * Returns governance parameters for FTSOs.
+     * @return _maxVotePowerNatThresholdFraction High threshold for native token vote power per voter.
+     * @return _maxVotePowerAssetThresholdFraction High threshold for asset vote power per voter
+     * @return _lowAssetUSDThreshold Threshold for low asset vote power (in scaled USD).
+     * @return _highAssetUSDThreshold Threshold for high asset vote power (in scaled USD).
+     * @return _highAssetTurnoutThresholdBIPS Threshold for high asset turnout (in BIPS).
+     * @return _lowNatTurnoutThresholdBIPS Threshold for low nat turnout (in BIPS).
+     * @return _elasticBandRewardBIPS Secondary reward band, where _elasticBandRewardBIPS goes to the
+     * secondary band and 10000 - _elasticBandRewardBIPS to the primary (IQR) band.
+     * @return _rewardExpiryOffsetSeconds Reward epochs closed earlier than
+     * block.timestamp - _rewardExpiryOffsetSeconds expire.
+     * @return _trustedAddresses Trusted addresses will be used as a fallback mechanism for setting the price.
      */
     function getGovernanceParameters() external view
         returns (
@@ -598,23 +651,31 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         );
     }
 
+    /// Returns the timestamp, in seconds since UNIX epoch, when the scheduled new settings
+    /// will take effect.
     function getUpdateGovernanceParametersTs() external view returns (uint256) {
         return settings.updateTs;
     }
 
     /**
-     * @notice Returns elastic band width in PPM (parts-per-million) for given ftso
+     * @inheritdoc IIFtsoManager
      */
     function getElasticBandWidthPPMFtso(IIFtso _ftso) external view override returns (uint256)
     {
         return settings.elasticBandWidthPPMFtso[_ftso];
     }
 
+    /**
+     * @inheritdoc IIFtsoManager
+     */
     function getRewardExpiryOffsetSeconds() external view override returns (uint256)
     {
         return settings.rewardExpiryOffsetSeconds;
     }
 
+    /**
+     * @inheritdoc IIFtsoManager
+     */
     function getLastUnprocessedPriceEpochData() external view override
         returns (
             uint256 _lastUnprocessedPriceEpoch,
@@ -624,15 +685,18 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     {
         return (lastUnprocessedPriceEpoch, lastUnprocessedPriceEpochRevealEnds, lastUnprocessedPriceEpochInitialized);
     }
-            
+
     /**
-     * @notice Returns current reward epoch index (one currently running)
+     * @inheritdoc IFtsoManager
      */
     function getCurrentRewardEpoch() external view override returns (uint256) {
         require(rewardEpochsLength != 0, ERR_REWARD_EPOCH_NOT_INITIALIZED);
         return _getCurrentRewardEpochId();
     }
 
+    /**
+     * @inheritdoc IIFtsoManager
+     */
     function rewardEpochs(uint256 _rewardEpochId) external view override
         returns (
             uint256 _votepowerBlock,
@@ -645,29 +709,33 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         _startBlock = rewardEpochData.startBlock;
         _startTimestamp = rewardEpochData.startTimestamp;
     }
-    
+
+    /**
+     * @inheritdoc IIFtsoManager
+     */
     function notInitializedFtsos(IIFtso _ftso) external view override returns (bool) {
         return ftsoManagement.notInitializedFtsos[_ftso];
     }
 
+    /// Returns the `FtsoRegistry` contract address.
     function ftsoRegistry() external view returns (IIFtsoRegistry) {
         return ftsoManagement.ftsoRegistry;
     }
 
+    /// Returns the `VoterWhitelister` contract address.
     function voterWhitelister() external view returns (IIVoterWhitelister) {
         return ftsoManagement.voterWhitelister;
     }
-    
+
     /**
-     * @notice Implement this function for updating daemonized contracts through AddressUpdater.
+     * @inheritdoc IFlareDaemonize
      */
     function getContractName() external pure override returns (string memory) {
         return "FtsoManager";
     }
-    
+
     /**
-     * @notice Returns reward epoch data
-     * @param _rewardEpochId        Reward epoch id
+     * @inheritdoc IIFtsoManager
      */
     function getRewardEpochData(uint256 _rewardEpochId) public view override returns (RewardEpochData memory) {
         require(_rewardEpochId < rewardEpochsLength, ERR_REWARD_EPOCH_NOT_INITIALIZED);
@@ -692,13 +760,13 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         ftsoManagement.addFtso(settings, _ftso, _addNewFtso, lastUnprocessedPriceEpochInitialized);
         _initialActivateFtso(_ftso);
     }
-    
+
     function _replaceFtso(IIFtso _ftsoToAdd, bool _copyCurrentPrice, bool _copyAssetOrAssetFtsos) internal {
-        ftsoManagement.replaceFtso(settings, _ftsoToAdd, _copyCurrentPrice, _copyAssetOrAssetFtsos, 
+        ftsoManagement.replaceFtso(settings, _ftsoToAdd, _copyCurrentPrice, _copyAssetOrAssetFtsos,
             lastUnprocessedPriceEpochInitialized);
         _initialActivateFtso(_ftsoToAdd);
     }
-    
+
     function _initialActivateFtso(IIFtso _ftso) internal {
         _ftso.activateFtso(firstPriceEpochStartTs, priceEpochDurationSeconds, revealEpochDurationSeconds);
 
@@ -729,7 +797,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             for (uint256 i = 0; i < numFtsos; ++i) {
                 ftsos[i].setVotePowerBlock(epochData.votepowerBlock);
             }
-            
+
             currentRewardEpochEnds = rewardEpochsStartTs + rewardEpochDurationSeconds;
         }
     }
@@ -743,26 +811,26 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
 
         // @dev when considering block boundary for vote power block:
         // - if far from now, it doesn't reflect last vote power changes
-        // - if too small, possible loan attacks.     
+        // - if too small, possible loan attacks.
         // IMPORTANT: currentRewardEpoch is actually the one just getting finalized!
-        uint256 votepowerBlockBoundary = 
+        uint256 votepowerBlockBoundary =
             (block.number - _getRewardEpoch(_getCurrentRewardEpochId()).startBlock) / votePowerIntervalFraction;
         // note: votePowerIntervalFraction > 0
- 
+
         if (votepowerBlockBoundary == 0) {
             votepowerBlockBoundary = 1;
         }
- 
+
         //slither-disable-next-line weak-prng           // _currentRandom calculated from ftso inputs
         uint256 votepowerBlocksAgo = _currentRandom % votepowerBlockBoundary;
         // prevent block.number becoming votePowerBlock
-        // if _currentRandom % votepowerBlockBoundary == 0  
+        // if _currentRandom % votepowerBlockBoundary == 0
         if (votepowerBlocksAgo == 0) {
             votepowerBlocksAgo = 1;
         }
-        
+
         RewardEpochData memory epochData = RewardEpochData({
-            votepowerBlock: block.number - votepowerBlocksAgo, 
+            votepowerBlock: block.number - votepowerBlocksAgo,
             startBlock: block.number,
             startTimestamp: block.timestamp
         });
@@ -784,15 +852,15 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     function _closeExpiredRewardEpochs() internal {
         uint256 currentRewardEpoch = _getCurrentRewardEpochId();
         uint256 expiryThreshold = block.timestamp - settings.rewardExpiryOffsetSeconds;
-        // NOTE: start time of (i+1)th reward epoch is the end time of i-th  
+        // NOTE: start time of (i+1)th reward epoch is the end time of i-th
         // This loop is clearly bounded by the value currentRewardEpoch, which is
         // always kept to the value of rewardEpochs.length - 1 in code and this value
         // does not change in the loop.
         while (
-            nextRewardEpochToExpire < currentRewardEpoch && 
-            _getRewardEpoch(nextRewardEpochToExpire + 1).startTimestamp <= expiryThreshold) 
+            nextRewardEpochToExpire < currentRewardEpoch &&
+            _getRewardEpoch(nextRewardEpochToExpire + 1).startTimestamp <= expiryThreshold)
         {   // Note: Since nextRewardEpochToExpire + 1 starts at that time
-            // nextRewardEpochToExpire ends strictly before expiryThreshold, 
+            // nextRewardEpochToExpire ends strictly before expiryThreshold,
             try rewardManager.closeExpiredRewardEpoch(nextRewardEpochToExpire) {
                 nextRewardEpochToExpire++;
             } catch Error(string memory message) {
@@ -817,7 +885,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     function _cleanupOnRewardEpochFinalization() internal {
 
         uint256 cleanupBlock = _getRewardEpoch(nextRewardEpochToExpire).votepowerBlock;
-        
+
         try cleanupBlockNumberManager.setCleanUpBlockNumber(cleanupBlock) {
         } catch Error(string memory message) {
             // cleanup block number manager call failed, which is not critical
@@ -832,8 +900,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
 
     function _finalizePriceEpochFailed(IIFtso ftso, string memory message) internal {
         emit FinalizingPriceEpochFailed(
-            ftso, 
-            lastUnprocessedPriceEpoch, 
+            ftso,
+            lastUnprocessedPriceEpoch,
             IFtso.PriceFinalizationType.WEIGHTED_MEDIAN
         );
 
@@ -939,7 +1007,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
             lastRewardedFtsoAddress = address(0);
             emit PriceEpochFinalized(address(0), _getCurrentRewardEpochId());
         }
-        
+
         lastUnprocessedPriceEpochInitialized = false;
     }
 
@@ -959,8 +1027,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
 
     function _fallbackFinalizePriceEpochFailed(IIFtso _ftso, string memory message) internal {
         emit FinalizingPriceEpochFailed(
-            _ftso, 
-            lastUnprocessedPriceEpoch, 
+            _ftso,
+            lastUnprocessedPriceEpoch,
             IFtso.PriceFinalizationType.TRUSTED_ADDRESSES
         );
         addRevertError(address(_ftso), message);
@@ -979,8 +1047,8 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
     }
 
     /**
-     * @notice Initializes epoch states in FTSOs for reveal. 
-     * Prior to initialization it sets governance parameters, if 
+     * @notice Initializes epoch states in FTSOs for reveal.
+     * Prior to initialization it sets governance parameters, if
      * governance has changed them. It also sets price submitter trusted addresses.
      */
     function _initializeCurrentEpochFTSOStatesForReveal() internal {
@@ -1095,7 +1163,7 @@ contract FtsoManager is IIFtsoManager, GovernedAndFlareDaemonized, AddressUpdata
         if (_rewardEpoch.startTimestamp == 0) {
             (uint256 vpBlock, uint256 sBlock, uint256 sTimestamp) = oldFtsoManager.rewardEpochs(_rewardEpochId);
             _rewardEpoch = RewardEpochData({
-                votepowerBlock: vpBlock, 
+                votepowerBlock: vpBlock,
                 startBlock: sBlock,
                 startTimestamp: sTimestamp
             });

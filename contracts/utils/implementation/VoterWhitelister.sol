@@ -11,7 +11,11 @@ import "../../userInterfaces/IFtsoManager.sol";
 import "../../utils/implementation/SafePct.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
+/**
+ * Manager of the [FTSO whitelist](https://docs.flare.network/infra/data/whitelisting/).
+ *
+ * Only addresses registered in this contract can submit data to the FTSO system.
+ */
 contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -19,46 +23,58 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     uint256 internal constant TERA = 10 ** 12;                    // 10^12
     uint256 internal constant BIPS100 = 10 ** 4;                  // 100 * 100%
 
+    /// Maximum number of voters in the whitelist for a new FTSO.
     uint256 public override defaultMaxVotersForFtso;
-        
-    /**
-     * Maximum number of voters in a single ftso whitelist.
-     * Adjustable separately for each ftsoIndex.
-     */
+
+    /// Maximum number of voters in the whitelist for a specific FTSO.
+    /// Adjustable separately for each index.
     mapping (uint256 => uint256) public override maxVotersForFtso;
-    
-    /**
-     * In case of providing bad prices (e.g. collusion), the voter can be chilled for a few reward epochs.
-     * A voter can whitelist again from a returned reward epoch onwards.
-     */
+
+    /// In case of providing bad prices (e.g. collusion), the voter can be chilled for a few reward epochs.
+    /// A voter can whitelist again from a returned reward epoch onwards.
     mapping (address => uint256) public override chilledUntilRewardEpoch;
-    
+
     // mapping: ftsoIndex => array of whitelisted voters for this ftso
     mapping (uint256 => address[]) internal whitelist;
-    
+
+    /// Address of the PriceSubmitter contract set at construction time.
     IIPriceSubmitter public immutable priceSubmitter;
+    /// Address of the FtsoRegistry contract.
     IFtsoRegistry public ftsoRegistry;
+    /// Address of the FtsoManager contract.
     IFtsoManager public ftsoManager;
 
+    /// Previous VoterWhitelister contract, set at construction time.
+    /// Necessary to allow copying the previous whitelist onto a new contract.
     IVoterWhitelister public immutable oldVoterWhitelister;
     bool public copyMode;
 
+    /**
+     * Only the `ftsoManager` can call this method.
+     */
     modifier onlyFtsoManager {
         require(msg.sender == address(ftsoManager), "only ftso manager");
         _;
     }
 
+    /**
+     * Only data providers that have not been chilled can perform this action.
+     * @param _voter Address of the data provider performing the action.
+     */
     modifier voterNotChilled(address _voter) {
         uint256 untilRewardEpoch = chilledUntilRewardEpoch[_voter];
         require(untilRewardEpoch == 0 || untilRewardEpoch <= ftsoManager.getCurrentRewardEpoch(), "voter chilled");
         _;
     }
 
+    /**
+     * Only callable when not in copy mode.
+     */
     modifier notInCopyMode {
         require(!copyMode, "copy mode");
         _;
     }
-    
+
     constructor(
         address _governance,
         address _addressUpdater,
@@ -73,15 +89,13 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         oldVoterWhitelister = _oldVoterWhitelister;
         copyMode = address(_oldVoterWhitelister) != address(0);
     }
-    
+
     /**
-     * Request to whitelist `_voter` account to all active ftsos.
-     * May be called by any address.
-     * It returns an array of supported ftso indices and success flag per index.
+     * @inheritdoc IVoterWhitelister
      */
     function requestFullVoterWhitelisting(
         address _voter
-    ) 
+    )
         external override notInCopyMode voterNotChilled(_voter)
         returns (
             uint256[] memory _supportedIndices,
@@ -99,10 +113,9 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
             _success[i] = _requestWhitelistingVoter(_voter, _supportedIndices[i]);
         }
     }
-    
+
     /**
-     * Request to whitelist `_voter` account to ftso at `_ftsoIndex`. Will revert if vote power too low.
-     * May be called by any address.
+     * @inheritdoc IVoterWhitelister
      */
     function requestWhitelistingVoter(
         address _voter,
@@ -113,20 +126,20 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         if (_isTrustedAddress(_voter)) {
             revert("trusted address");
         }
-        
+
         bool success = _requestWhitelistingVoter(_voter, _ftsoIndex);
         require(success, "vote power too low");
     }
 
     /**
-     * @notice Used to chill voter - remove from whitelist for a specified number of reward epochs
+     * @inheritdoc IIVoterWhitelister
      * @dev Only governance can call this method.
      */
     function chillVoter(
         address _voter,
         uint256 _noOfRewardEpochs,
         uint256[] memory _ftsoIndices
-    ) 
+    )
         external override notInCopyMode onlyGovernance
         returns(
             bool[] memory _removed,
@@ -153,8 +166,8 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
-     * Set the maximum number of voters in the whitelist for FTSO at index `_ftsoIndex`.
-     * Calling this function might remove several voters with the least votepower from the whitelist.
+     * @inheritdoc IIVoterWhitelister
+     * @dev Only governance can call this method.
      */
     function setMaxVotersForFtso(
         uint256 _ftsoIndex,
@@ -186,24 +199,27 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         }
         _votersRemovedFromWhitelist(removedVoters, _ftsoIndex);
     }
-    
+
     /**
-     * Set the maximum number of voters in the whitelist for a new FTSO.
+     * @inheritdoc IIVoterWhitelister
+     * @dev Only governance can call this method.
      */
     function setDefaultMaxVotersForFtso(uint256 _defaultMaxVotersForFtso) external override onlyGovernance {
         defaultMaxVotersForFtso = _defaultMaxVotersForFtso;
     }
-    
+
     /**
-     * Create whitelist with default size for ftso.
+     * @inheritdoc IIVoterWhitelister
+     * @dev Only `ftsoManager` can call this method.
      */
     function addFtso(uint256 _ftsoIndex) external override notInCopyMode onlyFtsoManager {
         require(maxVotersForFtso[_ftsoIndex] == 0, "whitelist already exist");
         maxVotersForFtso[_ftsoIndex] = defaultMaxVotersForFtso;
     }
-    
+
     /**
-     * Clear whitelist for ftso at `_ftsoIndex`.
+     * @inheritdoc IIVoterWhitelister
+     * @dev Only `ftsoManager` can call this method.
      */
     function removeFtso(uint256 _ftsoIndex) external override notInCopyMode onlyFtsoManager {
         _votersRemovedFromWhitelist(whitelist[_ftsoIndex], _ftsoIndex);
@@ -212,7 +228,9 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
-     * Enable governance address to copy old whitelist data
+     * Copy whitelist data from `oldVoterWhitelister` for a specific FTSO.
+     * Can only be called by governance.
+     * @param _ftsoIndex Index of the FTSO whose whitelist is to be copied.
      */
     function copyWhitelist(uint256 _ftsoIndex) external onlyImmediateGovernance {
         require(copyMode, "not in copy mode");
@@ -222,7 +240,8 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
-     * Enable governance address to turn off copy mode
+     * Turn off copy mode.
+     * Can only be called by governance.
      */
     function turnOffCopyMode() external onlyImmediateGovernance {
         require(copyMode, "not in copy mode");
@@ -230,7 +249,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
-     * Remove `_trustedAddress` from whitelist for ftso at `_ftsoIndex`.
+     * @inheritdoc IIVoterWhitelister
      */
     function removeTrustedAddressFromWhitelist(
         address _trustedAddress,
@@ -245,22 +264,22 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
-     * Get whitelisted price providers for ftso with `_symbol`
+     * @inheritdoc IVoterWhitelister
      */
     function getFtsoWhitelistedPriceProvidersBySymbol(
         string memory _symbol
-    ) 
-        external view override 
+    )
+        external view override
         returns (
             address[] memory
-    ) 
+    )
     {
         uint256 ftsoIndex = ftsoRegistry.getFtsoIndex(_symbol);
         return getFtsoWhitelistedPriceProviders(ftsoIndex);
     }
 
     /**
-     * Get whitelisted price providers for ftso at `_ftsoIndex`
+     * @inheritdoc IVoterWhitelister
      */
     function getFtsoWhitelistedPriceProviders(uint256 _ftsoIndex) public view override returns (address[] memory) {
         if (copyMode) {
@@ -289,7 +308,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         if (index == length) {
             return false;
         }
-        
+
         // kick the index out and replace it with the last one
         address[] memory removedVoters = new address[](1);
         removedVoters[0] = addressesForFtso[index];
@@ -300,7 +319,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     }
 
     /**
-     * @notice Implementation of the AddressUpdatable abstract method.
+     * @inheritdoc AddressUpdatable
      */
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
@@ -318,10 +337,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
     function _requestWhitelistingVoter(address _voter, uint256 _ftsoIndex) internal returns(bool) {
         uint256 maxVoters = maxVotersForFtso[_ftsoIndex];
         require(maxVoters > 0, "FTSO index not supported");
-        
+
         address[] storage addressesForFtso = whitelist[_ftsoIndex];
         uint256 length = addressesForFtso.length;
-        
+
         // copy to memory and check if it contains _voter
         address[] memory addresses = new address[](length + 1);
         for (uint256 i = 0; i < length; i++) {
@@ -333,21 +352,21 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
             addresses[i] = addr;
         }
         addresses[length] = _voter;
-        
+
         // can we just add a new one?
         if (length < maxVoters) {
             addressesForFtso.push(_voter);
             _voterWhitelisted(_voter, _ftsoIndex);
             return true;
         }
-        
+
         // find a candidate to kick out
         uint256 minIndex = _minVotePowerIndex(addresses, _ftsoIndex);
         if (minIndex == length) {
             // the new _voter has the minimum vote power, do nothing
             return false;
         }
-        
+
         // kick the minIndex out and replace it with _voter
         address[] memory removedVoters = new address[](1);
         removedVoters[0] = addresses[minIndex];
@@ -357,7 +376,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
 
         return true;
     }
-    
+
     /**
      * Find index of the element with minimum vote power weight.
      * In case of a tie, returns later index.
@@ -367,7 +386,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         uint256[] memory votePowers = _getVotePowerWeights(ftso, _addresses);
         return _findMinimum(votePowers, votePowers.length);
     }
-    
+
     /**
      * Calculate vote power weights like FTSO.
      * Unlike FTSO, it calls VPToken vote power in a batch to limit gas consumption.
@@ -375,7 +394,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
      * no sense for whitelist, since it has to be initialized before any voting occurs).
      * Apart from turnout, the results should be equal as for FTSO.
      */
-    function _getVotePowerWeights(IIFtso ftso, address[] memory _addresses) internal 
+    function _getVotePowerWeights(IIFtso ftso, address[] memory _addresses) internal
         returns (uint256[] memory _votePowers)
     {
         // get parameters
@@ -388,22 +407,22 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         (assets, assetMultipliers, totalVotePowerNat, totalVotePowerAsset, assetWeightRatio, votePowerBlock)
             = ftso.getVoteWeightingParameters();
         // nat vote powers
-        uint256[] memory wNatVP = 
+        uint256[] memory wNatVP =
             _getNativeVotePowerWeights(ftso.wNat(), totalVotePowerNat, _addresses, votePowerBlock);
         // asset vote powers
-        uint256[] memory combinedAssetVP = 
+        uint256[] memory combinedAssetVP =
             _getAssetVotePowerWeights(assets, assetMultipliers, totalVotePowerAsset, _addresses, votePowerBlock);
         // combine asset and wNat
         return _computeWeightedSum(wNatVP, combinedAssetVP, assetWeightRatio);
     }
-    
+
     /**
      * Calculate native vote power weights like FTSO.
      */
     function _getNativeVotePowerWeights(
         IIVPToken _wNat,
         uint256 _totalVotePowerNat,
-        address[] memory _addresses, 
+        address[] memory _addresses,
         uint256 _blockNumber
     )
         internal
@@ -417,7 +436,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
             _wNatVP[i] = _wNatVP[i].mulDiv(TERA, _totalVotePowerNat);
         }
     }
-    
+
     /**
      * Calculate asset vote power weights like FTSO.
      */
@@ -425,10 +444,10 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         IIVPToken[] memory _assets,
         uint256[] memory _assetMultipliers,
         uint256 _totalVotePowerAsset,
-        address[] memory _addresses, 
+        address[] memory _addresses,
         uint256 _blockNumber
     )
-        internal 
+        internal
         returns (uint256[] memory _combinedAssetVP)
     {
         _combinedAssetVP = new uint256[](_addresses.length);
@@ -451,17 +470,17 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
             }
         }
     }
-    
+
     /**
      * Get vote powers from VPToken in a batch.
      * This is needed to avoid gas consumption of many cros-contract calls.
      */
     function _getVotePowers(
-        IIVPToken _token, 
-        address[] memory _addresses, 
+        IIVPToken _token,
+        address[] memory _addresses,
         uint256 _blockNumber
     )
-        internal 
+        internal
         returns (uint256[] memory)
     {
         // warm up cache for new voter (in this way everyone pays cache storing price for himself)
@@ -469,7 +488,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         // get all vote powers in a batch
         return _token.batchVotePowerOfAt(_addresses, _blockNumber);
     }
-    
+
     /**
      * Checks if _voter is trusted address
      */
@@ -482,18 +501,18 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         }
         return false;
     }
-    
+
     /**
      * Update a voter whitelisting and emit an event.
-     */    
+     */
     function _voterWhitelisted(address _voter, uint256 _ftsoIndex) private {
         emit VoterWhitelisted(_voter, _ftsoIndex);
         priceSubmitter.voterWhitelisted(_voter, _ftsoIndex);
     }
-    
+
     /**
      * Update when a  voter is removed from the whitelist. And emit an event.
-     */    
+     */
     function _votersRemovedFromWhitelist(address[] memory _removedVoters, uint256 _ftsoIndex) private {
         for (uint256 i = 0; i < _removedVoters.length; i++) {
             emit VoterRemovedFromWhitelist(_removedVoters[i], _ftsoIndex);
@@ -511,7 +530,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         }
         return result;
     }
-    
+
     /**
      * Calculate weighted sum of two arrays (like in FTSO):
      *  result[i] = (100% - _assetWeightRatio) * _weightsNat[i] + _assetWeightRatio * _weightsAsset[i]
@@ -521,7 +540,7 @@ contract VoterWhitelister is IIVoterWhitelister, Governed, AddressUpdatable {
         uint256[] memory _weightsAsset,
         uint256 _assetWeightRatio
     )
-        private pure 
+        private pure
         returns (uint256[] memory _weights)
     {
         uint256 weightAssetSum = _arraySum(_weightsAsset);

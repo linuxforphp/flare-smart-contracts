@@ -10,19 +10,27 @@ import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../utils/implementation/AddressSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract ClaimSetupManager is IIClaimSetupManager, 
+/**
+ * Manages automation of operations related to reward claiming.
+ *
+ * Rewards include [FTSO rewards](https://docs.flare.network/tech/ftso) and
+ * [airdrops](https://docs.flare.network/tech/the-flaredrop/).
+ * Managed operations include [Automatic Claiming](https://docs.flare.network/tech/automatic-claiming) and
+ * [Personal Delegation Accounts](https://docs.flare.network/tech/personal-delegation-account).
+ */
+contract ClaimSetupManager is IIClaimSetupManager,
     Governed, AddressUpdatable, CloneFactory, ReentrancyGuard
 {
     using AddressSet for AddressSet.State;
 
-    struct ExecutorFee {            // used for storing executor fee settings
-        uint256 value;              // fee value (value between `minFeeValueWei` and `maxFeeValueWei`)
-        uint256 validFromEpoch;     // id of the reward epoch from which the value is valid
+    struct ExecutorFee {            // Used for storing executor fee settings.
+        uint256 value;              // Fee value (value between `minFeeValueWei` and `maxFeeValueWei`).
+        uint256 validFromEpoch;     // Id of the reward epoch from which the value is valid.
     }
 
-    struct DelegationAccountData {              // used for storing data about delegation account
-        IIDelegationAccount delegationAccount;  // delegation account address
-        bool enabled;                           // indicates if delegation account is enabled
+    struct DelegationAccountData {              // Used for storing data about delegation account.
+        IIDelegationAccount delegationAccount;  // Delegation account address.
+        bool enabled;                           // Indicates if delegation account is enabled.
     }
 
     string internal constant ERR_EXECUTOR_FEE_INVALID = "invalid executor fee value";
@@ -42,16 +50,23 @@ contract ClaimSetupManager is IIClaimSetupManager,
     string internal constant ERR_ONLY_OWNER_OR_EXECUTOR = "only owner or executor";
     string internal constant ERR_RECIPIENT_NOT_ALLOWED = "recipient not allowed";
     string internal constant ERR_WRONG_WNAT_ADDRESS = "wrong wNat address";
-    
+
     address payable constant internal BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    uint256 public immutable feeValueUpdateOffset;      // fee value update timelock measured in reward epochs
-    uint256 public minFeeValueWei;                      // min value for fee
-    uint256 public maxFeeValueWei;                      // max value for fee
-    uint256 public registerExecutorFeeValueWei;         // fee value that executor must pay to register
+    /// Number of reward epochs that must elapse before an executor's fee change takes effect.
+    uint256 public immutable feeValueUpdateOffset;
+    /// Minimum allowed value for an executor's fee.
+    uint256 public minFeeValueWei;
+    /// Maximum allowed value for an executor's fee.
+    uint256 public maxFeeValueWei;
+    /// Fee that must be paid to register an executor.
+    uint256 public registerExecutorFeeValueWei;
 
+    /// The `FtsoManager` contract.
     IFtsoManager public ftsoManager;
+    /// The `WNat` contract.
     WNat public override wNat;
+    /// The `GovernanceVotePower` contract.
     IGovernanceVotePower public governanceVP;
 
     address public libraryAddress;
@@ -84,7 +99,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
         uint256 _minFeeValueWei,
         uint256 _maxFeeValueWei,
         uint256 _registerExecutorFeeValueWei
-    ) 
+    )
         Governed(_governance)
         AddressUpdatable(_addressUpdater)
     {
@@ -94,16 +109,14 @@ contract ClaimSetupManager is IIClaimSetupManager,
         feeValueUpdateOffset = _feeValueUpdateOffset;
         minFeeValueWei = _minFeeValueWei;
         maxFeeValueWei = _maxFeeValueWei;
-        emit MinFeeSet(_minFeeValueWei); 
-        emit MaxFeeSet(_maxFeeValueWei); 
+        emit MinFeeSet(_minFeeValueWei);
+        emit MaxFeeSet(_maxFeeValueWei);
         registerExecutorFeeValueWei = _registerExecutorFeeValueWei;
         emit RegisterExecutorFeeSet(_registerExecutorFeeValueWei);
     }
 
     /**
-     * @notice Sets the addresses of executors and optionally enables (creates) delegation account.
-     * @notice If setting registered executors some fee must be paid to them.
-     * @param _executors        The new executors. All old executors will be deleted and replaced by these.
+     * @inheritdoc IClaimSetupManager
      */
     function setAutoClaiming(address[] memory _executors, bool _enableDelegationAccount)
         external payable override nonReentrant
@@ -115,28 +128,21 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Sets the addresses of executors.
-     * @notice If setting registered executors some fee must be paid to them.
-     * @param _executors        The new executors. All old executors will be deleted and replaced by these.
+     * @inheritdoc IClaimSetupManager
      */
     function setClaimExecutors(address[] memory _executors) external payable override nonReentrant {
         _setClaimExecutors(_executors);
     }
 
     /**
-     * @notice Enables (creates) delegation account contract,
-     * i.e. all airdrop and ftso rewards will be send to delegation account when using automatic claiming.
-     * @return Address of delegation account contract.
+     * @inheritdoc IClaimSetupManager
      */
     function enableDelegationAccount() external override returns (IDelegationAccount) {
         return _createOrEnableDelegationAccount();
     }
 
     /**
-     * @notice Disables delegation account contract,
-     * i.e. all airdrop and ftso rewards will be send to owner's account when using automatic claiming.
-     * @notice Automatic claiming will not claim airdrop and ftso rewards for delegation account anymore.
-     * @dev Reverts if there is no delegation account
+     * @inheritdoc IClaimSetupManager
      */
     function disableDelegationAccount() external override {
         DelegationAccountData storage delegationAccountData = ownerToDelegationAccountData[msg.sender];
@@ -151,11 +157,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Allows executor to register and set initial fee value from current reward epoch on.
-     * If executor was already registered before (has fee set), only update fee value after `feeValueUpdateOffset`.
-     * @notice Executor must pay fee in order to register - `registerExecutorFeeValueWei`.
-     * @param _feeValue    number representing fee value - zero value is allowed
-     * @return Returns the reward epoch number when the setting becomes effective.
+     * @inheritdoc IClaimSetupManager
      */
     function registerExecutor(uint256 _feeValue) external payable override returns (uint256) {
         require(registeredExecutors.index[msg.sender] == 0, ERR_ALREADY_REGISTERED);
@@ -181,8 +183,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Allows executor to unregister.
-     * @return _validFromEpoch Returns the reward epoch number when the setting becomes effective.
+     * @inheritdoc IClaimSetupManager
      */
     function unregisterExecutor() external override returns (uint256 _validFromEpoch) {
         require(registeredExecutors.index[msg.sender] != 0, ERR_NOT_REGISTERED);
@@ -195,13 +196,11 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Allows registered executor to set (or update last scheduled) fee value.
-     * @param _feeValue     number representing fee value - zero value is allowed
-     * @return Returns the reward epoch number when the setting becomes effective.
+     * @inheritdoc IClaimSetupManager
      */
     function updateExecutorFeeValue(
         uint256 _feeValue
-    ) 
+    )
         external override
         returns (uint256)
     {
@@ -210,81 +209,63 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Delegate `_bips` of voting power to `_to` from msg.sender's delegation account
-     * @param _to The address of the recipient
-     * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Not cumulative - every call resets the delegation value (and value of 0 revokes delegation).
+     * @inheritdoc IClaimSetupManager
      */
     function delegate(address _to, uint256 _bips) external override {
         _getDelegationAccount(msg.sender).delegate(wNat, _to, _bips);
     }
 
     /**
-     * @notice Undelegate all percentage delegations from the msg.sender's delegation account and then delegate 
-     *   corresponding `_bips` percentage of voting power to each member of `_delegatees`.
-     * @param _delegatees The addresses of the new recipients.
-     * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Total of all `_bips` values must be at most 10000.
+     * @inheritdoc IClaimSetupManager
      */
     function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external override {
         _getDelegationAccount(msg.sender).batchDelegate(wNat, _delegatees, _bips);
     }
 
     /**
-     * @notice Undelegate all voting power for delegates of msg.sender's delegation account
+     * @inheritdoc IClaimSetupManager
      */
     function undelegateAll() external override {
         _getDelegationAccount(msg.sender).undelegateAll(wNat);
     }
 
     /**
-     * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
-     *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
-     *    Block `_blockNumber` must be in the past. 
-     *    This method should be used only to prevent rogue delegate voting in the current voting block.
-     *    To stop delegating use delegate with value of 0 or undelegateAll.
+     * @inheritdoc IClaimSetupManager
      */
     function revokeDelegationAt(address _who, uint256 _blockNumber) external override {
         _getDelegationAccount(msg.sender).revokeDelegationAt(wNat, _who, _blockNumber);
     }
 
     /**
-     * @notice Delegate all governance vote power of msg.sender's delegation account to `_to`.
-     * @param _to The address of the recipient
+     * @inheritdoc IClaimSetupManager
      */
     function delegateGovernance(address _to) external override {
         _getDelegationAccount(msg.sender).delegateGovernance(governanceVP, _to);
     }
 
     /**
-     * @notice Undelegate governance vote power for delegate of msg.sender's delegation account
+     * @inheritdoc IClaimSetupManager
      */
     function undelegateGovernance() external override {
         _getDelegationAccount(msg.sender).undelegateGovernance(governanceVP);
     }
 
     /**
-     * @notice Allows user to transfer WNat to owner's account.
-     * @param _amount           Amount of tokens to transfer
+     * @inheritdoc IClaimSetupManager
      */
     function withdraw(uint256 _amount) external override {
         _getDelegationAccount(msg.sender).withdraw(wNat, _amount);
     }
 
     /**
-     * @notice Allows user to transfer balance of ERC20 tokens owned by the personal delegation contract.
-     The main use case is to transfer tokens/NFTs that were received as part of an airdrop or register 
-     as participant in such airdrop.
-     * @param _token            Target token contract address
-     * @param _amount           Amount of tokens to transfer
-     * @dev Reverts if target token is WNat contract - use method `withdraw` for that
+     * @inheritdoc IClaimSetupManager
      */
     function transferExternalToken(IERC20 _token, uint256 _amount) external override nonReentrant {
         _getDelegationAccount(msg.sender).transferExternalToken(wNat, _token, _amount);
     }
-    
+
     /**
-     * @notice Sets new min fee value which must be higher than 0.
+     * @inheritdoc IIClaimSetupManager
      * @dev Only governance can call this.
      */
     function setMinFeeValueWei(uint256 _minFeeValueWei) external override onlyGovernance {
@@ -294,7 +275,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Sets new max fee value which must be higher than min fee value.
+     * @inheritdoc IIClaimSetupManager
      * @dev Only governance can call this.
      */
     function setMaxFeeValueWei(uint256 _maxFeeValueWei) external override onlyGovernance {
@@ -304,7 +285,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Sets new register executor fee value which must be higher than 0.
+     * @inheritdoc IIClaimSetupManager
      * @dev Only governance can call this.
      */
     function setRegisterExecutorFeeValueWei(uint256 _registerExecutorFeeValueWei) external override onlyGovernance {
@@ -314,17 +295,15 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * Set the addresses of allowed recipients.
-     * Apart from these, the owner is always an allowed recipient.
-     * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
-     */    
+     * @inheritdoc IClaimSetupManager
+     */
     function setAllowedClaimRecipients(address[] memory _recipients) external override {
         ownerAllowedClaimRecipientSet[msg.sender].replaceAll(_recipients);
         emit AllowedClaimRecipientsChanged(msg.sender, _recipients);
     }
 
     /**
-     * @notice Sets new library address.
+     * @inheritdoc IIClaimSetupManager
      * @dev Only governance can call this.
      */
     function setLibraryAddress(address _libraryAddress) external override onlyGovernance {
@@ -334,17 +313,14 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Gets the delegation account of the `_owner`. Returns address(0) if not created yet.
+     * @inheritdoc IClaimSetupManager
      */
     function accountToDelegationAccount(address _owner) external view override returns (address) {
         return address(_getDelegationAccount(_owner));
     }
 
     /**
-     * @notice Gets the delegation account data for the `_owner`. Returns address(0) if not created yet.
-     * @param _owner                        owner's address
-     * @return _delegationAccount           owner's delegation account address - could be address(0)
-     * @return _enabled                     indicates if delegation account is enabled
+     * @inheritdoc IClaimSetupManager
      */
     function getDelegationAccountData(
         address _owner
@@ -358,17 +334,13 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Gets the delegation accounts for the `_owners`. Returns owner address if not created yet or not enabled.
-     * @param _executor                     executor's address
-     * @param _owners                       owners' addresses
-     * @return _recipients              addresses for claiming (PDA or owner)
-     * @return _executorFeeValue            executor's fee value
+     * @inheritdoc IIClaimSetupManager
      */
     function getAutoClaimAddressesAndExecutorFee(
         address _executor,
         address[] calldata _owners
     )
-        external view override 
+        external view override
         onlyOwnerOrExecutor(_executor, _owners)
         returns (
             address[] memory _recipients,
@@ -392,9 +364,9 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Checks if executor can claim for given address and send funds to recipient address
+     * @inheritdoc IIClaimSetupManager
      */
-    function checkExecutorAndAllowedRecipient(address _executor, address _claimFor, address _recipient) 
+    function checkExecutorAndAllowedRecipient(address _executor, address _claimFor, address _recipient)
         external view override
     {
         // checks if _executor is claiming for his account or his PDA account - allow any _recipient
@@ -413,22 +385,22 @@ contract ClaimSetupManager is IIClaimSetupManager,
             ownerAllowedClaimRecipientSet[_claimFor].index[_recipient] != 0 ||
             _recipient == address(_getDelegationAccount(_claimFor)),
             ERR_RECIPIENT_NOT_ALLOWED);
-    }   
+    }
 
     /**
-     * @notice Returns info if `_executor` is allowed to execute calls for `_owner`
+     * @inheritdoc IClaimSetupManager
      */
     function isClaimExecutor(address _owner, address _executor) external view override returns(bool) {
         return ownerClaimExecutorSet[_owner].index[_executor] != 0;
     }
 
     /**
-     * @notice Get registered executors
+     * @inheritdoc IClaimSetupManager
      */
     function getRegisteredExecutors(
-        uint256 _start, 
+        uint256 _start,
         uint256 _end
-    ) 
+    )
         external view override
         returns (address[] memory _registeredExecutors, uint256 _totalLength)
     {
@@ -443,24 +415,21 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Get the addresses of executors.
-     */    
+     * @inheritdoc IClaimSetupManager
+     */
     function claimExecutors(address _owner) external view override returns (address[] memory) {
         return ownerClaimExecutorSet[_owner].list;
     }
 
     /**
-     * Get the addresses of allowed recipients.
-     * Apart from these, the owner is always an allowed recipient.
-     */    
+     * @inheritdoc IClaimSetupManager
+     */
     function allowedClaimRecipients(address _owner) external view override returns (address[] memory) {
         return ownerAllowedClaimRecipientSet[_owner].list;
     }
 
     /**
-     * @notice Returns the fee value of `_executor` at `_rewardEpoch`
-     * @param _executor             address representing executor
-     * @param _rewardEpoch          reward epoch number
+     * @inheritdoc IClaimSetupManager
      */
     function getExecutorFeeValue(address _executor, uint256 _rewardEpoch) external view override returns (uint256) {
         require(_rewardEpoch <= ftsoManager.getCurrentRewardEpoch() + feeValueUpdateOffset, ERR_REWARD_EPOCH_INVALID);
@@ -468,11 +437,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Returns the scheduled fee value changes of `_executor`
-     * @param _executor             address representing executor
-     * @return _feeValue            positional array of fee values
-     * @return _validFromEpoch      positional array of reward epochs the fee settings are effective from
-     * @return _fixed               positional array of boolean values indicating if settings are subjected to change
+     * @inheritdoc IClaimSetupManager
      */
     function getExecutorScheduledFeeValueChanges(address _executor)
         external view override
@@ -480,7 +445,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
             uint256[] memory _feeValue,
             uint256[] memory _validFromEpoch,
             bool[] memory _fixed
-        ) 
+        )
     {
         ExecutorFee[] storage efs = claimExecutorFees[_executor];
         if (efs.length > 0) {
@@ -500,14 +465,11 @@ contract ClaimSetupManager is IIClaimSetupManager,
                     _fixed[i] = (_validFromEpoch[i] - currentEpoch) != feeValueUpdateOffset;
                 }
             }
-        }        
+        }
     }
 
     /**
-     * @notice Returns some info about the `_executor`
-     * @param _executor             address representing executor
-     * @return _registered          information if executor is registered
-     * @return _currentFeeValue     executor's current fee value
+     * @inheritdoc IClaimSetupManager
      */
     function getExecutorInfo(address _executor)
         external view override
@@ -521,8 +483,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Returns the current fee value of `_executor`
-     * @param _executor             address representing executor
+     * @inheritdoc IClaimSetupManager
      */
     function getExecutorCurrentFeeValue(address _executor) public view override returns (uint256) {
         return _getExecutorFeeValue(_executor, ftsoManager.getCurrentRewardEpoch());
@@ -580,7 +541,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     }
 
     /**
-     * @notice Returns the delegation account data. If there is none it creates a new one. 
+     * @notice Returns the delegation account data. If there is none it creates a new one.
      */
     function _getOrCreateDelegationAccountData() internal returns (DelegationAccountData storage) {
         DelegationAccountData storage delegationAccountData = ownerToDelegationAccountData[msg.sender];
@@ -628,7 +589,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
     function _updateExecutorFeeValue(
         uint256 _currentRewardEpoch,
         uint256 _feeValue
-    ) 
+    )
         internal
         returns (uint256 _validFromEpoch)
     {
@@ -645,7 +606,7 @@ contract ClaimSetupManager is IIClaimSetupManager,
         // do not allow updating the settings in the past - should never happen
         // (this can only happen if the current reward epoch is smaller than some previous one)
         require(_validFromEpoch >= lastValidFromEpoch, ERR_FEE_UPDATE_FAILED);
-        
+
         if (_validFromEpoch == lastValidFromEpoch) { // update
             efs[position - 1].value = _feeValue;
         } else { // add
@@ -691,17 +652,17 @@ contract ClaimSetupManager is IIClaimSetupManager,
      */
     function _checkOnlyOwnerOrExecutor(address _executor, address[] memory _owners) internal view {
         for (uint256 i = 0; i < _owners.length; i++) {
-            require(_executor == _owners[i] || ownerClaimExecutorSet[_owners[i]].index[_executor] != 0, 
+            require(_executor == _owners[i] || ownerClaimExecutorSet[_owners[i]].index[_executor] != 0,
                 ERR_ONLY_OWNER_OR_EXECUTOR);
         }
     }
 
     function _isContract(address _addr) private view returns (bool){
         uint32 size;
-        // solhint-disable-next-line no-inline-assembly  
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             size := extcodesize(_addr)
         }
         return (size > 0);
-    }       
+    }
 }

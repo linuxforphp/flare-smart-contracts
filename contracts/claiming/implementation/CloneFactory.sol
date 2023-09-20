@@ -28,6 +28,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //solhint-disable max-line-length
 //solhint-disable no-inline-assembly
 
+/**
+ * Simple clone contract factory.
+ *
+ * This code (intended to be called from an implementor factory contract) will allow you to install a master copy of a
+ * contract, then easily (cheaply) create clones with separate state.
+ * The deployed bytecode just delegates all calls to the master contract address.
+ *
+ * [Source attribution](https://github.com/optionality/clone-factory).
+ */
 contract CloneFactory {
 
   function createClone(address target) internal returns (address result) {

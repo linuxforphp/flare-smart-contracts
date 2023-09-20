@@ -82,7 +82,7 @@ interface IVPToken is IERC20 {
      * be displayed to a user as 5.05 (505 / 10<sup>2</sup>).
      *
      * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the default value returned by this function, unless
+     * Ether and wei. This is the default value returned by this function, unless
      * it's overridden.
      *
      * NOTE: This information is only used for _display_ purposes: it in

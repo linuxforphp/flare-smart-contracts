@@ -4,6 +4,9 @@ pragma solidity >=0.7.6 <0.9;
 import "./IDelegationAccount.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/**
+ * Public interface for the `ClaimSetupManager contract.
+ */
 interface IClaimSetupManager {
 
     event DelegationAccountCreated(address owner, IDelegationAccount delegationAccount);
@@ -19,131 +22,162 @@ interface IClaimSetupManager {
     event SetExecutorsExcessAmountRefunded(address owner, uint256 excessAmount);
 
     /**
-     * @notice Sets the addresses of executors and optionally enables (creates) delegation account.
-     * @notice If setting registered executors some fee must be paid to them.
-     * @param _executors        The new executors. All old executors will be deleted and replaced by these.
+     * Sets the addresses of executors and optionally enables (creates) a
+     * [Personal Delegation Account](https://docs.flare.network/tech/personal-delegation-account) (PDA).
+     *
+     * If any of the executors is a registered executor, some fee needs to be paid.
+     * @param _executors The new executors. All old executors will be deleted and replaced by these.
+     * @param _enableDelegationAccount Whether the PDA should be enabled.
      */
     function setAutoClaiming(address[] memory _executors, bool _enableDelegationAccount) external payable;
 
     /**
-     * @notice Sets the addresses of executors.
-     * @notice If setting registered executors some fee must be paid to them.
-     * @param _executors        The new executors. All old executors will be deleted and replaced by these.
-     */ 
+     * Sets the addresses of executors.
+     *
+     * If any of the executors is a registered executor, some fee needs to be paid.
+     * @param _executors The new executors. All old executors will be deleted and replaced by these.
+     */
     function setClaimExecutors(address[] memory _executors) external payable;
 
     /**
      * Set the addresses of allowed recipients.
-     * Apart from these, the owner is always an allowed recipient.
+     * The reward owner is always an allowed recipient.
      * @param _recipients The new allowed recipients. All old recipients will be deleted and replaced by these.
-     */    
+     */
     function setAllowedClaimRecipients(address[] memory _recipients) external;
 
     /**
-     * @notice Enables (creates) delegation account contract,
-     * i.e. all airdrop and ftso rewards will be send to delegation account when using automatic claiming.
-     * @return Address of delegation account contract.
+     * Enables (or creates) a
+     * [Personal Delegation Account](https://docs.flare.network/tech/personal-delegation-account) (PDA).
+     *
+     * When using automatic claiming, all airdrops and FTSO rewards will be sent to the PDA, and any rewards
+     * accrued by the PDA will be claimed too.
+     * @return Address of the delegation account contract.
      */
     function enableDelegationAccount() external returns (IDelegationAccount);
 
     /**
-     * @notice Disables delegation account contract,
-     * i.e. all airdrop and ftso rewards will be send to owner's account when using automatic claiming.
-     * @notice Automatic claiming will not claim airdrop and ftso rewards for delegation account anymore.
-     * @dev Reverts if there is no delegation account
+     * Disables the
+     * [Personal Delegation Account](https://docs.flare.network/tech/personal-delegation-account) (PDA).
+     *
+     * When using automatic claiming, all airdrops and FTSO rewards will be sent to the owner's account.
+     * Rewards accrued by the PDA will no longer be automatically claimed.
+     *
+     * Reverts if there is no PDA.
      */
     function disableDelegationAccount() external;
 
     /**
-     * @notice Allows executor to register and set initial fee value.
-     * If executor was already registered before (has fee set), only update fee after `feeValueUpdateOffset`.
-     * @notice Executor must pay fee in order to register - `registerExecutorFeeValueWei`.
-     * @param _feeValue    number representing fee value
-     * @return Returns the reward epoch number when the setting becomes effective.
+     * Registers the caller as an executor and sets its initial fee value.
+     *
+     * If the executor was already registered, this method only updates the fee, which will take effect after
+     * `feeValueUpdateOffset` reward epochs have elapsed.
+     *
+     * Executor must pay a fee in order to register. See `registerExecutorFeeValueWei`.
+     * @param _feeValue Desired fee, in wei. Must be between `minFeeValueWei` and `maxFeeValueWei`. 0 means no fee.
+     * @return Reward epoch ID when the changes become effective.
      */
     function registerExecutor(uint256 _feeValue) external payable returns (uint256);
 
     /**
-     * @notice Allows executor to unregister.
-     * @return Returns the reward epoch number when the setting becomes effective.
+     * Unregisters the caller as an executor.
+     * @return Reward epoch ID when the change becomes effective.
      */
     function unregisterExecutor() external returns (uint256);
 
     /**
-     * @notice Allows registered executor to set (or update last scheduled) fee value.
-     * @param _feeValue    number representing fee value
-     * @return Returns the reward epoch number when the setting becomes effective.
+     * Sets the caller's executor fee. The caller must be an executor registered through `registerExecutor`.
+     *
+     * When called multiple times inside the same reward epoch, only the last value remains.
+     * @param _feeValue Desired fee, in wei. Must be between `minFeeValueWei` and `maxFeeValueWei`. 0 means no fee.
+     * @return Reward epoch ID when the changes become effective.
      */
     function updateExecutorFeeValue(uint256 _feeValue) external returns(uint256);
 
     /**
-     * @notice Delegate `_bips` of voting power to `_to` from msg.sender's delegation account
-     * @param _to The address of the recipient
+     * Delegates a percentage of the caller's
+     * [PDA](https://docs.flare.network/tech/personal-delegation-account)'s voting power to another address.
+     * @param _to The address of the recipient.
      * @param _bips The percentage of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Not cumulative - every call resets the delegation value (and value of 0 revokes delegation).
+     * Not cumulative: Every call resets the delegation value. A value of 0 revokes delegation.
      */
     function delegate(address _to, uint256 _bips) external;
 
     /**
-     * @notice Undelegate all percentage delegations from the msg.sender's delegation account and then delegate 
-     *   corresponding `_bips` percentage of voting power to each member of `_delegatees`.
+     * Undelegates all percentage delegations from the caller's
+     * [PDA](https://docs.flare.network/tech/personal-delegation-account) and then delegate to a list of accounts.
+     *
+     * See `delegate`.
      * @param _delegatees The addresses of the new recipients.
-     * @param _bips The percentages of voting power to be delegated expressed in basis points (1/100 of one percent).
-     *   Total of all `_bips` values must be at most 10000.
+     * @param _bips The percentage of voting power to be delegated to each delegatee, expressed in basis points
+     * (1/100 of one percent).
+     * Total of all `_bips` values must be lower than 10000.
      */
     function batchDelegate(address[] memory _delegatees, uint256[] memory _bips) external;
 
     /**
-     * @notice Undelegate all voting power for delegates of msg.sender's delegation account
+     * Removes all delegations from the caller's [PDA](https://docs.flare.network/tech/personal-delegation-account).
      */
     function undelegateAll() external;
 
     /**
-     * @notice Revoke all delegation from msg.sender's delegation account to `_who` at given block. 
-     *    Only affects the reads via `votePowerOfAtCached()` in the block `_blockNumber`.
-     *    Block `_blockNumber` must be in the past. 
-     *    This method should be used only to prevent rogue delegate voting in the current voting block.
-     *    To stop delegating use delegate with value of 0 or undelegateAll.
+     * Revokes all delegation from the caller's [PDA](https://docs.flare.network/tech/personal-delegation-account)
+     * to a given account at a given block.
+     *
+     * Only affects the reads via `votePowerOfAtCached()` in the specified block.
+     *
+     * This method should be used only to prevent rogue delegate voting in the current voting block.
+     * To stop delegating use `delegate` with percentage of 0 or `undelegateAll`.
+     * @param _who The account to revoke.
+     * @param _blockNumber Block number where the revoking will take place. Must be in the past.
      */
     function revokeDelegationAt(address _who, uint256 _blockNumber) external;
 
     /**
-     * @notice Delegate all governance vote power of msg.sender's delegation account to `_to`.
-     * @param _to The address of the recipient
+     * Delegates all the [governance](https://docs.flare.network/tech/governance/) vote power of the caller's
+     * [PDA](https://docs.flare.network/tech/personal-delegation-account) to another account.
+     * @param _to Address of the recipient of the delegation.
      */
     function delegateGovernance(address _to) external;
 
     /**
-     * @notice Undelegate governance vote power for delegate of msg.sender's delegation account
+     * Undelegates all [governance](https://docs.flare.network/tech/governance/) vote power currently delegated by
+     * the caller's [PDA](https://docs.flare.network/tech/personal-delegation-account).
      */
     function undelegateGovernance() external;
 
     /**
-     * @notice Allows user to transfer WNat to owner's account.
-     * @param _amount           Amount of tokens to transfer
+     * Allows the caller to transfer `WNat` wrapped tokens from their
+     * [PDA](https://docs.flare.network/tech/personal-delegation-account) to the owner account.
+     * @param _amount Amount of tokens to transfer, in wei.
      */
     function withdraw(uint256 _amount) external;
 
     /**
-     * @notice Allows user to transfer balance of ERC20 tokens owned by the personal delegation contract.
-     The main use case is to transfer tokens/NFTs that were received as part of an airdrop or register 
-     as participant in such airdrop.
-     * @param _token            Target token contract address
-     * @param _amount           Amount of tokens to transfer
-     * @dev Reverts if target token is WNat contract - use method `withdraw` for that
+     * Allows the caller to transfer ERC-20 tokens from their
+     * [PDA](https://docs.flare.network/tech/personal-delegation-account) to the owner account.
+     *
+     * The main use case is to move ERC-20 tokes received by mistake (by an airdrop, for example) out of the PDA
+     * and into the main account, where they can be more easily managed.
+     *
+     * Reverts if the target token is the `WNat` contract: use method `withdraw` for that.
+     * @param _token Target token contract address.
+     * @param _amount Amount of tokens to transfer.
      */
     function transferExternalToken(IERC20 _token, uint256 _amount) external;
 
     /**
-     * @notice Gets the delegation account of the `_owner`. Returns address(0) if not created yet.
+     * Gets the [PDA](https://docs.flare.network/tech/personal-delegation-account) of an account.
+     * @param _owner Account to query.
+     * @return Address of its PDA or `address(0)` if it has not been created yet.
      */
     function accountToDelegationAccount(address _owner) external view returns (address);
 
     /**
-     * @notice Gets the delegation account data for the `_owner`. Returns address(0) if not created yet.
-     * @param _owner                        owner's address
-     * @return _delegationAccount           owner's delegation account address - could be address(0)
-     * @return _enabled                     indicates if delegation account is enabled
+     * Gets [PDA](https://docs.flare.network/tech/personal-delegation-account) data for an account.
+     * @param _owner Account to query.
+     * @return _delegationAccount Account's PDA address or `address(0)` if it has not been created yet.
+     * @return _enabled Whether the PDA is enabled.
      */
     function getDelegationAccountData(
         address _owner
@@ -152,58 +186,75 @@ interface IClaimSetupManager {
         returns (IDelegationAccount _delegationAccount, bool _enabled);
 
     /**
-     * @notice Get the addresses of executors.
-     */    
+     * Gets the addresses of executors authorized to claim for an account.
+     * See `setClaimExecutors`.
+     * @param _owner The account to query.
+     * @return Addresses of all set executors.
+     */
     function claimExecutors(address _owner) external view returns (address[] memory);
 
     /**
-     * Get the addresses of allowed recipients.
-     * Apart from these, the owner is always an allowed recipient.
-     */    
+     * Gets the addresses of recipients allowed to receive rewards on behalf of an account.
+     * Beside these, the owner of the rewards is always authorized.
+     * See `setAllowedClaimRecipients`.
+     * @param _rewardOwner The account to query.
+     * @return Addresses of all set authorized recipients.
+     */
     function allowedClaimRecipients(address _rewardOwner) external view returns (address[] memory);
 
     /**
-     * @notice Returns info if `_executor` is allowed to execute calls for `_owner`
+     * Returns whether an executor is authorized to claim on behalf of a reward owner.
+     * See `setClaimExecutors`.
+     * @param _owner The reward owner to query.
+     * @param _executor The executor to query.
      */
     function isClaimExecutor(address _owner, address _executor) external view returns(bool);
 
     /**
-     * @notice Get registered executors
+     * Returns the list of executors registered through `registerExecutor`.
+     * Supports paging.
+     * @param _start First executor to return.
+     * @param _end Last executor to return.
+     * @return _registeredExecutors Addresses of the registered executors.
+     * @return _totalLength Total amount of executors.
      */
     function getRegisteredExecutors(
-        uint256 _start, 
+        uint256 _start,
         uint256 _end
-    ) 
+    )
         external view
         returns (address[] memory _registeredExecutors, uint256 _totalLength);
 
     /**
-     * @notice Returns some info about the `_executor`
-     * @param _executor             address representing executor
-     * @return _registered          information if executor is registered
-     * @return _currentFeeValue     executor's current fee value
+     * Returns information about an executor.
+     * @param _executor The executor to query.
+     * @return _registered Whether the executor is registered.
+     * @return _currentFeeValue Executor's current fee value, if registered.
      */
     function getExecutorInfo(address _executor) external view returns (bool _registered, uint256 _currentFeeValue);
 
     /**
-     * @notice Returns the current fee value of `_executor`
-     * @param _executor             address representing executor
+     * Returns the current fee of a registered executor.
+     * Reverts if the executor is not registered.
+     * @param _executor The executor to query.
+     * @return Fee in wei.
      */
     function getExecutorCurrentFeeValue(address _executor) external view  returns (uint256);
 
     /**
-     * @notice Returns the fee value of `_executor` at `_rewardEpoch`
-     * @param _executor             address representing executor
-     * @param _rewardEpoch          reward epoch number
+     * Returns the fee of an executor at a given reward epoch.
+     * @param _executor The executor to query.
+     * @param _rewardEpoch Reward Epoch ID to query.
+     * @return Fee in wei at that reward epoch.
      */
     function getExecutorFeeValue(address _executor, uint256 _rewardEpoch) external view returns (uint256);
 
     /**
-     * @notice Returns the scheduled fee value changes of `_executor`
-     * @param _executor             address representing executor
-     * @return _feeValue            positional array of fee values
-     * @return _validFromEpoch      positional array of reward epochs the fee settings are effective from
-     * @return _fixed               positional array of boolean values indicating if settings are subjected to change
+     * Returns the currently scheduled fee changes of an executor.
+     * @param _executor Executor to query.
+     * @return _feeValue Array of scheduled fees.
+     * @return _validFromEpoch Array of reward epochs ID where the scheduled fees will become effective.
+     * @return _fixed Array of booleans indicating if an scheduled fee change is fixed or it might still be changed.
      */
     function getExecutorScheduledFeeValueChanges(address _executor)
         external view
