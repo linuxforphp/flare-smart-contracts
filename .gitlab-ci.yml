@@ -132,6 +132,10 @@ build-smart-contracts:
 test-scdev-daemon:
   extends: .test-node-sc
   image: timivesel/flare-scdev:1.3
+  before_script:
+    - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+    - apt-get update
+    - apt-get install -y git
   script:
     - yarn hardhat test --network scdev test/scdev/system/FlareDaemon.ts
 

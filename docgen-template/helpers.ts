@@ -156,12 +156,13 @@ export function pretty_signature(this: DocItemWithContext): string | undefined {
   }
 }
 
-function anchorName(type: string, name: string): string {
-  return anchorPrefixes.get(type) + name.toLowerCase();
+function anchorName(type: string, name: string, suffix: string): string {
+  return anchorPrefixes.get(type) + name.toLowerCase() + suffix;
 }
 
 export function anchor(this: DocItemWithContext) {
-  return anchorName(this.nodeType, this.name);
+  const suffix = this.nodeType == 'FunctionDefinition' ? "_" + this.functionSelector : "";
+  return anchorName(this.nodeType, this.name, suffix);
 }
 
 function createGlobalSymbolTables(ctx: DocItemWithContext) {
@@ -207,8 +208,9 @@ export function linkify(this: DocItemWithContext, text?: string, joinLines?: boo
         // as it's not part of a markdown link already (enclosed in square brackets or in parenthesis after square
         // brackets).
         // It's not foolproof, results still need to be reviewed.
+        const suffix = node.nodeType == 'FunctionDefinition' ? "_" + node.functionSelector : "";
         ret = ret.replace(new RegExp(`\`?\\b${node.name}\\b(\\(\\))*\`?(?![^\\[]*])(?<!]\\([^)]*)`, 'g'),
-          `[\`${node.name}\`](#${anchorName(node.nodeType, node.name)})`);
+          `[\`${node.name}\`](#${anchorName(node.nodeType, node.name, suffix)})`);
       });
     });
   }
@@ -242,7 +244,14 @@ export function allItems(this: DocItemWithContext, nodeTypeName: string) {
         // If this item already exists do not add it again.
         // linearizedBaseContracts returned the children first and then the parents, so if the item
         // already exists it means that it is an override, and we want to keep those (if they had any docs).
-        const prev = items.find(i => i.name == n.name);
+        const prev = items.find(i => {
+          if (i.nodeType != 'FunctionDefinition' || n.nodeType != 'FunctionDefinition')
+            return i.name == n.name;
+          // For functions, compare their selectors (if any), as we want to keep all overloads.
+          if (i.functionSelector == undefined && n.functionSelector == undefined)
+            return i.name == n.name;
+          return i.functionSelector == n.functionSelector;
+        });
         const prevDocs = prev && (
           prev.nodeType == 'ErrorDefinition' ||
           prev.nodeType == 'EventDefinition' ||
