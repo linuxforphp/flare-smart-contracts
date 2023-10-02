@@ -155,6 +155,7 @@ test-unit:
       - ./test/unit/inflation
       - ./test/unit/token
       - ./test/unit/utils
+      - ./test/unit/staking
     - TEST_ARG:
       - test/unit/gasReport/GasReport.ts
   script:

@@ -183,6 +183,11 @@ export interface ChainParameters {
     ftsoManagerGasLimit: integer;
 
     /**
+     * Gas limit for daemonize calls of on PChainStakeMirror contract.
+     */
+    pChainStakeMirrorGasLimit: integer;
+
+    /**
      * Gas limit for daemonize calls of on IncentivePool contract.
      */
     incentivePoolGasLimit: integer;
@@ -492,6 +497,44 @@ export interface ChainParameters {
      * Number of days for which member is removed from the management group.
      */
     removeForDays: integer;
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // P-chain stake mirror
+
+    /**
+     * Max number of stake ends that Flare daemon will process per block
+     */
+    maxStakeEndsPerBlock: integer;
+
+    /**
+     * Array of voters that can vote for P-chain stake Merkle proofs
+     */
+    pChainStakeMirrorVoters: string[];
+
+    /**
+     * Number of voters that have to agree in order to finalize P-chain stake Merkle proof
+     */
+    pChainStakeMirrorVotingThreshold: integer;
+
+    /**
+     * Min duration of P-chain stake in days, recommended value 14 days
+     */
+    pChainStakeMirrorMinDurationDays: integer;
+
+    /**
+     * Max duration of P-chain stake in days, recommended value 365 days
+     */
+    pChainStakeMirrorMaxDurationDays: integer;
+
+    /**
+     * Min amount of P-chain stake. In whole native units, not Wei. Recommended value 50.000.
+     */
+    pChainStakeMirrorMinAmountNAT: integer;
+
+    /**
+     * Max amount of P-chain stake. In whole native units, not Wei. Recommended value 200.000.000.
+     */
+    pChainStakeMirrorMaxAmountNAT: integer;
 }
 
 export interface AssetParameters {

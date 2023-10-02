@@ -595,6 +595,13 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
       // Assert
       assert.equal(address, contracts.getContractAddress(Contracts.WNAT));
     });
+    it("Should know about PChainStakeMirror", async () => {
+      // Assemble
+      // Act
+      const address = await governanceVotePower.pChainStakeMirror();
+      // Assert
+      assert.equal(address, contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR));
+    });
   });
 
   describe(Contracts.WNAT, async () => {
@@ -815,7 +822,7 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         assert(found);
       });
 
-      it("Should have correct elastic band width set fro WNAT FTSO", async () => {
+      it("Should have correct elastic band width set for WNAT FTSO", async () => {
         // Assemble
         // Act
         const elasticBandWidthPPM = await ftsoManager.getElasticBandWidthPPMFtso(contracts.getContractAddress(Contracts.FTSO_WNAT));
@@ -862,7 +869,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
         Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.ESCROW, Contracts.CLAIM_SETUP_MANAGER,
         Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.ADDRESS_UPDATER, Contracts.FTSO_MANAGER, Contracts.GOVERNANCE_VOTE_POWER, Contracts.FLARE_CONTRACT_REGISTRY,
         Contracts.INCENTIVE_POOL_TREASURY, Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.INITIAL_AIRDROP, Contracts.GOVERNANCE_SETTINGS,
-        Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.COMBINED_NAT, Contracts.FLARE_ASSET_REGISTRY, Contracts.VALIDATOR_REWARD_MANAGER, Contracts.POLLING_FTSO];
+        Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.COMBINED_NAT, Contracts.FLARE_ASSET_REGISTRY, Contracts.VALIDATOR_REWARD_MANAGER, Contracts.POLLING_FTSO,
+        Contracts.ADDRESS_BINDER, Contracts.P_CHAIN_STAKE_MIRROR, Contracts.P_CHAIN_STAKE_MIRROR_MULTI_SIG_VOTING, Contracts.P_CHAIN_STAKE_MIRROR_VERIFIER];
 
       for (let name of contractNames) {
         // Act
@@ -875,7 +883,8 @@ contract(`deploy-contracts.ts system tests`, async accounts => {
     it("Address updatable contracts should know about address updater", async () => {
       let contractNames = [Contracts.FLARE_DAEMON, Contracts.PRICE_SUBMITTER,Contracts.FTSO_REWARD_MANAGER, Contracts.CLEANUP_BLOCK_NUMBER_MANAGER, Contracts.CLAIM_SETUP_MANAGER, Contracts.FLARE_CONTRACT_REGISTRY,
         Contracts.FTSO_REGISTRY, Contracts.VOTER_WHITELISTER, Contracts.SUPPLY, Contracts.INFLATION_ALLOCATION, Contracts.INFLATION, Contracts.FTSO_MANAGER, Contracts.DISTRIBUTION_TO_DELEGATORS,
-        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW, Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.VALIDATOR_REWARD_MANAGER,  Contracts.POLLING_FTSO];
+        Contracts.INCENTIVE_POOL, Contracts.INCENTIVE_POOL_ALLOCATION, Contracts.ESCROW, Contracts.VALIDATOR_REGISTRY, Contracts.POLLING_FOUNDATION, Contracts.VALIDATOR_REWARD_MANAGER,
+        Contracts.POLLING_FTSO, Contracts.P_CHAIN_STAKE_MIRROR];
 
       for (let name of contractNames) {
         // Act

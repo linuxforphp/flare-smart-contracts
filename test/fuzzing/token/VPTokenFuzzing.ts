@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { GovernanceVotePowerInstance, WNatInstance } from "../../../typechain-truffle";
+import { GovernanceVotePowerInstance, MockContractInstance, WNatInstance } from "../../../typechain-truffle";
 import { getTestFile } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { coinFlip, linearFallingRandom, loadJson, MAX_BIPS, Nullable, randomChoice, randomInt, randomIntDist, saveJson, weightedRandomChoice } from "../../utils/fuzzing-utils";
@@ -10,21 +10,23 @@ const fs = require("fs");
 
 const VPToken = artifacts.require("WNat");
 const GovernanceVP = artifacts.require("GovernanceVotePower");
+const MockContract = artifacts.require("MockContract");
 
 contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availableAccounts => {
     let vpToken: WNatInstance;
     let history: VPTokenHistory;
     let simulator: VPTokenSimulator;
     let governanceVP: GovernanceVotePowerInstance;
-    
+    let pChainStakeMirrorMock: MockContractInstance;
+
     let env = process.env;
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // PARAMETERS
-    
+
     // when set and true (ok, not 'false') replays the previous test run (saved in `cache/history.json`)
     let REPLAY = env.REPLAY ? env.REPLAY !== 'false' : false;
-    
+
     // the length of the run (i.e. the number of actions executed)
     let LENGTH = env.LENGTH ? Number(env.LENGTH) : 3000;
 
@@ -37,10 +39,10 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
 
     // the number of accounts participating in tests (actually, there are 2 more - governance and a user)
     let N_ACCOUNTS = env.N_ACCOUNTS ? Number(env.N_ACCOUNTS) : 50;
-    
+
     // the number of accounts that will always delgate by percent
     let N_PERC_DLG = env.N_PERC_DLG ? Number(env.N_PERC_DLG) : 20;
-    
+
     // the number of accounts that will always delgate explicitly
     let N_AMOUNT_DLG = env.N_AMOUNT_DLG ? Number(env.N_AMOUNT_DLG) : 10;
 
@@ -49,13 +51,13 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
 
     // the block number to replace write vpcontract
     let REPLACE_VPCONTRACT_AT = env.REPLACE_VPCONTRACT_AT ? Number(env.REPLACE_VPCONTRACT_AT) : null;
-    
+
     // the number of blocks to work with differrent read and write vpcontracts
     let SPLIT_VPCONTRACTS_BLOCKS = env.SPLIT_VPCONTRACTS_BLOCKS ? Number(env.SPLIT_VPCONTRACTS_BLOCKS) : 0;
-    
+
     // index of the checkpoint where cleanup block number will be set (previous checkpoints will be discarded)
     let CLEANUP_BLOCK = env.CLEANUP_BLOCK ? Number(env.CLEANUP_BLOCK) : null;
-    
+
     // the block at which cleanup block number will be set
     let SET_CLEANUP_BLOCK_AT = env.SET_CLEANUP_BLOCK_AT ? Number(env.SET_CLEANUP_BLOCK_AT) : CLEANUP_BLOCK;
 
@@ -74,7 +76,8 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
     before(async () => {
         vpToken = await VPToken.new(governance, "Test token", "TTOK");
         await setDefaultVPContract(vpToken, governance);
-        governanceVP = await GovernanceVP.new(vpToken.address);
+        pChainStakeMirrorMock = await MockContract.new();
+        governanceVP = await GovernanceVP.new(vpToken.address, pChainStakeMirrorMock.address);
         await vpToken.setGovernanceVotePower(governanceVP.address);
         await vpToken.setCleanupBlockNumberManager(governance, { from: governance });
         history = new VPTokenHistory(vpToken, governanceVP);
@@ -94,12 +97,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         if (process.env.BADGE_URL) {
           BadgeStorageURL = process.env.BADGE_URL
         }
-      
+
         let fromMaster = false
         if (process.env.FROM_MASTER) {
             fromMaster = process.env.FROM_MASTER === 'true'
         }
-        
+
         let badge_data;
         if(!is_passing){
             badge_data = {
@@ -140,12 +143,12 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
             if (!REPLAY) {
                 saveHistory();
             }
-            
+
             history.state.save('cache/state.json', 4);
             for (const cp of history.checkpoints.values()) {
                 cp.state.save(`cache/state-${cp.id}.json`, 4);
             }
-            
+
             console.log("Error counts:");
             for (const [key, count] of history.errorCounts.entries()) {
                 console.log(`   ${key}  -  ${count}`);
@@ -188,13 +191,13 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
         console.log("Running actions...");
         for (let i = 1; i <= LENGTH; i++) {
             if (i % 100 === 0) console.log("   ", i);
-            
+
             const actions = history.checkpoints.size === 0 ? presentActions : allActions;
             const action = weightedRandomChoice(actions);
             simulator.context = i;
-            
+
             await action();
-            
+
             if (REPLACE_VPCONTRACT_AT != null) {
                 if (i === REPLACE_VPCONTRACT_AT) {
                     await replaceWriteVpContract();
@@ -203,7 +206,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
                     await replaceReadVpContract();
                 }
             }
-            
+
             const isCheckpoint = CHECKPOINT_LIST != null ? CHECKPOINT_LIST.includes(i) : (i < LENGTH && i % CHECKPOINT_EVERY === 0);
             if (isCheckpoint) {
                 await history.createCheckpoint('CP' + i);
@@ -217,7 +220,7 @@ contract(`VPToken.sol; ${getTestFile(__filename)}; Token fuzzing tests`, availab
             }
         }
     }
-    
+
     async function replaceWriteVpContract() {
         await simulator.replaceWriteVpContract(governance);
     }

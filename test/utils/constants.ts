@@ -13,6 +13,7 @@ export const FLARE_DAEMON_ADDRESS = "0x1000000000000000000000000000000000000002"
 export const PRICE_SUBMITTER_ADDRESS = "0x1000000000000000000000000000000000000003";
 
 export const MIN_RANDOM = web3.utils.toBN(2).pow(web3.utils.toBN(128));
+export const GWEI = web3.utils.toBN(10).pow(web3.utils.toBN(9));
 
 export const defaultPriceEpochCyclicBufferSize = 39;
 export const ftsoRandomTestRuns = undefined;

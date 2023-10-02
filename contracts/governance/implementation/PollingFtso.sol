@@ -36,7 +36,7 @@ contract PollingFtso is IPollingFtso, AddressUpdatable, Governed {
     // id of the last created proposal at the moment member was added to the management group
     mapping (address => uint256) public memberAddedAtProposal;
     // epoch in which member was added
-    mapping (address => uint256) public  memberAddedAtRewardEpoch;
+    mapping (address => uint256) public memberAddedAtRewardEpoch;
 
     // providers eligible to participate (create proposals and vote)
     AddressSet.State private managementGroupMembers;

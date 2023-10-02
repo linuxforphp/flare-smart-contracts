@@ -275,6 +275,10 @@
             "description": "Majority condition (in BIPS) for proposal to be accepted. If less than majorityConditionBIPS votes in favor, proposal can't be accepted.",
             "type": "integer"
         },
+        "maxStakeEndsPerBlock": {
+            "description": "Max number of stake ends that Flare daemon will process per block",
+            "type": "integer"
+        },
         "maxVotePowerAssetThresholdFraction": {
             "description": "Defines high threshold for asset vote power when revealing a price vote. \nThe actual max threshold is calculated as `total_NAT_vote_power / maxVotePowerNatThresholdFraction`.\nAny provider's asset vote power is capped to this max threshold when revealing a price vote.",
             "type": "integer"
@@ -294,6 +298,37 @@
         "nativeSymbol": {
             "description": "The symbol of the native currency (used as symbol for FTSO).",
             "type": "string"
+        },
+        "pChainStakeMirrorGasLimit": {
+            "description": "Gas limit for daemonize calls of on PChainStakeMirror contract.",
+            "type": "integer"
+        },
+        "pChainStakeMirrorMaxAmountNAT": {
+            "description": "Max amount of P-chain stake. In whole native units, not Wei. Recommended value 200.000.000.",
+            "type": "integer"
+        },
+        "pChainStakeMirrorMaxDurationDays": {
+            "description": "Max duration of P-chain stake in days, recommended value 365 days",
+            "type": "integer"
+        },
+        "pChainStakeMirrorMinAmountNAT": {
+            "description": "Min amount of P-chain stake. In whole native units, not Wei. Recommended value 50.000.",
+            "type": "integer"
+        },
+        "pChainStakeMirrorMinDurationDays": {
+            "description": "Min duration of P-chain stake in days, recommended value 14 days",
+            "type": "integer"
+        },
+        "pChainStakeMirrorVoters": {
+            "description": "Array of voters that can vote for P-chain stake Merkle proofs",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "pChainStakeMirrorVotingThreshold": {
+            "description": "Number of voters that have to agree in order to finalize P-chain stake Merkle proof",
+            "type": "integer"
         },
         "priceDeviationThresholdBIPS": {
             "description": "Threshold (in BIPS) for price change between two epochs. Above this change price calculation switches to trusted votes only.",
@@ -460,11 +495,19 @@
         "lowNatTurnoutThresholdBIPS",
         "maintainer",
         "majorityConditionBIPS",
+        "maxStakeEndsPerBlock",
         "maxVotePowerAssetThresholdFraction",
         "maxVotePowerNatThresholdFraction",
         "nativeElasticBandWidthPPM",
         "nativeFtsoDecimals",
         "nativeSymbol",
+        "pChainStakeMirrorGasLimit",
+        "pChainStakeMirrorMaxAmountNAT",
+        "pChainStakeMirrorMaxDurationDays",
+        "pChainStakeMirrorMinAmountNAT",
+        "pChainStakeMirrorMinDurationDays",
+        "pChainStakeMirrorVoters",
+        "pChainStakeMirrorVotingThreshold",
         "priceDeviationThresholdBIPS",
         "priceEpochCyclicBufferSize",
         "priceEpochDurationSeconds",

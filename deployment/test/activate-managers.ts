@@ -48,4 +48,16 @@ contract(`activate-managers.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.P_CHAIN_STAKE_MIRROR, async () => {
+    it("Should be activated", async () => {
+      // Assemble
+      const PChainStakeMirror = artifacts.require("PChainStakeMirror");
+      const pChainStakeMirror = await PChainStakeMirror.at(contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR));
+      // Act
+      const active = await pChainStakeMirror.active();
+      // Assert
+      assert(active);
+    });
+  });
+
 });

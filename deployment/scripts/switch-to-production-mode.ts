@@ -71,6 +71,8 @@ export async function switchToProductionMode(
     const PollingFoundation = artifacts.require("PollingFoundation");
     const FlareAssetRegistry = artifacts.require("FlareAssetRegistry");
     const PollingFtso = artifacts.require("PollingFtso");
+    const PChainStakeMirrorMultiSigVoting = artifacts.require("PChainStakeMirrorMultiSigVoting");
+    const PChainStakeMirror = artifacts.require("PChainStakeMirror");
 
     // Get deployed contracts
     const addressUpdater = await AddressUpdater.at(contracts.getContractAddress(Contracts.ADDRESS_UPDATER));
@@ -98,6 +100,8 @@ export async function switchToProductionMode(
     const claimSetupManager = await ClaimSetupManager.at(contracts.getContractAddress(Contracts.CLAIM_SETUP_MANAGER));
     const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
     const pollingFtso = await PollingFtso.at(contracts.getContractAddress(Contracts.POLLING_FTSO));
+    const pChainStakeMirrorMultiSigVoting = await PChainStakeMirrorMultiSigVoting.at(contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR_MULTI_SIG_VOTING));
+    const pChainStakeMirror = await PChainStakeMirror.at(contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR));
 
     // switch to production mode
     await flareDaemon.switchToProductionMode({ from: genesisGovernanceAccount.address });
@@ -125,4 +129,6 @@ export async function switchToProductionMode(
     await pollingFoundation.switchToProductionMode();
     await flareAssetRegistry.switchToProductionMode();
     await pollingFtso.switchToProductionMode();
+    await pChainStakeMirrorMultiSigVoting.switchToProductionMode();
+    await pChainStakeMirror.switchToProductionMode();
 }

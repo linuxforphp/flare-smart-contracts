@@ -7,11 +7,11 @@ import { Contracts } from "./Contracts";
  * provided in Contracts object. It also expects to receive deployment parameters
  * and validates them the same as during deployment as a sanity check.
  * @dev Do not send anything out via console.log unless it is json defining the created contracts.
- */  
+ */
 export async function activateManagers(
   hre: HardhatRuntimeEnvironment,
   contracts: Contracts,
-  deployerPrivateKey: string, 
+  deployerPrivateKey: string,
   quiet: boolean = false) {
 
   const web3 = hre.web3;
@@ -39,16 +39,19 @@ export async function activateManagers(
   const FtsoManager = artifacts.require("FtsoManager");
   const FtsoRewardManager = artifacts.require("FtsoRewardManager");
   const ValidatorRewardManager = artifacts.require("ValidatorRewardManager");
+  const PChainStakeMirror = artifacts.require("PChainStakeMirror");
 
   // Fetch already deployed contracts
   const ftsoManager = await FtsoManager.at(contracts.getContractAddress(Contracts.FTSO_MANAGER));
   const ftsoRewardManager = await FtsoRewardManager.at(contracts.getContractAddress(Contracts.FTSO_REWARD_MANAGER));
   const validatorRewardManager = await ValidatorRewardManager.at(contracts.getContractAddress(Contracts.VALIDATOR_REWARD_MANAGER));
+  const pChainStakeMirror = await PChainStakeMirror.at(contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR));
 
   // Activate them
   await ftsoManager.activate();
   await ftsoRewardManager.activate();
   await validatorRewardManager.activate();
+  await pChainStakeMirror.activate();
 
   if (!quiet) {
     console.error("Managers activated.");

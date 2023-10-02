@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 import "../../userInterfaces/IVPToken.sol";
+import "../../userInterfaces/IPChainStakeMirror.sol";
 import "../../userInterfaces/IGovernanceVotePower.sol";
 
 /**
@@ -80,6 +81,12 @@ interface IIGovernanceVotePower is IGovernanceVotePower {
      * @return The IVPToken interface owning this contract.
      */
     function ownerToken() external view returns (IVPToken);
+
+    /**
+     * Get the stake mirror contract that this governance vote power contract belongs to.
+     * @return The IPChainStakeMirror interface owning this contract.
+     */
+    function pChainStakeMirror() external view returns (IPChainStakeMirror);
 
     /**
      * Get the current cleanup block number set with `setCleanupBlockNumber()`.

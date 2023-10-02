@@ -49,6 +49,14 @@ contract(`daemonize-contracts.ts system tests`, async accounts => {
       assert(found);
     });
 
+    it("Should be daemonizing P-chain stake mirror", async () => {
+      // Assemble
+      // Act
+      const found = await findDaemonizedContract(contracts, contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR));
+      // Assert
+      assert(found);
+    });
+
     it("Should be daemonizing incentive pool", async () => {
       // Assemble
       // Act

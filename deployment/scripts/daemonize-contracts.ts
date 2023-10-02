@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Contracts } from "./Contracts";
+import { ChainParameters } from "../chain-config/chain-parameters";
 
 /**
  * This script will register all required contracts to the FlareDaemon.
@@ -12,13 +13,7 @@ import { Contracts } from "./Contracts";
 export async function daemonizeContracts(
   hre: HardhatRuntimeEnvironment,
   contracts: Contracts,
-  deployerPrivateKey: string,
-  genesisGovernancePrivateKey: string,
-  inflationReceivers: string[], 
-  inflationGasLimit: number,
-  ftsoManagerGasLimit: number,
-  incentivePoolGasLimit: number,
-  distributionToDelegatorsGasLimit: number,
+  parameters: ChainParameters,
   quiet: boolean = false) {
 
   const web3 = hre.web3;
@@ -34,13 +29,13 @@ export async function daemonizeContracts(
 
   // Get deployer account
   try {
-    deployerAccount = web3.eth.accounts.privateKeyToAccount(deployerPrivateKey);
+    deployerAccount = web3.eth.accounts.privateKeyToAccount(parameters.deployerPrivateKey);
   } catch (e) {
     throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
   }
 
   try {
-    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(genesisGovernancePrivateKey);
+    genesisGovernanceAccount = web3.eth.accounts.privateKeyToAccount(parameters.genesisGovernancePrivateKey);
   } catch (e) {
     throw Error("Check .env file, if the private keys are correct and are prefixed by '0x'.\n" + e)
   }
@@ -59,6 +54,7 @@ export async function daemonizeContracts(
   const IncentivePool = artifacts.require("IncentivePool");
   const DistributionToDelegators = artifacts.require("DistributionToDelegators");
   const IIInflationReceiver = artifacts.require("IIInflationReceiver");
+  const PChainStakeMirror = artifacts.require("PChainStakeMirror");
 
   // Fetch already deployed contracts
   const flareDaemon = await FlareDaemon.at(contracts.getContractAddress(Contracts.FLARE_DAEMON));
@@ -66,9 +62,10 @@ export async function daemonizeContracts(
   const inflation = await Inflation.at(contracts.getContractAddress(Contracts.INFLATION));
   const incentivePool = await IncentivePool.at(contracts.getContractAddress(Contracts.INCENTIVE_POOL));
   const distributionToDelegators = await DistributionToDelegators.at(contracts.getContractAddress(Contracts.DISTRIBUTION_TO_DELEGATORS));
+  const pChainStakeMirror = await PChainStakeMirror.at(contracts.getContractAddress(Contracts.P_CHAIN_STAKE_MIRROR));
 
   // Do inflation receivers know about inflation?
-  for (let inflationReceiverName of inflationReceivers) {
+  for (let inflationReceiverName of parameters.inflationReceivers) {
     const inflationReceiverContract = await IIInflationReceiver.at(contracts.getContractAddress(inflationReceiverName));
     const knownInflationAddress = await inflationReceiverContract.getInflationAddress.call();
     if (knownInflationAddress != inflation.address) {
@@ -78,16 +75,18 @@ export async function daemonizeContracts(
 
   // Register daemonized contracts to the daemon...order matters. Inflation first.
   if (!quiet) {
-    console.error(`Registering Inflation with gas limit ${inflationGasLimit}`);
-    console.error(`Registering FtsoManager with gas limit ${ftsoManagerGasLimit}`);
-    console.error(`Registering IncentivePool with gas limit ${incentivePoolGasLimit}`);
-    console.error(`Registering DistributionToDelegators with gas limit ${distributionToDelegatorsGasLimit}`);
+    console.error(`Registering Inflation with gas limit ${parameters.inflationGasLimit}`);
+    console.error(`Registering FtsoManager with gas limit ${parameters.ftsoManagerGasLimit}`);
+    console.error(`Registering PChainStakeMirror with gas limit ${parameters.pChainStakeMirrorGasLimit}`);
+    console.error(`Registering IncentivePool with gas limit ${parameters.incentivePoolGasLimit}`);
+    console.error(`Registering DistributionToDelegators with gas limit ${parameters.distributionToDelegatorsGasLimit}`);
   }
   const registrations = [
-    { daemonizedContract: inflation.address, gasLimit: inflationGasLimit },
-    { daemonizedContract: ftsoManager.address, gasLimit: ftsoManagerGasLimit },
-    { daemonizedContract: incentivePool.address, gasLimit: incentivePoolGasLimit },
-    { daemonizedContract: distributionToDelegators.address, gasLimit: distributionToDelegatorsGasLimit }
+    { daemonizedContract: inflation.address, gasLimit: parameters.inflationGasLimit },
+    { daemonizedContract: ftsoManager.address, gasLimit: parameters.ftsoManagerGasLimit },
+    { daemonizedContract: pChainStakeMirror.address, gasLimit: parameters.pChainStakeMirrorGasLimit },
+    { daemonizedContract: incentivePool.address, gasLimit: parameters.incentivePoolGasLimit },
+    { daemonizedContract: distributionToDelegators.address, gasLimit: parameters.distributionToDelegatorsGasLimit }
   ];
-  await flareDaemon.registerToDaemonize(registrations, { from: genesisGovernanceAccount.address }); 
+  await flareDaemon.registerToDaemonize(registrations, { from: genesisGovernanceAccount.address });
 }
