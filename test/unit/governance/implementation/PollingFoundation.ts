@@ -79,7 +79,8 @@ contract(`PollingFoundation.sol; ${getTestFile(__filename)}; PollingFoundation u
 
   beforeEach(async () => {
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
-    governanceVotePower = await GovernanceVotePower.new(wNat.address);
+    const pChainStakeMirror = await MockContract.new();
+    governanceVotePower = await GovernanceVotePower.new(wNat.address, pChainStakeMirror.address);
     await wNat.setGovernanceVotePower(governanceVotePower.address);
 
     mockPriceSubmitter = await MockContract.new();

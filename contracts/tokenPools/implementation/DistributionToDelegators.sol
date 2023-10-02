@@ -5,7 +5,7 @@ import "../../addressUpdater/implementation/AddressUpdatable.sol";
 import "../../utils/implementation/GovernedAndFlareDaemonized.sol";
 import "../../claiming/implementation/ClaimSetupManager.sol";
 import "../../token/implementation/WNat.sol";
-import "../../token/lib/IICombinedNatBalance.sol";
+import "../../token/interface/IICombinedNatBalance.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../userInterfaces/IDistributionToDelegators.sol";

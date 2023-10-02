@@ -208,4 +208,16 @@ contract(`switch-to-production-mode.ts system tests`, async accounts => {
     });
   });
 
+  describe(Contracts.P_CHAIN_STAKE_MIRROR_MULTI_SIG_VOTING, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.P_CHAIN_STAKE_MIRROR_MULTI_SIG_VOTING);
+    });
+  });
+
+  describe(Contracts.P_CHAIN_STAKE_MIRROR, async () => {
+    it(SHOULD_HAVE_TRANSFERRED_GOVERNANCE, async () => {
+      await checkProductionSwitch(Contracts.P_CHAIN_STAKE_MIRROR);
+    });
+  });
+
 });

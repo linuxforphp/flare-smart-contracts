@@ -17,7 +17,7 @@ import {
   GovernanceVotePowerContract, IncentivePoolAllocationContract, IncentivePoolContract, IncentivePoolTreasuryContract,
   IncentivePoolTreasuryInstance, InflationAllocationContract, InflationContract, InitialAirdropContract,
   PriceSubmitterContract, PriceSubmitterInstance, StateConnectorContract, StateConnectorInstance, SuicidalMockContract, SupplyContract,
-  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, ValidatorRewardManagerContract, PollingFoundationContract, FlareAssetRegistryContract, FlareContractRegistryContract, PollingFtsoContract, WNatRegistryProviderContract
+  EscrowContract, TestableFlareDaemonContract, VoterWhitelisterContract, WNatContract, ValidatorRegistryContract, FtsoRegistryProxyContract, ValidatorRewardManagerContract, PollingFoundationContract, FlareAssetRegistryContract, FlareContractRegistryContract, PollingFtsoContract, WNatRegistryProviderContract, AddressBinderContract, PChainStakeMirrorMultiSigVotingContract, PChainStakeMirrorVerifierContract, PChainStakeMirrorContract, CombinedNatContract
 } from '../../typechain-truffle';
 import { ChainParameters } from '../chain-config/chain-parameters';
 import { Contracts } from "./Contracts";
@@ -100,6 +100,11 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   const FlareAssetRegistry: FlareAssetRegistryContract = artifacts.require("FlareAssetRegistry");
   const WNatRegistryProvider: WNatRegistryProviderContract = artifacts.require("WNatRegistryProvider");
   const PollingFtso: PollingFtsoContract = artifacts.require("PollingFtso");
+  const AddressBinder: AddressBinderContract = artifacts.require("AddressBinder");
+  const PChainStakeMirrorMultiSigVoting: PChainStakeMirrorMultiSigVotingContract = artifacts.require("PChainStakeMirrorMultiSigVoting");
+  const PChainStakeMirrorVerifier: PChainStakeMirrorVerifierContract = artifacts.require("PChainStakeMirrorVerifier");
+  const PChainStakeMirror: PChainStakeMirrorContract = artifacts.require("PChainStakeMirror");
+  const CombinedNat: CombinedNatContract = artifacts.require("CombinedNat");
 
   // Initialize the state connector
   let stateConnector: StateConnectorInstance;
@@ -391,14 +396,53 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
   // Deploy wrapped native token
   const wNat = await WNat.new(deployerAccount.address, parameters.wrappedNativeName, parameters.wrappedNativeSymbol);
   spewNewContractInfo(contracts, addressUpdaterContracts, WNat.contractName, `WNat.sol`, wNat.address, quiet);
-  spewNewContractInfo(contracts, addressUpdaterContracts, Contracts.COMBINED_NAT, `WNat.sol`, wNat.address, quiet); // until staking
 
   await setDefaultVPContract(hre, wNat, deployerAccount.address);
   await cleanupBlockNumberManager.registerToken(wNat.address);
   await wNat.setCleanupBlockNumberManager(cleanupBlockNumberManager.address);
 
+ // AddressBinder contract
+ const addressBinder = await AddressBinder.new();
+ spewNewContractInfo(contracts, addressUpdaterContracts, AddressBinder.contractName, `AddressBinder.sol`, addressBinder.address, quiet);
+
+ // PChainStakeMirrorMultiSigVoting contract
+ const pChainStakeMirrorMultiSigVoting = await PChainStakeMirrorMultiSigVoting.new(
+   deployerAccount.address,
+   ftsoStartTs,
+   parameters.priceEpochDurationSeconds,
+   parameters.pChainStakeMirrorVotingThreshold,
+   parameters.pChainStakeMirrorVoters
+ );
+ spewNewContractInfo(contracts, addressUpdaterContracts, PChainStakeMirrorMultiSigVoting.contractName, `PChainStakeMirrorMultiSigVoting.sol`, pChainStakeMirrorMultiSigVoting.address, quiet);
+
+ // PChainStakeMirrorVerifier contract
+ const pChainStakeMirrorVerifier = await PChainStakeMirrorVerifier.new(
+   pChainStakeMirrorMultiSigVoting.address,
+   parameters.pChainStakeMirrorMinDurationDays * 60 * 60 * 24,
+   parameters.pChainStakeMirrorMaxDurationDays * 60 * 60 * 24,
+   BN(parameters.pChainStakeMirrorMinAmountNAT).mul(BN(10).pow(BN(9))),
+   BN(parameters.pChainStakeMirrorMaxAmountNAT).mul(BN(10).pow(BN(9)))
+ );
+ spewNewContractInfo(contracts, addressUpdaterContracts, PChainStakeMirrorVerifier.contractName, `PChainStakeMirrorVerifier.sol`, pChainStakeMirrorVerifier.address, quiet);
+
+ // PChainStakeMirror contract
+ const pChainStakeMirror = await PChainStakeMirror.new(
+   deployerAccount.address,
+   flareDaemon.address,
+   addressUpdater.address,
+   parameters.maxStakeEndsPerBlock
+ );
+ spewNewContractInfo(contracts, addressUpdaterContracts, PChainStakeMirror.contractName, `PChainStakeMirror.sol`, pChainStakeMirror.address, quiet);
+
+ // CombinedNat contract
+ const combinedNat = await CombinedNat.new(
+   wNat.address,
+   pChainStakeMirror.address
+ );
+ spewNewContractInfo(contracts, addressUpdaterContracts, CombinedNat.contractName, `CombinedNat.sol`, combinedNat.address, quiet);
+
   // Deploy governance vote power
-  const governanceVotePower = await GovernanceVotePower.new(wNat.address);
+  const governanceVotePower = await GovernanceVotePower.new(wNat.address, pChainStakeMirror.address);
   spewNewContractInfo(contracts, addressUpdaterContracts, GovernanceVotePower.contractName, `GovernanceVotePower.sol`, governanceVotePower.address, quiet);
 
   // Tell wNat contract about governance vote power
@@ -463,7 +507,8 @@ export async function deployContracts(hre: HardhatRuntimeEnvironment, parameters
     pollingFoundation.address,
     claimSetupManager.address,
     distributionToDelegators.address,
-    pollingFtso.address
+    pollingFtso.address,
+    pChainStakeMirror.address
   ];
   await addressUpdater.updateContractAddresses(addressUpdatableContracts);
 

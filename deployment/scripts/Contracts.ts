@@ -49,8 +49,12 @@ export class Contracts {
   public static readonly WNAT_REGISTRY_PROVIDER = "WNatRegistryProvider";
   public static readonly FLARE_CONTRACT_REGISTRY = "FlareContractRegistry";
   public static readonly POLLING_FTSO = "PollingFtso";
+  public static readonly ADDRESS_BINDER = "AddressBinder";
+  public static readonly P_CHAIN_STAKE_MIRROR_MULTI_SIG_VOTING = "PChainStakeMirrorMultiSigVoting";
+  public static readonly P_CHAIN_STAKE_MIRROR_VERIFIER = "PChainStakeMirrorVerifier";
+  public static readonly P_CHAIN_STAKE_MIRROR = "PChainStakeMirror";
   public static readonly FTSO_WNAT = "FtsoWnat";
-  public static readonly XRP = `${Contracts.WRAP_SYMBOL}XRP` 
+  public static readonly XRP = `${Contracts.WRAP_SYMBOL}XRP`;
   public static readonly DUMMY_XRP_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}XrpMinter`;
   public static readonly FTSO_XRP = "FtsoXrp";
   public static readonly LTC = `${Contracts.WRAP_SYMBOL}LTC`;
@@ -58,7 +62,7 @@ export class Contracts {
   public static readonly FTSO_LTC = "FtsoLtc";
   public static readonly DOGE = `${Contracts.WRAP_SYMBOL}DOGE`;
   public static readonly DUMMY_DOGE_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}DogeMinter`;
-  public static readonly FTSO_DOGE = "FtsoDoge"; 
+  public static readonly FTSO_DOGE = "FtsoDoge";
   public static readonly ADA = `${Contracts.WRAP_SYMBOL}ADA`;
   public static readonly DUMMY_ADA_MINTER = `Dummy${Contracts.WRAP_SYMBOL_MINT}AdaMinter`;
   public static readonly FTSO_ADA = "FtsoAda";
@@ -90,14 +94,14 @@ export class Contracts {
     const contractsJson = await this.readStream(stream);
     this.deserializeJson(contractsJson);
   }
-  
+
   deserializeJson(contractsJson: string) {
     const parsedContracts = JSON.parse(contractsJson);
     parsedContracts.forEach((contract: { name: string; contractName: string, address: string; }) => {
       this.contracts.set(contract.name, contract);
     })
   }
-  
+
   allContracts(): Contract[] {
     return Array.from(this.contracts.values());
   }
@@ -109,7 +113,7 @@ export class Contracts {
       throw new Error(`${name} not found`);
     }
   }
-  
+
   async getContractsMap(hre: any): Promise<any> {
     const contractsMap: any = {};
     for (let con of this.allContracts()) {
@@ -123,7 +127,7 @@ export class Contracts {
 
   async readStream(stream: Readable) {
     const chunks = [];
-    for await (const chunk of stream) chunks.push(chunk); 
+    for await (const chunk of stream) chunks.push(chunk);
     return Buffer.concat(chunks).toString('utf-8');
   }
 

@@ -162,7 +162,8 @@ contract(`ClaimSetupManager.sol; ${getTestFile(__filename)}; Claim setup manager
     wNat = await WNat.new(accounts[0], "Wrapped NAT", "WNAT");
     await setDefaultVPContract(wNat, accounts[0]);
 
-    governanceVP = await GovernanceVotePower.new(wNat.address);
+    const pChainStakeMirror = await MockContract.new();
+    governanceVP = await GovernanceVotePower.new(wNat.address, pChainStakeMirror.address);
     await wNat.setGovernanceVotePower(governanceVP.address);
 
     // ftso reward manager
