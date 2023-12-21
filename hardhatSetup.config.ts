@@ -201,7 +201,7 @@ const config: HardhatUserConfig = {
     outputDir: 'docs/api',
     pages: 'files',
     exclude: [],
-    templates: 'docgen-template',
+    templates: './docgen/template',
     theme: 'markdown',
     collapseNewlines: true,
     pageExtension: '.md',
