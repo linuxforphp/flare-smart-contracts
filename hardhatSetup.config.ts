@@ -13,7 +13,6 @@ import {
 } from 'hardhat/builtin-tasks/task-names';
 import { HardhatUserConfig, task } from "hardhat/config";
 import 'solidity-coverage';
-import 'solidity-docgen';
 import "./type-extensions";
 const intercept = require('intercept-stdout');
 
@@ -196,15 +195,6 @@ const config: HardhatUserConfig = {
   tenderly: {
     username: process.env.TENDERLY_USERNAME || "undefined",
     project: "flare"
-  },
-  docgen: {
-    outputDir: 'docs/api',
-    pages: 'files',
-    exclude: [],
-    templates: './docgen/template',
-    theme: 'markdown',
-    collapseNewlines: true,
-    pageExtension: '.md',
   }
 };
 
