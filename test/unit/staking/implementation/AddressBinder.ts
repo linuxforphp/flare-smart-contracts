@@ -102,6 +102,44 @@ contract(`AddressBinder.sol; ${getTestFile(__filename)}; Address binder unit tes
         await expectRevert(register, "wrong format of public key");
     });
 
+    it("Should not register if public key is of wrong format - invalid public key of the form 0x+x+y", async () => {
+        // public key not on the curve
+        let prvKey = privateKeys[0].privateKey.slice(2);
+        let prvkeyBuffer = Buffer.from(prvKey, 'hex');
+        let [x, y] = util.privateKeyToPublicKeyPair(prvkeyBuffer);
+        let pubKey = "0x" + x.toString('hex') + y.toString('hex');
+        if (pubKey[pubKey.length - 1] === '0') {
+            pubKey = pubKey.slice(0, -1) + '1';
+        } else {
+            pubKey = pubKey.slice(0, -1) + '0';
+        }
+        let register = addressBinder.registerPublicKey(pubKey);
+        await expectRevert(register, "invalid public key");
+
+        // x (or y) should not be 0
+        let zeros = Buffer.from("0000000000000000000000000000000000000000000000000000000000000000", 'hex');
+        pubKey = "0x" + zeros.toString('hex') + zeros.toString('hex');
+        register = addressBinder.registerPublicKey(pubKey);
+        await expectRevert(register, "invalid public key");
+    });
+
+    it("Should not register if public key is of wrong format - invalid public key of the form 0x + 02/03 + x", async () => {
+        // x bigger than p
+        let x = Buffer.from("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 'hex');
+        let y = Buffer.from("", 'hex');
+        let pubKey = "0x" + util.encodePublicKey(x, y, true).toString('hex');
+
+        let register = addressBinder.registerPublicKey(pubKey);
+        await expectRevert(register, "invalid public key");
+
+        // x not on the curve
+        x = Buffer.from("0000000000000000000000000000000000000000000000000000000000000005", 'hex');
+        pubKey = "0x" + util.encodePublicKey(x, y, true).toString('hex');
+
+        register = addressBinder.registerPublicKey(pubKey);
+        await expectRevert(register, "invalid public key");
+    });
+
     it("Should register p and c addresses - public key is of the form 0x04+x+y", async () => {
         for (let i = 0; i < 50; i++) {
             let prvKey = privateKeys[i].privateKey.slice(2);

@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
-import "@tenderly/hardhat-tenderly";
+// import "@tenderly/hardhat-tenderly";
 import * as dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import 'hardhat-deploy';
@@ -192,10 +192,10 @@ const config: HardhatUserConfig = {
     showTimeSpent: true,
     outputFile: ".gas-report.txt"
   },
-  tenderly: {
-    username: process.env.TENDERLY_USERNAME || "undefined",
-    project: "flare"
-  }
+  // tenderly: {
+  //   username: process.env.TENDERLY_USERNAME || "undefined",
+  //   project: "flare"
+  // }
 };
 
 export default config;
