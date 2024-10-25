@@ -52,7 +52,7 @@ contract AddressBinder is IAddressBinder {
     function _publicKeyToCAddress(
         bytes calldata publicKey
     )
-        internal pure
+        internal view
         returns (address)
     {
         (uint256 x, uint256 y) = _extractPublicKeyPair(publicKey);
@@ -64,7 +64,7 @@ contract AddressBinder is IAddressBinder {
     function _publicKeyToPAddress(
         bytes calldata publicKey
     )
-        internal pure
+        internal view
         returns (bytes20)
     {
         (uint256 x, uint256 y) = _extractPublicKeyPair(publicKey);
@@ -78,24 +78,31 @@ contract AddressBinder is IAddressBinder {
     function _extractPublicKeyPair(
         bytes calldata encodedPublicKey
     )
-        internal pure
+        internal view
         returns (uint256, uint256)
     {
         bytes1 prefix = encodedPublicKey[0];
         if (encodedPublicKey.length == 64) {
             // ethereum specific public key encoding
-            return (
-                uint256(BytesLib.toBytes32(encodedPublicKey, 0)),
-                uint256(BytesLib.toBytes32(encodedPublicKey, 32)));
+            uint256 x = uint256(BytesLib.toBytes32(encodedPublicKey, 0));
+            uint256 y = uint256(BytesLib.toBytes32(encodedPublicKey, 32));
+            _checkPublicKeyValidity(x, y);
+            return (x, y);
         } else if (encodedPublicKey.length == 65 && prefix == bytes1(0x04)) {
-                return (
-                    uint256(BytesLib.toBytes32(encodedPublicKey, 1)),
-                    uint256(BytesLib.toBytes32(encodedPublicKey, 33))
-                );
+            uint256 x = uint256(BytesLib.toBytes32(encodedPublicKey, 1));
+            uint256 y = uint256(BytesLib.toBytes32(encodedPublicKey, 33));
+            _checkPublicKeyValidity(x, y);
+            return (x, y);
         } else if (encodedPublicKey.length == 33) {
                 uint256 x = uint256(BytesLib.toBytes32(encodedPublicKey, 1));
+                uint256 ySquare = mulmod(x, mulmod(x, x, P), P) + 7;                
+                // check if x can be decompressed by checking if ySquare has a square root
+                require(
+                    x < P && x > 0 && _powmod(ySquare, (P - 1) / 2) == 1,
+                    "invalid public key"
+                );
                 // Tonelli–Shanks algorithm for calculating square root modulo prime of x^3 + 7
-                uint256 y = _powmod(mulmod(x, mulmod(x, x, P), P) + 7, (P + 1) / 4, P);
+                uint256 y = _powmod(ySquare, (P + 1) / 4);
                 if (prefix == bytes1(0x02)) {
                     return (x, (y % 2 == 0) ? y : P - y);
                 } else if (prefix == bytes1(0x03)) {
@@ -113,16 +120,36 @@ contract AddressBinder is IAddressBinder {
         return abi.encodePacked(evenY ? bytes1(0x02) : bytes1(0x03));
     }
 
-    function _powmod(uint256 x, uint256 n, uint256 p) private pure returns (uint256) {
-        uint256 result = 1;
-        while (n > 0) {
-            if (n & 1 == 1) {
-                result = mulmod(result, x, p);
+    /**
+     * @dev Wrap the modular exponent pre-compile introduced in Byzantium.
+     * Returns base^exponent mod P.
+     */
+    function _powmod(uint256 base, uint256 exponent) internal view returns (uint256 o) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            // Args for the precompile: [<length_of_BASE> <length_of_EXPONENT>
+            // <length_of_MODULUS> <BASE> <EXPONENT> <MODULUS>]
+            let output := mload(0x40)
+            let args := add(output, 0x20)
+            mstore(args, 0x20)
+            mstore(add(args, 0x20), 0x20)
+            mstore(add(args, 0x40), 0x20)
+            mstore(add(args, 0x60), base)
+            mstore(add(args, 0x80), exponent)
+            mstore(add(args, 0xa0), P)
+
+            // 0x05 is the modular exponent contract address
+            if iszero(staticcall(not(0), 0x05, args, 0xc0, output, 0x20)) {
+                revert(0, 0)
             }
-            x = mulmod(x, x, p);
-            n >>= 1;
+            o := mload(output)
         }
-        return result;
     }
 
+    function _checkPublicKeyValidity(uint256 x, uint256 y) private pure {
+        require(
+            x < P && x > 0 && y < P && y > 0 && mulmod(y, y, P) == addmod(mulmod(mulmod(x, x, P), x, P), 7, P),
+            "invalid public key"
+        );
+    }
 }
