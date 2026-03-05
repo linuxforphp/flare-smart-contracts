@@ -8,7 +8,7 @@
 
 ### `disableDelegationAccount` Does Not Fully Restrict PDA Usage
 
-Disabling a Personal Delegation Account (PDA) only affects claim routing. The PDA can still be used via `delegate`, `undelegateAll`, `withdraw`, etc.
+Disabling a Personal Delegation Account (PDA) only affects auto claiming. The PDA can still be used via `delegate`, `undelegateAll`, `withdraw`, etc.
 
 **Risk Assessment:** This is intended behavior.
 
